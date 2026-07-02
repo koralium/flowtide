@@ -60,7 +60,6 @@ namespace FlowtideDotNet.Storage.Tree
         {
             int lo = 0;
             int hi = _values.Count - 1;
-            int maxNotFound = hi;
 
             bool found = false;
             while (lo <= hi)
@@ -80,7 +79,6 @@ namespace FlowtideDotNet.Storage.Tree
                 else
                 {
                     hi = i - 1;
-                    maxNotFound = hi;
                 }
             }
             int lowerbound = lo;
@@ -100,7 +98,7 @@ namespace FlowtideDotNet.Storage.Tree
 
         public T Get(in int index)
         {
-            return _values.Get(in index);
+            return _values.Get(index);
         }
 
         public unsafe int GetByteSize()
@@ -136,6 +134,19 @@ namespace FlowtideDotNet.Storage.Tree
         public void Update(int index, T key)
         {
             _values.Update(index, key);
+        }
+
+        public void InsertFrom(T[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
+        {
+            _values.InsertFrom(keys, sortedLookup, targetPositions);
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            for (int i = positions.Length - 1; i >= 0; i--)
+            {
+                _values.RemoveAt(positions[i]);
+            }
         }
     }
 }

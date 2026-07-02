@@ -12,10 +12,23 @@
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// Represents a checkpoint event within the dataflow stream.
+    /// </summary>
+    /// <remarks>
+    /// Checkpoint events are propagated through the stream to coordinate state persistence and synchronization 
+    /// across different vertices and operators. This ensures fault tolerance and data consistency.
+    /// </remarks>
     public interface ICheckpointEvent : ILockingEvent
     {
+        /// <summary>
+        /// Gets the time of the checkpoint being finalized.
+        /// </summary>
         long CheckpointTime { get; }
 
+        /// <summary>
+        /// Gets the time of the newly created checkpoint span.
+        /// </summary>
         long NewTime { get; }
     }
 }

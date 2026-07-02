@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -13,6 +13,8 @@
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
@@ -68,6 +70,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _memoryAllocator = memoryAllocator;
         }
 
+        public BinaryList(IMemoryAllocator memoryAllocator, int initialRowCapacity, int initialDataCapacity)
+        {
+            _memoryAllocator = memoryAllocator;
+            _offsets = new IntList(memoryAllocator, initialRowCapacity + 1);
+            _offsets.Add(0);
+            _memoryOwner = _memoryAllocator.Allocate(initialDataCapacity, 64);
+            _data = _memoryOwner.Memory.Pin().Pointer;
+            _dataLength = initialDataCapacity;
+        }
+
         /// <summary>
         /// Create a binary list from existing memory.
         /// If any changes are made to the list that exceeds the current memory, a new memory block will be allocated that is used only for the list.
@@ -96,6 +108,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         }
 
+        public void* GetDataPointer_Unsafe()
+        {
+            return _data;
+        }
+
+        public void* GetOffsetPointer_Unsafe()
+        {
+            return _offsets.GetPointer_Unsafe();
+        }
+
         private void EnsureCapacity(int length)
         {
             if (_dataLength < length)
@@ -115,7 +137,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, allocLength, 64);
                     _data = _memoryOwner.Memory.Pin().Pointer;
                 }
-                _dataLength = allocLength;
+                _dataLength = _memoryOwner.Memory.Length;
             }
         }
 
@@ -294,12 +316,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 {
                     // TODO: dispose managed state (managed objects)
                     _offsets.Dispose();
-                }
-                if (_memoryOwner != null)
-                {
-                    _memoryOwner.Dispose();
-                    _memoryOwner = null;
-                    _data = null;
+                    if (_memoryOwner != null)
+                    {
+                        _memoryOwner.Dispose();
+                        _memoryOwner = null;
+                        _data = null;
+                    }
                 }
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer
                 // TODO: set large fields to null
@@ -334,6 +356,31 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             return endOffset - startOffset + ((end - start + 1) * sizeof(int));
         }
 
+        /// <summary>
+        /// Fetches sizes for each index and adds them to the sizes span. 
+        /// This is used to calculate the size of a batch of elements in bytes.
+        /// It adds instead of replaces so it can check multiple columns
+        /// </summary>
+        /// <param name="indices"></param>
+        /// <param name="sizes"></param>
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+
+            ref int indicesHead = ref MemoryMarshal.GetReference(indices);
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+            int sum = 0;
+            for (int i = 0; i < length; i++)
+            {
+                int idx = Unsafe.Add(ref indicesHead, i);
+
+                int startOffset = _offsets.Get(idx);
+                int endOffset = _offsets.Get(idx + 1);
+                sum += endOffset - startOffset + sizeof(int);
+                Unsafe.Add(ref sizesHead, i) += sum;
+            }
+        }
+
         public void InsertRangeFrom(int index, BinaryList binaryList, int start, int count)
         {
             var offsetToInsertAt = _offsets.Get(index);
@@ -365,6 +412,184 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             OffsetMemory.Span.CopyTo(offsetMemoryCopy.Memory.Span);
 
             return new BinaryList(offsetMemoryCopy, _offsets.Count, dataMemoryCopy, memoryAllocator);
+        }
+
+        /// <summary>
+        /// Special case insert that allows inserting a range of data from another binary list at specific positions.
+        /// This is used when merging two lists together more memory efficiently than inserting each element one by one.
+        /// </summary>
+        /// <param name="other">The other binary list to insert data from.</param>
+        /// <param name="sortedLookup">A span containing the sorted indices of the elements to insert from the other list.</param>
+        /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list.</param>
+        public void InsertFrom(ref readonly BinaryList other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        {
+            Debug.Assert(sortedLookup.Length == insertPositions.Length);
+            int otherCount = sortedLookup.Length;
+            if (otherCount == 0) return;
+
+            // Calculate total bytes only for the elements being inserted
+            int totalNewBytes = 0;
+            for (int i = 0; i < otherCount; i++)
+            {
+                int oIdx = sortedLookup[i];
+                if (oIdx != lookupNullIndex)
+                {
+                    totalNewBytes += other._offsets.Get(oIdx + 1) - other._offsets.Get(oIdx);
+                }
+            }
+
+
+            int oldDataCount = Count;
+            int oldTotalBytes = _length;
+
+            // Ensure we have enough binary data capacity for the new total size after insertion
+            this.EnsureCapacity(oldTotalBytes + totalNewBytes);
+
+            // Ensure the offsets have enough capacity for the new total count after insertion (old count + new count)
+            this._offsets.EnsureCapacity(oldDataCount + otherCount + 1);
+            this._offsets.IncreaseLength(otherCount);
+
+            // Fetch out spans to not have to access properties multiple times in the loop
+            var selfData = this.AccessSpan;
+            var otherData = other.AccessSpan;
+            var selfOffsets = this._offsets.AccessSpan;
+
+            int currentReadRow = oldDataCount;
+            int currentWriteDataPtr = oldTotalBytes + totalNewBytes;
+            int currentReadDataPtr = oldTotalBytes;
+            int runningByteDelta = totalNewBytes;
+
+            for (int i = otherCount - 1; i >= 0; i--)
+            {
+                int targetInsertIdx = insertPositions[i];
+                int rowsToMove = currentReadRow - targetInsertIdx;
+
+                if (rowsToMove > 0)
+                {
+                    int blockStartByteOffset = selfOffsets[targetInsertIdx];
+                    int blockSizeInBytes = currentReadDataPtr - blockStartByteOffset;
+
+                    currentWriteDataPtr -= blockSizeInBytes;
+                    currentReadDataPtr -= blockSizeInBytes;
+
+                    selfData.Slice(currentReadDataPtr, blockSizeInBytes)
+                            .CopyTo(selfData.Slice(currentWriteDataPtr, blockSizeInBytes));
+
+                    IntList.MoveIndex(selfOffsets, targetInsertIdx, i + 1, rowsToMove, runningByteDelta);
+                }
+
+                int oIdx = sortedLookup[i];
+                int oSize = 0;
+                
+                if (oIdx != lookupNullIndex)
+                {
+                    int oStart = other._offsets.Get(oIdx);
+                    int oEnd = other._offsets.Get(oIdx + 1);
+                    oSize = oEnd - oStart;
+
+                    // Copy the data
+                    currentWriteDataPtr -= oSize;
+                    otherData.Slice(oStart, oSize).CopyTo(selfData.Slice(currentWriteDataPtr));
+                }
+
+                // Update the running delta
+                runningByteDelta -= oSize;
+
+                // Set the actual offset value for this new item
+                // It sits exactly at the currentWriteDataPtr we just used
+                selfOffsets[targetInsertIdx + i] = currentWriteDataPtr;
+
+                // Move the read tracker to the left of the block we just processed
+                currentReadRow = targetInsertIdx;
+            }
+
+            _length += totalNewBytes;
+            selfOffsets[oldDataCount + otherCount] = oldTotalBytes + totalNewBytes;
+        }
+
+        /// <summary>
+        /// Batch delete elements at the specified sorted indices.
+        /// This is more efficient than calling RemoveAt repeatedly because it processes
+        /// contiguous blocks of retained data in a single left-to-right sweep.
+        /// </summary>
+        /// <param name="targets">A span of sorted indices (ascending) of elements to delete.</param>
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            int deleteCount = targets.Length;
+            if (deleteCount == 0) return;
+
+            Debug.Assert(deleteCount <= Count);
+
+            int oldCount = Count;
+            var selfData = AccessSpan;
+            var selfOffsets = _offsets.AccessSpan;
+
+            int writeDataPtr = 0;
+            int currentSourceRow = 0;
+            int cumulativeBytesRemoved = 0;
+
+            for (int i = 0; i < deleteCount; i++)
+            {
+                int targetIdx = targets[i];
+
+                // Copy the retained block before this deletion target
+                if (targetIdx > currentSourceRow)
+                {
+                    int blockStart = selfOffsets[currentSourceRow];
+                    int blockEnd = selfOffsets[targetIdx];
+                    int blockSize = blockEnd - blockStart;
+
+                    if (blockSize > 0 && writeDataPtr != blockStart)
+                    {
+                        selfData.Slice(blockStart, blockSize).CopyTo(selfData.Slice(writeDataPtr));
+                    }
+
+                    // Write compacted offsets for the retained rows
+                    for (int r = currentSourceRow; r < targetIdx; r++)
+                    {
+                        selfOffsets[r - i] = selfOffsets[r] - cumulativeBytesRemoved;
+                    }
+
+                    writeDataPtr += blockSize;
+                }
+
+                // Account for the bytes of the deleted element
+                int deletedStart = selfOffsets[targetIdx];
+                int deletedEnd = selfOffsets[targetIdx + 1];
+                int deletedSize = deletedEnd - deletedStart;
+                cumulativeBytesRemoved += deletedSize;
+
+                currentSourceRow = targetIdx + 1;
+            }
+
+            // Copy the remaining block after the last deletion target
+            if (currentSourceRow < oldCount)
+            {
+                int blockStart = selfOffsets[currentSourceRow];
+                int blockEnd = selfOffsets[oldCount]; // sentinel offset
+                int blockSize = blockEnd - blockStart;
+
+                if (blockSize > 0 && writeDataPtr != blockStart)
+                {
+                    selfData.Slice(blockStart, blockSize).CopyTo(selfData.Slice(writeDataPtr));
+                }
+
+                for (int r = currentSourceRow; r <= oldCount; r++)
+                {
+                    selfOffsets[r - deleteCount] = selfOffsets[r] - cumulativeBytesRemoved;
+                }
+
+                writeDataPtr += blockSize;
+            }
+            else
+            {
+                // All trailing elements were deleted; write the final sentinel offset
+                selfOffsets[oldCount - deleteCount] = writeDataPtr;
+            }
+
+            _length = writeDataPtr;
+            _offsets.RemoveRange(oldCount + 1 - deleteCount, deleteCount);
+            CheckSizeReduction();
         }
     }
 }

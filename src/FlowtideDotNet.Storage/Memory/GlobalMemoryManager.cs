@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Mimalloc;
 using System.Buffers;
 using System.Diagnostics.Metrics;
 using System.Runtime.InteropServices;
@@ -20,39 +21,42 @@ namespace FlowtideDotNet.Storage.Memory
     /// Memory manager that is global in a process, should not be used as much as possible since
     /// the memory allocated with this does not contribute to metric gathering from a stream.
     /// </summary>
-    public unsafe class GlobalMemoryManager : IMemoryAllocator
+    public unsafe class GlobalMemoryManager : IMemoryAllocator, IStreamMemoryManager, IMemoryAllocationStats, IOperatorMemoryManager
     {
+        internal static readonly void* NullPtr = (void*)0;
+
         public static readonly GlobalMemoryManager Instance = new GlobalMemoryManager();
         private long _allocatedMemory;
         private long _freedMemory;
         private long _allocationCount;
         private long _freeCount;
+        private readonly Meter _meter;
 
         private GlobalMemoryManager()
         {
-            var meter = new Meter("flowtide.GlobalMemoryManager");
-            meter.CreateObservableGauge("flowtide.global.memory.allocated_bytes", () =>
+            _meter = new Meter("flowtide.GlobalMemoryManager");
+            _meter.CreateObservableGauge("flowtide.global.memory.allocated_bytes", () =>
             {
                 return new Measurement<long>(_allocatedMemory);
             }, "bytes");
-            meter.CreateObservableGauge("flowtide.global.memory.allocation_count", () =>
+            _meter.CreateObservableGauge("flowtide.global.memory.allocation_count", () =>
             {
                 return new Measurement<long>(_allocationCount);
             });
-            meter.CreateObservableGauge("flowtide.global.memory.freed_bytes", () =>
+            _meter.CreateObservableGauge("flowtide.global.memory.freed_bytes", () =>
             {
                 return new Measurement<long>(_freedMemory);
             }, "bytes");
-            meter.CreateObservableGauge("flowtide.global.memory.free_count", () =>
+            _meter.CreateObservableGauge("flowtide.global.memory.free_count", () =>
             {
                 return new Measurement<long>(_freeCount);
             });
         }
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
-            var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-            RegisterAllocationToMetrics(size);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
+            var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment);
+            RegisterAllocationToMetrics(allocated.length);
+            return NativeCreatedMemoryOwnerFactory.Get(allocated.ptr, allocated.length, (nuint)alignment, this);
         }
 
         public IMemoryOwner<byte> Realloc(IMemoryOwner<byte> memory, int size, int alignment)
@@ -60,31 +64,43 @@ namespace FlowtideDotNet.Storage.Memory
             if (memory is NativeCreatedMemoryOwner native)
             {
                 var previousLength = native.length;
-                var newPtr = NativeMemory.AlignedRealloc(native.ptr, (nuint)size, (nuint)alignment);
-                if (newPtr == native.ptr)
+                var oldPtr = native.ptr;
+                FlowtideAllocatedMemory allocated = FlowtideMemoryAllocation.ReallocAligned(oldPtr, previousLength, size, alignment);
+
+                // If length is same and ptr is same, nothing happened
+                if (allocated.length == previousLength && allocated.ptr == oldPtr)
                 {
-                    var diff = size - previousLength;
+                    return memory;
+                }
+                var diff = allocated.length - previousLength;
+
+                if (diff > 0)
+                {
                     RegisterAllocationToMetrics(diff);
                 }
-                else
+                else if (diff < 0)
                 {
-                    RegisterAllocationToMetrics(size);
-                    RegisterFreeToMetrics(previousLength);
+                    RegisterFreeToMetrics(-diff);
                 }
-                native.ptr = newPtr;
-                native.length = size;
+
+                native.ptr = allocated.ptr;
+                native.length = allocated.length;
                 return native;
             }
             else
             {
-                var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-                RegisterAllocationToMetrics(size);
+                var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment);
+                RegisterAllocationToMetrics(allocated.length);
                 RegisterFreeToMetrics(memory.Memory.Length);
                 // Copy the memory
                 var existingMemory = memory.Memory;
-                NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)Math.Min(existingMemory.Length, size));
+                var copyLength = (nuint)Math.Min(existingMemory.Length, allocated.length);
+                fixed (byte* srcPtr = existingMemory.Span)
+                {
+                    NativeMemory.Copy(srcPtr, allocated.ptr, copyLength);
+                }
                 memory.Dispose();
-                return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
+                return NativeCreatedMemoryOwnerFactory.Get(allocated.ptr, allocated.length, (nuint)alignment, this);
             }
         }
 
@@ -98,6 +114,22 @@ namespace FlowtideDotNet.Storage.Memory
         {
             Interlocked.Add(ref _freedMemory, size);
             Interlocked.Increment(ref _freeCount);
+        }
+
+        public long GetAllocatedMemory()
+        {
+            return _allocatedMemory - _freedMemory;
+        }
+
+        public IOperatorMemoryManager CreateOperatorMemoryManager(string operatorName)
+        {
+            return this;
+        }
+
+        public void Dispose()
+        {
+            // Global singleton manager: disposing via the interface should be safe,
+            // but there is no per-instance state to tear down here.
         }
     }
 }

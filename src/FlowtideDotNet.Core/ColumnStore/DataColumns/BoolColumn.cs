@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -16,15 +16,15 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Diagnostics;
 using System.IO.Hashing;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -37,6 +37,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public BoolColumn(IMemoryAllocator memoryAllocator)
         {
             _data = BitmapListFactory.Get(memoryAllocator);
+        }
+
+        public BoolColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _data = new BitmapList(memoryAllocator, columnSizeInfo.TotalRows);
         }
 
         public BoolColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
@@ -233,6 +238,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             return _data.GetByteSize(0, Count - 1);
         }
 
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            _data.GetPrefixSumByteSizes(indices, sizes);
+        }
+
         public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
         {
             if (other is BoolColumn boolColumn)
@@ -300,5 +310,53 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             dataWriter.WriteArrowBuffer(_data.MemorySlice.Span);
         }
+
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        {
+            if (other is BoolColumn boolColumn)
+            {
+                _data.InsertFrom(in boolColumn._data, in sortedLookup, in insertPositions, lookupNullIndex);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            _data.DeleteBatch(targets);
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Boolean,
+                TotalRows = Count
+            };
+        }
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Boolean);
+        }
+
+        unsafe void IDataColumn.SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            selfComparePointers.dataPointer = _data.GetPointer_Unsafe();
+        }
+
+        System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+        {
+            return NativeSortHelpers.CallCompareBools(selfComparePointerExpression, xExpression, yExpression);
+        }
+
+        bool IDataColumn.SupportSelfCompareExpression => true;
     }
 }
+
+
+
+
+

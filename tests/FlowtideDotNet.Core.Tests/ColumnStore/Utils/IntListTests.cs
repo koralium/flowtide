@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void InsertIncrementalRangeConditionalAdditionOnExistingAvx()
         {
-            IntList intList = new IntList(GlobalMemoryManager.Instance);
+            using IntList intList = new IntList(GlobalMemoryManager.Instance);
 
             intList.Add(1);
             intList.Add(2);

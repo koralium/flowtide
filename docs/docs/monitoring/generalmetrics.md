@@ -5,7 +5,7 @@ sidebar_position: 0
 # General Metrics
 
 This section describes different general metrics that are exposed by Flowtide.
-For operator specific metrics, please check under [operators](/docs/category/operators).
+For operator specific metrics, please check under [operators](../operators/projection.md).
 
 All metrics in flowtide are prefixed with `flowtide_`.
 
@@ -16,7 +16,7 @@ All metrics in flowtide are prefixed with `flowtide_`.
 | stream        | Stream    | Name of the stream, exist on all metrics for a stream.                      |
 | operator      | Operator  | Id of an operator, exist on all metrics that are specific for an operator   |
 
-## `flowtide_state` {#flowtide_state}
+## `flowtide_state`
 
 * Scope: Stream
 * Type: Gauge

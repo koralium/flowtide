@@ -14,7 +14,7 @@ builder.Services.AddFlowtideStream("stream")
     })
     .AddStorage(storage =>
     {
-        storage.AddFasterKVAzureStorage("", "", "");
+        storage.AddTemporaryStorage();
     });
 
 var app = builder.Build();

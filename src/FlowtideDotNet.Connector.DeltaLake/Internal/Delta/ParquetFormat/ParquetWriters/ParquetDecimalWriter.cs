@@ -33,17 +33,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _type = new Decimal128Type(precision, scale);
         }
 
-        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             if (array is Decimal128Array arr)
             {
+                int added = 0;
                 for (int i = index; i < (index + count); i++)
                 {
                     if (deleteVector.Contains(globalOffset + i))
                     {
                         continue;
                     }
-
+                    added++;
                     var val = arr.GetValue(i);
                     if (!val.HasValue)
                     {
@@ -54,7 +55,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                         WriteValue(val.Value);
                     }
                 }
-                return;
+                return added * 16;
             }
             throw new NotImplementedException();
         }
@@ -100,17 +101,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _builder.Append(decimalValue);
         }
 
-        public void WriteValue<T>(T value) where T : IDataValue
+        public long WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_builder != null);
             if (value.IsNull)
             {
                 _nullCount++;
                 _builder.AppendNull();
-                return;
+                return 16;
             }
             var decimalValue = value.AsDecimal;
             WriteValue(decimalValue);
+            return 16;
         }
     }
 }

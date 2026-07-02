@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
             var urlBuilder = new MongoUrlBuilder(m_options.ConnectionString);
             var connection = urlBuilder.ToMongoUrl();
-            var client = new MongoClient(connection);
+            using var client = new MongoClient(connection);
 
             var database = client.GetDatabase(m_options.Database);
             collection = database.GetCollection<BsonDocument>(m_options.Collection);

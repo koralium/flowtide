@@ -121,8 +121,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             Debug.Assert(modified != null, nameof(modified));
             foreach (var e in msg.Events)
             {
-                var primaryKeyValue = e.GetColumn(0);
-                await this.Insert(e);
+                await Insert(e);
                 modified.Add(e);
             }
         }

@@ -12,8 +12,21 @@
 
 namespace FlowtideDotNet.Storage.Comparers
 {
+    /// <summary>
+    /// Compares <see cref="long"/> values in ascending order. Used as the element comparer for keys stored in the
+    /// trees and key containers, for example wrapped inside a list comparer or passed to a key container binary search.
+    /// </summary>
     public class LongComparer : IComparer<long>
     {
+        /// <summary>
+        /// Compares two values and returns their relative order.
+        /// </summary>
+        /// <param name="x">The first value.</param>
+        /// <param name="y">The second value.</param>
+        /// <returns>
+        /// A negative number when <paramref name="x"/> is less than <paramref name="y"/>, zero when they are equal,
+        /// and a positive number when <paramref name="x"/> is greater.
+        /// </returns>
         public int Compare(long x, long y)
         {
             return x.CompareTo(y);

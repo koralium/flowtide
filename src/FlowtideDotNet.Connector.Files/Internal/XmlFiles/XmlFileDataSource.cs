@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
@@ -204,7 +204,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                     throw new InvalidOperationException($"File {file} not found");
                 }
 
-                var reader = XmlReader.Create(stream, new XmlReaderSettings()
+                using var reader = XmlReader.Create(stream, new XmlReaderSettings()
                 {
                     Async = true
                 });

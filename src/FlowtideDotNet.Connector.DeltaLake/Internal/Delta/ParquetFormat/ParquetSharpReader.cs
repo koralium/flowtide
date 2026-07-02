@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -55,9 +55,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 Fields.Add(field);
 
                 string physicalName = field.Name;
-                if (field.Metadata.TryGetValue("delta.columnMapping.physicalName", out var mappingName))
+                if (field.PhysicalName != null)
                 {
-                    physicalName = ((JsonElement)mappingName)!.GetString()!;
+                    physicalName = field.PhysicalName;
                 }
                 if (table.PartitionColumns.Contains(field.Name))
                 {
@@ -313,10 +313,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             Apache.Arrow.RecordBatch batch;
             while ((batch = await batchReader.ReadNextRecordBatchAsync()) != null && changeHasNext)
             {
-                if (globalIndex + batch.Length < changedIndexEnumerator.Current.id)
+                int batchLength = batch.Length;
+                if (globalIndex + batchLength <= changedIndexEnumerator.Current.id)
                 {
                     // The index to search is not in this batch, skip it
-                    globalIndex += batch.Length;
+                    globalIndex += batchLength;
                     batch.Dispose();
                     continue;
                 }
@@ -358,7 +359,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                             break;
                         }
 
-                        if (changedIndexEnumerator.Current.id >= globalIndex + batch.Length)
+                        if (changedIndexEnumerator.Current.id >= globalIndex + batchLength)
                         {
                             break;
                         }
@@ -371,6 +372,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                         weights = weights
                     };
                 }
+                globalIndex += batchLength;
             }
         }
 

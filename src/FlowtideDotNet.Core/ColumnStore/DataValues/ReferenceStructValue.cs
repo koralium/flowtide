@@ -79,6 +79,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
             return column._columns[index].GetValueAt(this.index, default);
         }
 
+        public void GetAt(int index, DataValueContainer dataValueContainer)
+        {
+            column._columns[index].GetValueAt(this.index, dataValueContainer, default);
+        }
+
         public override string ToString()
         {
             StringBuilder stringBuilder = new StringBuilder();

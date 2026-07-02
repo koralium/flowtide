@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Engine;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -38,11 +39,11 @@ namespace FlowtideDotNet.AcceptanceTests
             
             while (!tokenSource.IsCancellationRequested)
             {
-                if (State == Base.Engine.Internal.StateMachine.StreamStateValue.Deleted)
+                if (State == StreamStateValue.Deleted)
                 {
                     break;
                 }
-                if (State != Base.Engine.Internal.StateMachine.StreamStateValue.Deleting)
+                if (State != StreamStateValue.Deleting)
                 {
                     throw new InvalidOperationException("Not in the deleting state");
                 }
@@ -50,7 +51,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 await Task.Delay(100);
             }
 
-            Assert.Equal(Base.Engine.Internal.StateMachine.StreamStateValue.Deleted, State);
+            Assert.Equal(StreamStateValue.Deleted, State);
         }
     }
 }

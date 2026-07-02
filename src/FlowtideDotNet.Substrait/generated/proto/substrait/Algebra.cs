@@ -26,89 +26,125 @@ namespace Substrait.Protobuf {
           string.Concat(
             "ChdzdWJzdHJhaXQvYWxnZWJyYS5wcm90bxIJc3Vic3RyYWl0Ghlnb29nbGUv",
             "cHJvdG9idWYvYW55LnByb3RvGiVzdWJzdHJhaXQvZXh0ZW5zaW9ucy9leHRl",
-            "bnNpb25zLnByb3RvGhRzdWJzdHJhaXQvdHlwZS5wcm90byKZBQoJUmVsQ29t",
+            "bnNpb25zLnByb3RvGhRzdWJzdHJhaXQvdHlwZS5wcm90byLJCgoJUmVsQ29t",
             "bW9uEi0KBmRpcmVjdBgBIAEoCzIbLnN1YnN0cmFpdC5SZWxDb21tb24uRGly",
             "ZWN0SAASKQoEZW1pdBgCIAEoCzIZLnN1YnN0cmFpdC5SZWxDb21tb24uRW1p",
             "dEgAEicKBGhpbnQYAyABKAsyGS5zdWJzdHJhaXQuUmVsQ29tbW9uLkhpbnQS",
             "QwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAQgASgLMicuc3Vic3RyYWl0LmV4dGVu",
             "c2lvbnMuQWR2YW5jZWRFeHRlbnNpb24aCAoGRGlyZWN0Gh4KBEVtaXQSFgoO",
-            "b3V0cHV0X21hcHBpbmcYASADKAUajAMKBEhpbnQSLgoFc3RhdHMYASABKAsy",
+            "b3V0cHV0X21hcHBpbmcYASADKAUavAgKBEhpbnQSLgoFc3RhdHMYASABKAsy",
             "Hy5zdWJzdHJhaXQuUmVsQ29tbW9uLkhpbnQuU3RhdHMSPwoKY29uc3RyYWlu",
             "dBgCIAEoCzIrLnN1YnN0cmFpdC5SZWxDb21tb24uSGludC5SdW50aW1lQ29u",
-            "c3RyYWludBJDChJhZHZhbmNlZF9leHRlbnNpb24YCiABKAsyJy5zdWJzdHJh",
-            "aXQuZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lvbhp0CgVTdGF0cxIRCgly",
-            "b3dfY291bnQYASABKAESEwoLcmVjb3JkX3NpemUYAiABKAESQwoSYWR2YW5j",
-            "ZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0LmV4dGVuc2lvbnMuQWR2",
-            "YW5jZWRFeHRlbnNpb24aWAoRUnVudGltZUNvbnN0cmFpbnQSQwoSYWR2YW5j",
-            "ZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0LmV4dGVuc2lvbnMuQWR2",
-            "YW5jZWRFeHRlbnNpb25CCwoJZW1pdF9raW5kIsgMCgdSZWFkUmVsEiQKBmNv",
-            "bW1vbhgBIAEoCzIULnN1YnN0cmFpdC5SZWxDb21tb24SKwoLYmFzZV9zY2hl",
-            "bWEYAiABKAsyFi5zdWJzdHJhaXQuTmFtZWRTdHJ1Y3QSJQoGZmlsdGVyGAMg",
-            "ASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SMQoSYmVzdF9lZmZvcnRfZmls",
-            "dGVyGAsgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SOAoKcHJvamVjdGlv",
-            "bhgEIAEoCzIkLnN1YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9u",
-            "EkMKEmFkdmFuY2VkX2V4dGVuc2lvbhgKIAEoCzInLnN1YnN0cmFpdC5leHRl",
-            "bnNpb25zLkFkdmFuY2VkRXh0ZW5zaW9uEjgKDXZpcnR1YWxfdGFibGUYBSAB",
-            "KAsyHy5zdWJzdHJhaXQuUmVhZFJlbC5WaXJ0dWFsVGFibGVIABI0Cgtsb2Nh",
-            "bF9maWxlcxgGIAEoCzIdLnN1YnN0cmFpdC5SZWFkUmVsLkxvY2FsRmlsZXNI",
-            "ABI0CgtuYW1lZF90YWJsZRgHIAEoCzIdLnN1YnN0cmFpdC5SZWFkUmVsLk5h",
-            "bWVkVGFibGVIABI8Cg9leHRlbnNpb25fdGFibGUYCCABKAsyIS5zdWJzdHJh",
-            "aXQuUmVhZFJlbC5FeHRlbnNpb25UYWJsZUgAGmAKCk5hbWVkVGFibGUSDQoF",
-            "bmFtZXMYASADKAkSQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vi",
-            "c3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24aggEKDFZpcnR1",
-            "YWxUYWJsZRI4CgZ2YWx1ZXMYASADKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lv",
-            "bi5MaXRlcmFsLlN0cnVjdEICGAESOAoLZXhwcmVzc2lvbnMYAiADKAsyIy5z",
-            "dWJzdHJhaXQuRXhwcmVzc2lvbi5OZXN0ZWQuU3RydWN0GjYKDkV4dGVuc2lv",
-            "blRhYmxlEiQKBmRldGFpbBgBIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5Bbnka",
-            "gAYKCkxvY2FsRmlsZXMSOAoFaXRlbXMYASADKAsyKS5zdWJzdHJhaXQuUmVh",
-            "ZFJlbC5Mb2NhbEZpbGVzLkZpbGVPckZpbGVzEkMKEmFkdmFuY2VkX2V4dGVu",
-            "c2lvbhgKIAEoCzInLnN1YnN0cmFpdC5leHRlbnNpb25zLkFkdmFuY2VkRXh0",
-            "ZW5zaW9uGvIECgtGaWxlT3JGaWxlcxISCgh1cmlfcGF0aBgBIAEoCUgAEhcK",
-            "DXVyaV9wYXRoX2dsb2IYAiABKAlIABISCgh1cmlfZmlsZRgDIAEoCUgAEhQK",
-            "CnVyaV9mb2xkZXIYBCABKAlIABIXCg9wYXJ0aXRpb25faW5kZXgYBiABKAQS",
-            "DQoFc3RhcnQYByABKAQSDgoGbGVuZ3RoGAggASgEEk8KB3BhcnF1ZXQYCSAB",
-            "KAsyPC5zdWJzdHJhaXQuUmVhZFJlbC5Mb2NhbEZpbGVzLkZpbGVPckZpbGVz",
-            "LlBhcnF1ZXRSZWFkT3B0aW9uc0gBEksKBWFycm93GAogASgLMjouc3Vic3Ry",
-            "YWl0LlJlYWRSZWwuTG9jYWxGaWxlcy5GaWxlT3JGaWxlcy5BcnJvd1JlYWRP",
-            "cHRpb25zSAESRwoDb3JjGAsgASgLMjguc3Vic3RyYWl0LlJlYWRSZWwuTG9j",
-            "YWxGaWxlcy5GaWxlT3JGaWxlcy5PcmNSZWFkT3B0aW9uc0gBEikKCWV4dGVu",
-            "c2lvbhgMIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5BbnlIARJJCgRkd3JmGA0g",
-            "ASgLMjkuc3Vic3RyYWl0LlJlYWRSZWwuTG9jYWxGaWxlcy5GaWxlT3JGaWxl",
-            "cy5Ed3JmUmVhZE9wdGlvbnNIARoUChJQYXJxdWV0UmVhZE9wdGlvbnMaEgoQ",
-            "QXJyb3dSZWFkT3B0aW9ucxoQCg5PcmNSZWFkT3B0aW9ucxoRCg9Ed3JmUmVh",
-            "ZE9wdGlvbnNCCwoJcGF0aF90eXBlQg0KC2ZpbGVfZm9ybWF0SgQIBRAGUgZm",
-            "b3JtYXRCCwoJcmVhZF90eXBlIsIBCgpQcm9qZWN0UmVsEiQKBmNvbW1vbhgB",
-            "IAEoCzIULnN1YnN0cmFpdC5SZWxDb21tb24SHQoFaW5wdXQYAiABKAsyDi5z",
-            "dWJzdHJhaXQuUmVsEioKC2V4cHJlc3Npb25zGAMgAygLMhUuc3Vic3RyYWl0",
-            "LkV4cHJlc3Npb24SQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vi",
-            "c3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24i8QMKB0pvaW5S",
-            "ZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1vbhIcCgRs",
-            "ZWZ0GAIgASgLMg4uc3Vic3RyYWl0LlJlbBIdCgVyaWdodBgDIAEoCzIOLnN1",
-            "YnN0cmFpdC5SZWwSKQoKZXhwcmVzc2lvbhgEIAEoCzIVLnN1YnN0cmFpdC5F",
-            "eHByZXNzaW9uEi8KEHBvc3Rfam9pbl9maWx0ZXIYBSABKAsyFS5zdWJzdHJh",
-            "aXQuRXhwcmVzc2lvbhIpCgR0eXBlGAYgASgOMhsuc3Vic3RyYWl0LkpvaW5S",
-            "ZWwuSm9pblR5cGUSQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vi",
-            "c3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24itgEKCEpvaW5U",
-            "eXBlEhkKFUpPSU5fVFlQRV9VTlNQRUNJRklFRBAAEhMKD0pPSU5fVFlQRV9J",
-            "Tk5FUhABEhMKD0pPSU5fVFlQRV9PVVRFUhACEhIKDkpPSU5fVFlQRV9MRUZU",
-            "EAMSEwoPSk9JTl9UWVBFX1JJR0hUEAQSEgoOSk9JTl9UWVBFX1NFTUkQBRIS",
-            "Cg5KT0lOX1RZUEVfQU5USRAGEhQKEEpPSU5fVFlQRV9TSU5HTEUQByKyAQoI",
-            "Q3Jvc3NSZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1v",
-            "bhIcCgRsZWZ0GAIgASgLMg4uc3Vic3RyYWl0LlJlbBIdCgVyaWdodBgDIAEo",
-            "CzIOLnN1YnN0cmFpdC5SZWwSQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgL",
-            "Micuc3Vic3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24iswEK",
-            "CEZldGNoUmVsEiQKBmNvbW1vbhgBIAEoCzIULnN1YnN0cmFpdC5SZWxDb21t",
-            "b24SHQoFaW5wdXQYAiABKAsyDi5zdWJzdHJhaXQuUmVsEg4KBm9mZnNldBgD",
-            "IAEoAxINCgVjb3VudBgEIAEoAxJDChJhZHZhbmNlZF9leHRlbnNpb24YCiAB",
-            "KAsyJy5zdWJzdHJhaXQuZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lvbiKi",
-            "AwoMQWdncmVnYXRlUmVsEiQKBmNvbW1vbhgBIAEoCzIULnN1YnN0cmFpdC5S",
-            "ZWxDb21tb24SHQoFaW5wdXQYAiABKAsyDi5zdWJzdHJhaXQuUmVsEjMKCWdy",
-            "b3VwaW5ncxgDIAMoCzIgLnN1YnN0cmFpdC5BZ2dyZWdhdGVSZWwuR3JvdXBp",
-            "bmcSMQoIbWVhc3VyZXMYBCADKAsyHy5zdWJzdHJhaXQuQWdncmVnYXRlUmVs",
-            "Lk1lYXN1cmUSQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vic3Ry",
-            "YWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24aPwoIR3JvdXBpbmcS",
-            "MwoUZ3JvdXBpbmdfZXhwcmVzc2lvbnMYASADKAsyFS5zdWJzdHJhaXQuRXhw",
-            "cmVzc2lvbhpfCgdNZWFzdXJlEi0KB21lYXN1cmUYASABKAsyHC5zdWJzdHJh",
+            "c3RyYWludBINCgVhbGlhcxgDIAEoCRIUCgxvdXRwdXRfbmFtZXMYBCADKAkS",
+            "QwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0LmV4dGVu",
+            "c2lvbnMuQWR2YW5jZWRFeHRlbnNpb24SRgoSc2F2ZWRfY29tcHV0YXRpb25z",
+            "GAsgAygLMiouc3Vic3RyYWl0LlJlbENvbW1vbi5IaW50LlNhdmVkQ29tcHV0",
+            "YXRpb24SSAoTbG9hZGVkX2NvbXB1dGF0aW9ucxgMIAMoCzIrLnN1YnN0cmFp",
+            "dC5SZWxDb21tb24uSGludC5Mb2FkZWRDb21wdXRhdGlvbhp0CgVTdGF0cxIR",
+            "Cglyb3dfY291bnQYASABKAESEwoLcmVjb3JkX3NpemUYAiABKAESQwoSYWR2",
+            "YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0LmV4dGVuc2lvbnMu",
+            "QWR2YW5jZWRFeHRlbnNpb24aWAoRUnVudGltZUNvbnN0cmFpbnQSQwoSYWR2",
+            "YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0LmV4dGVuc2lvbnMu",
+            "QWR2YW5jZWRFeHRlbnNpb24aqAEKEFNhdmVkQ29tcHV0YXRpb24SFgoOY29t",
+            "cHV0YXRpb25faWQYASABKAUSNwoEdHlwZRgCIAEoDjIpLnN1YnN0cmFpdC5S",
+            "ZWxDb21tb24uSGludC5Db21wdXRhdGlvblR5cGUSQwoSYWR2YW5jZWRfZXh0",
+            "ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRF",
+            "eHRlbnNpb24aswEKEUxvYWRlZENvbXB1dGF0aW9uEiAKGGNvbXB1dGF0aW9u",
+            "X2lkX3JlZmVyZW5jZRgBIAEoBRI3CgR0eXBlGAIgASgOMikuc3Vic3RyYWl0",
+            "LlJlbENvbW1vbi5IaW50LkNvbXB1dGF0aW9uVHlwZRJDChJhZHZhbmNlZF9l",
+            "eHRlbnNpb24YCiABKAsyJy5zdWJzdHJhaXQuZXh0ZW5zaW9ucy5BZHZhbmNl",
+            "ZEV4dGVuc2lvbiKVAQoPQ29tcHV0YXRpb25UeXBlEiAKHENPTVBVVEFUSU9O",
+            "X1RZUEVfVU5TUEVDSUZJRUQQABIeChpDT01QVVRBVElPTl9UWVBFX0hBU0hU",
+            "QUJMRRABEiEKHUNPTVBVVEFUSU9OX1RZUEVfQkxPT01fRklMVEVSEAISHQoY",
+            "Q09NUFVUQVRJT05fVFlQRV9VTktOT1dOEI9OQgsKCWVtaXRfa2luZCL+EAoH",
+            "UmVhZFJlbBIkCgZjb21tb24YASABKAsyFC5zdWJzdHJhaXQuUmVsQ29tbW9u",
+            "EisKC2Jhc2Vfc2NoZW1hGAIgASgLMhYuc3Vic3RyYWl0Lk5hbWVkU3RydWN0",
+            "EiUKBmZpbHRlchgDIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uEjEKEmJl",
+            "c3RfZWZmb3J0X2ZpbHRlchgLIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9u",
+            "EjgKCnByb2plY3Rpb24YBCABKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5N",
+            "YXNrRXhwcmVzc2lvbhJDChJhZHZhbmNlZF9leHRlbnNpb24YCiABKAsyJy5z",
+            "dWJzdHJhaXQuZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lvbhI4Cg12aXJ0",
+            "dWFsX3RhYmxlGAUgASgLMh8uc3Vic3RyYWl0LlJlYWRSZWwuVmlydHVhbFRh",
+            "YmxlSAASNAoLbG9jYWxfZmlsZXMYBiABKAsyHS5zdWJzdHJhaXQuUmVhZFJl",
+            "bC5Mb2NhbEZpbGVzSAASNAoLbmFtZWRfdGFibGUYByABKAsyHS5zdWJzdHJh",
+            "aXQuUmVhZFJlbC5OYW1lZFRhYmxlSAASPAoPZXh0ZW5zaW9uX3RhYmxlGAgg",
+            "ASgLMiEuc3Vic3RyYWl0LlJlYWRSZWwuRXh0ZW5zaW9uVGFibGVIABI4Cg1p",
+            "Y2ViZXJnX3RhYmxlGAkgASgLMh8uc3Vic3RyYWl0LlJlYWRSZWwuSWNlYmVy",
+            "Z1RhYmxlSAAaYAoKTmFtZWRUYWJsZRINCgVuYW1lcxgBIAMoCRJDChJhZHZh",
+            "bmNlZF9leHRlbnNpb24YCiABKAsyJy5zdWJzdHJhaXQuZXh0ZW5zaW9ucy5B",
+            "ZHZhbmNlZEV4dGVuc2lvbhrLAQoMSWNlYmVyZ1RhYmxlEkIKBmRpcmVjdBgB",
+            "IAEoCzIwLnN1YnN0cmFpdC5SZWFkUmVsLkljZWJlcmdUYWJsZS5NZXRhZGF0",
+            "YUZpbGVSZWFkSAAaaQoQTWV0YWRhdGFGaWxlUmVhZBIUCgxtZXRhZGF0YV91",
+            "cmkYASABKAkSFQoLc25hcHNob3RfaWQYAiABKAlIABIcChJzbmFwc2hvdF90",
+            "aW1lc3RhbXAYAyABKANIAEIKCghzbmFwc2hvdEIMCgp0YWJsZV90eXBlGoIB",
+            "CgxWaXJ0dWFsVGFibGUSOAoGdmFsdWVzGAEgAygLMiQuc3Vic3RyYWl0LkV4",
+            "cHJlc3Npb24uTGl0ZXJhbC5TdHJ1Y3RCAhgBEjgKC2V4cHJlc3Npb25zGAIg",
+            "AygLMiMuc3Vic3RyYWl0LkV4cHJlc3Npb24uTmVzdGVkLlN0cnVjdBo2Cg5F",
+            "eHRlbnNpb25UYWJsZRIkCgZkZXRhaWwYASABKAsyFC5nb29nbGUucHJvdG9i",
+            "dWYuQW55Gq4ICgpMb2NhbEZpbGVzEjgKBWl0ZW1zGAEgAygLMikuc3Vic3Ry",
+            "YWl0LlJlYWRSZWwuTG9jYWxGaWxlcy5GaWxlT3JGaWxlcxJDChJhZHZhbmNl",
+            "ZF9leHRlbnNpb24YCiABKAsyJy5zdWJzdHJhaXQuZXh0ZW5zaW9ucy5BZHZh",
+            "bmNlZEV4dGVuc2lvbhqgBwoLRmlsZU9yRmlsZXMSEgoIdXJpX3BhdGgYASAB",
+            "KAlIABIXCg11cmlfcGF0aF9nbG9iGAIgASgJSAASEgoIdXJpX2ZpbGUYAyAB",
+            "KAlIABIUCgp1cmlfZm9sZGVyGAQgASgJSAASFwoPcGFydGl0aW9uX2luZGV4",
+            "GAYgASgEEg0KBXN0YXJ0GAcgASgEEg4KBmxlbmd0aBgIIAEoBBJPCgdwYXJx",
+            "dWV0GAkgASgLMjwuc3Vic3RyYWl0LlJlYWRSZWwuTG9jYWxGaWxlcy5GaWxl",
+            "T3JGaWxlcy5QYXJxdWV0UmVhZE9wdGlvbnNIARJLCgVhcnJvdxgKIAEoCzI6",
+            "LnN1YnN0cmFpdC5SZWFkUmVsLkxvY2FsRmlsZXMuRmlsZU9yRmlsZXMuQXJy",
+            "b3dSZWFkT3B0aW9uc0gBEkcKA29yYxgLIAEoCzI4LnN1YnN0cmFpdC5SZWFk",
+            "UmVsLkxvY2FsRmlsZXMuRmlsZU9yRmlsZXMuT3JjUmVhZE9wdGlvbnNIARIp",
+            "CglleHRlbnNpb24YDCABKAsyFC5nb29nbGUucHJvdG9idWYuQW55SAESSQoE",
+            "ZHdyZhgNIAEoCzI5LnN1YnN0cmFpdC5SZWFkUmVsLkxvY2FsRmlsZXMuRmls",
+            "ZU9yRmlsZXMuRHdyZlJlYWRPcHRpb25zSAESWwoEdGV4dBgOIAEoCzJLLnN1",
+            "YnN0cmFpdC5SZWFkUmVsLkxvY2FsRmlsZXMuRmlsZU9yRmlsZXMuRGVsaW1p",
+            "dGVyU2VwYXJhdGVkVGV4dFJlYWRPcHRpb25zSAEaFAoSUGFycXVldFJlYWRP",
+            "cHRpb25zGhIKEEFycm93UmVhZE9wdGlvbnMaEAoOT3JjUmVhZE9wdGlvbnMa",
+            "EQoPRHdyZlJlYWRPcHRpb25zGs4BCiFEZWxpbWl0ZXJTZXBhcmF0ZWRUZXh0",
+            "UmVhZE9wdGlvbnMSFwoPZmllbGRfZGVsaW1pdGVyGAEgASgJEhUKDW1heF9s",
+            "aW5lX3NpemUYAiABKAQSDQoFcXVvdGUYAyABKAkSHAoUaGVhZGVyX2xpbmVz",
+            "X3RvX3NraXAYBCABKAQSDgoGZXNjYXBlGAUgASgJEiIKFXZhbHVlX3RyZWF0",
+            "ZWRfYXNfbnVsbBgGIAEoCUgAiAEBQhgKFl92YWx1ZV90cmVhdGVkX2FzX251",
+            "bGxCCwoJcGF0aF90eXBlQg0KC2ZpbGVfZm9ybWF0SgQIBRAGUgZmb3JtYXRC",
+            "CwoJcmVhZF90eXBlIsIBCgpQcm9qZWN0UmVsEiQKBmNvbW1vbhgBIAEoCzIU",
+            "LnN1YnN0cmFpdC5SZWxDb21tb24SHQoFaW5wdXQYAiABKAsyDi5zdWJzdHJh",
+            "aXQuUmVsEioKC2V4cHJlc3Npb25zGAMgAygLMhUuc3Vic3RyYWl0LkV4cHJl",
+            "c3Npb24SQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0",
+            "LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24igwUKB0pvaW5SZWwSJAoG",
+            "Y29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1vbhIcCgRsZWZ0GAIg",
+            "ASgLMg4uc3Vic3RyYWl0LlJlbBIdCgVyaWdodBgDIAEoCzIOLnN1YnN0cmFp",
+            "dC5SZWwSKQoKZXhwcmVzc2lvbhgEIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNz",
+            "aW9uEi8KEHBvc3Rfam9pbl9maWx0ZXIYBSABKAsyFS5zdWJzdHJhaXQuRXhw",
+            "cmVzc2lvbhIpCgR0eXBlGAYgASgOMhsuc3Vic3RyYWl0LkpvaW5SZWwuSm9p",
+            "blR5cGUSQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0",
+            "LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24iyAIKCEpvaW5UeXBlEhkK",
+            "FUpPSU5fVFlQRV9VTlNQRUNJRklFRBAAEhMKD0pPSU5fVFlQRV9JTk5FUhAB",
+            "EhMKD0pPSU5fVFlQRV9PVVRFUhACEhIKDkpPSU5fVFlQRV9MRUZUEAMSEwoP",
+            "Sk9JTl9UWVBFX1JJR0hUEAQSFwoTSk9JTl9UWVBFX0xFRlRfU0VNSRAFEhcK",
+            "E0pPSU5fVFlQRV9MRUZUX0FOVEkQBhIZChVKT0lOX1RZUEVfTEVGVF9TSU5H",
+            "TEUQBxIYChRKT0lOX1RZUEVfUklHSFRfU0VNSRAIEhgKFEpPSU5fVFlQRV9S",
+            "SUdIVF9BTlRJEAkSGgoWSk9JTl9UWVBFX1JJR0hUX1NJTkdMRRAKEhcKE0pP",
+            "SU5fVFlQRV9MRUZUX01BUksQCxIYChRKT0lOX1RZUEVfUklHSFRfTUFSSxAM",
+            "IrIBCghDcm9zc1JlbBIkCgZjb21tb24YASABKAsyFC5zdWJzdHJhaXQuUmVs",
+            "Q29tbW9uEhwKBGxlZnQYAiABKAsyDi5zdWJzdHJhaXQuUmVsEh0KBXJpZ2h0",
+            "GAMgASgLMg4uc3Vic3RyYWl0LlJlbBJDChJhZHZhbmNlZF9leHRlbnNpb24Y",
+            "CiABKAsyJy5zdWJzdHJhaXQuZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lv",
+            "biK3AgoIRmV0Y2hSZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJl",
+            "bENvbW1vbhIdCgVpbnB1dBgCIAEoCzIOLnN1YnN0cmFpdC5SZWwSFAoGb2Zm",
+            "c2V0GAMgASgDQgIYAUgAEiwKC29mZnNldF9leHByGAUgASgLMhUuc3Vic3Ry",
+            "YWl0LkV4cHJlc3Npb25IABITCgVjb3VudBgEIAEoA0ICGAFIARIrCgpjb3Vu",
+            "dF9leHByGAYgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb25IARJDChJhZHZh",
+            "bmNlZF9leHRlbnNpb24YCiABKAsyJy5zdWJzdHJhaXQuZXh0ZW5zaW9ucy5B",
+            "ZHZhbmNlZEV4dGVuc2lvbkINCgtvZmZzZXRfbW9kZUIMCgpjb3VudF9tb2Rl",
+            "IvoDCgxBZ2dyZWdhdGVSZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0",
+            "LlJlbENvbW1vbhIdCgVpbnB1dBgCIAEoCzIOLnN1YnN0cmFpdC5SZWwSMwoJ",
+            "Z3JvdXBpbmdzGAMgAygLMiAuc3Vic3RyYWl0LkFnZ3JlZ2F0ZVJlbC5Hcm91",
+            "cGluZxIxCghtZWFzdXJlcxgEIAMoCzIfLnN1YnN0cmFpdC5BZ2dyZWdhdGVS",
+            "ZWwuTWVhc3VyZRIzChRncm91cGluZ19leHByZXNzaW9ucxgFIAMoCzIVLnN1",
+            "YnN0cmFpdC5FeHByZXNzaW9uEkMKEmFkdmFuY2VkX2V4dGVuc2lvbhgKIAEo",
+            "CzInLnN1YnN0cmFpdC5leHRlbnNpb25zLkFkdmFuY2VkRXh0ZW5zaW9uGmIK",
+            "CEdyb3VwaW5nEjcKFGdyb3VwaW5nX2V4cHJlc3Npb25zGAEgAygLMhUuc3Vi",
+            "c3RyYWl0LkV4cHJlc3Npb25CAhgBEh0KFWV4cHJlc3Npb25fcmVmZXJlbmNl",
+            "cxgCIAMoDRpfCgdNZWFzdXJlEi0KB21lYXN1cmUYASABKAsyHC5zdWJzdHJh",
             "aXQuQWdncmVnYXRlRnVuY3Rpb24SJQoGZmlsdGVyGAIgASgLMhUuc3Vic3Ry",
             "YWl0LkV4cHJlc3Npb24iyAYKHENvbnNpc3RlbnRQYXJ0aXRpb25XaW5kb3dS",
             "ZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1vbhIdCgVp",
@@ -137,414 +173,478 @@ namespace Substrait.Protobuf {
             "c3RyYWl0LlJlbENvbW1vbhIdCgVpbnB1dBgCIAEoCzIOLnN1YnN0cmFpdC5S",
             "ZWwSKAoJY29uZGl0aW9uGAMgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24S",
             "QwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0LmV4dGVu",
-            "c2lvbnMuQWR2YW5jZWRFeHRlbnNpb24igwMKBlNldFJlbBIkCgZjb21tb24Y",
+            "c2lvbnMuQWR2YW5jZWRFeHRlbnNpb24ixwMKBlNldFJlbBIkCgZjb21tb24Y",
             "ASABKAsyFC5zdWJzdHJhaXQuUmVsQ29tbW9uEh4KBmlucHV0cxgCIAMoCzIO",
             "LnN1YnN0cmFpdC5SZWwSIwoCb3AYAyABKA4yFy5zdWJzdHJhaXQuU2V0UmVs",
             "LlNldE9wEkMKEmFkdmFuY2VkX2V4dGVuc2lvbhgKIAEoCzInLnN1YnN0cmFp",
-            "dC5leHRlbnNpb25zLkFkdmFuY2VkRXh0ZW5zaW9uIsgBCgVTZXRPcBIWChJT",
+            "dC5leHRlbnNpb25zLkFkdmFuY2VkRXh0ZW5zaW9uIowCCgVTZXRPcBIWChJT",
             "RVRfT1BfVU5TUEVDSUZJRUQQABIYChRTRVRfT1BfTUlOVVNfUFJJTUFSWRAB",
-            "EhkKFVNFVF9PUF9NSU5VU19NVUxUSVNFVBACEh8KG1NFVF9PUF9JTlRFUlNF",
-            "Q1RJT05fUFJJTUFSWRADEiAKHFNFVF9PUF9JTlRFUlNFQ1RJT05fTVVMVElT",
-            "RVQQBBIZChVTRVRfT1BfVU5JT05fRElTVElOQ1QQBRIUChBTRVRfT1BfVU5J",
-            "T05fQUxMEAYifwoSRXh0ZW5zaW9uU2luZ2xlUmVsEiQKBmNvbW1vbhgBIAEo",
-            "CzIULnN1YnN0cmFpdC5SZWxDb21tb24SHQoFaW5wdXQYAiABKAsyDi5zdWJz",
-            "dHJhaXQuUmVsEiQKBmRldGFpbBgDIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5B",
-            "bnkiXgoQRXh0ZW5zaW9uTGVhZlJlbBIkCgZjb21tb24YASABKAsyFC5zdWJz",
-            "dHJhaXQuUmVsQ29tbW9uEiQKBmRldGFpbBgCIAEoCzIULmdvb2dsZS5wcm90",
-            "b2J1Zi5BbnkifwoRRXh0ZW5zaW9uTXVsdGlSZWwSJAoGY29tbW9uGAEgASgL",
-            "MhQuc3Vic3RyYWl0LlJlbENvbW1vbhIeCgZpbnB1dHMYAiADKAsyDi5zdWJz",
-            "dHJhaXQuUmVsEiQKBmRldGFpbBgDIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5B",
-            "bnkiwwcKC0V4Y2hhbmdlUmVsEiQKBmNvbW1vbhgBIAEoCzIULnN1YnN0cmFp",
-            "dC5SZWxDb21tb24SHQoFaW5wdXQYAiABKAsyDi5zdWJzdHJhaXQuUmVsEhcK",
-            "D3BhcnRpdGlvbl9jb3VudBgDIAEoBRI2Cgd0YXJnZXRzGAQgAygLMiUuc3Vi",
-            "c3RyYWl0LkV4Y2hhbmdlUmVsLkV4Y2hhbmdlVGFyZ2V0EkEKEXNjYXR0ZXJf",
-            "YnlfZmllbGRzGAUgASgLMiQuc3Vic3RyYWl0LkV4Y2hhbmdlUmVsLlNjYXR0",
-            "ZXJGaWVsZHNIABJGCg1zaW5nbGVfdGFyZ2V0GAYgASgLMi0uc3Vic3RyYWl0",
-            "LkV4Y2hhbmdlUmVsLlNpbmdsZUJ1Y2tldEV4cHJlc3Npb25IABJECgxtdWx0",
-            "aV90YXJnZXQYByABKAsyLC5zdWJzdHJhaXQuRXhjaGFuZ2VSZWwuTXVsdGlC",
-            "dWNrZXRFeHByZXNzaW9uSAASOAoLcm91bmRfcm9iaW4YCCABKAsyIS5zdWJz",
-            "dHJhaXQuRXhjaGFuZ2VSZWwuUm91bmRSb2JpbkgAEjUKCWJyb2FkY2FzdBgJ",
-            "IAEoCzIgLnN1YnN0cmFpdC5FeGNoYW5nZVJlbC5Ccm9hZGNhc3RIABJDChJh",
-            "ZHZhbmNlZF9leHRlbnNpb24YCiABKAsyJy5zdWJzdHJhaXQuZXh0ZW5zaW9u",
-            "cy5BZHZhbmNlZEV4dGVuc2lvbhpFCg1TY2F0dGVyRmllbGRzEjQKBmZpZWxk",
-            "cxgBIAMoCzIkLnN1YnN0cmFpdC5FeHByZXNzaW9uLkZpZWxkUmVmZXJlbmNl",
-            "GkMKFlNpbmdsZUJ1Y2tldEV4cHJlc3Npb24SKQoKZXhwcmVzc2lvbhgBIAEo",
-            "CzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uGmAKFU11bHRpQnVja2V0RXhwcmVz",
+            "EhwKGFNFVF9PUF9NSU5VU19QUklNQVJZX0FMTBAHEhkKFVNFVF9PUF9NSU5V",
+            "U19NVUxUSVNFVBACEh8KG1NFVF9PUF9JTlRFUlNFQ1RJT05fUFJJTUFSWRAD",
+            "EiAKHFNFVF9PUF9JTlRFUlNFQ1RJT05fTVVMVElTRVQQBBIkCiBTRVRfT1Bf",
+            "SU5URVJTRUNUSU9OX01VTFRJU0VUX0FMTBAIEhkKFVNFVF9PUF9VTklPTl9E",
+            "SVNUSU5DVBAFEhQKEFNFVF9PUF9VTklPTl9BTEwQBiJ/ChJFeHRlbnNpb25T",
+            "aW5nbGVSZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1v",
+            "bhIdCgVpbnB1dBgCIAEoCzIOLnN1YnN0cmFpdC5SZWwSJAoGZGV0YWlsGAMg",
+            "ASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueSJeChBFeHRlbnNpb25MZWFmUmVs",
+            "EiQKBmNvbW1vbhgBIAEoCzIULnN1YnN0cmFpdC5SZWxDb21tb24SJAoGZGV0",
+            "YWlsGAIgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueSJ/ChFFeHRlbnNpb25N",
+            "dWx0aVJlbBIkCgZjb21tb24YASABKAsyFC5zdWJzdHJhaXQuUmVsQ29tbW9u",
+            "Eh4KBmlucHV0cxgCIAMoCzIOLnN1YnN0cmFpdC5SZWwSJAoGZGV0YWlsGAMg",
+            "ASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueSLDBwoLRXhjaGFuZ2VSZWwSJAoG",
+            "Y29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1vbhIdCgVpbnB1dBgC",
+            "IAEoCzIOLnN1YnN0cmFpdC5SZWwSFwoPcGFydGl0aW9uX2NvdW50GAMgASgF",
+            "EjYKB3RhcmdldHMYBCADKAsyJS5zdWJzdHJhaXQuRXhjaGFuZ2VSZWwuRXhj",
+            "aGFuZ2VUYXJnZXQSQQoRc2NhdHRlcl9ieV9maWVsZHMYBSABKAsyJC5zdWJz",
+            "dHJhaXQuRXhjaGFuZ2VSZWwuU2NhdHRlckZpZWxkc0gAEkYKDXNpbmdsZV90",
+            "YXJnZXQYBiABKAsyLS5zdWJzdHJhaXQuRXhjaGFuZ2VSZWwuU2luZ2xlQnVj",
+            "a2V0RXhwcmVzc2lvbkgAEkQKDG11bHRpX3RhcmdldBgHIAEoCzIsLnN1YnN0",
+            "cmFpdC5FeGNoYW5nZVJlbC5NdWx0aUJ1Y2tldEV4cHJlc3Npb25IABI4Cgty",
+            "b3VuZF9yb2JpbhgIIAEoCzIhLnN1YnN0cmFpdC5FeGNoYW5nZVJlbC5Sb3Vu",
+            "ZFJvYmluSAASNQoJYnJvYWRjYXN0GAkgASgLMiAuc3Vic3RyYWl0LkV4Y2hh",
+            "bmdlUmVsLkJyb2FkY2FzdEgAEkMKEmFkdmFuY2VkX2V4dGVuc2lvbhgKIAEo",
+            "CzInLnN1YnN0cmFpdC5leHRlbnNpb25zLkFkdmFuY2VkRXh0ZW5zaW9uGkUK",
+            "DVNjYXR0ZXJGaWVsZHMSNAoGZmllbGRzGAEgAygLMiQuc3Vic3RyYWl0LkV4",
+            "cHJlc3Npb24uRmllbGRSZWZlcmVuY2UaQwoWU2luZ2xlQnVja2V0RXhwcmVz",
             "c2lvbhIpCgpleHByZXNzaW9uGAEgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Np",
-            "b24SHAoUY29uc3RyYWluZWRfdG9fY291bnQYAiABKAgaCwoJQnJvYWRjYXN0",
-            "GhsKClJvdW5kUm9iaW4SDQoFZXhhY3QYASABKAgabgoORXhjaGFuZ2VUYXJn",
-            "ZXQSFAoMcGFydGl0aW9uX2lkGAEgAygFEg0KA3VyaRgCIAEoCUgAEigKCGV4",
-            "dGVuZGVkGAMgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueUgAQg0KC3Rhcmdl",
-            "dF90eXBlQg8KDWV4Y2hhbmdlX2tpbmQi0AIKCUV4cGFuZFJlbBIkCgZjb21t",
-            "b24YASABKAsyFC5zdWJzdHJhaXQuUmVsQ29tbW9uEh0KBWlucHV0GAIgASgL",
-            "Mg4uc3Vic3RyYWl0LlJlbBIwCgZmaWVsZHMYBCADKAsyIC5zdWJzdHJhaXQu",
-            "RXhwYW5kUmVsLkV4cGFuZEZpZWxkGo4BCgtFeHBhbmRGaWVsZBI+Cg9zd2l0",
-            "Y2hpbmdfZmllbGQYAiABKAsyIy5zdWJzdHJhaXQuRXhwYW5kUmVsLlN3aXRj",
-            "aGluZ0ZpZWxkSAASMQoQY29uc2lzdGVudF9maWVsZBgDIAEoCzIVLnN1YnN0",
-            "cmFpdC5FeHByZXNzaW9uSABCDAoKZmllbGRfdHlwZRo7Cg5Td2l0Y2hpbmdG",
-            "aWVsZBIpCgpkdXBsaWNhdGVzGAEgAygLMhUuc3Vic3RyYWl0LkV4cHJlc3Np",
-            "b24iNwoHUmVsUm9vdBIdCgVpbnB1dBgBIAEoCzIOLnN1YnN0cmFpdC5SZWwS",
-            "DQoFbmFtZXMYAiADKAkisQcKA1JlbBIiCgRyZWFkGAEgASgLMhIuc3Vic3Ry",
-            "YWl0LlJlYWRSZWxIABImCgZmaWx0ZXIYAiABKAsyFC5zdWJzdHJhaXQuRmls",
-            "dGVyUmVsSAASJAoFZmV0Y2gYAyABKAsyEy5zdWJzdHJhaXQuRmV0Y2hSZWxI",
-            "ABIsCglhZ2dyZWdhdGUYBCABKAsyFy5zdWJzdHJhaXQuQWdncmVnYXRlUmVs",
-            "SAASIgoEc29ydBgFIAEoCzISLnN1YnN0cmFpdC5Tb3J0UmVsSAASIgoEam9p",
-            "bhgGIAEoCzISLnN1YnN0cmFpdC5Kb2luUmVsSAASKAoHcHJvamVjdBgHIAEo",
-            "CzIVLnN1YnN0cmFpdC5Qcm9qZWN0UmVsSAASIAoDc2V0GAggASgLMhEuc3Vi",
-            "c3RyYWl0LlNldFJlbEgAEjkKEGV4dGVuc2lvbl9zaW5nbGUYCSABKAsyHS5z",
-            "dWJzdHJhaXQuRXh0ZW5zaW9uU2luZ2xlUmVsSAASNwoPZXh0ZW5zaW9uX211",
-            "bHRpGAogASgLMhwuc3Vic3RyYWl0LkV4dGVuc2lvbk11bHRpUmVsSAASNQoO",
-            "ZXh0ZW5zaW9uX2xlYWYYCyABKAsyGy5zdWJzdHJhaXQuRXh0ZW5zaW9uTGVh",
-            "ZlJlbEgAEiQKBWNyb3NzGAwgASgLMhMuc3Vic3RyYWl0LkNyb3NzUmVsSAAS",
-            "LAoJcmVmZXJlbmNlGBUgASgLMhcuc3Vic3RyYWl0LlJlZmVyZW5jZVJlbEgA",
-            "EiQKBXdyaXRlGBMgASgLMhMuc3Vic3RyYWl0LldyaXRlUmVsSAASIAoDZGRs",
-            "GBQgASgLMhEuc3Vic3RyYWl0LkRkbFJlbEgAEisKCWhhc2hfam9pbhgNIAEo",
-            "CzIWLnN1YnN0cmFpdC5IYXNoSm9pblJlbEgAEi0KCm1lcmdlX2pvaW4YDiAB",
-            "KAsyFy5zdWJzdHJhaXQuTWVyZ2VKb2luUmVsSAASOAoQbmVzdGVkX2xvb3Bf",
-            "am9pbhgSIAEoCzIcLnN1YnN0cmFpdC5OZXN0ZWRMb29wSm9pblJlbEgAEjkK",
-            "BndpbmRvdxgRIAEoCzInLnN1YnN0cmFpdC5Db25zaXN0ZW50UGFydGl0aW9u",
-            "V2luZG93UmVsSAASKgoIZXhjaGFuZ2UYDyABKAsyFi5zdWJzdHJhaXQuRXhj",
-            "aGFuZ2VSZWxIABImCgZleHBhbmQYECABKAsyFC5zdWJzdHJhaXQuRXhwYW5k",
-            "UmVsSABCCgoIcmVsX3R5cGUiZgoQTmFtZWRPYmplY3RXcml0ZRINCgVuYW1l",
-            "cxgBIAMoCRJDChJhZHZhbmNlZF9leHRlbnNpb24YCiABKAsyJy5zdWJzdHJh",
-            "aXQuZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lvbiI3Cg9FeHRlbnNpb25P",
-            "YmplY3QSJAoGZGV0YWlsGAEgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueSL0",
-            "BAoGRGRsUmVsEjMKDG5hbWVkX29iamVjdBgBIAEoCzIbLnN1YnN0cmFpdC5O",
-            "YW1lZE9iamVjdFdyaXRlSAASNgoQZXh0ZW5zaW9uX29iamVjdBgCIAEoCzIa",
-            "LnN1YnN0cmFpdC5FeHRlbnNpb25PYmplY3RIABIsCgx0YWJsZV9zY2hlbWEY",
-            "AyABKAsyFi5zdWJzdHJhaXQuTmFtZWRTdHJ1Y3QSPAoOdGFibGVfZGVmYXVs",
-            "dHMYBCABKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsLlN0cnVj",
-            "dBIrCgZvYmplY3QYBSABKA4yGy5zdWJzdHJhaXQuRGRsUmVsLkRkbE9iamVj",
-            "dBIjCgJvcBgGIAEoDjIXLnN1YnN0cmFpdC5EZGxSZWwuRGRsT3ASJwoPdmll",
-            "d19kZWZpbml0aW9uGAcgASgLMg4uc3Vic3RyYWl0LlJlbBIkCgZjb21tb24Y",
-            "CCABKAsyFC5zdWJzdHJhaXQuUmVsQ29tbW9uIlIKCURkbE9iamVjdBIaChZE",
-            "RExfT0JKRUNUX1VOU1BFQ0lGSUVEEAASFAoQRERMX09CSkVDVF9UQUJMRRAB",
-            "EhMKD0RETF9PQkpFQ1RfVklFVxACIo0BCgVEZGxPcBIWChJERExfT1BfVU5T",
-            "UEVDSUZJRUQQABIRCg1ERExfT1BfQ1JFQVRFEAESHAoYRERMX09QX0NSRUFU",
-            "RV9PUl9SRVBMQUNFEAISEAoMRERMX09QX0FMVEVSEAMSDwoLRERMX09QX0RS",
-            "T1AQBBIYChRERExfT1BfRFJPUF9JRl9FWElTVBAFQgwKCndyaXRlX3R5cGUi",
-            "rgQKCFdyaXRlUmVsEjIKC25hbWVkX3RhYmxlGAEgASgLMhsuc3Vic3RyYWl0",
-            "Lk5hbWVkT2JqZWN0V3JpdGVIABI1Cg9leHRlbnNpb25fdGFibGUYAiABKAsy",
-            "Gi5zdWJzdHJhaXQuRXh0ZW5zaW9uT2JqZWN0SAASLAoMdGFibGVfc2NoZW1h",
-            "GAMgASgLMhYuc3Vic3RyYWl0Lk5hbWVkU3RydWN0EicKAm9wGAQgASgOMhsu",
-            "c3Vic3RyYWl0LldyaXRlUmVsLldyaXRlT3ASHQoFaW5wdXQYBSABKAsyDi5z",
-            "dWJzdHJhaXQuUmVsEi4KBm91dHB1dBgGIAEoDjIeLnN1YnN0cmFpdC5Xcml0",
-            "ZVJlbC5PdXRwdXRNb2RlEiQKBmNvbW1vbhgHIAEoCzIULnN1YnN0cmFpdC5S",
-            "ZWxDb21tb24idQoHV3JpdGVPcBIYChRXUklURV9PUF9VTlNQRUNJRklFRBAA",
-            "EhMKD1dSSVRFX09QX0lOU0VSVBABEhMKD1dSSVRFX09QX0RFTEVURRACEhMK",
-            "D1dSSVRFX09QX1VQREFURRADEhEKDVdSSVRFX09QX0NUQVMQBCJmCgpPdXRw",
-            "dXRNb2RlEhsKF09VVFBVVF9NT0RFX1VOU1BFQ0lGSUVEEAASGQoVT1VUUFVU",
-            "X01PREVfTk9fT1VUUFVUEAESIAocT1VUUFVUX01PREVfTU9ESUZJRURfUkVD",
-            "T1JEUxACQgwKCndyaXRlX3R5cGUigQQKEUNvbXBhcmlzb25Kb2luS2V5EjIK",
-            "BGxlZnQYASABKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5GaWVsZFJlZmVy",
-            "ZW5jZRIzCgVyaWdodBgCIAEoCzIkLnN1YnN0cmFpdC5FeHByZXNzaW9uLkZp",
-            "ZWxkUmVmZXJlbmNlEj8KCmNvbXBhcmlzb24YAyABKAsyKy5zdWJzdHJhaXQu",
-            "Q29tcGFyaXNvbkpvaW5LZXkuQ29tcGFyaXNvblR5cGUaiAEKDkNvbXBhcmlz",
-            "b25UeXBlEkMKBnNpbXBsZRgBIAEoDjIxLnN1YnN0cmFpdC5Db21wYXJpc29u",
-            "Sm9pbktleS5TaW1wbGVDb21wYXJpc29uVHlwZUgAEiMKGWN1c3RvbV9mdW5j",
-            "dGlvbl9yZWZlcmVuY2UYAiABKA1IAEIMCgppbm5lcl90eXBlIrYBChRTaW1w",
-            "bGVDb21wYXJpc29uVHlwZRImCiJTSU1QTEVfQ09NUEFSSVNPTl9UWVBFX1VO",
-            "U1BFQ0lGSUVEEAASHQoZU0lNUExFX0NPTVBBUklTT05fVFlQRV9FURABEi8K",
-            "K1NJTVBMRV9DT01QQVJJU09OX1RZUEVfSVNfTk9UX0RJU1RJTkNUX0ZST00Q",
-            "AhImCiJTSU1QTEVfQ09NUEFSSVNPTl9UWVBFX01JR0hUX0VRVUFMEAMinQUK",
-            "C0hhc2hKb2luUmVsEiQKBmNvbW1vbhgBIAEoCzIULnN1YnN0cmFpdC5SZWxD",
-            "b21tb24SHAoEbGVmdBgCIAEoCzIOLnN1YnN0cmFpdC5SZWwSHQoFcmlnaHQY",
-            "AyABKAsyDi5zdWJzdHJhaXQuUmVsEjsKCWxlZnRfa2V5cxgEIAMoCzIkLnN1",
-            "YnN0cmFpdC5FeHByZXNzaW9uLkZpZWxkUmVmZXJlbmNlQgIYARI8CgpyaWdo",
-            "dF9rZXlzGAUgAygLMiQuc3Vic3RyYWl0LkV4cHJlc3Npb24uRmllbGRSZWZl",
-            "cmVuY2VCAhgBEioKBGtleXMYCCADKAsyHC5zdWJzdHJhaXQuQ29tcGFyaXNv",
-            "bkpvaW5LZXkSLwoQcG9zdF9qb2luX2ZpbHRlchgGIAEoCzIVLnN1YnN0cmFp",
-            "dC5FeHByZXNzaW9uEi0KBHR5cGUYByABKA4yHy5zdWJzdHJhaXQuSGFzaEpv",
-            "aW5SZWwuSm9pblR5cGUSQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicu",
-            "c3Vic3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24i3gEKCEpv",
-            "aW5UeXBlEhkKFUpPSU5fVFlQRV9VTlNQRUNJRklFRBAAEhMKD0pPSU5fVFlQ",
-            "RV9JTk5FUhABEhMKD0pPSU5fVFlQRV9PVVRFUhACEhIKDkpPSU5fVFlQRV9M",
-            "RUZUEAMSEwoPSk9JTl9UWVBFX1JJR0hUEAQSFwoTSk9JTl9UWVBFX0xFRlRf",
-            "U0VNSRAFEhgKFEpPSU5fVFlQRV9SSUdIVF9TRU1JEAYSFwoTSk9JTl9UWVBF",
-            "X0xFRlRfQU5USRAHEhgKFEpPSU5fVFlQRV9SSUdIVF9BTlRJEAginwUKDE1l",
-            "cmdlSm9pblJlbBIkCgZjb21tb24YASABKAsyFC5zdWJzdHJhaXQuUmVsQ29t",
-            "bW9uEhwKBGxlZnQYAiABKAsyDi5zdWJzdHJhaXQuUmVsEh0KBXJpZ2h0GAMg",
-            "ASgLMg4uc3Vic3RyYWl0LlJlbBI7CglsZWZ0X2tleXMYBCADKAsyJC5zdWJz",
-            "dHJhaXQuRXhwcmVzc2lvbi5GaWVsZFJlZmVyZW5jZUICGAESPAoKcmlnaHRf",
-            "a2V5cxgFIAMoCzIkLnN1YnN0cmFpdC5FeHByZXNzaW9uLkZpZWxkUmVmZXJl",
-            "bmNlQgIYARIqCgRrZXlzGAggAygLMhwuc3Vic3RyYWl0LkNvbXBhcmlzb25K",
-            "b2luS2V5Ei8KEHBvc3Rfam9pbl9maWx0ZXIYBiABKAsyFS5zdWJzdHJhaXQu",
-            "RXhwcmVzc2lvbhIuCgR0eXBlGAcgASgOMiAuc3Vic3RyYWl0Lk1lcmdlSm9p",
-            "blJlbC5Kb2luVHlwZRJDChJhZHZhbmNlZF9leHRlbnNpb24YCiABKAsyJy5z",
-            "dWJzdHJhaXQuZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lvbiLeAQoISm9p",
-            "blR5cGUSGQoVSk9JTl9UWVBFX1VOU1BFQ0lGSUVEEAASEwoPSk9JTl9UWVBF",
-            "X0lOTkVSEAESEwoPSk9JTl9UWVBFX09VVEVSEAISEgoOSk9JTl9UWVBFX0xF",
-            "RlQQAxITCg9KT0lOX1RZUEVfUklHSFQQBBIXChNKT0lOX1RZUEVfTEVGVF9T",
-            "RU1JEAUSGAoUSk9JTl9UWVBFX1JJR0hUX1NFTUkQBhIXChNKT0lOX1RZUEVf",
-            "TEVGVF9BTlRJEAcSGAoUSk9JTl9UWVBFX1JJR0hUX0FOVEkQCCL8AwoRTmVz",
-            "dGVkTG9vcEpvaW5SZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJl",
+            "b24aYAoVTXVsdGlCdWNrZXRFeHByZXNzaW9uEikKCmV4cHJlc3Npb24YASAB",
+            "KAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbhIcChRjb25zdHJhaW5lZF90b19j",
+            "b3VudBgCIAEoCBoLCglCcm9hZGNhc3QaGwoKUm91bmRSb2JpbhINCgVleGFj",
+            "dBgBIAEoCBpuCg5FeGNoYW5nZVRhcmdldBIUCgxwYXJ0aXRpb25faWQYASAD",
+            "KAUSDQoDdXJpGAIgASgJSAASKAoIZXh0ZW5kZWQYAyABKAsyFC5nb29nbGUu",
+            "cHJvdG9idWYuQW55SABCDQoLdGFyZ2V0X3R5cGVCDwoNZXhjaGFuZ2Vfa2lu",
+            "ZCLQAgoJRXhwYW5kUmVsEiQKBmNvbW1vbhgBIAEoCzIULnN1YnN0cmFpdC5S",
+            "ZWxDb21tb24SHQoFaW5wdXQYAiABKAsyDi5zdWJzdHJhaXQuUmVsEjAKBmZp",
+            "ZWxkcxgEIAMoCzIgLnN1YnN0cmFpdC5FeHBhbmRSZWwuRXhwYW5kRmllbGQa",
+            "jgEKC0V4cGFuZEZpZWxkEj4KD3N3aXRjaGluZ19maWVsZBgCIAEoCzIjLnN1",
+            "YnN0cmFpdC5FeHBhbmRSZWwuU3dpdGNoaW5nRmllbGRIABIxChBjb25zaXN0",
+            "ZW50X2ZpZWxkGAMgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb25IAEIMCgpm",
+            "aWVsZF90eXBlGjsKDlN3aXRjaGluZ0ZpZWxkEikKCmR1cGxpY2F0ZXMYASAD",
+            "KAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbiI3CgdSZWxSb290Eh0KBWlucHV0",
+            "GAEgASgLMg4uc3Vic3RyYWl0LlJlbBINCgVuYW1lcxgCIAMoCSLZBwoDUmVs",
+            "EiIKBHJlYWQYASABKAsyEi5zdWJzdHJhaXQuUmVhZFJlbEgAEiYKBmZpbHRl",
+            "chgCIAEoCzIULnN1YnN0cmFpdC5GaWx0ZXJSZWxIABIkCgVmZXRjaBgDIAEo",
+            "CzITLnN1YnN0cmFpdC5GZXRjaFJlbEgAEiwKCWFnZ3JlZ2F0ZRgEIAEoCzIX",
+            "LnN1YnN0cmFpdC5BZ2dyZWdhdGVSZWxIABIiCgRzb3J0GAUgASgLMhIuc3Vi",
+            "c3RyYWl0LlNvcnRSZWxIABIiCgRqb2luGAYgASgLMhIuc3Vic3RyYWl0Lkpv",
+            "aW5SZWxIABIoCgdwcm9qZWN0GAcgASgLMhUuc3Vic3RyYWl0LlByb2plY3RS",
+            "ZWxIABIgCgNzZXQYCCABKAsyES5zdWJzdHJhaXQuU2V0UmVsSAASOQoQZXh0",
+            "ZW5zaW9uX3NpbmdsZRgJIAEoCzIdLnN1YnN0cmFpdC5FeHRlbnNpb25TaW5n",
+            "bGVSZWxIABI3Cg9leHRlbnNpb25fbXVsdGkYCiABKAsyHC5zdWJzdHJhaXQu",
+            "RXh0ZW5zaW9uTXVsdGlSZWxIABI1Cg5leHRlbnNpb25fbGVhZhgLIAEoCzIb",
+            "LnN1YnN0cmFpdC5FeHRlbnNpb25MZWFmUmVsSAASJAoFY3Jvc3MYDCABKAsy",
+            "Ey5zdWJzdHJhaXQuQ3Jvc3NSZWxIABIsCglyZWZlcmVuY2UYFSABKAsyFy5z",
+            "dWJzdHJhaXQuUmVmZXJlbmNlUmVsSAASJAoFd3JpdGUYEyABKAsyEy5zdWJz",
+            "dHJhaXQuV3JpdGVSZWxIABIgCgNkZGwYFCABKAsyES5zdWJzdHJhaXQuRGRs",
+            "UmVsSAASJgoGdXBkYXRlGBYgASgLMhQuc3Vic3RyYWl0LlVwZGF0ZVJlbEgA",
+            "EisKCWhhc2hfam9pbhgNIAEoCzIWLnN1YnN0cmFpdC5IYXNoSm9pblJlbEgA",
+            "Ei0KCm1lcmdlX2pvaW4YDiABKAsyFy5zdWJzdHJhaXQuTWVyZ2VKb2luUmVs",
+            "SAASOAoQbmVzdGVkX2xvb3Bfam9pbhgSIAEoCzIcLnN1YnN0cmFpdC5OZXN0",
+            "ZWRMb29wSm9pblJlbEgAEjkKBndpbmRvdxgRIAEoCzInLnN1YnN0cmFpdC5D",
+            "b25zaXN0ZW50UGFydGl0aW9uV2luZG93UmVsSAASKgoIZXhjaGFuZ2UYDyAB",
+            "KAsyFi5zdWJzdHJhaXQuRXhjaGFuZ2VSZWxIABImCgZleHBhbmQYECABKAsy",
+            "FC5zdWJzdHJhaXQuRXhwYW5kUmVsSABCCgoIcmVsX3R5cGUiZgoQTmFtZWRP",
+            "YmplY3RXcml0ZRINCgVuYW1lcxgBIAMoCRJDChJhZHZhbmNlZF9leHRlbnNp",
+            "b24YCiABKAsyJy5zdWJzdHJhaXQuZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVu",
+            "c2lvbiI3Cg9FeHRlbnNpb25PYmplY3QSJAoGZGV0YWlsGAEgASgLMhQuZ29v",
+            "Z2xlLnByb3RvYnVmLkFueSK5BQoGRGRsUmVsEjMKDG5hbWVkX29iamVjdBgB",
+            "IAEoCzIbLnN1YnN0cmFpdC5OYW1lZE9iamVjdFdyaXRlSAASNgoQZXh0ZW5z",
+            "aW9uX29iamVjdBgCIAEoCzIaLnN1YnN0cmFpdC5FeHRlbnNpb25PYmplY3RI",
+            "ABIsCgx0YWJsZV9zY2hlbWEYAyABKAsyFi5zdWJzdHJhaXQuTmFtZWRTdHJ1",
+            "Y3QSPAoOdGFibGVfZGVmYXVsdHMYBCABKAsyJC5zdWJzdHJhaXQuRXhwcmVz",
+            "c2lvbi5MaXRlcmFsLlN0cnVjdBIrCgZvYmplY3QYBSABKA4yGy5zdWJzdHJh",
+            "aXQuRGRsUmVsLkRkbE9iamVjdBIjCgJvcBgGIAEoDjIXLnN1YnN0cmFpdC5E",
+            "ZGxSZWwuRGRsT3ASJwoPdmlld19kZWZpbml0aW9uGAcgASgLMg4uc3Vic3Ry",
+            "YWl0LlJlbBIkCgZjb21tb24YCCABKAsyFC5zdWJzdHJhaXQuUmVsQ29tbW9u",
+            "EkMKEmFkdmFuY2VkX2V4dGVuc2lvbhgJIAEoCzInLnN1YnN0cmFpdC5leHRl",
+            "bnNpb25zLkFkdmFuY2VkRXh0ZW5zaW9uIlIKCURkbE9iamVjdBIaChZERExf",
+            "T0JKRUNUX1VOU1BFQ0lGSUVEEAASFAoQRERMX09CSkVDVF9UQUJMRRABEhMK",
+            "D0RETF9PQkpFQ1RfVklFVxACIo0BCgVEZGxPcBIWChJERExfT1BfVU5TUEVD",
+            "SUZJRUQQABIRCg1ERExfT1BfQ1JFQVRFEAESHAoYRERMX09QX0NSRUFURV9P",
+            "Ul9SRVBMQUNFEAISEAoMRERMX09QX0FMVEVSEAMSDwoLRERMX09QX0RST1AQ",
+            "BBIYChRERExfT1BfRFJPUF9JRl9FWElTVBAFQgwKCndyaXRlX3R5cGUi3AYK",
+            "CFdyaXRlUmVsEjIKC25hbWVkX3RhYmxlGAEgASgLMhsuc3Vic3RyYWl0Lk5h",
+            "bWVkT2JqZWN0V3JpdGVIABI1Cg9leHRlbnNpb25fdGFibGUYAiABKAsyGi5z",
+            "dWJzdHJhaXQuRXh0ZW5zaW9uT2JqZWN0SAASLAoMdGFibGVfc2NoZW1hGAMg",
+            "ASgLMhYuc3Vic3RyYWl0Lk5hbWVkU3RydWN0EicKAm9wGAQgASgOMhsuc3Vi",
+            "c3RyYWl0LldyaXRlUmVsLldyaXRlT3ASHQoFaW5wdXQYBSABKAsyDi5zdWJz",
+            "dHJhaXQuUmVsEjMKC2NyZWF0ZV9tb2RlGAggASgOMh4uc3Vic3RyYWl0Lldy",
+            "aXRlUmVsLkNyZWF0ZU1vZGUSLgoGb3V0cHV0GAYgASgOMh4uc3Vic3RyYWl0",
+            "LldyaXRlUmVsLk91dHB1dE1vZGUSJAoGY29tbW9uGAcgASgLMhQuc3Vic3Ry",
+            "YWl0LlJlbENvbW1vbhJDChJhZHZhbmNlZF9leHRlbnNpb24YCSABKAsyJy5z",
+            "dWJzdHJhaXQuZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lvbiJ1CgdXcml0",
+            "ZU9wEhgKFFdSSVRFX09QX1VOU1BFQ0lGSUVEEAASEwoPV1JJVEVfT1BfSU5T",
+            "RVJUEAESEwoPV1JJVEVfT1BfREVMRVRFEAISEwoPV1JJVEVfT1BfVVBEQVRF",
+            "EAMSEQoNV1JJVEVfT1BfQ1RBUxAEIrEBCgpDcmVhdGVNb2RlEhsKF0NSRUFU",
+            "RV9NT0RFX1VOU1BFQ0lGSUVEEAASIAocQ1JFQVRFX01PREVfQVBQRU5EX0lG",
+            "X0VYSVNUUxABEiEKHUNSRUFURV9NT0RFX1JFUExBQ0VfSUZfRVhJU1RTEAIS",
+            "IAocQ1JFQVRFX01PREVfSUdOT1JFX0lGX0VYSVNUUxADEh8KG0NSRUFURV9N",
+            "T0RFX0VSUk9SX0lGX0VYSVNUUxAEImYKCk91dHB1dE1vZGUSGwoXT1VUUFVU",
+            "X01PREVfVU5TUEVDSUZJRUQQABIZChVPVVRQVVRfTU9ERV9OT19PVVRQVVQQ",
+            "ARIgChxPVVRQVVRfTU9ERV9NT0RJRklFRF9SRUNPUkRTEAJCDAoKd3JpdGVf",
+            "dHlwZSKFAwoJVXBkYXRlUmVsEiwKC25hbWVkX3RhYmxlGAEgASgLMhUuc3Vi",
+            "c3RyYWl0Lk5hbWVkVGFibGVIABIsCgx0YWJsZV9zY2hlbWEYAiABKAsyFi5z",
+            "dWJzdHJhaXQuTmFtZWRTdHJ1Y3QSKAoJY29uZGl0aW9uGAMgASgLMhUuc3Vi",
+            "c3RyYWl0LkV4cHJlc3Npb24SQQoPdHJhbnNmb3JtYXRpb25zGAQgAygLMigu",
+            "c3Vic3RyYWl0LlVwZGF0ZVJlbC5UcmFuc2Zvcm1FeHByZXNzaW9uEkMKEmFk",
+            "dmFuY2VkX2V4dGVuc2lvbhgFIAEoCzInLnN1YnN0cmFpdC5leHRlbnNpb25z",
+            "LkFkdmFuY2VkRXh0ZW5zaW9uGlsKE1RyYW5zZm9ybUV4cHJlc3Npb24SLQoO",
+            "dHJhbnNmb3JtYXRpb24YASABKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbhIV",
+            "Cg1jb2x1bW5fdGFyZ2V0GAIgASgFQg0KC3VwZGF0ZV90eXBlImAKCk5hbWVk",
+            "VGFibGUSDQoFbmFtZXMYASADKAkSQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAog",
+            "ASgLMicuc3Vic3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24i",
+            "gQQKEUNvbXBhcmlzb25Kb2luS2V5EjIKBGxlZnQYASABKAsyJC5zdWJzdHJh",
+            "aXQuRXhwcmVzc2lvbi5GaWVsZFJlZmVyZW5jZRIzCgVyaWdodBgCIAEoCzIk",
+            "LnN1YnN0cmFpdC5FeHByZXNzaW9uLkZpZWxkUmVmZXJlbmNlEj8KCmNvbXBh",
+            "cmlzb24YAyABKAsyKy5zdWJzdHJhaXQuQ29tcGFyaXNvbkpvaW5LZXkuQ29t",
+            "cGFyaXNvblR5cGUaiAEKDkNvbXBhcmlzb25UeXBlEkMKBnNpbXBsZRgBIAEo",
+            "DjIxLnN1YnN0cmFpdC5Db21wYXJpc29uSm9pbktleS5TaW1wbGVDb21wYXJp",
+            "c29uVHlwZUgAEiMKGWN1c3RvbV9mdW5jdGlvbl9yZWZlcmVuY2UYAiABKA1I",
+            "AEIMCgppbm5lcl90eXBlIrYBChRTaW1wbGVDb21wYXJpc29uVHlwZRImCiJT",
+            "SU1QTEVfQ09NUEFSSVNPTl9UWVBFX1VOU1BFQ0lGSUVEEAASHQoZU0lNUExF",
+            "X0NPTVBBUklTT05fVFlQRV9FURABEi8KK1NJTVBMRV9DT01QQVJJU09OX1RZ",
+            "UEVfSVNfTk9UX0RJU1RJTkNUX0ZST00QAhImCiJTSU1QTEVfQ09NUEFSSVNP",
+            "Tl9UWVBFX01JR0hUX0VRVUFMEAMilwcKC0hhc2hKb2luUmVsEiQKBmNvbW1v",
+            "bhgBIAEoCzIULnN1YnN0cmFpdC5SZWxDb21tb24SHAoEbGVmdBgCIAEoCzIO",
+            "LnN1YnN0cmFpdC5SZWwSHQoFcmlnaHQYAyABKAsyDi5zdWJzdHJhaXQuUmVs",
+            "EjsKCWxlZnRfa2V5cxgEIAMoCzIkLnN1YnN0cmFpdC5FeHByZXNzaW9uLkZp",
+            "ZWxkUmVmZXJlbmNlQgIYARI8CgpyaWdodF9rZXlzGAUgAygLMiQuc3Vic3Ry",
+            "YWl0LkV4cHJlc3Npb24uRmllbGRSZWZlcmVuY2VCAhgBEioKBGtleXMYCCAD",
+            "KAsyHC5zdWJzdHJhaXQuQ29tcGFyaXNvbkpvaW5LZXkSLwoQcG9zdF9qb2lu",
+            "X2ZpbHRlchgGIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uEi0KBHR5cGUY",
+            "ByABKA4yHy5zdWJzdHJhaXQuSGFzaEpvaW5SZWwuSm9pblR5cGUSNgoLYnVp",
+            "bGRfaW5wdXQYCSABKA4yIS5zdWJzdHJhaXQuSGFzaEpvaW5SZWwuQnVpbGRJ",
+            "bnB1dBJDChJhZHZhbmNlZF9leHRlbnNpb24YCiABKAsyJy5zdWJzdHJhaXQu",
+            "ZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lvbiLIAgoISm9pblR5cGUSGQoV",
+            "Sk9JTl9UWVBFX1VOU1BFQ0lGSUVEEAASEwoPSk9JTl9UWVBFX0lOTkVSEAES",
+            "EwoPSk9JTl9UWVBFX09VVEVSEAISEgoOSk9JTl9UWVBFX0xFRlQQAxITCg9K",
+            "T0lOX1RZUEVfUklHSFQQBBIXChNKT0lOX1RZUEVfTEVGVF9TRU1JEAUSGAoU",
+            "Sk9JTl9UWVBFX1JJR0hUX1NFTUkQBhIXChNKT0lOX1RZUEVfTEVGVF9BTlRJ",
+            "EAcSGAoUSk9JTl9UWVBFX1JJR0hUX0FOVEkQCBIZChVKT0lOX1RZUEVfTEVG",
+            "VF9TSU5HTEUQCRIaChZKT0lOX1RZUEVfUklHSFRfU0lOR0xFEAoSFwoTSk9J",
+            "Tl9UWVBFX0xFRlRfTUFSSxALEhgKFEpPSU5fVFlQRV9SSUdIVF9NQVJLEAwi",
+            "VgoKQnVpbGRJbnB1dBIbChdCVUlMRF9JTlBVVF9VTlNQRUNJRklFRBAAEhQK",
+            "EEJVSUxEX0lOUFVUX0xFRlQQARIVChFCVUlMRF9JTlBVVF9SSUdIVBACIokG",
+            "CgxNZXJnZUpvaW5SZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJl",
             "bENvbW1vbhIcCgRsZWZ0GAIgASgLMg4uc3Vic3RyYWl0LlJlbBIdCgVyaWdo",
-            "dBgDIAEoCzIOLnN1YnN0cmFpdC5SZWwSKQoKZXhwcmVzc2lvbhgEIAEoCzIV",
-            "LnN1YnN0cmFpdC5FeHByZXNzaW9uEjMKBHR5cGUYBSABKA4yJS5zdWJzdHJh",
-            "aXQuTmVzdGVkTG9vcEpvaW5SZWwuSm9pblR5cGUSQwoSYWR2YW5jZWRfZXh0",
-            "ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRF",
-            "eHRlbnNpb24i3gEKCEpvaW5UeXBlEhkKFUpPSU5fVFlQRV9VTlNQRUNJRklF",
-            "RBAAEhMKD0pPSU5fVFlQRV9JTk5FUhABEhMKD0pPSU5fVFlQRV9PVVRFUhAC",
-            "EhIKDkpPSU5fVFlQRV9MRUZUEAMSEwoPSk9JTl9UWVBFX1JJR0hUEAQSFwoT",
-            "Sk9JTl9UWVBFX0xFRlRfU0VNSRAFEhgKFEpPSU5fVFlQRV9SSUdIVF9TRU1J",
-            "EAYSFwoTSk9JTl9UWVBFX0xFRlRfQU5USRAHEhgKFEpPSU5fVFlQRV9SSUdI",
-            "VF9BTlRJEAgidwoQRnVuY3Rpb25Bcmd1bWVudBIOCgRlbnVtGAEgASgJSAAS",
-            "HwoEdHlwZRgCIAEoCzIPLnN1YnN0cmFpdC5UeXBlSAASJgoFdmFsdWUYAyAB",
-            "KAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbkgAQgoKCGFyZ190eXBlIjIKDkZ1",
-            "bmN0aW9uT3B0aW9uEgwKBG5hbWUYASABKAkSEgoKcHJlZmVyZW5jZRgCIAMo",
-            "CSL5RwoKRXhwcmVzc2lvbhIwCgdsaXRlcmFsGAEgASgLMh0uc3Vic3RyYWl0",
-            "LkV4cHJlc3Npb24uTGl0ZXJhbEgAEjkKCXNlbGVjdGlvbhgCIAEoCzIkLnN1",
-            "YnN0cmFpdC5FeHByZXNzaW9uLkZpZWxkUmVmZXJlbmNlSAASPwoPc2NhbGFy",
-            "X2Z1bmN0aW9uGAMgASgLMiQuc3Vic3RyYWl0LkV4cHJlc3Npb24uU2NhbGFy",
-            "RnVuY3Rpb25IABI/Cg93aW5kb3dfZnVuY3Rpb24YBSABKAsyJC5zdWJzdHJh",
-            "aXQuRXhwcmVzc2lvbi5XaW5kb3dGdW5jdGlvbkgAEi8KB2lmX3RoZW4YBiAB",
-            "KAsyHC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5JZlRoZW5IABJDChFzd2l0Y2hf",
-            "ZXhwcmVzc2lvbhgHIAEoCzImLnN1YnN0cmFpdC5FeHByZXNzaW9uLlN3aXRj",
-            "aEV4cHJlc3Npb25IABJAChBzaW5ndWxhcl9vcl9saXN0GAggASgLMiQuc3Vi",
-            "c3RyYWl0LkV4cHJlc3Npb24uU2luZ3VsYXJPckxpc3RIABI6Cg1tdWx0aV9v",
-            "cl9saXN0GAkgASgLMiEuc3Vic3RyYWl0LkV4cHJlc3Npb24uTXVsdGlPckxp",
-            "c3RIABIqCgRjYXN0GAsgASgLMhouc3Vic3RyYWl0LkV4cHJlc3Npb24uQ2Fz",
-            "dEgAEjIKCHN1YnF1ZXJ5GAwgASgLMh4uc3Vic3RyYWl0LkV4cHJlc3Npb24u",
-            "U3VicXVlcnlIABIuCgZuZXN0ZWQYDSABKAsyHC5zdWJzdHJhaXQuRXhwcmVz",
-            "c2lvbi5OZXN0ZWRIABIuCgRlbnVtGAogASgLMhouc3Vic3RyYWl0LkV4cHJl",
-            "c3Npb24uRW51bUICGAFIABpyCgRFbnVtEhMKCXNwZWNpZmllZBgBIAEoCUgA",
-            "EjcKC3Vuc3BlY2lmaWVkGAIgASgLMiAuc3Vic3RyYWl0LkV4cHJlc3Npb24u",
-            "RW51bS5FbXB0eUgAGgsKBUVtcHR5OgIYAToCGAFCCwoJZW51bV9raW5kGvIN",
-            "CgdMaXRlcmFsEhEKB2Jvb2xlYW4YASABKAhIABIMCgJpOBgCIAEoBUgAEg0K",
-            "A2kxNhgDIAEoBUgAEg0KA2kzMhgFIAEoBUgAEg0KA2k2NBgHIAEoA0gAEg4K",
-            "BGZwMzIYCiABKAJIABIOCgRmcDY0GAsgASgBSAASEAoGc3RyaW5nGAwgASgJ",
-            "SAASEAoGYmluYXJ5GA0gASgMSAASFwoJdGltZXN0YW1wGA4gASgDQgIYAUgA",
-            "Eg4KBGRhdGUYECABKAVIABIOCgR0aW1lGBEgASgDSAASUwoWaW50ZXJ2YWxf",
-            "eWVhcl90b19tb250aBgTIAEoCzIxLnN1YnN0cmFpdC5FeHByZXNzaW9uLkxp",
-            "dGVyYWwuSW50ZXJ2YWxZZWFyVG9Nb250aEgAElMKFmludGVydmFsX2RheV90",
-            "b19zZWNvbmQYFCABKAsyMS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFs",
-            "LkludGVydmFsRGF5VG9TZWNvbmRIABIUCgpmaXhlZF9jaGFyGBUgASgJSAAS",
-            "OQoIdmFyX2NoYXIYFiABKAsyJS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRl",
-            "cmFsLlZhckNoYXJIABIWCgxmaXhlZF9iaW5hcnkYFyABKAxIABI4CgdkZWNp",
-            "bWFsGBggASgLMiUuc3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJhbC5EZWNp",
-            "bWFsSAASHQoTcHJlY2lzaW9uX3RpbWVzdGFtcBgiIAEoBEgAEiAKFnByZWNp",
-            "c2lvbl90aW1lc3RhbXBfdHoYIyABKARIABI2CgZzdHJ1Y3QYGSABKAsyJC5z",
-            "dWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsLlN0cnVjdEgAEjAKA21hcBga",
-            "IAEoCzIhLnN1YnN0cmFpdC5FeHByZXNzaW9uLkxpdGVyYWwuTWFwSAASGgoM",
-            "dGltZXN0YW1wX3R6GBsgASgDQgIYAUgAEg4KBHV1aWQYHCABKAxIABIfCgRu",
-            "dWxsGB0gASgLMg8uc3Vic3RyYWl0LlR5cGVIABIyCgRsaXN0GB4gASgLMiIu",
-            "c3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJhbC5MaXN0SAASKgoKZW1wdHlf",
-            "bGlzdBgfIAEoCzIULnN1YnN0cmFpdC5UeXBlLkxpc3RIABIoCgllbXB0eV9t",
-            "YXAYICABKAsyEy5zdWJzdHJhaXQuVHlwZS5NYXBIABJBCgx1c2VyX2RlZmlu",
-            "ZWQYISABKAsyKS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsLlVzZXJE",
-            "ZWZpbmVkSAASEAoIbnVsbGFibGUYMiABKAgSIAoYdHlwZV92YXJpYXRpb25f",
-            "cmVmZXJlbmNlGDMgASgNGigKB1ZhckNoYXISDQoFdmFsdWUYASABKAkSDgoG",
-            "bGVuZ3RoGAIgASgNGjoKB0RlY2ltYWwSDQoFdmFsdWUYASABKAwSEQoJcHJl",
-            "Y2lzaW9uGAIgASgFEg0KBXNjYWxlGAMgASgFGqsBCgNNYXASPgoKa2V5X3Zh",
-            "bHVlcxgBIAMoCzIqLnN1YnN0cmFpdC5FeHByZXNzaW9uLkxpdGVyYWwuTWFw",
-            "LktleVZhbHVlGmQKCEtleVZhbHVlEioKA2tleRgBIAEoCzIdLnN1YnN0cmFp",
-            "dC5FeHByZXNzaW9uLkxpdGVyYWwSLAoFdmFsdWUYAiABKAsyHS5zdWJzdHJh",
-            "aXQuRXhwcmVzc2lvbi5MaXRlcmFsGjQKE0ludGVydmFsWWVhclRvTW9udGgS",
-            "DQoFeWVhcnMYASABKAUSDgoGbW9udGhzGAIgASgFGkoKE0ludGVydmFsRGF5",
-            "VG9TZWNvbmQSDAoEZGF5cxgBIAEoBRIPCgdzZWNvbmRzGAIgASgFEhQKDG1p",
-            "Y3Jvc2Vjb25kcxgDIAEoBRo3CgZTdHJ1Y3QSLQoGZmllbGRzGAEgAygLMh0u",
-            "c3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJhbBo1CgRMaXN0Ei0KBnZhbHVl",
-            "cxgBIAMoCzIdLnN1YnN0cmFpdC5FeHByZXNzaW9uLkxpdGVyYWwavwEKC1Vz",
-            "ZXJEZWZpbmVkEhYKDnR5cGVfcmVmZXJlbmNlGAEgASgNEjIKD3R5cGVfcGFy",
-            "YW1ldGVycxgDIAMoCzIZLnN1YnN0cmFpdC5UeXBlLlBhcmFtZXRlchIlCgV2",
-            "YWx1ZRgCIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5BbnlIABI2CgZzdHJ1Y3QY",
-            "BCABKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsLlN0cnVjdEgA",
-            "QgUKA3ZhbEIOCgxsaXRlcmFsX3R5cGUa4wMKBk5lc3RlZBIQCghudWxsYWJs",
-            "ZRgBIAEoCBIgChh0eXBlX3ZhcmlhdGlvbl9yZWZlcmVuY2UYAiABKA0SNQoG",
-            "c3RydWN0GAMgASgLMiMuc3Vic3RyYWl0LkV4cHJlc3Npb24uTmVzdGVkLlN0",
-            "cnVjdEgAEjEKBGxpc3QYBCABKAsyIS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5O",
-            "ZXN0ZWQuTGlzdEgAEi8KA21hcBgFIAEoCzIgLnN1YnN0cmFpdC5FeHByZXNz",
-            "aW9uLk5lc3RlZC5NYXBIABqaAQoDTWFwEj0KCmtleV92YWx1ZXMYASADKAsy",
-            "KS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5OZXN0ZWQuTWFwLktleVZhbHVlGlQK",
-            "CEtleVZhbHVlEiIKA2tleRgBIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9u",
-            "EiQKBXZhbHVlGAIgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24aLwoGU3Ry",
-            "dWN0EiUKBmZpZWxkcxgBIAMoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uGi0K",
-            "BExpc3QSJQoGdmFsdWVzGAEgAygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb25C",
-            "DQoLbmVzdGVkX3R5cGUa1wEKDlNjYWxhckZ1bmN0aW9uEhoKEmZ1bmN0aW9u",
-            "X3JlZmVyZW5jZRgBIAEoDRIuCglhcmd1bWVudHMYBCADKAsyGy5zdWJzdHJh",
-            "aXQuRnVuY3Rpb25Bcmd1bWVudBIqCgdvcHRpb25zGAUgAygLMhkuc3Vic3Ry",
-            "YWl0LkZ1bmN0aW9uT3B0aW9uEiQKC291dHB1dF90eXBlGAMgASgLMg8uc3Vi",
-            "c3RyYWl0LlR5cGUSJwoEYXJncxgCIAMoCzIVLnN1YnN0cmFpdC5FeHByZXNz",
-            "aW9uQgIYARrRCAoOV2luZG93RnVuY3Rpb24SGgoSZnVuY3Rpb25fcmVmZXJl",
-            "bmNlGAEgASgNEi4KCWFyZ3VtZW50cxgJIAMoCzIbLnN1YnN0cmFpdC5GdW5j",
-            "dGlvbkFyZ3VtZW50EioKB29wdGlvbnMYCyADKAsyGS5zdWJzdHJhaXQuRnVu",
-            "Y3Rpb25PcHRpb24SJAoLb3V0cHV0X3R5cGUYByABKAsyDy5zdWJzdHJhaXQu",
-            "VHlwZRIqCgVwaGFzZRgGIAEoDjIbLnN1YnN0cmFpdC5BZ2dyZWdhdGlvblBo",
-            "YXNlEiMKBXNvcnRzGAMgAygLMhQuc3Vic3RyYWl0LlNvcnRGaWVsZBJGCgpp",
-            "bnZvY2F0aW9uGAogASgOMjIuc3Vic3RyYWl0LkFnZ3JlZ2F0ZUZ1bmN0aW9u",
-            "LkFnZ3JlZ2F0aW9uSW52b2NhdGlvbhIpCgpwYXJ0aXRpb25zGAIgAygLMhUu",
-            "c3Vic3RyYWl0LkV4cHJlc3Npb24SRAoLYm91bmRzX3R5cGUYDCABKA4yLy5z",
-            "dWJzdHJhaXQuRXhwcmVzc2lvbi5XaW5kb3dGdW5jdGlvbi5Cb3VuZHNUeXBl",
-            "Ej8KC2xvd2VyX2JvdW5kGAUgASgLMiouc3Vic3RyYWl0LkV4cHJlc3Npb24u",
-            "V2luZG93RnVuY3Rpb24uQm91bmQSPwoLdXBwZXJfYm91bmQYBCABKAsyKi5z",
-            "dWJzdHJhaXQuRXhwcmVzc2lvbi5XaW5kb3dGdW5jdGlvbi5Cb3VuZBInCgRh",
-            "cmdzGAggAygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb25CAhgBGpMDCgVCb3Vu",
-            "ZBJJCglwcmVjZWRpbmcYASABKAsyNC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5X",
-            "aW5kb3dGdW5jdGlvbi5Cb3VuZC5QcmVjZWRpbmdIABJJCglmb2xsb3dpbmcY",
-            "AiABKAsyNC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5XaW5kb3dGdW5jdGlvbi5C",
-            "b3VuZC5Gb2xsb3dpbmdIABJMCgtjdXJyZW50X3JvdxgDIAEoCzI1LnN1YnN0",
-            "cmFpdC5FeHByZXNzaW9uLldpbmRvd0Z1bmN0aW9uLkJvdW5kLkN1cnJlbnRS",
-            "b3dIABJJCgl1bmJvdW5kZWQYBCABKAsyNC5zdWJzdHJhaXQuRXhwcmVzc2lv",
-            "bi5XaW5kb3dGdW5jdGlvbi5Cb3VuZC5VbmJvdW5kZWRIABobCglQcmVjZWRp",
-            "bmcSDgoGb2Zmc2V0GAEgASgDGhsKCUZvbGxvd2luZxIOCgZvZmZzZXQYASAB",
-            "KAMaDAoKQ3VycmVudFJvdxoLCglVbmJvdW5kZWRCBgoEa2luZCJWCgpCb3Vu",
-            "ZHNUeXBlEhsKF0JPVU5EU19UWVBFX1VOU1BFQ0lGSUVEEAASFAoQQk9VTkRT",
-            "X1RZUEVfUk9XUxABEhUKEUJPVU5EU19UWVBFX1JBTkdFEAIatQEKBklmVGhl",
-            "bhIyCgNpZnMYASADKAsyJS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5JZlRoZW4u",
-            "SWZDbGF1c2USIwoEZWxzZRgCIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9u",
-            "GlIKCElmQ2xhdXNlEiEKAmlmGAEgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Np",
-            "b24SIwoEdGhlbhgCIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uGo4CCgRD",
-            "YXN0Eh0KBHR5cGUYASABKAsyDy5zdWJzdHJhaXQuVHlwZRIkCgVpbnB1dBgC",
-            "IAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uEkQKEGZhaWx1cmVfYmVoYXZp",
-            "b3IYAyABKA4yKi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5DYXN0LkZhaWx1cmVC",
-            "ZWhhdmlvciJ7Cg9GYWlsdXJlQmVoYXZpb3ISIAocRkFJTFVSRV9CRUhBVklP",
-            "Ul9VTlNQRUNJRklFRBAAEiAKHEZBSUxVUkVfQkVIQVZJT1JfUkVUVVJOX05V",
-            "TEwQARIkCiBGQUlMVVJFX0JFSEFWSU9SX1RIUk9XX0VYQ0VQVElPThACGvUB",
-            "ChBTd2l0Y2hFeHByZXNzaW9uEiQKBW1hdGNoGAMgASgLMhUuc3Vic3RyYWl0",
-            "LkV4cHJlc3Npb24SOwoDaWZzGAEgAygLMi4uc3Vic3RyYWl0LkV4cHJlc3Np",
-            "b24uU3dpdGNoRXhwcmVzc2lvbi5JZlZhbHVlEiMKBGVsc2UYAiABKAsyFS5z",
-            "dWJzdHJhaXQuRXhwcmVzc2lvbhpZCgdJZlZhbHVlEikKAmlmGAEgASgLMh0u",
-            "c3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJhbBIjCgR0aGVuGAIgASgLMhUu",
-            "c3Vic3RyYWl0LkV4cHJlc3Npb24aXgoOU2luZ3VsYXJPckxpc3QSJAoFdmFs",
-            "dWUYASABKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbhImCgdvcHRpb25zGAIg",
-            "AygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24anwEKC011bHRpT3JMaXN0EiQK",
-            "BXZhbHVlGAEgAygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SOQoHb3B0aW9u",
-            "cxgCIAMoCzIoLnN1YnN0cmFpdC5FeHByZXNzaW9uLk11bHRpT3JMaXN0LlJl",
-            "Y29yZBovCgZSZWNvcmQSJQoGZmllbGRzGAEgAygLMhUuc3Vic3RyYWl0LkV4",
-            "cHJlc3Npb24aowMKEEVtYmVkZGVkRnVuY3Rpb24SKAoJYXJndW1lbnRzGAEg",
-            "AygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SJAoLb3V0cHV0X3R5cGUYAiAB",
-            "KAsyDy5zdWJzdHJhaXQuVHlwZRJdChZweXRob25fcGlja2xlX2Z1bmN0aW9u",
-            "GAMgASgLMjsuc3Vic3RyYWl0LkV4cHJlc3Npb24uRW1iZWRkZWRGdW5jdGlv",
-            "bi5QeXRob25QaWNrbGVGdW5jdGlvbkgAElsKFXdlYl9hc3NlbWJseV9mdW5j",
-            "dGlvbhgEIAEoCzI6LnN1YnN0cmFpdC5FeHByZXNzaW9uLkVtYmVkZGVkRnVu",
-            "Y3Rpb24uV2ViQXNzZW1ibHlGdW5jdGlvbkgAGj4KFFB5dGhvblBpY2tsZUZ1",
-            "bmN0aW9uEhAKCGZ1bmN0aW9uGAEgASgMEhQKDHByZXJlcXVpc2l0ZRgCIAMo",
-            "CRo7ChNXZWJBc3NlbWJseUZ1bmN0aW9uEg4KBnNjcmlwdBgBIAEoDBIUCgxw",
-            "cmVyZXF1aXNpdGUYAiADKAlCBgoEa2luZBqaBAoQUmVmZXJlbmNlU2VnbWVu",
-            "dBJACgdtYXBfa2V5GAEgASgLMi0uc3Vic3RyYWl0LkV4cHJlc3Npb24uUmVm",
-            "ZXJlbmNlU2VnbWVudC5NYXBLZXlIABJKCgxzdHJ1Y3RfZmllbGQYAiABKAsy",
-            "Mi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5SZWZlcmVuY2VTZWdtZW50LlN0cnVj",
-            "dEZpZWxkSAASSgoMbGlzdF9lbGVtZW50GAMgASgLMjIuc3Vic3RyYWl0LkV4",
-            "cHJlc3Npb24uUmVmZXJlbmNlU2VnbWVudC5MaXN0RWxlbWVudEgAGm8KBk1h",
-            "cEtleRIuCgdtYXBfa2V5GAEgASgLMh0uc3Vic3RyYWl0LkV4cHJlc3Npb24u",
-            "TGl0ZXJhbBI1CgVjaGlsZBgCIAEoCzImLnN1YnN0cmFpdC5FeHByZXNzaW9u",
-            "LlJlZmVyZW5jZVNlZ21lbnQaUwoLU3RydWN0RmllbGQSDQoFZmllbGQYASAB",
-            "KAUSNQoFY2hpbGQYAiABKAsyJi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5SZWZl",
-            "cmVuY2VTZWdtZW50GlQKC0xpc3RFbGVtZW50Eg4KBm9mZnNldBgBIAEoBRI1",
-            "CgVjaGlsZBgCIAEoCzImLnN1YnN0cmFpdC5FeHByZXNzaW9uLlJlZmVyZW5j",
-            "ZVNlZ21lbnRCEAoOcmVmZXJlbmNlX3R5cGUa8AkKDk1hc2tFeHByZXNzaW9u",
-            "EkEKBnNlbGVjdBgBIAEoCzIxLnN1YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tF",
-            "eHByZXNzaW9uLlN0cnVjdFNlbGVjdBIgChhtYWludGFpbl9zaW5ndWxhcl9z",
-            "dHJ1Y3QYAiABKAga1QEKBlNlbGVjdBJDCgZzdHJ1Y3QYASABKAsyMS5zdWJz",
-            "dHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbi5TdHJ1Y3RTZWxlY3RI",
-            "ABI/CgRsaXN0GAIgASgLMi8uc3Vic3RyYWl0LkV4cHJlc3Npb24uTWFza0V4",
-            "cHJlc3Npb24uTGlzdFNlbGVjdEgAEj0KA21hcBgDIAEoCzIuLnN1YnN0cmFp",
-            "dC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9uLk1hcFNlbGVjdEgAQgYKBHR5",
-            "cGUaVQoMU3RydWN0U2VsZWN0EkUKDHN0cnVjdF9pdGVtcxgBIAMoCzIvLnN1",
-            "YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9uLlN0cnVjdEl0ZW0a",
-            "VwoKU3RydWN0SXRlbRINCgVmaWVsZBgBIAEoBRI6CgVjaGlsZBgCIAEoCzIr",
-            "LnN1YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9uLlNlbGVjdBq0",
-            "AwoKTGlzdFNlbGVjdBJRCglzZWxlY3Rpb24YASADKAsyPi5zdWJzdHJhaXQu",
-            "RXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbi5MaXN0U2VsZWN0Lkxpc3RTZWxl",
-            "Y3RJdGVtEjoKBWNoaWxkGAIgASgLMisuc3Vic3RyYWl0LkV4cHJlc3Npb24u",
-            "TWFza0V4cHJlc3Npb24uU2VsZWN0GpYCCg5MaXN0U2VsZWN0SXRlbRJaCgRp",
-            "dGVtGAEgASgLMkouc3Vic3RyYWl0LkV4cHJlc3Npb24uTWFza0V4cHJlc3Np",
-            "b24uTGlzdFNlbGVjdC5MaXN0U2VsZWN0SXRlbS5MaXN0RWxlbWVudEgAElkK",
-            "BXNsaWNlGAIgASgLMkguc3Vic3RyYWl0LkV4cHJlc3Npb24uTWFza0V4cHJl",
-            "c3Npb24uTGlzdFNlbGVjdC5MaXN0U2VsZWN0SXRlbS5MaXN0U2xpY2VIABoc",
-            "CgtMaXN0RWxlbWVudBINCgVmaWVsZBgBIAEoBRonCglMaXN0U2xpY2USDQoF",
-            "c3RhcnQYASABKAUSCwoDZW5kGAIgASgFQgYKBHR5cGUauQIKCU1hcFNlbGVj",
-            "dBJECgNrZXkYASABKAsyNS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhw",
-            "cmVzc2lvbi5NYXBTZWxlY3QuTWFwS2V5SAASVQoKZXhwcmVzc2lvbhgCIAEo",
-            "CzI/LnN1YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9uLk1hcFNl",
-            "bGVjdC5NYXBLZXlFeHByZXNzaW9uSAASOgoFY2hpbGQYAyABKAsyKy5zdWJz",
-            "dHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbi5TZWxlY3QaGQoGTWFw",
-            "S2V5Eg8KB21hcF9rZXkYASABKAkaLgoQTWFwS2V5RXhwcmVzc2lvbhIaChJt",
-            "YXBfa2V5X2V4cHJlc3Npb24YASABKAlCCAoGc2VsZWN0GrYDCg5GaWVsZFJl",
-            "ZmVyZW5jZRJCChBkaXJlY3RfcmVmZXJlbmNlGAEgASgLMiYuc3Vic3RyYWl0",
-            "LkV4cHJlc3Npb24uUmVmZXJlbmNlU2VnbWVudEgAEkAKEG1hc2tlZF9yZWZl",
-            "cmVuY2UYAiABKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVz",
-            "c2lvbkgAEisKCmV4cHJlc3Npb24YAyABKAsyFS5zdWJzdHJhaXQuRXhwcmVz",
-            "c2lvbkgBEkwKDnJvb3RfcmVmZXJlbmNlGAQgASgLMjIuc3Vic3RyYWl0LkV4",
-            "cHJlc3Npb24uRmllbGRSZWZlcmVuY2UuUm9vdFJlZmVyZW5jZUgBEk4KD291",
-            "dGVyX3JlZmVyZW5jZRgFIAEoCzIzLnN1YnN0cmFpdC5FeHByZXNzaW9uLkZp",
-            "ZWxkUmVmZXJlbmNlLk91dGVyUmVmZXJlbmNlSAEaDwoNUm9vdFJlZmVyZW5j",
-            "ZRojCg5PdXRlclJlZmVyZW5jZRIRCglzdGVwc19vdXQYASABKA1CEAoOcmVm",
-            "ZXJlbmNlX3R5cGVCCwoJcm9vdF90eXBlGowJCghTdWJxdWVyeRI3CgZzY2Fs",
-            "YXIYASABKAsyJS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5TdWJxdWVyeS5TY2Fs",
-            "YXJIABJCCgxpbl9wcmVkaWNhdGUYAiABKAsyKi5zdWJzdHJhaXQuRXhwcmVz",
-            "c2lvbi5TdWJxdWVyeS5JblByZWRpY2F0ZUgAEkQKDXNldF9wcmVkaWNhdGUY",
-            "AyABKAsyKy5zdWJzdHJhaXQuRXhwcmVzc2lvbi5TdWJxdWVyeS5TZXRQcmVk",
-            "aWNhdGVIABJGCg5zZXRfY29tcGFyaXNvbhgEIAEoCzIsLnN1YnN0cmFpdC5F",
-            "eHByZXNzaW9uLlN1YnF1ZXJ5LlNldENvbXBhcmlzb25IABonCgZTY2FsYXIS",
-            "HQoFaW5wdXQYASABKAsyDi5zdWJzdHJhaXQuUmVsGlcKC0luUHJlZGljYXRl",
-            "EiYKB25lZWRsZXMYASADKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbhIgCgho",
-            "YXlzdGFjaxgCIAEoCzIOLnN1YnN0cmFpdC5SZWwa3AEKDFNldFByZWRpY2F0",
-            "ZRJNCgxwcmVkaWNhdGVfb3AYASABKA4yNy5zdWJzdHJhaXQuRXhwcmVzc2lv",
-            "bi5TdWJxdWVyeS5TZXRQcmVkaWNhdGUuUHJlZGljYXRlT3ASHgoGdHVwbGVz",
-            "GAIgASgLMg4uc3Vic3RyYWl0LlJlbCJdCgtQcmVkaWNhdGVPcBIcChhQUkVE",
-            "SUNBVEVfT1BfVU5TUEVDSUZJRUQQABIXChNQUkVESUNBVEVfT1BfRVhJU1RT",
-            "EAESFwoTUFJFRElDQVRFX09QX1VOSVFVRRACGoIECg1TZXRDb21wYXJpc29u",
-            "Ek4KDHJlZHVjdGlvbl9vcBgBIAEoDjI4LnN1YnN0cmFpdC5FeHByZXNzaW9u",
-            "LlN1YnF1ZXJ5LlNldENvbXBhcmlzb24uUmVkdWN0aW9uT3ASUAoNY29tcGFy",
-            "aXNvbl9vcBgCIAEoDjI5LnN1YnN0cmFpdC5FeHByZXNzaW9uLlN1YnF1ZXJ5",
-            "LlNldENvbXBhcmlzb24uQ29tcGFyaXNvbk9wEiMKBGxlZnQYAyABKAsyFS5z",
-            "dWJzdHJhaXQuRXhwcmVzc2lvbhIdCgVyaWdodBgEIAEoCzIOLnN1YnN0cmFp",
-            "dC5SZWwisQEKDENvbXBhcmlzb25PcBIdChlDT01QQVJJU09OX09QX1VOU1BF",
-            "Q0lGSUVEEAASFAoQQ09NUEFSSVNPTl9PUF9FURABEhQKEENPTVBBUklTT05f",
-            "T1BfTkUQAhIUChBDT01QQVJJU09OX09QX0xUEAMSFAoQQ09NUEFSSVNPTl9P",
-            "UF9HVBAEEhQKEENPTVBBUklTT05fT1BfTEUQBRIUChBDT01QQVJJU09OX09Q",
-            "X0dFEAYiVwoLUmVkdWN0aW9uT3ASHAoYUkVEVUNUSU9OX09QX1VOU1BFQ0lG",
-            "SUVEEAASFAoQUkVEVUNUSU9OX09QX0FOWRABEhQKEFJFRFVDVElPTl9PUF9B",
-            "TEwQAkIPCg1zdWJxdWVyeV90eXBlQgoKCHJleF90eXBlIv8CCglTb3J0Rmll",
-            "bGQSIwoEZXhwchgBIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uEjcKCWRp",
-            "cmVjdGlvbhgCIAEoDjIiLnN1YnN0cmFpdC5Tb3J0RmllbGQuU29ydERpcmVj",
-            "dGlvbkgAEicKHWNvbXBhcmlzb25fZnVuY3Rpb25fcmVmZXJlbmNlGAMgASgN",
-            "SAAi3QEKDVNvcnREaXJlY3Rpb24SHgoaU09SVF9ESVJFQ1RJT05fVU5TUEVD",
-            "SUZJRUQQABIiCh5TT1JUX0RJUkVDVElPTl9BU0NfTlVMTFNfRklSU1QQARIh",
-            "Ch1TT1JUX0RJUkVDVElPTl9BU0NfTlVMTFNfTEFTVBACEiMKH1NPUlRfRElS",
-            "RUNUSU9OX0RFU0NfTlVMTFNfRklSU1QQAxIiCh5TT1JUX0RJUkVDVElPTl9E",
-            "RVNDX05VTExTX0xBU1QQBBIcChhTT1JUX0RJUkVDVElPTl9DTFVTVEVSRUQQ",
-            "BUILCglzb3J0X2tpbmQi+gMKEUFnZ3JlZ2F0ZUZ1bmN0aW9uEhoKEmZ1bmN0",
-            "aW9uX3JlZmVyZW5jZRgBIAEoDRIuCglhcmd1bWVudHMYByADKAsyGy5zdWJz",
-            "dHJhaXQuRnVuY3Rpb25Bcmd1bWVudBIqCgdvcHRpb25zGAggAygLMhkuc3Vi",
-            "c3RyYWl0LkZ1bmN0aW9uT3B0aW9uEiQKC291dHB1dF90eXBlGAUgASgLMg8u",
-            "c3Vic3RyYWl0LlR5cGUSKgoFcGhhc2UYBCABKA4yGy5zdWJzdHJhaXQuQWdn",
-            "cmVnYXRpb25QaGFzZRIjCgVzb3J0cxgDIAMoCzIULnN1YnN0cmFpdC5Tb3J0",
-            "RmllbGQSRgoKaW52b2NhdGlvbhgGIAEoDjIyLnN1YnN0cmFpdC5BZ2dyZWdh",
-            "dGVGdW5jdGlvbi5BZ2dyZWdhdGlvbkludm9jYXRpb24SJwoEYXJncxgCIAMo",
-            "CzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uQgIYASKEAQoVQWdncmVnYXRpb25J",
-            "bnZvY2F0aW9uEiYKIkFHR1JFR0FUSU9OX0lOVk9DQVRJT05fVU5TUEVDSUZJ",
-            "RUQQABIeChpBR0dSRUdBVElPTl9JTlZPQ0FUSU9OX0FMTBABEiMKH0FHR1JF",
-            "R0FUSU9OX0lOVk9DQVRJT05fRElTVElOQ1QQAiInCgxSZWZlcmVuY2VSZWwS",
-            "FwoPc3VidHJlZV9vcmRpbmFsGAEgASgFKu8BChBBZ2dyZWdhdGlvblBoYXNl",
-            "EiEKHUFHR1JFR0FUSU9OX1BIQVNFX1VOU1BFQ0lGSUVEEAASLQopQUdHUkVH",
-            "QVRJT05fUEhBU0VfSU5JVElBTF9UT19JTlRFUk1FRElBVEUQARIyCi5BR0dS",
-            "RUdBVElPTl9QSEFTRV9JTlRFUk1FRElBVEVfVE9fSU5URVJNRURJQVRFEAIS",
-            "JwojQUdHUkVHQVRJT05fUEhBU0VfSU5JVElBTF9UT19SRVNVTFQQAxIsCihB",
-            "R0dSRUdBVElPTl9QSEFTRV9JTlRFUk1FRElBVEVfVE9fUkVTVUxUEARCVwoS",
-            "aW8uc3Vic3RyYWl0LnByb3RvUAFaKmdpdGh1Yi5jb20vc3Vic3RyYWl0LWlv",
-            "L3N1YnN0cmFpdC1nby9wcm90b6oCElN1YnN0cmFpdC5Qcm90b2J1ZmIGcHJv",
-            "dG8z"));
+            "dBgDIAEoCzIOLnN1YnN0cmFpdC5SZWwSOwoJbGVmdF9rZXlzGAQgAygLMiQu",
+            "c3Vic3RyYWl0LkV4cHJlc3Npb24uRmllbGRSZWZlcmVuY2VCAhgBEjwKCnJp",
+            "Z2h0X2tleXMYBSADKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5GaWVsZFJl",
+            "ZmVyZW5jZUICGAESKgoEa2V5cxgIIAMoCzIcLnN1YnN0cmFpdC5Db21wYXJp",
+            "c29uSm9pbktleRIvChBwb3N0X2pvaW5fZmlsdGVyGAYgASgLMhUuc3Vic3Ry",
+            "YWl0LkV4cHJlc3Npb24SLgoEdHlwZRgHIAEoDjIgLnN1YnN0cmFpdC5NZXJn",
+            "ZUpvaW5SZWwuSm9pblR5cGUSQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgL",
+            "Micuc3Vic3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24iyAIK",
+            "CEpvaW5UeXBlEhkKFUpPSU5fVFlQRV9VTlNQRUNJRklFRBAAEhMKD0pPSU5f",
+            "VFlQRV9JTk5FUhABEhMKD0pPSU5fVFlQRV9PVVRFUhACEhIKDkpPSU5fVFlQ",
+            "RV9MRUZUEAMSEwoPSk9JTl9UWVBFX1JJR0hUEAQSFwoTSk9JTl9UWVBFX0xF",
+            "RlRfU0VNSRAFEhgKFEpPSU5fVFlQRV9SSUdIVF9TRU1JEAYSFwoTSk9JTl9U",
+            "WVBFX0xFRlRfQU5USRAHEhgKFEpPSU5fVFlQRV9SSUdIVF9BTlRJEAgSGQoV",
+            "Sk9JTl9UWVBFX0xFRlRfU0lOR0xFEAkSGgoWSk9JTl9UWVBFX1JJR0hUX1NJ",
+            "TkdMRRAKEhcKE0pPSU5fVFlQRV9MRUZUX01BUksQCxIYChRKT0lOX1RZUEVf",
+            "UklHSFRfTUFSSxAMIuYEChFOZXN0ZWRMb29wSm9pblJlbBIkCgZjb21tb24Y",
+            "ASABKAsyFC5zdWJzdHJhaXQuUmVsQ29tbW9uEhwKBGxlZnQYAiABKAsyDi5z",
+            "dWJzdHJhaXQuUmVsEh0KBXJpZ2h0GAMgASgLMg4uc3Vic3RyYWl0LlJlbBIp",
+            "CgpleHByZXNzaW9uGAQgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SMwoE",
+            "dHlwZRgFIAEoDjIlLnN1YnN0cmFpdC5OZXN0ZWRMb29wSm9pblJlbC5Kb2lu",
+            "VHlwZRJDChJhZHZhbmNlZF9leHRlbnNpb24YCiABKAsyJy5zdWJzdHJhaXQu",
+            "ZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lvbiLIAgoISm9pblR5cGUSGQoV",
+            "Sk9JTl9UWVBFX1VOU1BFQ0lGSUVEEAASEwoPSk9JTl9UWVBFX0lOTkVSEAES",
+            "EwoPSk9JTl9UWVBFX09VVEVSEAISEgoOSk9JTl9UWVBFX0xFRlQQAxITCg9K",
+            "T0lOX1RZUEVfUklHSFQQBBIXChNKT0lOX1RZUEVfTEVGVF9TRU1JEAUSGAoU",
+            "Sk9JTl9UWVBFX1JJR0hUX1NFTUkQBhIXChNKT0lOX1RZUEVfTEVGVF9BTlRJ",
+            "EAcSGAoUSk9JTl9UWVBFX1JJR0hUX0FOVEkQCBIZChVKT0lOX1RZUEVfTEVG",
+            "VF9TSU5HTEUQCRIaChZKT0lOX1RZUEVfUklHSFRfU0lOR0xFEAoSFwoTSk9J",
+            "Tl9UWVBFX0xFRlRfTUFSSxALEhgKFEpPSU5fVFlQRV9SSUdIVF9NQVJLEAwi",
+            "dwoQRnVuY3Rpb25Bcmd1bWVudBIOCgRlbnVtGAEgASgJSAASHwoEdHlwZRgC",
+            "IAEoCzIPLnN1YnN0cmFpdC5UeXBlSAASJgoFdmFsdWUYAyABKAsyFS5zdWJz",
+            "dHJhaXQuRXhwcmVzc2lvbkgAQgoKCGFyZ190eXBlIjIKDkZ1bmN0aW9uT3B0",
+            "aW9uEgwKBG5hbWUYASABKAkSEgoKcHJlZmVyZW5jZRgCIAMoCSKnUQoKRXhw",
+            "cmVzc2lvbhIwCgdsaXRlcmFsGAEgASgLMh0uc3Vic3RyYWl0LkV4cHJlc3Np",
+            "b24uTGl0ZXJhbEgAEjkKCXNlbGVjdGlvbhgCIAEoCzIkLnN1YnN0cmFpdC5F",
+            "eHByZXNzaW9uLkZpZWxkUmVmZXJlbmNlSAASPwoPc2NhbGFyX2Z1bmN0aW9u",
+            "GAMgASgLMiQuc3Vic3RyYWl0LkV4cHJlc3Npb24uU2NhbGFyRnVuY3Rpb25I",
+            "ABI/Cg93aW5kb3dfZnVuY3Rpb24YBSABKAsyJC5zdWJzdHJhaXQuRXhwcmVz",
+            "c2lvbi5XaW5kb3dGdW5jdGlvbkgAEi8KB2lmX3RoZW4YBiABKAsyHC5zdWJz",
+            "dHJhaXQuRXhwcmVzc2lvbi5JZlRoZW5IABJDChFzd2l0Y2hfZXhwcmVzc2lv",
+            "bhgHIAEoCzImLnN1YnN0cmFpdC5FeHByZXNzaW9uLlN3aXRjaEV4cHJlc3Np",
+            "b25IABJAChBzaW5ndWxhcl9vcl9saXN0GAggASgLMiQuc3Vic3RyYWl0LkV4",
+            "cHJlc3Npb24uU2luZ3VsYXJPckxpc3RIABI6Cg1tdWx0aV9vcl9saXN0GAkg",
+            "ASgLMiEuc3Vic3RyYWl0LkV4cHJlc3Npb24uTXVsdGlPckxpc3RIABIqCgRj",
+            "YXN0GAsgASgLMhouc3Vic3RyYWl0LkV4cHJlc3Npb24uQ2FzdEgAEjIKCHN1",
+            "YnF1ZXJ5GAwgASgLMh4uc3Vic3RyYWl0LkV4cHJlc3Npb24uU3VicXVlcnlI",
+            "ABIuCgZuZXN0ZWQYDSABKAsyHC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5OZXN0",
+            "ZWRIABI4ChFkeW5hbWljX3BhcmFtZXRlchgOIAEoCzIbLnN1YnN0cmFpdC5E",
+            "eW5hbWljUGFyYW1ldGVySAASLgoGbGFtYmRhGA8gASgLMhwuc3Vic3RyYWl0",
+            "LkV4cHJlc3Npb24uTGFtYmRhSAASQwoRbGFtYmRhX2ludm9jYXRpb24YECAB",
+            "KAsyJi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MYW1iZGFJbnZvY2F0aW9uSAAS",
+            "LgoEZW51bRgKIAEoCzIaLnN1YnN0cmFpdC5FeHByZXNzaW9uLkVudW1CAhgB",
+            "SAAacgoERW51bRITCglzcGVjaWZpZWQYASABKAlIABI3Cgt1bnNwZWNpZmll",
+            "ZBgCIAEoCzIgLnN1YnN0cmFpdC5FeHByZXNzaW9uLkVudW0uRW1wdHlIABoL",
+            "CgVFbXB0eToCGAE6AhgBQgsKCWVudW1fa2luZBqIEwoHTGl0ZXJhbBIRCgdi",
+            "b29sZWFuGAEgASgISAASDAoCaTgYAiABKAVIABINCgNpMTYYAyABKAVIABIN",
+            "CgNpMzIYBSABKAVIABINCgNpNjQYByABKANIABIOCgRmcDMyGAogASgCSAAS",
+            "DgoEZnA2NBgLIAEoAUgAEhAKBnN0cmluZxgMIAEoCUgAEhAKBmJpbmFyeRgN",
+            "IAEoDEgAEhcKCXRpbWVzdGFtcBgOIAEoA0ICGAFIABIOCgRkYXRlGBAgASgF",
+            "SAASDgoEdGltZRgRIAEoA0gAElMKFmludGVydmFsX3llYXJfdG9fbW9udGgY",
+            "EyABKAsyMS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsLkludGVydmFs",
+            "WWVhclRvTW9udGhIABJTChZpbnRlcnZhbF9kYXlfdG9fc2Vjb25kGBQgASgL",
+            "MjEuc3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJhbC5JbnRlcnZhbERheVRv",
+            "U2Vjb25kSAASSwoRaW50ZXJ2YWxfY29tcG91bmQYJCABKAsyLi5zdWJzdHJh",
+            "aXQuRXhwcmVzc2lvbi5MaXRlcmFsLkludGVydmFsQ29tcG91bmRIABIUCgpm",
+            "aXhlZF9jaGFyGBUgASgJSAASOQoIdmFyX2NoYXIYFiABKAsyJS5zdWJzdHJh",
+            "aXQuRXhwcmVzc2lvbi5MaXRlcmFsLlZhckNoYXJIABIWCgxmaXhlZF9iaW5h",
+            "cnkYFyABKAxIABI4CgdkZWNpbWFsGBggASgLMiUuc3Vic3RyYWl0LkV4cHJl",
+            "c3Npb24uTGl0ZXJhbC5EZWNpbWFsSAASRQoOcHJlY2lzaW9uX3RpbWUYJSAB",
+            "KAsyKy5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsLlByZWNpc2lvblRp",
+            "bWVIABJPChNwcmVjaXNpb25fdGltZXN0YW1wGCIgASgLMjAuc3Vic3RyYWl0",
+            "LkV4cHJlc3Npb24uTGl0ZXJhbC5QcmVjaXNpb25UaW1lc3RhbXBIABJSChZw",
+            "cmVjaXNpb25fdGltZXN0YW1wX3R6GCMgASgLMjAuc3Vic3RyYWl0LkV4cHJl",
+            "c3Npb24uTGl0ZXJhbC5QcmVjaXNpb25UaW1lc3RhbXBIABI2CgZzdHJ1Y3QY",
+            "GSABKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsLlN0cnVjdEgA",
+            "EjAKA21hcBgaIAEoCzIhLnN1YnN0cmFpdC5FeHByZXNzaW9uLkxpdGVyYWwu",
+            "TWFwSAASGgoMdGltZXN0YW1wX3R6GBsgASgDQgIYAUgAEg4KBHV1aWQYHCAB",
+            "KAxIABIfCgRudWxsGB0gASgLMg8uc3Vic3RyYWl0LlR5cGVIABIyCgRsaXN0",
+            "GB4gASgLMiIuc3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJhbC5MaXN0SAAS",
+            "KgoKZW1wdHlfbGlzdBgfIAEoCzIULnN1YnN0cmFpdC5UeXBlLkxpc3RIABIo",
+            "CgllbXB0eV9tYXAYICABKAsyEy5zdWJzdHJhaXQuVHlwZS5NYXBIABJBCgx1",
+            "c2VyX2RlZmluZWQYISABKAsyKS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRl",
+            "cmFsLlVzZXJEZWZpbmVkSAASEAoIbnVsbGFibGUYMiABKAgSIAoYdHlwZV92",
+            "YXJpYXRpb25fcmVmZXJlbmNlGDMgASgNGigKB1ZhckNoYXISDQoFdmFsdWUY",
+            "ASABKAkSDgoGbGVuZ3RoGAIgASgNGjoKB0RlY2ltYWwSDQoFdmFsdWUYASAB",
+            "KAwSEQoJcHJlY2lzaW9uGAIgASgFEg0KBXNjYWxlGAMgASgFGjEKDVByZWNp",
+            "c2lvblRpbWUSEQoJcHJlY2lzaW9uGAEgASgFEg0KBXZhbHVlGAIgASgDGjYK",
+            "ElByZWNpc2lvblRpbWVzdGFtcBIRCglwcmVjaXNpb24YASABKAUSDQoFdmFs",
+            "dWUYAiABKAMaqwEKA01hcBI+CgprZXlfdmFsdWVzGAEgAygLMiouc3Vic3Ry",
+            "YWl0LkV4cHJlc3Npb24uTGl0ZXJhbC5NYXAuS2V5VmFsdWUaZAoIS2V5VmFs",
+            "dWUSKgoDa2V5GAEgASgLMh0uc3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJh",
+            "bBIsCgV2YWx1ZRgCIAEoCzIdLnN1YnN0cmFpdC5FeHByZXNzaW9uLkxpdGVy",
+            "YWwaNAoTSW50ZXJ2YWxZZWFyVG9Nb250aBINCgV5ZWFycxgBIAEoBRIOCgZt",
+            "b250aHMYAiABKAUaiwEKE0ludGVydmFsRGF5VG9TZWNvbmQSDAoEZGF5cxgB",
+            "IAEoBRIPCgdzZWNvbmRzGAIgASgFEhoKDG1pY3Jvc2Vjb25kcxgDIAEoBUIC",
+            "GAFIABITCglwcmVjaXNpb24YBCABKAVIABISCgpzdWJzZWNvbmRzGAUgASgD",
+            "QhAKDnByZWNpc2lvbl9tb2RlGrgBChBJbnRlcnZhbENvbXBvdW5kElEKFmlu",
+            "dGVydmFsX3llYXJfdG9fbW9udGgYASABKAsyMS5zdWJzdHJhaXQuRXhwcmVz",
+            "c2lvbi5MaXRlcmFsLkludGVydmFsWWVhclRvTW9udGgSUQoWaW50ZXJ2YWxf",
+            "ZGF5X3RvX3NlY29uZBgCIAEoCzIxLnN1YnN0cmFpdC5FeHByZXNzaW9uLkxp",
+            "dGVyYWwuSW50ZXJ2YWxEYXlUb1NlY29uZBo3CgZTdHJ1Y3QSLQoGZmllbGRz",
+            "GAEgAygLMh0uc3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJhbBo1CgRMaXN0",
+            "Ei0KBnZhbHVlcxgBIAMoCzIdLnN1YnN0cmFpdC5FeHByZXNzaW9uLkxpdGVy",
+            "YWwa9QEKC1VzZXJEZWZpbmVkEhgKDnR5cGVfcmVmZXJlbmNlGAEgASgNSAAS",
+            "HgoUdHlwZV9hbGlhc19yZWZlcmVuY2UYBSABKA1IABIyCg90eXBlX3BhcmFt",
+            "ZXRlcnMYAyADKAsyGS5zdWJzdHJhaXQuVHlwZS5QYXJhbWV0ZXISJQoFdmFs",
+            "dWUYAiABKAsyFC5nb29nbGUucHJvdG9idWYuQW55SAESNgoGc3RydWN0GAQg",
+            "ASgLMiQuc3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJhbC5TdHJ1Y3RIAUIS",
+            "ChB0eXBlX2FuY2hvcl90eXBlQgUKA3ZhbEIOCgxsaXRlcmFsX3R5cGUa4wMK",
+            "Bk5lc3RlZBIQCghudWxsYWJsZRgBIAEoCBIgChh0eXBlX3ZhcmlhdGlvbl9y",
+            "ZWZlcmVuY2UYAiABKA0SNQoGc3RydWN0GAMgASgLMiMuc3Vic3RyYWl0LkV4",
+            "cHJlc3Npb24uTmVzdGVkLlN0cnVjdEgAEjEKBGxpc3QYBCABKAsyIS5zdWJz",
+            "dHJhaXQuRXhwcmVzc2lvbi5OZXN0ZWQuTGlzdEgAEi8KA21hcBgFIAEoCzIg",
+            "LnN1YnN0cmFpdC5FeHByZXNzaW9uLk5lc3RlZC5NYXBIABqaAQoDTWFwEj0K",
+            "CmtleV92YWx1ZXMYASADKAsyKS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5OZXN0",
+            "ZWQuTWFwLktleVZhbHVlGlQKCEtleVZhbHVlEiIKA2tleRgBIAEoCzIVLnN1",
+            "YnN0cmFpdC5FeHByZXNzaW9uEiQKBXZhbHVlGAIgASgLMhUuc3Vic3RyYWl0",
+            "LkV4cHJlc3Npb24aLwoGU3RydWN0EiUKBmZpZWxkcxgBIAMoCzIVLnN1YnN0",
+            "cmFpdC5FeHByZXNzaW9uGi0KBExpc3QSJQoGdmFsdWVzGAEgAygLMhUuc3Vi",
+            "c3RyYWl0LkV4cHJlc3Npb25CDQoLbmVzdGVkX3R5cGUaWQoGTGFtYmRhEioK",
+            "CnBhcmFtZXRlcnMYASABKAsyFi5zdWJzdHJhaXQuVHlwZS5TdHJ1Y3QSIwoE",
+            "Ym9keRgCIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uGngKEExhbWJkYUlu",
+            "dm9jYXRpb24SLAoGbGFtYmRhGAEgASgLMhwuc3Vic3RyYWl0LkV4cHJlc3Np",
+            "b24uTGFtYmRhEjYKCWFyZ3VtZW50cxgCIAEoCzIjLnN1YnN0cmFpdC5FeHBy",
+            "ZXNzaW9uLk5lc3RlZC5TdHJ1Y3Qa1wEKDlNjYWxhckZ1bmN0aW9uEhoKEmZ1",
+            "bmN0aW9uX3JlZmVyZW5jZRgBIAEoDRIuCglhcmd1bWVudHMYBCADKAsyGy5z",
+            "dWJzdHJhaXQuRnVuY3Rpb25Bcmd1bWVudBIqCgdvcHRpb25zGAUgAygLMhku",
+            "c3Vic3RyYWl0LkZ1bmN0aW9uT3B0aW9uEiQKC291dHB1dF90eXBlGAMgASgL",
+            "Mg8uc3Vic3RyYWl0LlR5cGUSJwoEYXJncxgCIAMoCzIVLnN1YnN0cmFpdC5F",
+            "eHByZXNzaW9uQgIYARrRCAoOV2luZG93RnVuY3Rpb24SGgoSZnVuY3Rpb25f",
+            "cmVmZXJlbmNlGAEgASgNEi4KCWFyZ3VtZW50cxgJIAMoCzIbLnN1YnN0cmFp",
+            "dC5GdW5jdGlvbkFyZ3VtZW50EioKB29wdGlvbnMYCyADKAsyGS5zdWJzdHJh",
+            "aXQuRnVuY3Rpb25PcHRpb24SJAoLb3V0cHV0X3R5cGUYByABKAsyDy5zdWJz",
+            "dHJhaXQuVHlwZRIqCgVwaGFzZRgGIAEoDjIbLnN1YnN0cmFpdC5BZ2dyZWdh",
+            "dGlvblBoYXNlEiMKBXNvcnRzGAMgAygLMhQuc3Vic3RyYWl0LlNvcnRGaWVs",
+            "ZBJGCgppbnZvY2F0aW9uGAogASgOMjIuc3Vic3RyYWl0LkFnZ3JlZ2F0ZUZ1",
+            "bmN0aW9uLkFnZ3JlZ2F0aW9uSW52b2NhdGlvbhIpCgpwYXJ0aXRpb25zGAIg",
+            "AygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SRAoLYm91bmRzX3R5cGUYDCAB",
+            "KA4yLy5zdWJzdHJhaXQuRXhwcmVzc2lvbi5XaW5kb3dGdW5jdGlvbi5Cb3Vu",
+            "ZHNUeXBlEj8KC2xvd2VyX2JvdW5kGAUgASgLMiouc3Vic3RyYWl0LkV4cHJl",
+            "c3Npb24uV2luZG93RnVuY3Rpb24uQm91bmQSPwoLdXBwZXJfYm91bmQYBCAB",
+            "KAsyKi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5XaW5kb3dGdW5jdGlvbi5Cb3Vu",
+            "ZBInCgRhcmdzGAggAygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb25CAhgBGpMD",
+            "CgVCb3VuZBJJCglwcmVjZWRpbmcYASABKAsyNC5zdWJzdHJhaXQuRXhwcmVz",
+            "c2lvbi5XaW5kb3dGdW5jdGlvbi5Cb3VuZC5QcmVjZWRpbmdIABJJCglmb2xs",
+            "b3dpbmcYAiABKAsyNC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5XaW5kb3dGdW5j",
+            "dGlvbi5Cb3VuZC5Gb2xsb3dpbmdIABJMCgtjdXJyZW50X3JvdxgDIAEoCzI1",
+            "LnN1YnN0cmFpdC5FeHByZXNzaW9uLldpbmRvd0Z1bmN0aW9uLkJvdW5kLkN1",
+            "cnJlbnRSb3dIABJJCgl1bmJvdW5kZWQYBCABKAsyNC5zdWJzdHJhaXQuRXhw",
+            "cmVzc2lvbi5XaW5kb3dGdW5jdGlvbi5Cb3VuZC5VbmJvdW5kZWRIABobCglQ",
+            "cmVjZWRpbmcSDgoGb2Zmc2V0GAEgASgDGhsKCUZvbGxvd2luZxIOCgZvZmZz",
+            "ZXQYASABKAMaDAoKQ3VycmVudFJvdxoLCglVbmJvdW5kZWRCBgoEa2luZCJW",
+            "CgpCb3VuZHNUeXBlEhsKF0JPVU5EU19UWVBFX1VOU1BFQ0lGSUVEEAASFAoQ",
+            "Qk9VTkRTX1RZUEVfUk9XUxABEhUKEUJPVU5EU19UWVBFX1JBTkdFEAIatQEK",
+            "BklmVGhlbhIyCgNpZnMYASADKAsyJS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5J",
+            "ZlRoZW4uSWZDbGF1c2USIwoEZWxzZRgCIAEoCzIVLnN1YnN0cmFpdC5FeHBy",
+            "ZXNzaW9uGlIKCElmQ2xhdXNlEiEKAmlmGAEgASgLMhUuc3Vic3RyYWl0LkV4",
+            "cHJlc3Npb24SIwoEdGhlbhgCIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9u",
+            "Go4CCgRDYXN0Eh0KBHR5cGUYASABKAsyDy5zdWJzdHJhaXQuVHlwZRIkCgVp",
+            "bnB1dBgCIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uEkQKEGZhaWx1cmVf",
+            "YmVoYXZpb3IYAyABKA4yKi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5DYXN0LkZh",
+            "aWx1cmVCZWhhdmlvciJ7Cg9GYWlsdXJlQmVoYXZpb3ISIAocRkFJTFVSRV9C",
+            "RUhBVklPUl9VTlNQRUNJRklFRBAAEiAKHEZBSUxVUkVfQkVIQVZJT1JfUkVU",
+            "VVJOX05VTEwQARIkCiBGQUlMVVJFX0JFSEFWSU9SX1RIUk9XX0VYQ0VQVElP",
+            "ThACGvUBChBTd2l0Y2hFeHByZXNzaW9uEiQKBW1hdGNoGAMgASgLMhUuc3Vi",
+            "c3RyYWl0LkV4cHJlc3Npb24SOwoDaWZzGAEgAygLMi4uc3Vic3RyYWl0LkV4",
+            "cHJlc3Npb24uU3dpdGNoRXhwcmVzc2lvbi5JZlZhbHVlEiMKBGVsc2UYAiAB",
+            "KAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbhpZCgdJZlZhbHVlEikKAmlmGAEg",
+            "ASgLMh0uc3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJhbBIjCgR0aGVuGAIg",
+            "ASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24aXgoOU2luZ3VsYXJPckxpc3QS",
+            "JAoFdmFsdWUYASABKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbhImCgdvcHRp",
+            "b25zGAIgAygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24anwEKC011bHRpT3JM",
+            "aXN0EiQKBXZhbHVlGAEgAygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SOQoH",
+            "b3B0aW9ucxgCIAMoCzIoLnN1YnN0cmFpdC5FeHByZXNzaW9uLk11bHRpT3JM",
+            "aXN0LlJlY29yZBovCgZSZWNvcmQSJQoGZmllbGRzGAEgAygLMhUuc3Vic3Ry",
+            "YWl0LkV4cHJlc3Npb24aowMKEEVtYmVkZGVkRnVuY3Rpb24SKAoJYXJndW1l",
+            "bnRzGAEgAygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SJAoLb3V0cHV0X3R5",
+            "cGUYAiABKAsyDy5zdWJzdHJhaXQuVHlwZRJdChZweXRob25fcGlja2xlX2Z1",
+            "bmN0aW9uGAMgASgLMjsuc3Vic3RyYWl0LkV4cHJlc3Npb24uRW1iZWRkZWRG",
+            "dW5jdGlvbi5QeXRob25QaWNrbGVGdW5jdGlvbkgAElsKFXdlYl9hc3NlbWJs",
+            "eV9mdW5jdGlvbhgEIAEoCzI6LnN1YnN0cmFpdC5FeHByZXNzaW9uLkVtYmVk",
+            "ZGVkRnVuY3Rpb24uV2ViQXNzZW1ibHlGdW5jdGlvbkgAGj4KFFB5dGhvblBp",
+            "Y2tsZUZ1bmN0aW9uEhAKCGZ1bmN0aW9uGAEgASgMEhQKDHByZXJlcXVpc2l0",
+            "ZRgCIAMoCRo7ChNXZWJBc3NlbWJseUZ1bmN0aW9uEg4KBnNjcmlwdBgBIAEo",
+            "DBIUCgxwcmVyZXF1aXNpdGUYAiADKAlCBgoEa2luZBqaBAoQUmVmZXJlbmNl",
+            "U2VnbWVudBJACgdtYXBfa2V5GAEgASgLMi0uc3Vic3RyYWl0LkV4cHJlc3Np",
+            "b24uUmVmZXJlbmNlU2VnbWVudC5NYXBLZXlIABJKCgxzdHJ1Y3RfZmllbGQY",
+            "AiABKAsyMi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5SZWZlcmVuY2VTZWdtZW50",
+            "LlN0cnVjdEZpZWxkSAASSgoMbGlzdF9lbGVtZW50GAMgASgLMjIuc3Vic3Ry",
+            "YWl0LkV4cHJlc3Npb24uUmVmZXJlbmNlU2VnbWVudC5MaXN0RWxlbWVudEgA",
+            "Gm8KBk1hcEtleRIuCgdtYXBfa2V5GAEgASgLMh0uc3Vic3RyYWl0LkV4cHJl",
+            "c3Npb24uTGl0ZXJhbBI1CgVjaGlsZBgCIAEoCzImLnN1YnN0cmFpdC5FeHBy",
+            "ZXNzaW9uLlJlZmVyZW5jZVNlZ21lbnQaUwoLU3RydWN0RmllbGQSDQoFZmll",
+            "bGQYASABKAUSNQoFY2hpbGQYAiABKAsyJi5zdWJzdHJhaXQuRXhwcmVzc2lv",
+            "bi5SZWZlcmVuY2VTZWdtZW50GlQKC0xpc3RFbGVtZW50Eg4KBm9mZnNldBgB",
+            "IAEoBRI1CgVjaGlsZBgCIAEoCzImLnN1YnN0cmFpdC5FeHByZXNzaW9uLlJl",
+            "ZmVyZW5jZVNlZ21lbnRCEAoOcmVmZXJlbmNlX3R5cGUa8AkKDk1hc2tFeHBy",
+            "ZXNzaW9uEkEKBnNlbGVjdBgBIAEoCzIxLnN1YnN0cmFpdC5FeHByZXNzaW9u",
+            "Lk1hc2tFeHByZXNzaW9uLlN0cnVjdFNlbGVjdBIgChhtYWludGFpbl9zaW5n",
+            "dWxhcl9zdHJ1Y3QYAiABKAga1QEKBlNlbGVjdBJDCgZzdHJ1Y3QYASABKAsy",
+            "MS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbi5TdHJ1Y3RT",
+            "ZWxlY3RIABI/CgRsaXN0GAIgASgLMi8uc3Vic3RyYWl0LkV4cHJlc3Npb24u",
+            "TWFza0V4cHJlc3Npb24uTGlzdFNlbGVjdEgAEj0KA21hcBgDIAEoCzIuLnN1",
+            "YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9uLk1hcFNlbGVjdEgA",
+            "QgYKBHR5cGUaVQoMU3RydWN0U2VsZWN0EkUKDHN0cnVjdF9pdGVtcxgBIAMo",
+            "CzIvLnN1YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9uLlN0cnVj",
+            "dEl0ZW0aVwoKU3RydWN0SXRlbRINCgVmaWVsZBgBIAEoBRI6CgVjaGlsZBgC",
+            "IAEoCzIrLnN1YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9uLlNl",
+            "bGVjdBq0AwoKTGlzdFNlbGVjdBJRCglzZWxlY3Rpb24YASADKAsyPi5zdWJz",
+            "dHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbi5MaXN0U2VsZWN0Lkxp",
+            "c3RTZWxlY3RJdGVtEjoKBWNoaWxkGAIgASgLMisuc3Vic3RyYWl0LkV4cHJl",
+            "c3Npb24uTWFza0V4cHJlc3Npb24uU2VsZWN0GpYCCg5MaXN0U2VsZWN0SXRl",
+            "bRJaCgRpdGVtGAEgASgLMkouc3Vic3RyYWl0LkV4cHJlc3Npb24uTWFza0V4",
+            "cHJlc3Npb24uTGlzdFNlbGVjdC5MaXN0U2VsZWN0SXRlbS5MaXN0RWxlbWVu",
+            "dEgAElkKBXNsaWNlGAIgASgLMkguc3Vic3RyYWl0LkV4cHJlc3Npb24uTWFz",
+            "a0V4cHJlc3Npb24uTGlzdFNlbGVjdC5MaXN0U2VsZWN0SXRlbS5MaXN0U2xp",
+            "Y2VIABocCgtMaXN0RWxlbWVudBINCgVmaWVsZBgBIAEoBRonCglMaXN0U2xp",
+            "Y2USDQoFc3RhcnQYASABKAUSCwoDZW5kGAIgASgFQgYKBHR5cGUauQIKCU1h",
+            "cFNlbGVjdBJECgNrZXkYASABKAsyNS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5N",
+            "YXNrRXhwcmVzc2lvbi5NYXBTZWxlY3QuTWFwS2V5SAASVQoKZXhwcmVzc2lv",
+            "bhgCIAEoCzI/LnN1YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9u",
+            "Lk1hcFNlbGVjdC5NYXBLZXlFeHByZXNzaW9uSAASOgoFY2hpbGQYAyABKAsy",
+            "Ky5zdWJzdHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbi5TZWxlY3Qa",
+            "GQoGTWFwS2V5Eg8KB21hcF9rZXkYASABKAkaLgoQTWFwS2V5RXhwcmVzc2lv",
+            "bhIaChJtYXBfa2V5X2V4cHJlc3Npb24YASABKAlCCAoGc2VsZWN0GsoECg5G",
+            "aWVsZFJlZmVyZW5jZRJCChBkaXJlY3RfcmVmZXJlbmNlGAEgASgLMiYuc3Vi",
+            "c3RyYWl0LkV4cHJlc3Npb24uUmVmZXJlbmNlU2VnbWVudEgAEkAKEG1hc2tl",
+            "ZF9yZWZlcmVuY2UYAiABKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5NYXNr",
+            "RXhwcmVzc2lvbkgAEisKCmV4cHJlc3Npb24YAyABKAsyFS5zdWJzdHJhaXQu",
+            "RXhwcmVzc2lvbkgBEkwKDnJvb3RfcmVmZXJlbmNlGAQgASgLMjIuc3Vic3Ry",
+            "YWl0LkV4cHJlc3Npb24uRmllbGRSZWZlcmVuY2UuUm9vdFJlZmVyZW5jZUgB",
+            "Ek4KD291dGVyX3JlZmVyZW5jZRgFIAEoCzIzLnN1YnN0cmFpdC5FeHByZXNz",
+            "aW9uLkZpZWxkUmVmZXJlbmNlLk91dGVyUmVmZXJlbmNlSAESYwoabGFtYmRh",
+            "X3BhcmFtZXRlcl9yZWZlcmVuY2UYBiABKAsyPS5zdWJzdHJhaXQuRXhwcmVz",
+            "c2lvbi5GaWVsZFJlZmVyZW5jZS5MYW1iZGFQYXJhbWV0ZXJSZWZlcmVuY2VI",
+            "ARoPCg1Sb290UmVmZXJlbmNlGiMKDk91dGVyUmVmZXJlbmNlEhEKCXN0ZXBz",
+            "X291dBgBIAEoDRotChhMYW1iZGFQYXJhbWV0ZXJSZWZlcmVuY2USEQoJc3Rl",
+            "cHNfb3V0GAEgASgNQhAKDnJlZmVyZW5jZV90eXBlQgsKCXJvb3RfdHlwZRqM",
+            "CQoIU3VicXVlcnkSNwoGc2NhbGFyGAEgASgLMiUuc3Vic3RyYWl0LkV4cHJl",
+            "c3Npb24uU3VicXVlcnkuU2NhbGFySAASQgoMaW5fcHJlZGljYXRlGAIgASgL",
+            "Miouc3Vic3RyYWl0LkV4cHJlc3Npb24uU3VicXVlcnkuSW5QcmVkaWNhdGVI",
+            "ABJECg1zZXRfcHJlZGljYXRlGAMgASgLMisuc3Vic3RyYWl0LkV4cHJlc3Np",
+            "b24uU3VicXVlcnkuU2V0UHJlZGljYXRlSAASRgoOc2V0X2NvbXBhcmlzb24Y",
+            "BCABKAsyLC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5TdWJxdWVyeS5TZXRDb21w",
+            "YXJpc29uSAAaJwoGU2NhbGFyEh0KBWlucHV0GAEgASgLMg4uc3Vic3RyYWl0",
+            "LlJlbBpXCgtJblByZWRpY2F0ZRImCgduZWVkbGVzGAEgAygLMhUuc3Vic3Ry",
+            "YWl0LkV4cHJlc3Npb24SIAoIaGF5c3RhY2sYAiABKAsyDi5zdWJzdHJhaXQu",
+            "UmVsGtwBCgxTZXRQcmVkaWNhdGUSTQoMcHJlZGljYXRlX29wGAEgASgOMjcu",
+            "c3Vic3RyYWl0LkV4cHJlc3Npb24uU3VicXVlcnkuU2V0UHJlZGljYXRlLlBy",
+            "ZWRpY2F0ZU9wEh4KBnR1cGxlcxgCIAEoCzIOLnN1YnN0cmFpdC5SZWwiXQoL",
+            "UHJlZGljYXRlT3ASHAoYUFJFRElDQVRFX09QX1VOU1BFQ0lGSUVEEAASFwoT",
+            "UFJFRElDQVRFX09QX0VYSVNUUxABEhcKE1BSRURJQ0FURV9PUF9VTklRVUUQ",
+            "AhqCBAoNU2V0Q29tcGFyaXNvbhJOCgxyZWR1Y3Rpb25fb3AYASABKA4yOC5z",
+            "dWJzdHJhaXQuRXhwcmVzc2lvbi5TdWJxdWVyeS5TZXRDb21wYXJpc29uLlJl",
+            "ZHVjdGlvbk9wElAKDWNvbXBhcmlzb25fb3AYAiABKA4yOS5zdWJzdHJhaXQu",
+            "RXhwcmVzc2lvbi5TdWJxdWVyeS5TZXRDb21wYXJpc29uLkNvbXBhcmlzb25P",
+            "cBIjCgRsZWZ0GAMgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SHQoFcmln",
+            "aHQYBCABKAsyDi5zdWJzdHJhaXQuUmVsIrEBCgxDb21wYXJpc29uT3ASHQoZ",
+            "Q09NUEFSSVNPTl9PUF9VTlNQRUNJRklFRBAAEhQKEENPTVBBUklTT05fT1Bf",
+            "RVEQARIUChBDT01QQVJJU09OX09QX05FEAISFAoQQ09NUEFSSVNPTl9PUF9M",
+            "VBADEhQKEENPTVBBUklTT05fT1BfR1QQBBIUChBDT01QQVJJU09OX09QX0xF",
+            "EAUSFAoQQ09NUEFSSVNPTl9PUF9HRRAGIlcKC1JlZHVjdGlvbk9wEhwKGFJF",
+            "RFVDVElPTl9PUF9VTlNQRUNJRklFRBAAEhQKEFJFRFVDVElPTl9PUF9BTlkQ",
+            "ARIUChBSRURVQ1RJT05fT1BfQUxMEAJCDwoNc3VicXVlcnlfdHlwZUIKCghy",
+            "ZXhfdHlwZSJOChBEeW5hbWljUGFyYW1ldGVyEh0KBHR5cGUYASABKAsyDy5z",
+            "dWJzdHJhaXQuVHlwZRIbChNwYXJhbWV0ZXJfcmVmZXJlbmNlGAIgASgNIv8C",
+            "CglTb3J0RmllbGQSIwoEZXhwchgBIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNz",
+            "aW9uEjcKCWRpcmVjdGlvbhgCIAEoDjIiLnN1YnN0cmFpdC5Tb3J0RmllbGQu",
+            "U29ydERpcmVjdGlvbkgAEicKHWNvbXBhcmlzb25fZnVuY3Rpb25fcmVmZXJl",
+            "bmNlGAMgASgNSAAi3QEKDVNvcnREaXJlY3Rpb24SHgoaU09SVF9ESVJFQ1RJ",
+            "T05fVU5TUEVDSUZJRUQQABIiCh5TT1JUX0RJUkVDVElPTl9BU0NfTlVMTFNf",
+            "RklSU1QQARIhCh1TT1JUX0RJUkVDVElPTl9BU0NfTlVMTFNfTEFTVBACEiMK",
+            "H1NPUlRfRElSRUNUSU9OX0RFU0NfTlVMTFNfRklSU1QQAxIiCh5TT1JUX0RJ",
+            "UkVDVElPTl9ERVNDX05VTExTX0xBU1QQBBIcChhTT1JUX0RJUkVDVElPTl9D",
+            "TFVTVEVSRUQQBUILCglzb3J0X2tpbmQi+gMKEUFnZ3JlZ2F0ZUZ1bmN0aW9u",
+            "EhoKEmZ1bmN0aW9uX3JlZmVyZW5jZRgBIAEoDRIuCglhcmd1bWVudHMYByAD",
+            "KAsyGy5zdWJzdHJhaXQuRnVuY3Rpb25Bcmd1bWVudBIqCgdvcHRpb25zGAgg",
+            "AygLMhkuc3Vic3RyYWl0LkZ1bmN0aW9uT3B0aW9uEiQKC291dHB1dF90eXBl",
+            "GAUgASgLMg8uc3Vic3RyYWl0LlR5cGUSKgoFcGhhc2UYBCABKA4yGy5zdWJz",
+            "dHJhaXQuQWdncmVnYXRpb25QaGFzZRIjCgVzb3J0cxgDIAMoCzIULnN1YnN0",
+            "cmFpdC5Tb3J0RmllbGQSRgoKaW52b2NhdGlvbhgGIAEoDjIyLnN1YnN0cmFp",
+            "dC5BZ2dyZWdhdGVGdW5jdGlvbi5BZ2dyZWdhdGlvbkludm9jYXRpb24SJwoE",
+            "YXJncxgCIAMoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uQgIYASKEAQoVQWdn",
+            "cmVnYXRpb25JbnZvY2F0aW9uEiYKIkFHR1JFR0FUSU9OX0lOVk9DQVRJT05f",
+            "VU5TUEVDSUZJRUQQABIeChpBR0dSRUdBVElPTl9JTlZPQ0FUSU9OX0FMTBAB",
+            "EiMKH0FHR1JFR0FUSU9OX0lOVk9DQVRJT05fRElTVElOQ1QQAiInCgxSZWZl",
+            "cmVuY2VSZWwSFwoPc3VidHJlZV9vcmRpbmFsGAEgASgFKu8BChBBZ2dyZWdh",
+            "dGlvblBoYXNlEiEKHUFHR1JFR0FUSU9OX1BIQVNFX1VOU1BFQ0lGSUVEEAAS",
+            "LQopQUdHUkVHQVRJT05fUEhBU0VfSU5JVElBTF9UT19JTlRFUk1FRElBVEUQ",
+            "ARIyCi5BR0dSRUdBVElPTl9QSEFTRV9JTlRFUk1FRElBVEVfVE9fSU5URVJN",
+            "RURJQVRFEAISJwojQUdHUkVHQVRJT05fUEhBU0VfSU5JVElBTF9UT19SRVNV",
+            "TFQQAxIsCihBR0dSRUdBVElPTl9QSEFTRV9JTlRFUk1FRElBVEVfVE9fUkVT",
+            "VUxUEARCZgoSaW8uc3Vic3RyYWl0LnByb3RvUAFaOWdpdGh1Yi5jb20vc3Vi",
+            "c3RyYWl0LWlvL3N1YnN0cmFpdC1wcm90b2J1Zi9nby9zdWJzdHJhaXRwYqoC",
+            "ElN1YnN0cmFpdC5Qcm90b2J1ZmIGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { global::Google.Protobuf.WellKnownTypes.AnyReflection.Descriptor, global::Substrait.Protobuf.ExtensionsReflection.Descriptor, global::Substrait.Protobuf.TypeReflection.Descriptor, },
           new pbr::GeneratedClrTypeInfo(new[] {typeof(global::Substrait.Protobuf.AggregationPhase), }, null, new pbr::GeneratedClrTypeInfo[] {
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelCommon), global::Substrait.Protobuf.RelCommon.Parser, new[]{ "Direct", "Emit", "Hint", "AdvancedExtension" }, new[]{ "EmitKind" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelCommon.Types.Direct), global::Substrait.Protobuf.RelCommon.Types.Direct.Parser, null, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelCommon.Types.Emit), global::Substrait.Protobuf.RelCommon.Types.Emit.Parser, new[]{ "OutputMapping" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelCommon.Types.Hint), global::Substrait.Protobuf.RelCommon.Types.Hint.Parser, new[]{ "Stats", "Constraint", "AdvancedExtension" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelCommon.Types.Hint.Types.Stats), global::Substrait.Protobuf.RelCommon.Types.Hint.Types.Stats.Parser, new[]{ "RowCount", "RecordSize", "AdvancedExtension" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelCommon.Types.Hint.Types.RuntimeConstraint), global::Substrait.Protobuf.RelCommon.Types.Hint.Types.RuntimeConstraint.Parser, new[]{ "AdvancedExtension" }, null, null, null, null)})}),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel), global::Substrait.Protobuf.ReadRel.Parser, new[]{ "Common", "BaseSchema", "Filter", "BestEffortFilter", "Projection", "AdvancedExtension", "VirtualTable", "LocalFiles", "NamedTable", "ExtensionTable" }, new[]{ "ReadType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.NamedTable), global::Substrait.Protobuf.ReadRel.Types.NamedTable.Parser, new[]{ "Names", "AdvancedExtension" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelCommon.Types.Hint), global::Substrait.Protobuf.RelCommon.Types.Hint.Parser, new[]{ "Stats", "Constraint", "Alias", "OutputNames", "AdvancedExtension", "SavedComputations", "LoadedComputations" }, null, new[]{ typeof(global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType) }, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelCommon.Types.Hint.Types.Stats), global::Substrait.Protobuf.RelCommon.Types.Hint.Types.Stats.Parser, new[]{ "RowCount", "RecordSize", "AdvancedExtension" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelCommon.Types.Hint.Types.RuntimeConstraint), global::Substrait.Protobuf.RelCommon.Types.Hint.Types.RuntimeConstraint.Parser, new[]{ "AdvancedExtension" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelCommon.Types.Hint.Types.SavedComputation), global::Substrait.Protobuf.RelCommon.Types.Hint.Types.SavedComputation.Parser, new[]{ "ComputationId", "Type", "AdvancedExtension" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelCommon.Types.Hint.Types.LoadedComputation), global::Substrait.Protobuf.RelCommon.Types.Hint.Types.LoadedComputation.Parser, new[]{ "ComputationIdReference", "Type", "AdvancedExtension" }, null, null, null, null)})}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel), global::Substrait.Protobuf.ReadRel.Parser, new[]{ "Common", "BaseSchema", "Filter", "BestEffortFilter", "Projection", "AdvancedExtension", "VirtualTable", "LocalFiles", "NamedTable", "ExtensionTable", "IcebergTable" }, new[]{ "ReadType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.NamedTable), global::Substrait.Protobuf.ReadRel.Types.NamedTable.Parser, new[]{ "Names", "AdvancedExtension" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.IcebergTable), global::Substrait.Protobuf.ReadRel.Types.IcebergTable.Parser, new[]{ "Direct" }, new[]{ "TableType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.IcebergTable.Types.MetadataFileRead), global::Substrait.Protobuf.ReadRel.Types.IcebergTable.Types.MetadataFileRead.Parser, new[]{ "MetadataUri", "SnapshotId", "SnapshotTimestamp" }, new[]{ "Snapshot" }, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.VirtualTable), global::Substrait.Protobuf.ReadRel.Types.VirtualTable.Parser, new[]{ "Values", "Expressions" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.ExtensionTable), global::Substrait.Protobuf.ReadRel.Types.ExtensionTable.Parser, new[]{ "Detail" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.LocalFiles), global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Parser, new[]{ "Items", "AdvancedExtension" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles), global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Parser, new[]{ "UriPath", "UriPathGlob", "UriFile", "UriFolder", "PartitionIndex", "Start", "Length", "Parquet", "Arrow", "Orc", "Extension", "Dwrf" }, new[]{ "PathType", "FileFormat" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.ParquetReadOptions), global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.ParquetReadOptions.Parser, null, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.LocalFiles), global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Parser, new[]{ "Items", "AdvancedExtension" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles), global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Parser, new[]{ "UriPath", "UriPathGlob", "UriFile", "UriFolder", "PartitionIndex", "Start", "Length", "Parquet", "Arrow", "Orc", "Extension", "Dwrf", "Text" }, new[]{ "PathType", "FileFormat" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.ParquetReadOptions), global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.ParquetReadOptions.Parser, null, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.ArrowReadOptions), global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.ArrowReadOptions.Parser, null, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.OrcReadOptions), global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.OrcReadOptions.Parser, null, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DwrfReadOptions), global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DwrfReadOptions.Parser, null, null, null, null, null)})})}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DwrfReadOptions), global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DwrfReadOptions.Parser, null, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DelimiterSeparatedTextReadOptions), global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DelimiterSeparatedTextReadOptions.Parser, new[]{ "FieldDelimiter", "MaxLineSize", "Quote", "HeaderLinesToSkip", "Escape", "ValueTreatedAsNull" }, new[]{ "ValueTreatedAsNull" }, null, null, null)})})}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ProjectRel), global::Substrait.Protobuf.ProjectRel.Parser, new[]{ "Common", "Input", "Expressions", "AdvancedExtension" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.JoinRel), global::Substrait.Protobuf.JoinRel.Parser, new[]{ "Common", "Left", "Right", "Expression", "PostJoinFilter", "Type", "AdvancedExtension" }, null, new[]{ typeof(global::Substrait.Protobuf.JoinRel.Types.JoinType) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.CrossRel), global::Substrait.Protobuf.CrossRel.Parser, new[]{ "Common", "Left", "Right", "AdvancedExtension" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.FetchRel), global::Substrait.Protobuf.FetchRel.Parser, new[]{ "Common", "Input", "Offset", "Count", "AdvancedExtension" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateRel), global::Substrait.Protobuf.AggregateRel.Parser, new[]{ "Common", "Input", "Groupings", "Measures", "AdvancedExtension" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateRel.Types.Grouping), global::Substrait.Protobuf.AggregateRel.Types.Grouping.Parser, new[]{ "GroupingExpressions" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.FetchRel), global::Substrait.Protobuf.FetchRel.Parser, new[]{ "Common", "Input", "Offset", "OffsetExpr", "Count", "CountExpr", "AdvancedExtension" }, new[]{ "OffsetMode", "CountMode" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateRel), global::Substrait.Protobuf.AggregateRel.Parser, new[]{ "Common", "Input", "Groupings", "Measures", "GroupingExpressions", "AdvancedExtension" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateRel.Types.Grouping), global::Substrait.Protobuf.AggregateRel.Types.Grouping.Parser, new[]{ "GroupingExpressions", "ExpressionReferences" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateRel.Types.Measure), global::Substrait.Protobuf.AggregateRel.Types.Measure.Parser, new[]{ "Measure_", "Filter" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ConsistentPartitionWindowRel), global::Substrait.Protobuf.ConsistentPartitionWindowRel.Parser, new[]{ "Common", "Input", "WindowFunctions", "PartitionExpressions", "Sorts", "AdvancedExtension" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ConsistentPartitionWindowRel.Types.WindowRelFunction), global::Substrait.Protobuf.ConsistentPartitionWindowRel.Types.WindowRelFunction.Parser, new[]{ "FunctionReference", "Arguments", "Options", "OutputType", "Phase", "Invocation", "LowerBound", "UpperBound", "BoundsType" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SortRel), global::Substrait.Protobuf.SortRel.Parser, new[]{ "Common", "Input", "Sorts", "AdvancedExtension" }, null, null, null, null),
@@ -562,29 +662,36 @@ namespace Substrait.Protobuf {
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ExpandRel), global::Substrait.Protobuf.ExpandRel.Parser, new[]{ "Common", "Input", "Fields" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ExpandRel.Types.ExpandField), global::Substrait.Protobuf.ExpandRel.Types.ExpandField.Parser, new[]{ "SwitchingField", "ConsistentField" }, new[]{ "FieldType" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ExpandRel.Types.SwitchingField), global::Substrait.Protobuf.ExpandRel.Types.SwitchingField.Parser, new[]{ "Duplicates" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelRoot), global::Substrait.Protobuf.RelRoot.Parser, new[]{ "Input", "Names" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Rel), global::Substrait.Protobuf.Rel.Parser, new[]{ "Read", "Filter", "Fetch", "Aggregate", "Sort", "Join", "Project", "Set", "ExtensionSingle", "ExtensionMulti", "ExtensionLeaf", "Cross", "Reference", "Write", "Ddl", "HashJoin", "MergeJoin", "NestedLoopJoin", "Window", "Exchange", "Expand" }, new[]{ "RelType" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Rel), global::Substrait.Protobuf.Rel.Parser, new[]{ "Read", "Filter", "Fetch", "Aggregate", "Sort", "Join", "Project", "Set", "ExtensionSingle", "ExtensionMulti", "ExtensionLeaf", "Cross", "Reference", "Write", "Ddl", "Update", "HashJoin", "MergeJoin", "NestedLoopJoin", "Window", "Exchange", "Expand" }, new[]{ "RelType" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.NamedObjectWrite), global::Substrait.Protobuf.NamedObjectWrite.Parser, new[]{ "Names", "AdvancedExtension" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ExtensionObject), global::Substrait.Protobuf.ExtensionObject.Parser, new[]{ "Detail" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.DdlRel), global::Substrait.Protobuf.DdlRel.Parser, new[]{ "NamedObject", "ExtensionObject", "TableSchema", "TableDefaults", "Object", "Op", "ViewDefinition", "Common" }, new[]{ "WriteType" }, new[]{ typeof(global::Substrait.Protobuf.DdlRel.Types.DdlObject), typeof(global::Substrait.Protobuf.DdlRel.Types.DdlOp) }, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.WriteRel), global::Substrait.Protobuf.WriteRel.Parser, new[]{ "NamedTable", "ExtensionTable", "TableSchema", "Op", "Input", "Output", "Common" }, new[]{ "WriteType" }, new[]{ typeof(global::Substrait.Protobuf.WriteRel.Types.WriteOp), typeof(global::Substrait.Protobuf.WriteRel.Types.OutputMode) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.DdlRel), global::Substrait.Protobuf.DdlRel.Parser, new[]{ "NamedObject", "ExtensionObject", "TableSchema", "TableDefaults", "Object", "Op", "ViewDefinition", "Common", "AdvancedExtension" }, new[]{ "WriteType" }, new[]{ typeof(global::Substrait.Protobuf.DdlRel.Types.DdlObject), typeof(global::Substrait.Protobuf.DdlRel.Types.DdlOp) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.WriteRel), global::Substrait.Protobuf.WriteRel.Parser, new[]{ "NamedTable", "ExtensionTable", "TableSchema", "Op", "Input", "CreateMode", "Output", "Common", "AdvancedExtension" }, new[]{ "WriteType" }, new[]{ typeof(global::Substrait.Protobuf.WriteRel.Types.WriteOp), typeof(global::Substrait.Protobuf.WriteRel.Types.CreateMode), typeof(global::Substrait.Protobuf.WriteRel.Types.OutputMode) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.UpdateRel), global::Substrait.Protobuf.UpdateRel.Parser, new[]{ "NamedTable", "TableSchema", "Condition", "Transformations", "AdvancedExtension" }, new[]{ "UpdateType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.UpdateRel.Types.TransformExpression), global::Substrait.Protobuf.UpdateRel.Types.TransformExpression.Parser, new[]{ "Transformation", "ColumnTarget" }, null, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.NamedTable), global::Substrait.Protobuf.NamedTable.Parser, new[]{ "Names", "AdvancedExtension" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ComparisonJoinKey), global::Substrait.Protobuf.ComparisonJoinKey.Parser, new[]{ "Left", "Right", "Comparison" }, null, new[]{ typeof(global::Substrait.Protobuf.ComparisonJoinKey.Types.SimpleComparisonType) }, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ComparisonJoinKey.Types.ComparisonType), global::Substrait.Protobuf.ComparisonJoinKey.Types.ComparisonType.Parser, new[]{ "Simple", "CustomFunctionReference" }, new[]{ "InnerType" }, null, null, null)}),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.HashJoinRel), global::Substrait.Protobuf.HashJoinRel.Parser, new[]{ "Common", "Left", "Right", "LeftKeys", "RightKeys", "Keys", "PostJoinFilter", "Type", "AdvancedExtension" }, null, new[]{ typeof(global::Substrait.Protobuf.HashJoinRel.Types.JoinType) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.HashJoinRel), global::Substrait.Protobuf.HashJoinRel.Parser, new[]{ "Common", "Left", "Right", "LeftKeys", "RightKeys", "Keys", "PostJoinFilter", "Type", "BuildInput", "AdvancedExtension" }, null, new[]{ typeof(global::Substrait.Protobuf.HashJoinRel.Types.JoinType), typeof(global::Substrait.Protobuf.HashJoinRel.Types.BuildInput) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.MergeJoinRel), global::Substrait.Protobuf.MergeJoinRel.Parser, new[]{ "Common", "Left", "Right", "LeftKeys", "RightKeys", "Keys", "PostJoinFilter", "Type", "AdvancedExtension" }, null, new[]{ typeof(global::Substrait.Protobuf.MergeJoinRel.Types.JoinType) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.NestedLoopJoinRel), global::Substrait.Protobuf.NestedLoopJoinRel.Parser, new[]{ "Common", "Left", "Right", "Expression", "Type", "AdvancedExtension" }, null, new[]{ typeof(global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.FunctionArgument), global::Substrait.Protobuf.FunctionArgument.Parser, new[]{ "Enum", "Type", "Value" }, new[]{ "ArgType" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.FunctionOption), global::Substrait.Protobuf.FunctionOption.Parser, new[]{ "Name", "Preference" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression), global::Substrait.Protobuf.Expression.Parser, new[]{ "Literal", "Selection", "ScalarFunction", "WindowFunction", "IfThen", "SwitchExpression", "SingularOrList", "MultiOrList", "Cast", "Subquery", "Nested", "Enum" }, new[]{ "RexType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Enum), global::Substrait.Protobuf.Expression.Types.Enum.Parser, new[]{ "Specified", "Unspecified" }, new[]{ "EnumKind" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Enum.Types.Empty), global::Substrait.Protobuf.Expression.Types.Enum.Types.Empty.Parser, null, null, null, null, null)}),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal), global::Substrait.Protobuf.Expression.Types.Literal.Parser, new[]{ "Boolean", "I8", "I16", "I32", "I64", "Fp32", "Fp64", "String", "Binary", "Timestamp", "Date", "Time", "IntervalYearToMonth", "IntervalDayToSecond", "FixedChar", "VarChar", "FixedBinary", "Decimal", "PrecisionTimestamp", "PrecisionTimestampTz", "Struct", "Map", "TimestampTz", "Uuid", "Null", "List", "EmptyList", "EmptyMap", "UserDefined", "Nullable", "TypeVariationReference" }, new[]{ "LiteralType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.VarChar), global::Substrait.Protobuf.Expression.Types.Literal.Types.VarChar.Parser, new[]{ "Value", "Length" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression), global::Substrait.Protobuf.Expression.Parser, new[]{ "Literal", "Selection", "ScalarFunction", "WindowFunction", "IfThen", "SwitchExpression", "SingularOrList", "MultiOrList", "Cast", "Subquery", "Nested", "DynamicParameter", "Lambda", "LambdaInvocation", "Enum" }, new[]{ "RexType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Enum), global::Substrait.Protobuf.Expression.Types.Enum.Parser, new[]{ "Specified", "Unspecified" }, new[]{ "EnumKind" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Enum.Types.Empty), global::Substrait.Protobuf.Expression.Types.Enum.Types.Empty.Parser, null, null, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal), global::Substrait.Protobuf.Expression.Types.Literal.Parser, new[]{ "Boolean", "I8", "I16", "I32", "I64", "Fp32", "Fp64", "String", "Binary", "Timestamp", "Date", "Time", "IntervalYearToMonth", "IntervalDayToSecond", "IntervalCompound", "FixedChar", "VarChar", "FixedBinary", "Decimal", "PrecisionTime", "PrecisionTimestamp", "PrecisionTimestampTz", "Struct", "Map", "TimestampTz", "Uuid", "Null", "List", "EmptyList", "EmptyMap", "UserDefined", "Nullable", "TypeVariationReference" }, new[]{ "LiteralType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.VarChar), global::Substrait.Protobuf.Expression.Types.Literal.Types.VarChar.Parser, new[]{ "Value", "Length" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.Decimal), global::Substrait.Protobuf.Expression.Types.Literal.Types.Decimal.Parser, new[]{ "Value", "Precision", "Scale" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTime), global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTime.Parser, new[]{ "Precision", "Value" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp), global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp.Parser, new[]{ "Precision", "Value" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.Map), global::Substrait.Protobuf.Expression.Types.Literal.Types.Map.Parser, new[]{ "KeyValues" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.Map.Types.KeyValue), global::Substrait.Protobuf.Expression.Types.Literal.Types.Map.Types.KeyValue.Parser, new[]{ "Key", "Value" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalYearToMonth), global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalYearToMonth.Parser, new[]{ "Years", "Months" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalDayToSecond), global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalDayToSecond.Parser, new[]{ "Days", "Seconds", "Microseconds" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalDayToSecond), global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalDayToSecond.Parser, new[]{ "Days", "Seconds", "Microseconds", "Precision", "Subseconds" }, new[]{ "PrecisionMode" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalCompound), global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalCompound.Parser, new[]{ "IntervalYearToMonth", "IntervalDayToSecond" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.Struct), global::Substrait.Protobuf.Expression.Types.Literal.Types.Struct.Parser, new[]{ "Fields" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.List), global::Substrait.Protobuf.Expression.Types.Literal.Types.List.Parser, new[]{ "Values" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.UserDefined), global::Substrait.Protobuf.Expression.Types.Literal.Types.UserDefined.Parser, new[]{ "TypeReference", "TypeParameters", "Value", "Struct" }, new[]{ "Val" }, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.UserDefined), global::Substrait.Protobuf.Expression.Types.Literal.Types.UserDefined.Parser, new[]{ "TypeReference", "TypeAliasReference", "TypeParameters", "Value", "Struct" }, new[]{ "TypeAnchorType", "Val" }, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Nested), global::Substrait.Protobuf.Expression.Types.Nested.Parser, new[]{ "Nullable", "TypeVariationReference", "Struct", "List", "Map" }, new[]{ "NestedType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Nested.Types.Map), global::Substrait.Protobuf.Expression.Types.Nested.Types.Map.Parser, new[]{ "KeyValues" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Nested.Types.Map.Types.KeyValue), global::Substrait.Protobuf.Expression.Types.Nested.Types.Map.Types.KeyValue.Parser, new[]{ "Key", "Value" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Nested.Types.Struct), global::Substrait.Protobuf.Expression.Types.Nested.Types.Struct.Parser, new[]{ "Fields" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Nested.Types.List), global::Substrait.Protobuf.Expression.Types.Nested.Types.List.Parser, new[]{ "Values" }, null, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Lambda), global::Substrait.Protobuf.Expression.Types.Lambda.Parser, new[]{ "Parameters", "Body" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.LambdaInvocation), global::Substrait.Protobuf.Expression.Types.LambdaInvocation.Parser, new[]{ "Lambda", "Arguments" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.ScalarFunction), global::Substrait.Protobuf.Expression.Types.ScalarFunction.Parser, new[]{ "FunctionReference", "Arguments", "Options", "OutputType", "Args" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction), global::Substrait.Protobuf.Expression.Types.WindowFunction.Parser, new[]{ "FunctionReference", "Arguments", "Options", "OutputType", "Phase", "Sorts", "Invocation", "Partitions", "BoundsType", "LowerBound", "UpperBound", "Args" }, null, new[]{ typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType) }, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound), global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Parser, new[]{ "Preceding", "Following", "CurrentRow", "Unbounded" }, new[]{ "Kind" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Preceding), global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Preceding.Parser, new[]{ "Offset" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Following), global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Following.Parser, new[]{ "Offset" }, null, null, null, null),
@@ -607,12 +714,14 @@ namespace Substrait.Protobuf {
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.MaskExpression.Types.ListSelect.Types.ListSelectItem.Types.ListSlice), global::Substrait.Protobuf.Expression.Types.MaskExpression.Types.ListSelect.Types.ListSelectItem.Types.ListSlice.Parser, new[]{ "Start", "End" }, null, null, null, null)})}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.MaskExpression.Types.MapSelect), global::Substrait.Protobuf.Expression.Types.MaskExpression.Types.MapSelect.Parser, new[]{ "Key", "Expression", "Child" }, new[]{ "Select" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.MaskExpression.Types.MapSelect.Types.MapKey), global::Substrait.Protobuf.Expression.Types.MaskExpression.Types.MapSelect.Types.MapKey.Parser, new[]{ "MapKey_" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.MaskExpression.Types.MapSelect.Types.MapKeyExpression), global::Substrait.Protobuf.Expression.Types.MaskExpression.Types.MapSelect.Types.MapKeyExpression.Parser, new[]{ "MapKeyExpression_" }, null, null, null, null)})}),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.FieldReference), global::Substrait.Protobuf.Expression.Types.FieldReference.Parser, new[]{ "DirectReference", "MaskedReference", "Expression", "RootReference", "OuterReference" }, new[]{ "ReferenceType", "RootType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.FieldReference.Types.RootReference), global::Substrait.Protobuf.Expression.Types.FieldReference.Types.RootReference.Parser, null, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.FieldReference.Types.OuterReference), global::Substrait.Protobuf.Expression.Types.FieldReference.Types.OuterReference.Parser, new[]{ "StepsOut" }, null, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.FieldReference), global::Substrait.Protobuf.Expression.Types.FieldReference.Parser, new[]{ "DirectReference", "MaskedReference", "Expression", "RootReference", "OuterReference", "LambdaParameterReference" }, new[]{ "ReferenceType", "RootType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.FieldReference.Types.RootReference), global::Substrait.Protobuf.Expression.Types.FieldReference.Types.RootReference.Parser, null, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.FieldReference.Types.OuterReference), global::Substrait.Protobuf.Expression.Types.FieldReference.Types.OuterReference.Parser, new[]{ "StepsOut" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.FieldReference.Types.LambdaParameterReference), global::Substrait.Protobuf.Expression.Types.FieldReference.Types.LambdaParameterReference.Parser, new[]{ "StepsOut" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Subquery), global::Substrait.Protobuf.Expression.Types.Subquery.Parser, new[]{ "Scalar", "InPredicate", "SetPredicate", "SetComparison" }, new[]{ "SubqueryType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.Scalar), global::Substrait.Protobuf.Expression.Types.Subquery.Types.Scalar.Parser, new[]{ "Input" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.InPredicate), global::Substrait.Protobuf.Expression.Types.Subquery.Types.InPredicate.Parser, new[]{ "Needles", "Haystack" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetPredicate), global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetPredicate.Parser, new[]{ "PredicateOp", "Tuples" }, null, new[]{ typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetPredicate.Types.PredicateOp) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetComparison), global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetComparison.Parser, new[]{ "ReductionOp", "ComparisonOp", "Left", "Right" }, null, new[]{ typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetComparison.Types.ComparisonOp), typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetComparison.Types.ReductionOp) }, null, null)})}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.DynamicParameter), global::Substrait.Protobuf.DynamicParameter.Parser, new[]{ "Type", "ParameterReference" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SortField), global::Substrait.Protobuf.SortField.Parser, new[]{ "Expr", "Direction", "ComparisonFunctionReference" }, new[]{ "SortKind" }, new[]{ typeof(global::Substrait.Protobuf.SortField.Types.SortDirection) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateFunction), global::Substrait.Protobuf.AggregateFunction.Parser, new[]{ "FunctionReference", "Arguments", "Options", "OutputType", "Phase", "Sorts", "Invocation", "Args" }, null, new[]{ typeof(global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReferenceRel), global::Substrait.Protobuf.ReferenceRel.Parser, new[]{ "SubtreeOrdinal" }, null, null, null, null)
@@ -960,7 +1069,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -1007,7 +1120,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -1183,7 +1300,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -1198,7 +1319,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -1357,7 +1482,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -1377,7 +1506,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -1434,7 +1567,11 @@ namespace Substrait.Protobuf {
         public Hint(Hint other) : this() {
           stats_ = other.stats_ != null ? other.stats_.Clone() : null;
           constraint_ = other.constraint_ != null ? other.constraint_.Clone() : null;
+          alias_ = other.alias_;
+          outputNames_ = other.outputNames_.Clone();
           advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
+          savedComputations_ = other.savedComputations_.Clone();
+          loadedComputations_ = other.loadedComputations_.Clone();
           _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
         }
 
@@ -1468,6 +1605,37 @@ namespace Substrait.Protobuf {
           }
         }
 
+        /// <summary>Field number for the "alias" field.</summary>
+        public const int AliasFieldNumber = 3;
+        private string alias_ = "";
+        /// <summary>
+        /// Name (alias) for this relation. Can be used for e.g. qualifying the relation (see e.g.
+        /// Spark's SubqueryAlias), or debugging.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public string Alias {
+          get { return alias_; }
+          set {
+            alias_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+          }
+        }
+
+        /// <summary>Field number for the "output_names" field.</summary>
+        public const int OutputNamesFieldNumber = 4;
+        private static readonly pb::FieldCodec<string> _repeated_outputNames_codec
+            = pb::FieldCodec.ForString(34);
+        private readonly pbc::RepeatedField<string> outputNames_ = new pbc::RepeatedField<string>();
+        /// <summary>
+        /// Assigns alternative output field names for any relation.  Equivalent to the names field
+        /// in RelRoot but applies to the output of the relation this RelCommon is attached to.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public pbc::RepeatedField<string> OutputNames {
+          get { return outputNames_; }
+        }
+
         /// <summary>Field number for the "advanced_extension" field.</summary>
         public const int AdvancedExtensionFieldNumber = 10;
         private global::Substrait.Protobuf.AdvancedExtension advancedExtension_;
@@ -1478,6 +1646,33 @@ namespace Substrait.Protobuf {
           set {
             advancedExtension_ = value;
           }
+        }
+
+        /// <summary>Field number for the "saved_computations" field.</summary>
+        public const int SavedComputationsFieldNumber = 11;
+        private static readonly pb::FieldCodec<global::Substrait.Protobuf.RelCommon.Types.Hint.Types.SavedComputation> _repeated_savedComputations_codec
+            = pb::FieldCodec.ForMessage(90, global::Substrait.Protobuf.RelCommon.Types.Hint.Types.SavedComputation.Parser);
+        private readonly pbc::RepeatedField<global::Substrait.Protobuf.RelCommon.Types.Hint.Types.SavedComputation> savedComputations_ = new pbc::RepeatedField<global::Substrait.Protobuf.RelCommon.Types.Hint.Types.SavedComputation>();
+        /// <summary>
+        /// Save or load a system-specific computation for use in optimizing a remote operation.
+        /// The anchor refers to the source/destination of the computation.  The computation type
+        /// and number refer to the current relation.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public pbc::RepeatedField<global::Substrait.Protobuf.RelCommon.Types.Hint.Types.SavedComputation> SavedComputations {
+          get { return savedComputations_; }
+        }
+
+        /// <summary>Field number for the "loaded_computations" field.</summary>
+        public const int LoadedComputationsFieldNumber = 12;
+        private static readonly pb::FieldCodec<global::Substrait.Protobuf.RelCommon.Types.Hint.Types.LoadedComputation> _repeated_loadedComputations_codec
+            = pb::FieldCodec.ForMessage(98, global::Substrait.Protobuf.RelCommon.Types.Hint.Types.LoadedComputation.Parser);
+        private readonly pbc::RepeatedField<global::Substrait.Protobuf.RelCommon.Types.Hint.Types.LoadedComputation> loadedComputations_ = new pbc::RepeatedField<global::Substrait.Protobuf.RelCommon.Types.Hint.Types.LoadedComputation>();
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public pbc::RepeatedField<global::Substrait.Protobuf.RelCommon.Types.Hint.Types.LoadedComputation> LoadedComputations {
+          get { return loadedComputations_; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -1497,7 +1692,11 @@ namespace Substrait.Protobuf {
           }
           if (!object.Equals(Stats, other.Stats)) return false;
           if (!object.Equals(Constraint, other.Constraint)) return false;
+          if (Alias != other.Alias) return false;
+          if(!outputNames_.Equals(other.outputNames_)) return false;
           if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
+          if(!savedComputations_.Equals(other.savedComputations_)) return false;
+          if(!loadedComputations_.Equals(other.loadedComputations_)) return false;
           return Equals(_unknownFields, other._unknownFields);
         }
 
@@ -1507,7 +1706,11 @@ namespace Substrait.Protobuf {
           int hash = 1;
           if (stats_ != null) hash ^= Stats.GetHashCode();
           if (constraint_ != null) hash ^= Constraint.GetHashCode();
+          if (Alias.Length != 0) hash ^= Alias.GetHashCode();
+          hash ^= outputNames_.GetHashCode();
           if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
+          hash ^= savedComputations_.GetHashCode();
+          hash ^= loadedComputations_.GetHashCode();
           if (_unknownFields != null) {
             hash ^= _unknownFields.GetHashCode();
           }
@@ -1534,10 +1737,17 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(18);
             output.WriteMessage(Constraint);
           }
+          if (Alias.Length != 0) {
+            output.WriteRawTag(26);
+            output.WriteString(Alias);
+          }
+          outputNames_.WriteTo(output, _repeated_outputNames_codec);
           if (advancedExtension_ != null) {
             output.WriteRawTag(82);
             output.WriteMessage(AdvancedExtension);
           }
+          savedComputations_.WriteTo(output, _repeated_savedComputations_codec);
+          loadedComputations_.WriteTo(output, _repeated_loadedComputations_codec);
           if (_unknownFields != null) {
             _unknownFields.WriteTo(output);
           }
@@ -1556,10 +1766,17 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(18);
             output.WriteMessage(Constraint);
           }
+          if (Alias.Length != 0) {
+            output.WriteRawTag(26);
+            output.WriteString(Alias);
+          }
+          outputNames_.WriteTo(ref output, _repeated_outputNames_codec);
           if (advancedExtension_ != null) {
             output.WriteRawTag(82);
             output.WriteMessage(AdvancedExtension);
           }
+          savedComputations_.WriteTo(ref output, _repeated_savedComputations_codec);
+          loadedComputations_.WriteTo(ref output, _repeated_loadedComputations_codec);
           if (_unknownFields != null) {
             _unknownFields.WriteTo(ref output);
           }
@@ -1576,9 +1793,15 @@ namespace Substrait.Protobuf {
           if (constraint_ != null) {
             size += 1 + pb::CodedOutputStream.ComputeMessageSize(Constraint);
           }
+          if (Alias.Length != 0) {
+            size += 1 + pb::CodedOutputStream.ComputeStringSize(Alias);
+          }
+          size += outputNames_.CalculateSize(_repeated_outputNames_codec);
           if (advancedExtension_ != null) {
             size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
           }
+          size += savedComputations_.CalculateSize(_repeated_savedComputations_codec);
+          size += loadedComputations_.CalculateSize(_repeated_loadedComputations_codec);
           if (_unknownFields != null) {
             size += _unknownFields.CalculateSize();
           }
@@ -1603,12 +1826,18 @@ namespace Substrait.Protobuf {
             }
             Constraint.MergeFrom(other.Constraint);
           }
+          if (other.Alias.Length != 0) {
+            Alias = other.Alias;
+          }
+          outputNames_.Add(other.outputNames_);
           if (other.advancedExtension_ != null) {
             if (advancedExtension_ == null) {
               AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
             }
             AdvancedExtension.MergeFrom(other.AdvancedExtension);
           }
+          savedComputations_.Add(other.savedComputations_);
+          loadedComputations_.Add(other.loadedComputations_);
           _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
         }
 
@@ -1620,7 +1849,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -1638,11 +1871,27 @@ namespace Substrait.Protobuf {
                 input.ReadMessage(Constraint);
                 break;
               }
+              case 26: {
+                Alias = input.ReadString();
+                break;
+              }
+              case 34: {
+                outputNames_.AddEntriesFrom(input, _repeated_outputNames_codec);
+                break;
+              }
               case 82: {
                 if (advancedExtension_ == null) {
                   AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
                 }
                 input.ReadMessage(AdvancedExtension);
+                break;
+              }
+              case 90: {
+                savedComputations_.AddEntriesFrom(input, _repeated_savedComputations_codec);
+                break;
+              }
+              case 98: {
+                loadedComputations_.AddEntriesFrom(input, _repeated_loadedComputations_codec);
                 break;
               }
             }
@@ -1656,7 +1905,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -1674,11 +1927,27 @@ namespace Substrait.Protobuf {
                 input.ReadMessage(Constraint);
                 break;
               }
+              case 26: {
+                Alias = input.ReadString();
+                break;
+              }
+              case 34: {
+                outputNames_.AddEntriesFrom(ref input, _repeated_outputNames_codec);
+                break;
+              }
               case 82: {
                 if (advancedExtension_ == null) {
                   AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
                 }
                 input.ReadMessage(AdvancedExtension);
+                break;
+              }
+              case 90: {
+                savedComputations_.AddEntriesFrom(ref input, _repeated_savedComputations_codec);
+                break;
+              }
+              case 98: {
+                loadedComputations_.AddEntriesFrom(ref input, _repeated_loadedComputations_codec);
                 break;
               }
             }
@@ -1691,6 +1960,13 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static partial class Types {
+          public enum ComputationType {
+            [pbr::OriginalName("COMPUTATION_TYPE_UNSPECIFIED")] Unspecified = 0,
+            [pbr::OriginalName("COMPUTATION_TYPE_HASHTABLE")] Hashtable = 1,
+            [pbr::OriginalName("COMPUTATION_TYPE_BLOOM_FILTER")] BloomFilter = 2,
+            [pbr::OriginalName("COMPUTATION_TYPE_UNKNOWN")] Unknown = 9999,
+          }
+
           /// <summary>
           /// The statistics related to a hint (physical properties of records)
           /// </summary>
@@ -1911,7 +2187,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -1941,7 +2221,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -2129,7 +2413,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -2151,10 +2439,598 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
+                  case 82: {
+                    if (advancedExtension_ == null) {
+                      AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+                    }
+                    input.ReadMessage(AdvancedExtension);
+                    break;
+                  }
+                }
+              }
+            }
+            #endif
+
+          }
+
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+          public sealed partial class SavedComputation : pb::IMessage<SavedComputation>
+          #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              , pb::IBufferMessage
+          #endif
+          {
+            private static readonly pb::MessageParser<SavedComputation> _parser = new pb::MessageParser<SavedComputation>(() => new SavedComputation());
+            private pb::UnknownFieldSet _unknownFields;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pb::MessageParser<SavedComputation> Parser { get { return _parser; } }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pbr::MessageDescriptor Descriptor {
+              get { return global::Substrait.Protobuf.RelCommon.Types.Hint.Descriptor.NestedTypes[2]; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            pbr::MessageDescriptor pb::IMessage.Descriptor {
+              get { return Descriptor; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public SavedComputation() {
+              OnConstruction();
+            }
+
+            partial void OnConstruction();
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public SavedComputation(SavedComputation other) : this() {
+              computationId_ = other.computationId_;
+              type_ = other.type_;
+              advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
+              _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public SavedComputation Clone() {
+              return new SavedComputation(this);
+            }
+
+            /// <summary>Field number for the "computation_id" field.</summary>
+            public const int ComputationIdFieldNumber = 1;
+            private int computationId_;
+            /// <summary>
+            /// The value corresponds to a plan unique number for that datastructure.  Any particular
+            /// computation may be saved only once but it may be loaded multiple times.
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int ComputationId {
+              get { return computationId_; }
+              set {
+                computationId_ = value;
+              }
+            }
+
+            /// <summary>Field number for the "type" field.</summary>
+            public const int TypeFieldNumber = 2;
+            private global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType type_ = global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified;
+            /// <summary>
+            /// The type of this computation.  While a plan may use COMPUTATION_TYPE_UNKNOWN for all
+            /// of its types it is recommended to use a more specific type so that the optimization
+            /// is more portable.  The consumer should be able to decide if an unknown type here
+            /// matches the same unknown type at a different plan and ignore the optimization if they
+            /// are mismatched.
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType Type {
+              get { return type_; }
+              set {
+                type_ = value;
+              }
+            }
+
+            /// <summary>Field number for the "advanced_extension" field.</summary>
+            public const int AdvancedExtensionFieldNumber = 10;
+            private global::Substrait.Protobuf.AdvancedExtension advancedExtension_;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public global::Substrait.Protobuf.AdvancedExtension AdvancedExtension {
+              get { return advancedExtension_; }
+              set {
+                advancedExtension_ = value;
+              }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override bool Equals(object other) {
+              return Equals(other as SavedComputation);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool Equals(SavedComputation other) {
+              if (ReferenceEquals(other, null)) {
+                return false;
+              }
+              if (ReferenceEquals(other, this)) {
+                return true;
+              }
+              if (ComputationId != other.ComputationId) return false;
+              if (Type != other.Type) return false;
+              if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
+              return Equals(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override int GetHashCode() {
+              int hash = 1;
+              if (ComputationId != 0) hash ^= ComputationId.GetHashCode();
+              if (Type != global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified) hash ^= Type.GetHashCode();
+              if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
+              if (_unknownFields != null) {
+                hash ^= _unknownFields.GetHashCode();
+              }
+              return hash;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override string ToString() {
+              return pb::JsonFormatter.ToDiagnosticString(this);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void WriteTo(pb::CodedOutputStream output) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              output.WriteRawMessage(this);
+            #else
+              if (ComputationId != 0) {
+                output.WriteRawTag(8);
+                output.WriteInt32(ComputationId);
+              }
+              if (Type != global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified) {
+                output.WriteRawTag(16);
+                output.WriteEnum((int) Type);
+              }
+              if (advancedExtension_ != null) {
+                output.WriteRawTag(82);
+                output.WriteMessage(AdvancedExtension);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(output);
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+              if (ComputationId != 0) {
+                output.WriteRawTag(8);
+                output.WriteInt32(ComputationId);
+              }
+              if (Type != global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified) {
+                output.WriteRawTag(16);
+                output.WriteEnum((int) Type);
+              }
+              if (advancedExtension_ != null) {
+                output.WriteRawTag(82);
+                output.WriteMessage(AdvancedExtension);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(ref output);
+              }
+            }
+            #endif
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int CalculateSize() {
+              int size = 0;
+              if (ComputationId != 0) {
+                size += 1 + pb::CodedOutputStream.ComputeInt32Size(ComputationId);
+              }
+              if (Type != global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified) {
+                size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Type);
+              }
+              if (advancedExtension_ != null) {
+                size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
+              }
+              if (_unknownFields != null) {
+                size += _unknownFields.CalculateSize();
+              }
+              return size;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(SavedComputation other) {
+              if (other == null) {
+                return;
+              }
+              if (other.ComputationId != 0) {
+                ComputationId = other.ComputationId;
+              }
+              if (other.Type != global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified) {
+                Type = other.Type;
+              }
+              if (other.advancedExtension_ != null) {
+                if (advancedExtension_ == null) {
+                  AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+                }
+                AdvancedExtension.MergeFrom(other.AdvancedExtension);
+              }
+              _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(pb::CodedInputStream input) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              input.ReadRawMessage(this);
+            #else
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                    break;
+                  case 8: {
+                    ComputationId = input.ReadInt32();
+                    break;
+                  }
+                  case 16: {
+                    Type = (global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType) input.ReadEnum();
+                    break;
+                  }
+                  case 82: {
+                    if (advancedExtension_ == null) {
+                      AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+                    }
+                    input.ReadMessage(AdvancedExtension);
+                    break;
+                  }
+                }
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                    break;
+                  case 8: {
+                    ComputationId = input.ReadInt32();
+                    break;
+                  }
+                  case 16: {
+                    Type = (global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType) input.ReadEnum();
+                    break;
+                  }
+                  case 82: {
+                    if (advancedExtension_ == null) {
+                      AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+                    }
+                    input.ReadMessage(AdvancedExtension);
+                    break;
+                  }
+                }
+              }
+            }
+            #endif
+
+          }
+
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+          public sealed partial class LoadedComputation : pb::IMessage<LoadedComputation>
+          #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              , pb::IBufferMessage
+          #endif
+          {
+            private static readonly pb::MessageParser<LoadedComputation> _parser = new pb::MessageParser<LoadedComputation>(() => new LoadedComputation());
+            private pb::UnknownFieldSet _unknownFields;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pb::MessageParser<LoadedComputation> Parser { get { return _parser; } }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pbr::MessageDescriptor Descriptor {
+              get { return global::Substrait.Protobuf.RelCommon.Types.Hint.Descriptor.NestedTypes[3]; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            pbr::MessageDescriptor pb::IMessage.Descriptor {
+              get { return Descriptor; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public LoadedComputation() {
+              OnConstruction();
+            }
+
+            partial void OnConstruction();
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public LoadedComputation(LoadedComputation other) : this() {
+              computationIdReference_ = other.computationIdReference_;
+              type_ = other.type_;
+              advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
+              _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public LoadedComputation Clone() {
+              return new LoadedComputation(this);
+            }
+
+            /// <summary>Field number for the "computation_id_reference" field.</summary>
+            public const int ComputationIdReferenceFieldNumber = 1;
+            private int computationIdReference_;
+            /// <summary>
+            /// The value corresponds to a plan unique number for that datastructure.  Any particular
+            /// computation may be saved only once but it may be loaded multiple times.
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int ComputationIdReference {
+              get { return computationIdReference_; }
+              set {
+                computationIdReference_ = value;
+              }
+            }
+
+            /// <summary>Field number for the "type" field.</summary>
+            public const int TypeFieldNumber = 2;
+            private global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType type_ = global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified;
+            /// <summary>
+            /// The type of this computation.  While a plan may use COMPUTATION_TYPE_UNKNOWN for all
+            /// of its types it is recommended to use a more specific type so that the optimization
+            /// is more portable.  The consumer should be able to decide if an unknown type here
+            /// matches the same unknown type at a different plan and ignore the optimization if they
+            /// are mismatched.
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType Type {
+              get { return type_; }
+              set {
+                type_ = value;
+              }
+            }
+
+            /// <summary>Field number for the "advanced_extension" field.</summary>
+            public const int AdvancedExtensionFieldNumber = 10;
+            private global::Substrait.Protobuf.AdvancedExtension advancedExtension_;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public global::Substrait.Protobuf.AdvancedExtension AdvancedExtension {
+              get { return advancedExtension_; }
+              set {
+                advancedExtension_ = value;
+              }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override bool Equals(object other) {
+              return Equals(other as LoadedComputation);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool Equals(LoadedComputation other) {
+              if (ReferenceEquals(other, null)) {
+                return false;
+              }
+              if (ReferenceEquals(other, this)) {
+                return true;
+              }
+              if (ComputationIdReference != other.ComputationIdReference) return false;
+              if (Type != other.Type) return false;
+              if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
+              return Equals(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override int GetHashCode() {
+              int hash = 1;
+              if (ComputationIdReference != 0) hash ^= ComputationIdReference.GetHashCode();
+              if (Type != global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified) hash ^= Type.GetHashCode();
+              if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
+              if (_unknownFields != null) {
+                hash ^= _unknownFields.GetHashCode();
+              }
+              return hash;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override string ToString() {
+              return pb::JsonFormatter.ToDiagnosticString(this);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void WriteTo(pb::CodedOutputStream output) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              output.WriteRawMessage(this);
+            #else
+              if (ComputationIdReference != 0) {
+                output.WriteRawTag(8);
+                output.WriteInt32(ComputationIdReference);
+              }
+              if (Type != global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified) {
+                output.WriteRawTag(16);
+                output.WriteEnum((int) Type);
+              }
+              if (advancedExtension_ != null) {
+                output.WriteRawTag(82);
+                output.WriteMessage(AdvancedExtension);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(output);
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+              if (ComputationIdReference != 0) {
+                output.WriteRawTag(8);
+                output.WriteInt32(ComputationIdReference);
+              }
+              if (Type != global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified) {
+                output.WriteRawTag(16);
+                output.WriteEnum((int) Type);
+              }
+              if (advancedExtension_ != null) {
+                output.WriteRawTag(82);
+                output.WriteMessage(AdvancedExtension);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(ref output);
+              }
+            }
+            #endif
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int CalculateSize() {
+              int size = 0;
+              if (ComputationIdReference != 0) {
+                size += 1 + pb::CodedOutputStream.ComputeInt32Size(ComputationIdReference);
+              }
+              if (Type != global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified) {
+                size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Type);
+              }
+              if (advancedExtension_ != null) {
+                size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
+              }
+              if (_unknownFields != null) {
+                size += _unknownFields.CalculateSize();
+              }
+              return size;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(LoadedComputation other) {
+              if (other == null) {
+                return;
+              }
+              if (other.ComputationIdReference != 0) {
+                ComputationIdReference = other.ComputationIdReference;
+              }
+              if (other.Type != global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType.Unspecified) {
+                Type = other.Type;
+              }
+              if (other.advancedExtension_ != null) {
+                if (advancedExtension_ == null) {
+                  AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+                }
+                AdvancedExtension.MergeFrom(other.AdvancedExtension);
+              }
+              _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(pb::CodedInputStream input) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              input.ReadRawMessage(this);
+            #else
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                    break;
+                  case 8: {
+                    ComputationIdReference = input.ReadInt32();
+                    break;
+                  }
+                  case 16: {
+                    Type = (global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType) input.ReadEnum();
+                    break;
+                  }
+                  case 82: {
+                    if (advancedExtension_ == null) {
+                      AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+                    }
+                    input.ReadMessage(AdvancedExtension);
+                    break;
+                  }
+                }
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                    break;
+                  case 8: {
+                    ComputationIdReference = input.ReadInt32();
+                    break;
+                  }
+                  case 16: {
+                    Type = (global::Substrait.Protobuf.RelCommon.Types.Hint.Types.ComputationType) input.ReadEnum();
+                    break;
+                  }
                   case 82: {
                     if (advancedExtension_ == null) {
                       AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -2235,6 +3111,9 @@ namespace Substrait.Protobuf {
           break;
         case ReadTypeOneofCase.ExtensionTable:
           ExtensionTable = other.ExtensionTable.Clone();
+          break;
+        case ReadTypeOneofCase.IcebergTable:
+          IcebergTable = other.IcebergTable.Clone();
           break;
       }
 
@@ -2367,6 +3246,18 @@ namespace Substrait.Protobuf {
       }
     }
 
+    /// <summary>Field number for the "iceberg_table" field.</summary>
+    public const int IcebergTableFieldNumber = 9;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.ReadRel.Types.IcebergTable IcebergTable {
+      get { return readTypeCase_ == ReadTypeOneofCase.IcebergTable ? (global::Substrait.Protobuf.ReadRel.Types.IcebergTable) readType_ : null; }
+      set {
+        readType_ = value;
+        readTypeCase_ = value == null ? ReadTypeOneofCase.None : ReadTypeOneofCase.IcebergTable;
+      }
+    }
+
     private object readType_;
     /// <summary>Enum of possible cases for the "read_type" oneof.</summary>
     public enum ReadTypeOneofCase {
@@ -2375,6 +3266,7 @@ namespace Substrait.Protobuf {
       LocalFiles = 6,
       NamedTable = 7,
       ExtensionTable = 8,
+      IcebergTable = 9,
     }
     private ReadTypeOneofCase readTypeCase_ = ReadTypeOneofCase.None;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -2415,6 +3307,7 @@ namespace Substrait.Protobuf {
       if (!object.Equals(LocalFiles, other.LocalFiles)) return false;
       if (!object.Equals(NamedTable, other.NamedTable)) return false;
       if (!object.Equals(ExtensionTable, other.ExtensionTable)) return false;
+      if (!object.Equals(IcebergTable, other.IcebergTable)) return false;
       if (ReadTypeCase != other.ReadTypeCase) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
@@ -2433,6 +3326,7 @@ namespace Substrait.Protobuf {
       if (readTypeCase_ == ReadTypeOneofCase.LocalFiles) hash ^= LocalFiles.GetHashCode();
       if (readTypeCase_ == ReadTypeOneofCase.NamedTable) hash ^= NamedTable.GetHashCode();
       if (readTypeCase_ == ReadTypeOneofCase.ExtensionTable) hash ^= ExtensionTable.GetHashCode();
+      if (readTypeCase_ == ReadTypeOneofCase.IcebergTable) hash ^= IcebergTable.GetHashCode();
       hash ^= (int) readTypeCase_;
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
@@ -2484,6 +3378,10 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(66);
         output.WriteMessage(ExtensionTable);
       }
+      if (readTypeCase_ == ReadTypeOneofCase.IcebergTable) {
+        output.WriteRawTag(74);
+        output.WriteMessage(IcebergTable);
+      }
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
         output.WriteMessage(AdvancedExtension);
@@ -2534,6 +3432,10 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(66);
         output.WriteMessage(ExtensionTable);
       }
+      if (readTypeCase_ == ReadTypeOneofCase.IcebergTable) {
+        output.WriteRawTag(74);
+        output.WriteMessage(IcebergTable);
+      }
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
         output.WriteMessage(AdvancedExtension);
@@ -2581,6 +3483,9 @@ namespace Substrait.Protobuf {
       }
       if (readTypeCase_ == ReadTypeOneofCase.ExtensionTable) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(ExtensionTable);
+      }
+      if (readTypeCase_ == ReadTypeOneofCase.IcebergTable) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(IcebergTable);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -2655,6 +3560,12 @@ namespace Substrait.Protobuf {
           }
           ExtensionTable.MergeFrom(other.ExtensionTable);
           break;
+        case ReadTypeOneofCase.IcebergTable:
+          if (IcebergTable == null) {
+            IcebergTable = new global::Substrait.Protobuf.ReadRel.Types.IcebergTable();
+          }
+          IcebergTable.MergeFrom(other.IcebergTable);
+          break;
       }
 
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
@@ -2668,7 +3579,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -2736,6 +3651,15 @@ namespace Substrait.Protobuf {
             ExtensionTable = subBuilder;
             break;
           }
+          case 74: {
+            global::Substrait.Protobuf.ReadRel.Types.IcebergTable subBuilder = new global::Substrait.Protobuf.ReadRel.Types.IcebergTable();
+            if (readTypeCase_ == ReadTypeOneofCase.IcebergTable) {
+              subBuilder.MergeFrom(IcebergTable);
+            }
+            input.ReadMessage(subBuilder);
+            IcebergTable = subBuilder;
+            break;
+          }
           case 82: {
             if (advancedExtension_ == null) {
               AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -2761,7 +3685,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -2827,6 +3755,15 @@ namespace Substrait.Protobuf {
             }
             input.ReadMessage(subBuilder);
             ExtensionTable = subBuilder;
+            break;
+          }
+          case 74: {
+            global::Substrait.Protobuf.ReadRel.Types.IcebergTable subBuilder = new global::Substrait.Protobuf.ReadRel.Types.IcebergTable();
+            if (readTypeCase_ == ReadTypeOneofCase.IcebergTable) {
+              subBuilder.MergeFrom(IcebergTable);
+            }
+            input.ReadMessage(subBuilder);
+            IcebergTable = subBuilder;
             break;
           }
           case 82: {
@@ -3034,7 +3971,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -3060,7 +4001,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -3083,7 +4028,607 @@ namespace Substrait.Protobuf {
       }
 
       /// <summary>
-      /// A table composed of literals.
+      /// Read an Iceberg Table
+      /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+      public sealed partial class IcebergTable : pb::IMessage<IcebergTable>
+      #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          , pb::IBufferMessage
+      #endif
+      {
+        private static readonly pb::MessageParser<IcebergTable> _parser = new pb::MessageParser<IcebergTable>(() => new IcebergTable());
+        private pb::UnknownFieldSet _unknownFields;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pb::MessageParser<IcebergTable> Parser { get { return _parser; } }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pbr::MessageDescriptor Descriptor {
+          get { return global::Substrait.Protobuf.ReadRel.Descriptor.NestedTypes[1]; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        pbr::MessageDescriptor pb::IMessage.Descriptor {
+          get { return Descriptor; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public IcebergTable() {
+          OnConstruction();
+        }
+
+        partial void OnConstruction();
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public IcebergTable(IcebergTable other) : this() {
+          switch (other.TableTypeCase) {
+            case TableTypeOneofCase.Direct:
+              Direct = other.Direct.Clone();
+              break;
+          }
+
+          _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public IcebergTable Clone() {
+          return new IcebergTable(this);
+        }
+
+        /// <summary>Field number for the "direct" field.</summary>
+        public const int DirectFieldNumber = 1;
+        /// <summary>
+        /// future: add catalog table types (e.g. rest api, latest metadata in path, etc)
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.ReadRel.Types.IcebergTable.Types.MetadataFileRead Direct {
+          get { return tableTypeCase_ == TableTypeOneofCase.Direct ? (global::Substrait.Protobuf.ReadRel.Types.IcebergTable.Types.MetadataFileRead) tableType_ : null; }
+          set {
+            tableType_ = value;
+            tableTypeCase_ = value == null ? TableTypeOneofCase.None : TableTypeOneofCase.Direct;
+          }
+        }
+
+        private object tableType_;
+        /// <summary>Enum of possible cases for the "table_type" oneof.</summary>
+        public enum TableTypeOneofCase {
+          None = 0,
+          Direct = 1,
+        }
+        private TableTypeOneofCase tableTypeCase_ = TableTypeOneofCase.None;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public TableTypeOneofCase TableTypeCase {
+          get { return tableTypeCase_; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearTableType() {
+          tableTypeCase_ = TableTypeOneofCase.None;
+          tableType_ = null;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override bool Equals(object other) {
+          return Equals(other as IcebergTable);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool Equals(IcebergTable other) {
+          if (ReferenceEquals(other, null)) {
+            return false;
+          }
+          if (ReferenceEquals(other, this)) {
+            return true;
+          }
+          if (!object.Equals(Direct, other.Direct)) return false;
+          if (TableTypeCase != other.TableTypeCase) return false;
+          return Equals(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override int GetHashCode() {
+          int hash = 1;
+          if (tableTypeCase_ == TableTypeOneofCase.Direct) hash ^= Direct.GetHashCode();
+          hash ^= (int) tableTypeCase_;
+          if (_unknownFields != null) {
+            hash ^= _unknownFields.GetHashCode();
+          }
+          return hash;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override string ToString() {
+          return pb::JsonFormatter.ToDiagnosticString(this);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void WriteTo(pb::CodedOutputStream output) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          output.WriteRawMessage(this);
+        #else
+          if (tableTypeCase_ == TableTypeOneofCase.Direct) {
+            output.WriteRawTag(10);
+            output.WriteMessage(Direct);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(output);
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+          if (tableTypeCase_ == TableTypeOneofCase.Direct) {
+            output.WriteRawTag(10);
+            output.WriteMessage(Direct);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(ref output);
+          }
+        }
+        #endif
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public int CalculateSize() {
+          int size = 0;
+          if (tableTypeCase_ == TableTypeOneofCase.Direct) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(Direct);
+          }
+          if (_unknownFields != null) {
+            size += _unknownFields.CalculateSize();
+          }
+          return size;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(IcebergTable other) {
+          if (other == null) {
+            return;
+          }
+          switch (other.TableTypeCase) {
+            case TableTypeOneofCase.Direct:
+              if (Direct == null) {
+                Direct = new global::Substrait.Protobuf.ReadRel.Types.IcebergTable.Types.MetadataFileRead();
+              }
+              Direct.MergeFrom(other.Direct);
+              break;
+          }
+
+          _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(pb::CodedInputStream input) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          input.ReadRawMessage(this);
+        #else
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                break;
+              case 10: {
+                global::Substrait.Protobuf.ReadRel.Types.IcebergTable.Types.MetadataFileRead subBuilder = new global::Substrait.Protobuf.ReadRel.Types.IcebergTable.Types.MetadataFileRead();
+                if (tableTypeCase_ == TableTypeOneofCase.Direct) {
+                  subBuilder.MergeFrom(Direct);
+                }
+                input.ReadMessage(subBuilder);
+                Direct = subBuilder;
+                break;
+              }
+            }
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                break;
+              case 10: {
+                global::Substrait.Protobuf.ReadRel.Types.IcebergTable.Types.MetadataFileRead subBuilder = new global::Substrait.Protobuf.ReadRel.Types.IcebergTable.Types.MetadataFileRead();
+                if (tableTypeCase_ == TableTypeOneofCase.Direct) {
+                  subBuilder.MergeFrom(Direct);
+                }
+                input.ReadMessage(subBuilder);
+                Direct = subBuilder;
+                break;
+              }
+            }
+          }
+        }
+        #endif
+
+        #region Nested types
+        /// <summary>Container for nested types declared in the IcebergTable message type.</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static partial class Types {
+          /// <summary>
+          /// Read an Iceberg table using a metadata file. Implicit assumption: required credentials are already known by plan consumer.
+          /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+          public sealed partial class MetadataFileRead : pb::IMessage<MetadataFileRead>
+          #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              , pb::IBufferMessage
+          #endif
+          {
+            private static readonly pb::MessageParser<MetadataFileRead> _parser = new pb::MessageParser<MetadataFileRead>(() => new MetadataFileRead());
+            private pb::UnknownFieldSet _unknownFields;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pb::MessageParser<MetadataFileRead> Parser { get { return _parser; } }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pbr::MessageDescriptor Descriptor {
+              get { return global::Substrait.Protobuf.ReadRel.Types.IcebergTable.Descriptor.NestedTypes[0]; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            pbr::MessageDescriptor pb::IMessage.Descriptor {
+              get { return Descriptor; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public MetadataFileRead() {
+              OnConstruction();
+            }
+
+            partial void OnConstruction();
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public MetadataFileRead(MetadataFileRead other) : this() {
+              metadataUri_ = other.metadataUri_;
+              switch (other.SnapshotCase) {
+                case SnapshotOneofCase.SnapshotId:
+                  SnapshotId = other.SnapshotId;
+                  break;
+                case SnapshotOneofCase.SnapshotTimestamp:
+                  SnapshotTimestamp = other.SnapshotTimestamp;
+                  break;
+              }
+
+              _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public MetadataFileRead Clone() {
+              return new MetadataFileRead(this);
+            }
+
+            /// <summary>Field number for the "metadata_uri" field.</summary>
+            public const int MetadataUriFieldNumber = 1;
+            private string metadataUri_ = "";
+            /// <summary>
+            /// the specific uri of a metadata file (e.g. s3://mybucket/mytable/&lt;ver>-&lt;uuid>.metadata.json)
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public string MetadataUri {
+              get { return metadataUri_; }
+              set {
+                metadataUri_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+              }
+            }
+
+            /// <summary>Field number for the "snapshot_id" field.</summary>
+            public const int SnapshotIdFieldNumber = 2;
+            /// <summary>
+            /// the snapshot id to read.
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public string SnapshotId {
+              get { return HasSnapshotId ? (string) snapshot_ : ""; }
+              set {
+                snapshot_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+                snapshotCase_ = SnapshotOneofCase.SnapshotId;
+              }
+            }
+            /// <summary>Gets whether the "snapshot_id" field is set</summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool HasSnapshotId {
+              get { return snapshotCase_ == SnapshotOneofCase.SnapshotId; }
+            }
+            /// <summary> Clears the value of the oneof if it's currently set to "snapshot_id" </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearSnapshotId() {
+              if (HasSnapshotId) {
+                ClearSnapshot();
+              }
+            }
+
+            /// <summary>Field number for the "snapshot_timestamp" field.</summary>
+            public const int SnapshotTimestampFieldNumber = 3;
+            /// <summary>
+            /// the timestamp that should be used to select the snapshot (Time passed in microseconds since 1970-01-01 00:00:00.000000 in UTC)
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public long SnapshotTimestamp {
+              get { return HasSnapshotTimestamp ? (long) snapshot_ : 0L; }
+              set {
+                snapshot_ = value;
+                snapshotCase_ = SnapshotOneofCase.SnapshotTimestamp;
+              }
+            }
+            /// <summary>Gets whether the "snapshot_timestamp" field is set</summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool HasSnapshotTimestamp {
+              get { return snapshotCase_ == SnapshotOneofCase.SnapshotTimestamp; }
+            }
+            /// <summary> Clears the value of the oneof if it's currently set to "snapshot_timestamp" </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearSnapshotTimestamp() {
+              if (HasSnapshotTimestamp) {
+                ClearSnapshot();
+              }
+            }
+
+            private object snapshot_;
+            /// <summary>Enum of possible cases for the "snapshot" oneof.</summary>
+            public enum SnapshotOneofCase {
+              None = 0,
+              SnapshotId = 2,
+              SnapshotTimestamp = 3,
+            }
+            private SnapshotOneofCase snapshotCase_ = SnapshotOneofCase.None;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public SnapshotOneofCase SnapshotCase {
+              get { return snapshotCase_; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearSnapshot() {
+              snapshotCase_ = SnapshotOneofCase.None;
+              snapshot_ = null;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override bool Equals(object other) {
+              return Equals(other as MetadataFileRead);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool Equals(MetadataFileRead other) {
+              if (ReferenceEquals(other, null)) {
+                return false;
+              }
+              if (ReferenceEquals(other, this)) {
+                return true;
+              }
+              if (MetadataUri != other.MetadataUri) return false;
+              if (SnapshotId != other.SnapshotId) return false;
+              if (SnapshotTimestamp != other.SnapshotTimestamp) return false;
+              if (SnapshotCase != other.SnapshotCase) return false;
+              return Equals(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override int GetHashCode() {
+              int hash = 1;
+              if (MetadataUri.Length != 0) hash ^= MetadataUri.GetHashCode();
+              if (HasSnapshotId) hash ^= SnapshotId.GetHashCode();
+              if (HasSnapshotTimestamp) hash ^= SnapshotTimestamp.GetHashCode();
+              hash ^= (int) snapshotCase_;
+              if (_unknownFields != null) {
+                hash ^= _unknownFields.GetHashCode();
+              }
+              return hash;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override string ToString() {
+              return pb::JsonFormatter.ToDiagnosticString(this);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void WriteTo(pb::CodedOutputStream output) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              output.WriteRawMessage(this);
+            #else
+              if (MetadataUri.Length != 0) {
+                output.WriteRawTag(10);
+                output.WriteString(MetadataUri);
+              }
+              if (HasSnapshotId) {
+                output.WriteRawTag(18);
+                output.WriteString(SnapshotId);
+              }
+              if (HasSnapshotTimestamp) {
+                output.WriteRawTag(24);
+                output.WriteInt64(SnapshotTimestamp);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(output);
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+              if (MetadataUri.Length != 0) {
+                output.WriteRawTag(10);
+                output.WriteString(MetadataUri);
+              }
+              if (HasSnapshotId) {
+                output.WriteRawTag(18);
+                output.WriteString(SnapshotId);
+              }
+              if (HasSnapshotTimestamp) {
+                output.WriteRawTag(24);
+                output.WriteInt64(SnapshotTimestamp);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(ref output);
+              }
+            }
+            #endif
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int CalculateSize() {
+              int size = 0;
+              if (MetadataUri.Length != 0) {
+                size += 1 + pb::CodedOutputStream.ComputeStringSize(MetadataUri);
+              }
+              if (HasSnapshotId) {
+                size += 1 + pb::CodedOutputStream.ComputeStringSize(SnapshotId);
+              }
+              if (HasSnapshotTimestamp) {
+                size += 1 + pb::CodedOutputStream.ComputeInt64Size(SnapshotTimestamp);
+              }
+              if (_unknownFields != null) {
+                size += _unknownFields.CalculateSize();
+              }
+              return size;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(MetadataFileRead other) {
+              if (other == null) {
+                return;
+              }
+              if (other.MetadataUri.Length != 0) {
+                MetadataUri = other.MetadataUri;
+              }
+              switch (other.SnapshotCase) {
+                case SnapshotOneofCase.SnapshotId:
+                  SnapshotId = other.SnapshotId;
+                  break;
+                case SnapshotOneofCase.SnapshotTimestamp:
+                  SnapshotTimestamp = other.SnapshotTimestamp;
+                  break;
+              }
+
+              _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(pb::CodedInputStream input) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              input.ReadRawMessage(this);
+            #else
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                    break;
+                  case 10: {
+                    MetadataUri = input.ReadString();
+                    break;
+                  }
+                  case 18: {
+                    SnapshotId = input.ReadString();
+                    break;
+                  }
+                  case 24: {
+                    SnapshotTimestamp = input.ReadInt64();
+                    break;
+                  }
+                }
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                    break;
+                  case 10: {
+                    MetadataUri = input.ReadString();
+                    break;
+                  }
+                  case 18: {
+                    SnapshotId = input.ReadString();
+                    break;
+                  }
+                  case 24: {
+                    SnapshotTimestamp = input.ReadInt64();
+                    break;
+                  }
+                }
+              }
+            }
+            #endif
+
+          }
+
+        }
+        #endregion
+
+      }
+
+      /// <summary>
+      /// A table composed of expressions.
       /// </summary>
       [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class VirtualTable : pb::IMessage<VirtualTable>
@@ -3100,7 +4645,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.ReadRel.Descriptor.NestedTypes[1]; }
+          get { return global::Substrait.Protobuf.ReadRel.Descriptor.NestedTypes[2]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3249,7 +4794,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -3272,7 +4821,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -3310,7 +4863,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.ReadRel.Descriptor.NestedTypes[2]; }
+          get { return global::Substrait.Protobuf.ReadRel.Descriptor.NestedTypes[3]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3454,7 +5007,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -3476,7 +5033,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -3495,7 +5056,7 @@ namespace Substrait.Protobuf {
       }
 
       /// <summary>
-      /// Represents a list of files in input of a scan operation
+      /// Represents a list of locally-accessible files in input of a scan operation
       /// </summary>
       [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class LocalFiles : pb::IMessage<LocalFiles>
@@ -3512,7 +5073,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.ReadRel.Descriptor.NestedTypes[3]; }
+          get { return global::Substrait.Protobuf.ReadRel.Descriptor.NestedTypes[4]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3674,7 +5235,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -3700,7 +5265,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -3800,6 +5369,9 @@ namespace Substrait.Protobuf {
                   break;
                 case FileFormatOneofCase.Dwrf:
                   Dwrf = other.Dwrf.Clone();
+                  break;
+                case FileFormatOneofCase.Text:
+                  Text = other.Text.Clone();
                   break;
               }
 
@@ -4036,6 +5608,18 @@ namespace Substrait.Protobuf {
               }
             }
 
+            /// <summary>Field number for the "text" field.</summary>
+            public const int TextFieldNumber = 14;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DelimiterSeparatedTextReadOptions Text {
+              get { return fileFormatCase_ == FileFormatOneofCase.Text ? (global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DelimiterSeparatedTextReadOptions) fileFormat_ : null; }
+              set {
+                fileFormat_ = value;
+                fileFormatCase_ = value == null ? FileFormatOneofCase.None : FileFormatOneofCase.Text;
+              }
+            }
+
             private object pathType_;
             /// <summary>Enum of possible cases for the "path_type" oneof.</summary>
             public enum PathTypeOneofCase {
@@ -4068,6 +5652,7 @@ namespace Substrait.Protobuf {
               Orc = 11,
               Extension = 12,
               Dwrf = 13,
+              Text = 14,
             }
             private FileFormatOneofCase fileFormatCase_ = FileFormatOneofCase.None;
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -4110,6 +5695,7 @@ namespace Substrait.Protobuf {
               if (!object.Equals(Orc, other.Orc)) return false;
               if (!object.Equals(Extension, other.Extension)) return false;
               if (!object.Equals(Dwrf, other.Dwrf)) return false;
+              if (!object.Equals(Text, other.Text)) return false;
               if (PathTypeCase != other.PathTypeCase) return false;
               if (FileFormatCase != other.FileFormatCase) return false;
               return Equals(_unknownFields, other._unknownFields);
@@ -4131,6 +5717,7 @@ namespace Substrait.Protobuf {
               if (fileFormatCase_ == FileFormatOneofCase.Orc) hash ^= Orc.GetHashCode();
               if (fileFormatCase_ == FileFormatOneofCase.Extension) hash ^= Extension.GetHashCode();
               if (fileFormatCase_ == FileFormatOneofCase.Dwrf) hash ^= Dwrf.GetHashCode();
+              if (fileFormatCase_ == FileFormatOneofCase.Text) hash ^= Text.GetHashCode();
               hash ^= (int) pathTypeCase_;
               hash ^= (int) fileFormatCase_;
               if (_unknownFields != null) {
@@ -4199,6 +5786,10 @@ namespace Substrait.Protobuf {
                 output.WriteRawTag(106);
                 output.WriteMessage(Dwrf);
               }
+              if (fileFormatCase_ == FileFormatOneofCase.Text) {
+                output.WriteRawTag(114);
+                output.WriteMessage(Text);
+              }
               if (_unknownFields != null) {
                 _unknownFields.WriteTo(output);
               }
@@ -4257,6 +5848,10 @@ namespace Substrait.Protobuf {
                 output.WriteRawTag(106);
                 output.WriteMessage(Dwrf);
               }
+              if (fileFormatCase_ == FileFormatOneofCase.Text) {
+                output.WriteRawTag(114);
+                output.WriteMessage(Text);
+              }
               if (_unknownFields != null) {
                 _unknownFields.WriteTo(ref output);
               }
@@ -4302,6 +5897,9 @@ namespace Substrait.Protobuf {
               }
               if (fileFormatCase_ == FileFormatOneofCase.Dwrf) {
                 size += 1 + pb::CodedOutputStream.ComputeMessageSize(Dwrf);
+              }
+              if (fileFormatCase_ == FileFormatOneofCase.Text) {
+                size += 1 + pb::CodedOutputStream.ComputeMessageSize(Text);
               }
               if (_unknownFields != null) {
                 size += _unknownFields.CalculateSize();
@@ -4370,6 +5968,12 @@ namespace Substrait.Protobuf {
                   }
                   Dwrf.MergeFrom(other.Dwrf);
                   break;
+                case FileFormatOneofCase.Text:
+                  if (Text == null) {
+                    Text = new global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DelimiterSeparatedTextReadOptions();
+                  }
+                  Text.MergeFrom(other.Text);
+                  break;
               }
 
               _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
@@ -4383,7 +5987,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -4460,6 +6068,15 @@ namespace Substrait.Protobuf {
                     Dwrf = subBuilder;
                     break;
                   }
+                  case 114: {
+                    global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DelimiterSeparatedTextReadOptions subBuilder = new global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DelimiterSeparatedTextReadOptions();
+                    if (fileFormatCase_ == FileFormatOneofCase.Text) {
+                      subBuilder.MergeFrom(Text);
+                    }
+                    input.ReadMessage(subBuilder);
+                    Text = subBuilder;
+                    break;
+                  }
                 }
               }
             #endif
@@ -4471,7 +6088,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -4546,6 +6167,15 @@ namespace Substrait.Protobuf {
                     }
                     input.ReadMessage(subBuilder);
                     Dwrf = subBuilder;
+                    break;
+                  }
+                  case 114: {
+                    global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DelimiterSeparatedTextReadOptions subBuilder = new global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Types.DelimiterSeparatedTextReadOptions();
+                    if (fileFormatCase_ == FileFormatOneofCase.Text) {
+                      subBuilder.MergeFrom(Text);
+                    }
+                    input.ReadMessage(subBuilder);
+                    Text = subBuilder;
                     break;
                   }
                 }
@@ -4685,7 +6315,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -4700,7 +6334,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -4838,7 +6476,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -4853,7 +6495,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -4991,7 +6637,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -5006,7 +6656,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -5144,7 +6798,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -5159,10 +6817,442 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
+                    }
+                  }
+                }
+                #endif
+
+              }
+
+              /// <summary>
+              /// Delimiter separated files may be compressed.  The reader should
+              /// autodetect this and decompress as needed.
+              /// </summary>
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+              public sealed partial class DelimiterSeparatedTextReadOptions : pb::IMessage<DelimiterSeparatedTextReadOptions>
+              #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+                  , pb::IBufferMessage
+              #endif
+              {
+                private static readonly pb::MessageParser<DelimiterSeparatedTextReadOptions> _parser = new pb::MessageParser<DelimiterSeparatedTextReadOptions>(() => new DelimiterSeparatedTextReadOptions());
+                private pb::UnknownFieldSet _unknownFields;
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public static pb::MessageParser<DelimiterSeparatedTextReadOptions> Parser { get { return _parser; } }
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public static pbr::MessageDescriptor Descriptor {
+                  get { return global::Substrait.Protobuf.ReadRel.Types.LocalFiles.Types.FileOrFiles.Descriptor.NestedTypes[4]; }
+                }
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                pbr::MessageDescriptor pb::IMessage.Descriptor {
+                  get { return Descriptor; }
+                }
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public DelimiterSeparatedTextReadOptions() {
+                  OnConstruction();
+                }
+
+                partial void OnConstruction();
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public DelimiterSeparatedTextReadOptions(DelimiterSeparatedTextReadOptions other) : this() {
+                  fieldDelimiter_ = other.fieldDelimiter_;
+                  maxLineSize_ = other.maxLineSize_;
+                  quote_ = other.quote_;
+                  headerLinesToSkip_ = other.headerLinesToSkip_;
+                  escape_ = other.escape_;
+                  valueTreatedAsNull_ = other.valueTreatedAsNull_;
+                  _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+                }
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public DelimiterSeparatedTextReadOptions Clone() {
+                  return new DelimiterSeparatedTextReadOptions(this);
+                }
+
+                /// <summary>Field number for the "field_delimiter" field.</summary>
+                public const int FieldDelimiterFieldNumber = 1;
+                private string fieldDelimiter_ = "";
+                /// <summary>
+                /// The character(s) used to separate fields.  Common values are comma,
+                /// tab, and pipe.  Multiple characters are allowed.
+                /// </summary>
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public string FieldDelimiter {
+                  get { return fieldDelimiter_; }
+                  set {
+                    fieldDelimiter_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+                  }
+                }
+
+                /// <summary>Field number for the "max_line_size" field.</summary>
+                public const int MaxLineSizeFieldNumber = 2;
+                private ulong maxLineSize_;
+                /// <summary>
+                /// The maximum number of bytes to read from a single line.  If a line
+                /// exceeds this limit the resulting behavior is undefined.
+                /// </summary>
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public ulong MaxLineSize {
+                  get { return maxLineSize_; }
+                  set {
+                    maxLineSize_ = value;
+                  }
+                }
+
+                /// <summary>Field number for the "quote" field.</summary>
+                public const int QuoteFieldNumber = 3;
+                private string quote_ = "";
+                /// <summary>
+                /// The character(s) used to quote strings.  Common values are single
+                /// and double quotation marks.
+                /// </summary>
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public string Quote {
+                  get { return quote_; }
+                  set {
+                    quote_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+                  }
+                }
+
+                /// <summary>Field number for the "header_lines_to_skip" field.</summary>
+                public const int HeaderLinesToSkipFieldNumber = 4;
+                private ulong headerLinesToSkip_;
+                /// <summary>
+                /// The number of lines to skip at the beginning of the file.
+                /// </summary>
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public ulong HeaderLinesToSkip {
+                  get { return headerLinesToSkip_; }
+                  set {
+                    headerLinesToSkip_ = value;
+                  }
+                }
+
+                /// <summary>Field number for the "escape" field.</summary>
+                public const int EscapeFieldNumber = 5;
+                private string escape_ = "";
+                /// <summary>
+                /// The character used to escape characters in strings.  Backslash is
+                /// a common value.  Note that a double quote mark can also be used as an
+                /// escape character but the external quotes should be removed first.
+                /// </summary>
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public string Escape {
+                  get { return escape_; }
+                  set {
+                    escape_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+                  }
+                }
+
+                /// <summary>Field number for the "value_treated_as_null" field.</summary>
+                public const int ValueTreatedAsNullFieldNumber = 6;
+                private readonly static string ValueTreatedAsNullDefaultValue = "";
+
+                private string valueTreatedAsNull_;
+                /// <summary>
+                /// If this value is encountered (including empty string), the resulting
+                /// value is null instead.  Leave unset to disable.  If this value is
+                /// provided, the effective schema of this file is comprised entirely of
+                /// nullable strings.  If not provided, the effective schema is instead
+                /// made up of non-nullable strings.
+                /// </summary>
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public string ValueTreatedAsNull {
+                  get { return valueTreatedAsNull_ ?? ValueTreatedAsNullDefaultValue; }
+                  set {
+                    valueTreatedAsNull_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+                  }
+                }
+                /// <summary>Gets whether the "value_treated_as_null" field is set</summary>
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public bool HasValueTreatedAsNull {
+                  get { return valueTreatedAsNull_ != null; }
+                }
+                /// <summary>Clears the value of the "value_treated_as_null" field</summary>
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public void ClearValueTreatedAsNull() {
+                  valueTreatedAsNull_ = null;
+                }
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public override bool Equals(object other) {
+                  return Equals(other as DelimiterSeparatedTextReadOptions);
+                }
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public bool Equals(DelimiterSeparatedTextReadOptions other) {
+                  if (ReferenceEquals(other, null)) {
+                    return false;
+                  }
+                  if (ReferenceEquals(other, this)) {
+                    return true;
+                  }
+                  if (FieldDelimiter != other.FieldDelimiter) return false;
+                  if (MaxLineSize != other.MaxLineSize) return false;
+                  if (Quote != other.Quote) return false;
+                  if (HeaderLinesToSkip != other.HeaderLinesToSkip) return false;
+                  if (Escape != other.Escape) return false;
+                  if (ValueTreatedAsNull != other.ValueTreatedAsNull) return false;
+                  return Equals(_unknownFields, other._unknownFields);
+                }
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public override int GetHashCode() {
+                  int hash = 1;
+                  if (FieldDelimiter.Length != 0) hash ^= FieldDelimiter.GetHashCode();
+                  if (MaxLineSize != 0UL) hash ^= MaxLineSize.GetHashCode();
+                  if (Quote.Length != 0) hash ^= Quote.GetHashCode();
+                  if (HeaderLinesToSkip != 0UL) hash ^= HeaderLinesToSkip.GetHashCode();
+                  if (Escape.Length != 0) hash ^= Escape.GetHashCode();
+                  if (HasValueTreatedAsNull) hash ^= ValueTreatedAsNull.GetHashCode();
+                  if (_unknownFields != null) {
+                    hash ^= _unknownFields.GetHashCode();
+                  }
+                  return hash;
+                }
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public override string ToString() {
+                  return pb::JsonFormatter.ToDiagnosticString(this);
+                }
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public void WriteTo(pb::CodedOutputStream output) {
+                #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+                  output.WriteRawMessage(this);
+                #else
+                  if (FieldDelimiter.Length != 0) {
+                    output.WriteRawTag(10);
+                    output.WriteString(FieldDelimiter);
+                  }
+                  if (MaxLineSize != 0UL) {
+                    output.WriteRawTag(16);
+                    output.WriteUInt64(MaxLineSize);
+                  }
+                  if (Quote.Length != 0) {
+                    output.WriteRawTag(26);
+                    output.WriteString(Quote);
+                  }
+                  if (HeaderLinesToSkip != 0UL) {
+                    output.WriteRawTag(32);
+                    output.WriteUInt64(HeaderLinesToSkip);
+                  }
+                  if (Escape.Length != 0) {
+                    output.WriteRawTag(42);
+                    output.WriteString(Escape);
+                  }
+                  if (HasValueTreatedAsNull) {
+                    output.WriteRawTag(50);
+                    output.WriteString(ValueTreatedAsNull);
+                  }
+                  if (_unknownFields != null) {
+                    _unknownFields.WriteTo(output);
+                  }
+                #endif
+                }
+
+                #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+                  if (FieldDelimiter.Length != 0) {
+                    output.WriteRawTag(10);
+                    output.WriteString(FieldDelimiter);
+                  }
+                  if (MaxLineSize != 0UL) {
+                    output.WriteRawTag(16);
+                    output.WriteUInt64(MaxLineSize);
+                  }
+                  if (Quote.Length != 0) {
+                    output.WriteRawTag(26);
+                    output.WriteString(Quote);
+                  }
+                  if (HeaderLinesToSkip != 0UL) {
+                    output.WriteRawTag(32);
+                    output.WriteUInt64(HeaderLinesToSkip);
+                  }
+                  if (Escape.Length != 0) {
+                    output.WriteRawTag(42);
+                    output.WriteString(Escape);
+                  }
+                  if (HasValueTreatedAsNull) {
+                    output.WriteRawTag(50);
+                    output.WriteString(ValueTreatedAsNull);
+                  }
+                  if (_unknownFields != null) {
+                    _unknownFields.WriteTo(ref output);
+                  }
+                }
+                #endif
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public int CalculateSize() {
+                  int size = 0;
+                  if (FieldDelimiter.Length != 0) {
+                    size += 1 + pb::CodedOutputStream.ComputeStringSize(FieldDelimiter);
+                  }
+                  if (MaxLineSize != 0UL) {
+                    size += 1 + pb::CodedOutputStream.ComputeUInt64Size(MaxLineSize);
+                  }
+                  if (Quote.Length != 0) {
+                    size += 1 + pb::CodedOutputStream.ComputeStringSize(Quote);
+                  }
+                  if (HeaderLinesToSkip != 0UL) {
+                    size += 1 + pb::CodedOutputStream.ComputeUInt64Size(HeaderLinesToSkip);
+                  }
+                  if (Escape.Length != 0) {
+                    size += 1 + pb::CodedOutputStream.ComputeStringSize(Escape);
+                  }
+                  if (HasValueTreatedAsNull) {
+                    size += 1 + pb::CodedOutputStream.ComputeStringSize(ValueTreatedAsNull);
+                  }
+                  if (_unknownFields != null) {
+                    size += _unknownFields.CalculateSize();
+                  }
+                  return size;
+                }
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public void MergeFrom(DelimiterSeparatedTextReadOptions other) {
+                  if (other == null) {
+                    return;
+                  }
+                  if (other.FieldDelimiter.Length != 0) {
+                    FieldDelimiter = other.FieldDelimiter;
+                  }
+                  if (other.MaxLineSize != 0UL) {
+                    MaxLineSize = other.MaxLineSize;
+                  }
+                  if (other.Quote.Length != 0) {
+                    Quote = other.Quote;
+                  }
+                  if (other.HeaderLinesToSkip != 0UL) {
+                    HeaderLinesToSkip = other.HeaderLinesToSkip;
+                  }
+                  if (other.Escape.Length != 0) {
+                    Escape = other.Escape;
+                  }
+                  if (other.HasValueTreatedAsNull) {
+                    ValueTreatedAsNull = other.ValueTreatedAsNull;
+                  }
+                  _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+                }
+
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                public void MergeFrom(pb::CodedInputStream input) {
+                #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+                  input.ReadRawMessage(this);
+                #else
+                  uint tag;
+                  while ((tag = input.ReadTag()) != 0) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
+                      default:
+                        _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                        break;
+                      case 10: {
+                        FieldDelimiter = input.ReadString();
+                        break;
+                      }
+                      case 16: {
+                        MaxLineSize = input.ReadUInt64();
+                        break;
+                      }
+                      case 26: {
+                        Quote = input.ReadString();
+                        break;
+                      }
+                      case 32: {
+                        HeaderLinesToSkip = input.ReadUInt64();
+                        break;
+                      }
+                      case 42: {
+                        Escape = input.ReadString();
+                        break;
+                      }
+                      case 50: {
+                        ValueTreatedAsNull = input.ReadString();
+                        break;
+                      }
+                    }
+                  }
+                #endif
+                }
+
+                #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+                [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+                [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+                void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+                  uint tag;
+                  while ((tag = input.ReadTag()) != 0) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
+                      default:
+                        _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                        break;
+                      case 10: {
+                        FieldDelimiter = input.ReadString();
+                        break;
+                      }
+                      case 16: {
+                        MaxLineSize = input.ReadUInt64();
+                        break;
+                      }
+                      case 26: {
+                        Quote = input.ReadString();
+                        break;
+                      }
+                      case 32: {
+                        HeaderLinesToSkip = input.ReadUInt64();
+                        break;
+                      }
+                      case 42: {
+                        Escape = input.ReadString();
+                        break;
+                      }
+                      case 50: {
+                        ValueTreatedAsNull = input.ReadString();
+                        break;
+                      }
                     }
                   }
                 }
@@ -5429,7 +7519,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -5469,7 +7563,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -5856,7 +7954,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -5917,7 +8019,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -5983,13 +8089,14 @@ namespace Substrait.Protobuf {
         [pbr::OriginalName("JOIN_TYPE_OUTER")] Outer = 2,
         [pbr::OriginalName("JOIN_TYPE_LEFT")] Left = 3,
         [pbr::OriginalName("JOIN_TYPE_RIGHT")] Right = 4,
-        [pbr::OriginalName("JOIN_TYPE_SEMI")] Semi = 5,
-        [pbr::OriginalName("JOIN_TYPE_ANTI")] Anti = 6,
-        /// <summary>
-        /// This join is useful for nested sub-queries where we need exactly one record in output (or throw exception)
-        /// See Section 3.2 of https://15721.courses.cs.cmu.edu/spring2018/papers/16-optimizer2/hyperjoins-btw2017.pdf
-        /// </summary>
-        [pbr::OriginalName("JOIN_TYPE_SINGLE")] Single = 7,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_SEMI")] LeftSemi = 5,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_ANTI")] LeftAnti = 6,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_SINGLE")] LeftSingle = 7,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_SEMI")] RightSemi = 8,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_ANTI")] RightAnti = 9,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_SINGLE")] RightSingle = 10,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_MARK")] LeftMark = 11,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_MARK")] RightMark = 12,
       }
 
     }
@@ -6255,7 +8362,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -6298,7 +8409,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -6377,9 +8492,25 @@ namespace Substrait.Protobuf {
     public FetchRel(FetchRel other) : this() {
       common_ = other.common_ != null ? other.common_.Clone() : null;
       input_ = other.input_ != null ? other.input_.Clone() : null;
-      offset_ = other.offset_;
-      count_ = other.count_;
       advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
+      switch (other.OffsetModeCase) {
+        case OffsetModeOneofCase.Offset:
+          Offset = other.Offset;
+          break;
+        case OffsetModeOneofCase.OffsetExpr:
+          OffsetExpr = other.OffsetExpr.Clone();
+          break;
+      }
+
+      switch (other.CountModeCase) {
+        case CountModeOneofCase.Count:
+          Count = other.Count;
+          break;
+        case CountModeOneofCase.CountExpr:
+          CountExpr = other.CountExpr.Clone();
+          break;
+      }
+
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -6415,32 +8546,105 @@ namespace Substrait.Protobuf {
 
     /// <summary>Field number for the "offset" field.</summary>
     public const int OffsetFieldNumber = 3;
-    private long offset_;
     /// <summary>
     /// the offset expressed in number of records
+    /// Deprecated: use `offset_expr` instead
     /// </summary>
+    [global::System.ObsoleteAttribute]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public long Offset {
-      get { return offset_; }
+      get { return HasOffset ? (long) offsetMode_ : 0L; }
       set {
-        offset_ = value;
+        offsetMode_ = value;
+        offsetModeCase_ = OffsetModeOneofCase.Offset;
+      }
+    }
+    /// <summary>Gets whether the "offset" field is set</summary>
+    [global::System.ObsoleteAttribute]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasOffset {
+      get { return offsetModeCase_ == OffsetModeOneofCase.Offset; }
+    }
+    /// <summary> Clears the value of the oneof if it's currently set to "offset" </summary>
+    [global::System.ObsoleteAttribute]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearOffset() {
+      if (HasOffset) {
+        ClearOffsetMode();
+      }
+    }
+
+    /// <summary>Field number for the "offset_expr" field.</summary>
+    public const int OffsetExprFieldNumber = 5;
+    /// <summary>
+    /// Expression evaluated into a non-negative integer specifying the number
+    /// of records to skip. An expression evaluating to null is treated as 0.
+    /// Evaluating to a negative integer should result in an error.
+    /// Recommended type for offset is int64.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Expression OffsetExpr {
+      get { return offsetModeCase_ == OffsetModeOneofCase.OffsetExpr ? (global::Substrait.Protobuf.Expression) offsetMode_ : null; }
+      set {
+        offsetMode_ = value;
+        offsetModeCase_ = value == null ? OffsetModeOneofCase.None : OffsetModeOneofCase.OffsetExpr;
       }
     }
 
     /// <summary>Field number for the "count" field.</summary>
     public const int CountFieldNumber = 4;
-    private long count_;
     /// <summary>
     /// the amount of records to return
     /// use -1 to signal that ALL records should be returned
+    /// Deprecated: use `count_expr` instead
     /// </summary>
+    [global::System.ObsoleteAttribute]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public long Count {
-      get { return count_; }
+      get { return HasCount ? (long) countMode_ : 0L; }
       set {
-        count_ = value;
+        countMode_ = value;
+        countModeCase_ = CountModeOneofCase.Count;
+      }
+    }
+    /// <summary>Gets whether the "count" field is set</summary>
+    [global::System.ObsoleteAttribute]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasCount {
+      get { return countModeCase_ == CountModeOneofCase.Count; }
+    }
+    /// <summary> Clears the value of the oneof if it's currently set to "count" </summary>
+    [global::System.ObsoleteAttribute]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearCount() {
+      if (HasCount) {
+        ClearCountMode();
+      }
+    }
+
+    /// <summary>Field number for the "count_expr" field.</summary>
+    public const int CountExprFieldNumber = 6;
+    /// <summary>
+    /// Expression evaluated into a non-negative integer specifying the number
+    /// of records to return. An expression evaluating to null signals that ALL
+    /// records should be returned.
+    /// Evaluating to a negative integer should result in an error.
+    /// Recommended type for count is int64.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Expression CountExpr {
+      get { return countModeCase_ == CountModeOneofCase.CountExpr ? (global::Substrait.Protobuf.Expression) countMode_ : null; }
+      set {
+        countMode_ = value;
+        countModeCase_ = value == null ? CountModeOneofCase.None : CountModeOneofCase.CountExpr;
       }
     }
 
@@ -6454,6 +8658,48 @@ namespace Substrait.Protobuf {
       set {
         advancedExtension_ = value;
       }
+    }
+
+    private object offsetMode_;
+    /// <summary>Enum of possible cases for the "offset_mode" oneof.</summary>
+    public enum OffsetModeOneofCase {
+      None = 0,
+      Offset = 3,
+      OffsetExpr = 5,
+    }
+    private OffsetModeOneofCase offsetModeCase_ = OffsetModeOneofCase.None;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public OffsetModeOneofCase OffsetModeCase {
+      get { return offsetModeCase_; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearOffsetMode() {
+      offsetModeCase_ = OffsetModeOneofCase.None;
+      offsetMode_ = null;
+    }
+
+    private object countMode_;
+    /// <summary>Enum of possible cases for the "count_mode" oneof.</summary>
+    public enum CountModeOneofCase {
+      None = 0,
+      Count = 4,
+      CountExpr = 6,
+    }
+    private CountModeOneofCase countModeCase_ = CountModeOneofCase.None;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public CountModeOneofCase CountModeCase {
+      get { return countModeCase_; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearCountMode() {
+      countModeCase_ = CountModeOneofCase.None;
+      countMode_ = null;
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -6474,8 +8720,12 @@ namespace Substrait.Protobuf {
       if (!object.Equals(Common, other.Common)) return false;
       if (!object.Equals(Input, other.Input)) return false;
       if (Offset != other.Offset) return false;
+      if (!object.Equals(OffsetExpr, other.OffsetExpr)) return false;
       if (Count != other.Count) return false;
+      if (!object.Equals(CountExpr, other.CountExpr)) return false;
       if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
+      if (OffsetModeCase != other.OffsetModeCase) return false;
+      if (CountModeCase != other.CountModeCase) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -6485,9 +8735,13 @@ namespace Substrait.Protobuf {
       int hash = 1;
       if (common_ != null) hash ^= Common.GetHashCode();
       if (input_ != null) hash ^= Input.GetHashCode();
-      if (Offset != 0L) hash ^= Offset.GetHashCode();
-      if (Count != 0L) hash ^= Count.GetHashCode();
+      if (HasOffset) hash ^= Offset.GetHashCode();
+      if (offsetModeCase_ == OffsetModeOneofCase.OffsetExpr) hash ^= OffsetExpr.GetHashCode();
+      if (HasCount) hash ^= Count.GetHashCode();
+      if (countModeCase_ == CountModeOneofCase.CountExpr) hash ^= CountExpr.GetHashCode();
       if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
+      hash ^= (int) offsetModeCase_;
+      hash ^= (int) countModeCase_;
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -6514,13 +8768,21 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(18);
         output.WriteMessage(Input);
       }
-      if (Offset != 0L) {
+      if (HasOffset) {
         output.WriteRawTag(24);
         output.WriteInt64(Offset);
       }
-      if (Count != 0L) {
+      if (HasCount) {
         output.WriteRawTag(32);
         output.WriteInt64(Count);
+      }
+      if (offsetModeCase_ == OffsetModeOneofCase.OffsetExpr) {
+        output.WriteRawTag(42);
+        output.WriteMessage(OffsetExpr);
+      }
+      if (countModeCase_ == CountModeOneofCase.CountExpr) {
+        output.WriteRawTag(50);
+        output.WriteMessage(CountExpr);
       }
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
@@ -6544,13 +8806,21 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(18);
         output.WriteMessage(Input);
       }
-      if (Offset != 0L) {
+      if (HasOffset) {
         output.WriteRawTag(24);
         output.WriteInt64(Offset);
       }
-      if (Count != 0L) {
+      if (HasCount) {
         output.WriteRawTag(32);
         output.WriteInt64(Count);
+      }
+      if (offsetModeCase_ == OffsetModeOneofCase.OffsetExpr) {
+        output.WriteRawTag(42);
+        output.WriteMessage(OffsetExpr);
+      }
+      if (countModeCase_ == CountModeOneofCase.CountExpr) {
+        output.WriteRawTag(50);
+        output.WriteMessage(CountExpr);
       }
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
@@ -6572,11 +8842,17 @@ namespace Substrait.Protobuf {
       if (input_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(Input);
       }
-      if (Offset != 0L) {
+      if (HasOffset) {
         size += 1 + pb::CodedOutputStream.ComputeInt64Size(Offset);
       }
-      if (Count != 0L) {
+      if (offsetModeCase_ == OffsetModeOneofCase.OffsetExpr) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(OffsetExpr);
+      }
+      if (HasCount) {
         size += 1 + pb::CodedOutputStream.ComputeInt64Size(Count);
+      }
+      if (countModeCase_ == CountModeOneofCase.CountExpr) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(CountExpr);
       }
       if (advancedExtension_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
@@ -6605,18 +8881,36 @@ namespace Substrait.Protobuf {
         }
         Input.MergeFrom(other.Input);
       }
-      if (other.Offset != 0L) {
-        Offset = other.Offset;
-      }
-      if (other.Count != 0L) {
-        Count = other.Count;
-      }
       if (other.advancedExtension_ != null) {
         if (advancedExtension_ == null) {
           AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
         }
         AdvancedExtension.MergeFrom(other.AdvancedExtension);
       }
+      switch (other.OffsetModeCase) {
+        case OffsetModeOneofCase.Offset:
+          Offset = other.Offset;
+          break;
+        case OffsetModeOneofCase.OffsetExpr:
+          if (OffsetExpr == null) {
+            OffsetExpr = new global::Substrait.Protobuf.Expression();
+          }
+          OffsetExpr.MergeFrom(other.OffsetExpr);
+          break;
+      }
+
+      switch (other.CountModeCase) {
+        case CountModeOneofCase.Count:
+          Count = other.Count;
+          break;
+        case CountModeOneofCase.CountExpr:
+          if (CountExpr == null) {
+            CountExpr = new global::Substrait.Protobuf.Expression();
+          }
+          CountExpr.MergeFrom(other.CountExpr);
+          break;
+      }
+
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
 
@@ -6628,7 +8922,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -6654,6 +8952,24 @@ namespace Substrait.Protobuf {
             Count = input.ReadInt64();
             break;
           }
+          case 42: {
+            global::Substrait.Protobuf.Expression subBuilder = new global::Substrait.Protobuf.Expression();
+            if (offsetModeCase_ == OffsetModeOneofCase.OffsetExpr) {
+              subBuilder.MergeFrom(OffsetExpr);
+            }
+            input.ReadMessage(subBuilder);
+            OffsetExpr = subBuilder;
+            break;
+          }
+          case 50: {
+            global::Substrait.Protobuf.Expression subBuilder = new global::Substrait.Protobuf.Expression();
+            if (countModeCase_ == CountModeOneofCase.CountExpr) {
+              subBuilder.MergeFrom(CountExpr);
+            }
+            input.ReadMessage(subBuilder);
+            CountExpr = subBuilder;
+            break;
+          }
           case 82: {
             if (advancedExtension_ == null) {
               AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -6672,7 +8988,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -6696,6 +9016,24 @@ namespace Substrait.Protobuf {
           }
           case 32: {
             Count = input.ReadInt64();
+            break;
+          }
+          case 42: {
+            global::Substrait.Protobuf.Expression subBuilder = new global::Substrait.Protobuf.Expression();
+            if (offsetModeCase_ == OffsetModeOneofCase.OffsetExpr) {
+              subBuilder.MergeFrom(OffsetExpr);
+            }
+            input.ReadMessage(subBuilder);
+            OffsetExpr = subBuilder;
+            break;
+          }
+          case 50: {
+            global::Substrait.Protobuf.Expression subBuilder = new global::Substrait.Protobuf.Expression();
+            if (countModeCase_ == CountModeOneofCase.CountExpr) {
+              subBuilder.MergeFrom(CountExpr);
+            }
+            input.ReadMessage(subBuilder);
+            CountExpr = subBuilder;
             break;
           }
           case 82: {
@@ -6754,6 +9092,7 @@ namespace Substrait.Protobuf {
       input_ = other.input_ != null ? other.input_.Clone() : null;
       groupings_ = other.groupings_.Clone();
       measures_ = other.measures_.Clone();
+      groupingExpressions_ = other.groupingExpressions_.Clone();
       advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
@@ -6797,8 +9136,9 @@ namespace Substrait.Protobuf {
         = pb::FieldCodec.ForMessage(26, global::Substrait.Protobuf.AggregateRel.Types.Grouping.Parser);
     private readonly pbc::RepeatedField<global::Substrait.Protobuf.AggregateRel.Types.Grouping> groupings_ = new pbc::RepeatedField<global::Substrait.Protobuf.AggregateRel.Types.Grouping>();
     /// <summary>
-    /// A list of one or more grouping expression sets that the aggregation measures should be calculated for.
-    /// Required if there are no measures.
+    /// A list of zero or more grouping sets that the aggregation measures should
+    /// be calculated for. There must be at least one grouping set if there are no
+    /// measures (but it can be the empty grouping set).
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -6819,6 +9159,23 @@ namespace Substrait.Protobuf {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public pbc::RepeatedField<global::Substrait.Protobuf.AggregateRel.Types.Measure> Measures {
       get { return measures_; }
+    }
+
+    /// <summary>Field number for the "grouping_expressions" field.</summary>
+    public const int GroupingExpressionsFieldNumber = 5;
+    private static readonly pb::FieldCodec<global::Substrait.Protobuf.Expression> _repeated_groupingExpressions_codec
+        = pb::FieldCodec.ForMessage(42, global::Substrait.Protobuf.Expression.Parser);
+    private readonly pbc::RepeatedField<global::Substrait.Protobuf.Expression> groupingExpressions_ = new pbc::RepeatedField<global::Substrait.Protobuf.Expression>();
+    /// <summary>
+    /// A list of zero or more grouping expressions that grouping sets (i.e.,
+    /// `Grouping` messages in the `groupings` field) can reference. Each
+    /// expression in this list must be referred to by at least one
+    /// `Grouping.expression_references`.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public pbc::RepeatedField<global::Substrait.Protobuf.Expression> GroupingExpressions {
+      get { return groupingExpressions_; }
     }
 
     /// <summary>Field number for the "advanced_extension" field.</summary>
@@ -6852,6 +9209,7 @@ namespace Substrait.Protobuf {
       if (!object.Equals(Input, other.Input)) return false;
       if(!groupings_.Equals(other.groupings_)) return false;
       if(!measures_.Equals(other.measures_)) return false;
+      if(!groupingExpressions_.Equals(other.groupingExpressions_)) return false;
       if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
@@ -6864,6 +9222,7 @@ namespace Substrait.Protobuf {
       if (input_ != null) hash ^= Input.GetHashCode();
       hash ^= groupings_.GetHashCode();
       hash ^= measures_.GetHashCode();
+      hash ^= groupingExpressions_.GetHashCode();
       if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
@@ -6893,6 +9252,7 @@ namespace Substrait.Protobuf {
       }
       groupings_.WriteTo(output, _repeated_groupings_codec);
       measures_.WriteTo(output, _repeated_measures_codec);
+      groupingExpressions_.WriteTo(output, _repeated_groupingExpressions_codec);
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
         output.WriteMessage(AdvancedExtension);
@@ -6917,6 +9277,7 @@ namespace Substrait.Protobuf {
       }
       groupings_.WriteTo(ref output, _repeated_groupings_codec);
       measures_.WriteTo(ref output, _repeated_measures_codec);
+      groupingExpressions_.WriteTo(ref output, _repeated_groupingExpressions_codec);
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
         output.WriteMessage(AdvancedExtension);
@@ -6939,6 +9300,7 @@ namespace Substrait.Protobuf {
       }
       size += groupings_.CalculateSize(_repeated_groupings_codec);
       size += measures_.CalculateSize(_repeated_measures_codec);
+      size += groupingExpressions_.CalculateSize(_repeated_groupingExpressions_codec);
       if (advancedExtension_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
       }
@@ -6968,6 +9330,7 @@ namespace Substrait.Protobuf {
       }
       groupings_.Add(other.groupings_);
       measures_.Add(other.measures_);
+      groupingExpressions_.Add(other.groupingExpressions_);
       if (other.advancedExtension_ != null) {
         if (advancedExtension_ == null) {
           AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -6985,7 +9348,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -7011,6 +9378,10 @@ namespace Substrait.Protobuf {
             measures_.AddEntriesFrom(input, _repeated_measures_codec);
             break;
           }
+          case 42: {
+            groupingExpressions_.AddEntriesFrom(input, _repeated_groupingExpressions_codec);
+            break;
+          }
           case 82: {
             if (advancedExtension_ == null) {
               AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -7029,7 +9400,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -7053,6 +9428,10 @@ namespace Substrait.Protobuf {
           }
           case 34: {
             measures_.AddEntriesFrom(ref input, _repeated_measures_codec);
+            break;
+          }
+          case 42: {
+            groupingExpressions_.AddEntriesFrom(ref input, _repeated_groupingExpressions_codec);
             break;
           }
           case 82: {
@@ -7108,6 +9487,7 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public Grouping(Grouping other) : this() {
           groupingExpressions_ = other.groupingExpressions_.Clone();
+          expressionReferences_ = other.expressionReferences_.Clone();
           _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
         }
 
@@ -7122,10 +9502,29 @@ namespace Substrait.Protobuf {
         private static readonly pb::FieldCodec<global::Substrait.Protobuf.Expression> _repeated_groupingExpressions_codec
             = pb::FieldCodec.ForMessage(10, global::Substrait.Protobuf.Expression.Parser);
         private readonly pbc::RepeatedField<global::Substrait.Protobuf.Expression> groupingExpressions_ = new pbc::RepeatedField<global::Substrait.Protobuf.Expression>();
+        /// <summary>
+        /// Deprecated in favor of `expression_references` below.
+        /// </summary>
+        [global::System.ObsoleteAttribute]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public pbc::RepeatedField<global::Substrait.Protobuf.Expression> GroupingExpressions {
           get { return groupingExpressions_; }
+        }
+
+        /// <summary>Field number for the "expression_references" field.</summary>
+        public const int ExpressionReferencesFieldNumber = 2;
+        private static readonly pb::FieldCodec<uint> _repeated_expressionReferences_codec
+            = pb::FieldCodec.ForUInt32(18);
+        private readonly pbc::RepeatedField<uint> expressionReferences_ = new pbc::RepeatedField<uint>();
+        /// <summary>
+        /// A list of zero or more references to grouping expressions, i.e., indices
+        /// into the `grouping_expression` list.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public pbc::RepeatedField<uint> ExpressionReferences {
+          get { return expressionReferences_; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -7144,6 +9543,7 @@ namespace Substrait.Protobuf {
             return true;
           }
           if(!groupingExpressions_.Equals(other.groupingExpressions_)) return false;
+          if(!expressionReferences_.Equals(other.expressionReferences_)) return false;
           return Equals(_unknownFields, other._unknownFields);
         }
 
@@ -7152,6 +9552,7 @@ namespace Substrait.Protobuf {
         public override int GetHashCode() {
           int hash = 1;
           hash ^= groupingExpressions_.GetHashCode();
+          hash ^= expressionReferences_.GetHashCode();
           if (_unknownFields != null) {
             hash ^= _unknownFields.GetHashCode();
           }
@@ -7171,6 +9572,7 @@ namespace Substrait.Protobuf {
           output.WriteRawMessage(this);
         #else
           groupingExpressions_.WriteTo(output, _repeated_groupingExpressions_codec);
+          expressionReferences_.WriteTo(output, _repeated_expressionReferences_codec);
           if (_unknownFields != null) {
             _unknownFields.WriteTo(output);
           }
@@ -7182,6 +9584,7 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
           groupingExpressions_.WriteTo(ref output, _repeated_groupingExpressions_codec);
+          expressionReferences_.WriteTo(ref output, _repeated_expressionReferences_codec);
           if (_unknownFields != null) {
             _unknownFields.WriteTo(ref output);
           }
@@ -7193,6 +9596,7 @@ namespace Substrait.Protobuf {
         public int CalculateSize() {
           int size = 0;
           size += groupingExpressions_.CalculateSize(_repeated_groupingExpressions_codec);
+          size += expressionReferences_.CalculateSize(_repeated_expressionReferences_codec);
           if (_unknownFields != null) {
             size += _unknownFields.CalculateSize();
           }
@@ -7206,6 +9610,7 @@ namespace Substrait.Protobuf {
             return;
           }
           groupingExpressions_.Add(other.groupingExpressions_);
+          expressionReferences_.Add(other.expressionReferences_);
           _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
         }
 
@@ -7217,12 +9622,21 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
               case 10: {
                 groupingExpressions_.AddEntriesFrom(input, _repeated_groupingExpressions_codec);
+                break;
+              }
+              case 18:
+              case 16: {
+                expressionReferences_.AddEntriesFrom(input, _repeated_expressionReferences_codec);
                 break;
               }
             }
@@ -7236,12 +9650,21 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
               case 10: {
                 groupingExpressions_.AddEntriesFrom(ref input, _repeated_groupingExpressions_codec);
+                break;
+              }
+              case 18:
+              case 16: {
+                expressionReferences_.AddEntriesFrom(ref input, _repeated_expressionReferences_codec);
                 break;
               }
             }
@@ -7448,7 +9871,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -7477,7 +9904,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -7789,7 +10220,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -7837,7 +10272,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -8264,7 +10703,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -8324,7 +10767,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -8629,7 +11076,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -8669,7 +11120,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -8963,7 +11418,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -9006,7 +11465,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -9290,7 +11753,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -9327,7 +11794,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -9366,9 +11837,11 @@ namespace Substrait.Protobuf {
       public enum SetOp {
         [pbr::OriginalName("SET_OP_UNSPECIFIED")] Unspecified = 0,
         [pbr::OriginalName("SET_OP_MINUS_PRIMARY")] MinusPrimary = 1,
+        [pbr::OriginalName("SET_OP_MINUS_PRIMARY_ALL")] MinusPrimaryAll = 7,
         [pbr::OriginalName("SET_OP_MINUS_MULTISET")] MinusMultiset = 2,
         [pbr::OriginalName("SET_OP_INTERSECTION_PRIMARY")] IntersectionPrimary = 3,
         [pbr::OriginalName("SET_OP_INTERSECTION_MULTISET")] IntersectionMultiset = 4,
+        [pbr::OriginalName("SET_OP_INTERSECTION_MULTISET_ALL")] IntersectionMultisetAll = 8,
         [pbr::OriginalName("SET_OP_UNION_DISTINCT")] UnionDistinct = 5,
         [pbr::OriginalName("SET_OP_UNION_ALL")] UnionAll = 6,
       }
@@ -9604,7 +12077,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -9640,7 +12117,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -9866,7 +12347,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -9895,7 +12380,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -10132,7 +12621,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -10165,7 +12658,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -10669,7 +13166,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -10758,7 +13259,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -10991,7 +13496,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -11010,7 +13519,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -11187,7 +13700,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -11209,7 +13726,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -11418,7 +13939,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -11444,7 +13969,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -11596,7 +14125,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -11611,7 +14144,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -11785,7 +14322,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -11804,7 +14345,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -12079,7 +14624,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -12112,7 +14661,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -12367,7 +14920,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -12400,7 +14957,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -12666,7 +15227,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -12699,7 +15264,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -12877,7 +15446,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -12896,7 +15469,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -13104,7 +15681,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -13130,7 +15711,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -13235,6 +15820,9 @@ namespace Substrait.Protobuf {
           break;
         case RelTypeOneofCase.Ddl:
           Ddl = other.Ddl.Clone();
+          break;
+        case RelTypeOneofCase.Update:
+          Update = other.Update.Clone();
           break;
         case RelTypeOneofCase.HashJoin:
           HashJoin = other.HashJoin.Clone();
@@ -13445,6 +16033,18 @@ namespace Substrait.Protobuf {
       }
     }
 
+    /// <summary>Field number for the "update" field.</summary>
+    public const int UpdateFieldNumber = 22;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.UpdateRel Update {
+      get { return relTypeCase_ == RelTypeOneofCase.Update ? (global::Substrait.Protobuf.UpdateRel) relType_ : null; }
+      set {
+        relType_ = value;
+        relTypeCase_ = value == null ? RelTypeOneofCase.None : RelTypeOneofCase.Update;
+      }
+    }
+
     /// <summary>Field number for the "hash_join" field.</summary>
     public const int HashJoinFieldNumber = 13;
     /// <summary>
@@ -13539,6 +16139,7 @@ namespace Substrait.Protobuf {
       Reference = 21,
       Write = 19,
       Ddl = 20,
+      Update = 22,
       HashJoin = 13,
       MergeJoin = 14,
       NestedLoopJoin = 18,
@@ -13590,6 +16191,7 @@ namespace Substrait.Protobuf {
       if (!object.Equals(Reference, other.Reference)) return false;
       if (!object.Equals(Write, other.Write)) return false;
       if (!object.Equals(Ddl, other.Ddl)) return false;
+      if (!object.Equals(Update, other.Update)) return false;
       if (!object.Equals(HashJoin, other.HashJoin)) return false;
       if (!object.Equals(MergeJoin, other.MergeJoin)) return false;
       if (!object.Equals(NestedLoopJoin, other.NestedLoopJoin)) return false;
@@ -13619,6 +16221,7 @@ namespace Substrait.Protobuf {
       if (relTypeCase_ == RelTypeOneofCase.Reference) hash ^= Reference.GetHashCode();
       if (relTypeCase_ == RelTypeOneofCase.Write) hash ^= Write.GetHashCode();
       if (relTypeCase_ == RelTypeOneofCase.Ddl) hash ^= Ddl.GetHashCode();
+      if (relTypeCase_ == RelTypeOneofCase.Update) hash ^= Update.GetHashCode();
       if (relTypeCase_ == RelTypeOneofCase.HashJoin) hash ^= HashJoin.GetHashCode();
       if (relTypeCase_ == RelTypeOneofCase.MergeJoin) hash ^= MergeJoin.GetHashCode();
       if (relTypeCase_ == RelTypeOneofCase.NestedLoopJoin) hash ^= NestedLoopJoin.GetHashCode();
@@ -13728,6 +16331,10 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(170, 1);
         output.WriteMessage(Reference);
       }
+      if (relTypeCase_ == RelTypeOneofCase.Update) {
+        output.WriteRawTag(178, 1);
+        output.WriteMessage(Update);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -13822,6 +16429,10 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(170, 1);
         output.WriteMessage(Reference);
       }
+      if (relTypeCase_ == RelTypeOneofCase.Update) {
+        output.WriteRawTag(178, 1);
+        output.WriteMessage(Update);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -13876,6 +16487,9 @@ namespace Substrait.Protobuf {
       }
       if (relTypeCase_ == RelTypeOneofCase.Ddl) {
         size += 2 + pb::CodedOutputStream.ComputeMessageSize(Ddl);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Update) {
+        size += 2 + pb::CodedOutputStream.ComputeMessageSize(Update);
       }
       if (relTypeCase_ == RelTypeOneofCase.HashJoin) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(HashJoin);
@@ -13998,6 +16612,12 @@ namespace Substrait.Protobuf {
           }
           Ddl.MergeFrom(other.Ddl);
           break;
+        case RelTypeOneofCase.Update:
+          if (Update == null) {
+            Update = new global::Substrait.Protobuf.UpdateRel();
+          }
+          Update.MergeFrom(other.Update);
+          break;
         case RelTypeOneofCase.HashJoin:
           if (HashJoin == null) {
             HashJoin = new global::Substrait.Protobuf.HashJoinRel();
@@ -14047,7 +16667,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -14240,6 +16864,15 @@ namespace Substrait.Protobuf {
             Reference = subBuilder;
             break;
           }
+          case 178: {
+            global::Substrait.Protobuf.UpdateRel subBuilder = new global::Substrait.Protobuf.UpdateRel();
+            if (relTypeCase_ == RelTypeOneofCase.Update) {
+              subBuilder.MergeFrom(Update);
+            }
+            input.ReadMessage(subBuilder);
+            Update = subBuilder;
+            break;
+          }
         }
       }
     #endif
@@ -14251,7 +16884,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -14442,6 +17079,15 @@ namespace Substrait.Protobuf {
             }
             input.ReadMessage(subBuilder);
             Reference = subBuilder;
+            break;
+          }
+          case 178: {
+            global::Substrait.Protobuf.UpdateRel subBuilder = new global::Substrait.Protobuf.UpdateRel();
+            if (relTypeCase_ == RelTypeOneofCase.Update) {
+              subBuilder.MergeFrom(Update);
+            }
+            input.ReadMessage(subBuilder);
+            Update = subBuilder;
             break;
           }
         }
@@ -14635,7 +17281,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -14661,7 +17311,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -14846,7 +17500,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -14868,7 +17526,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -14927,6 +17589,7 @@ namespace Substrait.Protobuf {
       op_ = other.op_;
       viewDefinition_ = other.viewDefinition_ != null ? other.viewDefinition_.Clone() : null;
       common_ = other.common_ != null ? other.common_.Clone() : null;
+      advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
       switch (other.WriteTypeCase) {
         case WriteTypeOneofCase.NamedObject:
           NamedObject = other.NamedObject.Clone();
@@ -15059,6 +17722,18 @@ namespace Substrait.Protobuf {
       }
     }
 
+    /// <summary>Field number for the "advanced_extension" field.</summary>
+    public const int AdvancedExtensionFieldNumber = 9;
+    private global::Substrait.Protobuf.AdvancedExtension advancedExtension_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.AdvancedExtension AdvancedExtension {
+      get { return advancedExtension_; }
+      set {
+        advancedExtension_ = value;
+      }
+    }
+
     private object writeType_;
     /// <summary>Enum of possible cases for the "write_type" oneof.</summary>
     public enum WriteTypeOneofCase {
@@ -15103,6 +17778,7 @@ namespace Substrait.Protobuf {
       if (Op != other.Op) return false;
       if (!object.Equals(ViewDefinition, other.ViewDefinition)) return false;
       if (!object.Equals(Common, other.Common)) return false;
+      if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
       if (WriteTypeCase != other.WriteTypeCase) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
@@ -15119,6 +17795,7 @@ namespace Substrait.Protobuf {
       if (Op != global::Substrait.Protobuf.DdlRel.Types.DdlOp.Unspecified) hash ^= Op.GetHashCode();
       if (viewDefinition_ != null) hash ^= ViewDefinition.GetHashCode();
       if (common_ != null) hash ^= Common.GetHashCode();
+      if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
       hash ^= (int) writeTypeCase_;
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
@@ -15170,6 +17847,10 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(66);
         output.WriteMessage(Common);
       }
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(74);
+        output.WriteMessage(AdvancedExtension);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -15212,6 +17893,10 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(66);
         output.WriteMessage(Common);
       }
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(74);
+        output.WriteMessage(AdvancedExtension);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -15245,6 +17930,9 @@ namespace Substrait.Protobuf {
       }
       if (common_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(Common);
+      }
+      if (advancedExtension_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -15288,6 +17976,12 @@ namespace Substrait.Protobuf {
         }
         Common.MergeFrom(other.Common);
       }
+      if (other.advancedExtension_ != null) {
+        if (advancedExtension_ == null) {
+          AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+        }
+        AdvancedExtension.MergeFrom(other.AdvancedExtension);
+      }
       switch (other.WriteTypeCase) {
         case WriteTypeOneofCase.NamedObject:
           if (NamedObject == null) {
@@ -15314,7 +18008,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -15372,6 +18070,13 @@ namespace Substrait.Protobuf {
             input.ReadMessage(Common);
             break;
           }
+          case 74: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
+            break;
+          }
         }
       }
     #endif
@@ -15383,7 +18088,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -15439,6 +18148,13 @@ namespace Substrait.Protobuf {
               Common = new global::Substrait.Protobuf.RelCommon();
             }
             input.ReadMessage(Common);
+            break;
+          }
+          case 74: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
             break;
           }
         }
@@ -15534,8 +18250,10 @@ namespace Substrait.Protobuf {
       tableSchema_ = other.tableSchema_ != null ? other.tableSchema_.Clone() : null;
       op_ = other.op_;
       input_ = other.input_ != null ? other.input_.Clone() : null;
+      createMode_ = other.createMode_;
       output_ = other.output_;
       common_ = other.common_ != null ? other.common_.Clone() : null;
+      advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
       switch (other.WriteTypeCase) {
         case WriteTypeOneofCase.NamedTable:
           NamedTable = other.NamedTable.Clone();
@@ -15626,6 +18344,21 @@ namespace Substrait.Protobuf {
       }
     }
 
+    /// <summary>Field number for the "create_mode" field.</summary>
+    public const int CreateModeFieldNumber = 8;
+    private global::Substrait.Protobuf.WriteRel.Types.CreateMode createMode_ = global::Substrait.Protobuf.WriteRel.Types.CreateMode.Unspecified;
+    /// <summary>
+    /// Used with CTAS to determine what to do if the table already exists
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.WriteRel.Types.CreateMode CreateMode {
+      get { return createMode_; }
+      set {
+        createMode_ = value;
+      }
+    }
+
     /// <summary>Field number for the "output" field.</summary>
     public const int OutputFieldNumber = 6;
     private global::Substrait.Protobuf.WriteRel.Types.OutputMode output_ = global::Substrait.Protobuf.WriteRel.Types.OutputMode.Unspecified;
@@ -15650,6 +18383,18 @@ namespace Substrait.Protobuf {
       get { return common_; }
       set {
         common_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "advanced_extension" field.</summary>
+    public const int AdvancedExtensionFieldNumber = 9;
+    private global::Substrait.Protobuf.AdvancedExtension advancedExtension_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.AdvancedExtension AdvancedExtension {
+      get { return advancedExtension_; }
+      set {
+        advancedExtension_ = value;
       }
     }
 
@@ -15694,8 +18439,10 @@ namespace Substrait.Protobuf {
       if (!object.Equals(TableSchema, other.TableSchema)) return false;
       if (Op != other.Op) return false;
       if (!object.Equals(Input, other.Input)) return false;
+      if (CreateMode != other.CreateMode) return false;
       if (Output != other.Output) return false;
       if (!object.Equals(Common, other.Common)) return false;
+      if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
       if (WriteTypeCase != other.WriteTypeCase) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
@@ -15709,8 +18456,10 @@ namespace Substrait.Protobuf {
       if (tableSchema_ != null) hash ^= TableSchema.GetHashCode();
       if (Op != global::Substrait.Protobuf.WriteRel.Types.WriteOp.Unspecified) hash ^= Op.GetHashCode();
       if (input_ != null) hash ^= Input.GetHashCode();
+      if (CreateMode != global::Substrait.Protobuf.WriteRel.Types.CreateMode.Unspecified) hash ^= CreateMode.GetHashCode();
       if (Output != global::Substrait.Protobuf.WriteRel.Types.OutputMode.Unspecified) hash ^= Output.GetHashCode();
       if (common_ != null) hash ^= Common.GetHashCode();
+      if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
       hash ^= (int) writeTypeCase_;
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
@@ -15758,6 +18507,14 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(58);
         output.WriteMessage(Common);
       }
+      if (CreateMode != global::Substrait.Protobuf.WriteRel.Types.CreateMode.Unspecified) {
+        output.WriteRawTag(64);
+        output.WriteEnum((int) CreateMode);
+      }
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(74);
+        output.WriteMessage(AdvancedExtension);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -15796,6 +18553,14 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(58);
         output.WriteMessage(Common);
       }
+      if (CreateMode != global::Substrait.Protobuf.WriteRel.Types.CreateMode.Unspecified) {
+        output.WriteRawTag(64);
+        output.WriteEnum((int) CreateMode);
+      }
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(74);
+        output.WriteMessage(AdvancedExtension);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -15821,11 +18586,17 @@ namespace Substrait.Protobuf {
       if (input_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(Input);
       }
+      if (CreateMode != global::Substrait.Protobuf.WriteRel.Types.CreateMode.Unspecified) {
+        size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) CreateMode);
+      }
       if (Output != global::Substrait.Protobuf.WriteRel.Types.OutputMode.Unspecified) {
         size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Output);
       }
       if (common_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(Common);
+      }
+      if (advancedExtension_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -15854,6 +18625,9 @@ namespace Substrait.Protobuf {
         }
         Input.MergeFrom(other.Input);
       }
+      if (other.CreateMode != global::Substrait.Protobuf.WriteRel.Types.CreateMode.Unspecified) {
+        CreateMode = other.CreateMode;
+      }
       if (other.Output != global::Substrait.Protobuf.WriteRel.Types.OutputMode.Unspecified) {
         Output = other.Output;
       }
@@ -15862,6 +18636,12 @@ namespace Substrait.Protobuf {
           Common = new global::Substrait.Protobuf.RelCommon();
         }
         Common.MergeFrom(other.Common);
+      }
+      if (other.advancedExtension_ != null) {
+        if (advancedExtension_ == null) {
+          AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+        }
+        AdvancedExtension.MergeFrom(other.AdvancedExtension);
       }
       switch (other.WriteTypeCase) {
         case WriteTypeOneofCase.NamedTable:
@@ -15889,7 +18669,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -15940,6 +18724,17 @@ namespace Substrait.Protobuf {
             input.ReadMessage(Common);
             break;
           }
+          case 64: {
+            CreateMode = (global::Substrait.Protobuf.WriteRel.Types.CreateMode) input.ReadEnum();
+            break;
+          }
+          case 74: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
+            break;
+          }
         }
       }
     #endif
@@ -15951,7 +18746,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -16002,6 +18801,17 @@ namespace Substrait.Protobuf {
             input.ReadMessage(Common);
             break;
           }
+          case 64: {
+            CreateMode = (global::Substrait.Protobuf.WriteRel.Types.CreateMode) input.ReadEnum();
+            break;
+          }
+          case 74: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
+            break;
+          }
         }
       }
     }
@@ -16032,6 +18842,26 @@ namespace Substrait.Protobuf {
         [pbr::OriginalName("WRITE_OP_CTAS")] Ctas = 4,
       }
 
+      public enum CreateMode {
+        [pbr::OriginalName("CREATE_MODE_UNSPECIFIED")] Unspecified = 0,
+        /// <summary>
+        /// Append the data to the table if it already exists
+        /// </summary>
+        [pbr::OriginalName("CREATE_MODE_APPEND_IF_EXISTS")] AppendIfExists = 1,
+        /// <summary>
+        /// Replace the table if it already exists ("OR REPLACE")
+        /// </summary>
+        [pbr::OriginalName("CREATE_MODE_REPLACE_IF_EXISTS")] ReplaceIfExists = 2,
+        /// <summary>
+        /// Ignore the request if the table already exists ("IF NOT EXISTS")
+        /// </summary>
+        [pbr::OriginalName("CREATE_MODE_IGNORE_IF_EXISTS")] IgnoreIfExists = 3,
+        /// <summary>
+        /// Throw an error if the table already exists (default behavior)
+        /// </summary>
+        [pbr::OriginalName("CREATE_MODE_ERROR_IF_EXISTS")] ErrorIfExists = 4,
+      }
+
       public enum OutputMode {
         [pbr::OriginalName("OUTPUT_MODE_UNSPECIFIED")] Unspecified = 0,
         /// <summary>
@@ -16043,13 +18873,925 @@ namespace Substrait.Protobuf {
         /// The operator returns the AFTER-image of any change. This can be further manipulated by operators upstreams
         /// (e.g., retunring the typical "count of modified records").
         /// For scenarios in which the BEFORE image is required, the user must implement a spool (via references to
-        /// subplans in the body of the Rel input) and return those with anounter PlanRel.relations.
+        /// subplans in the body of the Rel input) and return those with another PlanRel.relations.
         /// </summary>
         [pbr::OriginalName("OUTPUT_MODE_MODIFIED_RECORDS")] ModifiedRecords = 2,
       }
 
     }
     #endregion
+
+  }
+
+  /// <summary>
+  /// The operator that modifies the columns of a table
+  /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class UpdateRel : pb::IMessage<UpdateRel>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<UpdateRel> _parser = new pb::MessageParser<UpdateRel>(() => new UpdateRel());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<UpdateRel> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[22]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public UpdateRel() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public UpdateRel(UpdateRel other) : this() {
+      tableSchema_ = other.tableSchema_ != null ? other.tableSchema_.Clone() : null;
+      condition_ = other.condition_ != null ? other.condition_.Clone() : null;
+      transformations_ = other.transformations_.Clone();
+      advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
+      switch (other.UpdateTypeCase) {
+        case UpdateTypeOneofCase.NamedTable:
+          NamedTable = other.NamedTable.Clone();
+          break;
+      }
+
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public UpdateRel Clone() {
+      return new UpdateRel(this);
+    }
+
+    /// <summary>Field number for the "named_table" field.</summary>
+    public const int NamedTableFieldNumber = 1;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.NamedTable NamedTable {
+      get { return updateTypeCase_ == UpdateTypeOneofCase.NamedTable ? (global::Substrait.Protobuf.NamedTable) updateType_ : null; }
+      set {
+        updateType_ = value;
+        updateTypeCase_ = value == null ? UpdateTypeOneofCase.None : UpdateTypeOneofCase.NamedTable;
+      }
+    }
+
+    /// <summary>Field number for the "table_schema" field.</summary>
+    public const int TableSchemaFieldNumber = 2;
+    private global::Substrait.Protobuf.NamedStruct tableSchema_;
+    /// <summary>
+    /// The full schema of the named_table
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.NamedStruct TableSchema {
+      get { return tableSchema_; }
+      set {
+        tableSchema_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "condition" field.</summary>
+    public const int ConditionFieldNumber = 3;
+    private global::Substrait.Protobuf.Expression condition_;
+    /// <summary>
+    /// condition to be met for the update to be applied on a record
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Expression Condition {
+      get { return condition_; }
+      set {
+        condition_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "transformations" field.</summary>
+    public const int TransformationsFieldNumber = 4;
+    private static readonly pb::FieldCodec<global::Substrait.Protobuf.UpdateRel.Types.TransformExpression> _repeated_transformations_codec
+        = pb::FieldCodec.ForMessage(34, global::Substrait.Protobuf.UpdateRel.Types.TransformExpression.Parser);
+    private readonly pbc::RepeatedField<global::Substrait.Protobuf.UpdateRel.Types.TransformExpression> transformations_ = new pbc::RepeatedField<global::Substrait.Protobuf.UpdateRel.Types.TransformExpression>();
+    /// <summary>
+    /// The list of transformations to apply to the columns of the named_table
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public pbc::RepeatedField<global::Substrait.Protobuf.UpdateRel.Types.TransformExpression> Transformations {
+      get { return transformations_; }
+    }
+
+    /// <summary>Field number for the "advanced_extension" field.</summary>
+    public const int AdvancedExtensionFieldNumber = 5;
+    private global::Substrait.Protobuf.AdvancedExtension advancedExtension_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.AdvancedExtension AdvancedExtension {
+      get { return advancedExtension_; }
+      set {
+        advancedExtension_ = value;
+      }
+    }
+
+    private object updateType_;
+    /// <summary>Enum of possible cases for the "update_type" oneof.</summary>
+    public enum UpdateTypeOneofCase {
+      None = 0,
+      NamedTable = 1,
+    }
+    private UpdateTypeOneofCase updateTypeCase_ = UpdateTypeOneofCase.None;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public UpdateTypeOneofCase UpdateTypeCase {
+      get { return updateTypeCase_; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearUpdateType() {
+      updateTypeCase_ = UpdateTypeOneofCase.None;
+      updateType_ = null;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as UpdateRel);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(UpdateRel other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (!object.Equals(NamedTable, other.NamedTable)) return false;
+      if (!object.Equals(TableSchema, other.TableSchema)) return false;
+      if (!object.Equals(Condition, other.Condition)) return false;
+      if(!transformations_.Equals(other.transformations_)) return false;
+      if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
+      if (UpdateTypeCase != other.UpdateTypeCase) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (updateTypeCase_ == UpdateTypeOneofCase.NamedTable) hash ^= NamedTable.GetHashCode();
+      if (tableSchema_ != null) hash ^= TableSchema.GetHashCode();
+      if (condition_ != null) hash ^= Condition.GetHashCode();
+      hash ^= transformations_.GetHashCode();
+      if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
+      hash ^= (int) updateTypeCase_;
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      if (updateTypeCase_ == UpdateTypeOneofCase.NamedTable) {
+        output.WriteRawTag(10);
+        output.WriteMessage(NamedTable);
+      }
+      if (tableSchema_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(TableSchema);
+      }
+      if (condition_ != null) {
+        output.WriteRawTag(26);
+        output.WriteMessage(Condition);
+      }
+      transformations_.WriteTo(output, _repeated_transformations_codec);
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(42);
+        output.WriteMessage(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      if (updateTypeCase_ == UpdateTypeOneofCase.NamedTable) {
+        output.WriteRawTag(10);
+        output.WriteMessage(NamedTable);
+      }
+      if (tableSchema_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(TableSchema);
+      }
+      if (condition_ != null) {
+        output.WriteRawTag(26);
+        output.WriteMessage(Condition);
+      }
+      transformations_.WriteTo(ref output, _repeated_transformations_codec);
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(42);
+        output.WriteMessage(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      if (updateTypeCase_ == UpdateTypeOneofCase.NamedTable) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(NamedTable);
+      }
+      if (tableSchema_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(TableSchema);
+      }
+      if (condition_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Condition);
+      }
+      size += transformations_.CalculateSize(_repeated_transformations_codec);
+      if (advancedExtension_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(UpdateRel other) {
+      if (other == null) {
+        return;
+      }
+      if (other.tableSchema_ != null) {
+        if (tableSchema_ == null) {
+          TableSchema = new global::Substrait.Protobuf.NamedStruct();
+        }
+        TableSchema.MergeFrom(other.TableSchema);
+      }
+      if (other.condition_ != null) {
+        if (condition_ == null) {
+          Condition = new global::Substrait.Protobuf.Expression();
+        }
+        Condition.MergeFrom(other.Condition);
+      }
+      transformations_.Add(other.transformations_);
+      if (other.advancedExtension_ != null) {
+        if (advancedExtension_ == null) {
+          AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+        }
+        AdvancedExtension.MergeFrom(other.AdvancedExtension);
+      }
+      switch (other.UpdateTypeCase) {
+        case UpdateTypeOneofCase.NamedTable:
+          if (NamedTable == null) {
+            NamedTable = new global::Substrait.Protobuf.NamedTable();
+          }
+          NamedTable.MergeFrom(other.NamedTable);
+          break;
+      }
+
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            global::Substrait.Protobuf.NamedTable subBuilder = new global::Substrait.Protobuf.NamedTable();
+            if (updateTypeCase_ == UpdateTypeOneofCase.NamedTable) {
+              subBuilder.MergeFrom(NamedTable);
+            }
+            input.ReadMessage(subBuilder);
+            NamedTable = subBuilder;
+            break;
+          }
+          case 18: {
+            if (tableSchema_ == null) {
+              TableSchema = new global::Substrait.Protobuf.NamedStruct();
+            }
+            input.ReadMessage(TableSchema);
+            break;
+          }
+          case 26: {
+            if (condition_ == null) {
+              Condition = new global::Substrait.Protobuf.Expression();
+            }
+            input.ReadMessage(Condition);
+            break;
+          }
+          case 34: {
+            transformations_.AddEntriesFrom(input, _repeated_transformations_codec);
+            break;
+          }
+          case 42: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 10: {
+            global::Substrait.Protobuf.NamedTable subBuilder = new global::Substrait.Protobuf.NamedTable();
+            if (updateTypeCase_ == UpdateTypeOneofCase.NamedTable) {
+              subBuilder.MergeFrom(NamedTable);
+            }
+            input.ReadMessage(subBuilder);
+            NamedTable = subBuilder;
+            break;
+          }
+          case 18: {
+            if (tableSchema_ == null) {
+              TableSchema = new global::Substrait.Protobuf.NamedStruct();
+            }
+            input.ReadMessage(TableSchema);
+            break;
+          }
+          case 26: {
+            if (condition_ == null) {
+              Condition = new global::Substrait.Protobuf.Expression();
+            }
+            input.ReadMessage(Condition);
+            break;
+          }
+          case 34: {
+            transformations_.AddEntriesFrom(ref input, _repeated_transformations_codec);
+            break;
+          }
+          case 42: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
+            break;
+          }
+        }
+      }
+    }
+    #endif
+
+    #region Nested types
+    /// <summary>Container for nested types declared in the UpdateRel message type.</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static partial class Types {
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+      public sealed partial class TransformExpression : pb::IMessage<TransformExpression>
+      #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          , pb::IBufferMessage
+      #endif
+      {
+        private static readonly pb::MessageParser<TransformExpression> _parser = new pb::MessageParser<TransformExpression>(() => new TransformExpression());
+        private pb::UnknownFieldSet _unknownFields;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pb::MessageParser<TransformExpression> Parser { get { return _parser; } }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pbr::MessageDescriptor Descriptor {
+          get { return global::Substrait.Protobuf.UpdateRel.Descriptor.NestedTypes[0]; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        pbr::MessageDescriptor pb::IMessage.Descriptor {
+          get { return Descriptor; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public TransformExpression() {
+          OnConstruction();
+        }
+
+        partial void OnConstruction();
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public TransformExpression(TransformExpression other) : this() {
+          transformation_ = other.transformation_ != null ? other.transformation_.Clone() : null;
+          columnTarget_ = other.columnTarget_;
+          _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public TransformExpression Clone() {
+          return new TransformExpression(this);
+        }
+
+        /// <summary>Field number for the "transformation" field.</summary>
+        public const int TransformationFieldNumber = 1;
+        private global::Substrait.Protobuf.Expression transformation_;
+        /// <summary>
+        /// the transformation to apply
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Expression Transformation {
+          get { return transformation_; }
+          set {
+            transformation_ = value;
+          }
+        }
+
+        /// <summary>Field number for the "column_target" field.</summary>
+        public const int ColumnTargetFieldNumber = 2;
+        private int columnTarget_;
+        /// <summary>
+        /// index of the column to apply the transformation to
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public int ColumnTarget {
+          get { return columnTarget_; }
+          set {
+            columnTarget_ = value;
+          }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override bool Equals(object other) {
+          return Equals(other as TransformExpression);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool Equals(TransformExpression other) {
+          if (ReferenceEquals(other, null)) {
+            return false;
+          }
+          if (ReferenceEquals(other, this)) {
+            return true;
+          }
+          if (!object.Equals(Transformation, other.Transformation)) return false;
+          if (ColumnTarget != other.ColumnTarget) return false;
+          return Equals(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override int GetHashCode() {
+          int hash = 1;
+          if (transformation_ != null) hash ^= Transformation.GetHashCode();
+          if (ColumnTarget != 0) hash ^= ColumnTarget.GetHashCode();
+          if (_unknownFields != null) {
+            hash ^= _unknownFields.GetHashCode();
+          }
+          return hash;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override string ToString() {
+          return pb::JsonFormatter.ToDiagnosticString(this);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void WriteTo(pb::CodedOutputStream output) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          output.WriteRawMessage(this);
+        #else
+          if (transformation_ != null) {
+            output.WriteRawTag(10);
+            output.WriteMessage(Transformation);
+          }
+          if (ColumnTarget != 0) {
+            output.WriteRawTag(16);
+            output.WriteInt32(ColumnTarget);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(output);
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+          if (transformation_ != null) {
+            output.WriteRawTag(10);
+            output.WriteMessage(Transformation);
+          }
+          if (ColumnTarget != 0) {
+            output.WriteRawTag(16);
+            output.WriteInt32(ColumnTarget);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(ref output);
+          }
+        }
+        #endif
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public int CalculateSize() {
+          int size = 0;
+          if (transformation_ != null) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(Transformation);
+          }
+          if (ColumnTarget != 0) {
+            size += 1 + pb::CodedOutputStream.ComputeInt32Size(ColumnTarget);
+          }
+          if (_unknownFields != null) {
+            size += _unknownFields.CalculateSize();
+          }
+          return size;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(TransformExpression other) {
+          if (other == null) {
+            return;
+          }
+          if (other.transformation_ != null) {
+            if (transformation_ == null) {
+              Transformation = new global::Substrait.Protobuf.Expression();
+            }
+            Transformation.MergeFrom(other.Transformation);
+          }
+          if (other.ColumnTarget != 0) {
+            ColumnTarget = other.ColumnTarget;
+          }
+          _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(pb::CodedInputStream input) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          input.ReadRawMessage(this);
+        #else
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                break;
+              case 10: {
+                if (transformation_ == null) {
+                  Transformation = new global::Substrait.Protobuf.Expression();
+                }
+                input.ReadMessage(Transformation);
+                break;
+              }
+              case 16: {
+                ColumnTarget = input.ReadInt32();
+                break;
+              }
+            }
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                break;
+              case 10: {
+                if (transformation_ == null) {
+                  Transformation = new global::Substrait.Protobuf.Expression();
+                }
+                input.ReadMessage(Transformation);
+                break;
+              }
+              case 16: {
+                ColumnTarget = input.ReadInt32();
+                break;
+              }
+            }
+          }
+        }
+        #endif
+
+      }
+
+    }
+    #endregion
+
+  }
+
+  /// <summary>
+  /// A base table. The list of string is used to represent namespacing (e.g., mydb.mytable).
+  /// This assumes shared catalog between systems exchanging a message.
+  /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class NamedTable : pb::IMessage<NamedTable>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<NamedTable> _parser = new pb::MessageParser<NamedTable>(() => new NamedTable());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<NamedTable> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[23]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public NamedTable() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public NamedTable(NamedTable other) : this() {
+      names_ = other.names_.Clone();
+      advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public NamedTable Clone() {
+      return new NamedTable(this);
+    }
+
+    /// <summary>Field number for the "names" field.</summary>
+    public const int NamesFieldNumber = 1;
+    private static readonly pb::FieldCodec<string> _repeated_names_codec
+        = pb::FieldCodec.ForString(10);
+    private readonly pbc::RepeatedField<string> names_ = new pbc::RepeatedField<string>();
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public pbc::RepeatedField<string> Names {
+      get { return names_; }
+    }
+
+    /// <summary>Field number for the "advanced_extension" field.</summary>
+    public const int AdvancedExtensionFieldNumber = 10;
+    private global::Substrait.Protobuf.AdvancedExtension advancedExtension_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.AdvancedExtension AdvancedExtension {
+      get { return advancedExtension_; }
+      set {
+        advancedExtension_ = value;
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as NamedTable);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(NamedTable other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if(!names_.Equals(other.names_)) return false;
+      if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      hash ^= names_.GetHashCode();
+      if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      names_.WriteTo(output, _repeated_names_codec);
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(82);
+        output.WriteMessage(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      names_.WriteTo(ref output, _repeated_names_codec);
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(82);
+        output.WriteMessage(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      size += names_.CalculateSize(_repeated_names_codec);
+      if (advancedExtension_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(NamedTable other) {
+      if (other == null) {
+        return;
+      }
+      names_.Add(other.names_);
+      if (other.advancedExtension_ != null) {
+        if (advancedExtension_ == null) {
+          AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+        }
+        AdvancedExtension.MergeFrom(other.AdvancedExtension);
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            names_.AddEntriesFrom(input, _repeated_names_codec);
+            break;
+          }
+          case 82: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 10: {
+            names_.AddEntriesFrom(ref input, _repeated_names_codec);
+            break;
+          }
+          case 82: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
+            break;
+          }
+        }
+      }
+    }
+    #endif
 
   }
 
@@ -16073,7 +19815,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[22]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[24]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -16290,7 +20032,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -16326,7 +20072,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -16646,7 +20396,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -16670,7 +20424,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -16696,8 +20454,8 @@ namespace Substrait.Protobuf {
   }
 
   /// <summary>
-  /// The hash equijoin join operator will build a hash table out of the right input based on a set of join keys.
-  /// It will then probe that hash table for incoming inputs, finding matches.
+  /// The hash equijoin operator will build a hash table out of one input (default `right`) based on a set of join keys.
+  /// It will then probe that hash table for the other input (default `left`), finding matches.
   ///
   /// Two rows are a match if the comparison function returns true for all keys
   /// </summary>
@@ -16716,7 +20474,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[23]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[25]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -16744,6 +20502,7 @@ namespace Substrait.Protobuf {
       keys_ = other.keys_.Clone();
       postJoinFilter_ = other.postJoinFilter_ != null ? other.postJoinFilter_.Clone() : null;
       type_ = other.type_;
+      buildInput_ = other.buildInput_;
       advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
@@ -16869,6 +20628,21 @@ namespace Substrait.Protobuf {
       }
     }
 
+    /// <summary>Field number for the "build_input" field.</summary>
+    public const int BuildInputFieldNumber = 9;
+    private global::Substrait.Protobuf.HashJoinRel.Types.BuildInput buildInput_ = global::Substrait.Protobuf.HashJoinRel.Types.BuildInput.Unspecified;
+    /// <summary>
+    /// Specifies which side of input to build the hash table for this hash join. Default is `BUILD_INPUT_RIGHT`.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.HashJoinRel.Types.BuildInput BuildInput {
+      get { return buildInput_; }
+      set {
+        buildInput_ = value;
+      }
+    }
+
     /// <summary>Field number for the "advanced_extension" field.</summary>
     public const int AdvancedExtensionFieldNumber = 10;
     private global::Substrait.Protobuf.AdvancedExtension advancedExtension_;
@@ -16904,6 +20678,7 @@ namespace Substrait.Protobuf {
       if(!keys_.Equals(other.keys_)) return false;
       if (!object.Equals(PostJoinFilter, other.PostJoinFilter)) return false;
       if (Type != other.Type) return false;
+      if (BuildInput != other.BuildInput) return false;
       if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
@@ -16920,6 +20695,7 @@ namespace Substrait.Protobuf {
       hash ^= keys_.GetHashCode();
       if (postJoinFilter_ != null) hash ^= PostJoinFilter.GetHashCode();
       if (Type != global::Substrait.Protobuf.HashJoinRel.Types.JoinType.Unspecified) hash ^= Type.GetHashCode();
+      if (BuildInput != global::Substrait.Protobuf.HashJoinRel.Types.BuildInput.Unspecified) hash ^= BuildInput.GetHashCode();
       if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
@@ -16962,6 +20738,10 @@ namespace Substrait.Protobuf {
         output.WriteEnum((int) Type);
       }
       keys_.WriteTo(output, _repeated_keys_codec);
+      if (BuildInput != global::Substrait.Protobuf.HashJoinRel.Types.BuildInput.Unspecified) {
+        output.WriteRawTag(72);
+        output.WriteEnum((int) BuildInput);
+      }
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
         output.WriteMessage(AdvancedExtension);
@@ -16999,6 +20779,10 @@ namespace Substrait.Protobuf {
         output.WriteEnum((int) Type);
       }
       keys_.WriteTo(ref output, _repeated_keys_codec);
+      if (BuildInput != global::Substrait.Protobuf.HashJoinRel.Types.BuildInput.Unspecified) {
+        output.WriteRawTag(72);
+        output.WriteEnum((int) BuildInput);
+      }
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
         output.WriteMessage(AdvancedExtension);
@@ -17030,6 +20814,9 @@ namespace Substrait.Protobuf {
       }
       if (Type != global::Substrait.Protobuf.HashJoinRel.Types.JoinType.Unspecified) {
         size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Type);
+      }
+      if (BuildInput != global::Substrait.Protobuf.HashJoinRel.Types.BuildInput.Unspecified) {
+        size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) BuildInput);
       }
       if (advancedExtension_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
@@ -17076,6 +20863,9 @@ namespace Substrait.Protobuf {
       if (other.Type != global::Substrait.Protobuf.HashJoinRel.Types.JoinType.Unspecified) {
         Type = other.Type;
       }
+      if (other.BuildInput != global::Substrait.Protobuf.HashJoinRel.Types.BuildInput.Unspecified) {
+        BuildInput = other.BuildInput;
+      }
       if (other.advancedExtension_ != null) {
         if (advancedExtension_ == null) {
           AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -17093,7 +20883,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -17141,6 +20935,10 @@ namespace Substrait.Protobuf {
             keys_.AddEntriesFrom(input, _repeated_keys_codec);
             break;
           }
+          case 72: {
+            BuildInput = (global::Substrait.Protobuf.HashJoinRel.Types.BuildInput) input.ReadEnum();
+            break;
+          }
           case 82: {
             if (advancedExtension_ == null) {
               AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -17159,7 +20957,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -17207,6 +21009,10 @@ namespace Substrait.Protobuf {
             keys_.AddEntriesFrom(ref input, _repeated_keys_codec);
             break;
           }
+          case 72: {
+            BuildInput = (global::Substrait.Protobuf.HashJoinRel.Types.BuildInput) input.ReadEnum();
+            break;
+          }
           case 82: {
             if (advancedExtension_ == null) {
               AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -17234,6 +21040,16 @@ namespace Substrait.Protobuf {
         [pbr::OriginalName("JOIN_TYPE_RIGHT_SEMI")] RightSemi = 6,
         [pbr::OriginalName("JOIN_TYPE_LEFT_ANTI")] LeftAnti = 7,
         [pbr::OriginalName("JOIN_TYPE_RIGHT_ANTI")] RightAnti = 8,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_SINGLE")] LeftSingle = 9,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_SINGLE")] RightSingle = 10,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_MARK")] LeftMark = 11,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_MARK")] RightMark = 12,
+      }
+
+      public enum BuildInput {
+        [pbr::OriginalName("BUILD_INPUT_UNSPECIFIED")] Unspecified = 0,
+        [pbr::OriginalName("BUILD_INPUT_LEFT")] Left = 1,
+        [pbr::OriginalName("BUILD_INPUT_RIGHT")] Right = 2,
       }
 
     }
@@ -17260,7 +21076,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[24]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[26]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -17639,7 +21455,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -17705,7 +21525,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -17780,6 +21604,10 @@ namespace Substrait.Protobuf {
         [pbr::OriginalName("JOIN_TYPE_RIGHT_SEMI")] RightSemi = 6,
         [pbr::OriginalName("JOIN_TYPE_LEFT_ANTI")] LeftAnti = 7,
         [pbr::OriginalName("JOIN_TYPE_RIGHT_ANTI")] RightAnti = 8,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_SINGLE")] LeftSingle = 9,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_SINGLE")] RightSingle = 10,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_MARK")] LeftMark = 11,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_MARK")] RightMark = 12,
       }
 
     }
@@ -17806,7 +21634,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[25]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[27]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -18110,7 +21938,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -18164,7 +21996,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -18227,6 +22063,10 @@ namespace Substrait.Protobuf {
         [pbr::OriginalName("JOIN_TYPE_RIGHT_SEMI")] RightSemi = 6,
         [pbr::OriginalName("JOIN_TYPE_LEFT_ANTI")] LeftAnti = 7,
         [pbr::OriginalName("JOIN_TYPE_RIGHT_ANTI")] RightAnti = 8,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_SINGLE")] LeftSingle = 9,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_SINGLE")] RightSingle = 10,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_MARK")] LeftMark = 11,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_MARK")] RightMark = 12,
       }
 
     }
@@ -18252,7 +22092,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[26]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[28]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -18507,7 +22347,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -18544,7 +22388,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -18596,7 +22444,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[27]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[29]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -18768,7 +22616,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -18791,7 +22643,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -18825,7 +22681,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[28]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[30]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -18878,6 +22734,15 @@ namespace Substrait.Protobuf {
           break;
         case RexTypeOneofCase.Nested:
           Nested = other.Nested.Clone();
+          break;
+        case RexTypeOneofCase.DynamicParameter:
+          DynamicParameter = other.DynamicParameter.Clone();
+          break;
+        case RexTypeOneofCase.Lambda:
+          Lambda = other.Lambda.Clone();
+          break;
+        case RexTypeOneofCase.LambdaInvocation:
+          LambdaInvocation = other.LambdaInvocation.Clone();
           break;
         case RexTypeOneofCase.Enum:
           Enum = other.Enum.Clone();
@@ -19025,6 +22890,42 @@ namespace Substrait.Protobuf {
       }
     }
 
+    /// <summary>Field number for the "dynamic_parameter" field.</summary>
+    public const int DynamicParameterFieldNumber = 14;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.DynamicParameter DynamicParameter {
+      get { return rexTypeCase_ == RexTypeOneofCase.DynamicParameter ? (global::Substrait.Protobuf.DynamicParameter) rexType_ : null; }
+      set {
+        rexType_ = value;
+        rexTypeCase_ = value == null ? RexTypeOneofCase.None : RexTypeOneofCase.DynamicParameter;
+      }
+    }
+
+    /// <summary>Field number for the "lambda" field.</summary>
+    public const int LambdaFieldNumber = 15;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Expression.Types.Lambda Lambda {
+      get { return rexTypeCase_ == RexTypeOneofCase.Lambda ? (global::Substrait.Protobuf.Expression.Types.Lambda) rexType_ : null; }
+      set {
+        rexType_ = value;
+        rexTypeCase_ = value == null ? RexTypeOneofCase.None : RexTypeOneofCase.Lambda;
+      }
+    }
+
+    /// <summary>Field number for the "lambda_invocation" field.</summary>
+    public const int LambdaInvocationFieldNumber = 16;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Expression.Types.LambdaInvocation LambdaInvocation {
+      get { return rexTypeCase_ == RexTypeOneofCase.LambdaInvocation ? (global::Substrait.Protobuf.Expression.Types.LambdaInvocation) rexType_ : null; }
+      set {
+        rexType_ = value;
+        rexTypeCase_ = value == null ? RexTypeOneofCase.None : RexTypeOneofCase.LambdaInvocation;
+      }
+    }
+
     /// <summary>Field number for the "enum" field.</summary>
     public const int EnumFieldNumber = 10;
     /// <summary>
@@ -19058,6 +22959,9 @@ namespace Substrait.Protobuf {
       Cast = 11,
       Subquery = 12,
       Nested = 13,
+      DynamicParameter = 14,
+      Lambda = 15,
+      LambdaInvocation = 16,
       Enum = 10,
     }
     private RexTypeOneofCase rexTypeCase_ = RexTypeOneofCase.None;
@@ -19100,6 +23004,9 @@ namespace Substrait.Protobuf {
       if (!object.Equals(Cast, other.Cast)) return false;
       if (!object.Equals(Subquery, other.Subquery)) return false;
       if (!object.Equals(Nested, other.Nested)) return false;
+      if (!object.Equals(DynamicParameter, other.DynamicParameter)) return false;
+      if (!object.Equals(Lambda, other.Lambda)) return false;
+      if (!object.Equals(LambdaInvocation, other.LambdaInvocation)) return false;
       if (!object.Equals(Enum, other.Enum)) return false;
       if (RexTypeCase != other.RexTypeCase) return false;
       return Equals(_unknownFields, other._unknownFields);
@@ -19120,6 +23027,9 @@ namespace Substrait.Protobuf {
       if (rexTypeCase_ == RexTypeOneofCase.Cast) hash ^= Cast.GetHashCode();
       if (rexTypeCase_ == RexTypeOneofCase.Subquery) hash ^= Subquery.GetHashCode();
       if (rexTypeCase_ == RexTypeOneofCase.Nested) hash ^= Nested.GetHashCode();
+      if (rexTypeCase_ == RexTypeOneofCase.DynamicParameter) hash ^= DynamicParameter.GetHashCode();
+      if (rexTypeCase_ == RexTypeOneofCase.Lambda) hash ^= Lambda.GetHashCode();
+      if (rexTypeCase_ == RexTypeOneofCase.LambdaInvocation) hash ^= LambdaInvocation.GetHashCode();
       if (rexTypeCase_ == RexTypeOneofCase.Enum) hash ^= Enum.GetHashCode();
       hash ^= (int) rexTypeCase_;
       if (_unknownFields != null) {
@@ -19188,6 +23098,18 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(106);
         output.WriteMessage(Nested);
       }
+      if (rexTypeCase_ == RexTypeOneofCase.DynamicParameter) {
+        output.WriteRawTag(114);
+        output.WriteMessage(DynamicParameter);
+      }
+      if (rexTypeCase_ == RexTypeOneofCase.Lambda) {
+        output.WriteRawTag(122);
+        output.WriteMessage(Lambda);
+      }
+      if (rexTypeCase_ == RexTypeOneofCase.LambdaInvocation) {
+        output.WriteRawTag(130, 1);
+        output.WriteMessage(LambdaInvocation);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -19246,6 +23168,18 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(106);
         output.WriteMessage(Nested);
       }
+      if (rexTypeCase_ == RexTypeOneofCase.DynamicParameter) {
+        output.WriteRawTag(114);
+        output.WriteMessage(DynamicParameter);
+      }
+      if (rexTypeCase_ == RexTypeOneofCase.Lambda) {
+        output.WriteRawTag(122);
+        output.WriteMessage(Lambda);
+      }
+      if (rexTypeCase_ == RexTypeOneofCase.LambdaInvocation) {
+        output.WriteRawTag(130, 1);
+        output.WriteMessage(LambdaInvocation);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -19288,6 +23222,15 @@ namespace Substrait.Protobuf {
       }
       if (rexTypeCase_ == RexTypeOneofCase.Nested) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(Nested);
+      }
+      if (rexTypeCase_ == RexTypeOneofCase.DynamicParameter) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(DynamicParameter);
+      }
+      if (rexTypeCase_ == RexTypeOneofCase.Lambda) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Lambda);
+      }
+      if (rexTypeCase_ == RexTypeOneofCase.LambdaInvocation) {
+        size += 2 + pb::CodedOutputStream.ComputeMessageSize(LambdaInvocation);
       }
       if (rexTypeCase_ == RexTypeOneofCase.Enum) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(Enum);
@@ -19371,6 +23314,24 @@ namespace Substrait.Protobuf {
           }
           Nested.MergeFrom(other.Nested);
           break;
+        case RexTypeOneofCase.DynamicParameter:
+          if (DynamicParameter == null) {
+            DynamicParameter = new global::Substrait.Protobuf.DynamicParameter();
+          }
+          DynamicParameter.MergeFrom(other.DynamicParameter);
+          break;
+        case RexTypeOneofCase.Lambda:
+          if (Lambda == null) {
+            Lambda = new global::Substrait.Protobuf.Expression.Types.Lambda();
+          }
+          Lambda.MergeFrom(other.Lambda);
+          break;
+        case RexTypeOneofCase.LambdaInvocation:
+          if (LambdaInvocation == null) {
+            LambdaInvocation = new global::Substrait.Protobuf.Expression.Types.LambdaInvocation();
+          }
+          LambdaInvocation.MergeFrom(other.LambdaInvocation);
+          break;
         case RexTypeOneofCase.Enum:
           if (Enum == null) {
             Enum = new global::Substrait.Protobuf.Expression.Types.Enum();
@@ -19390,7 +23351,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -19502,6 +23467,33 @@ namespace Substrait.Protobuf {
             Nested = subBuilder;
             break;
           }
+          case 114: {
+            global::Substrait.Protobuf.DynamicParameter subBuilder = new global::Substrait.Protobuf.DynamicParameter();
+            if (rexTypeCase_ == RexTypeOneofCase.DynamicParameter) {
+              subBuilder.MergeFrom(DynamicParameter);
+            }
+            input.ReadMessage(subBuilder);
+            DynamicParameter = subBuilder;
+            break;
+          }
+          case 122: {
+            global::Substrait.Protobuf.Expression.Types.Lambda subBuilder = new global::Substrait.Protobuf.Expression.Types.Lambda();
+            if (rexTypeCase_ == RexTypeOneofCase.Lambda) {
+              subBuilder.MergeFrom(Lambda);
+            }
+            input.ReadMessage(subBuilder);
+            Lambda = subBuilder;
+            break;
+          }
+          case 130: {
+            global::Substrait.Protobuf.Expression.Types.LambdaInvocation subBuilder = new global::Substrait.Protobuf.Expression.Types.LambdaInvocation();
+            if (rexTypeCase_ == RexTypeOneofCase.LambdaInvocation) {
+              subBuilder.MergeFrom(LambdaInvocation);
+            }
+            input.ReadMessage(subBuilder);
+            LambdaInvocation = subBuilder;
+            break;
+          }
         }
       }
     #endif
@@ -19513,7 +23505,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -19623,6 +23619,33 @@ namespace Substrait.Protobuf {
             }
             input.ReadMessage(subBuilder);
             Nested = subBuilder;
+            break;
+          }
+          case 114: {
+            global::Substrait.Protobuf.DynamicParameter subBuilder = new global::Substrait.Protobuf.DynamicParameter();
+            if (rexTypeCase_ == RexTypeOneofCase.DynamicParameter) {
+              subBuilder.MergeFrom(DynamicParameter);
+            }
+            input.ReadMessage(subBuilder);
+            DynamicParameter = subBuilder;
+            break;
+          }
+          case 122: {
+            global::Substrait.Protobuf.Expression.Types.Lambda subBuilder = new global::Substrait.Protobuf.Expression.Types.Lambda();
+            if (rexTypeCase_ == RexTypeOneofCase.Lambda) {
+              subBuilder.MergeFrom(Lambda);
+            }
+            input.ReadMessage(subBuilder);
+            Lambda = subBuilder;
+            break;
+          }
+          case 130: {
+            global::Substrait.Protobuf.Expression.Types.LambdaInvocation subBuilder = new global::Substrait.Protobuf.Expression.Types.LambdaInvocation();
+            if (rexTypeCase_ == RexTypeOneofCase.LambdaInvocation) {
+              subBuilder.MergeFrom(LambdaInvocation);
+            }
+            input.ReadMessage(subBuilder);
+            LambdaInvocation = subBuilder;
             break;
           }
         }
@@ -19872,7 +23895,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -19900,7 +23927,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -20055,7 +24086,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -20070,7 +24105,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -20166,6 +24205,9 @@ namespace Substrait.Protobuf {
             case LiteralTypeOneofCase.IntervalDayToSecond:
               IntervalDayToSecond = other.IntervalDayToSecond.Clone();
               break;
+            case LiteralTypeOneofCase.IntervalCompound:
+              IntervalCompound = other.IntervalCompound.Clone();
+              break;
             case LiteralTypeOneofCase.FixedChar:
               FixedChar = other.FixedChar;
               break;
@@ -20178,11 +24220,14 @@ namespace Substrait.Protobuf {
             case LiteralTypeOneofCase.Decimal:
               Decimal = other.Decimal.Clone();
               break;
+            case LiteralTypeOneofCase.PrecisionTime:
+              PrecisionTime = other.PrecisionTime.Clone();
+              break;
             case LiteralTypeOneofCase.PrecisionTimestamp:
-              PrecisionTimestamp = other.PrecisionTimestamp;
+              PrecisionTimestamp = other.PrecisionTimestamp.Clone();
               break;
             case LiteralTypeOneofCase.PrecisionTimestampTz:
-              PrecisionTimestampTz = other.PrecisionTimestampTz;
+              PrecisionTimestampTz = other.PrecisionTimestampTz.Clone();
               break;
             case LiteralTypeOneofCase.Struct:
               Struct = other.Struct.Clone();
@@ -20460,7 +24505,7 @@ namespace Substrait.Protobuf {
         public const int TimestampFieldNumber = 14;
         /// <summary>
         /// Timestamp in units of microseconds since the UNIX epoch.
-        /// Deprecated in favor of `precision_timestamp`
+        /// Deprecated in favor of `precision_timestamp`.
         /// </summary>
         [global::System.ObsoleteAttribute]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -20521,7 +24566,8 @@ namespace Substrait.Protobuf {
         /// <summary>Field number for the "time" field.</summary>
         public const int TimeFieldNumber = 17;
         /// <summary>
-        /// Time in units of microseconds past midnight
+        /// Time in units of microseconds past midnight.
+        /// Deprecated in favor of `precision_time`.
         /// </summary>
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -20568,6 +24614,18 @@ namespace Substrait.Protobuf {
           set {
             literalType_ = value;
             literalTypeCase_ = value == null ? LiteralTypeOneofCase.None : LiteralTypeOneofCase.IntervalDayToSecond;
+          }
+        }
+
+        /// <summary>Field number for the "interval_compound" field.</summary>
+        public const int IntervalCompoundFieldNumber = 36;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalCompound IntervalCompound {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.IntervalCompound ? (global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalCompound) literalType_ : null; }
+          set {
+            literalType_ = value;
+            literalTypeCase_ = value == null ? LiteralTypeOneofCase.None : LiteralTypeOneofCase.IntervalCompound;
           }
         }
 
@@ -20647,33 +24705,30 @@ namespace Substrait.Protobuf {
           }
         }
 
-        /// <summary>Field number for the "precision_timestamp" field.</summary>
-        public const int PrecisionTimestampFieldNumber = 34;
+        /// <summary>Field number for the "precision_time" field.</summary>
+        public const int PrecisionTimeFieldNumber = 37;
         /// <summary>
-        /// If the precision is 6 or less then this is the microseconds since the UNIX epoch
-        /// If the precision is more than 6 then this is the nanoseconds since the UNIX epoch
+        /// Time in precision units past midnight.
         /// </summary>
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public ulong PrecisionTimestamp {
-          get { return HasPrecisionTimestamp ? (ulong) literalType_ : 0UL; }
+        public global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTime PrecisionTime {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.PrecisionTime ? (global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTime) literalType_ : null; }
           set {
             literalType_ = value;
-            literalTypeCase_ = LiteralTypeOneofCase.PrecisionTimestamp;
+            literalTypeCase_ = value == null ? LiteralTypeOneofCase.None : LiteralTypeOneofCase.PrecisionTime;
           }
         }
-        /// <summary>Gets whether the "precision_timestamp" field is set</summary>
+
+        /// <summary>Field number for the "precision_timestamp" field.</summary>
+        public const int PrecisionTimestampFieldNumber = 34;
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public bool HasPrecisionTimestamp {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestamp; }
-        }
-        /// <summary> Clears the value of the oneof if it's currently set to "precision_timestamp" </summary>
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public void ClearPrecisionTimestamp() {
-          if (HasPrecisionTimestamp) {
-            ClearLiteralType();
+        public global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp PrecisionTimestamp {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestamp ? (global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp) literalType_ : null; }
+          set {
+            literalType_ = value;
+            literalTypeCase_ = value == null ? LiteralTypeOneofCase.None : LiteralTypeOneofCase.PrecisionTimestamp;
           }
         }
 
@@ -20681,25 +24736,11 @@ namespace Substrait.Protobuf {
         public const int PrecisionTimestampTzFieldNumber = 35;
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public ulong PrecisionTimestampTz {
-          get { return HasPrecisionTimestampTz ? (ulong) literalType_ : 0UL; }
+        public global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp PrecisionTimestampTz {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestampTz ? (global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp) literalType_ : null; }
           set {
             literalType_ = value;
-            literalTypeCase_ = LiteralTypeOneofCase.PrecisionTimestampTz;
-          }
-        }
-        /// <summary>Gets whether the "precision_timestamp_tz" field is set</summary>
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public bool HasPrecisionTimestampTz {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestampTz; }
-        }
-        /// <summary> Clears the value of the oneof if it's currently set to "precision_timestamp_tz" </summary>
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public void ClearPrecisionTimestampTz() {
-          if (HasPrecisionTimestampTz) {
-            ClearLiteralType();
+            literalTypeCase_ = value == null ? LiteralTypeOneofCase.None : LiteralTypeOneofCase.PrecisionTimestampTz;
           }
         }
 
@@ -20903,10 +24944,12 @@ namespace Substrait.Protobuf {
           Time = 17,
           IntervalYearToMonth = 19,
           IntervalDayToSecond = 20,
+          IntervalCompound = 36,
           FixedChar = 21,
           VarChar = 22,
           FixedBinary = 23,
           Decimal = 24,
+          PrecisionTime = 37,
           PrecisionTimestamp = 34,
           PrecisionTimestampTz = 35,
           Struct = 25,
@@ -20962,12 +25005,14 @@ namespace Substrait.Protobuf {
           if (Time != other.Time) return false;
           if (!object.Equals(IntervalYearToMonth, other.IntervalYearToMonth)) return false;
           if (!object.Equals(IntervalDayToSecond, other.IntervalDayToSecond)) return false;
+          if (!object.Equals(IntervalCompound, other.IntervalCompound)) return false;
           if (FixedChar != other.FixedChar) return false;
           if (!object.Equals(VarChar, other.VarChar)) return false;
           if (FixedBinary != other.FixedBinary) return false;
           if (!object.Equals(Decimal, other.Decimal)) return false;
-          if (PrecisionTimestamp != other.PrecisionTimestamp) return false;
-          if (PrecisionTimestampTz != other.PrecisionTimestampTz) return false;
+          if (!object.Equals(PrecisionTime, other.PrecisionTime)) return false;
+          if (!object.Equals(PrecisionTimestamp, other.PrecisionTimestamp)) return false;
+          if (!object.Equals(PrecisionTimestampTz, other.PrecisionTimestampTz)) return false;
           if (!object.Equals(Struct, other.Struct)) return false;
           if (!object.Equals(Map, other.Map)) return false;
           if (TimestampTz != other.TimestampTz) return false;
@@ -21001,12 +25046,14 @@ namespace Substrait.Protobuf {
           if (HasTime) hash ^= Time.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.IntervalYearToMonth) hash ^= IntervalYearToMonth.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.IntervalDayToSecond) hash ^= IntervalDayToSecond.GetHashCode();
+          if (literalTypeCase_ == LiteralTypeOneofCase.IntervalCompound) hash ^= IntervalCompound.GetHashCode();
           if (HasFixedChar) hash ^= FixedChar.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.VarChar) hash ^= VarChar.GetHashCode();
           if (HasFixedBinary) hash ^= FixedBinary.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.Decimal) hash ^= Decimal.GetHashCode();
-          if (HasPrecisionTimestamp) hash ^= PrecisionTimestamp.GetHashCode();
-          if (HasPrecisionTimestampTz) hash ^= PrecisionTimestampTz.GetHashCode();
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTime) hash ^= PrecisionTime.GetHashCode();
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestamp) hash ^= PrecisionTimestamp.GetHashCode();
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestampTz) hash ^= PrecisionTimestampTz.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.Struct) hash ^= Struct.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.Map) hash ^= Map.GetHashCode();
           if (HasTimestampTz) hash ^= TimestampTz.GetHashCode();
@@ -21145,13 +25192,21 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(138, 2);
             output.WriteMessage(UserDefined);
           }
-          if (HasPrecisionTimestamp) {
-            output.WriteRawTag(144, 2);
-            output.WriteUInt64(PrecisionTimestamp);
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestamp) {
+            output.WriteRawTag(146, 2);
+            output.WriteMessage(PrecisionTimestamp);
           }
-          if (HasPrecisionTimestampTz) {
-            output.WriteRawTag(152, 2);
-            output.WriteUInt64(PrecisionTimestampTz);
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestampTz) {
+            output.WriteRawTag(154, 2);
+            output.WriteMessage(PrecisionTimestampTz);
+          }
+          if (literalTypeCase_ == LiteralTypeOneofCase.IntervalCompound) {
+            output.WriteRawTag(162, 2);
+            output.WriteMessage(IntervalCompound);
+          }
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTime) {
+            output.WriteRawTag(170, 2);
+            output.WriteMessage(PrecisionTime);
           }
           if (Nullable != false) {
             output.WriteRawTag(144, 3);
@@ -21279,13 +25334,21 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(138, 2);
             output.WriteMessage(UserDefined);
           }
-          if (HasPrecisionTimestamp) {
-            output.WriteRawTag(144, 2);
-            output.WriteUInt64(PrecisionTimestamp);
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestamp) {
+            output.WriteRawTag(146, 2);
+            output.WriteMessage(PrecisionTimestamp);
           }
-          if (HasPrecisionTimestampTz) {
-            output.WriteRawTag(152, 2);
-            output.WriteUInt64(PrecisionTimestampTz);
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestampTz) {
+            output.WriteRawTag(154, 2);
+            output.WriteMessage(PrecisionTimestampTz);
+          }
+          if (literalTypeCase_ == LiteralTypeOneofCase.IntervalCompound) {
+            output.WriteRawTag(162, 2);
+            output.WriteMessage(IntervalCompound);
+          }
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTime) {
+            output.WriteRawTag(170, 2);
+            output.WriteMessage(PrecisionTime);
           }
           if (Nullable != false) {
             output.WriteRawTag(144, 3);
@@ -21347,6 +25410,9 @@ namespace Substrait.Protobuf {
           if (literalTypeCase_ == LiteralTypeOneofCase.IntervalDayToSecond) {
             size += 2 + pb::CodedOutputStream.ComputeMessageSize(IntervalDayToSecond);
           }
+          if (literalTypeCase_ == LiteralTypeOneofCase.IntervalCompound) {
+            size += 2 + pb::CodedOutputStream.ComputeMessageSize(IntervalCompound);
+          }
           if (HasFixedChar) {
             size += 2 + pb::CodedOutputStream.ComputeStringSize(FixedChar);
           }
@@ -21359,11 +25425,14 @@ namespace Substrait.Protobuf {
           if (literalTypeCase_ == LiteralTypeOneofCase.Decimal) {
             size += 2 + pb::CodedOutputStream.ComputeMessageSize(Decimal);
           }
-          if (HasPrecisionTimestamp) {
-            size += 2 + pb::CodedOutputStream.ComputeUInt64Size(PrecisionTimestamp);
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTime) {
+            size += 2 + pb::CodedOutputStream.ComputeMessageSize(PrecisionTime);
           }
-          if (HasPrecisionTimestampTz) {
-            size += 2 + pb::CodedOutputStream.ComputeUInt64Size(PrecisionTimestampTz);
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestamp) {
+            size += 2 + pb::CodedOutputStream.ComputeMessageSize(PrecisionTimestamp);
+          }
+          if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestampTz) {
+            size += 2 + pb::CodedOutputStream.ComputeMessageSize(PrecisionTimestampTz);
           }
           if (literalTypeCase_ == LiteralTypeOneofCase.Struct) {
             size += 2 + pb::CodedOutputStream.ComputeMessageSize(Struct);
@@ -21465,6 +25534,12 @@ namespace Substrait.Protobuf {
               }
               IntervalDayToSecond.MergeFrom(other.IntervalDayToSecond);
               break;
+            case LiteralTypeOneofCase.IntervalCompound:
+              if (IntervalCompound == null) {
+                IntervalCompound = new global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalCompound();
+              }
+              IntervalCompound.MergeFrom(other.IntervalCompound);
+              break;
             case LiteralTypeOneofCase.FixedChar:
               FixedChar = other.FixedChar;
               break;
@@ -21483,11 +25558,23 @@ namespace Substrait.Protobuf {
               }
               Decimal.MergeFrom(other.Decimal);
               break;
+            case LiteralTypeOneofCase.PrecisionTime:
+              if (PrecisionTime == null) {
+                PrecisionTime = new global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTime();
+              }
+              PrecisionTime.MergeFrom(other.PrecisionTime);
+              break;
             case LiteralTypeOneofCase.PrecisionTimestamp:
-              PrecisionTimestamp = other.PrecisionTimestamp;
+              if (PrecisionTimestamp == null) {
+                PrecisionTimestamp = new global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp();
+              }
+              PrecisionTimestamp.MergeFrom(other.PrecisionTimestamp);
               break;
             case LiteralTypeOneofCase.PrecisionTimestampTz:
-              PrecisionTimestampTz = other.PrecisionTimestampTz;
+              if (PrecisionTimestampTz == null) {
+                PrecisionTimestampTz = new global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp();
+              }
+              PrecisionTimestampTz.MergeFrom(other.PrecisionTimestampTz);
               break;
             case LiteralTypeOneofCase.Struct:
               if (Struct == null) {
@@ -21550,7 +25637,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -21717,12 +25808,40 @@ namespace Substrait.Protobuf {
                 UserDefined = subBuilder;
                 break;
               }
-              case 272: {
-                PrecisionTimestamp = input.ReadUInt64();
+              case 274: {
+                global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp subBuilder = new global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp();
+                if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestamp) {
+                  subBuilder.MergeFrom(PrecisionTimestamp);
+                }
+                input.ReadMessage(subBuilder);
+                PrecisionTimestamp = subBuilder;
                 break;
               }
-              case 280: {
-                PrecisionTimestampTz = input.ReadUInt64();
+              case 282: {
+                global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp subBuilder = new global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp();
+                if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestampTz) {
+                  subBuilder.MergeFrom(PrecisionTimestampTz);
+                }
+                input.ReadMessage(subBuilder);
+                PrecisionTimestampTz = subBuilder;
+                break;
+              }
+              case 290: {
+                global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalCompound subBuilder = new global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalCompound();
+                if (literalTypeCase_ == LiteralTypeOneofCase.IntervalCompound) {
+                  subBuilder.MergeFrom(IntervalCompound);
+                }
+                input.ReadMessage(subBuilder);
+                IntervalCompound = subBuilder;
+                break;
+              }
+              case 298: {
+                global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTime subBuilder = new global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTime();
+                if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTime) {
+                  subBuilder.MergeFrom(PrecisionTime);
+                }
+                input.ReadMessage(subBuilder);
+                PrecisionTime = subBuilder;
                 break;
               }
               case 400: {
@@ -21744,7 +25863,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -21911,12 +26034,40 @@ namespace Substrait.Protobuf {
                 UserDefined = subBuilder;
                 break;
               }
-              case 272: {
-                PrecisionTimestamp = input.ReadUInt64();
+              case 274: {
+                global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp subBuilder = new global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp();
+                if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestamp) {
+                  subBuilder.MergeFrom(PrecisionTimestamp);
+                }
+                input.ReadMessage(subBuilder);
+                PrecisionTimestamp = subBuilder;
                 break;
               }
-              case 280: {
-                PrecisionTimestampTz = input.ReadUInt64();
+              case 282: {
+                global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp subBuilder = new global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTimestamp();
+                if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestampTz) {
+                  subBuilder.MergeFrom(PrecisionTimestampTz);
+                }
+                input.ReadMessage(subBuilder);
+                PrecisionTimestampTz = subBuilder;
+                break;
+              }
+              case 290: {
+                global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalCompound subBuilder = new global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalCompound();
+                if (literalTypeCase_ == LiteralTypeOneofCase.IntervalCompound) {
+                  subBuilder.MergeFrom(IntervalCompound);
+                }
+                input.ReadMessage(subBuilder);
+                IntervalCompound = subBuilder;
+                break;
+              }
+              case 298: {
+                global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTime subBuilder = new global::Substrait.Protobuf.Expression.Types.Literal.Types.PrecisionTime();
+                if (literalTypeCase_ == LiteralTypeOneofCase.PrecisionTime) {
+                  subBuilder.MergeFrom(PrecisionTime);
+                }
+                input.ReadMessage(subBuilder);
+                PrecisionTime = subBuilder;
                 break;
               }
               case 400: {
@@ -22122,7 +26273,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -22145,7 +26300,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -22389,7 +26548,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -22416,7 +26579,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -22430,6 +26597,488 @@ namespace Substrait.Protobuf {
                   }
                   case 24: {
                     Scale = input.ReadInt32();
+                    break;
+                  }
+                }
+              }
+            }
+            #endif
+
+          }
+
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+          public sealed partial class PrecisionTime : pb::IMessage<PrecisionTime>
+          #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              , pb::IBufferMessage
+          #endif
+          {
+            private static readonly pb::MessageParser<PrecisionTime> _parser = new pb::MessageParser<PrecisionTime>(() => new PrecisionTime());
+            private pb::UnknownFieldSet _unknownFields;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pb::MessageParser<PrecisionTime> Parser { get { return _parser; } }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pbr::MessageDescriptor Descriptor {
+              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[2]; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            pbr::MessageDescriptor pb::IMessage.Descriptor {
+              get { return Descriptor; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public PrecisionTime() {
+              OnConstruction();
+            }
+
+            partial void OnConstruction();
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public PrecisionTime(PrecisionTime other) : this() {
+              precision_ = other.precision_;
+              value_ = other.value_;
+              _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public PrecisionTime Clone() {
+              return new PrecisionTime(this);
+            }
+
+            /// <summary>Field number for the "precision" field.</summary>
+            public const int PrecisionFieldNumber = 1;
+            private int precision_;
+            /// <summary>
+            /// Sub-second precision, 0 means the value given is in seconds, 3 is milliseconds, 6 microseconds, 9 is nanoseconds, 12 is picoseconds
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int Precision {
+              get { return precision_; }
+              set {
+                precision_ = value;
+              }
+            }
+
+            /// <summary>Field number for the "value" field.</summary>
+            public const int ValueFieldNumber = 2;
+            private long value_;
+            /// <summary>
+            /// Time passed since midnight in precision units.
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public long Value {
+              get { return value_; }
+              set {
+                value_ = value;
+              }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override bool Equals(object other) {
+              return Equals(other as PrecisionTime);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool Equals(PrecisionTime other) {
+              if (ReferenceEquals(other, null)) {
+                return false;
+              }
+              if (ReferenceEquals(other, this)) {
+                return true;
+              }
+              if (Precision != other.Precision) return false;
+              if (Value != other.Value) return false;
+              return Equals(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override int GetHashCode() {
+              int hash = 1;
+              if (Precision != 0) hash ^= Precision.GetHashCode();
+              if (Value != 0L) hash ^= Value.GetHashCode();
+              if (_unknownFields != null) {
+                hash ^= _unknownFields.GetHashCode();
+              }
+              return hash;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override string ToString() {
+              return pb::JsonFormatter.ToDiagnosticString(this);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void WriteTo(pb::CodedOutputStream output) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              output.WriteRawMessage(this);
+            #else
+              if (Precision != 0) {
+                output.WriteRawTag(8);
+                output.WriteInt32(Precision);
+              }
+              if (Value != 0L) {
+                output.WriteRawTag(16);
+                output.WriteInt64(Value);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(output);
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+              if (Precision != 0) {
+                output.WriteRawTag(8);
+                output.WriteInt32(Precision);
+              }
+              if (Value != 0L) {
+                output.WriteRawTag(16);
+                output.WriteInt64(Value);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(ref output);
+              }
+            }
+            #endif
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int CalculateSize() {
+              int size = 0;
+              if (Precision != 0) {
+                size += 1 + pb::CodedOutputStream.ComputeInt32Size(Precision);
+              }
+              if (Value != 0L) {
+                size += 1 + pb::CodedOutputStream.ComputeInt64Size(Value);
+              }
+              if (_unknownFields != null) {
+                size += _unknownFields.CalculateSize();
+              }
+              return size;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(PrecisionTime other) {
+              if (other == null) {
+                return;
+              }
+              if (other.Precision != 0) {
+                Precision = other.Precision;
+              }
+              if (other.Value != 0L) {
+                Value = other.Value;
+              }
+              _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(pb::CodedInputStream input) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              input.ReadRawMessage(this);
+            #else
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                    break;
+                  case 8: {
+                    Precision = input.ReadInt32();
+                    break;
+                  }
+                  case 16: {
+                    Value = input.ReadInt64();
+                    break;
+                  }
+                }
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                    break;
+                  case 8: {
+                    Precision = input.ReadInt32();
+                    break;
+                  }
+                  case 16: {
+                    Value = input.ReadInt64();
+                    break;
+                  }
+                }
+              }
+            }
+            #endif
+
+          }
+
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+          public sealed partial class PrecisionTimestamp : pb::IMessage<PrecisionTimestamp>
+          #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              , pb::IBufferMessage
+          #endif
+          {
+            private static readonly pb::MessageParser<PrecisionTimestamp> _parser = new pb::MessageParser<PrecisionTimestamp>(() => new PrecisionTimestamp());
+            private pb::UnknownFieldSet _unknownFields;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pb::MessageParser<PrecisionTimestamp> Parser { get { return _parser; } }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pbr::MessageDescriptor Descriptor {
+              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[3]; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            pbr::MessageDescriptor pb::IMessage.Descriptor {
+              get { return Descriptor; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public PrecisionTimestamp() {
+              OnConstruction();
+            }
+
+            partial void OnConstruction();
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public PrecisionTimestamp(PrecisionTimestamp other) : this() {
+              precision_ = other.precision_;
+              value_ = other.value_;
+              _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public PrecisionTimestamp Clone() {
+              return new PrecisionTimestamp(this);
+            }
+
+            /// <summary>Field number for the "precision" field.</summary>
+            public const int PrecisionFieldNumber = 1;
+            private int precision_;
+            /// <summary>
+            /// Sub-second precision, 0 means the value given is in seconds, 3 is milliseconds, 6 microseconds, 9 is nanoseconds, 12 is picoseconds
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int Precision {
+              get { return precision_; }
+              set {
+                precision_ = value;
+              }
+            }
+
+            /// <summary>Field number for the "value" field.</summary>
+            public const int ValueFieldNumber = 2;
+            private long value_;
+            /// <summary>
+            /// Time passed since 1970-01-01 00:00:00.000000 in UTC for PrecisionTimestampTZ and unspecified timezone for PrecisionTimestamp
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public long Value {
+              get { return value_; }
+              set {
+                value_ = value;
+              }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override bool Equals(object other) {
+              return Equals(other as PrecisionTimestamp);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool Equals(PrecisionTimestamp other) {
+              if (ReferenceEquals(other, null)) {
+                return false;
+              }
+              if (ReferenceEquals(other, this)) {
+                return true;
+              }
+              if (Precision != other.Precision) return false;
+              if (Value != other.Value) return false;
+              return Equals(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override int GetHashCode() {
+              int hash = 1;
+              if (Precision != 0) hash ^= Precision.GetHashCode();
+              if (Value != 0L) hash ^= Value.GetHashCode();
+              if (_unknownFields != null) {
+                hash ^= _unknownFields.GetHashCode();
+              }
+              return hash;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override string ToString() {
+              return pb::JsonFormatter.ToDiagnosticString(this);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void WriteTo(pb::CodedOutputStream output) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              output.WriteRawMessage(this);
+            #else
+              if (Precision != 0) {
+                output.WriteRawTag(8);
+                output.WriteInt32(Precision);
+              }
+              if (Value != 0L) {
+                output.WriteRawTag(16);
+                output.WriteInt64(Value);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(output);
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+              if (Precision != 0) {
+                output.WriteRawTag(8);
+                output.WriteInt32(Precision);
+              }
+              if (Value != 0L) {
+                output.WriteRawTag(16);
+                output.WriteInt64(Value);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(ref output);
+              }
+            }
+            #endif
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int CalculateSize() {
+              int size = 0;
+              if (Precision != 0) {
+                size += 1 + pb::CodedOutputStream.ComputeInt32Size(Precision);
+              }
+              if (Value != 0L) {
+                size += 1 + pb::CodedOutputStream.ComputeInt64Size(Value);
+              }
+              if (_unknownFields != null) {
+                size += _unknownFields.CalculateSize();
+              }
+              return size;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(PrecisionTimestamp other) {
+              if (other == null) {
+                return;
+              }
+              if (other.Precision != 0) {
+                Precision = other.Precision;
+              }
+              if (other.Value != 0L) {
+                Value = other.Value;
+              }
+              _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(pb::CodedInputStream input) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              input.ReadRawMessage(this);
+            #else
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                    break;
+                  case 8: {
+                    Precision = input.ReadInt32();
+                    break;
+                  }
+                  case 16: {
+                    Value = input.ReadInt64();
+                    break;
+                  }
+                }
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                    break;
+                  case 8: {
+                    Precision = input.ReadInt32();
+                    break;
+                  }
+                  case 16: {
+                    Value = input.ReadInt64();
                     break;
                   }
                 }
@@ -22454,7 +27103,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public static pbr::MessageDescriptor Descriptor {
-              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[2]; }
+              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[4]; }
             }
 
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -22584,7 +27233,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -22603,7 +27256,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -22812,7 +27469,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -22841,7 +27502,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -22886,7 +27551,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public static pbr::MessageDescriptor Descriptor {
-              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[3]; }
+              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[5]; }
             }
 
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -23056,7 +27721,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -23079,7 +27748,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -23113,7 +27786,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public static pbr::MessageDescriptor Descriptor {
-              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[4]; }
+              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[6]; }
             }
 
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -23135,7 +27808,16 @@ namespace Substrait.Protobuf {
             public IntervalDayToSecond(IntervalDayToSecond other) : this() {
               days_ = other.days_;
               seconds_ = other.seconds_;
-              microseconds_ = other.microseconds_;
+              subseconds_ = other.subseconds_;
+              switch (other.PrecisionModeCase) {
+                case PrecisionModeOneofCase.Microseconds:
+                  Microseconds = other.Microseconds;
+                  break;
+                case PrecisionModeOneofCase.Precision:
+                  Precision = other.Precision;
+                  break;
+              }
+
               _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
             }
 
@@ -23171,14 +27853,99 @@ namespace Substrait.Protobuf {
 
             /// <summary>Field number for the "microseconds" field.</summary>
             public const int MicrosecondsFieldNumber = 3;
-            private int microseconds_;
+            /// <summary>
+            /// use precision and subseconds below, they cover and replace microseconds.
+            /// </summary>
+            [global::System.ObsoleteAttribute]
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public int Microseconds {
-              get { return microseconds_; }
+              get { return HasMicroseconds ? (int) precisionMode_ : 0; }
               set {
-                microseconds_ = value;
+                precisionMode_ = value;
+                precisionModeCase_ = PrecisionModeOneofCase.Microseconds;
               }
+            }
+            /// <summary>Gets whether the "microseconds" field is set</summary>
+            [global::System.ObsoleteAttribute]
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool HasMicroseconds {
+              get { return precisionModeCase_ == PrecisionModeOneofCase.Microseconds; }
+            }
+            /// <summary> Clears the value of the oneof if it's currently set to "microseconds" </summary>
+            [global::System.ObsoleteAttribute]
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearMicroseconds() {
+              if (HasMicroseconds) {
+                ClearPrecisionMode();
+              }
+            }
+
+            /// <summary>Field number for the "precision" field.</summary>
+            public const int PrecisionFieldNumber = 4;
+            /// <summary>
+            /// Sub-second precision, 0 means the value given is in seconds, 3 is milliseconds, 6 microseconds, 9 is nanoseconds. Should be used with subseconds below.
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int Precision {
+              get { return HasPrecision ? (int) precisionMode_ : 0; }
+              set {
+                precisionMode_ = value;
+                precisionModeCase_ = PrecisionModeOneofCase.Precision;
+              }
+            }
+            /// <summary>Gets whether the "precision" field is set</summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool HasPrecision {
+              get { return precisionModeCase_ == PrecisionModeOneofCase.Precision; }
+            }
+            /// <summary> Clears the value of the oneof if it's currently set to "precision" </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearPrecision() {
+              if (HasPrecision) {
+                ClearPrecisionMode();
+              }
+            }
+
+            /// <summary>Field number for the "subseconds" field.</summary>
+            public const int SubsecondsFieldNumber = 5;
+            private long subseconds_;
+            /// <summary>
+            /// the number of fractional seconds using 1e(-precision) units. Should only be used with precision field, not microseconds.
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public long Subseconds {
+              get { return subseconds_; }
+              set {
+                subseconds_ = value;
+              }
+            }
+
+            private object precisionMode_;
+            /// <summary>Enum of possible cases for the "precision_mode" oneof.</summary>
+            public enum PrecisionModeOneofCase {
+              None = 0,
+              Microseconds = 3,
+              Precision = 4,
+            }
+            private PrecisionModeOneofCase precisionModeCase_ = PrecisionModeOneofCase.None;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public PrecisionModeOneofCase PrecisionModeCase {
+              get { return precisionModeCase_; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearPrecisionMode() {
+              precisionModeCase_ = PrecisionModeOneofCase.None;
+              precisionMode_ = null;
             }
 
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -23199,6 +27966,9 @@ namespace Substrait.Protobuf {
               if (Days != other.Days) return false;
               if (Seconds != other.Seconds) return false;
               if (Microseconds != other.Microseconds) return false;
+              if (Precision != other.Precision) return false;
+              if (Subseconds != other.Subseconds) return false;
+              if (PrecisionModeCase != other.PrecisionModeCase) return false;
               return Equals(_unknownFields, other._unknownFields);
             }
 
@@ -23208,7 +27978,10 @@ namespace Substrait.Protobuf {
               int hash = 1;
               if (Days != 0) hash ^= Days.GetHashCode();
               if (Seconds != 0) hash ^= Seconds.GetHashCode();
-              if (Microseconds != 0) hash ^= Microseconds.GetHashCode();
+              if (HasMicroseconds) hash ^= Microseconds.GetHashCode();
+              if (HasPrecision) hash ^= Precision.GetHashCode();
+              if (Subseconds != 0L) hash ^= Subseconds.GetHashCode();
+              hash ^= (int) precisionModeCase_;
               if (_unknownFields != null) {
                 hash ^= _unknownFields.GetHashCode();
               }
@@ -23235,9 +28008,17 @@ namespace Substrait.Protobuf {
                 output.WriteRawTag(16);
                 output.WriteInt32(Seconds);
               }
-              if (Microseconds != 0) {
+              if (HasMicroseconds) {
                 output.WriteRawTag(24);
                 output.WriteInt32(Microseconds);
+              }
+              if (HasPrecision) {
+                output.WriteRawTag(32);
+                output.WriteInt32(Precision);
+              }
+              if (Subseconds != 0L) {
+                output.WriteRawTag(40);
+                output.WriteInt64(Subseconds);
               }
               if (_unknownFields != null) {
                 _unknownFields.WriteTo(output);
@@ -23257,9 +28038,17 @@ namespace Substrait.Protobuf {
                 output.WriteRawTag(16);
                 output.WriteInt32(Seconds);
               }
-              if (Microseconds != 0) {
+              if (HasMicroseconds) {
                 output.WriteRawTag(24);
                 output.WriteInt32(Microseconds);
+              }
+              if (HasPrecision) {
+                output.WriteRawTag(32);
+                output.WriteInt32(Precision);
+              }
+              if (Subseconds != 0L) {
+                output.WriteRawTag(40);
+                output.WriteInt64(Subseconds);
               }
               if (_unknownFields != null) {
                 _unknownFields.WriteTo(ref output);
@@ -23277,8 +28066,14 @@ namespace Substrait.Protobuf {
               if (Seconds != 0) {
                 size += 1 + pb::CodedOutputStream.ComputeInt32Size(Seconds);
               }
-              if (Microseconds != 0) {
+              if (HasMicroseconds) {
                 size += 1 + pb::CodedOutputStream.ComputeInt32Size(Microseconds);
+              }
+              if (HasPrecision) {
+                size += 1 + pb::CodedOutputStream.ComputeInt32Size(Precision);
+              }
+              if (Subseconds != 0L) {
+                size += 1 + pb::CodedOutputStream.ComputeInt64Size(Subseconds);
               }
               if (_unknownFields != null) {
                 size += _unknownFields.CalculateSize();
@@ -23298,9 +28093,18 @@ namespace Substrait.Protobuf {
               if (other.Seconds != 0) {
                 Seconds = other.Seconds;
               }
-              if (other.Microseconds != 0) {
-                Microseconds = other.Microseconds;
+              if (other.Subseconds != 0L) {
+                Subseconds = other.Subseconds;
               }
+              switch (other.PrecisionModeCase) {
+                case PrecisionModeOneofCase.Microseconds:
+                  Microseconds = other.Microseconds;
+                  break;
+                case PrecisionModeOneofCase.Precision:
+                  Precision = other.Precision;
+                  break;
+              }
+
               _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
             }
 
@@ -23312,7 +28116,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -23328,6 +28136,14 @@ namespace Substrait.Protobuf {
                     Microseconds = input.ReadInt32();
                     break;
                   }
+                  case 32: {
+                    Precision = input.ReadInt32();
+                    break;
+                  }
+                  case 40: {
+                    Subseconds = input.ReadInt64();
+                    break;
+                  }
                 }
               }
             #endif
@@ -23339,7 +28155,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -23353,6 +28173,267 @@ namespace Substrait.Protobuf {
                   }
                   case 24: {
                     Microseconds = input.ReadInt32();
+                    break;
+                  }
+                  case 32: {
+                    Precision = input.ReadInt32();
+                    break;
+                  }
+                  case 40: {
+                    Subseconds = input.ReadInt64();
+                    break;
+                  }
+                }
+              }
+            }
+            #endif
+
+          }
+
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+          public sealed partial class IntervalCompound : pb::IMessage<IntervalCompound>
+          #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              , pb::IBufferMessage
+          #endif
+          {
+            private static readonly pb::MessageParser<IntervalCompound> _parser = new pb::MessageParser<IntervalCompound>(() => new IntervalCompound());
+            private pb::UnknownFieldSet _unknownFields;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pb::MessageParser<IntervalCompound> Parser { get { return _parser; } }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pbr::MessageDescriptor Descriptor {
+              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[7]; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            pbr::MessageDescriptor pb::IMessage.Descriptor {
+              get { return Descriptor; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public IntervalCompound() {
+              OnConstruction();
+            }
+
+            partial void OnConstruction();
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public IntervalCompound(IntervalCompound other) : this() {
+              intervalYearToMonth_ = other.intervalYearToMonth_ != null ? other.intervalYearToMonth_.Clone() : null;
+              intervalDayToSecond_ = other.intervalDayToSecond_ != null ? other.intervalDayToSecond_.Clone() : null;
+              _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public IntervalCompound Clone() {
+              return new IntervalCompound(this);
+            }
+
+            /// <summary>Field number for the "interval_year_to_month" field.</summary>
+            public const int IntervalYearToMonthFieldNumber = 1;
+            private global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalYearToMonth intervalYearToMonth_;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalYearToMonth IntervalYearToMonth {
+              get { return intervalYearToMonth_; }
+              set {
+                intervalYearToMonth_ = value;
+              }
+            }
+
+            /// <summary>Field number for the "interval_day_to_second" field.</summary>
+            public const int IntervalDayToSecondFieldNumber = 2;
+            private global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalDayToSecond intervalDayToSecond_;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalDayToSecond IntervalDayToSecond {
+              get { return intervalDayToSecond_; }
+              set {
+                intervalDayToSecond_ = value;
+              }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override bool Equals(object other) {
+              return Equals(other as IntervalCompound);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool Equals(IntervalCompound other) {
+              if (ReferenceEquals(other, null)) {
+                return false;
+              }
+              if (ReferenceEquals(other, this)) {
+                return true;
+              }
+              if (!object.Equals(IntervalYearToMonth, other.IntervalYearToMonth)) return false;
+              if (!object.Equals(IntervalDayToSecond, other.IntervalDayToSecond)) return false;
+              return Equals(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override int GetHashCode() {
+              int hash = 1;
+              if (intervalYearToMonth_ != null) hash ^= IntervalYearToMonth.GetHashCode();
+              if (intervalDayToSecond_ != null) hash ^= IntervalDayToSecond.GetHashCode();
+              if (_unknownFields != null) {
+                hash ^= _unknownFields.GetHashCode();
+              }
+              return hash;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override string ToString() {
+              return pb::JsonFormatter.ToDiagnosticString(this);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void WriteTo(pb::CodedOutputStream output) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              output.WriteRawMessage(this);
+            #else
+              if (intervalYearToMonth_ != null) {
+                output.WriteRawTag(10);
+                output.WriteMessage(IntervalYearToMonth);
+              }
+              if (intervalDayToSecond_ != null) {
+                output.WriteRawTag(18);
+                output.WriteMessage(IntervalDayToSecond);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(output);
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+              if (intervalYearToMonth_ != null) {
+                output.WriteRawTag(10);
+                output.WriteMessage(IntervalYearToMonth);
+              }
+              if (intervalDayToSecond_ != null) {
+                output.WriteRawTag(18);
+                output.WriteMessage(IntervalDayToSecond);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(ref output);
+              }
+            }
+            #endif
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int CalculateSize() {
+              int size = 0;
+              if (intervalYearToMonth_ != null) {
+                size += 1 + pb::CodedOutputStream.ComputeMessageSize(IntervalYearToMonth);
+              }
+              if (intervalDayToSecond_ != null) {
+                size += 1 + pb::CodedOutputStream.ComputeMessageSize(IntervalDayToSecond);
+              }
+              if (_unknownFields != null) {
+                size += _unknownFields.CalculateSize();
+              }
+              return size;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(IntervalCompound other) {
+              if (other == null) {
+                return;
+              }
+              if (other.intervalYearToMonth_ != null) {
+                if (intervalYearToMonth_ == null) {
+                  IntervalYearToMonth = new global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalYearToMonth();
+                }
+                IntervalYearToMonth.MergeFrom(other.IntervalYearToMonth);
+              }
+              if (other.intervalDayToSecond_ != null) {
+                if (intervalDayToSecond_ == null) {
+                  IntervalDayToSecond = new global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalDayToSecond();
+                }
+                IntervalDayToSecond.MergeFrom(other.IntervalDayToSecond);
+              }
+              _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(pb::CodedInputStream input) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              input.ReadRawMessage(this);
+            #else
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                    break;
+                  case 10: {
+                    if (intervalYearToMonth_ == null) {
+                      IntervalYearToMonth = new global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalYearToMonth();
+                    }
+                    input.ReadMessage(IntervalYearToMonth);
+                    break;
+                  }
+                  case 18: {
+                    if (intervalDayToSecond_ == null) {
+                      IntervalDayToSecond = new global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalDayToSecond();
+                    }
+                    input.ReadMessage(IntervalDayToSecond);
+                    break;
+                  }
+                }
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                    break;
+                  case 10: {
+                    if (intervalYearToMonth_ == null) {
+                      IntervalYearToMonth = new global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalYearToMonth();
+                    }
+                    input.ReadMessage(IntervalYearToMonth);
+                    break;
+                  }
+                  case 18: {
+                    if (intervalDayToSecond_ == null) {
+                      IntervalDayToSecond = new global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalDayToSecond();
+                    }
+                    input.ReadMessage(IntervalDayToSecond);
                     break;
                   }
                 }
@@ -23377,7 +28458,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public static pbr::MessageDescriptor Descriptor {
-              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[5]; }
+              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[8]; }
             }
 
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -23510,7 +28591,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -23529,7 +28614,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -23559,7 +28648,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public static pbr::MessageDescriptor Descriptor {
-              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[6]; }
+              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[9]; }
             }
 
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -23692,7 +28781,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -23711,7 +28804,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -23741,7 +28838,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public static pbr::MessageDescriptor Descriptor {
-              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[7]; }
+              get { return global::Substrait.Protobuf.Expression.Types.Literal.Descriptor.NestedTypes[10]; }
             }
 
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -23761,8 +28858,16 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public UserDefined(UserDefined other) : this() {
-              typeReference_ = other.typeReference_;
               typeParameters_ = other.typeParameters_.Clone();
+              switch (other.TypeAnchorTypeCase) {
+                case TypeAnchorTypeOneofCase.TypeReference:
+                  TypeReference = other.TypeReference;
+                  break;
+                case TypeAnchorTypeOneofCase.TypeAliasReference:
+                  TypeAliasReference = other.TypeAliasReference;
+                  break;
+              }
+
               switch (other.ValCase) {
                 case ValOneofCase.Value:
                   Value = other.Value.Clone();
@@ -23783,16 +28888,59 @@ namespace Substrait.Protobuf {
 
             /// <summary>Field number for the "type_reference" field.</summary>
             public const int TypeReferenceFieldNumber = 1;
-            private uint typeReference_;
             /// <summary>
             /// points to a type_anchor defined in this plan
             /// </summary>
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public uint TypeReference {
-              get { return typeReference_; }
+              get { return HasTypeReference ? (uint) typeAnchorType_ : 0; }
               set {
-                typeReference_ = value;
+                typeAnchorType_ = value;
+                typeAnchorTypeCase_ = TypeAnchorTypeOneofCase.TypeReference;
+              }
+            }
+            /// <summary>Gets whether the "type_reference" field is set</summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool HasTypeReference {
+              get { return typeAnchorTypeCase_ == TypeAnchorTypeOneofCase.TypeReference; }
+            }
+            /// <summary> Clears the value of the oneof if it's currently set to "type_reference" </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearTypeReference() {
+              if (HasTypeReference) {
+                ClearTypeAnchorType();
+              }
+            }
+
+            /// <summary>Field number for the "type_alias_reference" field.</summary>
+            public const int TypeAliasReferenceFieldNumber = 5;
+            /// <summary>
+            /// points to a type_alias_anchor defined in this plan.
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public uint TypeAliasReference {
+              get { return HasTypeAliasReference ? (uint) typeAnchorType_ : 0; }
+              set {
+                typeAnchorType_ = value;
+                typeAnchorTypeCase_ = TypeAnchorTypeOneofCase.TypeAliasReference;
+              }
+            }
+            /// <summary>Gets whether the "type_alias_reference" field is set</summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool HasTypeAliasReference {
+              get { return typeAnchorTypeCase_ == TypeAnchorTypeOneofCase.TypeAliasReference; }
+            }
+            /// <summary> Clears the value of the oneof if it's currently set to "type_alias_reference" </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearTypeAliasReference() {
+              if (HasTypeAliasReference) {
+                ClearTypeAnchorType();
               }
             }
 
@@ -23841,6 +28989,27 @@ namespace Substrait.Protobuf {
               }
             }
 
+            private object typeAnchorType_;
+            /// <summary>Enum of possible cases for the "type_anchor_type" oneof.</summary>
+            public enum TypeAnchorTypeOneofCase {
+              None = 0,
+              TypeReference = 1,
+              TypeAliasReference = 5,
+            }
+            private TypeAnchorTypeOneofCase typeAnchorTypeCase_ = TypeAnchorTypeOneofCase.None;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public TypeAnchorTypeOneofCase TypeAnchorTypeCase {
+              get { return typeAnchorTypeCase_; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearTypeAnchorType() {
+              typeAnchorTypeCase_ = TypeAnchorTypeOneofCase.None;
+              typeAnchorType_ = null;
+            }
+
             private object val_;
             /// <summary>Enum of possible cases for the "val" oneof.</summary>
             public enum ValOneofCase {
@@ -23878,9 +29047,11 @@ namespace Substrait.Protobuf {
                 return true;
               }
               if (TypeReference != other.TypeReference) return false;
+              if (TypeAliasReference != other.TypeAliasReference) return false;
               if(!typeParameters_.Equals(other.typeParameters_)) return false;
               if (!object.Equals(Value, other.Value)) return false;
               if (!object.Equals(Struct, other.Struct)) return false;
+              if (TypeAnchorTypeCase != other.TypeAnchorTypeCase) return false;
               if (ValCase != other.ValCase) return false;
               return Equals(_unknownFields, other._unknownFields);
             }
@@ -23889,10 +29060,12 @@ namespace Substrait.Protobuf {
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public override int GetHashCode() {
               int hash = 1;
-              if (TypeReference != 0) hash ^= TypeReference.GetHashCode();
+              if (HasTypeReference) hash ^= TypeReference.GetHashCode();
+              if (HasTypeAliasReference) hash ^= TypeAliasReference.GetHashCode();
               hash ^= typeParameters_.GetHashCode();
               if (valCase_ == ValOneofCase.Value) hash ^= Value.GetHashCode();
               if (valCase_ == ValOneofCase.Struct) hash ^= Struct.GetHashCode();
+              hash ^= (int) typeAnchorTypeCase_;
               hash ^= (int) valCase_;
               if (_unknownFields != null) {
                 hash ^= _unknownFields.GetHashCode();
@@ -23912,7 +29085,7 @@ namespace Substrait.Protobuf {
             #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               output.WriteRawMessage(this);
             #else
-              if (TypeReference != 0) {
+              if (HasTypeReference) {
                 output.WriteRawTag(8);
                 output.WriteUInt32(TypeReference);
               }
@@ -23925,6 +29098,10 @@ namespace Substrait.Protobuf {
                 output.WriteRawTag(34);
                 output.WriteMessage(Struct);
               }
+              if (HasTypeAliasReference) {
+                output.WriteRawTag(40);
+                output.WriteUInt32(TypeAliasReference);
+              }
               if (_unknownFields != null) {
                 _unknownFields.WriteTo(output);
               }
@@ -23935,7 +29112,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-              if (TypeReference != 0) {
+              if (HasTypeReference) {
                 output.WriteRawTag(8);
                 output.WriteUInt32(TypeReference);
               }
@@ -23948,6 +29125,10 @@ namespace Substrait.Protobuf {
                 output.WriteRawTag(34);
                 output.WriteMessage(Struct);
               }
+              if (HasTypeAliasReference) {
+                output.WriteRawTag(40);
+                output.WriteUInt32(TypeAliasReference);
+              }
               if (_unknownFields != null) {
                 _unknownFields.WriteTo(ref output);
               }
@@ -23958,8 +29139,11 @@ namespace Substrait.Protobuf {
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public int CalculateSize() {
               int size = 0;
-              if (TypeReference != 0) {
+              if (HasTypeReference) {
                 size += 1 + pb::CodedOutputStream.ComputeUInt32Size(TypeReference);
+              }
+              if (HasTypeAliasReference) {
+                size += 1 + pb::CodedOutputStream.ComputeUInt32Size(TypeAliasReference);
               }
               size += typeParameters_.CalculateSize(_repeated_typeParameters_codec);
               if (valCase_ == ValOneofCase.Value) {
@@ -23980,10 +29164,16 @@ namespace Substrait.Protobuf {
               if (other == null) {
                 return;
               }
-              if (other.TypeReference != 0) {
-                TypeReference = other.TypeReference;
-              }
               typeParameters_.Add(other.typeParameters_);
+              switch (other.TypeAnchorTypeCase) {
+                case TypeAnchorTypeOneofCase.TypeReference:
+                  TypeReference = other.TypeReference;
+                  break;
+                case TypeAnchorTypeOneofCase.TypeAliasReference:
+                  TypeAliasReference = other.TypeAliasReference;
+                  break;
+              }
+
               switch (other.ValCase) {
                 case ValOneofCase.Value:
                   if (Value == null) {
@@ -24010,7 +29200,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -24040,6 +29234,10 @@ namespace Substrait.Protobuf {
                     Struct = subBuilder;
                     break;
                   }
+                  case 40: {
+                    TypeAliasReference = input.ReadUInt32();
+                    break;
+                  }
                 }
               }
             #endif
@@ -24051,7 +29249,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -24079,6 +29281,10 @@ namespace Substrait.Protobuf {
                     }
                     input.ReadMessage(subBuilder);
                     Struct = subBuilder;
+                    break;
+                  }
+                  case 40: {
+                    TypeAliasReference = input.ReadUInt32();
                     break;
                   }
                 }
@@ -24420,7 +29626,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -24470,7 +29680,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -24668,7 +29882,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -24687,7 +29905,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -24899,7 +30121,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -24928,7 +30154,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -25107,7 +30337,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -25126,7 +30360,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -25291,7 +30529,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -25310,7 +30552,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -25327,6 +30573,541 @@ namespace Substrait.Protobuf {
 
         }
         #endregion
+
+      }
+
+      /// <summary>
+      /// A lambda expression representing an inline, anonymous function.
+      /// Lambda expressions have parameters and a body expression that can reference
+      /// those parameters using FieldReference with FieldReference.LambdaParameterReference as the root_type.
+      /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+      public sealed partial class Lambda : pb::IMessage<Lambda>
+      #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          , pb::IBufferMessage
+      #endif
+      {
+        private static readonly pb::MessageParser<Lambda> _parser = new pb::MessageParser<Lambda>(() => new Lambda());
+        private pb::UnknownFieldSet _unknownFields;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pb::MessageParser<Lambda> Parser { get { return _parser; } }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pbr::MessageDescriptor Descriptor {
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[3]; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        pbr::MessageDescriptor pb::IMessage.Descriptor {
+          get { return Descriptor; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public Lambda() {
+          OnConstruction();
+        }
+
+        partial void OnConstruction();
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public Lambda(Lambda other) : this() {
+          parameters_ = other.parameters_ != null ? other.parameters_.Clone() : null;
+          body_ = other.body_ != null ? other.body_.Clone() : null;
+          _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public Lambda Clone() {
+          return new Lambda(this);
+        }
+
+        /// <summary>Field number for the "parameters" field.</summary>
+        public const int ParametersFieldNumber = 1;
+        private global::Substrait.Protobuf.Type.Types.Struct parameters_;
+        /// <summary>
+        /// Parameters this lambda accepts, represented as a struct where each field corresponds
+        /// to a parameter. Parameters can be accessed using FieldReference with
+        /// FieldReference.LambdaParameterReference as root_type and StructField to select
+        /// specific parameters. The struct's nullability must be NULLABILITY_REQUIRED.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Type.Types.Struct Parameters {
+          get { return parameters_; }
+          set {
+            parameters_ = value;
+          }
+        }
+
+        /// <summary>Field number for the "body" field.</summary>
+        public const int BodyFieldNumber = 2;
+        private global::Substrait.Protobuf.Expression body_;
+        /// <summary>
+        /// The lambda body expression. Lambda parameters can be referenced using FieldReference
+        /// with FieldReference.LambdaParameterReference as root_type.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Expression Body {
+          get { return body_; }
+          set {
+            body_ = value;
+          }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override bool Equals(object other) {
+          return Equals(other as Lambda);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool Equals(Lambda other) {
+          if (ReferenceEquals(other, null)) {
+            return false;
+          }
+          if (ReferenceEquals(other, this)) {
+            return true;
+          }
+          if (!object.Equals(Parameters, other.Parameters)) return false;
+          if (!object.Equals(Body, other.Body)) return false;
+          return Equals(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override int GetHashCode() {
+          int hash = 1;
+          if (parameters_ != null) hash ^= Parameters.GetHashCode();
+          if (body_ != null) hash ^= Body.GetHashCode();
+          if (_unknownFields != null) {
+            hash ^= _unknownFields.GetHashCode();
+          }
+          return hash;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override string ToString() {
+          return pb::JsonFormatter.ToDiagnosticString(this);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void WriteTo(pb::CodedOutputStream output) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          output.WriteRawMessage(this);
+        #else
+          if (parameters_ != null) {
+            output.WriteRawTag(10);
+            output.WriteMessage(Parameters);
+          }
+          if (body_ != null) {
+            output.WriteRawTag(18);
+            output.WriteMessage(Body);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(output);
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+          if (parameters_ != null) {
+            output.WriteRawTag(10);
+            output.WriteMessage(Parameters);
+          }
+          if (body_ != null) {
+            output.WriteRawTag(18);
+            output.WriteMessage(Body);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(ref output);
+          }
+        }
+        #endif
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public int CalculateSize() {
+          int size = 0;
+          if (parameters_ != null) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(Parameters);
+          }
+          if (body_ != null) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(Body);
+          }
+          if (_unknownFields != null) {
+            size += _unknownFields.CalculateSize();
+          }
+          return size;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(Lambda other) {
+          if (other == null) {
+            return;
+          }
+          if (other.parameters_ != null) {
+            if (parameters_ == null) {
+              Parameters = new global::Substrait.Protobuf.Type.Types.Struct();
+            }
+            Parameters.MergeFrom(other.Parameters);
+          }
+          if (other.body_ != null) {
+            if (body_ == null) {
+              Body = new global::Substrait.Protobuf.Expression();
+            }
+            Body.MergeFrom(other.Body);
+          }
+          _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(pb::CodedInputStream input) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          input.ReadRawMessage(this);
+        #else
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                break;
+              case 10: {
+                if (parameters_ == null) {
+                  Parameters = new global::Substrait.Protobuf.Type.Types.Struct();
+                }
+                input.ReadMessage(Parameters);
+                break;
+              }
+              case 18: {
+                if (body_ == null) {
+                  Body = new global::Substrait.Protobuf.Expression();
+                }
+                input.ReadMessage(Body);
+                break;
+              }
+            }
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                break;
+              case 10: {
+                if (parameters_ == null) {
+                  Parameters = new global::Substrait.Protobuf.Type.Types.Struct();
+                }
+                input.ReadMessage(Parameters);
+                break;
+              }
+              case 18: {
+                if (body_ == null) {
+                  Body = new global::Substrait.Protobuf.Expression();
+                }
+                input.ReadMessage(Body);
+                break;
+              }
+            }
+          }
+        }
+        #endif
+
+      }
+
+      /// <summary>
+      /// Invokes an inline lambda expression with provided arguments.
+      /// Enables immediate invocation patterns like: ((x) -> x * 2)(5)
+      ///
+      /// The return type is derived from the type of the lambda's body expression.
+      /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+      public sealed partial class LambdaInvocation : pb::IMessage<LambdaInvocation>
+      #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          , pb::IBufferMessage
+      #endif
+      {
+        private static readonly pb::MessageParser<LambdaInvocation> _parser = new pb::MessageParser<LambdaInvocation>(() => new LambdaInvocation());
+        private pb::UnknownFieldSet _unknownFields;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pb::MessageParser<LambdaInvocation> Parser { get { return _parser; } }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pbr::MessageDescriptor Descriptor {
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[4]; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        pbr::MessageDescriptor pb::IMessage.Descriptor {
+          get { return Descriptor; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public LambdaInvocation() {
+          OnConstruction();
+        }
+
+        partial void OnConstruction();
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public LambdaInvocation(LambdaInvocation other) : this() {
+          lambda_ = other.lambda_ != null ? other.lambda_.Clone() : null;
+          arguments_ = other.arguments_ != null ? other.arguments_.Clone() : null;
+          _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public LambdaInvocation Clone() {
+          return new LambdaInvocation(this);
+        }
+
+        /// <summary>Field number for the "lambda" field.</summary>
+        public const int LambdaFieldNumber = 1;
+        private global::Substrait.Protobuf.Expression.Types.Lambda lambda_;
+        /// <summary>
+        /// The lambda expression to invoke.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Expression.Types.Lambda Lambda {
+          get { return lambda_; }
+          set {
+            lambda_ = value;
+          }
+        }
+
+        /// <summary>Field number for the "arguments" field.</summary>
+        public const int ArgumentsFieldNumber = 2;
+        private global::Substrait.Protobuf.Expression.Types.Nested.Types.Struct arguments_;
+        /// <summary>
+        /// Arguments to pass to the lambda, as a struct expression. The struct must have
+        /// exactly one Expression field for each lambda parameter, and the expression at
+        /// each position must have a type that matches the corresponding parameter type.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Expression.Types.Nested.Types.Struct Arguments {
+          get { return arguments_; }
+          set {
+            arguments_ = value;
+          }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override bool Equals(object other) {
+          return Equals(other as LambdaInvocation);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool Equals(LambdaInvocation other) {
+          if (ReferenceEquals(other, null)) {
+            return false;
+          }
+          if (ReferenceEquals(other, this)) {
+            return true;
+          }
+          if (!object.Equals(Lambda, other.Lambda)) return false;
+          if (!object.Equals(Arguments, other.Arguments)) return false;
+          return Equals(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override int GetHashCode() {
+          int hash = 1;
+          if (lambda_ != null) hash ^= Lambda.GetHashCode();
+          if (arguments_ != null) hash ^= Arguments.GetHashCode();
+          if (_unknownFields != null) {
+            hash ^= _unknownFields.GetHashCode();
+          }
+          return hash;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override string ToString() {
+          return pb::JsonFormatter.ToDiagnosticString(this);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void WriteTo(pb::CodedOutputStream output) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          output.WriteRawMessage(this);
+        #else
+          if (lambda_ != null) {
+            output.WriteRawTag(10);
+            output.WriteMessage(Lambda);
+          }
+          if (arguments_ != null) {
+            output.WriteRawTag(18);
+            output.WriteMessage(Arguments);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(output);
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+          if (lambda_ != null) {
+            output.WriteRawTag(10);
+            output.WriteMessage(Lambda);
+          }
+          if (arguments_ != null) {
+            output.WriteRawTag(18);
+            output.WriteMessage(Arguments);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(ref output);
+          }
+        }
+        #endif
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public int CalculateSize() {
+          int size = 0;
+          if (lambda_ != null) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(Lambda);
+          }
+          if (arguments_ != null) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(Arguments);
+          }
+          if (_unknownFields != null) {
+            size += _unknownFields.CalculateSize();
+          }
+          return size;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(LambdaInvocation other) {
+          if (other == null) {
+            return;
+          }
+          if (other.lambda_ != null) {
+            if (lambda_ == null) {
+              Lambda = new global::Substrait.Protobuf.Expression.Types.Lambda();
+            }
+            Lambda.MergeFrom(other.Lambda);
+          }
+          if (other.arguments_ != null) {
+            if (arguments_ == null) {
+              Arguments = new global::Substrait.Protobuf.Expression.Types.Nested.Types.Struct();
+            }
+            Arguments.MergeFrom(other.Arguments);
+          }
+          _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(pb::CodedInputStream input) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          input.ReadRawMessage(this);
+        #else
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                break;
+              case 10: {
+                if (lambda_ == null) {
+                  Lambda = new global::Substrait.Protobuf.Expression.Types.Lambda();
+                }
+                input.ReadMessage(Lambda);
+                break;
+              }
+              case 18: {
+                if (arguments_ == null) {
+                  Arguments = new global::Substrait.Protobuf.Expression.Types.Nested.Types.Struct();
+                }
+                input.ReadMessage(Arguments);
+                break;
+              }
+            }
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                break;
+              case 10: {
+                if (lambda_ == null) {
+                  Lambda = new global::Substrait.Protobuf.Expression.Types.Lambda();
+                }
+                input.ReadMessage(Lambda);
+                break;
+              }
+              case 18: {
+                if (arguments_ == null) {
+                  Arguments = new global::Substrait.Protobuf.Expression.Types.Nested.Types.Struct();
+                }
+                input.ReadMessage(Arguments);
+                break;
+              }
+            }
+          }
+        }
+        #endif
 
       }
 
@@ -25348,7 +31129,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[3]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[5]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -25606,7 +31387,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -25644,7 +31429,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -25696,7 +31485,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[4]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[6]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -26188,7 +31977,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -26260,7 +32053,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -26659,7 +32456,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -26710,7 +32511,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -26924,7 +32729,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -26943,7 +32752,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -27122,7 +32935,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -27141,7 +32958,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -27286,7 +33107,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -27301,7 +33126,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -27444,7 +33273,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -27459,7 +33292,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -27495,7 +33332,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[5]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[7]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -27663,7 +33500,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -27689,7 +33530,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -27905,7 +33750,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -27934,7 +33783,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -27979,7 +33832,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[6]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[8]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -28184,7 +34037,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -28217,7 +34074,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -28275,7 +34136,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[7]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[9]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -28469,7 +34330,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -28502,7 +34367,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -28725,7 +34594,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -28754,7 +34627,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -28799,7 +34676,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[8]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[10]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -28961,7 +34838,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -28987,7 +34868,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -29024,7 +34909,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[9]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[11]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -29172,7 +35057,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -29195,7 +35084,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -29362,7 +35255,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -29381,7 +35278,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -29416,7 +35317,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[10]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[12]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -29675,7 +35576,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -29719,7 +35624,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -29936,7 +35845,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -29959,7 +35872,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -30152,7 +36069,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -30175,7 +36096,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -30223,7 +36148,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[11]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[13]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -30467,7 +36392,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -30509,7 +36438,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -30747,7 +36680,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -30776,7 +36713,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -30995,7 +36936,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -31021,7 +36966,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -31237,7 +37186,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -31263,7 +37216,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -31316,7 +37273,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[12]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[14]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -31489,7 +37446,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -31515,7 +37476,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -31799,7 +37764,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -31841,7 +37810,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -32024,7 +37997,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -32043,7 +38020,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -32246,7 +38227,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -32272,7 +38257,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -32471,7 +38460,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -32497,7 +38490,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -32746,7 +38743,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -32779,7 +38780,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -32967,7 +38972,11 @@ namespace Substrait.Protobuf {
                     #else
                       uint tag;
                       while ((tag = input.ReadTag()) != 0) {
-                        switch(tag) {
+                      if ((tag & 7) == 4) {
+                        // Abort on any end group tag.
+                        return;
+                      }
+                      switch(tag) {
                           default:
                             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                             break;
@@ -32986,7 +38995,11 @@ namespace Substrait.Protobuf {
                     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                       uint tag;
                       while ((tag = input.ReadTag()) != 0) {
-                        switch(tag) {
+                      if ((tag & 7) == 4) {
+                        // Abort on any end group tag.
+                        return;
+                      }
+                      switch(tag) {
                           default:
                             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                             break;
@@ -33186,7 +39199,11 @@ namespace Substrait.Protobuf {
                     #else
                       uint tag;
                       while ((tag = input.ReadTag()) != 0) {
-                        switch(tag) {
+                      if ((tag & 7) == 4) {
+                        // Abort on any end group tag.
+                        return;
+                      }
+                      switch(tag) {
                           default:
                             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                             break;
@@ -33209,7 +39226,11 @@ namespace Substrait.Protobuf {
                     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                       uint tag;
                       while ((tag = input.ReadTag()) != 0) {
-                        switch(tag) {
+                      if ((tag & 7) == 4) {
+                        // Abort on any end group tag.
+                        return;
+                      }
+                      switch(tag) {
                           default:
                             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                             break;
@@ -33494,7 +39515,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -33534,7 +39559,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -33729,7 +39758,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -33748,7 +39781,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -33919,7 +39956,11 @@ namespace Substrait.Protobuf {
                 #else
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                         break;
@@ -33938,7 +39979,11 @@ namespace Substrait.Protobuf {
                 void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
                   uint tag;
                   while ((tag = input.ReadTag()) != 0) {
-                    switch(tag) {
+                  if ((tag & 7) == 4) {
+                    // Abort on any end group tag.
+                    return;
+                  }
+                  switch(tag) {
                       default:
                         _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                         break;
@@ -33964,8 +40009,11 @@ namespace Substrait.Protobuf {
       }
 
       /// <summary>
-      /// A reference to an inner part of a complex object. Can reference reference a
-      /// single element or a masked version of elements
+      /// A reference to data within a structured object, supporting navigation into
+      /// nested fields. The root_type specifies the origin of the data (input record,
+      /// outer query, lambda parameters, or an arbitrary expression), and the
+      /// reference_type specifies how to navigate from that root (either a direct
+      /// path to a single element or a mask selecting multiple elements).
       /// </summary>
       [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class FieldReference : pb::IMessage<FieldReference>
@@ -33982,7 +40030,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[13]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[15]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -34020,6 +40068,9 @@ namespace Substrait.Protobuf {
               break;
             case RootTypeOneofCase.OuterReference:
               OuterReference = other.OuterReference.Clone();
+              break;
+            case RootTypeOneofCase.LambdaParameterReference:
+              LambdaParameterReference = other.LambdaParameterReference.Clone();
               break;
           }
 
@@ -34092,6 +40143,18 @@ namespace Substrait.Protobuf {
           }
         }
 
+        /// <summary>Field number for the "lambda_parameter_reference" field.</summary>
+        public const int LambdaParameterReferenceFieldNumber = 6;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Expression.Types.FieldReference.Types.LambdaParameterReference LambdaParameterReference {
+          get { return rootTypeCase_ == RootTypeOneofCase.LambdaParameterReference ? (global::Substrait.Protobuf.Expression.Types.FieldReference.Types.LambdaParameterReference) rootType_ : null; }
+          set {
+            rootType_ = value;
+            rootTypeCase_ = value == null ? RootTypeOneofCase.None : RootTypeOneofCase.LambdaParameterReference;
+          }
+        }
+
         private object referenceType_;
         /// <summary>Enum of possible cases for the "reference_type" oneof.</summary>
         public enum ReferenceTypeOneofCase {
@@ -34120,6 +40183,7 @@ namespace Substrait.Protobuf {
           Expression = 3,
           RootReference = 4,
           OuterReference = 5,
+          LambdaParameterReference = 6,
         }
         private RootTypeOneofCase rootTypeCase_ = RootTypeOneofCase.None;
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -34155,6 +40219,7 @@ namespace Substrait.Protobuf {
           if (!object.Equals(Expression, other.Expression)) return false;
           if (!object.Equals(RootReference, other.RootReference)) return false;
           if (!object.Equals(OuterReference, other.OuterReference)) return false;
+          if (!object.Equals(LambdaParameterReference, other.LambdaParameterReference)) return false;
           if (ReferenceTypeCase != other.ReferenceTypeCase) return false;
           if (RootTypeCase != other.RootTypeCase) return false;
           return Equals(_unknownFields, other._unknownFields);
@@ -34169,6 +40234,7 @@ namespace Substrait.Protobuf {
           if (rootTypeCase_ == RootTypeOneofCase.Expression) hash ^= Expression.GetHashCode();
           if (rootTypeCase_ == RootTypeOneofCase.RootReference) hash ^= RootReference.GetHashCode();
           if (rootTypeCase_ == RootTypeOneofCase.OuterReference) hash ^= OuterReference.GetHashCode();
+          if (rootTypeCase_ == RootTypeOneofCase.LambdaParameterReference) hash ^= LambdaParameterReference.GetHashCode();
           hash ^= (int) referenceTypeCase_;
           hash ^= (int) rootTypeCase_;
           if (_unknownFields != null) {
@@ -34209,6 +40275,10 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(42);
             output.WriteMessage(OuterReference);
           }
+          if (rootTypeCase_ == RootTypeOneofCase.LambdaParameterReference) {
+            output.WriteRawTag(50);
+            output.WriteMessage(LambdaParameterReference);
+          }
           if (_unknownFields != null) {
             _unknownFields.WriteTo(output);
           }
@@ -34239,6 +40309,10 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(42);
             output.WriteMessage(OuterReference);
           }
+          if (rootTypeCase_ == RootTypeOneofCase.LambdaParameterReference) {
+            output.WriteRawTag(50);
+            output.WriteMessage(LambdaParameterReference);
+          }
           if (_unknownFields != null) {
             _unknownFields.WriteTo(ref output);
           }
@@ -34263,6 +40337,9 @@ namespace Substrait.Protobuf {
           }
           if (rootTypeCase_ == RootTypeOneofCase.OuterReference) {
             size += 1 + pb::CodedOutputStream.ComputeMessageSize(OuterReference);
+          }
+          if (rootTypeCase_ == RootTypeOneofCase.LambdaParameterReference) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(LambdaParameterReference);
           }
           if (_unknownFields != null) {
             size += _unknownFields.CalculateSize();
@@ -34310,6 +40387,12 @@ namespace Substrait.Protobuf {
               }
               OuterReference.MergeFrom(other.OuterReference);
               break;
+            case RootTypeOneofCase.LambdaParameterReference:
+              if (LambdaParameterReference == null) {
+                LambdaParameterReference = new global::Substrait.Protobuf.Expression.Types.FieldReference.Types.LambdaParameterReference();
+              }
+              LambdaParameterReference.MergeFrom(other.LambdaParameterReference);
+              break;
           }
 
           _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
@@ -34323,7 +40406,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -34372,6 +40459,15 @@ namespace Substrait.Protobuf {
                 OuterReference = subBuilder;
                 break;
               }
+              case 50: {
+                global::Substrait.Protobuf.Expression.Types.FieldReference.Types.LambdaParameterReference subBuilder = new global::Substrait.Protobuf.Expression.Types.FieldReference.Types.LambdaParameterReference();
+                if (rootTypeCase_ == RootTypeOneofCase.LambdaParameterReference) {
+                  subBuilder.MergeFrom(LambdaParameterReference);
+                }
+                input.ReadMessage(subBuilder);
+                LambdaParameterReference = subBuilder;
+                break;
+              }
             }
           }
         #endif
@@ -34383,7 +40479,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -34430,6 +40530,15 @@ namespace Substrait.Protobuf {
                 }
                 input.ReadMessage(subBuilder);
                 OuterReference = subBuilder;
+                break;
+              }
+              case 50: {
+                global::Substrait.Protobuf.Expression.Types.FieldReference.Types.LambdaParameterReference subBuilder = new global::Substrait.Protobuf.Expression.Types.FieldReference.Types.LambdaParameterReference();
+                if (rootTypeCase_ == RootTypeOneofCase.LambdaParameterReference) {
+                  subBuilder.MergeFrom(LambdaParameterReference);
+                }
+                input.ReadMessage(subBuilder);
+                LambdaParameterReference = subBuilder;
                 break;
               }
             }
@@ -34573,7 +40682,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -34588,7 +40701,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -34763,7 +40880,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -34782,7 +40903,222 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                    break;
+                  case 8: {
+                    StepsOut = input.ReadUInt32();
+                    break;
+                  }
+                }
+              }
+            }
+            #endif
+
+          }
+
+          /// <summary>
+          /// A reference to a lambda parameter within a lambda body expression.
+          /// This identifies which lambda scope to reference, treating its parameters
+          /// as a struct. Use FieldReference with this as root_type to access specific
+          /// parameters or nested fields within parameters.
+          /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+          public sealed partial class LambdaParameterReference : pb::IMessage<LambdaParameterReference>
+          #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              , pb::IBufferMessage
+          #endif
+          {
+            private static readonly pb::MessageParser<LambdaParameterReference> _parser = new pb::MessageParser<LambdaParameterReference>(() => new LambdaParameterReference());
+            private pb::UnknownFieldSet _unknownFields;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pb::MessageParser<LambdaParameterReference> Parser { get { return _parser; } }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public static pbr::MessageDescriptor Descriptor {
+              get { return global::Substrait.Protobuf.Expression.Types.FieldReference.Descriptor.NestedTypes[2]; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            pbr::MessageDescriptor pb::IMessage.Descriptor {
+              get { return Descriptor; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public LambdaParameterReference() {
+              OnConstruction();
+            }
+
+            partial void OnConstruction();
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public LambdaParameterReference(LambdaParameterReference other) : this() {
+              stepsOut_ = other.stepsOut_;
+              _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public LambdaParameterReference Clone() {
+              return new LambdaParameterReference(this);
+            }
+
+            /// <summary>Field number for the "steps_out" field.</summary>
+            public const int StepsOutFieldNumber = 1;
+            private uint stepsOut_;
+            /// <summary>
+            /// Number of lambda boundaries to traverse up for this reference.
+            /// For nested lambdas:
+            ///   0 = innermost lambda (current lambda's parameters as a struct)
+            ///   1 = one lambda level out (outer lambda's parameters as a struct)
+            ///   2 = two lambda levels out, etc.
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public uint StepsOut {
+              get { return stepsOut_; }
+              set {
+                stepsOut_ = value;
+              }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override bool Equals(object other) {
+              return Equals(other as LambdaParameterReference);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool Equals(LambdaParameterReference other) {
+              if (ReferenceEquals(other, null)) {
+                return false;
+              }
+              if (ReferenceEquals(other, this)) {
+                return true;
+              }
+              if (StepsOut != other.StepsOut) return false;
+              return Equals(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override int GetHashCode() {
+              int hash = 1;
+              if (StepsOut != 0) hash ^= StepsOut.GetHashCode();
+              if (_unknownFields != null) {
+                hash ^= _unknownFields.GetHashCode();
+              }
+              return hash;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public override string ToString() {
+              return pb::JsonFormatter.ToDiagnosticString(this);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void WriteTo(pb::CodedOutputStream output) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              output.WriteRawMessage(this);
+            #else
+              if (StepsOut != 0) {
+                output.WriteRawTag(8);
+                output.WriteUInt32(StepsOut);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(output);
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+              if (StepsOut != 0) {
+                output.WriteRawTag(8);
+                output.WriteUInt32(StepsOut);
+              }
+              if (_unknownFields != null) {
+                _unknownFields.WriteTo(ref output);
+              }
+            }
+            #endif
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public int CalculateSize() {
+              int size = 0;
+              if (StepsOut != 0) {
+                size += 1 + pb::CodedOutputStream.ComputeUInt32Size(StepsOut);
+              }
+              if (_unknownFields != null) {
+                size += _unknownFields.CalculateSize();
+              }
+              return size;
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(LambdaParameterReference other) {
+              if (other == null) {
+                return;
+              }
+              if (other.StepsOut != 0) {
+                StepsOut = other.StepsOut;
+              }
+              _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void MergeFrom(pb::CodedInputStream input) {
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+              input.ReadRawMessage(this);
+            #else
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
+                  default:
+                    _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                    break;
+                  case 8: {
+                    StepsOut = input.ReadUInt32();
+                    break;
+                  }
+                }
+              }
+            #endif
+            }
+
+            #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+              uint tag;
+              while ((tag = input.ReadTag()) != 0) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -34820,7 +41156,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[14]; }
+          get { return global::Substrait.Protobuf.Expression.Descriptor.NestedTypes[16]; }
         }
 
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -35111,7 +41447,11 @@ namespace Substrait.Protobuf {
         #else
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
@@ -35162,7 +41502,11 @@ namespace Substrait.Protobuf {
         void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
           uint tag;
           while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
+          if ((tag & 7) == 4) {
+            // Abort on any end group tag.
+            return;
+          }
+          switch(tag) {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
@@ -35375,7 +41719,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -35397,7 +41745,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -35601,7 +41953,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -35627,7 +41983,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -35844,7 +42204,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -35870,7 +42234,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -36175,7 +42543,11 @@ namespace Substrait.Protobuf {
             #else
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                     break;
@@ -36212,7 +42584,11 @@ namespace Substrait.Protobuf {
             void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
               uint tag;
               while ((tag = input.ReadTag()) != 0) {
-                switch(tag) {
+              if ((tag & 7) == 4) {
+                // Abort on any end group tag.
+                return;
+              }
+              switch(tag) {
                   default:
                     _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                     break;
@@ -36280,6 +42656,260 @@ namespace Substrait.Protobuf {
   }
 
   /// <summary>
+  /// Expression that represents a dynamic parameter.
+  /// Dynamic parameters are identified by a surrogate key within a plan.
+  /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class DynamicParameter : pb::IMessage<DynamicParameter>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<DynamicParameter> _parser = new pb::MessageParser<DynamicParameter>(() => new DynamicParameter());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<DynamicParameter> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[31]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public DynamicParameter() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public DynamicParameter(DynamicParameter other) : this() {
+      type_ = other.type_ != null ? other.type_.Clone() : null;
+      parameterReference_ = other.parameterReference_;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public DynamicParameter Clone() {
+      return new DynamicParameter(this);
+    }
+
+    /// <summary>Field number for the "type" field.</summary>
+    public const int TypeFieldNumber = 1;
+    private global::Substrait.Protobuf.Type type_;
+    /// <summary>
+    /// The type of the dynamic parameter.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Type Type {
+      get { return type_; }
+      set {
+        type_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "parameter_reference" field.</summary>
+    public const int ParameterReferenceFieldNumber = 2;
+    private uint parameterReference_;
+    /// <summary>
+    /// The surrogate key used within a plan to reference a specific parameter binding.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public uint ParameterReference {
+      get { return parameterReference_; }
+      set {
+        parameterReference_ = value;
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as DynamicParameter);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(DynamicParameter other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (!object.Equals(Type, other.Type)) return false;
+      if (ParameterReference != other.ParameterReference) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (type_ != null) hash ^= Type.GetHashCode();
+      if (ParameterReference != 0) hash ^= ParameterReference.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      if (type_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(Type);
+      }
+      if (ParameterReference != 0) {
+        output.WriteRawTag(16);
+        output.WriteUInt32(ParameterReference);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      if (type_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(Type);
+      }
+      if (ParameterReference != 0) {
+        output.WriteRawTag(16);
+        output.WriteUInt32(ParameterReference);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      if (type_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Type);
+      }
+      if (ParameterReference != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeUInt32Size(ParameterReference);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(DynamicParameter other) {
+      if (other == null) {
+        return;
+      }
+      if (other.type_ != null) {
+        if (type_ == null) {
+          Type = new global::Substrait.Protobuf.Type();
+        }
+        Type.MergeFrom(other.Type);
+      }
+      if (other.ParameterReference != 0) {
+        ParameterReference = other.ParameterReference;
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            if (type_ == null) {
+              Type = new global::Substrait.Protobuf.Type();
+            }
+            input.ReadMessage(Type);
+            break;
+          }
+          case 16: {
+            ParameterReference = input.ReadUInt32();
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 10: {
+            if (type_ == null) {
+              Type = new global::Substrait.Protobuf.Type();
+            }
+            input.ReadMessage(Type);
+            break;
+          }
+          case 16: {
+            ParameterReference = input.ReadUInt32();
+            break;
+          }
+        }
+      }
+    }
+    #endif
+
+  }
+
+  /// <summary>
   /// The description of a field to sort on (including the direction of sorting and null semantics)
   /// </summary>
   [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
@@ -36297,7 +42927,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[29]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[32]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -36560,7 +43190,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -36591,7 +43225,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -36653,7 +43291,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[30]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[33]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -37006,7 +43644,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -37056,7 +43698,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -37147,7 +43793,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[31]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[34]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -37288,7 +43934,11 @@ namespace Substrait.Protobuf {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -37307,7 +43957,11 @@ namespace Substrait.Protobuf {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;

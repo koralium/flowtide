@@ -1,0 +1,13 @@
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_datetime.yaml'
+
+# Rounding to the nearest year
+round_calendar('2020-03-04T13:04:01'::ts, 'FLOOR'::str, 'YEAR'::str, 'YEAR'::str, 1::i64) = '2020-01-01T00:00:00'::ts
+round_calendar('2020-03-04T13:04:01'::ts, 'CEIL'::str, 'YEAR'::str, 'YEAR'::str, 1::i64) = '2021-01-01T00:00:00'::ts
+round_calendar('2020-03-04T13:04:01'::ts, 'ROUND_TIE_DOWN'::str, 'YEAR'::str, 'YEAR'::str, 1::i64) = '2020-01-01T00:00:00'::ts
+round_calendar('2020-03-04T13:04:01'::ts, 'ROUND_TIE_UP'::str, 'YEAR'::str, 'YEAR'::str, 1::i64) = '2020-01-01T00:00:00'::ts
+round_calendar('2020-08-04T13:04:01'::ts, 'ROUND_TIE_UP'::str, 'YEAR'::str, 'YEAR'::str, 1::i64) = '2021-01-01T00:00:00'::ts
+
+# Rounding to nearest minute
+round_calendar('2020-03-04T13:04:30'::ts, 'FLOOR'::str, 'MINUTE'::str, 'MINUTE'::str, 1::i64) = '2020-03-04T13:04:00'::ts
+round_calendar('2020-03-04T13:04:30'::ts, 'CEIL'::str, 'MINUTE'::str, 'MINUTE'::str, 1::i64) = '2020-03-04T13:05:00'::ts

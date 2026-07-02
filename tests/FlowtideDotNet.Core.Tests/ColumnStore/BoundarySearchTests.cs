@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithIntegersAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));
@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithIntegersDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(3));
             column.Add(new Int64Value(2));
@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithIntegersAndNullAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(1));
@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithIntegersAndNullDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(3));
             column.Add(new Int64Value(2));
@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithStringsAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new StringValue("b"));
             column.Add(new StringValue("c"));
@@ -188,7 +188,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithStringsDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new StringValue("d"));
             column.Add(new StringValue("c"));
@@ -219,7 +219,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithStringsAndNullAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(NullValue.Instance);
             column.Add(new StringValue("b"));
@@ -255,7 +255,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithStringsAndNullDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new StringValue("d"));
             column.Add(new StringValue("c"));
@@ -291,7 +291,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithBoolAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new BoolValue(false));
             column.Add(new BoolValue(true));
@@ -309,7 +309,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithBoolDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new BoolValue(true));
             column.Add(new BoolValue(true));
@@ -327,7 +327,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithBoolAndNullAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(NullValue.Instance);
             column.Add(new BoolValue(false));
@@ -350,7 +350,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithBoolAndNullDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new BoolValue(true));
             column.Add(new BoolValue(true));
@@ -373,7 +373,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithBinaryAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new BinaryValue(new byte[] { 1 }));
             column.Add(new BinaryValue(new byte[] { 2 }));
@@ -405,7 +405,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithBinaryDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new BinaryValue(new byte[] { 3 }));
             column.Add(new BinaryValue(new byte[] { 2 }));
@@ -436,7 +436,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithBinaryAndNullAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(NullValue.Instance);
             column.Add(new BinaryValue(new byte[] { 1 }));
@@ -472,7 +472,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithBinaryAndNullDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new BinaryValue(new byte[] { 3 }));
             column.Add(new BinaryValue(new byte[] { 2 }));
@@ -508,7 +508,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithDecimalsAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new DecimalValue(1));
             column.Add(new DecimalValue(2));
@@ -540,7 +540,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithDecimalsDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new DecimalValue(3));
             column.Add(new DecimalValue(2));
@@ -571,7 +571,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithDecimalsAndNullAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(NullValue.Instance);
             column.Add(new DecimalValue(1));
@@ -607,7 +607,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithDecimalsAndNullDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new DecimalValue(3));
             column.Add(new DecimalValue(2));
@@ -643,7 +643,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithDoubleAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new DoubleValue(1));
             column.Add(new DoubleValue(2));
@@ -674,7 +674,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithDoubleDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new DoubleValue(3));
             column.Add(new DoubleValue(2));
@@ -705,7 +705,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithDoubleAndNullAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(NullValue.Instance);
             column.Add(new DoubleValue(1));
@@ -741,7 +741,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithDoubleAndNullDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new DoubleValue(3));
             column.Add(new DoubleValue(2));
@@ -777,7 +777,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithListAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new ListValue(new Int64Value(1)));
             column.Add(new ListValue(new Int64Value(2)));
@@ -808,7 +808,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithListDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new ListValue(new Int64Value(3)));
             column.Add(new ListValue(new Int64Value(2)));
@@ -839,7 +839,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithListAndNullAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(NullValue.Instance);
             column.Add(new ListValue(new Int64Value(1)));
@@ -875,7 +875,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithListAndNullDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new ListValue(new Int64Value(3)));
             column.Add(new ListValue(new Int64Value(2)));
@@ -911,7 +911,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithMapsAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new MapValue(new KeyValuePair<IDataValue, IDataValue>(new Int64Value(1), new Int64Value(1))));
             column.Add(new MapValue(new KeyValuePair<IDataValue, IDataValue>(new Int64Value(1), new Int64Value(2))));
@@ -942,7 +942,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithMapsDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new MapValue(new KeyValuePair<IDataValue, IDataValue>(new Int64Value(1), new Int64Value(3))));
             column.Add(new MapValue(new KeyValuePair<IDataValue, IDataValue>(new Int64Value(1), new Int64Value(2))));
@@ -973,7 +973,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithMapsAndNullAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(NullValue.Instance);
             column.Add(new MapValue(new KeyValuePair<IDataValue, IDataValue>(new Int64Value(1), new Int64Value(1))));
@@ -1009,7 +1009,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithMapsAndNullDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new MapValue(new KeyValuePair<IDataValue, IDataValue>(new Int64Value(1), new Int64Value(3))));
             column.Add(new MapValue(new KeyValuePair<IDataValue, IDataValue>(new Int64Value(1), new Int64Value(2))));
@@ -1045,7 +1045,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithUnionAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));
             column.Add(new StringValue("a"));
@@ -1076,7 +1076,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithUnionDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new DecimalValue(3));
             column.Add(new StringValue("a"));
@@ -1107,7 +1107,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithUnionAndNullAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(1));
@@ -1143,7 +1143,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestBoundarySearchWithUnionAndNullDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             column.Add(new DecimalValue(3));
             column.Add(new StringValue("a"));

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
         public override Relation VisitAggregateRelation(AggregateRelation aggregateRelation, object state)
         {
-            if (aggregateRelation.Input is ReferenceRelation referenceRelation)
+            if (aggregateRelation.Input is ReferenceRelation)
             {
                 return aggregateRelation;
             }
@@ -219,7 +219,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             {
                 return projectRelation;
             }
-            if (projectRelation.Input.OutputLength >= projectRelation.OutputLength)
+            if (projectRelation.EmitSet && projectRelation.Input.OutputLength >= projectRelation.OutputLength)
             {
                 var input = projectRelation.Input;
 
@@ -488,7 +488,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
         public override Relation VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, object state)
         {
-            var inputLength = mergeJoinRelation.Left.OutputLength + mergeJoinRelation.Right.OutputLength;
+            if (!mergeJoinRelation.EmitSet)
+            {
+                return base.VisitMergeJoinRelation(mergeJoinRelation, state);
+            }
 
             if (mergeJoinRelation.Left is ReferenceRelation leftReference)
             {
@@ -509,135 +512,125 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 mergeJoinRelation.Right = projectRel;
             }
 
-            if (inputLength > mergeJoinRelation.OutputLength)
+            var usageVisitor = new ExpressionFieldUsageVisitor(mergeJoinRelation.Left.OutputLength);
+            // Visit all possible field references
+            foreach (var leftFieldKey in mergeJoinRelation.LeftKeys)
             {
-                var usageVisitor = new ExpressionFieldUsageVisitor(mergeJoinRelation.Left.OutputLength);
-                // Visit all possible field references
-                foreach (var leftFieldKey in mergeJoinRelation.LeftKeys)
-                {
-                    usageVisitor.Visit(leftFieldKey, default);
-                }
-                foreach (var rightFieldKey in mergeJoinRelation.RightKeys)
-                {
-                    usageVisitor.Visit(rightFieldKey, default);
-                }
-                if (mergeJoinRelation.PostJoinFilter != null)
-                {
-                    usageVisitor.Visit(mergeJoinRelation.PostJoinFilter, default);
-                }
+                usageVisitor.Visit(leftFieldKey, default);
+            }
+            foreach (var rightFieldKey in mergeJoinRelation.RightKeys)
+            {
+                usageVisitor.Visit(rightFieldKey, default);
+            }
+            if (mergeJoinRelation.PostJoinFilter != null)
+            {
+                usageVisitor.Visit(mergeJoinRelation.PostJoinFilter, default);
+            }
 
 
-                var leftUsage = usageVisitor.UsedFieldsLeft.ToList();
-                var rightUsage = usageVisitor.UsedFieldsRight.ToList();
+            var leftUsage = usageVisitor.UsedFieldsLeft.ToList();
+            var rightUsage = usageVisitor.UsedFieldsRight.ToList();
 
-                if (mergeJoinRelation.EmitSet)
+            if (mergeJoinRelation.EmitSet)
+            {
+                foreach (var field in mergeJoinRelation.Emit!)
                 {
-                    foreach (var field in mergeJoinRelation.Emit!)
+                    if (field < mergeJoinRelation.Left.OutputLength)
                     {
-                        if (field < mergeJoinRelation.Left.OutputLength)
-                        {
-                            leftUsage.Add(field);
-                        }
-                        else
-                        {
-                            rightUsage.Add(field);
-                        }
+                        leftUsage.Add(field);
+                    }
+                    else
+                    {
+                        rightUsage.Add(field);
                     }
                 }
+            }
 
 
-                leftUsage = leftUsage.Distinct().OrderBy(x => x).ToList();
-                rightUsage = rightUsage.Distinct().OrderBy(x => x).ToList();
+            leftUsage = leftUsage.Distinct().OrderBy(x => x).ToList();
+            rightUsage = rightUsage.Distinct().OrderBy(x => x).ToList();
 
-                Dictionary<int, int> oldToNew = new Dictionary<int, int>();
-                int replacementCounter = 0;
-                List<int> leftEmit = new List<int>();
-                List<int> rightEmit = new List<int>();
+            Dictionary<int, int> oldToNew = new Dictionary<int, int>();
+            int replacementCounter = 0;
+            List<int> leftEmit = new List<int>();
+            List<int> rightEmit = new List<int>();
 
-                Dictionary<int, int> leftEmitToInternal = new Dictionary<int, int>();
-                if (mergeJoinRelation.Left.EmitSet)
+            Dictionary<int, int> leftEmitToInternal = new Dictionary<int, int>();
+            if (mergeJoinRelation.Left.EmitSet)
+            {
+                for (int i = 0; i < mergeJoinRelation.Left.Emit.Count; i++)
                 {
-                    for (int i = 0; i < mergeJoinRelation.Left.Emit.Count; i++)
+                    leftEmitToInternal.Add(i, mergeJoinRelation.Left.Emit[i]);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < mergeJoinRelation.Left.OutputLength; i++)
+                {
+                    leftEmitToInternal.Add(i, i);
+                }
+            }
+
+            Dictionary<int, int> rightEmitToInternal = new Dictionary<int, int>();
+            if (mergeJoinRelation.Right.EmitSet)
+            {
+                for (int i = 0; i < mergeJoinRelation.Right.Emit.Count; i++)
+                {
+                    rightEmitToInternal.Add(i, mergeJoinRelation.Right.Emit[i]);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < mergeJoinRelation.Right.OutputLength; i++)
+                {
+                    rightEmitToInternal.Add(i, i);
+                }
+            }
+
+            foreach (var field in leftUsage)
+            {
+                leftEmit.Add(leftEmitToInternal[field]);
+                oldToNew.Add(field, replacementCounter);
+                replacementCounter += 1;
+            }
+
+            foreach (var field in rightUsage)
+            {
+                var rightIndex = field - mergeJoinRelation.Left.OutputLength;
+
+                rightEmit.Add(rightEmitToInternal[rightIndex]);
+                oldToNew.Add(field, replacementCounter);
+                replacementCounter += 1;
+            }
+            mergeJoinRelation.Left.Emit = leftEmit;
+            mergeJoinRelation.Right.Emit = rightEmit;
+
+            // Replace all used fields
+            var replaceVisitor = new ExpressionFieldReplaceVisitor(oldToNew);
+            foreach (var leftFieldKey in mergeJoinRelation.LeftKeys)
+            {
+                replaceVisitor.Visit(leftFieldKey, default);
+            }
+            foreach (var rightFieldKey in mergeJoinRelation.RightKeys)
+            {
+                replaceVisitor.Visit(rightFieldKey, default);
+            }
+            if (mergeJoinRelation.PostJoinFilter != null)
+            {
+                replaceVisitor.Visit(mergeJoinRelation.PostJoinFilter, default);
+            }
+
+            if (mergeJoinRelation.EmitSet)
+            {
+                for (int i = 0; i < mergeJoinRelation.Emit.Count; i++)
+                {
+                    if (oldToNew.TryGetValue(mergeJoinRelation.Emit[i], out var newVal))
                     {
-                        leftEmitToInternal.Add(i, mergeJoinRelation.Left.Emit[i]);
+                        mergeJoinRelation.Emit[i] = newVal;
                     }
-                }
-                else
-                {
-                    for (int i = 0; i < mergeJoinRelation.Left.OutputLength; i++)
+                    else
                     {
-                        leftEmitToInternal.Add(i, i);
-                    }
-                }
-
-                Dictionary<int, int> rightEmitToInternal = new Dictionary<int, int>();
-                if (mergeJoinRelation.Right.EmitSet)
-                {
-                    for (int i = 0; i < mergeJoinRelation.Right.Emit.Count; i++)
-                    {
-                        rightEmitToInternal.Add(i, mergeJoinRelation.Right.Emit[i]);
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < mergeJoinRelation.Right.OutputLength; i++)
-                    {
-                        rightEmitToInternal.Add(i, i);
-                    }
-                }
-
-                foreach (var field in leftUsage)
-                {
-                    leftEmit.Add(leftEmitToInternal[field]);
-                    oldToNew.Add(field, replacementCounter);
-                    replacementCounter += 1;
-                }
-
-                foreach (var field in rightUsage)
-                {
-                    var rightIndex = field - mergeJoinRelation.Left.OutputLength;
-
-                    rightEmit.Add(rightEmitToInternal[rightIndex]);
-                    oldToNew.Add(field, replacementCounter);
-                    replacementCounter += 1;
-                }
-                if (leftEmit.Count < mergeJoinRelation.Left.OutputLength)
-                {
-                    mergeJoinRelation.Left.Emit = leftEmit;
-                }
-                // Check if right side can be made smaller
-                if (rightEmit.Count < mergeJoinRelation.Right.OutputLength)
-                {
-                    mergeJoinRelation.Right.Emit = rightEmit;
-                }
-
-                // Replace all used fields
-                var replaceVisitor = new ExpressionFieldReplaceVisitor(oldToNew);
-                foreach (var leftFieldKey in mergeJoinRelation.LeftKeys)
-                {
-                    replaceVisitor.Visit(leftFieldKey, default);
-                }
-                foreach (var rightFieldKey in mergeJoinRelation.RightKeys)
-                {
-                    replaceVisitor.Visit(rightFieldKey, default);
-                }
-                if (mergeJoinRelation.PostJoinFilter != null)
-                {
-                    replaceVisitor.Visit(mergeJoinRelation.PostJoinFilter, default);
-                }
-
-                if (mergeJoinRelation.EmitSet)
-                {
-                    for (int i = 0; i < mergeJoinRelation.Emit.Count; i++)
-                    {
-                        if (oldToNew.TryGetValue(mergeJoinRelation.Emit[i], out var newVal))
-                        {
-                            mergeJoinRelation.Emit[i] = newVal;
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException("Error in emit pushdown optimizer");
-                        }
+                        throw new InvalidOperationException("Error in emit pushdown optimizer");
                     }
                 }
             }
@@ -646,7 +639,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
         public override Relation VisitFilterRelation(FilterRelation filterRelation, object state)
         {
-            if (filterRelation.Input is ReferenceRelation referenceRelation)
+            if (filterRelation.Input is ReferenceRelation)
             {
                 return filterRelation;
             }
@@ -658,7 +651,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             {
                 return filterRelation;
             }
-            if (filterRelation.Input.OutputLength >= filterRelation.OutputLength)
+            if (filterRelation.EmitSet && filterRelation.Input.OutputLength >= filterRelation.OutputLength)
             {
                 var input = filterRelation.Input;
 
@@ -761,7 +754,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
         public override Relation VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, object state)
         {
-            if (consistentPartitionWindowRelation.Input is ReferenceRelation referenceRelation)
+            if (consistentPartitionWindowRelation.Input is ReferenceRelation)
             {
                 return consistentPartitionWindowRelation;
             }

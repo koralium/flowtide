@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public static readonly BoolValue True = new BoolValue(true);
         public static readonly BoolValue False = new BoolValue(false);
 
-        internal bool value;
+        internal readonly bool value;
 
         public BoolValue(bool value)
         {

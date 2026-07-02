@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Storage.Tree
 
         public T Get(int index)
         {
-            return _values.Get(in index);
+            return _values.Get(index);
         }
 
         public ref T GetRef(int index)
@@ -93,6 +93,19 @@ namespace FlowtideDotNet.Storage.Tree
         public PrimitiveList<T> GetPrimitiveListCopy(IMemoryAllocator memoryAllocator)
         {
             return _values.Copy(memoryAllocator);
+        }
+
+        public void InsertFrom(T[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            _values.InsertFrom(values, sortedLookup, targetPositions);
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            for (int i = positions.Length - 1; i >= 0; i--)
+            {
+                _values.RemoveAt(positions[i]);
+            }
         }
     }
 }

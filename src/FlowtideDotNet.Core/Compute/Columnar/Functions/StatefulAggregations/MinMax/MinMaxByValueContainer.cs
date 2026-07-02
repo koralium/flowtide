@@ -60,6 +60,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
             }
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _data.Dispose();
@@ -94,6 +99,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
         {
             _data.InsertAt(index, value.Value);
             _weights.InsertAt(index, value.Weight);
+        }
+
+        public void InsertFrom(MinMaxByValue[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
         }
 
         public void RemoveAt(int index)

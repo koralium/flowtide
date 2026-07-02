@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -191,10 +191,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
-            var recordBatch = reader.ReadNextRecordBatch();
+            using var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.True(recordBatch.Schema.FieldsList[0].DataType is MapType);
 
@@ -232,8 +232,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
             var recordBatch = reader.ReadNextRecordBatch();
 
@@ -339,10 +339,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
-            var recordBatch = reader.ReadNextRecordBatch();
+            using var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.True(recordBatch.Schema.FieldsList[0].Metadata.TryGetValue("ARROW:extension:name", out var customExtensionName));
             Assert.Equal("flowtide.timestamptz", customExtensionName);
@@ -406,8 +406,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
             var recordBatch = reader.ReadNextRecordBatch();
             Assert.NotNull(recordBatch);
@@ -434,7 +434,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 column.Add(values[i]);
             }
 
-            var batch = new EventBatchData([column]);
+            using var batch = new EventBatchData([column]);
 
             var serializer = new EventBatchSerializer();
             var bufferWriter = new ArrayBufferWriter<byte>();
@@ -445,7 +445,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
 
             EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
-            var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader).EventBatch;
+            using var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader).EventBatch;
 
             Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
         }
@@ -652,7 +652,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
         class BatchCompressor : IBatchCompressor
         {
-            Compressor compressor;
+            private readonly Compressor compressor;
             public BatchCompressor(Compressor compressor)
             {
                 this.compressor = compressor;
@@ -732,8 +732,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             File.WriteAllBytes("compressed.arrow", serializedBytes);
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream, new CompressionCodecFactory());
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream, new CompressionCodecFactory());
             var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.Equal(2000, recordBatch.Length);
@@ -813,8 +813,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestSerializeDataColumnOnly()
         {
-            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
-            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance);
+            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance);
 
             for (int i = 0; i < 10; i++)
             {
@@ -830,8 +830,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(bufferWriter.WrittenMemory));
             var deserializeResult = batchDeserializer.DeserializeDataColumns(ref sequenceReader);
-            var deserializedColumn = deserializeResult.DataColumns[0] as ListColumn;
-            var deserializedStringColumn = deserializeResult.DataColumns[1] as StringColumn;
+            using var deserializedColumn = deserializeResult.DataColumns[0] as ListColumn;
+            using var deserializedStringColumn = deserializeResult.DataColumns[1] as StringColumn;
 
             Assert.NotNull(deserializedColumn);
             Assert.NotNull(deserializedStringColumn);
@@ -858,10 +858,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
-            var recordBatch = reader.ReadNextRecordBatch();
+            using var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.True(recordBatch.Schema.FieldsList[0].DataType is StructType);
             var structType = (recordBatch.Schema.FieldsList[0].DataType as StructType)!;
@@ -898,6 +898,54 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             new StructValue(header, new Int64Value(123), new StringValue("hello")),
             new StructValue(otherHeader, new Int64Value(321)),
             new StringValue("world"));
+        }
+        [Fact]
+        public void TestDeserializeWithIncludeColumns()
+        {
+            // Create column 0 (Int64)
+            Column col0 = Column.Create(GlobalMemoryManager.Instance);
+            col0.Add(new Int64Value(10));
+            col0.Add(new Int64Value(20));
+
+            // Create column 1 (String)
+            Column col1 = Column.Create(GlobalMemoryManager.Instance);
+            col1.Add(new StringValue("hello"));
+            col1.Add(new StringValue("world"));
+
+            // Create column 2 (Bool)
+            Column col2 = Column.Create(GlobalMemoryManager.Instance);
+            col2.Add(new BoolValue(true));
+            col2.Add(new BoolValue(false));
+
+            var batch = new EventBatchData(new IColumn[] { col0, col1, col2 });
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+
+            serializer.SerializeEventBatch(bufferWriter, batch, 2);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
+
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
+            
+            // Only include column 1
+            var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader, new int[] { 1 }).EventBatch;
+            
+            Assert.Equal(3, deserializedBatch.Columns.Count);
+            
+            // Col 0 should be null dummy column (ArrowTypeId.Null)
+            Assert.Equal(FlowtideDotNet.Core.ColumnStore.ArrowTypeId.Null, ((Column)deserializedBatch.Columns[0]).Type);
+            Assert.Equal(2, deserializedBatch.Columns[0].Count);
+
+            // Col 1 should be the string column
+            Assert.Equal(FlowtideDotNet.Core.ColumnStore.ArrowTypeId.String, ((Column)deserializedBatch.Columns[1]).Type);
+            Assert.Equal("hello", deserializedBatch.Columns[1].GetValueAt(0, default).AsString.ToString());
+            Assert.Equal("world", deserializedBatch.Columns[1].GetValueAt(1, default).AsString.ToString());
+
+            // Col 2 should be null dummy column (ArrowTypeId.Null)
+            Assert.Equal(FlowtideDotNet.Core.ColumnStore.ArrowTypeId.Null, ((Column)deserializedBatch.Columns[2]).Type);
+            Assert.Equal(2, deserializedBatch.Columns[2].Count);
         }
     }
 }

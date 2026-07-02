@@ -1,41 +1,43 @@
-# Website
+# Flowtide documentation
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+This site is built with [DocFX](https://dotnet.github.io/docfx/).
 
-### Installation
+## Structure
 
-```
-$ yarn
-```
+* `index.md` / `toc.yml` — landing page and top navigation.
+* `docs/` — conceptual documentation (with `docs/toc.yml` defining the sidebar).
+* `releasenotes/` — release notes.
+* `api/` — .NET API reference, generated from the source XML doc comments (`api/*.yml` is generated and git-ignored).
+* `images/` — shared image/logo assets.
+* `docfx.json` — build configuration; `filterConfig.yml` — API reference filter.
 
-### Local Development
+## Prerequisites
 
-```
-$ yarn start
-```
+DocFX is a .NET global tool. The .NET 8 and .NET 10 SDKs are required to generate the API reference.
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
-
-### Build
-
-```
-$ yarn build
+```bash
+dotnet tool update -g docfx
 ```
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
+## Build and serve locally
 
-### Deployment
+From the `docs/` directory:
 
-Using SSH:
+```bash
+# Build the site (generates API metadata + static site into _site/)
+docfx docfx.json
 
-```
-$ USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
-```
-$ GIT_USER=<Your GitHub username> yarn deploy
+# Build and serve with live preview at http://localhost:8080
+docfx docfx.json --serve
 ```
 
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+To regenerate only the API metadata:
+
+```bash
+docfx metadata docfx.json
+```
+
+## Deployment
+
+Pushing to `main` triggers `.github/workflows/docs.yml`, which builds the site
+and publishes `docs/_site` to the `gh-pages` branch.

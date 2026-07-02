@@ -41,6 +41,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             throw new NotImplementedException();
         }
 
+        public FindBoundriesResult FindBoundries(in ListAggColumnRowReference key, in ListAggKeyStorageContainer keyContainer, int startIndex, int length)
+        {
+            throw new NotImplementedException();
+        }
+
         public int FindIndex(in ListAggColumnRowReference key, in ListAggKeyStorageContainer keyContainer)
         {
             int index = -1;

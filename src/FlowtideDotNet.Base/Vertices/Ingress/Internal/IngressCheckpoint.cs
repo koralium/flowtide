@@ -12,7 +12,7 @@
 
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.Ingress.Internal
+namespace FlowtideDotNet.Base.Vertices.Internal
 {
     /// <summary>
     /// Helper class that allows a checkpoint to be added directly to the bounding state

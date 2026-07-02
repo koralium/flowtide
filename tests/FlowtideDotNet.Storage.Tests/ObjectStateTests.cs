@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,7 +30,7 @@ namespace FlowtideDotNet.Storage.Tests
                 {
                     DirectoryPath = "./data/tmp/" + nameof(TestCommitedValueIsSaved)
                 }, true)
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
 
             var stateClient = stateManager.GetOrCreateClient("stateClient");
@@ -58,7 +59,7 @@ namespace FlowtideDotNet.Storage.Tests
                 {
                     DirectoryPath = "./data/tmp/" + nameof(TestNonCommitedValueIsRestored)
                 }, true)
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
 
             var stateClient = stateManager.GetOrCreateClient("stateClient");

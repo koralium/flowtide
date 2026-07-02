@@ -12,10 +12,30 @@
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// Represents the overall health status of the Flowtide stream.
+    /// </summary>
+    /// <remarks>
+    /// This enum is used to report the operational health of the stream, 
+    /// allowing external monitoring systems or health checks to determine if the stream 
+    /// is functioning normally, experiencing problems, or effectively down.
+    /// </remarks>
     public enum FlowtideHealth
     {
+        /// <summary>
+        /// Indicates that the stream is fully operational and processing data as expected without issues.
+        /// </summary>
         Healthy,
+
+        /// <summary>
+        /// Indicates that the stream is running but experiencing degraded performance or minor transient errors.
+        /// Processing may be slower, but the system has not entirely failed.
+        /// </summary>
         Degraded,
+
+        /// <summary>
+        /// Indicates that the stream has encountered severe errors or critical failures and is no longer able to process data correctly.
+        /// </summary>
         Unhealthy
     }
 }

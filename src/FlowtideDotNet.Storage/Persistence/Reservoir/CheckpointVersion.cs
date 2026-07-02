@@ -1,0 +1,68 @@
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+namespace FlowtideDotNet.Storage.Persistence.Reservoir
+{
+    /// <summary>
+    /// Contains version information of a checkpoint and also if that version is a snapshot.
+    /// </summary>
+    public class CheckpointVersion : IEquatable<CheckpointVersion>
+    {
+        /// <summary>
+        /// The version of a checkpoint
+        /// </summary>
+        public long Version { get; }
+
+        /// <summary>
+        /// Indicates whether the checkpoint is a snapshot checkpoint or not. Snapshot checkpoints are checkpoints that contain the full 
+        /// state of the system at a given version, while non-snapshot checkpoints may only contain incremental changes since the last snapshot checkpoint. 
+        /// This information can be used to optimize checkpoint loading and recovery processes, as loading from a snapshot checkpoint can be faster than 
+        /// applying a series of incremental checkpoints.
+        /// </summary>
+        public bool IsSnapshot { get; }
+
+        /// <summary>
+        /// Gets the CRC64 checksum value computed for the checkpoint file.
+        /// </summary>
+        public ulong Crc64 { get; }
+        
+        public bool IsBundled { get; }
+
+        public CheckpointVersion(long version, bool isSnapshot, ulong crc64, bool isBundled)
+        {
+            Version = version;
+            IsSnapshot = isSnapshot;
+            Crc64 = crc64;
+            IsBundled = isBundled;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is CheckpointVersion other)
+            {
+                return Equals(other);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Version, IsSnapshot, Crc64, IsBundled);
+        }
+
+        public bool Equals(CheckpointVersion? other)
+        {
+            if (other == null) return false;
+            return Version == other.Version && IsSnapshot == other.IsSnapshot && Crc64 == other.Crc64 && IsBundled == other.IsBundled;
+        }
+    }
+}

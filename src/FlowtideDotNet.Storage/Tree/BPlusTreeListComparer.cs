@@ -33,6 +33,11 @@ namespace FlowtideDotNet.Storage.Tree
             return comparer.Compare(key, keyContainer.Get(index));
         }
 
+        public FindBoundriesResult FindBoundries(in K key, in ListKeyContainer<K> keyContainer, int startIndex, int length)
+        {
+            throw new NotImplementedException();
+        }
+
         public int FindIndex(in K key, in ListKeyContainer<K> keyContainer)
         {
             return keyContainer._list.BinarySearch(key, comparer);

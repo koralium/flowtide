@@ -1,13 +1,16 @@
 syntax = "proto3";
 package authzed.api.v1;
 
-option go_package = "github.com/authzed/authzed-go/proto/authzed/api/v1";
-option java_package = "com.authzed.api.v1";
-
+import "authzed/api/v1/core.proto";
+import "authzed/api/v1/permission_service.proto";
+import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "validate/validate.proto";
 
-import "authzed/api/v1/core.proto";
+option go_package = "github.com/authzed/authzed-go/proto/authzed/api/v1";
+option java_multiple_files = true;
+option java_package = "com.authzed.api.v1";
 
 // SchemaService implements operations on a Permissions System's Schema.
 service SchemaService {
@@ -21,6 +24,9 @@ service SchemaService {
       post: "/v1/schema/read"
       body: "*"
     };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      tags: ["Schema"]
+    };
   }
 
   // Write overwrites the current Object Definitions for a Permissions System.
@@ -28,6 +34,60 @@ service SchemaService {
     option (google.api.http) = {
       post: "/v1/schema/write"
       body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      tags: ["Schema"]
+    };
+  }
+
+  // ReflectSchema reflects the current schema stored in SpiceDB, returning a structural
+  // form of the schema for use by client tooling.
+  rpc ReflectSchema(ReflectSchemaRequest) returns (ReflectSchemaResponse) {
+    option (google.api.http) = {
+      post: "/v1/schema/reflectschema"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      tags: ["Schema"]
+    };
+  }
+
+  // ComputablePermissions returns the set of permissions that compute based off a relation
+  // in the current schema. For example, if the schema has a relation `viewer` and a permission
+  // `view` defined as `permission view = viewer + editor`, then the
+  // computable permissions for the relation `viewer` will include `view`.
+  rpc ComputablePermissions(ComputablePermissionsRequest) returns (ComputablePermissionsResponse) {
+    option (google.api.http) = {
+      post: "/v1/schema/permissions/computable"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      tags: ["Schema"]
+    };
+  }
+
+  // DependentRelations returns the set of relations and permissions that used
+  // to compute a permission, recursively, in the current schema. It is the
+  // inverse of the ComputablePermissions API.
+  rpc DependentRelations(DependentRelationsRequest) returns (DependentRelationsResponse) {
+    option (google.api.http) = {
+      post: "/v1/schema/permissions/dependent"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      tags: ["Schema"]
+    };
+  }
+
+  // DiffSchema returns the difference between the specified schema and the current
+  // schema stored in SpiceDB.
+  rpc DiffSchema(DiffSchemaRequest) returns (DiffSchemaResponse) {
+    option (google.api.http) = {
+      post: "/v1/schema/diffschema"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      tags: ["Schema"]
     };
   }
 }
@@ -42,7 +102,10 @@ message ReadSchemaResponse {
   string schema_text = 1;
 
   // read_at is the ZedToken at which the schema was read.
-  ZedToken read_at = 2 [ (validate.rules).message.required = true ];
+  ZedToken read_at = 2 [
+    (validate.rules).message.required = true,
+    (buf.validate.field).required = true
+  ];
 }
 
 // WriteSchemaRequest is the required data used to "upsert" the Schema of a
@@ -50,12 +113,211 @@ message ReadSchemaResponse {
 message WriteSchemaRequest {
   // The Schema containing one or more Object Definitions that will be written
   // to the Permissions System.
-  string schema = 1 [ (validate.rules).string.max_bytes = 4194304 ]; // 4MiB
+  string schema = 1 [
+    (validate.rules).string.max_bytes = 4194304,
+    (buf.validate.field).string.max_bytes = 4194304
+  ]; // 4MiB
 }
 
 // WriteSchemaResponse is the resulting data after having written a Schema to
 // a Permissions System.
 message WriteSchemaResponse {
-    // written_at is the ZedToken at which the schema was written.
-    ZedToken written_at = 1 [ (validate.rules).message.required = true ];
+  // written_at is the ZedToken at which the schema was written.
+  ZedToken written_at = 1 [
+    (validate.rules).message.required = true,
+    (buf.validate.field).required = true
+  ];
+}
+
+// Reflection types ////////////////////////////////////////////
+
+message ReflectSchemaRequest {
+  Consistency consistency = 1;
+
+  // optional_filters defines optional filters that are applied in
+  // an OR fashion to the schema, before being returned
+  repeated ReflectionSchemaFilter optional_filters = 2;
+}
+
+message ReflectSchemaResponse {
+  // definitions are the definitions defined in the schema.
+  repeated ReflectionDefinition definitions = 1;
+
+  // caveats are the caveats defined in the schema.
+  repeated ReflectionCaveat caveats = 2;
+
+  // read_at is the ZedToken at which the schema was read.
+  ZedToken read_at = 3;
+}
+
+// ReflectionSchemaFilter is a filter that can be applied to the schema on reflection.
+message ReflectionSchemaFilter {
+  // optional_definition_name_filter is a prefix that is matched against the definition name.
+  string optional_definition_name_filter = 1;
+
+  // optional_caveat_name_filter is a prefix that is matched against the caveat name.
+  string optional_caveat_name_filter = 2;
+
+  // optional_relation_name_filter is a prefix that is matched against the relation name.
+  string optional_relation_name_filter = 3;
+
+  // optional_permission_name_filter is a prefix that is matched against the permission name.
+  string optional_permission_name_filter = 4;
+}
+
+// ReflectionDefinition is the representation of a definition in the schema.
+message ReflectionDefinition {
+  string name = 1;
+
+  // comment is a human-readable comments on the definition. Will include
+  // delimiter characters.
+  string comment = 2;
+
+  repeated ReflectionRelation relations = 3;
+  repeated ReflectionPermission permissions = 4;
+}
+
+// ReflectionCaveat is the representation of a caveat in the schema.
+message ReflectionCaveat {
+  string name = 1;
+
+  // comment is a human-readable comments on the caveat. Will include
+  // delimiter characters.
+  string comment = 2;
+
+  repeated ReflectionCaveatParameter parameters = 3;
+  string expression = 4;
+}
+
+// ReflectionCaveatParameter is the representation of a parameter in a caveat.
+message ReflectionCaveatParameter {
+  string name = 1;
+
+  // type is the type of the parameter. Will be a string representing the
+  // type, e.g. `int` or `list<string>`
+  string type = 2;
+  string parent_caveat_name = 3;
+}
+
+// ReflectionRelation is the representation of a relation in the schema.
+message ReflectionRelation {
+  string name = 1;
+  string comment = 2;
+  string parent_definition_name = 3;
+  repeated ReflectionTypeReference subject_types = 4;
+}
+
+// ReflectionTypeReference is the representation of a type reference in the schema.
+message ReflectionTypeReference {
+  // subject_definition_name is the name of the subject's definition.
+  string subject_definition_name = 1;
+
+  // optional_caveat_name is the name of the caveat that is applied to the subject, if any.
+  string optional_caveat_name = 2;
+
+  oneof typeref {
+    // is_terminal_subject is true if the subject is terminal, meaning it is referenced directly vs a sub-relation.
+    bool is_terminal_subject = 3;
+
+    // optional_relation_name is the name of the relation that is applied to the subject, if any.
+    string optional_relation_name = 4;
+
+    // is_public_wildcard is true if the subject is a public wildcard.
+    bool is_public_wildcard = 5;
+  }
+}
+
+// ReflectionPermission is the representation of a permission in the schema.
+message ReflectionPermission {
+  string name = 1;
+
+  // comment is a human-readable comments on the permission. Will include
+  // delimiter characters.
+  string comment = 2;
+  string parent_definition_name = 3;
+}
+
+message ComputablePermissionsRequest {
+  Consistency consistency = 1;
+  string definition_name = 2;
+  string relation_name = 3;
+
+  // optional_definition_name_match is a prefix that is matched against the definition name(s)
+  // for the permissions returned.
+  // If not specified, will be ignored.
+  string optional_definition_name_filter = 4;
+}
+
+// ReflectionRelationReference is a reference to a relation or permission in the schema.
+message ReflectionRelationReference {
+  string definition_name = 1;
+  string relation_name = 2;
+  bool is_permission = 3;
+}
+
+message ComputablePermissionsResponse {
+  repeated ReflectionRelationReference permissions = 1;
+
+  // read_at is the ZedToken at which the schema was read.
+  ZedToken read_at = 2;
+}
+
+message DependentRelationsRequest {
+  Consistency consistency = 1;
+  string definition_name = 2;
+  string permission_name = 3;
+}
+
+message DependentRelationsResponse {
+  repeated ReflectionRelationReference relations = 1;
+
+  // read_at is the ZedToken at which the schema was read.
+  ZedToken read_at = 2;
+}
+
+message DiffSchemaRequest {
+  Consistency consistency = 1;
+  string comparison_schema = 2;
+}
+
+message DiffSchemaResponse {
+  repeated ReflectionSchemaDiff diffs = 1;
+
+  // read_at is the ZedToken at which the schema was read.
+  ZedToken read_at = 2;
+}
+
+message ReflectionRelationSubjectTypeChange {
+  ReflectionRelation relation = 1;
+  ReflectionTypeReference changed_subject_type = 2;
+}
+
+message ReflectionCaveatParameterTypeChange {
+  ReflectionCaveatParameter parameter = 1;
+  string previous_type = 2;
+}
+
+// ReflectionSchemaDiff is the representation of a diff between two schemas.
+message ReflectionSchemaDiff {
+  oneof diff {
+    ReflectionDefinition definition_added = 1;
+    ReflectionDefinition definition_removed = 2;
+    ReflectionDefinition definition_doc_comment_changed = 3;
+    ReflectionRelation relation_added = 4;
+    ReflectionRelation relation_removed = 5;
+    ReflectionRelation relation_doc_comment_changed = 6;
+    ReflectionRelationSubjectTypeChange relation_subject_type_added = 7;
+    ReflectionRelationSubjectTypeChange relation_subject_type_removed = 8;
+    ReflectionPermission permission_added = 9;
+    ReflectionPermission permission_removed = 10;
+    ReflectionPermission permission_doc_comment_changed = 11;
+    ReflectionPermission permission_expr_changed = 12;
+    ReflectionCaveat caveat_added = 13;
+    ReflectionCaveat caveat_removed = 14;
+    ReflectionCaveat caveat_doc_comment_changed = 15;
+    ReflectionCaveat caveat_expr_changed = 16;
+    ReflectionCaveatParameter caveat_parameter_added = 17;
+    ReflectionCaveatParameter caveat_parameter_removed = 18;
+    ReflectionCaveatParameterTypeChange caveat_parameter_type_changed = 19;
+  }
 }

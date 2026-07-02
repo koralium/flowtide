@@ -2,7 +2,6 @@
 sidebar_position: 8
 ---
 
-import DocCardList from '@theme/DocCardList';
 
 
 
@@ -27,13 +26,9 @@ SELECT t.val FROM testtable t
 var plan = sqlBuilder.GetPlan();
 ```
 
-:::info
+> [!NOTE]
+> All SQL plans must have a source and a sink, so it must always insert to somewhere.
+> The INSERT INTO denotes which output should leave the stream.
 
-All SQL plans must have a source and a sink, so it must always insert to somewhere.
-The INSERT INTO denotes which output should leave the stream.
-
-:::
 
 You can find more information in the following chapters:
-
-<DocCardList />

@@ -20,4 +20,4 @@ CREATE TABLE table_name (
 );
 ```
 
-Creating table definitions is not required if you are using [table providers](tableprovider).
+Creating table definitions is not required if you are using [table providers](tableprovider.md).

@@ -246,5 +246,43 @@ namespace FlowtideDotNet.AcceptanceTests
                 })
             );
         }
+
+        [Fact]
+        public async Task Datediff()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                datediff('DAY', CAST('2017-01-01' AS TIMESTAMP), Orderdate) as days
+            FROM Orders
+            ");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(
+                Orders.Select(o => new
+                {
+                    days = (long)o.Orderdate.Date.Subtract(DateTime.Parse("2017-01-01")).TotalDays
+                })
+            );
+        }
+
+        [Fact]
+        public async Task RoundCalendarToMinute()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                round_calendar(Orderdate, 'FLOOR', 'MINUTE', 'MINUTE', 1) as Orderdate
+            FROM Orders
+            ");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(
+                Orders.Select(o => new
+                {
+                    Orderdate = new DateTimeOffset(o.Orderdate.Year, o.Orderdate.Month, o.Orderdate.Day, o.Orderdate.Hour, o.Orderdate.Minute, 0, TimeSpan.Zero)
+                })
+                );
+        }
     }
 }

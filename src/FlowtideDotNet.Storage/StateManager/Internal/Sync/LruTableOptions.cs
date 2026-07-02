@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.Metrics;
 
@@ -17,11 +18,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     internal class LruTableOptions
     {
-        public LruTableOptions(string streamName, ILogger logger, Meter meter)
+        public LruTableOptions(string streamName, ILogger logger, Meter meter, IMemoryAllocationStats memoryAllocationStats)
         {
             StreamName = streamName;
             Logger = logger;
             Meter = meter;
+            MemoryAllocationStats = memoryAllocationStats;
         }
 
         public int MaxSize { get; set; } = 10000;
@@ -35,5 +37,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public ILogger Logger { get; }
 
         public Meter Meter { get; }
+        public IMemoryAllocationStats MemoryAllocationStats { get; }
     }
 }

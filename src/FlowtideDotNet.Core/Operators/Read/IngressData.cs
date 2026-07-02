@@ -10,13 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlexBuffers;
 using System.Buffers;
 
 namespace FlowtideDotNet.Core.Operators.Read
 {
-    public struct IngressData : ILogEnqueueEntry
+    public struct IngressData
     {
         private FlxVector _vector;
         internal bool IsDeleted { get; set; }

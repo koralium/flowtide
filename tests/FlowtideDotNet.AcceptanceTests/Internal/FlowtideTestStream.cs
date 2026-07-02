@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -31,6 +31,11 @@ using Microsoft.Extensions.Logging.Debug;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Serilog;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
+using System.Buffers;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
+using FlowtideDotNet.AcceptanceTests.Entities.tpcdi;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -65,6 +70,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public IReadOnlyList<ProjectMember> ProjectMembers => generator.ProjectMembers;
 
+        public IReadOnlyList<Entities.GraphNode> GraphNodes => generator.GraphNodes;
+
+        public IReadOnlyList<Security> Securities => generator.Securities;
+
+        public IReadOnlyList<DailyMarket> DailyMarkets => generator.DailyMarkets;
+
         public IFunctionsRegister FunctionsRegister => flowtideBuilder.FunctionsRegister;
 
         public ISqlFunctionRegister SqlFunctionRegister => sqlPlanBuilder.FunctionRegister;
@@ -72,6 +83,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public SqlPlanBuilder SqlPlanBuilder => sqlPlanBuilder;
 
         public int CachePageCount { get; set; } = 100_000;
+
+        public int BPlusTreePageSizeBytes { get; set; } = 32 * 1024;
 
         public Watermark? LastWatermark => _lastWatermark;
 
@@ -86,6 +99,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             flowtideBuilder = new FlowtideBuilder(streamName)
                 .WithLoggerFactory(new LoggerFactory(new List<ILoggerProvider>() { new DebugLoggerProvider() }));
             this.testName = testName;
+        }
+
+        public void EnterDataWriteLock()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                _db.RwLock.Wait();
+            }
+        }
+
+        public void ExitDataWriteLock()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                _db.RwLock.Release();
+            }
         }
 
         public virtual void RegisterTableProviders(Action<SqlPlanBuilder> action)
@@ -123,6 +152,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.GenerateProjectMembers(count);
         }
 
+        public void GenerateGraphNodes(int count = 1000)
+        {
+            generator.GenerateGraphNodes(count);
+        }
+
         public void AddOrUpdateUser(User user)
         {
             generator.AddOrUpdateUser(user);
@@ -148,6 +182,26 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.AddOrUpdateOrder(order);
         }
 
+        public void AddUser(User user)
+        {
+            generator.AddUser(user);
+        }
+
+        public void AddOrder(Order order)
+        {
+            generator.AddOrder(order);
+        }
+
+        public void AddProjectMembers(params ProjectMember[] projectMembers)
+        {
+            generator.AddProjectMembers(projectMembers);
+        }
+
+        public void AddProjects(params Project[] projects)
+        {
+            generator.AddProjects(projects);
+        }
+
         public void AddOrUpdateProject(Project project)
         {
             generator.AddOrUpdateProject(project);
@@ -156,6 +210,26 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void AddOrUpdateProjectMember(ProjectMember projectMember)
         {
             generator.AddOrUpdateProjectMember(projectMember);
+        }
+
+        public void AddOrUpdateGraphNode(Entities.GraphNode graphNode)
+        {
+            generator.AddOrUpdateGraphNode(graphNode);
+        }
+
+        public void DeleteGraphNode(Entities.GraphNode graphNode)
+        {
+            generator.DeleteGraphNode(graphNode);
+        }
+
+        public void GenerateTpcDi(int securityCount, int dailyMarketDays)
+        {
+            generator.GenerateTpcDi(securityCount, dailyMarketDays);
+        }
+
+        public void GenerateDailyMarkets(int dailyMarketDays)
+        {
+            generator.GenerateDailyMarkets(dailyMarketDays);
         }
 
 
@@ -246,7 +320,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _persistentStorage,
                     DefaultBPlusTreePageSize = pageSize,
-                    //DefaultBPlusTreePageSizeBytes = 1,
+                    DefaultBPlusTreePageSizeBytes = BPlusTreePageSizeBytes,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
                     {
                         DirectoryPath = $"./data/tempFiles/{testName}/tmp"
@@ -291,11 +365,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
-            return new TestStorage(new Storage.FileCacheOptions()
-            {
-                DirectoryPath = $"./data/tempFiles/{testName}/persist",
-                SegmentSize = 1024L * 1024 * 1024 * 64
-            }, ignoreSameDataCheck, true);
+            return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = new MemoryFileProvider()});
         }
 
         private void OnDataUpdate(EventBatchData actualData)
@@ -307,11 +377,18 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
+        private bool _waitForUpdateDoesNotRequireDataChange = false;
+
+        public void WaitForUpdateDoesNotRequireDataChange()
+        {
+            _waitForUpdateDoesNotRequireDataChange = true;
+        }
+
         private void CheckpointComplete()
         {
             lock (_lock)
             {
-                if (_dataUpdated)
+                if (_dataUpdated || _waitForUpdateDoesNotRequireDataChange)
                 {
                     updateCounter++;
                 }
@@ -329,7 +406,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             var graph = _stream.GetDiagnosticsGraph();
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
-            while (_stream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            while (_stream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
             {
                 graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
@@ -361,7 +438,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            while (_stream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            while (_stream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
             {
                 if (stopwatch.Elapsed.CompareTo(time) > 0)
                 {
@@ -372,7 +449,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
                 CheckForErrors();
             }
-            if (graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running || graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+            if (graph.State != StreamStateValue.Running || graph.State != StreamStateValue.Running)
             {
                 Assert.Fail("Stream failed");
             }
@@ -425,9 +502,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             waitCounter = updateCounter;
         }
 
+        private bool _immutableSource = false;
+
+        public void SourceImmutable()
+        {
+            _immutableSource = true;
+        }
+
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSource(new MockSourceFactory("*", _db));
+            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource));
         }
 
         protected virtual void AddWriteResolvers(IConnectorManager connectorManger)
@@ -464,9 +548,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
-        public async Task Trigger(string triggerName)
+        public async Task Trigger(string triggerName, object? state = default)
         {
-            await _stream!.CallTrigger(triggerName, default);
+            await _stream!.CallTrigger(triggerName, state);
         }
 
         public StreamGraph GetDiagnosticsGraph()

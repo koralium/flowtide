@@ -95,5 +95,10 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             m_fileCache.Flush();
             return ValueTask.CompletedTask;
         }
+
+        public void ClearForRestore()
+        {
+            Dispose();
+        }
     }
 }

@@ -25,6 +25,15 @@ namespace FlowtideDotNet.Substrait.Expressions
             return visitor.VisitCastExpression(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new CastExpression
+            {
+                Expression = Expression.Clone(),
+                Type = Type
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is CastExpression expression &&

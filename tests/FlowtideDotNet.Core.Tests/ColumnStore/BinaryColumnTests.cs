@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void RemoveRangeNotNull()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             List<byte[]> expected = new List<byte[]>();
             Random r = new Random(123);
@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void RemoveRangeWithNull()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             List<byte[]?> expected = new List<byte[]?>();
             Random r = new Random(123);
@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestJsonEncoding()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new BinaryValue(Encoding.UTF8.GetBytes("Hello World")));
 
@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestCopy()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             List<byte[]> expected = new List<byte[]>();
             Random r = new Random(123);
@@ -134,7 +134,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 column.Add(new BinaryValue(data));
             }
 
-            Column copy = column.Copy(GlobalMemoryManager.Instance);
+            using Column copy = column.Copy(GlobalMemoryManager.Instance);
 
             Assert.Equal(1000, copy.Count);
 
@@ -147,7 +147,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestAddToHash()
         {
-            Column column = new Column(GlobalMemoryManager.Instance)
+            using Column column = new Column(GlobalMemoryManager.Instance)
             {
                 new BinaryValue(Encoding.UTF8.GetBytes("Hello World"))
             };

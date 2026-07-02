@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
     {
         void NewBatch();
 
-        void WriteValue<T>(T value)
+        long WriteValue<T>(T value)
             where T : IDataValue;
 
         void WriteNull();
@@ -30,6 +30,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         IStatisticsComparer? GetStatisticsComparer();
 
-        void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count);
+        long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count);
     }
 }

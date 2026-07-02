@@ -12,7 +12,10 @@
 
 using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("FlowtideDotNet.Core")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.DependencyInjection")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Storage.Tests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.AspNetCore")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.AcceptanceTests")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Benchmarks")]

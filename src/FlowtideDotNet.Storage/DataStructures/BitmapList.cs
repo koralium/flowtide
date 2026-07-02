@@ -1,0 +1,1550 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Storage.Memory;
+using System.Buffers;
+using System.Collections;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
+
+namespace FlowtideDotNet.Storage.DataStructures
+{
+    /// <summary>
+    /// A growable list of bits packed into 32-bit words and backed by unmanaged memory allocated from an
+    /// <see cref="IMemoryAllocator"/>. It supports the usual list operations (add, get, set, insert and remove)
+    /// as well as range and batch variants that shift large blocks of bits at once, using vectorized shifts where
+    /// available. It is commonly used as a validity (null) mask for columnar data.
+    /// Instances own native memory and must be disposed; <see cref="Dispose()"/> releases the buffer and returns the
+    /// instance to <see cref="BitmapListFactory"/> for reuse.
+    /// </summary>
+    public unsafe class BitmapList : IReadOnlyList<bool>, IEnumerable<bool>, IDisposable
+    {
+        private const int firstBitMask = 1 << 31;
+        private const int lastBitMask = int.MinValue;
+
+        private static readonly int[] BitPatternArray =
+        [
+            (1 << 1) - 1,  // 0th element with 1 bit set
+            (1 << 2) - 1,  // 1st element with 2 bits set
+            (1 << 3) - 1,  // 2nd element with 3 bits set
+            (1 << 4) - 1,  // 3rd element with 4 bits set
+            (1 << 5) - 1,  // 4th element with 5 bits set
+            (1 << 6) - 1,  // 5th element with 6 bits set
+            (1 << 7) - 1,  // 6th element with 7 bits set
+            (1 << 8) - 1,  // 7th element with 8 bits set
+            (1 << 9) - 1,  // 8th element with 9 bits set
+            (1 << 10) - 1, // 9th element with 10 bits set
+            (1 << 11) - 1, // 10th element with 11 bits set
+            (1 << 12) - 1, // 11th element with 12 bits set
+            (1 << 13) - 1, // 12th element with 13 bits set
+            (1 << 14) - 1, // 13th element with 14 bits set
+            (1 << 15) - 1, // 14th element with 15 bits set
+            (1 << 16) - 1, // 15th element with 16 bits set
+            (1 << 17) - 1, // 16th element with 17 bits set
+            (1 << 18) - 1, // 17th element with 18 bits set
+            (1 << 19) - 1, // 18th element with 19 bits set
+            (1 << 20) - 1, // 19th element with 20 bits set
+            (1 << 21) - 1, // 20th element with 21 bits set
+            (1 << 22) - 1, // 21st element with 22 bits set
+            (1 << 23) - 1, // 22nd element with 23 bits set
+            (1 << 24) - 1, // 23rd element with 24 bits set
+            (1 << 25) - 1, // 24th element with 25 bits set
+            (1 << 26) - 1, // 25th element with 26 bits set
+            (1 << 27) - 1, // 26th element with 27 bits set
+            (1 << 28) - 1, // 27th element with 28 bits set
+            (1 << 29) - 1, // 28th element with 29 bits set
+            (1 << 30) - 1, // 29th element with 30 bits set
+            int.MaxValue, // 30th element with 31 bits set
+            (int.MaxValue << 1) | 1  // 31st element with 32 bits set (all bits set)
+        ];
+
+        private static readonly int[] topBitsSetMask =
+        [
+            ~((1 << 1) - 1),  // 0th element with all bits except the lowest 1 bit set
+            ~((1 << 2) - 1),  // 1st element with all bits except the lowest 2 bits set
+            ~((1 << 3) - 1),  // 2nd element with all bits except the lowest 3 bits set
+            ~((1 << 4) - 1),  // 3rd element with all bits except the lowest 4 bits set
+            ~((1 << 5) - 1),  // 4th element with all bits except the lowest 5 bits set
+            ~((1 << 6) - 1),  // 5th element with all bits except the lowest 6 bits set
+            ~((1 << 7) - 1),  // 6th element with all bits except the lowest 7 bits set
+            ~((1 << 8) - 1),  // 7th element with all bits except the lowest 8 bits set
+            ~((1 << 9) - 1),  // 8th element with all bits except the lowest 9 bits set
+            ~((1 << 10) - 1), // 9th element with all bits except the lowest 10 bits set
+            ~((1 << 11) - 1), // 10th element with all bits except the lowest 11 bits set
+            ~((1 << 12) - 1), // 11th element with all bits except the lowest 12 bits set
+            ~((1 << 13) - 1), // 12th element with all bits except the lowest 13 bits set
+            ~((1 << 14) - 1), // 13th element with all bits except the lowest 14 bits set
+            ~((1 << 15) - 1), // 14th element with all bits except the lowest 15 bits set
+            ~((1 << 16) - 1), // 15th element with all bits except the lowest 16 bits set
+            ~((1 << 17) - 1), // 16th element with all bits except the lowest 17 bits set
+            ~((1 << 18) - 1), // 17th element with all bits except the lowest 18 bits set
+            ~((1 << 19) - 1), // 18th element with all bits except the lowest 19 bits set
+            ~((1 << 20) - 1), // 19th element with all bits except the lowest 20 bits set
+            ~((1 << 21) - 1), // 20th element with all bits except the lowest 21 bits set
+            ~((1 << 22) - 1), // 21st element with all bits except the lowest 22 bits set
+            ~((1 << 23) - 1), // 22nd element with all bits except the lowest 23 bits set
+            ~((1 << 24) - 1), // 23rd element with all bits except the lowest 24 bits set
+            ~((1 << 25) - 1), // 24th element with all bits except the lowest 25 bits set
+            ~((1 << 26) - 1), // 25th element with all bits except the lowest 26 bits set
+            ~((1 << 27) - 1), // 26th element with all bits except the lowest 27 bits set
+            ~((1 << 28) - 1), // 27th element with all bits except the lowest 28 bits set
+            ~((1 << 29) - 1), // 28th element with all bits except the lowest 29 bits set
+            ~((1 << 30) - 1), // 29th element with all bits except the lowest 30 bits set
+            -2147483648, // 30th element with all bits except the lowest 31 bits set
+            0
+        ];
+        private IMemoryAllocator? memoryAllocator;
+        private int _length;
+        private void* _data;
+        private int _dataLength;
+        private IMemoryOwner<byte>? _memoryOwner;
+        private bool disposedValue;
+
+        /// <summary>
+        /// The full backing memory buffer, including any capacity beyond the current bits, or empty when nothing is allocated.
+        /// </summary>
+        public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
+
+        /// <summary>
+        /// The portion of the backing memory that actually holds the current bits, rounded up to whole words.
+        /// Use this when serializing or copying the bitmap.
+        /// </summary>
+        public Memory<byte> MemorySlice => GetMemorySlice();
+
+        private Memory<byte> GetMemorySlice()
+        {
+            if (_memoryOwner == null)
+            {
+                return new Memory<byte>();
+            }
+            return _memoryOwner.Memory.Slice(0, ((_length + 31) / 32) * 4);
+        }
+
+        /// <summary>
+        /// The number of bits in the list.
+        /// </summary>
+        public int Count => _length;
+
+        /// <summary>
+        /// Creates an unassigned instance. <see cref="Assign(IMemoryAllocator)"/> must be called before use.
+        /// Used together with pooling so an instance can be reused.
+        /// </summary>
+        public BitmapList()
+        {
+
+        }
+
+        /// <summary>
+        /// Resets the list to empty and assigns the allocator it should use, without allocating any memory yet.
+        /// </summary>
+        /// <param name="memoryAllocator">The allocator used for backing memory.</param>
+        public void Assign(IMemoryAllocator memoryAllocator)
+        {
+            _data = null;
+            _dataLength = 0;
+            _length = 0;
+            _memoryOwner = null;
+            this.memoryAllocator = memoryAllocator;
+            disposedValue = false;
+        }
+
+        /// <summary>
+        /// Resets the list to wrap already populated memory, taking ownership of it.
+        /// Used together with pooling so an instance can be reused.
+        /// </summary>
+        /// <param name="memory">The memory holding the packed bits.</param>
+        /// <param name="length">The number of valid bits in <paramref name="memory"/>.</param>
+        /// <param name="memoryAllocator">The allocator used for any later growth.</param>
+        public void Assign(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        {
+            _memoryOwner = memory;
+            _data = _memoryOwner.Memory.Pin().Pointer;
+            _dataLength = memory.Memory.Length / sizeof(int);
+            _length = length;
+            this.memoryAllocator = memoryAllocator;
+            disposedValue = false;
+        }
+
+        /// <summary>
+        /// Creates an empty list that allocates backing memory from the given allocator on demand.
+        /// </summary>
+        /// <param name="memoryAllocator">The allocator used for backing memory.</param>
+        public BitmapList(IMemoryAllocator memoryAllocator)
+        {
+            _data = null;
+            this.memoryAllocator = memoryAllocator;
+        }
+
+        /// <summary>
+        /// Creates an empty list with backing memory pre-allocated for at least <paramref name="initialCapacity"/> bits.
+        /// </summary>
+        /// <param name="memoryAllocator">The allocator used for backing memory.</param>
+        /// <param name="initialCapacity">The number of bits to reserve capacity for up front.</param>
+        public BitmapList(IMemoryAllocator memoryAllocator, int initialCapacity)
+        {
+            this.memoryAllocator = memoryAllocator;
+            EnsureSize((initialCapacity + 31) / 32);
+        }
+
+        /// <summary>
+        /// Creates a list that wraps already populated memory, taking ownership of it.
+        /// </summary>
+        /// <param name="memoryOwner">The memory holding the packed bits.</param>
+        /// <param name="length">The number of valid bits in <paramref name="memoryOwner"/>.</param>
+        /// <param name="memoryAllocator">The allocator used for any later growth.</param>
+        public BitmapList(IMemoryOwner<byte> memoryOwner, int length, IMemoryAllocator memoryAllocator)
+        {
+            _memoryOwner = memoryOwner;
+            _data = _memoryOwner.Memory.Pin().Pointer;
+            _dataLength = memoryOwner.Memory.Length / sizeof(int);
+            _length = length;
+            this.memoryAllocator = memoryAllocator;
+        }
+
+        private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
+
+        /// <summary>
+        /// Gets the bit at the given index.
+        /// </summary>
+        /// <param name="index">The zero based bit index.</param>
+        public bool this[int index] => Get(index);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void* GetPointer_Unsafe()
+        {
+            return _data;
+        }
+
+        private void EnsureSize(int length)
+        {
+            Debug.Assert(memoryAllocator != null);
+            if (length > _dataLength)
+            {
+                int allocationSize = length * sizeof(int);
+                if (_memoryOwner == null)
+                {
+                    _memoryOwner = memoryAllocator.Allocate(allocationSize, 64);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
+                    NativeMemory.Fill(_data, (nuint)_memoryOwner.Memory.Length, 0);
+                }
+                else
+                {
+                    int oldSize = _dataLength * sizeof(int);
+                    _memoryOwner = memoryAllocator.Realloc(_memoryOwner, allocationSize, 64);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
+                    NativeMemory.Fill((byte*)(_data) + oldSize, (nuint)(_memoryOwner.Memory.Length - oldSize), 0);
+                }
+                _dataLength = _memoryOwner.Memory.Length / sizeof(int);
+            }
+        }
+
+        /// <summary>
+        /// Appends a bit to the end of the list, growing it by one.
+        /// </summary>
+        /// <param name="value">The bit value to append.</param>
+        public void Add(bool value)
+        {
+            var index = _length;
+            var wordIndex = index >> 5;
+            int bitIndex = 1 << index;
+            EnsureSize(wordIndex + 1);
+
+            if (value)
+            {
+                AccessSpan[wordIndex] |= bitIndex;
+            }
+            else
+            {
+                AccessSpan[wordIndex] &= ~bitIndex;
+            }
+            _length++;
+        }
+
+        /// <summary>
+        /// Sets the bit at the given index to true. If the index is beyond the current count the list grows to include it.
+        /// </summary>
+        /// <param name="index">The zero based bit index to set.</param>
+        public void Set(int index)
+        {
+            var wordIndex = index >> 5;
+            int bitIndex = 1 << index;
+            EnsureSize(wordIndex + 1);
+
+            AccessSpan[wordIndex] |= bitIndex;
+
+            if (_length <= index)
+            {
+                _length = index + 1;
+            }
+        }
+
+        /// <summary>
+        /// Gets the bit at the given index, returning false when the index is outside the allocated range.
+        /// </summary>
+        /// <param name="index">The zero based bit index.</param>
+        public bool Get(int index)
+        {
+            var wordIndex = index >> 5;
+            int bitIndex = 1 << index;
+            if (wordIndex >= _dataLength)
+            {
+                return false;
+            }
+            return (AccessSpan[wordIndex] & bitIndex) != 0;
+        }
+
+        /// <summary>
+        /// Counts how many bits are set to true in the range starting at <paramref name="index"/>.
+        /// </summary>
+        /// <param name="index">The zero based bit index to start counting from.</param>
+        /// <param name="count">The number of bits to examine.</param>
+        /// <returns>The number of true bits in the range.</returns>
+        public int CountTrueInRange(int index, int count)
+        {
+            if (count == 0)
+            {
+                return 0;
+            }
+            var span = AccessSpan;
+            var fromIndex = index >> 5;
+            var toIndex = (index + count) >> 5;
+            var fromMod = index % 32;
+            var toMod = (index + count) % 32;
+
+            var result = 0;
+            if (fromIndex == toIndex)
+            {
+                var mask = (1 << toMod) - 1;
+                mask &= ~((1 << fromMod) - 1);
+                result = BitOperations.PopCount((uint)(span[fromIndex] & mask));
+            }
+            else
+            {
+                var mask = ~((1 << fromMod) - 1);
+                result = BitOperations.PopCount((uint)(span[fromIndex] & mask));
+                for (int i = fromIndex + 1; i < toIndex; i++)
+                {
+                    result += BitOperations.PopCount((uint)span[i]);
+                }
+                if (toMod > 0)
+                {
+                    mask = (1 << toMod) - 1;
+                    result += BitOperations.PopCount((uint)(span[toIndex] & mask));
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Counts how many bits are set to false in the range starting at <paramref name="index"/>.
+        /// </summary>
+        /// <param name="index">The zero based bit index to start counting from.</param>
+        /// <param name="count">The number of bits to examine.</param>
+        /// <returns>The number of false bits in the range.</returns>
+        public int CountFalseInRange(int index, int count)
+        {
+            return count - CountTrueInRange(index, count);
+        }
+
+        /// <summary>
+        /// Sets the bit at the given index to false. If the index is beyond the current count the list grows to include it.
+        /// </summary>
+        /// <param name="index">The zero based bit index to clear.</param>
+        public void Unset(int index)
+        {
+            var wordIndex = index >> 5;
+            int bitIndex = 1 << index;
+            EnsureSize(wordIndex + 1);
+
+            AccessSpan[wordIndex] &= ~bitIndex;
+
+            if (_length <= index)
+            {
+                _length = index + 1;
+            }
+        }
+
+        /// <summary>
+        /// Inserts a bit at the given index, shifting every bit at or after that index up by one.
+        /// </summary>
+        /// <param name="index">The zero based index to insert at.</param>
+        /// <param name="value">The bit value to insert.</param>
+        public void InsertAt(int index, bool value)
+        {
+            var toIndex = index >> 5;
+
+            EnsureSize(toIndex + 1);
+
+            var mod = index % 32;
+            int bitIndex = 1 << index;
+            if ((_length / 32) >= _dataLength)
+            {
+                EnsureSize(_dataLength + 1);
+            }
+            var span = AccessSpan;
+            if (mod > 0)
+            {
+                var topBitsMask = topBitsSetMask[mod];
+                var bottomBitsMask = BitPatternArray[mod];
+                var val = span[toIndex] & bottomBitsMask;
+                ShiftLeft(toIndex, _dataLength - 1, 1);
+                var newVal = span[toIndex] & topBitsMask;
+                span[toIndex] = (val | newVal);
+            }
+            else
+            {
+                ShiftLeft(toIndex, _dataLength - 1, 1);
+            }
+            if (value)
+            {
+                span[toIndex] |= bitIndex;
+            }
+            else
+            {
+                span[toIndex] &= ~bitIndex;
+            }
+            if (index >= _length)
+            {
+                _length = index + 1;
+            }
+            else
+            {
+                _length++;
+            }
+        }
+
+        /// <summary>
+        /// Inserts a run of bits copied from another list, shifting existing bits up to make room.
+        /// </summary>
+        /// <param name="index">The zero based index in this list to insert at.</param>
+        /// <param name="other">The list to copy bits from.</param>
+        /// <param name="start">The zero based index in <paramref name="other"/> to start copying from.</param>
+        /// <param name="count">The number of bits to copy.</param>
+        public void InsertRangeFrom(int index, BitmapList other, int start, int count)
+        {
+            var toIndex = index >> 5;
+
+            var startMod32 = start & 31;
+            var numberOfNewInts = ((count + startMod32 + 31) / 32);
+
+            var expectedNumberOfInts = ((_length + count + startMod32 + 31) / 32);
+
+            EnsureSize(expectedNumberOfInts + 1);
+
+            var mod = index % 32;
+            var modDifference = mod - startMod32;
+            var endIndex = (index + count) >> 5;
+            var endShiftIndex = (index + count - modDifference) >> 5;
+            var countRemainder = (index + count) & 31;
+
+            var span = AccessSpan;
+            if ((_length / 32) >= _dataLength)
+            {
+                EnsureSize(_dataLength + 1);
+            }
+            span = AccessSpan;
+
+            if (mod > 0)
+            {
+                var bottomBitsMask = BitPatternArray[mod - 1];
+                var topBitsMask = topBitsSetMask[mod - 1];
+
+                // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
+                var val = span[toIndex] & bottomBitsMask;
+                // Shift the all bits to the left
+                ShiftLeft(toIndex, _dataLength - 1, count);
+
+                if (countRemainder > 0)
+                {
+                    var previousEndShift = span[endShiftIndex];
+                    // Fetch the value of the most right integer and mask it to get the bits that should remain unchanged
+                    var endIntPreviousValue = span[endIndex] & topBitsSetMask[countRemainder - 1]; // was -1 before
+
+                    // Copy in the data, this could change the value of the most right integer and most left integer
+                    other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
+
+                    if (modDifference > 0)
+                    {
+                        // The difference is positive, so the copied values must be shifted left to make them get to the correct indices.
+                        ShiftLeft(toIndex, endIndex, modDifference);
+                    }
+                    else if (modDifference < 0)
+                    {
+                        if (endShiftIndex > endIndex)
+                        {
+                            // The difference is negative, so the copied values must be shifted right to make them get to the correct indices.
+                            ShiftRight(toIndex, endShiftIndex, -modDifference);
+                            span[endShiftIndex] = previousEndShift;
+                        }
+                        else
+                        {
+                            ShiftRight(toIndex, endShiftIndex, -modDifference);
+                        }
+                    }
+
+                    // Merge together values in the most left integer
+                    var newVal = span[toIndex] & topBitsMask;
+                    span[toIndex] = (val | newVal);
+
+                    // Merge together values in the most right integer
+                    newVal = span[endIndex] & BitPatternArray[countRemainder - 1];
+                    span[endIndex] = (endIntPreviousValue | newVal);
+                }
+                else
+                {
+                    var endIntPreviousValue = span[endIndex];
+                    other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
+
+                    //var modDifference = mod - startMod32;
+                    if (modDifference > 0)
+                    {
+                        // The difference is positive, so the copied values must be shifted left to make them get to the correct indices.
+                        ShiftLeft(toIndex, endIndex, modDifference);
+                    }
+                    else if (modDifference < 0)
+                    {
+                        // The difference is negative, so the copied values must be shifted right to make them get to the correct indices.
+                        ShiftRight(toIndex, endIndex, -modDifference);
+                    }
+
+                    // Merge together values in the most left integer
+                    var newVal = span[toIndex] & topBitsMask;
+                    span[toIndex] = (val | newVal);
+                    span[endIndex] = endIntPreviousValue;
+                }
+            }
+            else
+            {
+                // Shift left to open up space for new values
+                ShiftLeft(toIndex, _dataLength - 1, count);
+                var previousEndShift = span[endShiftIndex];
+
+                if (countRemainder > 0)
+                {
+                    //Fetch the value of the most right integer and mask it to get the bits that should remain unchanged
+                    var endIntPreviousValue = span[endIndex] & topBitsSetMask[countRemainder - 1];
+                    // Copy in the data, this could change the value of the most right integer
+                    other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
+
+                    if (modDifference > 0)
+                    {
+                        // The difference is positive, so the copied values must be shifted left to make them get to the correct indices.
+                        ShiftLeft(toIndex, endIndex, modDifference);
+                    }
+                    else if (modDifference < 0)
+                    {
+                        if (endShiftIndex > endIndex)
+                        {
+                            // The difference is negative, so the copied values must be shifted right to make them get to the correct indices.
+                            ShiftRight(toIndex, endShiftIndex, -modDifference);
+                            span[endShiftIndex] = previousEndShift;
+                        }
+                        else
+                        {
+                            ShiftRight(toIndex, endShiftIndex, -modDifference);
+                        }
+                    }
+
+                    // Merge together values in the most right integer
+                    var newVal = span[endIndex] & BitPatternArray[countRemainder - 1];
+                    span[endIndex] = (endIntPreviousValue | newVal);
+                }
+                else
+                {
+                    var endIntPreviousValue = span[endIndex];
+                    other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
+
+                    if (modDifference > 0)
+                    {
+                        // The difference is positive, so the copied values must be shifted left to make them get to the correct indices.
+                        ShiftLeft(toIndex, endIndex, modDifference);
+                    }
+                    else if (modDifference < 0)
+                    {
+                        // The difference is negative, so the copied values must be shifted right to make them get to the correct indices.
+                        ShiftRight(toIndex, endIndex, -modDifference);
+                    }
+                    span[endIndex] = endIntPreviousValue;
+                }
+            }
+            if (index >= _length)
+            {
+                _length = index + count;
+            }
+            else
+            {
+                _length += count;
+            }
+        }
+
+        /// <summary>
+        /// Inserts <paramref name="count"/> true bits at the given index, shifting existing bits up to make room.
+        /// </summary>
+        /// <param name="index">The zero based index to insert at.</param>
+        /// <param name="count">The number of true bits to insert.</param>
+        public void InsertTrueInRange(int index, int count)
+        {
+            var toIndex = index >> 5;
+            var mod = index & 31;
+            var endRemainder = (index + count) & 31;
+            var endIndex = (index + count - 1) >> 5;
+            var expectedNumberOfInts = ((_length + count + 31) / 32);
+
+            EnsureSize(expectedNumberOfInts + 1);
+
+            var span = AccessSpan;
+
+            // Check if the index is in the middle of an integer
+            if (mod > 0)
+            {
+                var bottomBitsMask = BitPatternArray[mod - 1];
+                var topBitsMask = topBitsSetMask[mod - 1];
+
+                // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
+                var val = span[toIndex] & bottomBitsMask;
+                // Shift the all bits to the left
+                ShiftLeft(toIndex, _dataLength - 1, count);
+
+                // Check if the end is in the middle of an integer
+                if (endRemainder > 0)
+                {
+                    var endIntPreviousValue = span[endIndex] & topBitsSetMask[endRemainder - 1];
+
+                    // Set the bits in the range to 1
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = -1;
+                    }
+
+                    // Merge together values in the most left integer
+                    var newVal = span[toIndex] & topBitsMask;
+                    span[toIndex] = (val | newVal);
+
+                    // Merge together values in the most right integer
+                    newVal = span[endIndex] & BitPatternArray[endRemainder - 1];
+                    span[endIndex] = (endIntPreviousValue | newVal);
+                }
+                else
+                {
+                    // Does not end in the middle of an integer, so no need to take out the previous value
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = -1;
+                    }
+
+                    // Merge together values in the most left integer
+                    var newVal = span[toIndex] & topBitsMask;
+                    span[toIndex] = (val | newVal);
+                }
+            }
+            else
+            {
+                // Starts at the beginning of an integer
+                ShiftLeft(toIndex, _dataLength - 1, count);
+
+                // Check if the end is in the middle of an integer
+                if (endRemainder > 0)
+                {
+                    var endIntPreviousValue = span[endIndex] & topBitsSetMask[endRemainder - 1];
+
+                    // Set the bits in the range to 1
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = -1;
+                    }
+
+                    // Merge together values in the most right integer
+                    var newVal = span[endIndex] & BitPatternArray[endRemainder - 1];
+                    span[endIndex] = (endIntPreviousValue | newVal);
+                }
+                else
+                {
+                    // Does not end in the middle of an integer, so no need to take out the previous value
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = -1;
+                    }
+                }
+            }
+            if (index >= _length)
+            {
+                _length = index + count;
+            }
+            else
+            {
+                _length += count;
+            }
+        }
+
+        /// <summary>
+        /// Inserts <paramref name="count"/> false bits at the given index, shifting existing bits up to make room.
+        /// </summary>
+        /// <param name="index">The zero based index to insert at.</param>
+        /// <param name="count">The number of false bits to insert.</param>
+        public void InsertFalseInRange(int index, int count)
+        {
+            var toIndex = index >> 5;
+            var mod = index & 31;
+            var endRemainder = (index + count) & 31;
+            var endIndex = (index + count - 1) >> 5;
+            var expectedNumberOfInts = ((_length + count + 31) / 32);
+
+            EnsureSize(expectedNumberOfInts + 1);
+
+            var span = AccessSpan;
+
+            // Check if the index is in the middle of an integer
+            if (mod > 0)
+            {
+                var bottomBitsMask = BitPatternArray[mod - 1];
+                var topBitsMask = topBitsSetMask[mod - 1];
+
+                // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
+                var val = span[toIndex] & bottomBitsMask;
+                // Shift the all bits to the left
+                ShiftLeft(toIndex, _dataLength - 1, count);
+
+                // Check if the end is in the middle of an integer
+                if (endRemainder > 0)
+                {
+                    var endIntPreviousValue = span[endIndex] & topBitsSetMask[endRemainder - 1];
+
+                    // Set the bits in the range to 1
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = 0;
+                    }
+
+                    // Merge together values in the most left integer
+                    var newVal = span[toIndex] & topBitsMask;
+                    span[toIndex] = (val | newVal);
+
+                    // Merge together values in the most right integer
+                    newVal = span[endIndex] & BitPatternArray[endRemainder - 1];
+                    span[endIndex] = (endIntPreviousValue | newVal);
+                }
+                else
+                {
+                    // Does not end in the middle of an integer, so no need to take out the previous value
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = 0;
+                    }
+
+                    // Merge together values in the most left integer
+                    var newVal = span[toIndex] & topBitsMask;
+                    span[toIndex] = (val | newVal);
+                }
+            }
+            else
+            {
+                // Starts at the beginning of an integer
+                ShiftLeft(toIndex, _dataLength - 1, count);
+
+                // Check if the end is in the middle of an integer
+                if (endRemainder > 0)
+                {
+                    var endIntPreviousValue = span[endIndex] & topBitsSetMask[endRemainder - 1];
+
+                    // Set the bits in the range to 1
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = 0;
+                    }
+
+                    // Merge together values in the most right integer
+                    var newVal = span[endIndex] & BitPatternArray[endRemainder - 1];
+                    span[endIndex] = (endIntPreviousValue | newVal);
+                }
+                else
+                {
+                    // Does not end in the middle of an integer, so no need to take out the previous value
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = 0;
+                    }
+                }
+            }
+            if (index >= _length)
+            {
+                _length = index + count;
+            }
+            else
+            {
+                _length += count;
+            }
+        }
+
+        /// <summary>
+        /// Finds the index of the next false bit at or after <paramref name="start"/>.
+        /// </summary>
+        /// <param name="start">The zero based index to start searching from.</param>
+        /// <returns>The index of the next false bit, or -1 if there is none.</returns>
+        public int FindNextFalseIndex(int start)
+        {
+            if (start >= Count)
+            {
+                return -1;
+            }
+            var span = AccessSpan;
+            var fromIndex = start >> 5; // Divide by 32 to get the index of the integer
+            var mod = start & 31; // Get the bit offset within the current integer
+
+            if (mod > 0)
+            {
+                int mask = (1 << (mod)) - 1;
+                var val = span[fromIndex];
+                val |= mask;
+
+                var lowBit = ~val & (val + 1); // Get the lowest 0 bit in the current integer
+                if (lowBit != 0) // If a 0 bit was found
+                {
+                    var result = start - mod + BitOperations.TrailingZeroCount(lowBit); // Return the position of the 0 bit
+                    if (result < _length)
+                    {
+                        return result;
+                    }
+                    return -1;
+                }
+                fromIndex++;
+                //// Move to the next 32-bit integer if no 0 bit was found in the current word
+                start = (fromIndex) << 5;
+            }
+            else
+            {
+                // Directly check the bit at position `mod == 0` (start position)
+                if ((span[fromIndex] & 1) == 0) // If the first bit is 0
+                {
+                    return start; // Return the starting position since the bit is 0
+                }
+            }
+
+            // Search through the remaining integers
+            while (start < _length)
+            {
+                if (span[fromIndex] != -1) // -1 means all bits are set to 1
+                {
+                    var val = span[fromIndex];
+                    var lowestZeroBit = ~val & (val + 1);
+
+                    // Find the position of the first 0 bit using the trailing zero count
+                    var result = start + BitOperations.TrailingZeroCount(lowestZeroBit);
+                    if (result < _length)
+                    {
+                        return result;
+                    }
+                    return -1;
+                }
+                start += 32; // Move to the next integer
+                fromIndex++;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Finds the index of the next true bit at or after <paramref name="start"/>.
+        /// </summary>
+        /// <param name="start">The zero based index to start searching from.</param>
+        /// <returns>The index of the next true bit, or -1 if there is none.</returns>
+        public int FindNextTrueIndex(int start)
+        {
+            if (start >= Count)
+            {
+                return -1;
+            }
+
+            var span = AccessSpan;
+            var fromIndex = start >> 5; // Divide by 32 to get the index of the integer
+            var mod = start & 31; // Get the bit offset within the current integer
+
+            if (mod > 0)
+            {
+                int mask = ~((1 << mod) - 1);
+                var val = span[fromIndex];
+                val &= mask;
+
+                var lowBit = val & (~val + 1); // Get the lowest 1 bit in the current integer
+                if (lowBit != 0) // If a 1 bit was found
+                {
+                    return start - mod + BitOperations.TrailingZeroCount(lowBit); // Return the position of the 1 bit
+                }
+                fromIndex++;
+                //// Move to the next 32-bit integer if no 0 bit was found in the current word
+                start = (fromIndex) << 5;
+            }
+            else
+            {
+                // Directly check the bit at position `mod == 0` (start position)
+                if ((span[fromIndex] & 1) == 1) // If the first bit is 1
+                {
+                    return start; // Return the starting position since the bit is 1
+                }
+            }
+
+            // Search through the remaining integers
+            while (start < _length)
+            {
+                if (span[fromIndex] != 0) // 0 means all bits are set to 0
+                {
+                    var val = span[fromIndex];
+                    var lowestZeroBit = val & (~val + 1);
+
+                    // Find the position of the first 0 bit using the trailing zero count
+                    return start + BitOperations.TrailingZeroCount(lowestZeroBit);
+                }
+                start += 32; // Move to the next integer
+                fromIndex++;
+            }
+
+            return -1;
+        }
+
+        private void ShiftLeft(int toIndex, int fromIndex, int count)
+        {
+            var span = AccessSpan;
+            var fromindex = fromIndex;
+            int intsToCopy = count / 32;
+            var remainder = (byte)(count & 31);
+            unchecked
+            {
+                int lastIndex = fromindex;
+                fromindex = fromindex - intsToCopy;
+                if (remainder == 0)
+                {
+                    var endIndex = ((_length + 31) / 32);
+                    var toCopySlice = span.Slice(toIndex, endIndex - toIndex);
+                    var destinationSlice = span.Slice(toIndex + intsToCopy);
+                    toCopySlice.CopyTo(destinationSlice);
+                }
+                else
+                {
+                    while (fromindex > toIndex)
+                    {
+                        int left = span[fromindex] << remainder;
+                        uint right = (uint)span[--fromindex] >> (32 - remainder);
+                        span[lastIndex] = left | (int)right;
+                        lastIndex--;
+                    }
+                    span[lastIndex] = span[fromindex] << remainder;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Removes the bit at this index and shifts all bits above it down.
+        /// </summary>
+        /// <param name="index">The zero based index of the bit to remove.</param>
+        public void RemoveAt(int index)
+        {
+            if (index < 0 || index >= _dataLength * 32)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index));
+            }
+            var span = AccessSpan;
+            var fromIndex = index >> 5;
+            var mod = index % 32;
+            _length--;
+            if (mod > 0)
+            {
+                var beforeMask = BitPatternArray[mod - 1];
+                var clearMask = topBitsSetMask[mod - 1];
+                var val = span[fromIndex] & beforeMask;
+                ShiftRight(fromIndex, _dataLength - 1, 1);
+                var newVal = span[fromIndex] & clearMask;
+                span[fromIndex] = (val | newVal);
+            }
+            else
+            {
+                ShiftRight(fromIndex, _dataLength - 1, 1);
+            }
+        }
+
+        /// <summary>
+        /// Removes a run of bits starting at the given index and shifts all bits above the range down.
+        /// </summary>
+        /// <param name="index">The zero based index of the first bit to remove.</param>
+        /// <param name="count">The number of bits to remove.</param>
+        public void RemoveRange(in int index, in int count)
+        {
+            var span = AccessSpan;
+            var fromIndex = index >> 5;
+            var mod = index % 32;
+            _length -= count;
+            if (mod > 0)
+            {
+                var beforeMask = BitPatternArray[mod - 1];
+                var clearMask = topBitsSetMask[mod - 1];
+                var val = span[fromIndex] & beforeMask;
+                ShiftRight(fromIndex, _dataLength - 1, count);
+                var newVal = span[fromIndex] & clearMask;
+                span[fromIndex] = (val | newVal);
+                var vv = span[fromIndex];
+            }
+            else
+            {
+                ShiftRight(fromIndex, _dataLength - 1, count);
+            }
+        }
+
+        private void ShiftRight(int fromIndex, int lastIndex, int count)
+        {
+            var span = AccessSpan;
+            // Loop from BitArray.
+            int toIndex = fromIndex;
+            //int lastIndex = ;
+            var numberOfInts = count / 32;
+            var remainder = (byte)(count & 31);
+            fromIndex = fromIndex + numberOfInts;
+            unchecked
+            {
+                if (remainder == 0)
+                {
+                    span.Slice(fromIndex, lastIndex - fromIndex + 1).CopyTo(span.Slice(toIndex));
+                }
+                else
+                {
+                    while (fromIndex < lastIndex)
+                    {
+                        uint right = (uint)span[fromIndex] >> remainder;
+                        int left = span[++fromIndex] << (32 - remainder);
+                        span[toIndex++] = left | (int)right;
+                    }
+                    span[toIndex] = (int)(span[fromIndex] >> remainder);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Inserts bits read from another list at scattered positions in a single backward sweep, which is more
+        /// efficient than calling <see cref="InsertAt(int, bool)"/> repeatedly.
+        /// </summary>
+        /// <param name="other">The list to read the inserted bit values from.</param>
+        /// <param name="sortedLookup">For each insert, the index in <paramref name="other"/> to read the bit from.</param>
+        /// <param name="insertPositions">Sorted insert positions, ascending, in pre-insert coordinate space.</param>
+        /// <param name="lookupNullIndex">A sentinel value in <paramref name="sortedLookup"/> that inserts a false bit instead of reading from <paramref name="other"/>.</param>
+        public void InsertFrom(ref readonly BitmapList other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        {
+            int otherCount = sortedLookup.Length;
+            if (otherCount == 0) return;
+
+            int oldBitCount = _length;
+            int newBitCount = oldBitCount + otherCount;
+
+            EnsureSize((newBitCount + 31) / 32);
+            var span = AccessSpan;
+            var otherSpan = other.AccessSpan;
+
+            int currentReadBit = oldBitCount;
+
+            for (int i = otherCount - 1; i >= 0; i--)
+            {
+                int targetInsertIdx = insertPositions[i];
+                int bitsToMove = currentReadBit - targetInsertIdx;
+
+                if (bitsToMove > 0)
+                {
+                    int dstBitStart = targetInsertIdx + i + 1;
+                    CopyBitsBackward(span, targetInsertIdx, dstBitStart, bitsToMove);
+                }
+
+                int oIdx = sortedLookup[i];
+                bool isSet;
+                if (oIdx == lookupNullIndex)
+                {
+                    isSet = false;
+                }
+                else
+                {
+                    int oIntIdx = oIdx >> 5;
+                    int oBitOffset = oIdx & 31;
+                    isSet = (otherSpan[oIntIdx] & (1 << oBitOffset)) != 0;
+                }
+
+                int writeBitIdx = targetInsertIdx + i;
+                int wIntIdx = writeBitIdx >> 5;
+                int wBitOffset = writeBitIdx & 31;
+
+                if (isSet)
+                {
+                    span[wIntIdx] |= (1 << wBitOffset);
+                }
+                else
+                {
+                    span[wIntIdx] &= ~(1 << wBitOffset);
+                }
+
+                currentReadBit = targetInsertIdx;
+            }
+
+            _length = newBitCount;
+        }
+
+        /// <summary>
+        /// Inserts a constant bit value at scattered insert positions.
+        /// Uses the same backward-sweep algorithm as InsertFrom but writes a fixed value
+        /// instead of reading from another BitmapList.
+        /// </summary>
+        /// <param name="value">The constant bit value to insert (true or false).</param>
+        /// <param name="insertPositions">Sorted insert positions (ascending, in pre-insert coordinate space).</param>
+        public void InsertConstantFrom(bool value, ReadOnlySpan<int> insertPositions)
+        {
+            int otherCount = insertPositions.Length;
+            if (otherCount == 0) return;
+
+            int oldBitCount = _length;
+            int newBitCount = oldBitCount + otherCount;
+
+            EnsureSize((newBitCount + 31) / 32);
+            var span = AccessSpan;
+
+            int currentReadBit = oldBitCount;
+
+            for (int i = otherCount - 1; i >= 0; i--)
+            {
+                int targetInsertIdx = insertPositions[i];
+                int bitsToMove = currentReadBit - targetInsertIdx;
+
+                if (bitsToMove > 0)
+                {
+                    int dstBitStart = targetInsertIdx + i + 1;
+                    CopyBitsBackward(span, targetInsertIdx, dstBitStart, bitsToMove);
+                }
+
+                int writeBitIdx = targetInsertIdx + i;
+                int wIntIdx = writeBitIdx >> 5;
+                int wBitOffset = writeBitIdx & 31;
+
+                if (value)
+                {
+                    span[wIntIdx] |= (1 << wBitOffset);
+                }
+                else
+                {
+                    span[wIntIdx] &= ~(1 << wBitOffset);
+                }
+
+                currentReadBit = targetInsertIdx;
+            }
+
+            _length = newBitCount;
+        }
+
+        private static void CopyBitsBackward(Span<int> span, int srcStart, int dstStart, int count)
+        {
+            if (count <= 0) return;
+
+            int shift = dstStart - srcStart;
+            int wordShift = shift >> 5;
+            int bitShift = shift & 31;
+
+            int dstEnd = dstStart + count;
+            int dstFirstWord = dstStart >> 5;
+            int dstLastWord = (dstEnd - 1) >> 5;
+
+            unchecked
+            {
+                for (int dw = dstLastWord; dw >= dstFirstWord; dw--)
+                {
+                    int sw = dw - wordShift;
+
+                    int assembled;
+                    if (bitShift == 0)
+                    {
+                        assembled = span[sw];
+                    }
+                    else
+                    {
+                        assembled = span[sw] << bitShift;
+                        if (sw > 0)
+                        {
+                            assembled |= (int)((uint)span[sw - 1] >> (32 - bitShift));
+                        }
+                    }
+
+                    int wordStart = dw << 5;
+                    int firstBit = dstStart > wordStart ? dstStart - wordStart : 0;
+                    int lastBitExcl = dstEnd < wordStart + 32 ? dstEnd - wordStart : 32;
+
+                    if (firstBit == 0 && lastBitExcl == 32)
+                    {
+                        span[dw] = assembled;
+                    }
+                    else
+                    {
+                        int mask = lastBitExcl >= 32
+                            ? ~((1 << firstBit) - 1)
+                            : ((1 << lastBitExcl) - 1) & ~((1 << firstBit) - 1);
+                        span[dw] = (span[dw] & ~mask) | (assembled & mask);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Batch delete bits at the specified sorted indices.
+        /// This is more efficient than calling RemoveAt repeatedly because it processes
+        /// contiguous blocks of retained bits in a single left-to-right sweep.
+        /// </summary>
+        /// <param name="targets">A span of sorted indices (ascending) of bits to delete.</param>
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            int deleteCount = targets.Length;
+            if (deleteCount == 0) return;
+
+            Debug.Assert(deleteCount <= _length);
+
+            int oldBitCount = _length;
+            var span = AccessSpan;
+
+            int writeBit = 0;
+            int currentSourceBit = 0;
+
+            for (int i = 0; i < deleteCount; i++)
+            {
+                int targetIdx = targets[i];
+
+                // Copy the retained block before this deletion target
+                int bitsToMove = targetIdx - currentSourceBit;
+                if (bitsToMove > 0)
+                {
+                    if (writeBit != currentSourceBit)
+                    {
+                        CopyBitsForward(span, currentSourceBit, writeBit, bitsToMove);
+                    }
+                    writeBit += bitsToMove;
+                }
+
+                // Skip the deleted bit
+                currentSourceBit = targetIdx + 1;
+            }
+
+            // Copy the remaining block after the last deletion target
+            int remainingBits = oldBitCount - currentSourceBit;
+            if (remainingBits > 0 && writeBit != currentSourceBit)
+            {
+                CopyBitsForward(span, currentSourceBit, writeBit, remainingBits);
+            }
+
+            _length = oldBitCount - deleteCount;
+
+            // Clear any leftover bits in the last word beyond the new length
+            int newWordCount = (_length + 31) >> 5;
+            int trailingBits = _length & 31;
+            if (trailingBits > 0 && newWordCount > 0)
+            {
+                span[newWordCount - 1] &= BitPatternArray[trailingBits - 1];
+            }
+        }
+
+        private static void CopyBitsForward(Span<int> span, int srcStart, int dstStart, int count)
+        {
+            if (count <= 0) return;
+
+            Debug.Assert(dstStart <= srcStart);
+
+            int shift = srcStart - dstStart;
+            int wordShift = shift >> 5;
+            int bitShift = shift & 31;
+
+            int dstEnd = dstStart + count;
+            int dstFirstWord = dstStart >> 5;
+            int dstLastWord = (dstEnd - 1) >> 5;
+
+            unchecked
+            {
+                for (int dw = dstFirstWord; dw <= dstLastWord; dw++)
+                {
+                    int sw = dw + wordShift;
+
+                    int assembled;
+                    if (bitShift == 0)
+                    {
+                        assembled = span[sw];
+                    }
+                    else
+                    {
+                        assembled = (int)((uint)span[sw] >> bitShift);
+                        if (sw + 1 < span.Length)
+                        {
+                            assembled |= span[sw + 1] << (32 - bitShift);
+                        }
+                    }
+
+                    int wordStart = dw << 5;
+                    int firstBit = dstStart > wordStart ? dstStart - wordStart : 0;
+                    int lastBitExcl = dstEnd < wordStart + 32 ? dstEnd - wordStart : 32;
+
+                    if (firstBit == 0 && lastBitExcl == 32)
+                    {
+                        span[dw] = assembled;
+                    }
+                    else
+                    {
+                        int mask = lastBitExcl >= 32
+                            ? ~((1 << firstBit) - 1)
+                            : ((1 << lastBitExcl) - 1) & ~((1 << firstBit) - 1);
+                        span[dw] = (span[dw] & ~mask) | (assembled & mask);
+                    }
+                }
+            }
+        }
+
+        private void ShiftRightAvx(ref Span<int> span, ref int fromIndex, ref int toIndex, ref int lastIndex, [ConstantExpected] byte remainder, [ConstantExpected] byte bitsMinusRemainder)
+        {
+            fixed (int* spanPtr = span)
+            {
+                while (fromIndex + 8 <= lastIndex)
+                {
+                    // Load 8 ints from span into an AVX register
+                    Vector256<int> current = Avx2.LoadVector256(spanPtr + fromIndex);
+
+                    // Shift all elements right by `remainder` bits
+                    Vector256<int> rightShifted = Avx2.ShiftRightLogical(current, remainder);
+
+                    // Load the next 8 ints and shift them left to handle cross-boundary bits
+                    Vector256<int> next = Avx2.LoadVector256(spanPtr + fromIndex + 1);
+                    Vector256<int> leftShifted = Avx2.ShiftLeftLogical(next, bitsMinusRemainder);
+
+                    // Combine the results using bitwise OR
+                    Vector256<int> result = Avx2.Or(rightShifted, leftShifted);
+
+                    // Store the result back into the span
+                    Avx2.Store(spanPtr + toIndex, result);
+
+                    // Move to the next set of integers
+                    fromIndex += 8;
+                    toIndex += 8;
+                }
+            }
+        }
+
+        /// <summary>
+        /// ShiftRightLogical and ShiftLeftLogical wants a constant value for the shift amount.
+        /// </summary>
+        /// <param name="span"></param>
+        /// <param name="fromIndex"></param>
+        /// <param name="toIndex"></param>
+        /// <param name="lastIndex"></param>
+        /// <param name="remainder"></param>
+        private void ShiftRightAvxSelector(ref Span<int> span, ref int fromIndex, ref int toIndex, ref int lastIndex, byte remainder)
+        {
+            // Perform binary search on remainder to set actual shift values
+            if (remainder < 16)  // remainder < 16
+            {
+                if (remainder < 8)  // remainder < 8
+                {
+                    if (remainder < 4)  // remainder < 4
+                    {
+                        // remainder is 0, 1, 2, or 3
+                        switch (remainder)
+                        {
+                            case 0: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 0, 32); break;
+                            case 1: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 1, 31); break;
+                            case 2: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 2, 30); break;
+                            case 3: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 3, 29); break;
+                        }
+                    }
+                    else  // 4 <= remainder < 8
+                    {
+                        switch (remainder)
+                        {
+                            case 4: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 4, 28); break;
+                            case 5: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 5, 27); break;
+                            case 6: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 6, 26); break;
+                            case 7: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 7, 25); break;
+                        }
+                    }
+                }
+                else  // 8 <= remainder < 16
+                {
+                    if (remainder < 12)  // 8 <= remainder < 12
+                    {
+                        switch (remainder)
+                        {
+                            case 8: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 8, 24); break;
+                            case 9: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 9, 23); break;
+                            case 10: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 10, 22); break;
+                            case 11: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 11, 21); break;
+                        }
+                    }
+                    else  // 12 <= remainder < 16
+                    {
+                        switch (remainder)
+                        {
+                            case 12: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 12, 20); break;
+                            case 13: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 13, 19); break;
+                            case 14: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 14, 18); break;
+                            case 15: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 15, 17); break;
+                        }
+                    }
+                }
+            }
+            else  // remainder >= 16
+            {
+                if (remainder < 24)  // 16 <= remainder < 24
+                {
+                    if (remainder < 20)  // 16 <= remainder < 20
+                    {
+                        switch (remainder)
+                        {
+                            case 16: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 16, 16); break;
+                            case 17: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 17, 15); break;
+                            case 18: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 18, 14); break;
+                            case 19: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 19, 13); break;
+                        }
+                    }
+                    else  // 20 <= remainder < 24
+                    {
+                        switch (remainder)
+                        {
+                            case 20: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 20, 12); break;
+                            case 21: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 21, 11); break;
+                            case 22: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 22, 10); break;
+                            case 23: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 23, 9); break;
+                        }
+                    }
+                }
+                else  // 24 <= remainder < 32
+                {
+                    if (remainder < 28)  // 24 <= remainder < 28
+                    {
+                        switch (remainder)
+                        {
+                            case 24: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 24, 8); break;
+                            case 25: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 25, 7); break;
+                            case 26: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 26, 6); break;
+                            case 27: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 27, 5); break;
+                        }
+                    }
+                    else  // 28 <= remainder < 32
+                    {
+                        switch (remainder)
+                        {
+                            case 28: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 28, 4); break;
+                            case 29: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 29, 3); break;
+                            case 30: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 30, 2); break;
+                            case 31: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 31, 1); break;
+                        }
+                    }
+                }
+            }
+        }
+
+        private IEnumerable<bool> GetEnumerable()
+        {
+            for (int i = 0; i < _length; i++)
+            {
+                yield return Get(i);
+            }
+        }
+
+        /// <summary>
+        /// Enumerates the bits in order from index 0 to <see cref="Count"/>.
+        /// </summary>
+        public IEnumerator<bool> GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!Volatile.Read(ref disposedValue))
+            {
+                Volatile.Write(ref disposedValue, true);
+                if (_memoryOwner != null)
+                {
+                    _memoryOwner.Dispose();
+                    _memoryOwner = null;
+                    _data = null;
+                }
+
+                if (disposing)
+                {
+                    BitmapListFactory.Return(this);
+                }
+            }
+        }
+
+        ~BitmapList()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Resets the count to zero, keeping the backing memory for reuse.
+        /// </summary>
+        public void Clear()
+        {
+            _length = 0;
+        }
+
+        /// <summary>
+        /// Returns the number of bytes needed to store the bits in the range as packed words.
+        /// </summary>
+        /// <param name="start">The zero based index of the first bit in the range.</param>
+        /// <param name="end">The exclusive zero based index of the end of the range.</param>
+        /// <returns>The byte size of the range, rounded up to whole words.</returns>
+        public int GetByteSize(int start, int end)
+        {
+            return (((end - start) + 31) / 32) * 4;
+        }
+
+        /// <summary>
+        /// Adds this bitmap's per-index byte size contribution to the running totals in <paramref name="sizes"/>.
+        /// Used together with the other containers to build prefix-sum sizes when computing serialized batch sizes.
+        /// </summary>
+        /// <param name="indices">The indices the sizes are being accumulated for.</param>
+        /// <param name="sizes">The running per-index byte size totals to add to.</param>
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+            for (int i = 0; i < length; i++)
+            {
+                Unsafe.Add(ref sizesHead, i) += ((i + 8) >> 3);
+            }
+        }
+
+        /// <summary>
+        /// Creates a deep copy of the list, allocating new backing memory from the given allocator.
+        /// </summary>
+        /// <param name="memoryAllocator">The allocator used for the copy's backing memory.</param>
+        /// <returns>A new list with the same bits.</returns>
+        public BitmapList Copy(IMemoryAllocator memoryAllocator)
+        {
+            var mem = MemorySlice;
+            var newMem = memoryAllocator.Allocate(mem.Length, 64);
+            mem.Span.CopyTo(newMem.Memory.Span);
+            return new BitmapList(newMem, _length, memoryAllocator);
+        }
+    }
+}

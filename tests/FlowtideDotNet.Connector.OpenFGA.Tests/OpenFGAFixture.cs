@@ -21,8 +21,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
         private IContainer _container;
         public OpenFGAFixture()
         {
-            var builder = new ContainerBuilder()
-                .WithImage("openfga/openfga")
+            var builder = new ContainerBuilder("openfga/openfga")
                 .WithPortBinding(8080, false)
                 .WithPortBinding(8081, false)
                 .WithPortBinding(3000, false)

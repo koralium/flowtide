@@ -12,6 +12,13 @@
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// The base interface for all events that can flow through a stream.
+    /// </summary>
+    /// <remarks>
+    /// This interface is implemented by different types of stream events, such as data events representing 
+    /// rows or batches of data, watermarks that track logical time, and locking events used for checkpoints.
+    /// </remarks>
     public interface IStreamEvent
     {
     }

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -20,6 +20,7 @@ using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
 using System.Diagnostics;
+using System.Globalization;
 using static SqlParser.Ast.Expression;
 
 namespace FlowtideDotNet.Substrait.Sql
@@ -27,10 +28,17 @@ namespace FlowtideDotNet.Substrait.Sql
     public class SqlExpressionVisitor : BaseExpressionVisitor<ExpressionData, EmitData>
     {
         private readonly SqlFunctionRegister sqlFunctionRegister;
+        private readonly Func<Query, RelationData?>? compileQuery;
+        private readonly IReadOnlyList<EmitData> parentScopes;
 
-        internal SqlExpressionVisitor(SqlFunctionRegister sqlFunctionRegister)
+        internal SqlExpressionVisitor(
+            SqlFunctionRegister sqlFunctionRegister,
+            Func<Query, RelationData?>? compileQuery = null,
+            IReadOnlyList<EmitData>? parentScopes = null)
         {
             this.sqlFunctionRegister = sqlFunctionRegister;
+            this.compileQuery = compileQuery;
+            this.parentScopes = parentScopes ?? System.Array.Empty<EmitData>();
         }
 
         public override ExpressionData Visit(SqlParser.Ast.Expression expression, EmitData state)
@@ -39,10 +47,26 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 var r = new DirectFieldReference()
                 {
-                    ReferenceSegment = segment
+                    ReferenceSegment = segment,
+                    Root = new RootReference()
                 };
                 return new ExpressionData(r, name, type);
             }
+
+            for (int i = 0; i < parentScopes.Count; i++)
+            {
+                var parentScope = parentScopes[i];
+                if (parentScope.TryGetEmitIndex(expression, out var parentSegment, out var parentName, out var parentType))
+                {
+                    var r = new DirectFieldReference()
+                    {
+                        ReferenceSegment = parentSegment,
+                        Root = new OuterReference() { StepsOut = (uint)(i + 1) }
+                    };
+                    return new ExpressionData(r, parentName, parentType);
+                }
+            }
+
             return base.Visit(expression, state);
         }
 
@@ -405,9 +429,24 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 var r = new DirectFieldReference()
                 {
-                    ReferenceSegment = segment
+                    ReferenceSegment = segment,
+                    Root = new RootReference()
                 };
                 return new ExpressionData(r, name, type);
+            }
+
+            for (int i = 0; i < parentScopes.Count; i++)
+            {
+                var parentScope = parentScopes[i];
+                if (parentScope.TryGetEmitIndex(removedQuotaIdentifier, out var parentSegment, out var parentName, out var parentType))
+                {
+                    var r = new DirectFieldReference()
+                    {
+                        ReferenceSegment = parentSegment,
+                        Root = new OuterReference() { StepsOut = (uint)(i + 1) }
+                    };
+                    return new ExpressionData(r, parentName, parentType);
+                }
             }
 
             // Otherwise try and find a a part of it.
@@ -447,7 +486,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 }
                 return new ExpressionData(new NumericLiteral()
                 {
-                    Value = decimal.Parse(number.Value)
+                    Value = decimal.Parse(number.Value, CultureInfo.InvariantCulture)
                 }, "$number", substraitBaseType);
             }
             if (literalValue.Value is Value.Null)
@@ -524,6 +563,17 @@ namespace FlowtideDotNet.Substrait.Sql
                 var expr = mapper(function, this, state);
                 return new ExpressionData(
                     expr.Expression,
+                    $"${functionName}",
+                    expr.Type
+                    );
+            }
+
+            // This part is only to get out the return type of window functions
+            if (sqlFunctionRegister.TryGetWindowMapper(functionName, out var windowMapper))
+            {
+                var expr = windowMapper(function, this, state);
+                return new ExpressionData(
+                    default!,
                     $"${functionName}",
                     expr.Type
                     );
@@ -621,17 +671,34 @@ namespace FlowtideDotNet.Substrait.Sql
             var expr = Visit(between.Expression, state);
             var low = Visit(between.Low, state);
             var high = Visit(between.High, state);
-
+            
             return new ExpressionData(
                 new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsComparison.Uri,
-                    ExtensionName = FunctionsComparison.Between,
+                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionName = FunctionsBoolean.And,
                     Arguments = new List<Expressions.Expression>()
                     {
-                        expr.Expr,
-                        low.Expr,
-                        high.Expr
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.GreaterThanOrEqual,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                expr.Expr,
+                                low.Expr
+                            }
+                        },
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.LessThanOrEqual,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                expr.Expr,
+                                high.Expr
+                            }
+                        }
                     }
                 }, "$between",
                 new BoolType() { Nullable = true }
@@ -840,6 +907,134 @@ namespace FlowtideDotNet.Substrait.Sql
             }
 
             return result;
+        }
+
+        protected override ExpressionData VisitExists(SqlParser.Ast.Expression.Exists exists, EmitData state)
+        {
+            if (compileQuery == null)
+            {
+                throw new InvalidOperationException("Subquery compilation is not supported in this context.");
+            }
+
+            var subqueryData = compileQuery(exists.SubQuery);
+            if (subqueryData == null)
+            {
+                throw new InvalidOperationException("Failed to compile subquery.");
+            }
+
+            var expr = new SetPredicateExpression()
+            {
+                Relation = subqueryData.Relation
+            };
+
+            var result = new ExpressionData(expr, "$exists", new BoolType());
+            if (exists.Negated)
+            {
+                return VisitNotUnaryOp(result);
+            }
+            return result;
+        }
+
+        protected override ExpressionData VisitInSubquery(InSubquery inSubquery, EmitData state)
+        {
+            if (compileQuery == null)
+            {
+                throw new InvalidOperationException("Subquery compilation is not supported in this context.");
+            }
+
+            var subqueryData = compileQuery(inSubquery.SubQuery);
+            if (subqueryData == null)
+            {
+                throw new InvalidOperationException("Failed to compile subquery.");
+            }
+
+            var subqueryRel = subqueryData.Relation;
+            
+            if (inSubquery.Expression == null)
+            {
+                throw new InvalidOperationException("IN subquery expression cannot be null.");
+            }
+            var leftExprData = Visit(inSubquery.Expression, state);
+            var leftExpr = leftExprData.Expr;
+
+            var scopeIncrementer = new ScopeIncrementVisitor();
+            scopeIncrementer.Visit(leftExpr, null);
+
+            Expressions.Expression subqueryColRef;
+            if (subqueryRel is FlowtideDotNet.Substrait.Relations.ProjectRelation projectRel)
+            {
+                if (projectRel.Expressions.Count != 1)
+                {
+                    throw new InvalidOperationException("IN subquery must return exactly one column.");
+                }
+                subqueryColRef = projectRel.Expressions[0];
+
+                var eqFunc = new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionName = FunctionsComparison.Equal,
+                    Arguments = new List<Expressions.Expression>() { subqueryColRef, leftExpr }
+                };
+
+                var filterRel = new FlowtideDotNet.Substrait.Relations.FilterRelation()
+                {
+                    Input = projectRel.Input,
+                    Condition = eqFunc
+                };
+
+                projectRel.Input = filterRel;
+            }
+            else
+            {
+                subqueryColRef = new DirectFieldReference()
+                {
+                    ReferenceSegment = new StructReferenceSegment() { Field = 0 },
+                    Root = new RootReference()
+                };
+
+                var eqFunc = new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionName = FunctionsComparison.Equal,
+                    Arguments = new List<Expressions.Expression>() { subqueryColRef, leftExpr }
+                };
+
+                var filterRel = new FlowtideDotNet.Substrait.Relations.FilterRelation()
+                {
+                    Input = subqueryRel,
+                    Condition = eqFunc
+                };
+
+                subqueryRel = filterRel;
+            }
+
+            var setPredicate = new SetPredicateExpression()
+            {
+                Relation = subqueryRel
+            };
+
+            var result = new ExpressionData(setPredicate, "$exists", new BoolType());
+            if (inSubquery.Negated)
+            {
+                return VisitNotUnaryOp(result);
+            }
+            return result;
+        }
+
+        private class ScopeIncrementVisitor : ExpressionVisitor<object?, object?>
+        {
+            public override object? VisitDirectFieldReference(DirectFieldReference directFieldReference, object? state)
+            {
+                if (directFieldReference.Root is RootReference)
+                {
+                    directFieldReference.Root = new OuterReference() { StepsOut = 1 };
+                }
+                else if (directFieldReference.Root is OuterReference outerRef)
+                {
+                    directFieldReference.Root = new OuterReference() { StepsOut = outerRef.StepsOut + 1 };
+                }
+                return null;
+            }
         }
     }
 }

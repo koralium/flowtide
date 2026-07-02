@@ -237,7 +237,6 @@ namespace FlowtideDotNet.AcceptanceTests
                 FROM users u");
             await WaitForUpdate();
 
-            var act = GetActualRows();
             AssertCurrentDataEqual(Users.Select(x =>
             {
                 return new
@@ -258,7 +257,6 @@ namespace FlowtideDotNet.AcceptanceTests
                 FROM users u");
             await WaitForUpdate();
 
-            var act = GetActualRows();
             AssertCurrentDataEqual(Users.Select(x =>
             {
                 if (x.Visits.HasValue)

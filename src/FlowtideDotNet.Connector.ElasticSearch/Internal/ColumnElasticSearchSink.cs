@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -159,7 +159,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             int batchCount = 0;
             using MemoryStream memoryStream = new MemoryStream();
-            Utf8JsonWriter jsonWriter = new Utf8JsonWriter(memoryStream);
+            using Utf8JsonWriter jsonWriter = new Utf8JsonWriter(memoryStream);
             await foreach (var row in rows)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -204,7 +204,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                         {
                             if (itemWithError.Error != null)
                             {
-                                Logger.ElasticSearchInsertError(itemWithError.Error.ToString()!, StreamName, Name);
+                                Logger.ElasticSearchInsertError(itemWithError.Error.Reason ?? "Unknown Error", StreamName, Name);
                             }
                         }
                         throw new InvalidOperationException("Error in elasticsearch sink");
@@ -237,7 +237,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                     {
                         if (itemWithError.Error != null)
                         {
-                            Logger.ElasticSearchInsertError(itemWithError.Error.ToString()!, StreamName, Name);
+                            Logger.ElasticSearchInsertError(itemWithError.Error.Reason ?? "Unknown Error", StreamName, Name);
                         }
                     }
                     throw new InvalidOperationException("Error in elasticsearch sink");

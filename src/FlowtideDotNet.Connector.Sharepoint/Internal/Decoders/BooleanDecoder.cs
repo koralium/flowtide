@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
 
 namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 {
@@ -18,13 +18,24 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
     {
         public override string ColumnType => "Boolean";
 
-        protected override ValueTask<FlxValue> DecodeValue(object? item)
+        protected override ValueTask DecodeValue(object? item, Column column)
         {
             if (item is bool b && b)
             {
-                return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(true)));
+                column.Add(BoolValue.True);
+                return ValueTask.CompletedTask;
             }
-            return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(false)));
+            column.Add(BoolValue.False);
+            return ValueTask.CompletedTask;
+        }
+
+        protected override ValueTask<IDataValue> DecodeDataValue(object? item)
+        {
+            if (item is bool b && b)
+            {
+                return ValueTask.FromResult<IDataValue>(BoolValue.True);
+            }
+            return ValueTask.FromResult<IDataValue>(BoolValue.False);
         }
     }
 }

@@ -14,9 +14,26 @@ using FlowtideDotNet.Storage.Tree;
 
 namespace FlowtideDotNet.Storage.AppendTree
 {
+    /// <summary>
+    /// A forward, read-only cursor over the entries of an <see cref="IAppendTree{K, V, TKeyContainer, TValueContainer}"/>.
+    /// <see cref="Seek"/> must be called to position the cursor before enumerating; iterating without seeking first throws.
+    /// Once positioned, enumerate the iterator to walk entries in ascending key order from the seek position onward.
+    /// </summary>
+    /// <typeparam name="K">The key type of the tree.</typeparam>
+    /// <typeparam name="V">The value type of the tree.</typeparam>
+    /// <typeparam name="TKeyContainer">The container used to store keys within a node.</typeparam>
     public interface IAppendTreeIterator<K, V, TKeyContainer> : IAsyncEnumerable<KeyValuePair<K, V>>, IDisposable
         where TKeyContainer : IKeyContainer<K>
     {
+        /// <summary>
+        /// Positions the cursor at the first entry whose key is greater than or equal to <paramref name="key"/>.
+        /// Must be called before the iterator is enumerated.
+        /// </summary>
+        /// <param name="key">The key to seek to.</param>
+        /// <param name="searchComparer">
+        /// An optional comparer used to locate the key, for example to seek on a partial key. When null the tree's
+        /// default key comparer is used.
+        /// </param>
         ValueTask Seek(in K key, in IBplusTreeComparer<K, TKeyContainer>? searchComparer = null);
     }
 }

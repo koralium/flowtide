@@ -33,3 +33,15 @@ SELECT
 FROM testtable
 GROUP BY id, insertDate
 ```
+
+## Count Distinct
+
+*This function does not have a substrait definition.*
+
+Counts all distinct values for a column in a query. This function takes a single parameter.
+
+### SQL Usage
+
+```sql
+SELECT COUNT(DISTINCT col1) FROM ... 
+```

@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using System.Threading.Tasks.Dataflow;
@@ -22,14 +23,20 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     internal class MockSourceFactory : RegexConnectorSourceFactory
     {
         private readonly MockDatabase mockDatabase;
+        private readonly bool immutable;
 
-        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase) : base(regexPattern)
+        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase, bool immutable) : base(regexPattern)
         {
             this.mockDatabase = mockDatabase;
+            this.immutable = immutable;
         }
 
         public override Relation ModifyPlan(ReadRelation readRelation)
         {
+            if (immutable)
+            {
+                return readRelation;
+            }
             var table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
 
             var emit = readRelation.Emit?.ToList();
@@ -75,6 +82,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             return new MockDataSourceOperator(readRelation, mockDatabase, dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("mock", readRelation.NamedTable.DotSeperated, default);
         }
     }
 }

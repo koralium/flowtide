@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void RemoveRangeNonNull()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             List<string?> expected = new List<string?>();
             Random r = new Random(123);
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void RemoveRangeWithNull()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             List<string?> expected = new List<string?>();
             Random r = new Random(123);
@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestJsonEncoding()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new StringValue("hello"));
 
@@ -128,14 +128,14 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestCopy()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             for (int i = 0; i < 1000; i++)
             {
                 column.Add(new StringValue($"hello{i}"));
             }
 
-            var copy = column.Copy(GlobalMemoryManager.Instance);
+            using var copy = column.Copy(GlobalMemoryManager.Instance);
 
             Assert.Equal(1000, copy.Count);
 
@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestAddToHash()
         {
-            Column column = new Column(GlobalMemoryManager.Instance)
+            using Column column = new Column(GlobalMemoryManager.Instance)
             {
                 new StringValue("hello")
             };

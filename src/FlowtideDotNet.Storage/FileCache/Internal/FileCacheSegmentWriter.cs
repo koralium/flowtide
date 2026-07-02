@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.FileCache.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal;
+using System.Buffers;
 
 namespace FlowtideDotNet.Storage.FileCache
 {
@@ -71,8 +72,8 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 var bytes = new byte[length];
                 fileStream.Position = position;
-                fileStream.Read(bytes);
-                return serializer.Deserialize(bytes, bytes.Length);
+                fileStream.ReadExactly(bytes);
+                return serializer.Deserialize(new ReadOnlySequence<byte>(bytes), bytes.Length);
             }
             finally
             {
@@ -87,7 +88,7 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 var bytes = new byte[length];
                 fileStream.Position = position;
-                fileStream.Read(bytes);
+                fileStream.ReadExactly(bytes);
                 return bytes;
             }
             finally

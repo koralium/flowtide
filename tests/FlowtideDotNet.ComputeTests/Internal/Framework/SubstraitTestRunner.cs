@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -17,10 +17,15 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Substrait.Expressions;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics;
@@ -190,37 +195,121 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
                 Options = parsedTest.Options
             };
 
-            using StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions(), NullLogger.Instance, new System.Diagnostics.Metrics.Meter(""), "");
+            using StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions(), NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter(""), "", GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
             var stateClient = stateManager.GetOrCreateClient("a");
-            var compileResult = await ColumnMeasureCompiler.CompileMeasure(0, stateClient, aggregateFunction, register, GlobalMemoryManager.Instance);
 
-            IColumn[] groupingBatchColumns = new IColumn[0];
-            var groupBatch = new EventBatchData(groupingBatchColumns);
-            var groupingKey = new ColumnRowReference() { referenceBatch = groupBatch, RowIndex = 0 };
-
-            Column stateColumn = Column.Create(GlobalMemoryManager.Instance);
-            stateColumn.Add(NullValue.Instance);
-            var stateColumnRef = new ColumnReference(stateColumn, 0, default);
-
-            Column outputColumn = Column.Create(GlobalMemoryManager.Instance);
-
-            Stopwatch sw = new();
-            sw.Start();
-
-            for (int i = 0; i < parsedTest.InputData.Count; i++)
+            if (register.TryGetBulkAggregationFunction(extensionUri, parsedTest.FunctionName, out var bulkFunc))
             {
-                await compileResult.Compute(groupingKey, parsedTest.InputData, i, stateColumnRef, 1);
+                var measure = bulkFunc.Create(aggregateFunction, register);
+
+                SharedGroupValueTree? sharedTree = null;
+                if (measure is ISharedTreeColumnAggregation sharedMeasure && sharedMeasure.SupportsSharedTree)
+                {
+                    var sharedTreeName = "sharedtree";
+                    var bTree = await stateClient.GetOrCreateTree(sharedTreeName,
+                        new BPlusTreeOptions<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>()
+                        {
+                            Comparer = new BulkMinInsertComparer(0),
+                            KeySerializer = new BulkGroupValueKeyStorageSerializer(0, GlobalMemoryManager.Instance),
+                            ValueSerializer = new PrimitiveListValueContainerSerializer<int>(GlobalMemoryManager.Instance),
+                            UseByteBasedPageSizes = true,
+                            MemoryAllocator = GlobalMemoryManager.Instance,
+                            UsePreviousPointers = true
+                        });
+                    sharedTree = new SharedGroupValueTree("sharedtree", sharedMeasure.ValueProjection, bTree, bTree.CreateBulkInserter(), null, sharedMeasure.IgnoreNulls);
+                    sharedTree.BindMeasure(sharedMeasure);
+                    sharedMeasure.BindSharedTree(sharedTree.Tree, 0);
+                    sharedMeasure.SetGroupMapping(new int[parsedTest.InputData.Count]);
+                }
+
+                await measure.InitializeAsync(0, stateClient, GlobalMemoryManager.Instance);
+
+                using var weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+                for (int i = 0; i < parsedTest.InputData.Count; i++)
+                {
+                    weights.Add(1);
+                }
+
+                Column stateColumn = Column.Create(GlobalMemoryManager.Instance);
+                stateColumn.Add(NullValue.Instance);
+                var stateColumnRef = new ColumnReference(stateColumn, 0, default);
+
+                Stopwatch sw = new();
+                sw.Start();
+
+                measure.NewBatch(weights, parsedTest.InputData);
+                if (sharedTree != null)
+                {
+                    sharedTree.NewBatch(weights, parsedTest.InputData, GlobalMemoryManager.Instance);
+                }
+
+                var sortedByGroupIndices = new int[parsedTest.InputData.Count];
+                for (int i = 0; i < parsedTest.InputData.Count; i++)
+                {
+                    sortedByGroupIndices[i] = i;
+                }
+
+                if (parsedTest.InputData.Count > 0)
+                {
+                    if (sharedTree != null)
+                    {
+                        await sharedTree.StoreAsync(weights, new IColumn[0], sortedByGroupIndices, parsedTest.InputData);
+                    }
+                    else
+                    {
+                        await measure.StoreAsync(weights, new IColumn[0], parsedTest.InputData, sortedByGroupIndices);
+                    }
+                }
+                measure.Compute(sortedByGroupIndices, weights, parsedTest.InputData, stateColumnRef, 0);
+
+                if (sharedTree != null)
+                {
+                    await sharedTree.Tree.Commit();
+                }
+                await measure.CommitAsync();
+                sw.Stop();
+
+                Column outputColumn = Column.Create(GlobalMemoryManager.Instance);
+                await measure.FetchValuesAsync(new IColumn[0], 1, outputColumn);
+                await measure.GetValuesAsync(new IColumn[0], new ColumnReference[] { stateColumnRef }, 0, 1, outputColumn);
+
+                var actual = outputColumn.GetValueAt(0, default);
+                Assert.Equal(parsedTest.ExpectedResult.ExpectedValue, actual, (x, y) => DataValueComparer.CompareTo(x!, y!) == 0);
+
+                return sw.Elapsed;
             }
-            sw.Stop();
+            else
+            {
+                var compileResult = await ColumnMeasureCompiler.CompileMeasure(0, stateClient, aggregateFunction, register, GlobalMemoryManager.Instance);
 
-            await compileResult.GetValue(groupingKey, stateColumnRef, outputColumn);
+                IColumn[] groupingBatchColumns = new IColumn[0];
+                var groupBatch = new EventBatchData(groupingBatchColumns);
+                var groupingKey = new ColumnRowReference() { referenceBatch = groupBatch, RowIndex = 0 };
 
-            var actual = outputColumn.GetValueAt(0, default);
+                Column stateColumn = Column.Create(GlobalMemoryManager.Instance);
+                stateColumn.Add(NullValue.Instance);
+                var stateColumnRef = new ColumnReference(stateColumn, 0, default);
 
-            Assert.Equal(parsedTest.ExpectedResult.ExpectedValue, actual, (x, y) => DataValueComparer.CompareTo(x!, y!) == 0);
+                Column outputColumn = Column.Create(GlobalMemoryManager.Instance);
 
-            return sw.Elapsed;
+                Stopwatch sw = new();
+                sw.Start();
+
+                for (int i = 0; i < parsedTest.InputData.Count; i++)
+                {
+                    await compileResult.Compute(groupingKey, parsedTest.InputData, i, stateColumnRef, 1);
+                }
+                sw.Stop();
+
+                await compileResult.GetValue(groupingKey, stateColumnRef, outputColumn);
+
+                var actual = outputColumn.GetValueAt(0, default);
+
+                Assert.Equal(parsedTest.ExpectedResult.ExpectedValue, actual, (x, y) => DataValueComparer.CompareTo(x!, y!) == 0);
+
+                return sw.Elapsed;
+            }
         }
 
         protected override ValueTask<TimeSpan> InvokeTest(SubstraitTestRunnerContext ctxt, object? testClassInstance)

@@ -23,6 +23,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.HashFunctions
         public static void RegisterHashFunctions(IFunctionsRegister functionsRegister)
         {
             XxHash128Functions.AddXxHash128Functions(functionsRegister);
+            XxHash64Functions.AddXxHash64Functions(functionsRegister);
         }
     }
 }

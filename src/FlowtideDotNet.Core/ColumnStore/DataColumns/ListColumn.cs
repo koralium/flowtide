@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -15,14 +15,18 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Collections;
 using System.Diagnostics;
 using System.IO.Hashing;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -43,6 +47,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _internalColumn = Column.Create(memoryAllocator);
             _offsets = new IntList(memoryAllocator);
+            _offsets.Add(0);
+        }
+
+        public ListColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            if (columnSizeInfo.Children == null || columnSizeInfo.Children.Count != 1)
+            {
+                throw new ArgumentException("Column size info did not contain child information");
+            }
+            _internalColumn = new Column(memoryAllocator, columnSizeInfo.Children[0]);
+            _offsets = new IntList(memoryAllocator, columnSizeInfo.TotalRows + 1);
             _offsets.Add(0);
         }
 
@@ -270,7 +285,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             if (list is ReferenceListValue referenceListVal)
             {
-                _internalColumn.InsertRangeFrom(startOffset, referenceListVal.column, referenceListVal.start, referenceListVal.Count);
+                if (referenceListVal.Count > 0)
+                {
+                    _internalColumn.InsertRangeFrom(startOffset, referenceListVal.column, referenceListVal.start, referenceListVal.Count);
+                }
                 _offsets.InsertAt(index + 1, startOffset + referenceListVal.Count, referenceListVal.Count);
             }
             else
@@ -454,6 +472,31 @@ namespace FlowtideDotNet.Core.ColumnStore
             return _internalColumn.GetByteSize(startOffset, endOffset - 1) + ((end - start + 1) * sizeof(int));
         }
 
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+            ref int indicesHead = ref MemoryMarshal.GetReference(indices);
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+            int sum = 0;
+            for (int i = 0; i < length; i++)
+            {
+                int idx = Unsafe.Add(ref indicesHead, i);
+
+                int startOffset = _offsets.Get(idx);
+                int endOffset = _offsets.Get(idx + 1);
+
+                sum += sizeof(int);
+
+                if (startOffset != endOffset)
+                {
+                    sum += _internalColumn.GetByteSize(startOffset, endOffset - 1);
+                }
+
+                Unsafe.Add(ref sizesHead, i) += sum;
+            }
+        }
+
         public int GetByteSize()
         {
             return _internalColumn.GetByteSize() + (_offsets.Count * sizeof(int));
@@ -553,5 +596,55 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             _internalColumn.WriteDataToBuffer(ref dataWriter);
         }
+
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        {
+            if (other is ListColumn otherList)
+            {
+                for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                {
+                    int oIdx = sortedLookup[i];
+                    if (oIdx == lookupNullIndex)
+                    {
+                        InsertAt(insertPositions[i], NullValue.Instance);
+                    }
+                    else
+                    {
+                        var value = otherList.GetValueAt(oIdx, default);
+                        InsertAt(insertPositions[i], value);
+                    }
+                }
+                return;
+            }
+            throw new NotImplementedException();
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            for (int i = targets.Length - 1; i >= 0; i--)
+            {
+                RemoveAt(targets[i]);
+            }
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.List,
+                TotalRows = Count,
+                Children = new List<ColumnSizeInfo>()
+                 {
+                     _internalColumn.GetColumnSizeInfo()
+                 }
+            };
+        }
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.List);
+        }
     }
 }
+
+

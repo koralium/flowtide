@@ -35,7 +35,7 @@ export interface TimeChartProps {
 export const TimeChart = (props: TimeChartProps) => {
 
     const timespan = useGetTimeSpan()
-    const currentChartRef = useRef<Chart>()
+    const currentChartRef = useRef<Chart>(null)
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartId = useRef<string | null>(null);
 

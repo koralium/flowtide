@@ -18,6 +18,10 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// Provides a global registry mapping integer type IDs to <see cref="IWatermarkSerializer"/> implementations.
+    /// This allows custom watermark types to be correctly serialized and deserialized across the stream engine.
+    /// </summary>
     public static class WatermarkSerializeFactory
     {
         private static Dictionary<int, IWatermarkSerializer> _serializers = new Dictionary<int, IWatermarkSerializer>();
@@ -29,6 +33,12 @@ namespace FlowtideDotNet.Base
             RegisterWatermarkType(1, new LongWatermarkValueSerializer());
         }
 
+        /// <summary>
+        /// Retrieves the registered <see cref="IWatermarkSerializer"/> for a specific type identifier.
+        /// </summary>
+        /// <param name="typeId">The unique integer identifier of the watermark type.</param>
+        /// <returns>The registered <see cref="IWatermarkSerializer"/>.</returns>
+        /// <exception cref="KeyNotFoundException">Thrown if no serializer is registered for the provided type ID.</exception>
         public static IWatermarkSerializer GetWatermarkSerializer(int typeId)
         {
             if (_serializers.TryGetValue(typeId, out var serializer))
@@ -38,7 +48,12 @@ namespace FlowtideDotNet.Base
             throw new KeyNotFoundException($"No serializer registered for type ID {typeId}.");
         }
 
-
+        /// <summary>
+        /// Attempts to safely register a new <see cref="IWatermarkSerializer"/> for a specific type identifier.
+        /// </summary>
+        /// <param name="typeId">The unique integer identifier to associate with the serializer.</param>
+        /// <param name="serializer">The serializer implementation.</param>
+        /// <returns><c>true</c> if the registration was successful; <c>false</c> if the type ID was already registered.</returns>
         public static bool TryRegisterWatermarkType(int typeId, IWatermarkSerializer serializer)
         {
             lock (_addLock)
@@ -52,6 +67,13 @@ namespace FlowtideDotNet.Base
             }
         }
 
+        /// <summary>
+        /// Registers a new <see cref="IWatermarkSerializer"/> for a specific type identifier. 
+        /// Throws an exception if the type ID is already in use.
+        /// </summary>
+        /// <param name="typeId">The unique integer identifier to associate with the serializer.</param>
+        /// <param name="serializer">The serializer implementation.</param>
+        /// <exception cref="ArgumentException">Thrown when a serializer is already registered to the provided type ID.</exception>
         public static void RegisterWatermarkType(int typeId, IWatermarkSerializer serializer)
         {
             lock (_addLock)

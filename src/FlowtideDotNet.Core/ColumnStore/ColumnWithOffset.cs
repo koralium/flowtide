@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -14,20 +14,24 @@ using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.IO.Hashing;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    internal class ColumnWithOffset : IColumn
+    internal sealed class ColumnWithOffset : IColumn
     {
         private readonly IColumn innerColumn;
         private readonly PrimitiveList<int> offsets;
-        private readonly bool includeNullValueAtEnd;
+
+        public const int NullValueIndex = -1;
 
         /// <summary>
         /// 
@@ -37,11 +41,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <param name="includeNullValueAtEnd">Adds an extra index at the end which always gives out null, useful
         /// when doing left joins or similar to easily add null without needing to modify the inner data columns.
         /// Since these can be used by different operators, all data would need to be copied.</param>
-        public ColumnWithOffset(IColumn innerColumn, PrimitiveList<int> offsets, bool includeNullValueAtEnd)
+        public ColumnWithOffset(IColumn innerColumn, PrimitiveList<int> offsets)
         {
             this.innerColumn = innerColumn;
             this.offsets = offsets;
-            this.includeNullValueAtEnd = includeNullValueAtEnd;
         }
 
         public int Count => offsets.Count;
@@ -51,6 +54,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         IDataColumn IColumn.DataColumn => innerColumn.DataColumn;
 
         StructHeader? IColumn.StructHeader => innerColumn.StructHeader;
+
+        public PrimitiveList<int> Offsets => offsets;
+
+        public IColumn InnerColumn => innerColumn;
 
         public void Add<T>(in T value) where T : IDataValue
         {
@@ -85,7 +92,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             for (int i = start; i <= end; i++)
             {
                 var offset = offsets[i];
-                if (includeNullValueAtEnd && offset == innerColumn.Count)
+                if (offset == NullValueIndex)
                 {
                     size += 0;
                 }
@@ -97,10 +104,45 @@ namespace FlowtideDotNet.Core.ColumnStore
             return size;
         }
 
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+            ref int indicesHead = ref MemoryMarshal.GetReference(indices);
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+            int sum = 0;
+
+            int lastOffset = -2;
+            int lastSize = 0;
+
+            for (int i = 0; i < length; i++)
+            {
+                int idx = Unsafe.Add(ref indicesHead, i);
+                int offset = offsets.Get(idx);
+
+                if (offset == NullValueIndex)
+                {
+                    // Do nothing
+                }
+                else if (offset == lastOffset)
+                {
+                    sum += lastSize;
+                }
+                else
+                {
+                    lastSize = innerColumn.GetByteSize(offset, offset);
+                    lastOffset = offset;
+                    sum += lastSize;
+                }
+
+                Unsafe.Add(ref sizesHead, i) += sum;
+            }
+        }
+
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             var offset = offsets[index];
-            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            if (offset == NullValueIndex)
             {
                 return ArrowTypeId.Null;
             }
@@ -109,18 +151,18 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            var offset = offsets[index];
-            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            var offset = offsets.Get(index);
+            if (offset == NullValueIndex)
             {
                 return NullValue.Instance;
             }
-            return innerColumn.GetValueAt(offset, child);
+            return innerColumn.GetValueAt(offset, child); 
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
-            var offset = offsets[index];
-            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            var offset = offsets.Get(index);
+            if (offset == NullValueIndex)
             {
                 dataValueContainer._type = ArrowTypeId.Null;
                 return;
@@ -179,7 +221,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var offset = offsets[index];
 
-            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            if (offset == NullValueIndex)
             {
                 writer.WriteNullValue();
             }
@@ -197,7 +239,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
         {
             var offset = offsets[index];
-            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            if (offset == NullValueIndex)
             {
                 hashAlgorithm.Append(ByteArrayUtils.nullBytes);
                 return;
@@ -229,5 +271,202 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             throw new NotSupportedException();
         }
+
+        public static ColumnWithOffset CreateFlattened(
+            IColumn column, 
+            PrimitiveList<int> offsets,
+            IMemoryAllocator memoryAllocator,
+            out bool usedOffset)
+        {
+            if (column is ColumnWithOffset columnWithOffset)
+            {
+                PrimitiveList<int> newOffsets = new PrimitiveList<int>(memoryAllocator);
+                var otherOffsets = columnWithOffset.offsets;
+                for (int i = 0; i < offsets.Count; i++)
+                {
+                    var offset = offsets.Get(i);
+                    if (offset == NullValueIndex)
+                    {
+                        newOffsets.Add(NullValueIndex);
+                    }
+                    else
+                    {
+                        var otherOffset = otherOffsets.Get(offset);
+                        if (otherOffset == NullValueIndex)
+                        {
+                            newOffsets.Add(NullValueIndex);
+                        }
+                        else
+                        {
+                            newOffsets.Add(otherOffset);
+                        }
+                    }
+                }
+                usedOffset = false;
+                return new ColumnWithOffset(columnWithOffset.innerColumn, newOffsets);
+            }
+            usedOffset = true;
+            return new ColumnWithOffset(column, offsets);
+        }
+
+        public void InsertFrom(IColumn column, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        {
+            throw new NotSupportedException("Column with offset does not support InsertFrom.");
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            throw new NotSupportedException("Column with offset does not support DeleteBatch.");
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            // Give the inner size, this is not an exact number, but it gives a good estimate of the size of the data,
+            // without needing to calculate the exact size of the offsets which is more expensive.
+            return innerColumn.GetColumnSizeInfo();
+        }
+
+        bool IColumn.SupportSelfCompareExpression => innerColumn.SupportSelfCompareExpression;
+
+        public CompareColumnState GetColumnState()
+        {
+            if (innerColumn is Column c)
+            {
+                var state = c.GetColumnState();
+                state |= CompareColumnState.IsIndirectView;
+                return state;
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
+        }
+
+        public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            if (innerColumn is Column c)
+            {
+                c.SetSelfComparePointers(ref selfComparePointers);
+                selfComparePointers.columnOffsetsPointer = offsets.GetPointer_Unsafe();
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
+        }
+
+        public System.Linq.Expressions.Expression CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression,
+            System.Linq.Expressions.Expression xExpression,
+            System.Linq.Expressions.Expression yExpression)
+        {
+            if (innerColumn is Column c)
+            {
+                if (c.Type == ArrowTypeId.Null)
+                {
+                    // We will always get null for all offsets
+                    return System.Linq.Expressions.Expression.Constant(0);
+                }
+
+                var getXOffset = NativeSortHelpers.CallGetColumnOffset(selfComparePointerExpression, xExpression);
+                var getYOffset = NativeSortHelpers.CallGetColumnOffset(selfComparePointerExpression, yExpression);
+
+                var xOffset = System.Linq.Expressions.Expression.Variable(typeof(int), "xOffset");
+                var yOffset = System.Linq.Expressions.Expression.Variable(typeof(int), "yOffset");
+
+                // Assign
+                var assignXOffset = System.Linq.Expressions.Expression.Assign(xOffset, getXOffset);
+                var assignYOffset = System.Linq.Expressions.Expression.Assign(yOffset, getYOffset);
+
+                var innerCompare = innerColumn.CreateSelfCompareExpression(selfComparePointerExpression, xOffset, yOffset);
+
+                if (c.NullCounter > 0)
+                {
+                    return System.Linq.Expressions.Expression.Block(
+                        [xOffset, yOffset],
+                        assignXOffset,
+                        assignYOffset,
+                        innerCompare
+                        );
+                }
+                else
+                {
+                    var offsetCompare = NativeSortHelpers.CallCompareOffsets(xOffset, yOffset);
+                    var offsetCompareVar = System.Linq.Expressions.Expression.Variable(typeof(int), "offsetCompare");
+                    var assignOffsetCompare = System.Linq.Expressions.Expression.Assign(offsetCompareVar, offsetCompare);
+                    var condition = System.Linq.Expressions.Expression.Condition(
+                        System.Linq.Expressions.Expression.Equal(offsetCompareVar, System.Linq.Expressions.Expression.Constant(2)),
+                        innerCompare,
+                        offsetCompareVar
+                        );
+
+                    return System.Linq.Expressions.Expression.Block(
+                        [xOffset, yOffset, offsetCompareVar],
+                        assignXOffset,
+                        assignYOffset,
+                        assignOffsetCompare,
+                        condition
+                        );
+                }
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
+        }
+
+        public RadixCapability SupportsRadixSort(int bytesLeft, bool hasNullByte)
+        {
+            if (hasNullByte)
+            {
+                throw new InvalidOperationException("Column with offset should be the outer most layer, otherwise there is a risk for multiple selection vectors.");
+            }
+            if (bytesLeft < 1)
+            {
+                return RadixCapability.None();
+            }
+
+            var innerCapability = this.innerColumn.SupportsRadixSort(bytesLeft - 1, true);
+
+            if (innerCapability.Support == RadixSupport.None)
+            {
+                return RadixCapability.None();
+            }
+            else if (innerCapability.Support == RadixSupport.Partial)
+            {
+                // We can only support partial if we have at least 2 bytes left, since we need 1 byte for the null from offset
+                return RadixCapability.Partial(innerCapability.BytesConsumed + 1);
+            }
+            else
+            {
+                return RadixCapability.Full(innerCapability.BytesConsumed + 1);
+            }
+        }
+
+        public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition)
+        {
+            Span<int> offsetsSpan = this.offsets.Span;
+            ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
+
+            for (int i = 0; i < items.Length; i++)
+            {
+                ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                int physicalOffset = offsetsSpan[item.Index];
+                ref byte nullIndicatorByte = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+                nullIndicatorByte = (byte)(physicalOffset >= 0 ? 0x01 : 0x00);
+            }
+
+            innerColumn.SetRadixPrefix(items, insertBytePosition + 1, insertBytePosition, offsetsSpan);
+            return 0;
+        }
+
+        public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, int nullBytePosition,  Span<int> selectionVector)
+        {
+            // Selection vector on selection vector is an anti-pattern, if you find yourself needing this,
+            // you should probably create a new column with offset on top of this column with the new selection vector,
+            // instead of trying to apply multiple selection vectors on top of each other.
+            throw new NotSupportedException("ColumnWithOffset does not support SetRadixPrefix with selection vector since it already has a selection vector.");
+        }
     }
 }
+

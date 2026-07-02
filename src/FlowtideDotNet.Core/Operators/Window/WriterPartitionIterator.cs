@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                 if (!firstPage)
                 {
                     // Locate indices again
-                    var index = searchComparer.FindIndex(in partitionRow, page.Keys!);
+                    searchComparer.FindIndex(in partitionRow, page.Keys!);
                     if (searchComparer.noMatch)
                     {
                         break;

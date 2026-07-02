@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -15,17 +15,13 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
-using System.Collections.Generic;
 using System.IO.Hashing;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -43,6 +39,22 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             for (int i = 0; i < _columns.Length; i++)
             {
                 _columns[i] = Column.Create(memoryAllocator);
+            }
+            _count = 0;
+        }
+
+        public StructColumn(StructHeader structHeader, IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            if (columnSizeInfo.Children == null || columnSizeInfo.Children.Count != structHeader.Count)
+            {
+                throw new ArgumentException("Column size info does not match struct header.");
+            }
+            _header = structHeader;
+            _columns = new Column[structHeader.Count];
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                var childSizeInfo = columnSizeInfo.Children[i];
+                _columns[i] = new Column(memoryAllocator, childSizeInfo);
             }
             _count = 0;
         }
@@ -238,6 +250,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 size += _columns[i].GetByteSize();
             }
             return size;
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                _columns[i].GetPrefixSumByteSizes(indices, sizes);
+            }
         }
 
         public SerializationEstimation GetSerializationEstimate()
@@ -596,5 +616,54 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _columns[i].AddToHash(index, child, hashAlgorithm);
             }
         }
+
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        {
+            if (other is StructColumn otherStruct)
+            {
+                for (int i = 0; i < _columns.Length; i++)
+                {
+                    _columns[i].InsertFrom(otherStruct._columns[i], in sortedLookup, in insertPositions, lookupNullIndex);
+                }
+                _count += sortedLookup.Length;
+                return;
+            }
+            throw new NotImplementedException();
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                _columns[i].DeleteBatch(targets);
+            }
+            _count -= targets.Length;
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            List<ColumnSizeInfo> childrenSizeInfo = new List<ColumnSizeInfo>();
+
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                var childSizeInfo = _columns[i].GetColumnSizeInfo();
+                childrenSizeInfo.Add(childSizeInfo);
+            }
+
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Struct,
+                StructHeader = _header,
+                Children = childrenSizeInfo,
+                TotalRows = Count,
+            };
+        }
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Struct);
+        }
     }
 }
+
+

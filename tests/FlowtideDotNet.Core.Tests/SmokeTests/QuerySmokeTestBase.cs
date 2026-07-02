@@ -10,14 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Core.Tests.SmokeTests.Count;
 using FlowtideDotNet.Core.Tests.SmokeTests.LineItemLeftJoinOrders;
 using FlowtideDotNet.Core.Tests.SmokeTests.StringJoin;
-using FlowtideDotNet.Storage.DeviceFactories;
 using FlowtideDotNet.Substrait;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -91,10 +89,6 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 b.AddDebug();
             });
 
-            var checkpointManager = new DeviceLogCommitCheckpointManager(
-                new InMemoryDeviceFactory(),
-                new DefaultCheckpointNamingScheme($"checkpoints/"));
-            var logDevice = new ManagedLocalStorageDevice("logdevice", deleteOnClose: true);
             dataflowStream = differentialComputeBuilder
                 .AddPlan(modifiedPlan, false)
                 .AddConnectorManager(connectorManager)
@@ -659,7 +653,6 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
         [Fact]
         public async Task InnerJoinWithCrash()
         {
-            var truck = TpchData.GetShipmodes().First(x => x.Mode == "TRUCK");
             await AddLineItems(new List<LineItem>() { TpchData.GetLineItems().First(x => x.Shipmode == "TRUCK") });
 
             List<StringJoinResult>? actualData = default;
@@ -679,7 +672,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await Crash();
 
             var graph = dataflowStream.GetDiagnosticsGraph();
-            while (dataflowStream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            while (dataflowStream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
             {
                 graph = dataflowStream.GetDiagnosticsGraph();
                 await _streamScheduler.Tick();
@@ -692,7 +685,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             stopwatch.Start();
             while (true)
             {
-                if (dataflowStream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+                if (dataflowStream.State == StreamStateValue.Running)
                 {
                     graph = dataflowStream.GetDiagnosticsGraph();
 

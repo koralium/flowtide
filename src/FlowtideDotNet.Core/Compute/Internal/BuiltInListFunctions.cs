@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -26,6 +26,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
             UnnestTableFunction.AddBuiltInUnnestFunction(functionsRegister);
             Columnar.Functions.TableFunctions.UnnestFunction.AddBuiltInUnnestFunction(functionsRegister);
             ListUnionDistinctAggAggregation.Register(functionsRegister);
+            FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.ListAggAggregationDefinition.Register(functionsRegister);
+            FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.ListUnionDistinctAggAggregationDefinition.Register(functionsRegister);
         }
     }
 }

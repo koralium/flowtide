@@ -16,9 +16,6 @@ using FlowtideDotNet.Base.Metrics.Counter;
 using FlowtideDotNet.Base.Metrics.Gauge;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices;
-using FlowtideDotNet.Base.Vertices.Egress;
-using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -30,20 +27,9 @@ using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
-    public enum StreamStateValue
-    {
-        NotStarted = 0,
-        Starting = 1,
-        Running = 2,
-        Failure = 3,
-        Deleting = 4,
-        Deleted = 5,
-        Stopping = 6
-    }
-
     internal class StreamContext : IStreamTriggerCaller, IAsyncDisposable
     {
-        private static ActivitySource s_exceptionActivitySource = new ActivitySource("FlowtideDotNet.Base.StreamException");
+        private static readonly ActivitySource s_exceptionActivitySource = new ActivitySource("FlowtideDotNet.Base.StreamException");
 
         internal readonly string streamName;
         internal readonly string version;
@@ -120,11 +106,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     case StreamStatus.Running:
                         return FlowtideHealth.Healthy;
                     case StreamStatus.Paused:
-                        if (currentState == Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+                        if (currentState == StreamStateValue.Running)
                         {
                             return FlowtideHealth.Healthy;
                         }
-                        if (currentState == Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+                        if (currentState == StreamStateValue.Failure)
                         {
                             return FlowtideHealth.Unhealthy;
                         }
@@ -229,7 +215,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _checkpointLock = new object();
 
-            _stateManager = new FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState>(stateManagerOptions, this.loggerFactory.CreateLogger("StateManager"), new Meter($"flowtide.{streamName}.storage"), streamName);
+            _stateManager = new FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState>(stateManagerOptions, this.loggerFactory, new Meter($"flowtide.{streamName}.storage"), streamName, _streamMemoryManager);
 
 
             _streamScheduler.Initialize(this);
@@ -730,6 +716,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             });
 
             _stateManager.Dispose();
+
+            _streamMemoryManager.Dispose();
         }
 
         public StreamGraph GetGraph()

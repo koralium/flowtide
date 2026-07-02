@@ -22,6 +22,14 @@ namespace FlowtideDotNet.Substrait.Expressions
             return visitor.VisitMapNestedExpression(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new MapNestedExpression
+            {
+                KeyValues = KeyValues.Select(kv => new KeyValuePair<Expression, Expression>(kv.Key.Clone(), kv.Value.Clone())).ToList()
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is MapNestedExpression expression &&

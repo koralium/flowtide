@@ -46,10 +46,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
                 reader.ReadByte();
             }
 
-            var dataSize = BinaryPrimitives.ReadInt32BigEndian(reader.ReadBytes(4));
-
-            var magicNumberBytes = reader.ReadBytes(4);
-            var magicNumber = BinaryPrimitives.ReadInt32LittleEndian(magicNumberBytes);
+            _ = BinaryPrimitives.ReadInt32BigEndian(reader.ReadBytes(4));
+            _ = reader.ReadBytes(4);
 
             return RoaringBitmapArray.Deserialize(reader);
         }

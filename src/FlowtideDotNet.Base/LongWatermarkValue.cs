@@ -13,24 +13,42 @@
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// Watermark value backed by a 64-bit integer (<see cref="long"/>).
+    /// </summary>
+    /// <remarks>
+    /// This is commonly used for time-based or sequence-based watermarks in the stream processing engine.
+    /// It inherits from <see cref="AbstractWatermarkValue{T}"/> to enforce type-safety during comparisons.
+    /// </remarks>
     public class LongWatermarkValue : AbstractWatermarkValue<LongWatermarkValue>
     {
+        /// <summary>
+        /// Gets the integer type identifier used for type-checking comparisons and serialization.
+        /// </summary>
         public override int TypeId => 1;
 
+        /// <summary>
+        /// Gets the underlying long integer value of this watermark.
+        /// </summary>
         public long Value { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LongWatermarkValue"/> class.
+        /// </summary>
+        /// <param name="value">The underlying 64-bit integer value.</param>
         public LongWatermarkValue(long value)
         {
             Value = value;
         }
 
+        /// <summary>
+        /// Compares the current LongWatermarkValue with another instance of the same type.
+        /// </summary>
+        /// <param name="other">The other <see cref="LongWatermarkValue"/> to compare against.</param>
+        /// <returns>An integer that indicates the relative order of the values being compared.</returns>
         public override int Compare(LongWatermarkValue? other)
         {
             if (other is LongWatermarkValue otherLong)
@@ -47,19 +65,36 @@ namespace FlowtideDotNet.Base
             }
         }
 
+        /// <summary>
+        /// Hash function that combines the hash code of the base class with the hash code of the <see cref="Value"/> property.
+        /// </summary>
+        /// <returns>A hash code based on the base class's hash code and the <see cref="Value"/> property.</returns>
         public override int GetHashCode()
         {
             return HashCode.Combine(Value, base.GetHashCode());
         }
 
+        /// <summary>
+        /// Creates a new <see cref="LongWatermarkValue"/> instance.
+        /// </summary>
+        /// <param name="value">The integer value to encapsulate.</param>
+        /// <returns>A newly created <see cref="LongWatermarkValue"/>.</returns>
         public static LongWatermarkValue Create(long value)
         {
             return new LongWatermarkValue(value);
         }
     }
 
+    /// <summary>
+    /// Implements serialization and deserialization for <see cref="LongWatermarkValue"/> instances.
+    /// </summary>
     internal class LongWatermarkValueSerializer : IWatermarkSerializer
     {
+        /// <summary>
+        /// Deserializes a <see cref="LongWatermarkValue"/> from a sequence of bytes.
+        /// </summary>
+        /// <param name="reader">The byte sequence reader containing the serialized long value.</param>
+        /// <returns>The deserialized <see cref="AbstractWatermarkValue"/>.</returns>
         public AbstractWatermarkValue Deserialize(ref SequenceReader<byte> reader)
         {
             if (!reader.TryReadLittleEndian(out long val))
@@ -69,6 +104,11 @@ namespace FlowtideDotNet.Base
             return new LongWatermarkValue(val);
         }
 
+        /// <summary>
+        /// Serializes an <see cref="AbstractWatermarkValue"/> into the specified buffer writer.
+        /// </summary>
+        /// <param name="value">The <see cref="AbstractWatermarkValue"/> (expected to be <see cref="LongWatermarkValue"/>) to serialize.</param>
+        /// <param name="writer">The buffer writer to output the serialized data into.</param>
         public void Serialize(AbstractWatermarkValue value, IBufferWriter<byte> writer)
         {
             if (value is LongWatermarkValue longWatermarkValue)

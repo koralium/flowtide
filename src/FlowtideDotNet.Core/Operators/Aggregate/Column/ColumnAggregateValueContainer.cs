@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
+using System.Buffers;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {
@@ -75,6 +76,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             }
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            for (int i = 0; i < columnCount; i++)
+            {
+                _eventBatch.Columns[i].DeleteBatch(positions);
+            }
+            _weights.DeleteBatch(positions);
+            _previousValueSent.DeleteBatch(positions);
+        }
+
         public void Dispose()
         {
             _eventBatch.Dispose();
@@ -118,6 +129,49 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             _previousValueSent.InsertAt(index, value.valueSent);
         }
 
+        public void InsertFrom(ColumnAggregateStateReference[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            if (sortedLookup.Length == 0)
+            {
+                return;
+            }
+
+            var firstIndex = sortedLookup[0];
+            var valuesBatch = values[firstIndex].referenceBatch;
+            for (int i = 0; i < columnCount; i++)
+            {
+                var col = valuesBatch.Columns[i];
+                _eventBatch.Columns[i].InsertFrom(col, ref sortedLookup, ref targetPositions, -1);
+            }
+
+            int count = sortedLookup.Length;
+
+            // Rent temporary array buffers to extract primitive values
+            int[] tempWeights = ArrayPool<int>.Shared.Rent(count);
+            bool[] tempSent = ArrayPool<bool>.Shared.Rent(count);
+            int[] sequentialLookup = ArrayPool<int>.Shared.Rent(count);
+            try
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    var sortedIndex = sortedLookup[i];
+                    tempWeights[i] = values[sortedIndex].weight;
+                    tempSent[i] = values[sortedIndex].valueSent;
+                    sequentialLookup[i] = i;
+                }
+                // Perform bulk single-pass block copy insertions
+                _weights.InsertFrom(tempWeights, sequentialLookup.AsSpan(0, count), targetPositions);
+                _previousValueSent.InsertFrom(tempSent, sequentialLookup.AsSpan(0, count), targetPositions);
+            }
+            finally
+            {
+                // Return rented arrays to the pool
+                ArrayPool<int>.Shared.Return(tempWeights);
+                ArrayPool<bool>.Shared.Return(tempSent);
+                ArrayPool<int>.Shared.Return(sequentialLookup);
+            }
+        }
+
         public void RemoveAt(int index)
         {
             for (int i = 0; i < columnCount; i++)
@@ -140,10 +194,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void Update(int index, ColumnAggregateStateReference value)
         {
-            for (int i = 0; i < columnCount; i++)
-            {
-                _eventBatch.Columns[i].UpdateAt(index, value.referenceBatch.Columns[i].GetValueAt(value.RowIndex, default));
-            }
             _weights.Update(index, value.weight);
             _previousValueSent.Update(index, value.valueSent);
         }

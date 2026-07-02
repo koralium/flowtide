@@ -157,5 +157,11 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             var graphSite = $"{_sharepointSourceOptions.SharepointUrl}:/sites/{_sharepointSourceOptions.Site}:";
             _listResponse = await _graphClient.Sites[graphSite].Lists.GetAsync();
         }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            relation = null;
+            return false;
+        }
     }
 }

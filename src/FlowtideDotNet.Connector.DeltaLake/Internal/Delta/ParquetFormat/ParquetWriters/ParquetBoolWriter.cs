@@ -25,17 +25,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private bool? _maxValue;
         private int _nullCount;
 
-        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             if (array is BooleanArray boolArray)
             {
+                int added = 0;
                 for (int i = index; i < (index + count); i++)
                 {
                     if (deleteVector.Contains(globalOffset + i))
                     {
                         continue;
                     }
-
+                    added++;
                     var val = boolArray.GetValue(i);
                     if (!val.HasValue)
                     {
@@ -46,7 +47,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                         WriteValue(val.Value);
                     }
                 }
-                return;
+                // Parquet encodes boolean values as bits, so we calculate the number of bytes needed to store the added values and multiply by 2 for the validity bitmap.
+                return (long)Math.Ceiling(added / 8.0) * 2;
             }
             throw new NotImplementedException();
         }
@@ -91,17 +93,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             }
         }
 
-        public void WriteValue<T>(T value) where T : IDataValue
+        public long WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_builder != null);
             if (value.IsNull)
             {
                 _nullCount++;
                 _builder.AppendNull();
-                return;
+                return 1;
             }
             var boolValue = value.AsBool;
             WriteValue(boolValue);
+            return 1; // It is not actually 1 but it is the closest, size is only an estimate
         }
     }
 }

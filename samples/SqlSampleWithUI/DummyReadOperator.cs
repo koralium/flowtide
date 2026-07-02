@@ -10,11 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
@@ -32,6 +33,11 @@ namespace SqlSampleWithUI
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             return new DummyReadOperator(dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("dummy", readRelation.NamedTable.DotSeperated, default);
         }
     }
 
@@ -70,8 +76,7 @@ namespace SqlSampleWithUI
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            
-            for (int i = 0; i < 10_000; i++)
+            for (int i = 0; i < 1_00_000; i++)
             {
                 await output.EnterCheckpointLock();
                 var memoryManager = MemoryAllocator;
@@ -85,13 +90,13 @@ namespace SqlSampleWithUI
                     columns[b] = Column.Create(memoryManager);
                 }
 
-                for (int k = 0; k < 100; k++)
+                for (int k = 0; k < 1000; k++)
                 {
                     weights.Add(1);
                     iterations.Add(0);
                     for (int z = 0; z < 16; z++)
                     {
-                        columns[z].Add(new Int64Value((i * 100) + k));
+                        columns[z].Add(new Int64Value((i * 1000) + k));
                     }
                 }
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));

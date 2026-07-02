@@ -60,20 +60,18 @@ SELECT firstName, lastName FROM {database}.{collection}
 
 Using create table limits the data that is sent through the stream and only sends out the properties defined in the create table.
 
-:::warning
+> [!WARNING]
+> When using _doc field the entire document is sent through the stream which can result in a performance decrease.
+> A better alternative if one does not want to use `CREATE TABLE` is to use `CREATE VIEW` to project the map values earlier in the stream.
+>
+> ```sql
+> CREATE VIEW mymongodb AS
+> SELECT _doc.firstName, _doc.lastName
+> FROM {database}.{collection};
+>
+> SELECT firstName, lastName FROM mymongodb;
+> ```
 
-When using _doc field the entire document is sent through the stream which can result in a performance decrease.
-A better alternative if one does not want to use `CREATE TABLE` is to use `CREATE VIEW` to project the map values earlier in the stream.
-
-```sql
-CREATE VIEW mymongodb AS
-SELECT _doc.firstName, _doc.lastName
-FROM {database}.{collection};
-
-SELECT firstName, lastName FROM mymongodb;
-```
-
-:::
 
 
 ## Sink

@@ -123,5 +123,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             _streamEvents[index] = value;
         }
+
+        public void InsertFrom(IStreamEvent[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

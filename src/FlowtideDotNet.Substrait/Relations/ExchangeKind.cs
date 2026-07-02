@@ -142,7 +142,7 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public bool Equals(BroadcastExchangeKind? other)
         {
-            return other != null && base.Equals(other);
+            return other != null;
         }
 
         public override int GetHashCode()

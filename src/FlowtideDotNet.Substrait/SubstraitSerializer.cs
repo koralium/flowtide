@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -15,6 +15,7 @@ using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using Google.Protobuf;
 using Substrait.Protobuf;
 using Protobuf = Substrait.Protobuf;
@@ -204,6 +205,59 @@ namespace FlowtideDotNet.Substrait
                         {
                             throw new InvalidOperationException("Struct must be NamedStruct");
                         }
+                    case SubstraitType.List:
+                        if (type is ListType listType)
+                        {
+                            return new Protobuf.Type()
+                            {
+                                List = new Protobuf.Type.Types.List()
+                                {
+                                    Type = GetType(listType.ValueType, names),
+                                    Nullability = nullable
+                                }
+                            };
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("List type must be ListType");
+                        }
+                    case SubstraitType.Map:
+                        if (type is MapType mapType)
+                        {
+                            var keyType = GetType(mapType.KeyType, names);
+                            var valueType = GetType(mapType.ValueType, names);
+                            return new Protobuf.Type()
+                            {
+                                Map = new Protobuf.Type.Types.Map()
+                                {
+                                    Key = keyType,
+                                    Value = valueType,
+                                    Nullability = nullable
+                                }
+                            };
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Map type must be MapType");
+                        }
+                    case SubstraitType.Null:
+                        var anyTypeIdForNull = GetAnyTypeId();
+                        return new Protobuf.Type()
+                        {
+                            UserDefined = new Protobuf.Type.Types.UserDefined()
+                            {
+                                Nullability = Protobuf.Type.Types.Nullability.Nullable,
+                                TypeReference = anyTypeIdForNull
+                            }
+                        };
+                    case SubstraitType.TimestampTz:
+                        return new Protobuf.Type()
+                        {
+                            TimestampTz = new Protobuf.Type.Types.TimestampTZ()
+                            {
+                                Nullability = nullable
+                            }
+                        };
                     default:
                         throw new NotImplementedException(type.Type.ToString());
                 }
@@ -266,7 +320,7 @@ namespace FlowtideDotNet.Substrait
                     {
                         Literal = new Protobuf.Expression.Types.Literal()
                         {
-                            I64 = (int)numericLiteral.Value
+                            I64 = (long)numericLiteral.Value
                         }
                     };
                 }
@@ -370,18 +424,32 @@ namespace FlowtideDotNet.Substrait
             {
                 if (directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
                 {
-                    var expr = new Protobuf.Expression()
+                    var fieldRef = new Protobuf.Expression.Types.FieldReference()
                     {
-                        Selection = new Protobuf.Expression.Types.FieldReference()
+                        DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
                         {
-                            DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
+                            StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
                             {
-                                StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
-                                {
-                                    Field = structReferenceSegment.Field
-                                }
+                                Field = structReferenceSegment.Field
                             }
                         }
+                    };
+
+                    if (directFieldReference.Root is OuterReference outerReference)
+                    {
+                        fieldRef.OuterReference = new Protobuf.Expression.Types.FieldReference.Types.OuterReference()
+                        {
+                            StepsOut = outerReference.StepsOut
+                        };
+                    }
+                    else if (directFieldReference.Root is RootReference)
+                    {
+                        fieldRef.RootReference = new Protobuf.Expression.Types.FieldReference.Types.RootReference();
+                    }
+
+                    var expr = new Protobuf.Expression()
+                    {
+                        Selection = fieldRef
                     };
 
                     return expr;
@@ -459,6 +527,16 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
+            public override Protobuf.Expression? VisitBinaryLiteral(BinaryLiteral binaryLiteral, SerializerVisitorState state)
+            {
+                var literal = new Protobuf.Expression.Types.Literal();
+                literal.Binary = ByteString.CopyFrom(binaryLiteral.Value);
+                return new Protobuf.Expression()
+                {
+                    Literal = literal
+                };
+            }
+
             public override Protobuf.Expression? VisitMapNestedExpression(MapNestedExpression mapNestedExpression, SerializerVisitorState state)
             {
                 var output = new Protobuf.Expression()
@@ -481,6 +559,26 @@ namespace FlowtideDotNet.Substrait
                 }
 
                 return output;
+            }
+
+            public override Protobuf.Expression? VisitSetPredicateExpression(SetPredicateExpression setPredicateExpression, SerializerVisitorState state)
+            {
+                var relVisitor = new SerializerVisitor();
+                var relProto = relVisitor.Visit(setPredicateExpression.Relation, state);
+
+                var subquery = new Protobuf.Expression.Types.Subquery()
+                {
+                    SetPredicate = new Protobuf.Expression.Types.Subquery.Types.SetPredicate()
+                    {
+                        PredicateOp = Protobuf.Expression.Types.Subquery.Types.SetPredicate.Types.PredicateOp.Exists,
+                        Tuples = relProto
+                    }
+                };
+
+                return new Protobuf.Expression()
+                {
+                    Subquery = subquery
+                };
             }
         }
 
@@ -577,6 +675,8 @@ namespace FlowtideDotNet.Substrait
 
                 if (aggregateRelation.Groupings != null)
                 {
+                    List<Expressions.Expression> uniqueExpresions = new List<Expressions.Expression>();
+
                     var exprVisitor = new SerializerExpressionVisitor();
 
                     foreach (var grouping in aggregateRelation.Groupings)
@@ -584,10 +684,20 @@ namespace FlowtideDotNet.Substrait
                         var grp = new Protobuf.AggregateRel.Types.Grouping();
                         foreach (var groupExpr in grouping.GroupingExpressions)
                         {
-                            grp.GroupingExpressions.Add(exprVisitor.Visit(groupExpr, state));
+                            var index = uniqueExpresions.IndexOf(groupExpr);
+
+                            if (index >= 0)
+                            {
+                                grp.ExpressionReferences.Add((uint)index);
+                                continue;
+                            }
+
+                            uniqueExpresions.Add(groupExpr);
+                            grp.ExpressionReferences.Add((uint)uniqueExpresions.Count - 1);
                         }
                         aggRel.Groupings.Add(grp);
                     }
+                    aggRel.GroupingExpressions.AddRange(uniqueExpresions.Select(e => exprVisitor.Visit(e, state)));
                 }
 
                 if (aggregateRelation.Measures != null)
@@ -615,6 +725,10 @@ namespace FlowtideDotNet.Substrait
                                         Value = exprVisitor.Visit(arg, state)
                                     });
                                 }
+                            }
+                            if (measure.Measure.OutputType != null)
+                            {
+                                m.Measure_.OutputType = state.GetType(measure.Measure.OutputType);
                             }
                         }
                         aggRel.Measures.Add(m);
@@ -711,12 +825,6 @@ namespace FlowtideDotNet.Substrait
 
                 switch (joinRelation.Type)
                 {
-                    case JoinType.Anti:
-                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.Anti;
-                        break;
-                    case JoinType.Semi:
-                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.Semi;
-                        break;
                     case JoinType.Inner:
                         joinRel.Type = Protobuf.JoinRel.Types.JoinType.Inner;
                         break;
@@ -732,8 +840,8 @@ namespace FlowtideDotNet.Substrait
                     case JoinType.Right:
                         joinRel.Type = Protobuf.JoinRel.Types.JoinType.Right;
                         break;
-                    case JoinType.Single:
-                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.Single;
+                    case JoinType.LeftMark:
+                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.LeftMark;
                         break;
                 }
 
@@ -873,6 +981,44 @@ namespace FlowtideDotNet.Substrait
                 {
                     var leftKey = mergeJoinRelation.LeftKeys[i];
                     var rightKey = mergeJoinRelation.RightKeys[i];
+                    var comparisonType = mergeJoinRelation.ComparisonTypes != null && i < mergeJoinRelation.ComparisonTypes.Count 
+                        ? mergeJoinRelation.ComparisonTypes[i] 
+                        : JoinComparisonType.Equal;
+
+                    ComparisonJoinKey.Types.ComparisonType comparison;
+                    if (comparisonType == JoinComparisonType.Equal)
+                    {
+                        comparison = new ComparisonJoinKey.Types.ComparisonType()
+                        {
+                            Simple = ComparisonJoinKey.Types.SimpleComparisonType.Eq
+                        };
+                    }
+                    else
+                    {
+                        string extensionName;
+                        if (comparisonType == JoinComparisonType.LessThan)
+                        {
+                            extensionName = "lt";
+                        }
+                        else if (comparisonType == JoinComparisonType.LessThanOrEqual)
+                        {
+                            extensionName = "lte";
+                        }
+                        else if (comparisonType == JoinComparisonType.GreaterThan)
+                        {
+                            extensionName = "gt";
+                        }
+                        else // GreaterThanOrEqual
+                        {
+                            extensionName = "gte";
+                        }
+                        var anchor = state.GetFunctionExtensionAnchor(FunctionsComparison.Uri, extensionName);
+                        comparison = new ComparisonJoinKey.Types.ComparisonType()
+                        {
+                            CustomFunctionReference = anchor
+                        };
+                    }
+
                     if (leftKey is DirectFieldReference directFieldReferenceLeft &&
                         directFieldReferenceLeft.ReferenceSegment is StructReferenceSegment structReferenceSegmentLeft &&
                         rightKey is DirectFieldReference directFieldReferenceRight &&
@@ -880,10 +1026,7 @@ namespace FlowtideDotNet.Substrait
                     {
                         rel.Keys.Add(new ComparisonJoinKey()
                         {
-                            Comparison = new ComparisonJoinKey.Types.ComparisonType()
-                            {
-                                Simple = ComparisonJoinKey.Types.SimpleComparisonType.Eq
-                            },
+                            Comparison = comparison,
                             Left = new Protobuf.Expression.Types.FieldReference()
                             {
                                 DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
@@ -919,10 +1062,6 @@ namespace FlowtideDotNet.Substrait
 
                 switch (mergeJoinRelation.Type)
                 {
-                    case JoinType.Anti:
-                        throw new NotSupportedException("Anti not supported in merge join");
-                    case JoinType.Semi:
-                        throw new NotSupportedException("Semi not supported in merge join");
                     case JoinType.Inner:
                         rel.Type = Protobuf.MergeJoinRel.Types.JoinType.Inner;
                         break;
@@ -938,8 +1077,9 @@ namespace FlowtideDotNet.Substrait
                     case JoinType.Right:
                         rel.Type = Protobuf.MergeJoinRel.Types.JoinType.Right;
                         break;
-                    case JoinType.Single:
-                        throw new NotSupportedException("Single not supported in merge join");
+                    case JoinType.LeftMark:
+                        rel.Type = Protobuf.MergeJoinRel.Types.JoinType.LeftMark;
+                        break;
                 }
 
                 if (mergeJoinRelation.EmitSet)
@@ -1083,6 +1223,7 @@ namespace FlowtideDotNet.Substrait
                         rel.VirtualTable.Expressions.Add(expr.Nested.Struct);
                     }
                 }
+                rel.BaseSchema = SerializeNamedStruct(virtualTableReadRelation.BaseSchema, state);
                 if (virtualTableReadRelation.EmitSet)
                 {
                     rel.Common = new Protobuf.RelCommon();
@@ -1108,6 +1249,13 @@ namespace FlowtideDotNet.Substrait
                     writeRel.NamedTable = new Protobuf.NamedObjectWrite();
                     writeRel.NamedTable.Names.AddRange(writeRelation.NamedObject.Names);
                 }
+                writeRel.CreateMode = WriteRel.Types.CreateMode.Unspecified;
+
+                if (writeRelation.Overwrite)
+                {
+                    writeRel.CreateMode = WriteRel.Types.CreateMode.ReplaceIfExists;
+                }
+
                 writeRel.Input = Visit(writeRelation.Input, state);
 
                 return new Protobuf.Rel()
@@ -1142,9 +1290,13 @@ namespace FlowtideDotNet.Substrait
                         }
                     }
                 }
+                else if (exchangeRelation.ExchangeKind.Type == ExchangeKindType.Broadcast)
+                {
+                    output.Broadcast = new ExchangeRel.Types.Broadcast();
+                }
                 else
                 {
-                    throw new NotImplementedException("Only scatter exchange kind is implemented");
+                    throw new NotImplementedException("Unsupported exchange kind type");
                 }
 
                 output.Input = Visit(exchangeRelation.Input, state);
@@ -1420,18 +1572,51 @@ namespace FlowtideDotNet.Substrait
                     ExtensionSingle = rel
                 };
             }
+
+            public override Rel VisitFetchRelation(FetchRelation fetchRelation, SerializerVisitorState state)
+            {
+                var fetchRel = new Protobuf.FetchRel();
+
+                fetchRel.OffsetExpr = new Protobuf.Expression()
+                {
+                    Literal = new Protobuf.Expression.Types.Literal()
+                    {
+                        I64 = fetchRelation.Offset
+                    }
+                };
+                fetchRel.CountExpr = new Protobuf.Expression()
+                {
+                    Literal = new Protobuf.Expression.Types.Literal()
+                    {
+                        I64 = fetchRelation.Count
+                    }
+                };
+                if (fetchRelation.EmitSet)
+                {
+                    fetchRel.Common = new Protobuf.RelCommon();
+                    fetchRel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    fetchRel.Common.Emit.OutputMapping.AddRange(fetchRelation.Emit);
+                }
+
+                fetchRel.Input = Visit(fetchRelation.Input, state);
+                return new Rel()
+                {
+                    Fetch = fetchRel
+                };
+            }
         }
 
         public static Protobuf.Plan Serialize(Plan plan)
         {
             var rootPlan = new Protobuf.Plan();
 
+            var state = new SerializerVisitorState(rootPlan);
             var visitor = new SerializerVisitor();
             foreach (var relation in plan.Relations)
             {
                 rootPlan.Relations.Add(new Protobuf.PlanRel()
                 {
-                    Rel = visitor.Visit(relation, new SerializerVisitorState(rootPlan))
+                    Rel = visitor.Visit(relation, state)
                 });
             }
             return rootPlan;

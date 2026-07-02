@@ -24,6 +24,15 @@ namespace FlowtideDotNet.Substrait.Expressions
             return visitor.VisitSingularOrList(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new SingularOrListExpression
+            {
+                Value = Value.Clone(),
+                Options = Options.Select(option => option.Clone()).ToList()
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is SingularOrListExpression expression &&

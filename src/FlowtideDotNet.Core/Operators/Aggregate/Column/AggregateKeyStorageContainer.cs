@@ -79,6 +79,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             throw new NotImplementedException();
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            for (int i = 0; i < _data.Columns.Count; i++)
+            {
+                var column = _data.Columns[i];
+                column.DeleteBatch(positions);
+            }
+            _length -= positions.Length;
+        }
+
         public void Dispose()
         {
             _data.Dispose();
@@ -112,6 +122,39 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 //_data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
             }
             _length++;
+        }
+
+        public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
+        {
+            if (sortedLookup.Length == 0)
+            {
+                return;
+            }
+            var firstIndex = sortedLookup[0];
+            var batchReference = keys[firstIndex].referenceBatch;
+
+            for (int i = 0; i < _data.Columns.Count; i++)
+            {
+                var column = _data.Columns[i];
+                var sourceColumn = batchReference.Columns[i];
+
+                if (sourceColumn is ColumnWithOffset columnWithOffset)
+                {
+                    var offsets = columnWithOffset.Offsets;
+                    for (int j = 0; j < sortedLookup.Length; j++)
+                    {
+                        var key = keys[sortedLookup[j]];
+                        lookupBuffer[j] = offsets[key.RowIndex];
+                    }
+                    ReadOnlySpan<int> lb = lookupBuffer;
+                    column.InsertFrom(columnWithOffset.InnerColumn, in lb, in targetPositions, ColumnWithOffset.NullValueIndex);
+                }
+                else
+                {
+                    column.InsertFrom(sourceColumn, in sortedLookup, in targetPositions, ColumnWithOffset.NullValueIndex);
+                }
+            }
+            _length += sortedLookup.Length;
         }
 
         public void Insert_Internal(int index, ColumnRowReference key)

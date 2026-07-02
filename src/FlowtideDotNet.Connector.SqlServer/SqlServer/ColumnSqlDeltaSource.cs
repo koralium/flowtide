@@ -262,13 +262,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             linkedCancellation.Dispose();
         }
 
-        protected override async Task OnCheckpoint(long checkpointTime)
-        {
-            Debug.Assert(State != null);
-            await State.Commit();
-            await base.OnCheckpoint(checkpointTime);
-        }
-
         protected void InitializeBatchCollections(out PrimitiveList<int> weights, out PrimitiveList<uint> iterations, out Column[] columns)
         {
             weights = new PrimitiveList<int>(MemoryAllocator);

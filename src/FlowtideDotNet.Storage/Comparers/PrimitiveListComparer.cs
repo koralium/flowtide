@@ -11,14 +11,16 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Tree;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Collections;
 
 namespace FlowtideDotNet.Storage.Comparers
 {
+    /// <summary>
+    /// A B+ tree comparer for keys that are unmanaged, naturally comparable values stored in a
+    /// <see cref="PrimitiveListKeyContainer{T}"/>. It orders keys using their <see cref="IComparable{T}"/> implementation
+    /// and locates them with a binary search over the container's contiguous buffer.
+    /// </summary>
+    /// <typeparam name="T">The unmanaged, comparable key type.</typeparam>
     public class PrimitiveListComparer<T> : IBplusTreeComparer<T, PrimitiveListKeyContainer<T>>
         where T : unmanaged, IComparable<T>
     {
@@ -32,25 +34,108 @@ namespace FlowtideDotNet.Storage.Comparers
 
         private Comparer m_comparer;
 
+        /// <summary>
+        /// Creates a comparer that orders keys by their natural ordering.
+        /// </summary>
         public PrimitiveListComparer()
         {
             m_comparer = new Comparer();
         }
+
+        /// <inheritdoc/>
         public bool SeekNextPageForValue => true;
 
+        /// <inheritdoc/>
         public int CompareTo(in T x, in T y)
         {
             return x.CompareTo(y);
         }
 
+        /// <inheritdoc/>
+        /// <remarks>Not implemented by this comparer.</remarks>
         public int CompareTo(in T key, in PrimitiveListKeyContainer<T> keyContainer, in int index)
         {
             throw new NotImplementedException();
         }
 
+        /// <inheritdoc/>
         public int FindIndex(in T key, in PrimitiveListKeyContainer<T> keyContainer)
         {
             return keyContainer.BinarySearch(key, m_comparer);
+        }
+
+        /// <inheritdoc/>
+        public FindBoundriesResult FindBoundries(in T key, in PrimitiveListKeyContainer<T> keyContainer, int startIndex, int endIndex)
+        {
+            int lo = startIndex;
+            int hi = endIndex;
+            int maxNotFound = hi;
+
+            var span = keyContainer._values.Span;
+
+            bool found = false;
+            while (lo <= hi)
+            {
+                int i = lo + ((hi - lo) >> 1);
+
+                int c = span[i].CompareTo(key);
+                if (c == 0)
+                {
+                    found = true;
+                    hi = i - 1;
+                }
+                else if (c < 0)
+                {
+                    lo = i + 1;
+                }
+                else
+                {
+                    hi = i - 1;
+                    maxNotFound = hi;
+                }
+            }
+            int lowerbound = lo;
+            if (!found)
+            {
+                lowerbound = ~lo;
+                // We did not find the value so this is the the bounds.
+                return new FindBoundriesResult(lowerbound, lowerbound);
+            }
+
+            if (lo < endIndex)
+            {
+                // Check that the next value is the same, if not we are at the of the bounds.
+                int c = span[lo + 1].CompareTo(key);
+                if (c != 0)
+                {
+                    return new FindBoundriesResult(lowerbound, lowerbound);
+                }
+            }
+            else
+            {
+                // At the top of the array
+                return new FindBoundriesResult(lowerbound, lowerbound);
+            }
+
+            // There are duplicate values, binary search for the end.
+            hi = maxNotFound;
+
+            while (lo <= hi)
+            {
+                int i = lo + ((hi - lo) >> 1);
+
+                int c = span[i].CompareTo(key);
+                if (c <= 0)
+                {
+                    lo = i + 1;
+                }
+                else
+                {
+                    hi = i - 1;
+                }
+            }
+            int upperbound = lo - 1;
+            return new FindBoundriesResult(lowerbound, upperbound);
         }
     }
 }

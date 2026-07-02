@@ -51,38 +51,6 @@ namespace FlowtideDotNet.AspNetCore
             _pathCache = new ConcurrentDictionary<string, PageCache>();
         }
 
-        private static string TranslatePath(string path)
-        {
-            int secondLastDotIndex;
-            if (path.EndsWith(".map"))
-            {
-                secondLastDotIndex = path.LastIndexOf('.', path.LastIndexOf('.', path.LastIndexOf('.') - 1) - 1);
-            }
-            else
-            {
-                var dotLastIndex = path.LastIndexOf('.');
-                if (dotLastIndex == -1)
-                {
-                    return "Not found";
-                }
-                secondLastDotIndex = path.LastIndexOf('.', dotLastIndex - 1);
-            }
-
-
-            if (secondLastDotIndex != -1)
-            {
-                // Replace hyphens with underscores up to the second last dot
-                string startPart = path.Substring(0, secondLastDotIndex).Replace('-', '_');
-
-                // Concatenate the unchanged part of the string
-                string result = string.Concat(startPart, path.AsSpan(secondLastDotIndex));
-
-                return result;
-            }
-
-            return path;
-        }
-
         public Task Invoke(HttpContext httpContext)
         {
             httpContext.Response.StatusCode = 200;
@@ -142,7 +110,7 @@ namespace FlowtideDotNet.AspNetCore
                 isText = true;
             }
 
-            var translatedPath = TranslatePath(remain);
+            var translatedPath = remain;
             using var stream = typeof(ReactEndpoint).Assembly
                 .GetManifestResourceStream($"FlowtideDotNet.AspNetCore.ClientApp.out.{translatedPath}")!;
 

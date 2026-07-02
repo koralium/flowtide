@@ -130,6 +130,18 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser.Internal
 
         public override object VisitUserset([NotNull] SpicedbParser.UsersetContext context)
         {
+            if (context.lparen != null)
+            {
+                var result = Visit(context.userset(0));
+                if (result is ZanzibarTypeRelation zanzibarTypeRelation)
+                {
+                    return zanzibarTypeRelation;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Expected ZanzibarTypeRelation");
+                }
+            }
             if (context.union != null)
             {
                 var usersets = context.userset();

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -11,48 +11,108 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.BoundarySearching;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
     internal class MergeJoinInsertComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {
         private DataValueContainer dataValueContainer;
-        private List<KeyValuePair<int, ReferenceSegment?>> columnOrder;
-        public MergeJoinInsertComparer(List<KeyValuePair<int, ReferenceSegment?>> comparisonColumns, int columnCount)
+        private readonly ColumnBoundarySearch _columnBoundarySearch;
+        public List<int> ColumnOrder { get; }
+        public MergeJoinInsertComparer(List<int> comparisonColumns, int columnCount)
         {
+            
             dataValueContainer = new DataValueContainer();
-            columnOrder = new List<KeyValuePair<int, ReferenceSegment?>>();
+            ColumnOrder = new List<int>();
             // Add the comparison columns first
             for (int i = 0; i < comparisonColumns.Count; i++)
             {
-                columnOrder.Add(comparisonColumns[i]);
+                ColumnOrder.Add(comparisonColumns[i]);
             }
 
             // Add the missing columns in the order they appear in the data
             for (int i = 0; i < columnCount; i++)
             {
-                var exists = columnOrder.Exists(x => x.Key == i);
-                var existingColumn = columnOrder.Find(x => x.Key == i);
-                if (!exists || existingColumn.Value != null)
+                if (!ColumnOrder.Contains(i))
                 {
-                    columnOrder.Add(new KeyValuePair<int, ReferenceSegment?>(i, default));
+                    ColumnOrder.Add(i);
                 }
             }
+            _columnBoundarySearch = new ColumnBoundarySearch(ColumnOrder, ColumnOrder);
         }
 
         public bool SeekNextPageForValue => false;
 
+        private readonly DataValueContainer _yDataValueContainer = new DataValueContainer();
+
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < ColumnOrder.Count; i++)
+            {
+                var col = ColumnOrder[i];
+                x.referenceBatch.Columns[col].GetValueAt(x.RowIndex, dataValueContainer, default);
+                y.referenceBatch.Columns[col].GetValueAt(y.RowIndex, _yDataValueContainer, default);
+                int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
+                if (cmp != 0)
+                {
+                    return cmp;
+                }
+            }
+            return 0;
         }
 
         public int CompareTo(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, in int index)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < ColumnOrder.Count; i++)
+            {
+                var col = ColumnOrder[i];
+                key.referenceBatch.Columns[col].GetValueAt(key.RowIndex, dataValueContainer, default);
+                keyContainer._data.Columns[col].GetValueAt(index, _yDataValueContainer, default);
+                int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
+                if (cmp != 0)
+                {
+                    return cmp;
+                }
+            }
+            return 0;
+        }
+
+        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, int startIndex, int endIndex)
+        {
+            int start = startIndex;
+            int end = endIndex;
+            for (int i = 0; i < ColumnOrder.Count; i++)
+            {
+                var column = ColumnOrder[i];
+                key.referenceBatch.Columns[column].GetValueAt(key.RowIndex, dataValueContainer, default);
+                var (low, high) = keyContainer._data.Columns[column].SearchBoundries(dataValueContainer, start, end, default);
+
+                if (low < 0)
+                {
+                    return new FindBoundriesResult(low, low);
+                }
+                else
+                {
+                    start = low;
+                    end = high;
+                }
+            }
+            return new FindBoundriesResult(start, end);
+        }
+
+        void IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>.FindBoundriesBulk(
+            ReadOnlySpan<ColumnRowReference> keys,
+            ReadOnlySpan<int> sortedLookup,
+            in ColumnKeyStorageContainer keyContainer,
+            Span<int> lowerBounds,
+            Span<int> upperBounds,
+            Span<int> lookupBuffer)
+        {
+            var incomingBatch = keys[0].referenceBatch.Columns;
+            _columnBoundarySearch.SearchBoundries(keyContainer._data.Columns, incomingBatch, sortedLookup, lowerBounds, upperBounds, 0, keyContainer.Count - 1, false, lookupBuffer);
         }
 
         public int FindIndex(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer)
@@ -60,12 +120,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             int index = -1;
             int start = 0;
             int end = keyContainer.Count - 1;
-            for (int i = 0; i < columnOrder.Count; i++)
+            for (int i = 0; i < ColumnOrder.Count; i++)
             {
-                var column = columnOrder[i];
+                var column = ColumnOrder[i];
                 // Get value by container to skip boxing for each value
-                key.referenceBatch.Columns[column.Key].GetValueAt(key.RowIndex, dataValueContainer, column.Value);
-                var (low, high) = keyContainer._data.Columns[column.Key].SearchBoundries(dataValueContainer, start, end, column.Value);
+                key.referenceBatch.Columns[column].GetValueAt(key.RowIndex, dataValueContainer, default);
+                var (low, high) = keyContainer._data.Columns[column].SearchBoundries(dataValueContainer, start, end, default);
 
                 if (low < 0)
                 {

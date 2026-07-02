@@ -44,6 +44,11 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             }
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _list.Dispose();
@@ -72,6 +77,11 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
         public void Insert(int index, double value)
         {
             _list.InsertAt(index, value);
+        }
+
+        public void InsertFrom(double[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
         }
 
         public void RemoveAt(int index)

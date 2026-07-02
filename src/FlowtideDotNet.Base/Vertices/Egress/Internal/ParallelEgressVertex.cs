@@ -11,11 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Base.Vertices.Unary;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.Egress.Internal
+namespace FlowtideDotNet.Base.Vertices.Internal
 {
     internal class ParallelEgressVertex<T> : IEgressImplementation
     {

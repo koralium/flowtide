@@ -12,6 +12,7 @@
 
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
+using FlowtideDotNet.AcceptanceTests.Entities.tpcdi;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -25,6 +26,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public List<Project> Projects { get; private set; }
         public List<ProjectMember> ProjectMembers { get; private set; }
 
+        public List<GraphNode> GraphNodes { get; set; }
+
+        public List<DailyMarket> DailyMarkets { get; private set; }
+
+        public List<Security> Securities { get; private set; }
+
         public DatasetGenerator(MockDatabase mockDatabase)
         {
             this.mockDatabase = mockDatabase;
@@ -33,6 +40,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             Companies = new List<Company>();
             Projects = new List<Project>();
             ProjectMembers = new List<ProjectMember>();
+            GraphNodes = new List<GraphNode>();
+
+            DailyMarkets = new List<DailyMarket>();
+            Securities = new List<Security>();
 
             Randomizer.Seed = new Random(8675309);
             mockDatabase.GetOrCreateTable<Company>("companies");
@@ -40,16 +51,25 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockDatabase.GetOrCreateTable<Order>("orders");
             mockDatabase.GetOrCreateTable<Project>("projects");
             mockDatabase.GetOrCreateTable<ProjectMember>("projectmembers");
+            mockDatabase.GetOrCreateTable<GraphNode>("graphnodes");
         }
 
         public void Generate(int count = 1000, int seed = 8675309)
         {
-            Randomizer.Seed = new Random(seed);
-            GenerateCompanies(10);
-            GenerateUsers(count);
-            GenerateOrders(count);
-            GenerateProjects(count);
-            GenerateProjectMembers(count);
+            mockDatabase.RwLock.Wait();
+            try
+            {
+                Randomizer.Seed = new Random(seed);
+                GenerateCompanies(10);
+                GenerateUsers(count);
+                GenerateOrders(count);
+                GenerateProjects(count);
+                GenerateProjectMembers(count);
+            }
+            finally
+            {
+                mockDatabase.RwLock.Release();
+            }
         }
 
         public void AddOrUpdateUser(User user)
@@ -66,6 +86,34 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             var mockTable = mockDatabase.GetOrCreateTable<User>("users");
             mockTable.AddOrUpdate(new List<User>() { user });
+        }
+
+        public void AddUser(User user)
+        {
+            Users.Add(user);
+            var mockTable = mockDatabase.GetOrCreateTable<User>("users");
+            mockTable.AddOrUpdate(new List<User>() { user });
+        }
+
+        public void AddOrder(Order order)
+        {
+            Orders.Add(order);
+            var mockTable = mockDatabase.GetOrCreateTable<Order>("orders");
+            mockTable.AddOrUpdate(new List<Order>() { order });
+        }
+
+        public void AddProjectMembers(params ProjectMember[] projectMembers)
+        {
+            ProjectMembers.AddRange(projectMembers);
+            var mockTable = mockDatabase.GetOrCreateTable<ProjectMember>("projectmembers");
+            mockTable.AddOrUpdate(projectMembers);
+        }
+
+        public void AddProjects(params Project[] projects)
+        {
+            Projects.AddRange(projects);
+            var mockTable = mockDatabase.GetOrCreateTable<Project>("projects");
+            mockTable.AddOrUpdate(projects);
         }
 
         public void AddOrUpdateOrder(Order order)
@@ -150,6 +198,32 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             var mockTable = mockDatabase.GetOrCreateTable<Order>("orders");
             mockTable.Delete(new List<Order>() { order });
+        }
+
+        public void AddOrUpdateGraphNode(GraphNode graphNode)
+        {
+            var index = GraphNodes.FindIndex(x => x.Id == graphNode.Id);
+
+            if (index >= 0)
+            {
+                GraphNodes[index] = graphNode;
+            }
+            else
+            {
+                GraphNodes.Add(graphNode);
+            }
+            var mockTable = mockDatabase.GetOrCreateTable<GraphNode>("graphnodes");
+            mockTable.AddOrUpdate(new List<GraphNode>() { graphNode });
+        }
+
+        public void DeleteGraphNode(GraphNode graphNode)
+        {
+            var index = GraphNodes.FindIndex(x => x.Id == graphNode.Id);
+
+            GraphNodes.RemoveAt(index);
+
+            var mockTable = mockDatabase.GetOrCreateTable<GraphNode>("graphnodes");
+            mockTable.Delete(new List<GraphNode>() { graphNode });
         }
 
         public void GenerateUsers(int count)
@@ -268,6 +342,99 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             ProjectMembers.AddRange(newProjectMembers);
             var mockTable = mockDatabase.GetOrCreateTable<ProjectMember>("projectmembers");
             mockTable.AddOrUpdate(newProjectMembers);
+        }
+
+        public void GenerateGraphNodes(int count)
+        {
+            var testGraphNodes = new Faker<GraphNode>()
+                .RuleFor(x => x.Id, (f, u) => f.UniqueIndex)
+                .RuleFor(x => x.ParentId, (f, u) =>
+                {
+                    if (GraphNodes.Count == 0)
+                    {
+                        return null;
+                    }
+                    var parentGraphNode = f.PickRandom(GraphNodes);
+                    return parentGraphNode.Id;
+                })
+                .FinishWith((f, g) =>
+                {
+                    GraphNodes.Add(g);
+                });
+
+            var newGraphNodes = testGraphNodes.Generate(count);
+            var mockTable = mockDatabase.GetOrCreateTable<GraphNode>("graphnodes");
+            mockTable.AddOrUpdate(newGraphNodes);
+
+        }
+
+        public void GenerateTpcDi(int securityCount, int dailyMarketDays)
+        {
+            GenerateSecurities(securityCount);
+            GenerateDailyMarkets(dailyMarketDays);
+        }
+
+        public void GenerateSecurities(int count)
+        {
+            var testSecurity = new Faker<Security>()
+                .StrictMode(false)
+                .Rules((f, s) =>
+                {
+                    s.BatchID = 1;
+                    s.PostingDate = f.Date.Between(DateTime.Parse("2015-07-06"), DateTime.Parse("2015-07-06").AddDays(count - 1));
+                    s.Symbol = f.Finance.Account();
+                    s.Key = s.Symbol + s.PostingDate;
+                    s.IssueType = f.PickRandom(new string[] { "Common", "Preferred", "Bond", "ETF", "Mutual Fund" });
+                    s.Status = f.PickRandom(new string[] { "Active", "Inactive", "Delisted" });
+                    s.Name = f.Company.CompanyName();
+                    s.ExID = f.Address.CountryCode();
+                    s.ShOut = f.Random.Number(1000, 1000000).ToString();
+                    s.FirstTradeDate = f.Date.Past(20).ToString("yyyyMMdd");
+                    s.FirstTradeExchg = f.Date.Past(20).ToString("yyyyMMdd");
+                    s.Dividend = f.Finance.Amount(0, 5).ToString("F2");
+                    s.CoNameOrCIK = f.Company.CompanyName();
+                });
+
+            var newSecurities = testSecurity.Generate(count);
+            Securities.AddRange(newSecurities);
+            var mockTable = mockDatabase.GetOrCreateTable<Security>("securities");
+            mockTable.AddOrUpdate(newSecurities);
+        }
+
+        private int _dailyMarketBatch = 1;
+        private DateTime? _dailyMarketLastDay;
+
+        public void GenerateDailyMarkets(int numberOfDays)
+        {
+            _dailyMarketLastDay = _dailyMarketLastDay == null
+                ? DateTime.Parse("2015-07-06")
+                : _dailyMarketLastDay.Value.AddDays(1);
+
+            List<DailyMarket> generated = new List<DailyMarket>();
+            var faker = new Faker();
+            for (int day = 0; day < numberOfDays; day++)
+            {
+                for (int securityIndex = 0; securityIndex < Securities.Count; securityIndex++)
+                {
+                    var dailyMarket = new DailyMarket()
+                    {
+                        BatchID = _dailyMarketBatch,
+                        DM_S_SYMB = Securities[securityIndex].Symbol,
+                        DM_DATE = _dailyMarketLastDay.Value.AddDays(day),
+                        DM_CLOSE = (double)faker.Finance.Amount(),
+                        DM_HIGH = (double)faker.Finance.Amount(),
+                        DM_LOW = (double)faker.Finance.Amount(),
+                        DM_VOL = faker.Random.Number(1, 5)
+                    };
+                    dailyMarket.Key = $"{dailyMarket.DM_DATE:yyyyMMdd}-{dailyMarket.DM_S_SYMB}";
+                    generated.Add(dailyMarket);
+                }
+            }
+            _dailyMarketLastDay = _dailyMarketLastDay.Value.AddDays(numberOfDays - 1);
+            DailyMarkets.AddRange(generated);
+            var mockTable = mockDatabase.GetOrCreateTable<DailyMarket>("dailymarkets", true);
+            mockTable.AddOrUpdate(generated);
+            _dailyMarketBatch++;
         }
     }
 }

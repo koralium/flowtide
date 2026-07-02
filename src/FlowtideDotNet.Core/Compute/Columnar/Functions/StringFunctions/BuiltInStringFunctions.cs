@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -46,6 +46,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
         public static void RegisterFunctions(IFunctionsRegister functionsRegister)
         {
             ColumnStringAggAggregation.Register(functionsRegister);
+            Columnar.Functions.BulkAggregations.Stateful.StringAggAggregationDefinition.Register(functionsRegister);
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
                 (scalarFunction, parameters, visitor, functionServices) =>
@@ -103,7 +104,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
                         ignoreNulls = true;
                     }
 
-                    List<Expression> expressions = new List<Expression>();
                     var stringBuilder = new StringBuilder();
 
                     var appendMethod = typeof(StringBuilder).GetMethod("Append", new System.Type[] { typeof(string) });

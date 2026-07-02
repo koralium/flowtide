@@ -10,7 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Graph.Models;
 
@@ -22,15 +23,28 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 
         public string ColumnType => "Attachments";
 
-        public ValueTask<FlxValue> Decode(ListItem item)
+        public ValueTask Decode(ListItem item, Column column)
         {
             object? value = null;
             item.Fields?.AdditionalData?.TryGetValue(_name, out value);
             if (value is bool boolVal)
             {
-                return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(boolVal)));
+                column.Add(new BoolValue(boolVal));
+                return ValueTask.CompletedTask;
             }
-            return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.Null()));
+            column.Add(NullValue.Instance);
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask<IDataValue> DecodeDataValue(ListItem item)
+        {
+            object? value = null;
+            item.Fields?.AdditionalData?.TryGetValue(_name, out value);
+            if (value is bool boolVal)
+            {
+                return ValueTask.FromResult<IDataValue>(new BoolValue(boolVal));
+            }
+            return ValueTask.FromResult<IDataValue>(NullValue.Instance);
         }
 
         public Task Initialize(string name, string listId, SharepointGraphListClient client, IStateManagerClient stateManagerClient, IDictionary<string, ColumnDefinition> columns)

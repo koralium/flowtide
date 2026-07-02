@@ -96,11 +96,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
 
             var metadata = new Metadata();
             metadata.Add("Authorization", $"Bearer {nameof(TestInsertThenDelete)}");
-            var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
                 Schema = schemaText
             }, metadata);
-            var schema = await schemaServiceClient.ReadSchemaAsync(new ReadSchemaRequest(), metadata);
+            await schemaServiceClient.ReadSchemaAsync(new ReadSchemaRequest(), metadata);
 
             var stream = new SpiceDbTestStream(nameof(TestInsertThenDelete), spiceDbFixture.GetChannel(), true, false);
             stream.Generate(1000);
@@ -175,7 +175,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
 
             var metadata = new Metadata();
             metadata.Add("Authorization", $"Bearer {nameof(TestRead)}");
-            var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
                 Schema = schemaText
             }, metadata);
@@ -1342,28 +1342,22 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
 
             var metadata = new Metadata();
             metadata.Add("Authorization", $"Bearer {nameof(TestInsertDeleteExisting)}");
-            var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
                 Schema = schemaText
             }, metadata);
+
+            var readRequest = ISpiceDbReadRelationshipsRequest.Create(
+                 ISpiceDbRelationshipFilter.Create(resourceType: "document", optionalRelation: "reader"),
+                 consistency: ISpiceDbConsistency.CreateFullyConsistent()
+                );
 
             var stream = new SpiceDbTestStream(
                 nameof(TestInsertDeleteExisting),
                 spiceDbFixture.GetChannel(),
                 true,
                 false,
-                new ReadRelationshipsRequest()
-                {
-                    RelationshipFilter = new RelationshipFilter()
-                    {
-                        ResourceType = "document",
-                        OptionalRelation = "reader"
-                    },
-                    Consistency = new Consistency()
-                    {
-                        FullyConsistent = true
-                    }
-                });
+                readRequest);
             stream.Generate(10);
 
             var permissionClient = new PermissionsService.PermissionsServiceClient(spiceDbFixture.GetChannel());
@@ -1475,6 +1469,387 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
         {
             var schemaText = File.ReadAllText("schema.txt");
             Assert.Throws<InvalidOperationException>(() => SpiceDbToFlowtide.Convert(schemaText, "document", "nonexisting", "spicedb"));
+        }
+
+        [Fact]
+        public async Task UseTableFunctionForDenormalizeNoStopTypes()
+        {
+            var schemaText = File.ReadAllText("recursiveschema.txt");
+            SchemaService.SchemaServiceClient schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
+
+            var metadata = new Metadata
+            {
+                { "Authorization", $"Bearer {nameof(UseTableFunctionForDenormalizeNoStopTypes)}" }
+            };
+            await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            {
+                Schema = schemaText
+            }, metadata);
+            var permissionClient = new PermissionsService.PermissionsServiceClient(spiceDbFixture.GetChannel());
+
+            var writeRequest = new WriteRelationshipsRequest();
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "user",
+                            ObjectId = "*"
+                        }
+                    },
+                    Relation = "can_view",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "role",
+                        ObjectId = "1"
+                    }
+                }
+            });
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "user",
+                            ObjectId = "user1"
+                        }
+                    },
+                    Relation = "user",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "role_binding",
+                        ObjectId = "1_1"
+                    }
+                }
+            });
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "role",
+                            ObjectId = "1"
+                        }
+                    },
+                    Relation = "role",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "role_binding",
+                        ObjectId = "1_1"
+                    }
+                }
+            });
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "role_binding",
+                            ObjectId = "1_1"
+                        }
+                    },
+                    Relation = "role_binding",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "organization",
+                        ObjectId = "2"
+                    }
+                }
+            });
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "organization",
+                            ObjectId = "2"
+                        }
+                    },
+                    Relation = "parent",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "organization",
+                        ObjectId = "1"
+                    }
+                }
+            });
+
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "project",
+                        ObjectId = "123"
+                    },
+                    Relation = "organization",
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "organization",
+                            ObjectId = "1"
+                        }
+                    }
+                }
+            });
+            await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
+
+            var stream = new SpiceDbTestStream(nameof(UseTableFunctionForDenormalizeNoStopTypes), spiceDbFixture.GetChannel(), false, true);
+
+            await stream.StartStream(@"
+                INSERT INTO testverify
+                SELECT 
+                    subject_type,
+                    subject_id,
+                    relation,
+                    resource_type,
+                    resource_id
+                FROM spicedb.materialize_permission('organization', 'can_view')
+            ");
+
+            await stream.WaitForUpdate();
+            var actual = stream.GetActualRowsAsVectors();
+            Assert.Equal(2, actual.Count);
+
+            // Remove the parent connection
+            writeRequest = new WriteRelationshipsRequest();
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Delete,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "organization",
+                            ObjectId = "2"
+                        }
+                    },
+                    Relation = "parent",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "organization",
+                        ObjectId = "1"
+                    }
+                }
+            });
+            await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
+            await stream.WaitForUpdate();
+            var actual2 = stream.GetActualRowsAsVectors();
+            Assert.Single(actual2);
+        }
+
+        [Fact]
+        public async Task UseTableFunctionForDenormalizeWithStopType()
+        {
+            var schemaText = File.ReadAllText("recursiveschema.txt");
+            SchemaService.SchemaServiceClient schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
+
+            var metadata = new Metadata
+            {
+                { "Authorization", $"Bearer {nameof(UseTableFunctionForDenormalizeWithStopType)}" }
+            };
+            await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            {
+                Schema = schemaText
+            }, metadata);
+            var permissionClient = new PermissionsService.PermissionsServiceClient(spiceDbFixture.GetChannel());
+
+            var writeRequest = new WriteRelationshipsRequest();
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "user",
+                            ObjectId = "*"
+                        }
+                    },
+                    Relation = "can_view",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "role",
+                        ObjectId = "1"
+                    }
+                }
+            });
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "user",
+                            ObjectId = "user1"
+                        }
+                    },
+                    Relation = "user",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "role_binding",
+                        ObjectId = "1_1"
+                    }
+                }
+            });
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "role",
+                            ObjectId = "1"
+                        }
+                    },
+                    Relation = "role",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "role_binding",
+                        ObjectId = "1_1"
+                    }
+                }
+            });
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "role_binding",
+                            ObjectId = "1_1"
+                        }
+                    },
+                    Relation = "role_binding",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "organization",
+                        ObjectId = "2"
+                    }
+                }
+            });
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "organization",
+                            ObjectId = "2"
+                        }
+                    },
+                    Relation = "parent",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "organization",
+                        ObjectId = "1"
+                    }
+                }
+            });
+
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "project",
+                        ObjectId = "123"
+                    },
+                    Relation = "organization",
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "organization",
+                            ObjectId = "1"
+                        }
+                    }
+                }
+            });
+
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "project",
+                        ObjectId = "123"
+                    },
+                    Relation = "all_can_read",
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "user",
+                            ObjectId = "*"
+                        }
+                    }
+                }
+            });
+            await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
+
+            var stream = new SpiceDbTestStream(nameof(UseTableFunctionForDenormalizeWithStopType), spiceDbFixture.GetChannel(), false, true);
+
+            await stream.StartStream(@"
+                INSERT INTO testverify
+                SELECT 
+                    subject_type,
+                    subject_id,
+                    relation,
+                    resource_type,
+                    resource_id
+                FROM spicedb.materialize_permission('project', 'can_view_wildcard', false, 'organization')
+            ");
+
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual([
+                new { subjectType = "organization", subjectId = "1", relation = "can_view_wildcard", resourceType = "project", resourceId = "123"},
+                 new { subjectType = "user", subjectId = "*", relation = "can_view_wildcard", resourceType = "project", resourceId = "123"},
+                ]);
         }
     }
 }

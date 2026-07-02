@@ -10,10 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Graph.Models;
-using System.Buffers;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
@@ -24,7 +23,6 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
     /// </summary>
     internal class FieldsDecoder : IColumnDecoder
     {
-        private readonly FlexBuffer flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
         private Dictionary<string, IColumnDecoder>? _decoders;
         private readonly Dictionary<string, string?> _descriptions = new Dictionary<string, string?>();
         private HashSet<string>? _columns;
@@ -34,33 +32,43 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 
         public string ColumnType => "Fields";
 
-        public async ValueTask<FlxValue> Decode(ListItem item)
+        private async ValueTask<List<KeyValuePair<IDataValue, IDataValue>>> GetKeyValues(ListItem listItem)
         {
             Debug.Assert(_decoders != null);
 
-            flexBuffer.NewObject();
-            var startVec = flexBuffer.StartVector();
+            List<KeyValuePair<IDataValue, IDataValue>> pairs = new List<KeyValuePair<IDataValue, IDataValue>>();
+
             foreach (var decoder in _decoders)
             {
-                flexBuffer.AddKey(decoder.Key);
-                var startVecInnerMap = flexBuffer.StartVector();
-                flexBuffer.AddKey("value");
-                flexBuffer.Add(await decoder.Value.Decode(item));
+                var val = await decoder.Value.DecodeDataValue(listItem);
 
-                flexBuffer.AddKey("type");
-                flexBuffer.Add(decoder.Value.ColumnType);
+                List<KeyValuePair<IDataValue, IDataValue>> valuesPairs =
+                [
+                    new KeyValuePair<IDataValue, IDataValue>(new StringValue("value"), val),
+                    new KeyValuePair<IDataValue, IDataValue>(new StringValue("type"), new StringValue(decoder.Value.ColumnType)),
+                ];
 
                 if (_descriptions.TryGetValue(decoder.Key, out var desc) && desc != null)
                 {
-                    flexBuffer.AddKey("description");
-                    flexBuffer.Add(desc);
+                    valuesPairs.Add(new KeyValuePair<IDataValue, IDataValue>(new StringValue("description"), new StringValue(desc)));
                 }
-                flexBuffer.SortAndEndMap(startVecInnerMap);
+                pairs.Add(new KeyValuePair<IDataValue, IDataValue>(new StringValue(decoder.Key), new MapValue(valuesPairs)));
             }
-            flexBuffer.SortAndEndMap(startVec);
-            var bytes = flexBuffer.Finish();
-            return FlxValue.FromBytes(bytes);
+            return pairs;
         }
+
+        public async ValueTask Decode(ListItem item, Column column)
+        {
+            var pairs = await GetKeyValues(item);
+            column.Add(new MapValue(pairs));
+        }
+
+        public async ValueTask<IDataValue> DecodeDataValue(ListItem item)
+        {
+            var pairs = await GetKeyValues(item);
+            return new MapValue(pairs);
+        }
+
 
         private async Task RefetchColumns()
         {

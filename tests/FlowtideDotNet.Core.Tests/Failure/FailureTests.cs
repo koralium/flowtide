@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Optimizer;
-using FlowtideDotNet.Storage.DeviceFactories;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Conversion;
 
@@ -279,9 +278,6 @@ namespace FlowtideDotNet.Core.Tests.Failure
 
             bool thrownOnce = false;
             int checkpointCount = 0;
-
-            var tmpStorage = new InMemoryDeviceFactory();
-            tmpStorage.Initialize("./data/tmp");
 
             ConnectorManager connectorManager = new ConnectorManager();
             connectorManager.AddSource(new TestIngressFactory("*"));

@@ -14,12 +14,20 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
     public sealed class BinaryLiteral : Literal, IEquatable<BinaryLiteral>
     {
-        public byte[]? Value { get; set; }
+        public required byte[] Value { get; set; }
         public override LiteralType Type => LiteralType.Binary;
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitBinaryLiteral(this, state)!;
+        }
+
+        public override Expression Clone()
+        {
+            return new BinaryLiteral
+            {
+                Value = (byte[])Value.Clone()
+            };
         }
 
         public override bool Equals(object? obj)

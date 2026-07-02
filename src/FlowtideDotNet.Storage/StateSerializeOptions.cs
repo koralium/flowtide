@@ -12,12 +12,24 @@
 
 namespace FlowtideDotNet.Storage
 {
+    /// <summary>
+    /// The algorithm used to compress state pages before they are written to the file cache or persistent storage.
+    /// </summary>
     public enum CompressionType
     {
+        /// <summary>
+        /// Pages are written uncompressed.
+        /// </summary>
         None = 0,
+        /// <summary>
+        /// Pages are compressed with Zstandard.
+        /// </summary>
         Zstd = 1
     };
 
+    /// <summary>
+    /// The granularity at which compression is applied to state pages.
+    /// </summary>
     public enum CompressionMethod
     {
         /// <summary>
@@ -26,12 +38,29 @@ namespace FlowtideDotNet.Storage
         Page = 0,
     }
 
+    /// <summary>
+    /// Controls how state pages are serialized to the file cache and persistent storage, mainly how they are compressed.
+    /// An instance left at its defaults applies no compression. Configure it through the storage builder, for example
+    /// with <c>ZstdPageCompression</c> or <c>NoCompression</c>.
+    /// </summary>
     public class StateSerializeOptions
     {
+        /// <summary>
+        /// The compression algorithm to use. Defaults to <see cref="CompressionType.None"/>.
+        /// Compression is only applied when this is set to <see cref="CompressionType.Zstd"/> together with
+        /// <see cref="CompressionMethod.Page"/>.
+        /// </summary>
         public CompressionType CompressionType { get; set; }
 
+        /// <summary>
+        /// The granularity at which compression is applied. Defaults to <see cref="CompressionMethod.Page"/>.
+        /// </summary>
         public CompressionMethod CompressionMethod { get; set; }
 
+        /// <summary>
+        /// The compression level passed to the compressor. When null a default level of 3 is used.
+        /// Only used when <see cref="CompressionType"/> enables compression.
+        /// </summary>
         public int? CompressionLevel { get; set; }
     }
 }

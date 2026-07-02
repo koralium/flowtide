@@ -161,6 +161,60 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task UnnestLeftJoinRetractsOnDeleteAndInsert()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                CREATE VIEW test AS
+                SELECT
+                    userkey, list_agg(orderkey) as orders
+                FROM orders
+                GROUP BY userkey;
+
+                INSERT INTO output
+                SELECT
+                    userkey, order_item
+                FROM test
+                LEFT JOIN unnest(orders) order_item;");
+            await WaitForUpdate();
+            this.AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey, x.OrderKey }));
+
+            // Deleting an order must retract exactly that unnested row.
+            DeleteOrder(Orders[0]);
+            await WaitForUpdate();
+            this.AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey, x.OrderKey }));
+
+            // Adding a new order for an existing user must produce a new unnested row.
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 100000, UserKey = Orders[0].UserKey });
+            await WaitForUpdate();
+            this.AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey, x.OrderKey }));
+        }
+
+        [Fact]
+        public async Task UnnestLeftJoinEmptyListProducesNull()
+        {
+            // A LEFT join with no condition where the unnested value yields no rows must emit
+            // a single all-null right side per input row (the direct-path null fallback that
+            // list_agg never triggers, since its lists are always non-empty).
+            GenerateData(100);
+            await StartStream(@"
+                CREATE VIEW test AS
+                SELECT
+                    userkey, list_agg(orderkey) as orders
+                FROM orders
+                GROUP BY userkey;
+
+                INSERT INTO output
+                SELECT
+                    userkey, order_item
+                FROM test
+                LEFT JOIN unnest(null) order_item;");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, OrderKey = (int?)null }));
+        }
+
+        [Fact]
         public async Task UnnestInFrom()
         {
             await StartStream(@"

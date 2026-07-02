@@ -40,8 +40,6 @@ namespace AspireSamples.DeltaLakeSourceSample
             var persistenceBlob = azureStorage
                 .AddBlobs("persistence");
 
-            DataGenerator dataGenerator = new DataGenerator();
-
             var dataInsert = DataInsertResource.AddDataInsert(builder, "data-copy",
                 async (logger, statusUpdate, resource, token) =>
 
@@ -87,7 +85,7 @@ namespace AspireSamples.DeltaLakeSourceSample
                 (logger, resource, token) => Task.CompletedTask)
                 .WaitFor(blobs);
 
-            var stream = builder.AddProject<DeltaLakeSourceUsage>("stream")
+            builder.AddProject<DeltaLakeSourceUsage>("stream")
                 .WithHttpHealthCheck("/health")
                 .WithReference(blobs)
                 .WithReference(persistenceBlob)

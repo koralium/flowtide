@@ -49,8 +49,6 @@ namespace FlowtideDotNet.Connector.Files.Tests
 
             await stream.WaitForUpdate();
 
-            var act = stream.GetActualRowsAsVectors();
-
             stream.AssertCurrentDataEqual(new[]
             {
                 new { fileName = "test.csv", value = "hello,world,123", batchId = 1 },

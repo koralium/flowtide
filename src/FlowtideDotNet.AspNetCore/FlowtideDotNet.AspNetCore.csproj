@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>$(DefaultNetTargetFramework)</TargetFramework>
+    <TargetFrameworks>$(DefaultNetTargetFramework)</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <SpaRoot>ClientApp\</SpaRoot>
@@ -24,24 +24,8 @@
     <EmbeddedResource Include="$(SpaRoot)out\**" />
   </ItemGroup>
 
-  <Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
-    <!-- Ensure Node.js is installed -->
-    <Exec Command="node --version" ContinueOnError="true">
-      <Output TaskParameter="ExitCode" PropertyName="ErrorCode" />
-    </Exec>
-    <Error Condition="'$(ErrorCode)' != '0'" Text="Node.js is required to build and run this project. To continue, please install Node.js from https://nodejs.org/, and then restart your command prompt or IDE." />
-    <Message Importance="high" Text="Restoring dependencies using 'npm'. This may take several minutes..." />
-    <Exec WorkingDirectory="$(SpaRoot)" Command="npm install" />
-  </Target>
-
-  <Target Name="BuildReact" Inputs="@(ReactFiles)" Outputs="@(ReactFiles->'obj\clientapp\%(Identity).tmp')" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' ">
-    <Copy SourceFiles="@(ReactFiles)" DestinationFiles="@(ReactFiles->'obj\clientapp\%(Identity).tmp')" />
-    <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build" />
-    
-  </Target>
-
 	<ItemGroup>
-		<PackageReference Include="PromQL.Parser" Version="3.2.0" />
+		<PackageReference Include="PromQL.Parser" />
 	</ItemGroup>
 
   <ItemGroup>

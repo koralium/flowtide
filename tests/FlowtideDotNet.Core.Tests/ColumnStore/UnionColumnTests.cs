@@ -22,6 +22,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Buffers;
+using FlowtideDotNet.Storage.DataStructures;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {
@@ -30,7 +31,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestGetTypeAt()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
 
             unionColumn.Add(new Int64Value(1));
             unionColumn.Add(new StringValue("hello"));
@@ -42,8 +43,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestUpdateToNull()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));
             column.Add(new StringValue("hello"));
@@ -59,8 +59,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestUpdateToIntToStringColumnAreadyExists()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));
             column.Add(new StringValue("hello"));
@@ -76,8 +75,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertNull()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));
             column.Add(new StringValue("hello"));
@@ -97,8 +95,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertStrings()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));
             column.Add(new StringValue("hello"));
@@ -118,8 +115,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestDelete()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));
             column.Add(new StringValue("hello"));
@@ -143,7 +139,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void ConvertToUnionInsertInMiddle()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new StringValue("1"));
             column.Add(new StringValue("2"));
@@ -160,7 +156,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void RemoveRangeNonNull()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             List<object?> expected = new List<object?>();
             Random r = new Random(123);
@@ -219,7 +215,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void RemoveRangeWithNull()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             List<object?> expected = new List<object?>();
             Random r = new Random(123);
@@ -288,13 +284,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNoNulls()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
                 new StringValue("hello"),
                 new StringValue("world")
@@ -313,19 +309,19 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNoNullsWithValidityList()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
                 new StringValue("hello"),
                 new StringValue("world")
             };
 
-            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
+            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
             validityList.Set(0);
             validityList.Set(1);
 
@@ -341,20 +337,20 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNullInMiddle()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
                 new StringValue("hello"),
                 NullValue.Instance,
                 new StringValue("world")
             };
 
-            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
+            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
             validityList.Set(0);
             validityList.Set(2);
 
@@ -371,20 +367,20 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNullInStart()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
                 NullValue.Instance,
                 new StringValue("hello"),
                 new StringValue("world")
             };
 
-            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
+            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
             validityList.Set(1);
             validityList.Set(2);
 
@@ -401,13 +397,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNullInEnd()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
                 new StringValue("hello"),
                 new StringValue("world"),
@@ -433,20 +429,20 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnAllNulls()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
                 NullValue.Instance,
                 NullValue.Instance,
                 NullValue.Instance
             };
 
-            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
+            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
             validityList.Unset(0);
             validityList.Unset(1);
             validityList.Unset(2);
@@ -464,20 +460,20 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNulSubrange()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
                 new StringValue("hello"),
                 new StringValue("world"),
                 NullValue.Instance
             };
 
-            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
+            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
             validityList.Set(0);
             validityList.Set(1);
             validityList.Unset(2);
@@ -494,13 +490,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnWithEmptyValidityList()
         {
-            Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            using Column unionColumn = new Column(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            Column stringColumn = new Column(GlobalMemoryManager.Instance)
+            using Column stringColumn = new Column(GlobalMemoryManager.Instance)
             {
                 new StringValue("hello"),
                 new StringValue("world")
@@ -517,13 +513,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertRangeFromOtherUnionColumn()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new StringValue("hello"),
                 new StringValue("world")
@@ -541,13 +537,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertRangeFromOtherUnionColumnWithAvx()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new StringValue("1"),
                 new StringValue("2"),
@@ -598,13 +594,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertRangeFromOtherUnionColumnWithAvxSubrange()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new StringValue("1"),
                 new StringValue("2"),
@@ -655,7 +651,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertRangeFromOtherUnionColumnWithAvxExistingDataInType()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3),
@@ -669,7 +665,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 new StringValue("8a"),
             };
 
-            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new StringValue("1"),
                 new StringValue("2"),
@@ -720,7 +716,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertRangeFromOtherUnionColumnWithAvxExistingDataInTypeInMiddle()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3),
@@ -734,7 +730,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 new StringValue("8a"),
             };
 
-            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new StringValue("1"),
                 new StringValue("2"),
@@ -793,13 +789,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertNullUnionColumn()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            UnionColumn other = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn other = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 NullValue.Instance,
                 NullValue.Instance
@@ -814,7 +810,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestRemoveRangeWitNull()
         {
-            UnionColumn column = new UnionColumn(GlobalMemoryManager.Instance)
+            using UnionColumn column = new UnionColumn(GlobalMemoryManager.Instance)
             {
                 NullValue.Instance,
                 NullValue.Instance
@@ -828,13 +824,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestCopy()
         {
-            Column column = new Column(GlobalMemoryManager.Instance)
+            using Column column = new Column(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
             };
 
-            var copy = column.Copy(GlobalMemoryManager.Instance);
+            using var copy = column.Copy(GlobalMemoryManager.Instance);
 
             Assert.Equal(2, copy.Count);
 
@@ -845,7 +841,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestAddToHash()
         {
-            Column column = new Column(GlobalMemoryManager.Instance)
+            using Column column = new Column(GlobalMemoryManager.Instance)
             {
                 new Int64Value(1),
                 new DecimalValue(3)
@@ -867,6 +863,66 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             valueHash = hash.GetHashAndReset();
 
             Assert.Equal(columnHash, valueHash);
+        }
+
+        [Fact]
+        public void InsertRangeFromBasicNullInColumn()
+        {
+            using Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3),
+                new StringValue("1a")
+            };
+
+            using Column otherUnionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("1"),
+                new StringValue("2"),
+                new StringValue("3"),
+                new StringValue("4"),
+                new NullValue()
+            };
+
+            unionColumn.InsertRangeFrom(1, otherUnionColumn, 1, 2);
+
+            Assert.Equal(5, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            for (int i = 2; i <= 3; i++)
+            {
+                Assert.Equal(i.ToString(), unionColumn.GetValueAt(i - 1, default).AsString.ToString());
+            }
+            Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+        }
+
+        [Fact]
+        public void InsertRangeFromBasicNullInRange()
+        {
+            using Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            using Column otherUnionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("1"),
+                new StringValue("2"),
+                new NullValue(),
+                new NullValue(),
+                new StringValue("3"),
+                new StringValue("4"),
+            };
+
+            unionColumn.InsertRangeFrom(1, otherUnionColumn, 1, 4);
+
+            Assert.Equal(6, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("2", unionColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.True(unionColumn.GetValueAt(2, default).IsNull);
+            Assert.True(unionColumn.GetValueAt(3, default).IsNull);
+            Assert.Equal("3", unionColumn.GetValueAt(4, default).AsString.ToString());
+            Assert.Equal(3, unionColumn.GetValueAt(5, default).AsDecimal);
         }
     }
 }

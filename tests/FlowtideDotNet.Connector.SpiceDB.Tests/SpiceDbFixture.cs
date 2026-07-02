@@ -21,8 +21,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
         private IContainer _container;
         public SpiceDbFixture()
         {
-            var builder = new ContainerBuilder()
-                .WithImage("authzed/spicedb")
+            var builder = new ContainerBuilder("authzed/spicedb")
                 .WithPortBinding(50051, true)
                 .WithCommand("serve-testing")
                 .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("grpc server started serving"));

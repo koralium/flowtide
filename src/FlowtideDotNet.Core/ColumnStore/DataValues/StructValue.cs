@@ -197,6 +197,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
             return _columnValues[index];
         }
 
+        public void GetAt(int index, DataValueContainer dataValueContainer)
+        {
+            _columnValues[index].CopyToContainer(dataValueContainer);
+        }
+
         public void CopyToContainer(DataValueContainer container)
         {
             container._structValue = this;

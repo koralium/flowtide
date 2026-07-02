@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
@@ -43,30 +44,25 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
         public override Relation ModifyPlan(ReadRelation readRelation)
         {
-            List<int> indices = new List<int>();
-
             var idIndex = readRelation.BaseSchema.Names.FindIndex(x => x.Equals("Id", StringComparison.OrdinalIgnoreCase));
             if (idIndex < 0)
             {
                 readRelation.BaseSchema.Names.Add("Id");
                 readRelation.BaseSchema.Struct!.Types.Add(new AnyType() { Nullable = false });
-                idIndex = readRelation.BaseSchema.Names.Count - 1;
             }
-            indices.Add(idIndex);
 
-            return new NormalizationRelation()
-            {
-                Input = readRelation,
-                Filter = readRelation.Filter,
-                KeyIndex = indices,
-                Emit = readRelation.Emit
-            };
+            return readRelation;
         }
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             var listId = tableProvider.GetListId(readRelation.NamedTable.DotSeperated);
-            return new SharepointSource(sharepointSourceOptions, listId, readRelation, dataflowBlockOptions);
+            return new SharepointSource(sharepointSourceOptions, listId, readRelation, functionsRegister, dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("sharepoint", readRelation.NamedTable.DotSeperated, default);
         }
     }
 }

@@ -37,9 +37,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public void AddRangeFrom(IValueContainer<JoinWeights> container, int start, int count)
         {
-            for (int i = start; i < start + count; i++)
+            if (container is JoinWeightsValueContainer other)
             {
-                _values.Add(container.Get(i));
+                _values.AddRangeFrom(other._values, start, count);
+            }
+            else
+            {
+                throw new NotSupportedException();
             }
         }
 
@@ -50,7 +54,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public JoinWeights Get(int index)
         {
-            return _values.Get(in index);
+            return _values.Get(index);
         }
 
         public ref JoinWeights GetRef(int index)
@@ -70,11 +74,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
-            {
-                RemoveAt(i);
-            }
+            _values.RemoveRange(start, count);
         }
 
         public void Update(int index, JoinWeights value)
@@ -90,6 +90,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public int GetByteSize(int start, int end)
         {
             return (end - start + 1) * 8;
+        }
+
+        public void InsertFrom(JoinWeights[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            _values.InsertFrom(values, sortedLookup, targetPositions);
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            _values.DeleteBatch(positions);
         }
     }
 }

@@ -334,7 +334,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             // Check if split is required
             if (internalNode.keys.Count == m_stateClient.Metadata.BucketLength)
             {
-                var (newNode, splitKey) = SplitInternalNode(parentNode, index, internalNode);
+                var (newNode, _) = SplitInternalNode(parentNode, index, internalNode);
 
                 var isFull = false;
                 isFull |= m_stateClient.AddOrUpdate(newNode.Id, newNode);

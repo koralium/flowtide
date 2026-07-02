@@ -21,7 +21,6 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
 
         public static Plan Optimize(Plan plan)
         {
-            Dictionary<int, List<ReferenceRelation>> referenceRelations = new Dictionary<int, List<ReferenceRelation>>();
             for (int i = 0; i < plan.Relations.Count; i++)
             {
                 var relation = plan.Relations[i];

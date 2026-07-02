@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private LeafNode<K, V, TKeyContainer, TValueContainer>? leaf;
         private int index;
         private BPlusTree<K, V, TKeyContainer, TValueContainer> tree;
-        private Enumerator enumerator;
+        private readonly Enumerator enumerator;
 
         public BackwardsBPlusTreePageIterator(in BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
         {

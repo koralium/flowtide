@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Storage.Memory
     /// Manages the memory for one stream.
     /// Can be used to keep track of total memory used in a stream.
     /// </summary>
-    public interface IStreamMemoryManager
+    public interface IStreamMemoryManager : IDisposable, IMemoryAllocationStats
     {
         IOperatorMemoryManager CreateOperatorMemoryManager(string operatorName);
     }

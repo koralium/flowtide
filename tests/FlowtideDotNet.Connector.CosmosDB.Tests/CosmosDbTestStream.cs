@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Tests
 
         private async Task InitializeCosmosDb()
         {
-            var cosmosClient = new CosmosClient(testConnString);
+            using var cosmosClient = new CosmosClient(testConnString);
 
             var dbProps = await cosmosClient.CreateDatabaseIfNotExistsAsync(testName);
             await dbProps.Database.CreateContainerIfNotExistsAsync(testName, "/pk");

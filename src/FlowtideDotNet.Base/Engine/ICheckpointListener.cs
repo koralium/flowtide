@@ -12,8 +12,47 @@
 
 namespace FlowtideDotNet.Base.Engine
 {
+    /// <summary>
+    /// Defines a receiver for checkpoint completion notifications raised by the stream.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Implementations are registered on a <see cref="DataflowStreamBuilder"/> via
+    /// <see cref="DataflowStreamBuilder.AddCheckpointListener"/> and are invoked each time the stream
+    /// successfully completes a full checkpoint boundary. Multiple listeners can be registered;
+    /// each is called in registration order.
+    /// </para>
+    /// <para>
+    /// <see cref="OnCheckpointComplete"/> is called after all egress vertices have signalled their
+    /// checkpoint is done and after the state manager has durably written the checkpoint to persistent
+    /// storage, but before ingress vertices receive their <c>CheckpointDone</c> callback.
+    /// This makes it the correct integration point for any external system that must be notified
+    /// only once stream state is safely committed — for example to advance a consumer offset, trigger
+    /// a dependent workflow, or record a checkpoint metric.
+    /// </para>
+    /// <para>
+    /// Exceptions thrown by an implementation are swallowed by the stream engine to ensure
+    /// that a misbehaving listener cannot disrupt stream processing or block the checkpoint sequence.
+    /// </para>
+    /// </remarks>
     public interface ICheckpointListener
     {
+        /// <summary>
+        /// Called when the stream has successfully completed a full checkpoint and durably written
+        /// all operator state to persistent storage.
+        /// </summary>
+        /// <remarks>
+        /// This method is invoked synchronously within the checkpoint completion task.
+        /// Implementations should avoid long-running or blocking operations; if coordination with
+        /// an external system is required, consider starting a background task rather than
+        /// blocking the checkpoint completion path.
+        /// Access <see cref="StreamCheckpointNotification.StreamName"/> to identify the stream
+        /// that completed the checkpoint.
+        /// </remarks>
+        /// <param name="notification">
+        /// A <see cref="StreamCheckpointNotification"/> carrying the name of the stream that
+        /// completed the checkpoint boundary.
+        /// </param>
         void OnCheckpointComplete(StreamCheckpointNotification notification);
     }
 }

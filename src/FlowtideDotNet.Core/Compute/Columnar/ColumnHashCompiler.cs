@@ -73,7 +73,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 }
             }
 
-            var bytes = new byte[4];
             var destinationConstant = System.Linq.Expressions.Expression.Constant(new byte[4]);
 
             var spanVariable = System.Linq.Expressions.Expression.Variable(typeof(Span<byte>), "span");

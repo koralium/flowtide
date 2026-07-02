@@ -45,14 +45,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             }
         }
 
-        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             if (array is StructArray arr)
             {
+                int addedCount = 0;
+                long addedBytes = 0;
                 for (int j = 0; j < propertyWriters.Count; j++)
                 {
                     var field = arr.Fields[j];
-                    propertyWriters[order[j]].Value.CopyArray(field, globalOffset, deleteVector, index, count);
+                    addedBytes += propertyWriters[order[j]].Value.CopyArray(field, globalOffset, deleteVector, index, count);
                 }
                 for (int i = index; i < (index + count); i++)
                 {
@@ -60,13 +62,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     {
                         continue;
                     }
-
+                    
+                    addedCount++;
                     if (arr.IsNull(i))
                     {
                         WriteNull();
                     }
                 }
-                return;
+                return addedCount + addedBytes;
             }
             throw new NotImplementedException();
         }
@@ -121,7 +124,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _nullBitmap.Append(false);
         }
 
-        public void WriteValue<T>(T value) where T : IDataValue
+        public long WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_nullBitmap != null);
             if (value.IsNull)
@@ -132,7 +135,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 {
                     writer.Value.WriteNull();
                 }
-                return;
+                return 1;
             }
 
             if (value.Type == ArrowTypeId.Map)
@@ -141,7 +144,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
                 _nullBitmap.Append(true);
                 var length = mapValue.GetLength();
-
+                long writtenBytes = 0;
                 for (int i = 0; i < length; i++)
                 {
                     var key = mapValue.GetKeyAt(i);
@@ -150,20 +153,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
                     if (propertyWriters[i].Key == keyString)
                     {
-                        propertyWriters[i].Value.WriteValue(val);
+                        writtenBytes += propertyWriters[i].Value.WriteValue(val);
                     }
                     else
                     {
                         propertyWriters[i].Value.WriteNull();
                     }
                 }
+                return writtenBytes;
             }
             else if (value.Type == ArrowTypeId.Struct)
             {
                 var structValue = value.AsStruct;
 
                 _nullBitmap.Append(true);
-
+                long writtenBytes = 0;
                 var length = structValue.Header.Count;
                 for (int i = 0; i < length; i++)
                 {
@@ -171,13 +175,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     var val = structValue.GetAt(i);
                     if (propertyWriters[i].Key == key)
                     {
-                        propertyWriters[i].Value.WriteValue(val);
+                        writtenBytes += propertyWriters[i].Value.WriteValue(val);
                     }
                     else
                     {
                         propertyWriters[i].Value.WriteNull();
                     }
                 }
+                return writtenBytes;
             }
             else
             {

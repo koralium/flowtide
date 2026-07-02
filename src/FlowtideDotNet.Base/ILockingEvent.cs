@@ -12,6 +12,15 @@
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// Represents an event within the dataflow stream that requires operators and vertices to halt standard processing 
+    /// and synchronize their state.
+    /// </summary>
+    /// <remarks>
+    /// Locking events are used for critical operations such as taking checkpoints. When a sequence of locking events 
+    /// is propagated, it ensures that data is consistently processed and stored up to that point across all branches 
+    /// of the stream before proceeding.
+    /// </remarks>
     public interface ILockingEvent : IStreamEvent
     {
     }

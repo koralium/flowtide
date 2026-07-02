@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -16,15 +16,18 @@ using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.Memory
 {
-    public unsafe class PreAllocatedMemoryManager : IMemoryAllocator
+    public unsafe class PreAllocatedMemoryManager : IMemoryAllocator, IDisposable
     {
         private IMemoryOwner<byte>? _memoryOwner;
         private int _usageCount;
+        private bool disposedValue;
         private readonly IMemoryAllocator _operatorMemoryManager;
+        private readonly MemoryHandle _pin;
 
-        public PreAllocatedMemoryManager(IMemoryAllocator operatorMemoryManager)
+        public PreAllocatedMemoryManager(IMemoryAllocator operatorMemoryManager, MemoryHandle pin)
         {
             this._operatorMemoryManager = operatorMemoryManager;
+            this._pin = pin;
         }
 
         public void Initialize(IMemoryOwner<byte> memoryOwner, int usageCount)
@@ -36,19 +39,21 @@ namespace FlowtideDotNet.Storage.Memory
 
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
-            var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-            _operatorMemoryManager.RegisterAllocationToMetrics(size);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, size, _operatorMemoryManager);
+            var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment);
+            _operatorMemoryManager.RegisterAllocationToMetrics(allocated.length);
+            return NativeCreatedMemoryOwnerFactory.Get(allocated.ptr, allocated.length, (nuint)alignment, _operatorMemoryManager);
         }
 
         public void Free()
         {
-            Debug.Assert(_memoryOwner != null);
-            var result = Interlocked.Decrement(ref _usageCount);
-            if (result <= 0)
+            if (_memoryOwner == null)
             {
-                _operatorMemoryManager.RegisterFreeToMetrics(_memoryOwner.Memory.Length);
-                _memoryOwner.Dispose();
+                return;
+            }
+            var result = Interlocked.Decrement(ref _usageCount);
+            if (result == 0)
+            {
+                Dispose();
             }
         }
 
@@ -67,31 +72,74 @@ namespace FlowtideDotNet.Storage.Memory
             if (memory is NativeCreatedMemoryOwner native)
             {
                 var previousLength = native.length;
-                var newPtr = NativeMemory.AlignedRealloc(native.ptr, (nuint)size, (nuint)alignment);
-                if (newPtr == native.ptr)
+                var oldPtr = native.ptr;
+                FlowtideAllocatedMemory allocated = FlowtideMemoryAllocation.ReallocAligned(oldPtr, previousLength, size, alignment);
+
+                // If length is same and ptr is same, nothing happened
+                if (allocated.length == previousLength && allocated.ptr == oldPtr)
                 {
-                    var diff = size - previousLength;
+                    return memory;
+                }
+
+                if (allocated.ptr == oldPtr)
+                {
+                    var diff = allocated.length - previousLength;
                     RegisterAllocationToMetrics(diff);
                 }
                 else
                 {
-                    RegisterAllocationToMetrics(size);
+                    RegisterAllocationToMetrics(allocated.length);
                     RegisterFreeToMetrics(previousLength);
                 }
-                native.ptr = newPtr;
-                native.length = size;
+
+                native.ptr = allocated.ptr;
+                native.length = allocated.length;
                 return native;
             }
             else
             {
-                var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-                RegisterAllocationToMetrics(size);
+                var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment);
+                RegisterAllocationToMetrics(allocated.length);
+                RegisterFreeToMetrics(memory.Memory.Length);
                 // Copy the memory
                 var existingMemory = memory.Memory;
-                NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)Math.Min(existingMemory.Length, size));
+                var copyLength = (nuint)Math.Min(existingMemory.Length, allocated.length);
+                fixed (byte* srcPtr = existingMemory.Span)
+                {
+                    NativeMemory.Copy(srcPtr, allocated.ptr, copyLength);
+                }
                 memory.Dispose();
-                return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
+                return NativeCreatedMemoryOwnerFactory.Get(allocated.ptr, allocated.length, (nuint)alignment, this);
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                var memoryOwner = _memoryOwner;
+                _memoryOwner = null;
+                if (memoryOwner != null)
+                {
+                    _pin.Dispose();
+                    _operatorMemoryManager.RegisterFreeToMetrics(memoryOwner.Memory.Length);
+                    memoryOwner.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+
+        ~PreAllocatedMemoryManager()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

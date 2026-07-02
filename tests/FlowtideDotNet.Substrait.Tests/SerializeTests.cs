@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
@@ -471,6 +472,56 @@ namespace FlowtideDotNet.Substrait.Tests
             AssertPlanCanSerializeDeserialize(plan);
         }
 
+        /// <summary>
+        /// AggregateFunction.OutputType (Substrait output_type) must survive a serialize/deserialize round
+        /// trip. It is intentionally excluded from AggregateFunction.Equals, so assert it explicitly rather
+        /// than relying on plan equality. sum0 depends on it to emit a correctly-typed zero for empty groups.
+        /// </summary>
+        [Fact]
+        public void SerializeAggregatePreservesMeasureOutputType()
+        {
+            var plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new AggregateRelation()
+                    {
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct() { Names = ["a"] },
+                            NamedTable = new Type.NamedTable() { Names = ["a"] }
+                        },
+                        Measures = new List<AggregateMeasure>()
+                        {
+                            new AggregateMeasure()
+                            {
+                                Measure = new AggregateFunction()
+                                {
+                                    ExtensionUri = FunctionsArithmetic.Uri,
+                                    ExtensionName = FunctionsArithmetic.Sum0,
+                                    Arguments = new List<Expression>()
+                                    {
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment() { Field = 0 }
+                                        }
+                                    },
+                                    OutputType = new Int64Type()
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var json = SubstraitSerializer.SerializeToJson(plan);
+            var deserialized = SubstraitDeserializer.DeserializeFromJson(json);
+
+            var measure = ((AggregateRelation)deserialized.Relations[0]).Measures![0].Measure;
+            Assert.NotNull(measure.OutputType);
+            Assert.Equal(SubstraitType.Int64, measure.OutputType!.Type);
+        }
+
         [Fact]
         public void TestSerializeBufferRelation()
         {
@@ -511,6 +562,123 @@ namespace FlowtideDotNet.Substrait.Tests
                 create table table1 (a any, b any);
                 insert into out
                 select a, b, named_struct('hello', a, 'world', b) as my_struct FROM table1;
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void TestListType()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                insert into out
+                select a, b, list(a, b) as my_list FROM table1;
+            "
+            );
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void TestMapType()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                insert into out
+                select a, b, map(a, b) as my_list FROM table1;
+            "
+            );
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void LargeIntegerNumber()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO output
+            SELECT 
+                16094592000000000 AS nr
+            FROM table1
+            "); 
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void TimestampType()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO output
+            SELECT 
+                CAST(16094592000000000 AS TIMESTAMP) as nr
+            FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void FetchRelation()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO output
+                SELECT TOP 1 a
+                FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void BroadcastExchange()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                CREATE VIEW dataview WITH(DISTRIBUTED = true) AS
+                SELECT a FROM table1;
+
+                INSERT INTO outputtable
+                SELECT* FROM dataview
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void HexValue()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                INSERT INTO output 
+                SELECT hex FROM 
+                (
+                    VALUES 
+                    (0x544F2041)
+                ) t(hex)
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void InsertOverwrite()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT OVERWRITE outputtable
+                SELECT * FROM table1
             ");
             var plan = sqlPlanBuilder.GetPlan();
             AssertPlanCanSerializeDeserialize(plan);

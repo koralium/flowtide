@@ -26,5 +26,7 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         /// Does an XxHash128 and returns a guid
         /// </summary>
         public const string XxHash128GuidString = "xxhash128_guid_string";
+
+        public const string XxHash64 = "xxhash64";
     }
 }

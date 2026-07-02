@@ -24,7 +24,7 @@ namespace AspireSamples.MongoDbToConsole
             builder.AppendLiteral("mongodb://");
 
             var tcpEndpoint = this.GetEndpoint("tcp");
-            builder.Append($"{tcpEndpoint.Property(EndpointProperty.Host)}:{tcpEndpoint.Property(EndpointProperty.Port)}");
+            builder.Append($"{tcpEndpoint.Host}:{tcpEndpoint.Port.ToString()}");
 
             return builder.Build();
         }

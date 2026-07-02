@@ -6,7 +6,7 @@
   <p align="center">
     Streaming integration engine
   <br />
-    <a href="https://koralium.github.io/flowtide/docs/intro"><strong>Explore the docs »</strong></a>
+    <a href="https://koralium.github.io/flowtide/"><strong>Explore the docs »</strong></a>
   </p>
 </p>
 
@@ -26,6 +26,7 @@
 - **Larger than RAM Support**: Writes data to temporary storage on disk to manage data streams larger than the system's memory.
 - **Materialize Data**: Easily materialize data from one or multiple sources into a destination, enabling architectures such as CQRS.
 - **Vector Clock Watermark System**: Notifies when rows from the source system have been processed by the stream, informing users when the data has been transferred.
+- **OpenLineage Support**: Built-in support for reporting data lineage to [OpenLineage](https://openlineage.io/)-compatible endpoints, enabling visibility into data flow across your pipelines. [Learn more](https://koralium.github.io/flowtide/docs/monitoring/openlineage).
 
 ## UI for easy monitoring
 

@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             internal LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode;
             private int index;
             private bool started;
-            private BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> pageIterator;
+            private readonly BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> pageIterator;
 
             public Enumerator(in BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
             {

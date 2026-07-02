@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Storage.SqlServer
             where T : ICacheObject
         {
             var bytes = await _repo.ReadAsync(key);
-            return stateSerializer.Deserialize(bytes, bytes.Length);
+            return stateSerializer.Deserialize(new ReadOnlySequence<byte>(bytes), bytes.Length);
         }
 
         public Task Write(long key, SerializableObject value)

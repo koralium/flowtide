@@ -15,14 +15,11 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
-using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Core.ColumnStore.Sort;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
-using System.Collections.Generic;
 using System.IO.Hashing;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -72,6 +69,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         int GetByteSize();
 
+        void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes);
+
         void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList);
 
         /// <summary>
@@ -103,5 +102,44 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// Returns the header of a struct (column names).
         /// </summary>
         StructHeader StructHeader { get; }
+
+        void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex);
+
+        void DeleteBatch(ReadOnlySpan<int> targets);
+
+        ColumnSizeInfo GetColumnSizeInfo();
+
+        bool SupportSelfCompareExpression => false;
+
+        void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            // Do nothing
+        }
+
+        CompareColumnState GetColumnState();
+
+        System.Linq.Expressions.Expression CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression,
+            System.Linq.Expressions.Expression xExpression,
+            System.Linq.Expressions.Expression yExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        RadixCapability SupportsRadixSort(int bytesLeft) => RadixCapability.None();
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="items"></param>
+        /// <param name="insertBytePosition"></param>
+        /// <param name="selectionVector">The indices of the items that should be inserted. This is used to only insert a subset of the items, for example when only a subset of the column is sorted.
+        /// If empty, all data should be copied, -1 is a special value meaning the row is null, so 0 should be set on bytes</param>
+        /// <returns>How many bytes where used up</returns>
+        int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
+        {
+            throw new InvalidOperationException(
+                "This column does not support Radix packing. The Query Planner should have halted extraction.");
+        }
     }
 }

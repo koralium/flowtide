@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Entities;
+using FlowtideDotNet.AcceptanceTests.Entities.tpcdi;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
@@ -36,6 +37,13 @@ namespace FlowtideDotNet.AcceptanceTests
         public IReadOnlyList<Company> Companies => flowtideTestStream.Companies;
         public IReadOnlyList<Project> Projects => flowtideTestStream.Projects;
         public IReadOnlyList<ProjectMember> ProjectMembers => flowtideTestStream.ProjectMembers;
+
+        public IReadOnlyList<GraphNode> GraphNodes => flowtideTestStream.GraphNodes;
+
+        public IReadOnlyList<Security> Securities => flowtideTestStream.Securities;
+
+        public IReadOnlyList<DailyMarket> DailyMarkets => flowtideTestStream.DailyMarkets;
+
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 
@@ -65,9 +73,24 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.AssertCurrentDataEqual(data);
         }
 
+        public void EnterDataWriteLock()
+        {
+            flowtideTestStream.EnterDataWriteLock();
+        }
+
+        public void ExitDataWriteLock()
+        {
+            flowtideTestStream.ExitDataWriteLock();
+        }
+
         protected void GenerateData(int count = 1000)
         {
             flowtideTestStream.Generate(count);
+        }
+
+        protected void SetPageSizeBytes(int bytes)
+        {
+            flowtideTestStream.BPlusTreePageSizeBytes = bytes;
         }
 
         protected void GenerateUsers(int count = 1000)
@@ -95,6 +118,11 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.GenerateProjectMembers(count);
         }
 
+        protected void GenerateGraphNodes(int count = 1000)
+        {
+            flowtideTestStream.GenerateGraphNodes(count);
+        }
+
         protected void AddOrUpdateCompany(Company company)
         {
             flowtideTestStream.AddOrUpdateCompany(company);
@@ -103,6 +131,11 @@ namespace FlowtideDotNet.AcceptanceTests
         protected Task WaitForUpdate()
         {
             return flowtideTestStream.WaitForUpdate();
+        }
+
+        public void WaitForUpdateDoesNotRequireDataChange()
+        {
+            flowtideTestStream.WaitForUpdateDoesNotRequireDataChange();
         }
 
         protected Task Crash()
@@ -130,6 +163,11 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.EgressCrashOnCheckpoint(times);
         }
 
+        protected Task Trigger(string triggerName, object? state = default)
+        {
+            return flowtideTestStream.Trigger(triggerName, state);
+        }
+
         public void AddOrUpdateUser(User user)
         {
             flowtideTestStream.AddOrUpdateUser(user);
@@ -138,6 +176,26 @@ namespace FlowtideDotNet.AcceptanceTests
         public void AddOrUpdateOrder(Order order)
         {
             flowtideTestStream.AddOrUpdateOrder(order);
+        }
+
+        public void AddUser(User user)
+        {
+            flowtideTestStream.AddUser(user);
+        }
+
+        public void AddOrder(Order order)
+        {
+            flowtideTestStream.AddOrder(order);
+        }
+
+        public void AddProjects(params Project[] projects)
+        {
+            flowtideTestStream.AddProjects(projects);
+        }
+
+        public void AddProjectMembers(params ProjectMember[] projectMembers)
+        {
+            flowtideTestStream.AddProjectMembers(projectMembers);
         }
 
         public void AddOrUpdateProject(Project project)
@@ -158,6 +216,31 @@ namespace FlowtideDotNet.AcceptanceTests
         public void DeleteOrder(Order order)
         {
             flowtideTestStream.DeleteOrder(order);
+        }
+
+        public void AddOrUpdateGraphNode(Entities.GraphNode graphNode)
+        {
+            flowtideTestStream.AddOrUpdateGraphNode(graphNode);
+        }
+
+        public void DeleteGraphNode(Entities.GraphNode graphNode)
+        {
+            flowtideTestStream.DeleteGraphNode(graphNode);
+        }
+
+        public void GenerateTpcDi(int securityCount, int dailyMarketCount)
+        {
+            flowtideTestStream.GenerateTpcDi(securityCount, dailyMarketCount);
+        }
+
+        public void GenerateDailyMarkets(int dailyMarketDays)
+        {
+            flowtideTestStream.GenerateDailyMarkets(dailyMarketDays);
+        }
+
+        public void SourceImmutable()
+        {
+            flowtideTestStream.SourceImmutable();
         }
 
         public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper, bool usePersistentStorage = false)

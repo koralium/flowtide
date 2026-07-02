@@ -15,7 +15,7 @@ using FlowtideDotNet.Storage;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.FixedPoint
+namespace FlowtideDotNet.Base.Vertices
 {
     /// <summary>
     /// Represents a source for output from the fixed point computation.

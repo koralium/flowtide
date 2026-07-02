@@ -679,18 +679,6 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
             stringBuilder.AppendLine(string.Join(" AND ", pkComparisons));
 
-            List<string> updateNotEquals = new List<string>();
-            for (int i = 1; i < dataTable.Columns.Count; i++)
-            {
-                var col = dataTable.Columns[i];
-                if (primaryKeys.Contains(col.ColumnName))
-                {
-                    continue;
-                }
-
-                updateNotEquals.Add($"src.[{col.ColumnName}] != tgt.[{col.ColumnName}]");
-            }
-
             // Add update statement
             // This statement only updates rows if there is a difference
             // Check that there are columns except primary keys
@@ -1137,7 +1125,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     var val = mapFuncs[i](e);
                     if (val == null)
                     {
-                        val = DBNull.Value;
+                        row[columnNames[i]] = DBNull.Value;
                     }
                     else
                     {

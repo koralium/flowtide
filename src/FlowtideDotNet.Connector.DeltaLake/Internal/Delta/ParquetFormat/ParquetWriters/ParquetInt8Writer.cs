@@ -25,10 +25,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private long? _maxValue;
         private int _nullCount;
 
-        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             if (array is Int8Array arr)
             {
+                int added = 0;
                 for (int i = index; i < (index + count); i++)
                 {
                     if (deleteVector.Contains(globalOffset + i))
@@ -36,6 +37,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                         continue;
                     }
 
+                    added++;
                     var val = arr.GetValue(i);
                     if (!val.HasValue)
                     {
@@ -46,7 +48,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                         WriteValue(val.Value);
                     }
                 }
-                return;
+                return added;
             }
             throw new NotImplementedException();
         }
@@ -92,14 +94,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _builder.Append((sbyte)val);
         }
 
-        public void WriteValue<T>(T value) where T : IDataValue
+        public long WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_builder != null);
             if (value.IsNull)
             {
                 _nullCount++;
                 _builder.AppendNull();
-                return;
+                return 1;
             }
 
             var val = value.AsLong;
@@ -114,6 +116,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             }
 
             _builder.Append((sbyte)val);
+            return 1;
         }
     }
 }

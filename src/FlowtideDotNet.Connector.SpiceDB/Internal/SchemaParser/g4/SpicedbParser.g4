@@ -26,7 +26,8 @@ type_relation:
 relation_type: name=IDENTIFIER ((':' star='*') | ('#' relation=IDENTIFIER))? ('with' caveat_name=IDENTIFIER)?;
 
 userset:
-	userset union='+' userset ('+' userset)*
+    lparen='(' userset rparen=')'
+	| userset union='+' userset ('+' userset)*
 	| userset intersect='&' userset ('&' userset)*
 	| self_relation=IDENTIFIER tuple='->' object_relation=IDENTIFIER
 	| compute=IDENTIFIER;

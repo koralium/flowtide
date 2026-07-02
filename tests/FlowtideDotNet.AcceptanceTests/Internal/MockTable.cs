@@ -35,13 +35,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly object _lock = new object();
         private List<RowOperation> _changes;
         public Type _type;
+        private readonly bool _immutable;
 
-        public MockTable(List<string> columns, List<int> primaryKeyIndices, List<SubstraitBaseType> types, Type type)
+        public MockTable(List<string> columns, List<int> primaryKeyIndices, List<SubstraitBaseType> types, Type type, bool immutable)
         {
             Columns = columns;
             PrimaryKeyIndices = primaryKeyIndices;
             Types = types;
             _type = type;
+            _immutable = immutable;
             _changes = new List<RowOperation>();
         }
 
@@ -49,6 +51,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public List<string> Columns { get; }
         public List<int> PrimaryKeyIndices { get; }
         public List<SubstraitBaseType> Types { get; }
+
+        public bool Immutable => _immutable;
 
         public void AddOrUpdate<T>(IEnumerable<T> rows)
         {

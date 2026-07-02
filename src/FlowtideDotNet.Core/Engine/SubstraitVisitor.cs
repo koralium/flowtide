@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -13,11 +13,6 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Vertices;
-using FlowtideDotNet.Base.Vertices.Egress;
-using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
-using FlowtideDotNet.Base.Vertices.PartitionVertices;
-using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Aggregate;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
@@ -40,6 +35,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.Operators.Exchange;
+using FlowtideDotNet.Core.Operators.Aggregate.Bulk;
 using Microsoft.Extensions.Logging;
 
 namespace FlowtideDotNet.Core.Engine
@@ -258,7 +254,7 @@ namespace FlowtideDotNet.Core.Engine
                 UnaryVertex<StreamEventBatch>? op;
                 if (_useColumnStore)
                 {
-                    op = new ColumnAggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+                    op = new BulkAggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
                 }
                 else
                 {
@@ -310,7 +306,7 @@ namespace FlowtideDotNet.Core.Engine
                     MultipleInputVertex<StreamEventBatch> op;
                     if (_useColumnStore)
                     {
-                        op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                        op = new ColumnBulkMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
                     }
                     else
                     {
@@ -338,7 +334,7 @@ namespace FlowtideDotNet.Core.Engine
                 MultipleInputVertex<StreamEventBatch> op;
                 if (_useColumnStore)
                 {
-                    op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                    op = new ColumnBulkMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
                 }
                 else
                 {
@@ -362,7 +358,7 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
 
-            if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right || joinRelation.Type == JoinType.Outer)
+            if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right || joinRelation.Type == JoinType.Outer || joinRelation.Type == JoinType.LeftMark)
             {
                 //throw new NotSupportedException();
                 var op = new BlockNestedJoinOperator(joinRelation, functionsRegister, DefaultBlockOptions);

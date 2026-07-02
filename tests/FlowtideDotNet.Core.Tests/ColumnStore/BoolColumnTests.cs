@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new BoolValue(true));
 
             using MemoryStream stream = new MemoryStream();
-            Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+            using Utf8JsonWriter writer = new Utf8JsonWriter(stream);
 
             column.WriteToJson(in writer, 0);
             writer.Flush();

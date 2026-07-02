@@ -31,11 +31,9 @@ The trees are sorted based on the keys used in the equality condition.
 | health        | Gauge     | Value 0 or 1, if the operator is healthy or not.      |
 | events        | Counter   | How many events that pass through the operator.       |
 
-:::info
+> [!NOTE]
+> At this point, a merge-join operator will never be unhealthy.
 
-At this point, a merge-join operator will never be unhealthy.
-
-:::
 
 ## Block-Nested Join Operator
 
@@ -51,9 +49,18 @@ It does this to reduce the amount of I/O that has to be made when reading throug
 | backpressure  | Gauge     | Value 0-1 on how much backpressure the operator has.  |
 | health        | Gauge     | Value 0 or 1, if the operator is healthy or not.      |
 
-:::info
+> [!NOTE]
+> At this point, a block-nested join operator will never be unhealthy.
+> If there is a failure against the state, the stream will instead restart.
 
-At this point, a block-nested join operator will never be unhealthy.
-If there is a failure against the state, the stream will instead restart.
 
-:::
+## LeftMark Join
+
+The `LeftMark` join type is used during subquery decorrelation (for `EXISTS`, `NOT EXISTS`, and `IN` subqueries). It joins a left-hand relation with a right-hand relation, and appends a single boolean column (the **mark column**) to the end of the left relation's fields.
+
+* The mark column is `true` if there is at least one matching row in the right-hand relation.
+* The mark column is `false` if there are no matching rows in the right-hand relation.
+
+Unlike standard joins, the `LeftMark` join:
+1. **No Duplication:** It does not duplicate left-hand rows if there are multiple matching right-hand rows.
+2. **Update Suppression:** It emits updates (retractions and insertions) only when the match status transitions between matching (`true`) and non-matching (`false`). Changes in the number of matching right-hand rows (e.g. from 1 to 2) do not trigger downstream updates, suppressing unnecessary stream churn.

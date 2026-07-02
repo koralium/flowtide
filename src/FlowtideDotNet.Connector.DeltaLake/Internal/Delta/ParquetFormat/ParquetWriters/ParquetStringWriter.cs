@@ -25,17 +25,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private byte[]? _maxValue;
         private int _nullCount;
 
-        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             if (array is StringArray arr)
             {
+                int added = 0;
+                long addedBytes = 0;
                 for (int i = index; i < (index + count); i++)
                 {
                     if (deleteVector.Contains(globalOffset + i))
                     {
                         continue;
                     }
-
+                    added++;
                     if (arr.IsNull(i))
                     {
                         WriteNull();
@@ -43,10 +45,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     else
                     {
                         var val = arr.GetBytes(i);
+                        addedBytes += val.Length;
                         WriteValue(val);
                     }
                 }
-                return;
+                return addedBytes + (added * 4);
             }
             throw new NotImplementedException();
         }
@@ -101,17 +104,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _arrayBuilder.Append(value);
         }
 
-        public void WriteValue<T>(T value) where T : IDataValue
+        public long WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_arrayBuilder != null);
             if (value.IsNull)
             {
                 _nullCount++;
                 _arrayBuilder.AppendNull();
+                return 4;
             }
             else
             {
                 WriteValue(value.AsString.Span);
+                return 4 + value.AsString.Span.Length;
             }
         }
     }

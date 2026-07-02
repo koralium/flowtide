@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Operators.Read;
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
         private readonly int[] _extraColumnsIndices;
 
         private Task? _deltaLoadTask;
-        private object _deltaLock = new object();
+        private readonly object _deltaLock = new object();
 
         public TextLineFileDataSource(TextLineInternalOptions fileOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
@@ -319,7 +319,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
                 }
             }
 
-            if (weights.Count >= 0)
+            if (weights.Count > 0)
             {
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
             }

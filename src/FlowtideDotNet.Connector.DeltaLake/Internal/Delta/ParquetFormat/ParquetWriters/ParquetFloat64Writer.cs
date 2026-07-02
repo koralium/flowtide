@@ -25,17 +25,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private double? _maxValue;
         private int _nullCount;
 
-        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             if (array is DoubleArray arr)
             {
+                int added = 0;
                 for (int i = index; i < (index + count); i++)
                 {
                     if (deleteVector.Contains(globalOffset + i))
                     {
                         continue;
                     }
-
+                    added++;
                     var val = arr.GetValue(i);
                     if (!val.HasValue)
                     {
@@ -46,7 +47,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                         WriteValue(val.Value);
                     }
                 }
-                return;
+                return added * 8;
             }
             throw new NotImplementedException();
         }
@@ -92,18 +93,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _builder.Append(doubleValue);
         }
 
-        public void WriteValue<T>(T value) where T : IDataValue
+        public long WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_builder != null);
             if (value.IsNull)
             {
                 _nullCount++;
                 _builder.AppendNull();
-                return;
+                return 8;
             }
-
-            var doubleValue = value.AsDouble;
-            WriteValue(doubleValue);
+            if (value.Type == ArrowTypeId.Double)
+            {
+                var doubleValue = value.AsDouble;
+                WriteValue(doubleValue);
+            }
+            else if (value.Type == ArrowTypeId.Int64)
+            {
+                var longValue = value.AsLong;
+                var doubleValue = Convert.ToDouble(longValue);
+                WriteValue(doubleValue);
+            }
+            else
+            {
+                throw new NotImplementedException($"Unsupported type {value.Type} for ParquetFloat64Writer");
+            }
+            return 8;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -74,6 +74,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             throw new NotImplementedException();
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            for (int i = 0; i < _data.Columns.Count; i++)
+            {
+                var column = _data.Columns[i];
+                column.DeleteBatch(positions);
+            }
+        }
+
         public void Dispose()
         {
             _data.Dispose();
@@ -108,6 +117,51 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             }
             // Insert the value in the last column
             _data.Columns[_groupingKeyLength].InsertAt(index, key.insertValue);
+        }
+
+        public void InsertFrom(ListAggColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
+        {
+            if (sortedLookup.Length == 0)
+            {
+                return;
+            }
+
+            var batchReference = keys[0].batch;
+
+            for (int i = 0; i < _groupingKeyLength; i++)
+            {
+                var column = _data.Columns[i];
+                var sourceColumn = batchReference.Columns[i];
+
+                if (sourceColumn is ColumnWithOffset columnWithOffset)
+                {
+                    var offsets = columnWithOffset.Offsets;
+                    for (int j = 0; j < sortedLookup.Length; j++)
+                    {
+                        var key = keys[sortedLookup[j]];
+                        lookupBuffer[j] = offsets[key.index];
+                    }
+                    ReadOnlySpan<int> lb = lookupBuffer; 
+                    column.InsertFrom(columnWithOffset.InnerColumn, in lb, in targetPositions, ColumnWithOffset.NullValueIndex);
+                }
+                else
+                {
+                    for (int j = 0; j < sortedLookup.Length; j++)
+                    {
+                        var key = keys[sortedLookup[j]];
+                        lookupBuffer[j] = key.index;
+                    }
+                    ReadOnlySpan<int> lb = lookupBuffer; 
+                    column.InsertFrom(sourceColumn, in lb, in targetPositions, ColumnWithOffset.NullValueIndex);
+                }
+            }
+
+            var lastColumn = _data.Columns[_groupingKeyLength];
+            for (int j = sortedLookup.Length - 1; j >= 0; j--)
+            {
+                var key = keys[sortedLookup[j]];
+                lastColumn.InsertAt(targetPositions[j], key.insertValue);
+            }
         }
 
         public void Insert_Internal(int index, ListAggColumnRowReference key)

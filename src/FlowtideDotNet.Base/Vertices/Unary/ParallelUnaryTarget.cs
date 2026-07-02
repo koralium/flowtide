@@ -16,9 +16,9 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.Unary
+namespace FlowtideDotNet.Base.Vertices
 {
-    public class ParallelUnaryTarget<T> : ITargetBlock<T>, IReceivableSourceBlock<T>, IDebuggerDisplay
+    internal class ParallelUnaryTarget<T> : ITargetBlock<T>, IReceivableSourceBlock<T>, IDebuggerDisplay
     {
         /// <summary>The core logic for the buffer block.</summary>
         private readonly SourceCore<T> _source;

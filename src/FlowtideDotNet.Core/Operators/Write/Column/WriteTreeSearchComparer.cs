@@ -29,6 +29,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
         public bool SeekNextPageForValue => true;
 
+        public ColumnKeyStorageContainer? CurrentContainer { get; private set; }
+
         public WriteTreeSearchComparer(List<KeyValuePair<int, ReferenceSegment?>> selfColumns, List<KeyValuePair<int, ReferenceSegment?>> referenceColumns)
         {
             dataValueContainer = new DataValueContainer();
@@ -52,6 +54,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             start = 0;
             end = keyContainer.Count - 1;
             noMatch = false;
+            CurrentContainer = keyContainer;
             for (int i = 0; i < selfColumns.Count; i++)
             {
                 // Get value by container to skip boxing for each value
@@ -78,6 +81,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 }
             }
             return index;
+        }
+
+        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, int startIndex, int length)
+        {
+            throw new NotImplementedException();
         }
     }
 }

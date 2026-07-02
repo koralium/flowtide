@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void AddToEmptyColumn()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
             column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
@@ -40,8 +40,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertIntoEmpty()
         {
-
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
             column.InsertAt(0, new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
@@ -59,7 +58,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void UpdateRow()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
             column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
@@ -76,7 +75,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void AddStructToIntColumn()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
             column.Add(new Int64Value(123));
@@ -94,7 +93,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void AddIntToStructColumn()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
             var structVal = new StructValue(structHeader, new Int64Value(123), new StringValue("hello"));
@@ -115,13 +114,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertStructRangeIntoIntColumn()
         {
-            Column intColumn = Column.Create(GlobalMemoryManager.Instance);
+            using Column intColumn = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
             intColumn.Add(new Int64Value(123));
             var structVal = new StructValue(structHeader, new Int64Value(321), new StringValue("world"));
 
-            Column structColumn = Column.Create(GlobalMemoryManager.Instance);
+            using Column structColumn = Column.Create(GlobalMemoryManager.Instance);
 
             structColumn.Add(structVal);
 
@@ -138,7 +137,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertUnionWithStructIntoUnionColumn()
         {
-            Column unionWithoutStructColumn = Column.Create(GlobalMemoryManager.Instance);
+            using Column unionWithoutStructColumn = Column.Create(GlobalMemoryManager.Instance);
             unionWithoutStructColumn.Add(new Int64Value(123));
             unionWithoutStructColumn.Add(new StringValue("hello"));
 
@@ -146,7 +145,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var structVal = new StructValue(structHeader, new Int64Value(321), new StringValue("world"));
 
-            Column unionWithStructColumn = Column.Create(GlobalMemoryManager.Instance);
+            using Column unionWithStructColumn = Column.Create(GlobalMemoryManager.Instance);
 
             unionWithStructColumn.Add(structVal);
             unionWithStructColumn.Add(new Int64Value(7));
@@ -169,7 +168,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void RemoveAtInStruct()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
             column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
@@ -188,7 +187,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void RemoveRangeInStruct()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
             column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
@@ -207,7 +206,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void SearchBoundaryAscending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
             column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
@@ -236,7 +235,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void SearchBoundaryAscendingWithChild()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("column1", "column2");
             column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
@@ -265,7 +264,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void SearchBoundaryDescending()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
             column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("world")));
@@ -294,7 +293,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void SearchBoundaryDescendingWithChild()
         {
-            Column column = Column.Create(GlobalMemoryManager.Instance);
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("column1", "column2");
             column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("world")));

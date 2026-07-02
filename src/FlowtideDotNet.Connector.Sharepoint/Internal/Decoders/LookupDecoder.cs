@@ -10,67 +10,87 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using Microsoft.Kiota.Abstractions.Serialization;
-using System.Buffers;
 
 namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 {
     internal class LookupDecoder : BaseDecoder
     {
-        private readonly FlexBuffer flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
-
+        private readonly StructHeader _structHeader = StructHeader.Create("LookupId", "LookupValue");
         public override string ColumnType => "Lookup";
 
-        private void HandleUntypedNode(UntypedNode val)
+        private void HandleUntypedNode(UntypedNode val, List<IDataValue> arrayValues)
         {
-            if (val is Microsoft.Kiota.Abstractions.Serialization.UntypedObject untypedObject)
+            if (val is UntypedObject untypedObject)
             {
-                var mapStart = flexBuffer.StartVector();
+                IDataValue[] values = new IDataValue[2];
+                values[0] = NullValue.Instance;
+                values[1] = NullValue.Instance;
                 IDictionary<string, UntypedNode> nodes = untypedObject.GetValue();
                 if (nodes.TryGetValue("LookupId", out var idNode) && idNode is UntypedInteger untypedInteger)
                 {
-                    flexBuffer.AddKey("LookupId");
-                    flexBuffer.Add(untypedInteger.GetValue());
+                    values[0] = new Int64Value(untypedInteger.GetValue());
                 }
                 if (nodes.TryGetValue("LookupValue", out var valueNode) && valueNode is UntypedString untypedString)
                 {
-                    flexBuffer.AddKey("LookupValue");
                     var untypedStringValue = untypedString.GetValue();
 
                     if (untypedStringValue == null)
                     {
-                        flexBuffer.AddNull();
+                        values[1] = NullValue.Instance;
                     }
                     else
                     {
-                        flexBuffer.Add(untypedStringValue);
+                        values[1] = new StringValue(untypedStringValue);
                     }
                 }
-                flexBuffer.SortAndEndMap(mapStart);
+                arrayValues.Add(new StructValue(_structHeader, values));
             }
         }
 
-        protected override ValueTask<FlxValue> DecodeValue(object? item)
+        protected override ValueTask<IDataValue> DecodeDataValue(object? item)
         {
             if (item is string str)
             {
-                return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(str)));
+                return ValueTask.FromResult<IDataValue>(new StringValue(str));
             }
-            if (item is Microsoft.Kiota.Abstractions.Serialization.UntypedArray untypedArray)
+            if (item is UntypedArray untypedArray)
             {
-                flexBuffer.NewObject();
-                var startArr = flexBuffer.StartVector();
+                List<IDataValue> arrayValues = new List<IDataValue>();
                 var values = untypedArray.GetValue();
+
                 foreach (var val in values)
                 {
-                    HandleUntypedNode(val);
+                    HandleUntypedNode(val, arrayValues);
                 }
-                flexBuffer.EndVector(startArr, false, false);
-                var bytes = flexBuffer.Finish();
-                return ValueTask.FromResult(FlxValue.FromBytes(bytes));
+                return ValueTask.FromResult<IDataValue>(new ListValue(arrayValues));
             }
-            return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.Null()));
+            return ValueTask.FromResult<IDataValue>(NullValue.Instance);
+        }
+
+        protected override ValueTask DecodeValue(object? item, Column column)
+        {
+            if (item is string str)
+            {
+                column.Add(new StringValue(str));
+                return ValueTask.CompletedTask;
+            }
+            if (item is UntypedArray untypedArray)
+            {
+                List<IDataValue> arrayValues = new List<IDataValue>();
+                var values = untypedArray.GetValue();
+
+                foreach (var val in values)
+                {
+                    HandleUntypedNode(val, arrayValues);
+                }
+                column.Add(new ListValue(arrayValues));
+                return ValueTask.CompletedTask;
+            }
+            column.Add(NullValue.Instance);
+            return ValueTask.CompletedTask;
         }
     }
 }

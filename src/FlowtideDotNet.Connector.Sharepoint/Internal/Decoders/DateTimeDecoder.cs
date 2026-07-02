@@ -10,7 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 
 namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 {
@@ -18,14 +19,24 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
     {
         public override string ColumnType => "DateTime";
 
-        protected override ValueTask<FlxValue> DecodeValue(object? item)
+        protected override ValueTask DecodeValue(object? item, Column column)
         {
             if (item is DateTime dateTime)
             {
-                var ms = dateTime.Subtract(DateTime.UnixEpoch).Ticks;
-                return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(ms)));
+                column.Add(new TimestampTzValue(dateTime));
+                return ValueTask.CompletedTask;
             }
-            return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.Null()));
+            column.Add(NullValue.Instance);
+            return ValueTask.CompletedTask;
+        }
+
+        protected override ValueTask<IDataValue> DecodeDataValue(object? item)
+        {
+            if (item is DateTime dateTime)
+            {
+                return ValueTask.FromResult<IDataValue>(new TimestampTzValue(dateTime));
+            }
+            return ValueTask.FromResult<IDataValue>(NullValue.Instance);
         }
     }
 }

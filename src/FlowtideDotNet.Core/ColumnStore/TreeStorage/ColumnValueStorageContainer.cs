@@ -63,6 +63,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             }
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _data.Dispose();
@@ -98,6 +103,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
             }
+        }
+
+        public void InsertFrom(ColumnRowReference[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
         }
 
         public void RemoveAt(int index)

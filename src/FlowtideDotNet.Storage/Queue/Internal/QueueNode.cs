@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
 
         public long Id { get; }
 
-        public int RentCount => Thread.VolatileRead(ref _rentCount);
+        public int RentCount => Volatile.Read(ref _rentCount);
 
         public bool RemovedFromCache { get; set; }
 
@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
 
         public bool TryRent()
         {
-            var localRentCount = Thread.VolatileRead(ref _rentCount);
+            var localRentCount = Volatile.Read(ref _rentCount);
             if (localRentCount == 0)
             {
                 return false;

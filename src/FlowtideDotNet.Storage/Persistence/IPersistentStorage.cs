@@ -72,5 +72,12 @@ namespace FlowtideDotNet.Storage.Persistence
         /// <param name="key"></param>
         /// <param name="value"></param>
         ValueTask Write(long key, byte[] value);
+
+        /// <summary>
+        /// Clears the current state in preparation for a restore operation.
+        /// </summary>
+        /// <remarks>Call this method before initiating a restore to ensure that any existing data or
+        /// settings are reset. This helps prevent conflicts or inconsistencies during the restore process.</remarks>
+        void ClearForRestore();
     }
 }

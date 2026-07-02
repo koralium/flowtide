@@ -29,9 +29,6 @@ The *Set Operator* has the following metrics:
 | events                    | Counter   | How many events that the operator outputs.            |
 | events_processed          | Counter   | How many events that the operator processes.          |
 
-:::info
-
-At this point, a set operator will never be unhealthy.
-If there is a failure against the state, the stream will instead restart.
-
-:::
+> [!NOTE]
+> At this point, a set operator will never be unhealthy.
+> If there is a failure against the state, the stream will instead restart.

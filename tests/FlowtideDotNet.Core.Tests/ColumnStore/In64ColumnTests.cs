@@ -267,7 +267,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new Int64Value(3));
 
             using MemoryStream stream = new MemoryStream();
-            Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+            using Utf8JsonWriter writer = new Utf8JsonWriter(stream);
 
             column.WriteToJson(in writer, 0);
             writer.Flush();

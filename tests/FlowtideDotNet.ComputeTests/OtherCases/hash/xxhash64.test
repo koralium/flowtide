@@ -1,0 +1,13 @@
+﻿### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_hash.yaml'
+
+# Basic tests
+xxhash64('2016-12-31T13:30:15'::ts) = -6067517087359942292::i64
+xxhash64(123::i64) = -7945237082106452088::i64
+xxhash64('hello'::str) = 2794345569481354659::i64
+xxhash64(Null::str) = -1642502924627794072::i64
+xxhash64(true::bool) = -8484456787529832656::i64
+
+# Two different inputs
+xxhash64(123::i64, 'hello'::str) = -79122209000784278::i64
+xxhash64(true::bool, Null::str) = -2481656989751486479::i64

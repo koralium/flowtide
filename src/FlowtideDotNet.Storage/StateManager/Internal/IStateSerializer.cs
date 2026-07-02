@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         /// </summary>
         void ClearTemporaryAllocations();
 
-        ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length);
+        ICacheObject DeserializeCacheObject(ReadOnlySequence<byte> bytes, int length);
 
         Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)
             where TMetadata : IStorageMetadata;
@@ -37,6 +37,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
     {
         void Serialize(in IBufferWriter<byte> bufferWriter, in T value);
 
-        T Deserialize(ReadOnlyMemory<byte> bytes, int length);
+        T Deserialize(ReadOnlySequence<byte> bytes, int length);
     }
 }

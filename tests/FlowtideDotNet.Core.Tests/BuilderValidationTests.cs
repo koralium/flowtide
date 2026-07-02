@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.Tests
 
             var e = Assert.Throws<FlowtideNoConnectorFoundException>(() =>
             {
-                var stream = new FlowtideBuilder("test")
+                new FlowtideBuilder("test")
                     .AddPlan(plan)
                     .AddConnectorManager(factory)
                     .Build();
@@ -105,7 +105,7 @@ namespace FlowtideDotNet.Core.Tests
 
             var e = Assert.Throws<FlowtideNoConnectorFoundException>(() =>
             {
-                var stream = new FlowtideBuilder("test")
+                new FlowtideBuilder("test")
                     .AddPlan(plan)
                     .AddConnectorManager(factory)
                     .Build();

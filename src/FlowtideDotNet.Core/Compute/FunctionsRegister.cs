@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.Memory;
@@ -33,6 +34,7 @@ namespace FlowtideDotNet.Core.Compute
         private readonly Dictionary<string, ColumnTableFunctionDefinition> _columnTableFunctions;
         private readonly Dictionary<string, WindowFunctionDefinition> _windowFunctions;
         private readonly FunctionServices _functionServices;
+        private readonly Dictionary<string, IBulkAggregationDefinition> _bulkAggregationFunctions;
 
         public IFunctionServices FunctionServices => _functionServices;
 
@@ -48,6 +50,8 @@ namespace FlowtideDotNet.Core.Compute
             _windowFunctions = new Dictionary<string, WindowFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
 
             _functionServices = new FunctionServices();
+
+            _bulkAggregationFunctions = new Dictionary<string, IBulkAggregationDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 
         public bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition)
@@ -192,7 +196,7 @@ namespace FlowtideDotNet.Core.Compute
         public void RegisterColumnTableFunction(
             string uri,
             string name,
-            Func<TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, TableFunctionResult> mapFunc)
+            Func<TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, ParameterExpression, TableFunctionResult> mapFunc)
         {
             _columnTableFunctions.Add($"{uri}:{name}", new ColumnTableFunctionDefinition(uri, name, mapFunc));
         }
@@ -242,6 +246,16 @@ namespace FlowtideDotNet.Core.Compute
         public void SetCheckNotificationReceiver(ICheckNotificationReceiver checkNotificationReceiver)
         {
             _functionServices.SetCheckNotificationReceiver(checkNotificationReceiver);
+        }
+
+        public void RegisterBulkAggregationFunction(string uri, string name, IBulkAggregationDefinition bulkAggregationDefinition)
+        {
+            _bulkAggregationFunctions.Add($"{uri}:{name}", bulkAggregationDefinition);
+        }
+
+        public bool TryGetBulkAggregationFunction(string uri, string name, [NotNullWhen(true)] out IBulkAggregationDefinition? bulkAggregationDefinition)
+        {
+            return _bulkAggregationFunctions.TryGetValue($"{uri}:{name}", out bulkAggregationDefinition);
         }
     }
 }

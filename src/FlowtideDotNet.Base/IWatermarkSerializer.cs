@@ -19,10 +19,25 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// Provides a mechanism to serialize and deserialize watermark values.
+    /// This is used when transferring watermarks across network boundaries (such as between partitions) 
+    /// or when persisting them.
+    /// </summary>
     public interface IWatermarkSerializer
     {
+        /// <summary>
+        /// Serializes an <see cref="AbstractWatermarkValue"/> into the provided buffer writer.
+        /// </summary>
+        /// <param name="value">The watermark value to serialize.</param>
+        /// <param name="writer">The buffer writer to write the serialized bytes to.</param>
         void Serialize(AbstractWatermarkValue value, IBufferWriter<byte> writer);
 
+        /// <summary>
+        /// Deserializes a sequence of bytes into an <see cref="AbstractWatermarkValue"/>.
+        /// </summary>
+        /// <param name="reader">The sequence reader containing the serialized watermark data.</param>
+        /// <returns>The deserialized <see cref="AbstractWatermarkValue"/>.</returns>
         AbstractWatermarkValue Deserialize(ref SequenceReader<byte> reader);
     }
 }
