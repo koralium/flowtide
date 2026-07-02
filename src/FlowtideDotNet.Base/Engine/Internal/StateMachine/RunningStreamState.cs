@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine

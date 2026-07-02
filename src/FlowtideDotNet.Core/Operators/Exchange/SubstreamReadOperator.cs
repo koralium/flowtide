@@ -12,7 +12,7 @@
 
 using Apache.Arrow.Memory;
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Storage.Queue;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
