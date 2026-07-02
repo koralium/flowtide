@@ -23,7 +23,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private readonly object _lock = new object();
         private HashSet<string>? nonCheckpointedEgresses;
         private HashSet<string>? waitingForDependencies;
-        private HashSet<string>? _preCompletedDependencies;
+        // Initialized at declaration since a dependency done signal from another substream
+        // can arrive before Initialize has run on this state.
+        private readonly HashSet<string> _preCompletedDependencies = new HashSet<string>();
         private Checkpoint? _currentCheckpoint;
         private bool _doingCheckpoint = false;
         private bool _initialCheckpointTaken = false;
@@ -49,7 +51,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override void EgressDependenciesDone(string name)
         {
             Debug.Assert(_context != null, nameof(_context));
-            Debug.Assert(_preCompletedDependencies != null, nameof(_preCompletedDependencies));
             lock (_context._checkpointLock)
             {
                 if (waitingForDependencies == null || !waitingForDependencies.Contains(name))
@@ -279,8 +280,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     // Reset the checkpoint version after the stream is in a running state
                     _context._restoreCheckpointVersion = default;
-
-                    _preCompletedDependencies = new HashSet<string>();
                 }
 
                 if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
@@ -324,14 +323,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task OnFailure()
         {
-            Console.WriteLine("Exception");
             return TransitionTo(StreamStateValue.Failure);
         }
 
         public override Task TriggerCheckpoint(bool isScheduled = false)
         {
             Debug.Assert(_context != null, nameof(_context));
-            Debug.Assert(_preCompletedDependencies != null);
 
             Checkpoint? checkpoint = null;
             lock (_context._checkpointLock)

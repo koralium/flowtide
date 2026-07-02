@@ -29,7 +29,8 @@ namespace FlowtideDotNet.Orleans.Internal
     {
         public object DeepCopy(object input, CopyContext context)
         {
-            throw new NotImplementedException();
+            // Plans are treated as immutable once they are built, the same instance can be shared.
+            return input;
         }
 
         public bool IsSupportedType(Type type)
@@ -46,12 +47,16 @@ namespace FlowtideDotNet.Orleans.Internal
 
         public object ReadValue<TInput>(ref Reader<TInput> reader, Field field)
         {
-            throw new NotImplementedException();
+            // The substrait plan serializer does not yet support the distributed relations,
+            // so plans can currently only be sent between grains in the same silo.
+            throw new NotSupportedException("Serializing plans between silos is not yet supported, substream grains must run in the same silo as the stream grain.");
         }
 
         public void WriteField<TBufferWriter>(ref Writer<TBufferWriter> writer, uint fieldIdDelta, Type expectedType, object value) where TBufferWriter : IBufferWriter<byte>
         {
-            throw new NotImplementedException();
+            // The substrait plan serializer does not yet support the distributed relations,
+            // so plans can currently only be sent between grains in the same silo.
+            throw new NotSupportedException("Serializing plans between silos is not yet supported, substream grains must run in the same silo as the stream grain.");
         }
     }
 }

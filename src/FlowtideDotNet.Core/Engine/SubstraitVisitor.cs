@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Core.Engine
         private readonly TaskScheduler? _taskScheduler;
         private readonly DistributedOptions? _distributedOptions;
         private readonly int _queueSize;
-        private readonly SubstreamCommunicationPointFactory? _communicationPointFactory;
+        private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
 
         private ExecutionDataflowBlockOptions DefaultBlockOptions
         {
@@ -151,6 +151,12 @@ namespace FlowtideDotNet.Core.Engine
             if (distributedOptions != null && distributedOptions.CommunicationHandlerFactory != null)
             {
                 _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory, distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory);
+            }
+            else
+            {
+                // Factory without a communication handler, it throws a descriptive error
+                // if a communication point is requested without distributed options.
+                _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory);
             }
         }
 
@@ -751,15 +757,20 @@ namespace FlowtideDotNet.Core.Engine
                 {
                     return Visit(subStreamRootRelation.Input, state);
                 }
-                return null;
+                // Substream roots that belong to other substreams are not built in this stream
+                return null!;
             }
         }
 
-        public override IStreamVertex VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, ITargetBlock<IStreamEvent> state)
+        public override IStreamVertex VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, ITargetBlock<IStreamEvent>? state)
         {
             if(_distributedOptions == null)
             {
                 throw new InvalidOperationException("PullExchangeReferenceRelation is not supported without DistributedOptions");
+            }
+            if (_distributedOptions.PullBucketExchangeReadFactory == null)
+            {
+                throw new InvalidOperationException("PullExchangeReferenceRelation is not supported without a PullBucketExchangeReadFactory in the DistributedOptions");
             }
             var op = _distributedOptions.PullBucketExchangeReadFactory.GetOperator(pullExchangeReferenceRelation, DefaultBlockOptions);
             var id = _operatorId++;
@@ -777,7 +788,6 @@ namespace FlowtideDotNet.Core.Engine
             {
                 throw new InvalidOperationException("SubstreamExchangeReferenceRelation is not supported without DistributedOptions");
             }
-            
 
             var comPoint = _communicationPointFactory.GetCommunicationPoint(substreamExchangeReferenceRelation.SubStreamName);
             var op = new SubstreamReadOperator(comPoint, substreamExchangeReferenceRelation, DefaultBlockOptions);

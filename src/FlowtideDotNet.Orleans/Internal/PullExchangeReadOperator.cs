@@ -30,6 +30,7 @@ namespace FlowtideDotNet.Orleans.Internal
 {
     internal class PullExchangeReadOperator : IngressVertex<StreamEventBatch>
     {
+        private readonly string streamName;
         private readonly PullExchangeReferenceRelation exchangeReferenceRelation;
         private readonly IGrainFactory grainFactory;
         private ISubStreamGrain? _referenceGrain;
@@ -38,8 +39,9 @@ namespace FlowtideDotNet.Orleans.Internal
         private TaskCompletionSource? _waitForCheckpoint;
         private Task? _fetchTask;
 
-        public PullExchangeReadOperator(PullExchangeReferenceRelation exchangeReferenceRelation, IGrainFactory grainFactory, DataflowBlockOptions options) : base(options)
+        public PullExchangeReadOperator(string streamName, PullExchangeReferenceRelation exchangeReferenceRelation, IGrainFactory grainFactory, DataflowBlockOptions options) : base(options)
         {
+            this.streamName = streamName;
             this.exchangeReferenceRelation = exchangeReferenceRelation;
             this.grainFactory = grainFactory;
         }
@@ -68,14 +70,15 @@ namespace FlowtideDotNet.Orleans.Internal
 
         protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            _referenceGrain = grainFactory.GetGrain<ISubStreamGrain>(exchangeReferenceRelation.SubStreamName);
+            // Substream grains are keyed on "{streamName}_{substreamName}"
+            _referenceGrain = grainFactory.GetGrain<ISubStreamGrain>($"{streamName}_{exchangeReferenceRelation.SubStreamName}");
 
-            
             return Task.CompletedTask;
         }
 
         private async Task FetchData(IngressOutput<StreamEventBatch> output, object? state)
         {
+            Debug.Assert(_referenceGrain != null);
             long nextId = 0;
             while(!output.CancellationToken.IsCancellationRequested)
             {

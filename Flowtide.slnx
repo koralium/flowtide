@@ -7,7 +7,9 @@
     <Project Path="samples/MonitoringAzureMonitor/MonitoringAzureMonitor.csproj" />
     <Project Path="samples/MonitoringPrometheus/MonitoringPrometheus.csproj" />
     <Project Path="samples/OpenFgaSqlServerToMongoDb/OpenFgaSqlServerToMongoDb.csproj" />
-    <Project Path="samples/OrleansSample/OrleansSample.csproj" />
+    <Project Path="samples/OrleansSample/OrleansSample.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
     <Project Path="samples/SqlSampleWithUI/SqlSampleWithUI.csproj" />
     <Project Path="samples/SqlServerToElasticProductionSample/SqlServerToElasticProductionSample.csproj" />
     <Project Path="samples/SqlServerToOpenFga/SqlServerToOpenFga.csproj" />
@@ -31,7 +33,9 @@
     <Project Path="src/FlowtideDotNet.Connector.Starrocks/FlowtideDotNet.Connector.StarRocks.csproj" />
     <Project Path="src/FlowtideDotNet.Core/FlowtideDotNet.Core.csproj" />
     <Project Path="src/FlowtideDotNet.DependencyInjection/FlowtideDotNet.DependencyInjection.csproj" />
-    <Project Path="src/FlowtideDotNet.Orleans/FlowtideDotNet.Orleans.csproj" />
+    <Project Path="src/FlowtideDotNet.Orleans/FlowtideDotNet.Orleans.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
     <Project Path="src/FlowtideDotNet.Storage.Azure/FlowtideDotNet.Storage.AzureBlobs.csproj" />
     <Project Path="src/FlowtideDotNet.Storage.FasterKV/FlowtideDotNet.Storage.FasterKV.csproj" />
     <Project Path="src/FlowtideDotNet.Storage.SqlServer/FlowtideDotNet.Storage.SqlServer.csproj" />

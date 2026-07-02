@@ -471,6 +471,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             CheckForErrors();
         }
 
+        /// <summary>
+        /// When true, stream failures without an exception do not fail the test.
+        /// Used by tests that expect a fail and recover, for example distributed tests
+        /// where substreams recover to a common checkpoint version.
+        /// </summary>
+        public bool AllowFailureAndRecover { get; set; }
+
         private void CheckForErrors()
         {
             if (_notificationReciever != null && _notificationReciever._error)
@@ -479,9 +486,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 {
                     throw _notificationReciever._exception;
                 }
-                else
+                else if (!AllowFailureAndRecover)
                 {
-                    //throw new Exception("Unknown error occured in stream without exception");
+                    throw new Exception("Unknown error occured in stream without exception");
                 }
             }
 

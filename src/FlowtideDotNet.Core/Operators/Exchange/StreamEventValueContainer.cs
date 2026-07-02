@@ -19,7 +19,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     internal class StreamEventValueContainer : IValueContainer<IStreamEvent>
     {
         internal List<IStreamEvent> _streamEvents;
-        private int _lastByteSize = 0;
+        // Incrementally updated byte size, kept up to date on all mutations so GetByteSize
+        // does not need to iterate all events each call.
+        private int _byteSize = 0;
 
         public int Count => _streamEvents.Count;
 
@@ -28,10 +30,24 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _streamEvents = new List<IStreamEvent>();
         }
 
+        private static int GetEventByteSize(IStreamEvent streamEvent)
+        {
+            if (streamEvent is StreamMessage<StreamEventBatch> streamEventBatchMessage)
+            {
+                return streamEventBatchMessage.Data.Data.EventBatchData.GetByteSize() +
+                    streamEventBatchMessage.Data.Data.Count * (sizeof(long) * 2); //Add for weight and iteration count
+            }
+            return 100; //Static size of 100 bytes for all other types
+        }
+
         public void AddRangeFrom(IValueContainer<IStreamEvent> container, int start, int count)
         {
             if (container is StreamEventValueContainer streamEventValueContainer)
             {
+                for (int i = start; i < start + count; i++)
+                {
+                    _byteSize += GetEventByteSize(streamEventValueContainer._streamEvents[i]);
+                }
                 _streamEvents.AddRange(streamEventValueContainer._streamEvents.GetRange(start, count));
                 return;
             }
@@ -64,7 +80,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public int GetByteSize()
         {
-            return _lastByteSize;
+            return _byteSize;
         }
 
         public int GetByteSize(int start, int end)
@@ -73,16 +89,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             for (int i = start; i < end; i++)
             {
-                var e = _streamEvents[i];
-                if (e is StreamMessage<StreamEventBatch> streamEventBatchMessage)
-                {
-                    size += streamEventBatchMessage.Data.Data.EventBatchData.GetByteSize();
-                    size += streamEventBatchMessage.Data.Data.Count * (sizeof(long) * 2); //Add for weight and iteration count
-                }
-                else
-                {
-                    size += 100; //Static size of 100 bytes for all other types
-                }
+                size += GetEventByteSize(_streamEvents[i]);
             }
 
             return size;
@@ -93,32 +100,37 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             throw new NotImplementedException();
         }
 
+        internal void Add(IStreamEvent value)
+        {
+            _byteSize += GetEventByteSize(value);
+            _streamEvents.Add(value);
+        }
+
         public void Insert(int index, IStreamEvent value)
         {
-            if (value is StreamMessage<StreamEventBatch> streamEventBatchMessage)
-            {
-                _lastByteSize += streamEventBatchMessage.Data.Data.EventBatchData.GetByteSize();
-                _lastByteSize += streamEventBatchMessage.Data.Data.Count * (sizeof(long) * 2); //Add for weight and iteration count
-            }
-            else
-            {
-                _lastByteSize += 100; //Static size of 100 bytes for all other types
-            }
+            _byteSize += GetEventByteSize(value);
             _streamEvents.Insert(index, value);
         }
 
         public void RemoveAt(int index)
         {
+            _byteSize -= GetEventByteSize(_streamEvents[index]);
             _streamEvents.RemoveAt(index);
         }
 
         public void RemoveRange(int start, int count)
         {
+            for (int i = start; i < start + count; i++)
+            {
+                _byteSize -= GetEventByteSize(_streamEvents[i]);
+            }
             _streamEvents.RemoveRange(start, count);
         }
 
         public void Update(int index, IStreamEvent value)
         {
+            _byteSize -= GetEventByteSize(_streamEvents[index]);
+            _byteSize += GetEventByteSize(value);
             _streamEvents[index] = value;
         }
 

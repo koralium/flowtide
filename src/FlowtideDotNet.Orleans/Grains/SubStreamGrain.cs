@@ -53,19 +53,34 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task CheckpointDone(CheckpointDoneRequest request)
         {
-            var handler = _orleansCommunicationFactory.handlers[request.Requestor];
+            if (_orleansCommunicationFactory == null ||
+                !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
+            {
+                // The stream has not started yet, there is no pending checkpoint that waits
+                // for this notification so it can be ignored.
+                return;
+            }
             await handler.TargetCheckpointDone(request.CheckpointVersion);
         }
 
         public async Task FailAndRecoverAsync(FailAndRecoverRequest request)
         {
-            var handler = _orleansCommunicationFactory.handlers[request.Requestor];
+            if (_orleansCommunicationFactory == null ||
+                !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
+            {
+                // The stream has not started yet, there is nothing to recover.
+                return;
+            }
             await handler.FailAndRecover(request.RecoveryPoint);
         }
 
         public async Task<FetchDataResponse> FetchDataAsync(FetchDataRequest request)
         {
-            var handler = _orleansCommunicationFactory.handlers[request.Requestor];
+            if (_orleansCommunicationFactory == null ||
+                !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
+            {
+                return new FetchDataResponse(new List<SubstreamEventData>());
+            }
             var data = await handler.GetData(request.TargetIds, request.NumberOfEvents, default);
             return new FetchDataResponse(data);
         }
@@ -81,6 +96,11 @@ namespace FlowtideDotNet.Orleans.Grains
                 FromEventId = request.FromEventId
             };
             await _stream.CallTrigger($"exchange_{request.ExchangeTargetId}", msg);
+            if (msg.OutEvents == null)
+            {
+                // The trigger has not been registered yet, treat the stream as not started
+                return new GetEventsResponse(0, new List<IStreamEvent>(), true);
+            }
             return new GetEventsResponse(msg.LastEventId, msg.OutEvents, false);
         }
 
@@ -96,11 +116,11 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request)
         {
-            if (_orleansCommunicationFactory == null)
+            if (_orleansCommunicationFactory == null ||
+                !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
             {
                 return new InitSubstreamResponse(true, false, request.RestorePoint);
             }
-            var handler = _orleansCommunicationFactory.handlers[request.Requestor];
             var response = await handler.TargetInitializeRequest(request.RestorePoint);
             return new InitSubstreamResponse(false, response.Success, response.RestoreVersion);
         }
@@ -154,7 +174,7 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 flowtideBuilder.SetDistributedOptions(new DistributedOptions(
                     _state.State.SubstreamName,
-                    new PullExchangeReadFactory(_grainFactory),
+                    new PullExchangeReadFactory(_state.State.StreamName, _grainFactory),
                     _orleansCommunicationFactory));
             }
 

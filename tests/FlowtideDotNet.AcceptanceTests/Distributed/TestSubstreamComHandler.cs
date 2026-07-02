@@ -68,6 +68,30 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             return _sendCheckpointDone(checkpointVersion);
         }
 
+        /// <summary>
+        /// Simulates the other substream reporting that it has completed a checkpoint.
+        /// </summary>
+        public Task CallRecieveCheckpointDone(long checkpointVersion)
+        {
+            if (_callRecieveCheckpointDone == null)
+            {
+                throw new InvalidOperationException("Not initialized");
+            }
+            return _callRecieveCheckpointDone(checkpointVersion);
+        }
+
+        /// <summary>
+        /// Simulates the other substream requesting a fail and recover.
+        /// </summary>
+        public Task CallFailAndRecover(long restoreVersion)
+        {
+            if (_callFailAndRecover == null)
+            {
+                throw new InvalidOperationException("Not initialized");
+            }
+            return _callFailAndRecover(restoreVersion);
+        }
+
         public Task SendFailAndRecover(long restoreVersion)
         {
             return _sendFailAndRecover(restoreVersion);

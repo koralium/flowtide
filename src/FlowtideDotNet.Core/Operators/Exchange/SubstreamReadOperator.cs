@@ -34,6 +34,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private ICheckpointEvent? _currentCheckpoint;
         private TaskCompletionSource? _waitForCheckpoint;
         private Task? _fetchTask;
+        private bool _initWatermarksHandled;
         private IFlowtideQueue<IStreamEvent, StreamEventValueContainer>? _queue;
         private SemaphoreSlim _writeLock = new SemaphoreSlim(1);
         private SemaphoreSlim? _waitLock;
@@ -73,6 +74,20 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             await _communicationPoint.InitializeOperator(restoreTime);
+
+            TaskCompletionSource? staleWaitForCheckpoint;
+            lock (_lock)
+            {
+                // Clear checkpoint state from a run that was interrupted by a failure,
+                // otherwise the first checkpoint after a restore could complete a stale wait.
+                _currentCheckpoint = null;
+                staleWaitForCheckpoint = _waitForCheckpoint;
+                _waitForCheckpoint = null;
+                _initWatermarksHandled = false;
+            }
+            // Cancel outside the lock so a stale fetch loop that awaits it can complete and stop.
+            staleWaitForCheckpoint?.TrySetCanceled();
+
             _waitLock = new SemaphoreSlim(0);
             _writeLock.Release();
             _writeLock = new SemaphoreSlim(1);
@@ -167,7 +182,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     {
                         await OnCheckpoint(inStreamCheckpoint.CheckpointTime);
                         await output.SendLockingEvent(checkpointEvent);
-                        _currentCheckpoint = null;
+                        lock (_lock)
+                        {
+                            _currentCheckpoint = null;
+                        }
                     }
                     else
                     {
@@ -176,8 +194,21 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 else if (ev is InitWatermarksEvent initWatermarksEvent)
                 {
-                    // TODO: This might mean that the other stream failed and restarted.
-                    // some check here is needed to check if this stream should fail
+                    bool alreadyHandled;
+                    lock (_lock)
+                    {
+                        alreadyHandled = _initWatermarksHandled;
+                        _initWatermarksHandled = true;
+                    }
+                    if (alreadyHandled)
+                    {
+                        // A second init watermarks event without this stream restarting means
+                        // that the other substream failed and restarted on its own.
+                        // Data continuity can no longer be guaranteed, fail and recover,
+                        // the failure also propagates a fail and recover to the other substream.
+                        await FailAndRollback();
+                        return;
+                    }
                     _watermarkNamesState.Value = initWatermarksEvent.WatermarkNames.ToHashSet();
                     await output.SendLockingEvent(initWatermarksEvent);
                     SetDependenciesDone();
@@ -238,16 +269,29 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 if (taskSource != null)
                 {
                     // Set task completion source outside of lock to hinder any deadlocks
-                    taskSource.SetResult();
+                    taskSource.TrySetResult();
                 }
             }
-            if (_fetchTask == null)
+            lock (_lock)
             {
-                _fetchTask = RunTask(FetchData)
-                    .ContinueWith(t =>
-                    {
-                        _fetchTask = null;
-                    });
+                if (_fetchTask == null)
+                {
+                    Task? newTask = null;
+                    newTask = RunTask(FetchData)
+                        .ContinueWith(t =>
+                        {
+                            lock (_lock)
+                            {
+                                // Only clear if this is still the active fetch task, so the
+                                // continuation of an old task cannot clear a newly started one.
+                                if (_fetchTask == newTask)
+                                {
+                                    _fetchTask = null;
+                                }
+                            }
+                        });
+                    _fetchTask = newTask;
+                }
             }
             if (lockingEvent is InitWatermarksEvent initWatermarksEvent &&
                 _watermarkNamesState != null && 

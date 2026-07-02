@@ -181,7 +181,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private unsafe LockingEventPrepare DeserializeLockingEventPrepare(ref SequenceReader<byte> reader)
         {
-            Console.WriteLine("SERIALIZE LOCK PREPARE");
             if (!reader.TryRead(out byte otherInputsNotInCheckpoint))
             {
                 throw new InvalidOperationException("Failed to read other inputs not in checkpoint");
@@ -241,19 +240,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 switch (type)
                 {
                     case StreamEventBatchType:
-                        container._streamEvents.Add(DeserializeBatch(ref reader));
+                        container.Add(DeserializeBatch(ref reader));
                         break;
                     case WatermarkType:
-                        container._streamEvents.Add(DeserializeWatermark(ref reader));
+                        container.Add(DeserializeWatermark(ref reader));
                         break;
                     case LockingEventPrepareType:
-                        container._streamEvents.Add(DeserializeLockingEventPrepare(ref reader));
+                        container.Add(DeserializeLockingEventPrepare(ref reader));
                         break;
                     case CheckpointType:
-                        container._streamEvents.Add(DeserializeCheckpoint(ref reader));
+                        container.Add(DeserializeCheckpoint(ref reader));
                         break;
                     case InitWatermarksEventType:
-                        container._streamEvents.Add(DeserializeInitWatermark(ref reader));
+                        container.Add(DeserializeInitWatermark(ref reader));
                         break;
                     default:
                         throw new NotImplementedException();
@@ -269,7 +268,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private void SerializeBatch(in IBufferWriter<byte> writer, in StreamMessage<StreamEventBatch> batch)
         {
-            Console.WriteLine("SERIALIZE BATCH");
             var destinationSpan = writer.GetSpan(13);
             destinationSpan[0] = StreamEventBatchType;
             BinaryPrimitives.WriteInt64LittleEndian(destinationSpan.Slice(1), batch.Time);

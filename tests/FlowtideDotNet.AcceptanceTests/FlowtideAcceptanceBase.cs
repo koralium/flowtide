@@ -64,6 +64,12 @@ namespace FlowtideDotNet.AcceptanceTests
 
         protected Task StopStream() => flowtideTestStream.StopStream();
 
+        /// <summary>
+        /// Allows the stream to fail and recover without failing the test.
+        /// Used by tests that expect a fail and recover, such as distributed version mismatch tests.
+        /// </summary>
+        protected void AllowFailureAndRecover() => flowtideTestStream.AllowFailureAndRecover = true;
+
         protected Task StartStream() => flowtideTestStream.StartStream();
 
         public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();

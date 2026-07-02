@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Core.Engine
 {
     public class DistributedOptions
     {
-        public DistributedOptions(string substreamName, IPullBucketExchangeReadFactory pullBucketExchangeReadFactory, ISubstreamCommunicationHandlerFactory communicationHandlerFactory)
+        public DistributedOptions(string substreamName, IPullBucketExchangeReadFactory? pullBucketExchangeReadFactory, ISubstreamCommunicationHandlerFactory communicationHandlerFactory)
         {
             SubstreamName = substreamName;
             PullBucketExchangeReadFactory = pullBucketExchangeReadFactory;
@@ -27,8 +27,9 @@ namespace FlowtideDotNet.Core.Engine
 
         /// <summary>
         /// Factory to create the read operators to read from other streams.
+        /// Only required when the plan contains pull bucket exchange targets.
         /// </summary>
-        public IPullBucketExchangeReadFactory PullBucketExchangeReadFactory { get; } 
+        public IPullBucketExchangeReadFactory? PullBucketExchangeReadFactory { get; }
 
         public ISubstreamCommunicationHandlerFactory CommunicationHandlerFactory { get; }
     }

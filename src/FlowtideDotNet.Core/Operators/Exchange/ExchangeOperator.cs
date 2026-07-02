@@ -37,7 +37,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private Action<string>? _checkpointDone;
         private Action<string>? _dependenciesDone;
         private IObjectState<ExchangeOperatorState>? _state;
-        private bool _containPullBucket = false;
 
         private readonly object _dependenciesDoneLock = new object();
         private int _dependenciesDoneCalled = 0;
@@ -62,11 +61,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             foreach(var target in exchangeRelation.Targets)
             {
-                if (target.Type == ExchangeTargetType.PullBucket)
-                {
-                    _containPullBucket = true;
-                    break;
-                }
                 if (target.Type == ExchangeTargetType.Substream)
                 {
                     _numberOfSubstreams++;
@@ -88,6 +82,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         protected override async Task InitializeOrRestore(long restoreVersion, IStateManagerClient stateManagerClient)
         {
+            lock (_dependenciesDoneLock)
+            {
+                // Reset counts from a checkpoint that was aborted by a failure so an old
+                // checkpoint done message cannot complete dependencies for a new checkpoint.
+                _dependenciesDoneCalled = 0;
+            }
             _state = await stateManagerClient.GetOrCreateObjectStateAsync<ExchangeOperatorState>("state");
             if (_state.Value == null)
             {

@@ -113,24 +113,37 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             SubstreamInitializeResponse? response;
 
-            // Retry multiple times to send the initialize request
-            int tryCount = 0;
-            do
+            try
             {
-                _logger.LogInformation("Sending initialize request to substream {substreamName} with restore point {restorePoint}, try {tryCount}", substreamName, restorePoint, tryCount);
-                response = await _substreamCommunicationHandler.SendInitializeRequest(restorePoint, default);
-                tryCount++;
+                // Retry multiple times to send the initialize request
+                int tryCount = 0;
+                do
+                {
+                    _logger.LogInformation("Sending initialize request to substream {substreamName} with restore point {restorePoint}, try {tryCount}", substreamName, restorePoint, tryCount);
+                    response = await _substreamCommunicationHandler.SendInitializeRequest(restorePoint, default);
+                    tryCount++;
 
-                if (tryCount > 10)
+                    if (tryCount > 10)
+                    {
+                        throw new InvalidOperationException($"Failed to initialize substream {substreamName} after {tryCount} tries.");
+                    }
+                    if (response.NotStarted)
+                    {
+                        _logger.LogInformation("Substream {substreamName} not started yet, retrying in {delay} ms", substreamName, Math.Min(1000 * tryCount, 10000));
+                        await Task.Delay(Math.Min(1000 * tryCount, 10000));
+                    }
+                } while (response.NotStarted);
+            }
+            catch
+            {
+                // The handshake did not complete, allow it to be retried when the stream
+                // initializes again after the failure.
+                lock (_initializeLock)
                 {
-                    throw new InvalidOperationException($"Failed to initialize substream {substreamName} after {tryCount} tries.");
+                    _initializedSent = false;
                 }
-                if (response.NotStarted)
-                {
-                    _logger.LogInformation("Substream {substreamName} not started yet, retrying in {delay} ms", substreamName, Math.Min(1000 * tryCount, 10000));
-                    await Task.Delay(Math.Min(1000 * tryCount, 10000));
-                }
-            } while (response.NotStarted);
+                throw;
+            }
 
             if (!response.Success)
             {
@@ -139,7 +152,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             if (response.RestoreVersion != restorePoint)
             {
-                _logger.LogInformation("Substream {substreamName} initialized with different restore point {response.RestoreVersion} than requested {restorePoint}, recovering.", substreamName, response.RestoreVersion, restorePoint);
+                _logger.LogInformation("Substream {substreamName} initialized with different restore point {targetRestoreVersion} than requested {restorePoint}, recovering.", substreamName, response.RestoreVersion, restorePoint);
                 var minVersion = Math.Min(restorePoint, response.RestoreVersion);
                 await DoFailAndRecover(minVersion);
             }
@@ -200,6 +213,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             List<SubstreamEventData> outputList = new List<SubstreamEventData>();
 
+            if (exchangeTargets.Count == 0)
+            {
+                return outputList;
+            }
+
             bool hasMoreData = true;
             int maxCountPerTarget = Math.Max(1, maxEventCount / exchangeTargets.Count);
             while (!cancellationToken.IsCancellationRequested && hasMoreData && outputList.Count < maxEventCount)
@@ -212,7 +230,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // Fetch target info
                     if (_targetInfos.TryGetValue(exchangeTarget, out var targetInfo))
                     {
-                        // Fetch 10 events from a target before switching to another target to allow fairness
+                        // Fetch a limited number of events from a target before switching to another target to allow fairness
                         hasMoreData |= await targetInfo.Target.ReadData(outputList, maxCountPerTarget);
                     }
                 }
@@ -261,7 +279,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private Task RecieveCheckpointDone(long checkpointVersion)
         {
-            _logger.LogDebug($"Recieved checkpoint done from substream {substreamName} to {_selfSubstreamName} with version {checkpointVersion}, notifying targets and read operators.");
+            _logger.LogDebug("Recieved checkpoint done from substream {substreamName} to {selfSubstreamName} with version {checkpointVersion}, notifying targets and read operators.", substreamName, _selfSubstreamName, checkpointVersion);
             // Call all targets and read operators that the connected substream have completed the checkpoint
             return Task.Factory.StartNew(() =>
             {
@@ -269,7 +287,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     target.Value.Target.TargetSubstreamCheckpointDone(checkpointVersion);
                 }
-                foreach (var readOperator in _readOperators)
+                List<SubstreamReadOperator> readOperators;
+                lock (_readOperators)
+                {
+                    readOperators = new List<SubstreamReadOperator>(_readOperators);
+                }
+                foreach (var readOperator in readOperators)
                 {
                     readOperator.RecieveCheckpointDone(checkpointVersion);
                 }
@@ -287,7 +310,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 _lastSentCheckpointVersion = checkpointVersion;
             }
-            _logger.LogDebug($"Sending checkpoint done to target: {substreamName} from {_selfSubstreamName}");
+            _logger.LogDebug("Sending checkpoint done to target: {substreamName} from {selfSubstreamName}", substreamName, _selfSubstreamName);
             return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion);
         }
 
@@ -295,7 +318,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             lock (_fetchDataLock)
             {
-                _subscribedTargets.Add(exchangeTarget, onData);
+                // Use the indexer so a re-subscribe after a failure replaces the old callback
+                _subscribedTargets[exchangeTarget] = onData;
                 _subscribeTargetsVersion++;
             }
             TryStartFetchTask();
@@ -358,12 +382,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             currentSubscribedTargets[kvp.Key] = kvp.Value;
                         }
                     }
-                }
-                if (subscribedTargets.Count == 0)
-                {
-                    // No targets to fetch data from, wait for a while before checking again
-                    await Task.Delay(100);
-                    continue;
+                    if (subscribedTargets.Count == 0)
+                    {
+                        // No targets to fetch data from, stop the loop.
+                        // A new fetch task is started when a target subscribes again.
+                        _fetchDataTask = null;
+                        return;
+                    }
                 }
 
                 try
@@ -388,8 +413,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 catch (Exception ex)
                 {
-                    // Log the exception and continue
+                    // Log the exception, wait a short while so a persistent error does not busy spin, and continue
                     _logger.LogError(ex, "Error fetching data from substream {substreamName}", substreamName);
+                    await Task.Delay(100);
                 }
             }
         }

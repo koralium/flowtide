@@ -19,16 +19,18 @@ namespace FlowtideDotNet.Orleans.Internal
 {
     internal class PullExchangeReadFactory : IPullBucketExchangeReadFactory
     {
+        private readonly string streamName;
         private readonly IGrainFactory grainFactory;
 
-        public PullExchangeReadFactory(IGrainFactory grainFactory)
+        public PullExchangeReadFactory(string streamName, IGrainFactory grainFactory)
         {
+            this.streamName = streamName;
             this.grainFactory = grainFactory;
         }
 
         public IStreamIngressVertex GetOperator(PullExchangeReferenceRelation pullExchangeReferenceRelation, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new PullExchangeReadOperator(pullExchangeReferenceRelation, grainFactory, dataflowBlockOptions);
+            return new PullExchangeReadOperator(streamName, pullExchangeReferenceRelation, grainFactory, dataflowBlockOptions);
         }
     }
 }
