@@ -27,7 +27,7 @@ builder.Services.AddOrleans(b =>
         c.AddSink(new DummyWriteFactory("*"));
     }, (streamName, substreamName, storage) =>
     {
-        storage.MaxPageCount = 100_000;
+        storage.MaxPageCount = 1_000_000;
         storage.AddTemporaryDevelopmentStorage(b =>
         {
             b.DirectoryPath = $"./temp/{streamName}/{substreamName}";

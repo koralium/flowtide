@@ -106,13 +106,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 try
                 {
                     await _queue.Enqueue(new StreamMessage<StreamEventBatch>(new StreamEventBatch(new EventBatchWeighted(_weights, _iterations, new EventBatchData(_columns))), time));
+                    NewColumns();
                 }
                 finally
                 {
                     _lockSemaphore.Release();
                 }
 
-                NewColumns();
+                
                 await _substreamCommunication.TargetHasData(_exchangeTargetId);
             }
         }
