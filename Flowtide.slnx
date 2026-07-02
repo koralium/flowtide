@@ -7,6 +7,7 @@
     <Project Path="samples/MonitoringAzureMonitor/MonitoringAzureMonitor.csproj" />
     <Project Path="samples/MonitoringPrometheus/MonitoringPrometheus.csproj" />
     <Project Path="samples/OpenFgaSqlServerToMongoDb/OpenFgaSqlServerToMongoDb.csproj" />
+    <Project Path="samples/OrleansSample/OrleansSample.csproj" />
     <Project Path="samples/SqlSampleWithUI/SqlSampleWithUI.csproj" />
     <Project Path="samples/SqlServerToElasticProductionSample/SqlServerToElasticProductionSample.csproj" />
     <Project Path="samples/SqlServerToOpenFga/SqlServerToOpenFga.csproj" />
