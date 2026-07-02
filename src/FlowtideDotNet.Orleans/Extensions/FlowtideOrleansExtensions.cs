@@ -11,31 +11,23 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Orleans.Internal;
-using Orleans.Serialization.Cloning;
-using Orleans.Serialization.Serializers;
-using Orleans.Serialization;
 using FlowtideDotNet.DependencyInjection;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
     public static class FlowtideOrleansExtensions
     {
-        public static IServiceCollection AddFlowtideOrleans(this IServiceCollection services, 
+        public static IServiceCollection AddFlowtideOrleans(this IServiceCollection services,
             Action<IConnectorManager> connectors,
             Action<string, string, IFlowtideStorageBuilder> storageBuilder)
         {
             var connMgr = new ConnectorManager();
             connectors(connMgr);
 
-            services.AddSingleton<OrleansPlanSerializer>();
-            services.AddSingleton<IGeneralizedCodec, OrleansPlanSerializer>();
-            services.AddSingleton<IGeneralizedCopier, OrleansPlanSerializer>();
-            services.AddSingleton<ITypeFilter, OrleansPlanSerializer>();
             services.AddSingleton<IConnectorManager>(connMgr);
 
             services.AddSingleton<Action<string, string, IFlowtideStorageBuilder>>(storageBuilder);
-            
+
             return services;
         }
     }

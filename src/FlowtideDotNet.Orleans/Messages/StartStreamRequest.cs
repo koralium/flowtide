@@ -22,12 +22,20 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class StartStreamRequest
     {
-        public StartStreamRequest(string sqlText)
+        public StartStreamRequest(string sqlText, int? substreamCount = null)
         {
             SqlText = sqlText;
+            SubstreamCount = substreamCount;
         }
 
         [Id(0)]
         public string SqlText { get; }
+
+        /// <summary>
+        /// If set, a plan without substream statements is split automatically into this many
+        /// substreams using the distributed plan modifier.
+        /// </summary>
+        [Id(1)]
+        public int? SubstreamCount { get; }
     }
 }

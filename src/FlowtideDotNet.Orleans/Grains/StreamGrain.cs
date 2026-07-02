@@ -11,15 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Orleans.Interfaces;
+using FlowtideDotNet.Orleans.Internal;
 using FlowtideDotNet.Orleans.Messages;
 using FlowtideDotNet.Substrait.Relations;
-using FlowtideDotNet.Substrait.Sql;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Security;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -36,19 +34,9 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task StartStreamAsync(StartStreamRequest request)
         {
-            var sqlBuilder = new SqlPlanBuilder();
-            foreach(var tableProvider in connectorManager.GetTableProviders())
-            {
-                sqlBuilder.AddTableProvider(tableProvider);
-            }
-            sqlBuilder.Sql(request.SqlText);
-            var plan = sqlBuilder.GetPlan();
-
-            plan = PlanOptimizer.Optimize(plan, new PlanOptimizerSettings()
-            {
-                Parallelization = 1,
-                SimplifyProjection = true
-            });
+            // The plan is only built here to find the substream names, each substream grain
+            // builds its own plan from the SQL text.
+            var plan = OrleansStreamPlanBuilder.BuildPlan(connectorManager, request.SqlText, request.SubstreamCount);
 
             HashSet<string> substreams = new HashSet<string>();
 
@@ -70,7 +58,7 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 var substreamKey = $"{this.GetPrimaryKeyString()}_{substream}";
                 var substreamGrain = GrainFactory.GetGrain<ISubStreamGrain>(substreamKey);
-                startTasks.Add(substreamGrain.StartStreamAsync(new StartStreamMessage(this.GetPrimaryKeyString(), plan, substream)));
+                startTasks.Add(substreamGrain.StartStreamAsync(new StartStreamMessage(this.GetPrimaryKeyString(), request.SqlText, substream, request.SubstreamCount)));
             }
 
             await Task.WhenAll(startTasks);

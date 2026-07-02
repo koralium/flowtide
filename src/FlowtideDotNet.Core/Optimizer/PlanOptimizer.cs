@@ -74,7 +74,13 @@ namespace FlowtideDotNet.Core.Optimizer
 
             EmitPushdown.EmitPushdown.Optimize(plan);
 
-            if (settings.Parallelization > 1)
+            if (settings.DistributedPlanOptions != null)
+            {
+                // Distribution replaces the parallelization step, the operators are
+                // partitioned with one partition per substream instead.
+                plan = DistributedMode.DistributedPlanModifier.ToDistributedPlan(plan, settings.DistributedPlanOptions);
+            }
+            else if (settings.Parallelization > 1)
             {
                 plan = MergeJoinParallelize.ParallelizeOptimizer.Optimize(plan, settings.Parallelization);
             }

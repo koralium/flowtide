@@ -107,9 +107,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     if (block is IStreamIngressVertex streamIngressVertex)
                     {
-                        return streamIngressVertex.CheckpointDone(run._currentCheckpoint.CheckpointTime);
+                        return streamIngressVertex.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
                     }
                     return Task.CompletedTask;
+                });
+                // The egress blocks must also be notified so exchanges send their final
+                // checkpoint done message to other substreams, a substream with a pending
+                // checkpoint would otherwise wait forever for it and never finish stopping.
+                await _context.ForEachEgressBlockAsync((key, block) =>
+                {
+                    return block.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
                 });
             }, this)
                 .Unwrap()

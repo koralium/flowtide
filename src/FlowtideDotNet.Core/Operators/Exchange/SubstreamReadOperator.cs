@@ -35,6 +35,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private TaskCompletionSource? _waitForCheckpoint;
         private Task? _fetchTask;
         private bool _initWatermarksHandled;
+        // Checkpoint done signals from the other substream that arrived before this stream
+        // finished starting, replayed one per checkpoint cycle. Guarded by _lock.
+        private int _pendingCheckpointDoneSignals;
         private IFlowtideQueue<IStreamEvent, StreamEventValueContainer>? _queue;
         private SemaphoreSlim _writeLock = new SemaphoreSlim(1);
         private SemaphoreSlim? _waitLock;
@@ -181,10 +184,24 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     if (inStreamCheckpoint != null)
                     {
                         await OnCheckpoint(inStreamCheckpoint.CheckpointTime);
-                        await output.SendLockingEvent(checkpointEvent);
+                        // Forward this streams own checkpoint event, the checkpoint event from
+                        // the other substream has that streams times and must not flow here.
+                        await output.SendLockingEvent(inStreamCheckpoint);
+                        bool replaySignal = false;
                         lock (_lock)
                         {
                             _currentCheckpoint = null;
+                            if (_pendingCheckpointDoneSignals > 0)
+                            {
+                                _pendingCheckpointDoneSignals--;
+                                replaySignal = true;
+                            }
+                        }
+                        if (replaySignal)
+                        {
+                            // Deliver a checkpoint done signal that arrived before this stream
+                            // finished starting, it completes the dependencies for this cycle.
+                            SetDependenciesDone();
                         }
                     }
                     else
@@ -242,7 +259,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public void RecieveCheckpointDone(long checkpointVersion)
         {
-            SetDependenciesDone();
+            if (!TrySetDependenciesDone())
+            {
+                // The signal arrived before this stream finished starting, the dependencies
+                // done callback is not wired yet. Each checkpoint cycle consumes exactly one
+                // signal from the other substream, so the signal must not be lost, it is
+                // buffered and replayed when a checkpoint runs.
+                lock (_lock)
+                {
+                    _pendingCheckpointDoneSignals++;
+                }
+            }
         }
 
         public Task FailAndRecover(long recoveryPoint)

@@ -138,9 +138,10 @@ namespace FlowtideDotNet.Orleans.Grains
                 return;
             }
 
-            _state.State.Plan = startStreamMessage.Plan;
+            _state.State.SqlText = startStreamMessage.SqlText;
             _state.State.StreamName = startStreamMessage.StreamName;
             _state.State.SubstreamName = startStreamMessage.SubstreamName;
+            _state.State.SubstreamCount = startStreamMessage.SubstreamCount;
             await _state.WriteStateAsync();
 
             StartStream();
@@ -148,7 +149,7 @@ namespace FlowtideDotNet.Orleans.Grains
 
         private void StartStream()
         {
-            if (_stream != null || _state.State.StreamName == null || _state.State.Plan == null || _state.State.SubstreamName == null)
+            if (_stream != null || _state.State.StreamName == null || _state.State.SqlText == null || _state.State.SubstreamName == null)
             {
                 return;
             }
@@ -162,8 +163,12 @@ namespace FlowtideDotNet.Orleans.Grains
 
             var stateManagerOptions = storageBuild.Build(serviceCollection.BuildServiceProvider());
 
+            // Rebuild the plan from the SQL text, the plan builder is deterministic so all
+            // substream grains compute an identical plan.
+            var plan = OrleansStreamPlanBuilder.BuildPlan(_connectorManager, _state.State.SqlText, _state.State.SubstreamCount);
+
             FlowtideBuilder flowtideBuilder = new FlowtideBuilder(this.GetPrimaryKeyString());
-            flowtideBuilder.AddPlan(_state.State.Plan, false);
+            flowtideBuilder.AddPlan(plan, false);
             flowtideBuilder.AddConnectorManager(_connectorManager);
             flowtideBuilder.WithStateOptions(stateManagerOptions);
 

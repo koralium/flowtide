@@ -88,6 +88,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public Task InitializeOperator(long restorePoint)
         {
+            lock (_sendCheckpointLock)
+            {
+                // After a rollback the checkpoint versions start over from the restore point,
+                // reset the sent tracking so checkpoint done messages for the new versions
+                // are not treated as duplicates of the old ones.
+                if (_lastSentCheckpointVersion > restorePoint)
+                {
+                    _lastSentCheckpointVersion = restorePoint;
+                }
+            }
             lock (_initializeLock)
             {
                 if (_initializedSent)
@@ -283,18 +293,28 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             // Call all targets and read operators that the connected substream have completed the checkpoint
             return Task.Factory.StartNew(() =>
             {
-                foreach (var target in _targetInfos)
+                try
                 {
-                    target.Value.Target.TargetSubstreamCheckpointDone(checkpointVersion);
+                    foreach (var target in _targetInfos)
+                    {
+                        target.Value.Target.TargetSubstreamCheckpointDone(checkpointVersion);
+                    }
+                    List<SubstreamReadOperator> readOperators;
+                    lock (_readOperators)
+                    {
+                        readOperators = new List<SubstreamReadOperator>(_readOperators);
+                    }
+                    foreach (var readOperator in readOperators)
+                    {
+                        readOperator.RecieveCheckpointDone(checkpointVersion);
+                    }
                 }
-                List<SubstreamReadOperator> readOperators;
-                lock (_readOperators)
+                catch (Exception ex)
                 {
-                    readOperators = new List<SubstreamReadOperator>(_readOperators);
-                }
-                foreach (var readOperator in readOperators)
-                {
-                    readOperator.RecieveCheckpointDone(checkpointVersion);
+                    // The checkpoint done signal is advisory, an error while handling it must
+                    // not fail the sending substreams checkpoint. The dependencies simply stay
+                    // pending until the next signal arrives.
+                    _logger.LogWarning(ex, "Error handling checkpoint done from substream {substreamName}", substreamName);
                 }
             }, default, TaskCreationOptions.None, TaskScheduler.Default);
         }

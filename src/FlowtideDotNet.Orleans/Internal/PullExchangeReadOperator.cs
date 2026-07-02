@@ -134,7 +134,9 @@ namespace FlowtideDotNet.Orleans.Internal
                         }
                         if (inStreamCheckpoint != null)
                         {
-                            await output.SendLockingEvent(checkpointEvent);
+                            // Forward this streams own checkpoint event, the checkpoint event from
+                            // the other substream has that streams times and must not flow here.
+                            await output.SendLockingEvent(inStreamCheckpoint);
                             _currentCheckpoint = null;
                         }
                         else

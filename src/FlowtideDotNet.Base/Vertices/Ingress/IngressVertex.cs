@@ -350,6 +350,21 @@ namespace FlowtideDotNet.Base.Vertices
         }
 
         /// <summary>
+        /// Marks the dependencies for this vertex as completed if the vertex has been fully initialized.
+        /// Returns false when the dependencies done function has not been set yet, which can happen
+        /// when another substream completes a checkpoint before this stream has finished starting.
+        /// </summary>
+        protected bool TrySetDependenciesDone()
+        {
+            if (_dependenciesDone != null)
+            {
+                _dependenciesDone(Name);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Triggers a locking event asynchronously for the stream.
         /// </summary>
         /// <remarks>

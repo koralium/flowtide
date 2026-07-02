@@ -81,91 +81,20 @@ await app.StartAsync();
 //ON a.val = b.val;
 //"));
 
+// A completely normal query, the substreamCount option splits it automatically into
+// 8 substreams, the join runs with one partition in every substream.
+// Substreams can also be assigned explicitly with SUBSTREAM statements together with
+// distributed views, see the commented example above.
 await streamGrain.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamRequest(@"
 CREATE TABLE table1 (val any);
 CREATE TABLE table2 (val any);
 
-SUBSTREAM sub1;
-
-CREATE VIEW read_table_1_stream1 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 8) AS
-SELECT val FROM table1;
-
-SUBSTREAM sub2;
-
-CREATE VIEW read_table_2_stream2 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 8) AS
-SELECT val FROM table2;
-
-SUBSTREAM sub1;
-
 INSERT INTO output
-SELECT 
-    a.val 
-FROM read_table_1_stream1 a WITH (PARTITION_ID = 0)
-LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 0)
+SELECT
+    a.val
+FROM table1 a
+LEFT JOIN table2 b
 ON a.val = b.val;
-
-SUBSTREAM sub2;
-
-INSERT INTO output
-SELECT 
-    a.val 
-FROM read_table_1_stream1 a WITH (PARTITION_ID = 1)
-LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 1)
-ON a.val = b.val;
-
-SUBSTREAM sub3;
-
-INSERT INTO output
-SELECT 
-    a.val 
-FROM read_table_1_stream1 a WITH (PARTITION_ID = 2)
-LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 2)
-ON a.val = b.val;
-
-SUBSTREAM sub4;
-
-INSERT INTO output
-SELECT 
-    a.val 
-FROM read_table_1_stream1 a WITH (PARTITION_ID = 3)
-LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 3)
-ON a.val = b.val;
-
-SUBSTREAM sub5;
-
-INSERT INTO output
-SELECT 
-    a.val 
-FROM read_table_1_stream1 a WITH (PARTITION_ID = 4)
-LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 4)
-ON a.val = b.val;
-
-SUBSTREAM sub6;
-
-INSERT INTO output
-SELECT 
-    a.val 
-FROM read_table_1_stream1 a WITH (PARTITION_ID = 5)
-LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 5)
-ON a.val = b.val;
-
-SUBSTREAM sub7;
-
-INSERT INTO output
-SELECT 
-    a.val 
-FROM read_table_1_stream1 a WITH (PARTITION_ID = 6)
-LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 6)
-ON a.val = b.val;
-
-SUBSTREAM sub8;
-
-INSERT INTO output
-SELECT 
-    a.val 
-FROM read_table_1_stream1 a WITH (PARTITION_ID = 7)
-LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 7)
-ON a.val = b.val;
-"));
+", substreamCount: 8));
 
 await app.WaitForShutdownAsync();

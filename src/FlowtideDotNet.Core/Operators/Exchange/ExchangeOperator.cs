@@ -41,6 +41,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly object _dependenciesDoneLock = new object();
         private int _dependenciesDoneCalled = 0;
         private int _numberOfSubstreams = 0;
+        // Checkpoint done signals from other substreams that arrived before this stream
+        // finished starting, replayed one per checkpoint cycle. Guarded by _dependenciesDoneLock.
+        private int _pendingDependenciesDoneSignals = 0;
 
 
         public ExchangeOperator(ExchangeRelation exchangeRelation, SubstreamCommunicationPointFactory communicationPointFactory, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(CalculateTargetNumber(exchangeRelation), executionDataflowBlockOptions)
@@ -152,20 +155,43 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _dependenciesDone(Name);
             }
+            else if (lockingEvent is ICheckpointEvent)
+            {
+                // Replay checkpoint done signals that arrived before this stream finished
+                // starting, one per checkpoint cycle so no signal is lost.
+                bool replaySignal = false;
+                lock (_dependenciesDoneLock)
+                {
+                    if (_pendingDependenciesDoneSignals > 0)
+                    {
+                        _pendingDependenciesDoneSignals--;
+                        replaySignal = true;
+                    }
+                }
+                if (replaySignal)
+                {
+                    TargetCallDependenciesDone();
+                }
+            }
         }
 
         private void TargetCallDependenciesDone()
         {
-            if (_dependenciesDone == null)
-            {
-                throw new InvalidOperationException("No dependencies done function set.");
-            }
-
             lock (_dependenciesDoneLock)
             {
+                if (_dependenciesDone == null)
+                {
+                    // The signal arrived before this stream finished starting, the dependencies
+                    // done callback is not wired yet. Each checkpoint cycle consumes the signals
+                    // from the other substreams, so the signal must not be lost, it is buffered
+                    // and replayed when a checkpoint runs.
+                    _pendingDependenciesDoneSignals++;
+                    return;
+                }
+
                 _dependenciesDoneCalled++;
 
-                if (_dependenciesDoneCalled == _numberOfSubstreams)
+                if (_dependenciesDoneCalled >= _numberOfSubstreams)
                 {
                     _dependenciesDone(Name);
                     _dependenciesDoneCalled = 0;
