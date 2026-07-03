@@ -63,6 +63,7 @@
     <Project Path="tests/FlowtideDotNet.Connector.Starrocks.Tests/FlowtideDotNet.Connector.StarRocks.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Core.Tests/FlowtideDotNet.Core.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Nexmark/FlowtideDotNet.Nexmark.csproj" Id="35ff6b4f-8a30-4ba2-a5ee-1e4df3800f73" />
+    <Project Path="tests/FlowtideDotNet.Orleans.Tests/FlowtideDotNet.Orleans.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.SqlServer.Tests/FlowtideDotNet.SqlServer.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Storage.SqlServer.Tests/FlowtideDotNet.Storage.SqlServer.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Storage.Tests/FlowtideDotNet.Storage.Tests.csproj" />

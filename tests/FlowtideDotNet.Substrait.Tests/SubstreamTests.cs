@@ -96,10 +96,11 @@ namespace FlowtideDotNet.Substrait.Tests
                             },
                             Targets = new List<ExchangeTarget>()
                             {
-                                new PullBucketExchangeTarget()
+                                new SubstreamExchangeTarget()
                                 {
                                     ExchangeTargetId = 0,
-                                    PartitionIds = new List<int>()
+                                    PartitionIds = new List<int>(),
+                                    SubstreamName = "stream2"
                                 }
                             }
                         }
@@ -134,7 +135,7 @@ namespace FlowtideDotNet.Substrait.Tests
                                         }
                                     }
                                 },
-                                Input = new PullExchangeReferenceRelation()
+                                Input = new SubstreamExchangeReferenceRelation()
                                 {
                                     ExchangeTargetId = 0,
                                     SubStreamName = "stream1",
@@ -355,10 +356,11 @@ namespace FlowtideDotNet.Substrait.Tests
                                 {
                                     PartitionIds = new List<int>()
                                 },
-                                new PullBucketExchangeTarget()
+                                new SubstreamExchangeTarget()
                                 {
                                     ExchangeTargetId = 0,
-                                    PartitionIds = new List<int>()
+                                    PartitionIds = new List<int>(),
+                                    SubstreamName = "stream2"
                                 }
                             }
                         }
@@ -432,7 +434,7 @@ namespace FlowtideDotNet.Substrait.Tests
                                         }
                                     }
                                 },
-                                Input = new PullExchangeReferenceRelation()
+                                Input = new SubstreamExchangeReferenceRelation()
                                 {
                                     ExchangeTargetId = 0,
                                     SubStreamName = "stream1",
@@ -541,13 +543,14 @@ namespace FlowtideDotNet.Substrait.Tests
                                         0
                                     }
                                 },
-                                new PullBucketExchangeTarget()
+                                new SubstreamExchangeTarget()
                                 {
                                     ExchangeTargetId = 0,
                                     PartitionIds = new List<int>()
                                     {
                                         1
-                                    }
+                                    },
+                                    SubstreamName = "stream2"
                                 }
                             }
                         }
@@ -621,7 +624,7 @@ namespace FlowtideDotNet.Substrait.Tests
                                         }
                                     }
                                 },
-                                Input = new PullExchangeReferenceRelation()
+                                Input = new SubstreamExchangeReferenceRelation()
                                 {
                                     ExchangeTargetId = 0,
                                     SubStreamName = "stream1",
@@ -796,13 +799,14 @@ namespace FlowtideDotNet.Substrait.Tests
                                         0
                                     }
                                 },
-                                new PullBucketExchangeTarget()
+                                new SubstreamExchangeTarget()
                                 {
                                     ExchangeTargetId = 1,
                                     PartitionIds = new List<int>()
                                     {
                                         1
-                                    }
+                                    },
+                                    SubstreamName = "stream2"
                                 }
                             }
                         }
@@ -866,13 +870,14 @@ namespace FlowtideDotNet.Substrait.Tests
                             },
                             Targets = new List<ExchangeTarget>()
                             {
-                                new PullBucketExchangeTarget()
+                                new SubstreamExchangeTarget()
                                 {
                                     PartitionIds = new List<int>()
                                     {
                                         0
                                     },
-                                    ExchangeTargetId = 0
+                                    ExchangeTargetId = 0,
+                                    SubstreamName = "stream1"
                                 },
                                 new StandardOutputExchangeTarget()
                                 {
@@ -944,7 +949,7 @@ namespace FlowtideDotNet.Substrait.Tests
                                         RelationId = 0,
                                         TargetId = 0
                                     },
-                                    Right = new PullExchangeReferenceRelation()
+                                    Right = new SubstreamExchangeReferenceRelation()
                                     {
                                         ExchangeTargetId = 0,
                                         ReferenceOutputLength = 1,
@@ -1009,7 +1014,7 @@ namespace FlowtideDotNet.Substrait.Tests
                                         ExtensionName = "equal",
                                         ExtensionUri = "/functions_comparison.yaml"
                                     },
-                                    Left = new PullExchangeReferenceRelation()
+                                    Left = new SubstreamExchangeReferenceRelation()
                                     {
                                         ReferenceOutputLength = 1,
                                         SubStreamName = "stream1",

@@ -884,12 +884,40 @@ namespace FlowtideDotNet.Substrait
                 List<ExchangeTarget> targets = new List<ExchangeTarget>();
                 foreach(var target in exchange.Targets)
                 {
-                    if (target.Uri == "standard_output")
+                    if (target.TargetTypeCase == Protobuf.ExchangeRel.Types.ExchangeTarget.TargetTypeOneofCase.Uri &&
+                        target.Uri == "standard_output")
                     {
                         targets.Add(new StandardOutputExchangeTarget()
                         {
                             PartitionIds = target.PartitionId.ToList()
                         });
+                    }
+                    else if (target.TargetTypeCase == Protobuf.ExchangeRel.Types.ExchangeTarget.TargetTypeOneofCase.Extended)
+                    {
+                        var typeName = Google.Protobuf.WellKnownTypes.Any.GetTypeName(target.Extended.TypeUrl);
+                        if (typeName == CustomProtobuf.SubstreamExchangeTarget.Descriptor.FullName)
+                        {
+                            var substreamTarget = target.Extended.Unpack<CustomProtobuf.SubstreamExchangeTarget>();
+                            targets.Add(new SubstreamExchangeTarget()
+                            {
+                                PartitionIds = target.PartitionId.ToList(),
+                                SubstreamName = substreamTarget.SubstreamName,
+                                ExchangeTargetId = substreamTarget.ExchangeTargetId
+                            });
+                        }
+                        else if (typeName == CustomProtobuf.PullBucketExchangeTarget.Descriptor.FullName)
+                        {
+                            var pullBucketTarget = target.Extended.Unpack<CustomProtobuf.PullBucketExchangeTarget>();
+                            targets.Add(new PullBucketExchangeTarget()
+                            {
+                                PartitionIds = target.PartitionId.ToList(),
+                                ExchangeTargetId = pullBucketTarget.ExchangeTargetId
+                            });
+                        }
+                        else
+                        {
+                            throw new NotImplementedException($"Exchange target extension '{typeName}' is not supported by deserialization");
+                        }
                     }
                     else
                     {
@@ -1172,6 +1200,28 @@ namespace FlowtideDotNet.Substrait
                         ReferenceOutputLength = _relations[standardOutputRef.RelationId].OutputLength
                     };
                     return rel;
+                }
+                else if (typeName == CustomProtobuf.SubstreamExchangeReferenceRelation.Descriptor.FullName)
+                {
+                    var substreamRef = extensionLeaf.Detail.Unpack<CustomProtobuf.SubstreamExchangeReferenceRelation>();
+                    return new SubstreamExchangeReferenceRelation()
+                    {
+                        SubStreamName = substreamRef.SubstreamName,
+                        ExchangeTargetId = substreamRef.ExchangeTargetId,
+                        ReferenceOutputLength = substreamRef.OutputLength,
+                        Emit = GetEmit(extensionLeaf.Common)
+                    };
+                }
+                else if (typeName == CustomProtobuf.PullExchangeReferenceRelation.Descriptor.FullName)
+                {
+                    var pullRef = extensionLeaf.Detail.Unpack<CustomProtobuf.PullExchangeReferenceRelation>();
+                    return new PullExchangeReferenceRelation()
+                    {
+                        SubStreamName = pullRef.SubstreamName,
+                        ExchangeTargetId = pullRef.ExchangeTargetId,
+                        ReferenceOutputLength = pullRef.OutputLength,
+                        Emit = GetEmit(extensionLeaf.Common)
+                    };
                 }
 
                 throw new NotImplementedException();

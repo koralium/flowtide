@@ -1308,14 +1308,26 @@ namespace FlowtideDotNet.Substrait
                     {
                         protoTarget.PartitionId.Add(partitionId);
                     }
-                    switch (target.Type)
+                    switch (target)
                     {
-                        case ExchangeTargetType.StandardOutput:
+                        case StandardOutputExchangeTarget:
                             protoTarget.Uri = "standard_output";
                             break;
-                        case ExchangeTargetType.PullBucket:
-                            // TODO: Fix later on when distributed mode is on.
-                            throw new NotImplementedException();
+                        case SubstreamExchangeTarget substreamTarget:
+                            protoTarget.Extended = Google.Protobuf.WellKnownTypes.Any.Pack(new CustomProtobuf.SubstreamExchangeTarget()
+                            {
+                                SubstreamName = substreamTarget.SubstreamName,
+                                ExchangeTargetId = substreamTarget.ExchangeTargetId
+                            });
+                            break;
+                        case PullBucketExchangeTarget pullBucketTarget:
+                            protoTarget.Extended = Google.Protobuf.WellKnownTypes.Any.Pack(new CustomProtobuf.PullBucketExchangeTarget()
+                            {
+                                ExchangeTargetId = pullBucketTarget.ExchangeTargetId
+                            });
+                            break;
+                        default:
+                            throw new NotImplementedException($"Exchange target type '{target.Type}' is not supported by serialization");
                     }
                     output.Targets.Add(protoTarget);
                 }
@@ -1345,7 +1357,61 @@ namespace FlowtideDotNet.Substrait
                 {
                     Detail = Google.Protobuf.WellKnownTypes.Any.Pack(target)
                 };
-                
+
+
+                return new Rel()
+                {
+                    ExtensionLeaf = rel
+                };
+            }
+
+            public override Rel VisitSubstreamExchangeReferenceRelation(SubstreamExchangeReferenceRelation substreamExchangeReferenceRelation, SerializerVisitorState state)
+            {
+                var reference = new CustomProtobuf.SubstreamExchangeReferenceRelation()
+                {
+                    SubstreamName = substreamExchangeReferenceRelation.SubStreamName,
+                    ExchangeTargetId = substreamExchangeReferenceRelation.ExchangeTargetId,
+                    OutputLength = substreamExchangeReferenceRelation.ReferenceOutputLength
+                };
+
+                var rel = new Protobuf.ExtensionLeafRel()
+                {
+                    Detail = Google.Protobuf.WellKnownTypes.Any.Pack(reference)
+                };
+
+                if (substreamExchangeReferenceRelation.EmitSet)
+                {
+                    rel.Common = new Protobuf.RelCommon();
+                    rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    rel.Common.Emit.OutputMapping.AddRange(substreamExchangeReferenceRelation.Emit);
+                }
+
+                return new Rel()
+                {
+                    ExtensionLeaf = rel
+                };
+            }
+
+            public override Rel VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, SerializerVisitorState state)
+            {
+                var reference = new CustomProtobuf.PullExchangeReferenceRelation()
+                {
+                    SubstreamName = pullExchangeReferenceRelation.SubStreamName,
+                    ExchangeTargetId = pullExchangeReferenceRelation.ExchangeTargetId,
+                    OutputLength = pullExchangeReferenceRelation.ReferenceOutputLength
+                };
+
+                var rel = new Protobuf.ExtensionLeafRel()
+                {
+                    Detail = Google.Protobuf.WellKnownTypes.Any.Pack(reference)
+                };
+
+                if (pullExchangeReferenceRelation.EmitSet)
+                {
+                    rel.Common = new Protobuf.RelCommon();
+                    rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    rel.Common.Emit.OutputMapping.AddRange(pullExchangeReferenceRelation.Emit);
+                }
 
                 return new Rel()
                 {
@@ -1629,8 +1695,16 @@ namespace FlowtideDotNet.Substrait
                 CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                 CustomProtobuf.IterationRelation.Descriptor,
                 CustomProtobuf.NormalizationRelation.Descriptor,
+                CustomProtobuf.BufferRelation.Descriptor,
                 CustomProtobuf.TopNRelation.Descriptor,
-                CustomProtobuf.StandardOutputTargetReferenceRelation.Descriptor);
+                CustomProtobuf.TableFunction.Descriptor,
+                CustomProtobuf.TableFunctionRelation.Descriptor,
+                CustomProtobuf.SubStreamRootRelation.Descriptor,
+                CustomProtobuf.StandardOutputTargetReferenceRelation.Descriptor,
+                CustomProtobuf.SubstreamExchangeReferenceRelation.Descriptor,
+                CustomProtobuf.PullExchangeReferenceRelation.Descriptor,
+                CustomProtobuf.SubstreamExchangeTarget.Descriptor,
+                CustomProtobuf.PullBucketExchangeTarget.Descriptor);
             var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                 .WithIndentation();
             var formatter = new Google.Protobuf.JsonFormatter(settings);

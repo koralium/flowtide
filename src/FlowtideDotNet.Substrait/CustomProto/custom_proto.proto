@@ -75,9 +75,40 @@ message PullExchangeReferenceRelation {
 
     // Identifier that is used when fetching data from the other stream.
     int32 exchange_target_id = 2;
+
+    // Number of output columns.
+    int32 output_length = 3;
+}
+
+message SubstreamExchangeReferenceRelation {
+    // Name of the substream to fetch data from.
+    string substream_name = 1;
+
+    // Identifier that is used when fetching data from the other substream.
+    int32 exchange_target_id = 2;
+
+    // Number of output columns.
+    int32 output_length = 3;
 }
 
 message StandardOutputTargetReferenceRelation {
     int32 relation_id = 1;
     int32 target_id = 2;
+}
+
+// Packed into the extended field of an exchange target when the target sends its data to
+// another substream.
+message SubstreamExchangeTarget {
+    // Name of the substream the data is sent to.
+    string substream_name = 1;
+
+    // Identifier used by the other substream when it fetches the data.
+    int32 exchange_target_id = 2;
+}
+
+// Packed into the extended field of an exchange target when the target stores its data in a
+// bucket that is pulled by the target.
+message PullBucketExchangeTarget {
+    // Identifier used when the data is pulled.
+    int32 exchange_target_id = 1;
 }

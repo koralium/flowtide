@@ -23,9 +23,18 @@ using Orleans.Runtime;
 using FlowtideDotNet.DependencyInjection.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using FlowtideDotNet.Storage;
+using Orleans.Concurrency;
 
 namespace FlowtideDotNet.Orleans.Grains
 {
+    // Reentrant so the grain can serve fetch, checkpoint done and initialize calls from the
+    // other substreams while it is itself running a long operation such as the coordinated
+    // stop, which drains data by fetching the other substreams stop barrier. A non reentrant
+    // grain would deadlock, the stopping grain would wait for the other substream to serve a
+    // fetch while it is busy waiting for this grain to serve one. The message handlers only
+    // read fields set once at startup and delegate to the stream and handlers, which do their
+    // own synchronization, so interleaving is safe.
+    [Reentrant]
     [KeepAlive]
     public class SubStreamGrain : Grain, ISubStreamGrain
     {
@@ -112,6 +121,9 @@ namespace FlowtideDotNet.Orleans.Grains
                 _stream = null;
                 await stream.StopAsync();
             }
+            // Clear the grain state so a reactivation does not start the stream again, the
+            // stream state itself stays in its storage and a new start resumes from it.
+            await _state.ClearStateAsync();
             DeactivateOnIdle();
         }
 

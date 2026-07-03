@@ -1,0 +1,129 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Orleans.Interfaces;
+using FlowtideDotNet.Orleans.Messages;
+
+namespace FlowtideDotNet.Orleans.Tests
+{
+    /// <summary>
+    /// End to end tests that run distributed streams as Orleans grains through the test
+    /// cluster, the substreams exchange data with grain calls.
+    /// </summary>
+    public class OrleansStreamTests : IClassFixture<OrleansClusterFixture>
+    {
+        private readonly OrleansClusterFixture _fixture;
+
+        public OrleansStreamTests(OrleansClusterFixture fixture)
+        {
+            _fixture = fixture;
+        }
+
+        private static string JoinSql(string prefix)
+        {
+            return $@"
+            CREATE TABLE {prefix}_left (val any);
+            CREATE TABLE {prefix}_right (val any);
+
+            INSERT INTO {prefix}_out
+            SELECT l.val FROM {prefix}_left l
+            INNER JOIN {prefix}_right r ON l.val = r.val;
+            ";
+        }
+
+        private static async Task WaitForResult(string sink, List<long> expected, TimeSpan timeout)
+        {
+            var deadline = DateTime.UtcNow.Add(timeout);
+            List<long>? result = null;
+            while (DateTime.UtcNow < deadline)
+            {
+                result = TestTableStore.GetResult(sink);
+                if (result != null && result.SequenceEqual(expected))
+                {
+                    return;
+                }
+                await Task.Delay(100);
+            }
+            Assert.Fail($"Sink {sink} did not produce the expected result, expected [{string.Join(",", expected)}], got [{string.Join(",", result ?? new List<long>())}]");
+        }
+
+        /// <summary>
+        /// A normal join query split automatically into two substreams runs as grains,
+        /// produces the correct result including data added after the start, and stops
+        /// gracefully through the stream grain.
+        /// </summary>
+        [Fact]
+        public async Task AutoDistributedStreamProducesResultsAndStops()
+        {
+            var sql = JoinSql("s1");
+            TestTableStore.AddRows("s1_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("s1_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_test_1");
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            var expected = Enumerable.Range(0, 50).Select(x => (long)x).ToList();
+            await WaitForResult("s1_out", expected, TimeSpan.FromSeconds(60));
+
+            // Data added while the stream is running must flow through the substreams
+            TestTableStore.AddRows("s1_right", Enumerable.Range(50, 25).Select(x => (long)x));
+            expected = Enumerable.Range(0, 75).Select(x => (long)x).ToList();
+            await WaitForResult("s1_out", expected, TimeSpan.FromSeconds(60));
+
+            // The coordinated stop drains the substreams and completes
+            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping the stream through the stream grain timed out");
+            await stopTask;
+        }
+
+        /// <summary>
+        /// Two different streams with two substreams each run in the same cluster without
+        /// interfering, stopping one stream does not disturb the other.
+        /// </summary>
+        [Fact]
+        public async Task TwoStreamsRunIndependently()
+        {
+            var sqlA = JoinSql("iso_a");
+            var sqlB = JoinSql("iso_b");
+            TestTableStore.AddRows("iso_a_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("iso_a_right", Enumerable.Range(0, 40).Select(x => (long)x));
+            TestTableStore.AddRows("iso_b_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("iso_b_right", Enumerable.Range(0, 60).Select(x => (long)x));
+
+            var streamA = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_iso_a");
+            var streamB = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_iso_b");
+            await streamA.StartStreamAsync(new StartStreamRequest(sqlA, substreamCount: 2));
+            await streamB.StartStreamAsync(new StartStreamRequest(sqlB, substreamCount: 2));
+
+            var expectedA = Enumerable.Range(0, 40).Select(x => (long)x).ToList();
+            var expectedB = Enumerable.Range(0, 60).Select(x => (long)x).ToList();
+            await WaitForResult("iso_a_out", expectedA, TimeSpan.FromSeconds(60));
+            await WaitForResult("iso_b_out", expectedB, TimeSpan.FromSeconds(60));
+
+            // Stop stream A, stream B must keep processing new data afterwards
+            var stopTask = streamA.StopStreamAsync(new StopStreamRequest(sqlA, substreamCount: 2));
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping stream A timed out");
+            await stopTask;
+
+            TestTableStore.AddRows("iso_b_right", Enumerable.Range(60, 20).Select(x => (long)x));
+            expectedB = Enumerable.Range(0, 80).Select(x => (long)x).ToList();
+            await WaitForResult("iso_b_out", expectedB, TimeSpan.FromSeconds(60));
+
+            // Stream A's result stays at its final state from before the stop
+            var resultA = TestTableStore.GetResult("iso_a_out");
+            Assert.NotNull(resultA);
+            Assert.Equal(expectedA, resultA);
+        }
+    }
+}
