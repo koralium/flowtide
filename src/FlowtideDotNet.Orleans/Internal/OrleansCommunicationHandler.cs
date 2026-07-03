@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.Operators.Exchange;
 using FlowtideDotNet.Orleans.Interfaces;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,6 +32,8 @@ namespace FlowtideDotNet.Orleans.Internal
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
         private Func<long, Task>? _callRecieveCheckpointDone;
+        private Func<int, IMemoryAllocator>? _receiveAllocatorResolver;
+        private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
 
         public OrleansCommunicationHandler(string streamName, string substreamName, string selfName, IGrainFactory grainFactory)
         {
@@ -41,10 +44,40 @@ namespace FlowtideDotNet.Orleans.Internal
             _streamGrain = _grainFactory.GetGrain<ISubStreamGrain>($"{streamName}_{_substreamName}");
         }
 
+        public void SetReceiveAllocatorResolver(Func<int, IMemoryAllocator> allocatorResolver)
+        {
+            _receiveAllocatorResolver = allocatorResolver;
+        }
+
         public async Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
         {
             var response = await _streamGrain.FetchDataAsync(new Messages.FetchDataRequest(selfName, targetIds, numberOfEvents));
-            return response.Data;
+            // As the consumer of the response this side owns the pooled payload buffer and
+            // must dispose it, on a cross silo call it holds segments the codec rented when
+            // the response arrived, on a same silo call it is the instance the serving grain
+            // created. Nothing deserialized references the buffer, so it is safe to release
+            // as soon as deserialization is done.
+            var payload = response.Events;
+            try
+            {
+                if (payload.Length == 0)
+                {
+                    return Array.Empty<SubstreamEventData>();
+                }
+                if (_receiveAllocatorResolver == null)
+                {
+                    throw new InvalidOperationException("Not initialized");
+                }
+                // The events arrive as an opaque buffer that can cross silo boundaries, the
+                // deserialized events carry a receiver claim like a local fetch hands out.
+                // Batch memory is allocated from the read operators that consume the
+                // targets, so the received data is accounted on them.
+                return _wireSerializer.Deserialize(payload.AsReadOnlySequence(), _receiveAllocatorResolver);
+            }
+            finally
+            {
+                payload.Dispose();
+            }
         }
 
         public void Initialize(

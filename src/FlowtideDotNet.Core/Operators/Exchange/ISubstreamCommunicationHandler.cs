@@ -10,10 +10,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
+
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
     public interface ISubstreamCommunicationHandler
     {
+        /// <summary>
+        /// Provides the memory allocators used when received events are deserialized, keyed
+        /// by exchange target id. The allocator belongs to the read operator that consumes
+        /// the target, so received data is accounted on that operator. Handlers that pass
+        /// events by reference, for example inside a single process, can ignore this.
+        /// </summary>
+        void SetReceiveAllocatorResolver(Func<int, IMemoryAllocator> allocatorResolver)
+        {
+        }
+
         /// <summary>
         /// Registers the local callbacks that are invoked when the other substream sends
         /// requests to this substream.

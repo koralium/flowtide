@@ -16,18 +16,13 @@ using Orleans.TestingHost;
 
 namespace FlowtideDotNet.Orleans.Tests
 {
-    /// <summary>
-    /// Test cluster with a single silo, matching a localhost clustered deployment where the
-    /// grains share a process and grain messages pass by reference. Multiple silos would
-    /// require serialization support for the exchanged stream events.
-    /// </summary>
-    public sealed class OrleansClusterFixture : IDisposable
+    public abstract class OrleansClusterFixtureBase : IDisposable
     {
         public TestCluster Cluster { get; }
 
-        public OrleansClusterFixture()
+        protected OrleansClusterFixtureBase(short siloCount)
         {
-            var builder = new TestClusterBuilder(1);
+            var builder = new TestClusterBuilder(siloCount);
             builder.AddSiloBuilderConfigurator<TestSiloConfigurator>();
             Cluster = builder.Build();
             Cluster.Deploy();
@@ -56,6 +51,29 @@ namespace FlowtideDotNet.Orleans.Tests
                     });
                 });
             }
+        }
+    }
+
+    /// <summary>
+    /// Test cluster with a single silo, grain messages between grains on the same silo pass
+    /// by reference.
+    /// </summary>
+    public sealed class OrleansClusterFixture : OrleansClusterFixtureBase
+    {
+        public OrleansClusterFixture() : base(1)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Test cluster with two silos, grains are placed across the silos and messages between
+    /// them are serialized over the network, which exercises the substream event wire format
+    /// the same way a multi node deployment does.
+    /// </summary>
+    public sealed class OrleansTwoSiloClusterFixture : OrleansClusterFixtureBase
+    {
+        public OrleansTwoSiloClusterFixture() : base(2)
+        {
         }
     }
 }

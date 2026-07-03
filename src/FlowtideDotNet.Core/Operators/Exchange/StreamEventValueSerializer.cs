@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return new StreamEventValueContainer(memoryAllocator);
         }
 
-        private StreamMessage<StreamEventBatch> DeserializeBatch(ref SequenceReader<byte> reader)
+        private static StreamMessage<StreamEventBatch> DeserializeBatch(ref SequenceReader<byte> reader, IMemoryAllocator memoryAllocator, EventBatchBPlusTreeSerializer batchSerializer)
         {
             if (!reader.TryReadLittleEndian(out long time))
             {
@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             reader.Advance(iterationsLength);
 
-            var eventBatchData = _eventBatchBPlusTreeSerializer.Deserialize(ref reader, memoryAllocator);
+            var eventBatchData = batchSerializer.Deserialize(ref reader, memoryAllocator);
 
             var weights = new PrimitiveList<int>(weightsMemory, eventBatchData.Count, memoryAllocator);
             var iterations = new PrimitiveList<uint>(iterationsMemory, eventBatchData.Count, memoryAllocator);
@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return new StreamMessage<StreamEventBatch>(new StreamEventBatch(new ColumnStore.EventBatchWeighted(weights, iterations, eventBatchData.EventBatch)), time);
         }
 
-        private InitWatermarksEvent DeserializeInitWatermark(ref SequenceReader<byte> reader)
+        private static InitWatermarksEvent DeserializeInitWatermark(ref SequenceReader<byte> reader)
         {
             if (!reader.TryReadLittleEndian(out int watermarkCount))
             {
@@ -121,7 +121,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return new InitWatermarksEvent(watermarkNames);
         }
 
-        private Checkpoint DeserializeCheckpoint(ref SequenceReader<byte> reader, bool isStopCheckpoint)
+        private static Checkpoint DeserializeCheckpoint(ref SequenceReader<byte> reader, bool isStopCheckpoint)
         {
             if (!reader.TryReadLittleEndian(out long checkpointTime))
             {
@@ -140,7 +140,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return new Checkpoint(checkpointTime, newTime);
         }
 
-        private Watermark DeserializeWatermark(ref SequenceReader<byte> reader)
+        private static Watermark DeserializeWatermark(ref SequenceReader<byte> reader)
         {
             if (!reader.TryReadLittleEndian(out long startTimeUnix))
             {
@@ -193,7 +193,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return new Watermark(watermarksBuilder.ToImmutableDictionary(), startTime, sourceOperatorId);
         }
 
-        private unsafe LockingEventPrepare DeserializeLockingEventPrepare(ref SequenceReader<byte> reader)
+        private static unsafe LockingEventPrepare DeserializeLockingEventPrepare(ref SequenceReader<byte> reader)
         {
             if (!reader.TryRead(out byte otherInputsNotInCheckpoint))
             {
@@ -249,36 +249,41 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             for (int i = 0; i < count; i++)
             {
-                if (!reader.TryRead(out byte type))
-                {
-                    throw new InvalidOperationException("Failed to read type");
-                }
-
-                switch (type)
-                {
-                    case StreamEventBatchType:
-                        container.Add(DeserializeBatch(ref reader));
-                        break;
-                    case WatermarkType:
-                        container.Add(DeserializeWatermark(ref reader));
-                        break;
-                    case LockingEventPrepareType:
-                        container.Add(DeserializeLockingEventPrepare(ref reader));
-                        break;
-                    case CheckpointType:
-                        container.Add(DeserializeCheckpoint(ref reader, isStopCheckpoint: false));
-                        break;
-                    case StopCheckpointType:
-                        container.Add(DeserializeCheckpoint(ref reader, isStopCheckpoint: true));
-                        break;
-                    case InitWatermarksEventType:
-                        container.Add(DeserializeInitWatermark(ref reader));
-                        break;
-                    default:
-                        throw new NotImplementedException();
-                }
+                container.Add(DeserializeEvent(ref reader, memoryAllocator, _eventBatchBPlusTreeSerializer));
             }
             return container;
+        }
+
+        /// <summary>
+        /// Deserializes a single event, the format is self delimiting so events can be read
+        /// in sequence. Also used for the wire format when events are sent between substreams
+        /// on different nodes, batch memory is allocated from the given allocator so received
+        /// data is accounted on the operator that consumes it.
+        /// </summary>
+        internal static IStreamEvent DeserializeEvent(ref SequenceReader<byte> reader, IMemoryAllocator memoryAllocator, EventBatchBPlusTreeSerializer batchSerializer)
+        {
+            if (!reader.TryRead(out byte type))
+            {
+                throw new InvalidOperationException("Failed to read type");
+            }
+
+            switch (type)
+            {
+                case StreamEventBatchType:
+                    return DeserializeBatch(ref reader, memoryAllocator, batchSerializer);
+                case WatermarkType:
+                    return DeserializeWatermark(ref reader);
+                case LockingEventPrepareType:
+                    return DeserializeLockingEventPrepare(ref reader);
+                case CheckpointType:
+                    return DeserializeCheckpoint(ref reader, isStopCheckpoint: false);
+                case StopCheckpointType:
+                    return DeserializeCheckpoint(ref reader, isStopCheckpoint: true);
+                case InitWatermarksEventType:
+                    return DeserializeInitWatermark(ref reader);
+                default:
+                    throw new NotImplementedException();
+            }
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -286,7 +291,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return Task.CompletedTask;
         }
 
-        private void SerializeBatch(in IBufferWriter<byte> writer, in StreamMessage<StreamEventBatch> batch)
+        private static void SerializeBatch(in IBufferWriter<byte> writer, in StreamMessage<StreamEventBatch> batch, EventBatchBPlusTreeSerializer batchSerializer)
         {
             var destinationSpan = writer.GetSpan(13);
             destinationSpan[0] = StreamEventBatchType;
@@ -306,10 +311,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             writer.Write(batch.Data.Data.Iterations.SlicedMemory.Span);
 
-            _eventBatchBPlusTreeSerializer.Serialize(writer, batch.Data.Data.EventBatchData, batch.Data.Data.Count);
+            batchSerializer.Serialize(writer, batch.Data.Data.EventBatchData, batch.Data.Data.Count);
         }
 
-        private void SerializeWatermark(in IBufferWriter<byte> writer, Watermark watermark)
+        private static void SerializeWatermark(in IBufferWriter<byte> writer, Watermark watermark)
         {
             var sourceOperatorSpan = (watermark.SourceOperatorId ?? "").AsSpan();
             var sourceLength = Encoding.UTF8.GetByteCount(sourceOperatorSpan);
@@ -341,7 +346,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        private void SerializeLockingEventPrepare(in IBufferWriter<byte> writer, LockingEventPrepare lockingEventPrepare)
+        private static void SerializeLockingEventPrepare(in IBufferWriter<byte> writer, LockingEventPrepare lockingEventPrepare)
         {
             var destinationSpan = writer.GetSpan(19);
             destinationSpan[0] = LockingEventPrepareType;
@@ -353,7 +358,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             SerializeLockingEvent(writer, lockingEventPrepare.LockingEvent);
         }
 
-        private void SerializeCheckpoint(in IBufferWriter<byte> writer, Checkpoint checkpoint)
+        private static void SerializeCheckpoint(in IBufferWriter<byte> writer, Checkpoint checkpoint)
         {
             var destinationSpan = writer.GetSpan(17);
             destinationSpan[0] = checkpoint is StopStreamCheckpoint ? StopCheckpointType : CheckpointType;
@@ -362,7 +367,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             writer.Advance(17);
         }
 
-        private void SerializeInitWatermarksEvent(in IBufferWriter<byte> writer, InitWatermarksEvent initWatermarksEvent)
+        private static void SerializeInitWatermarksEvent(in IBufferWriter<byte> writer, InitWatermarksEvent initWatermarksEvent)
         {
             var destinationSpan = writer.GetSpan(5);
             destinationSpan[0] = InitWatermarksEventType;
@@ -380,7 +385,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        private void SerializeLockingEvent(in IBufferWriter<byte> writer, ILockingEvent lockingEvent)
+        private static void SerializeLockingEvent(in IBufferWriter<byte> writer, ILockingEvent lockingEvent)
         {
             if (lockingEvent is InitWatermarksEvent initWatermarksEvent)
             {
@@ -402,28 +407,36 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             writer.Advance(4);
             for (int i = 0; i < values._streamEvents.Count; i++)
             {
-                var val = values._streamEvents[i];
+                SerializeEvent(writer, values._streamEvents[i], _eventBatchBPlusTreeSerializer);
+            }
+        }
 
-                if (val is StreamMessage<StreamEventBatch> batch)
-                {
-                    SerializeBatch(writer, batch);
-                }
-                else if (val is Watermark watermark)
-                {
-                    SerializeWatermark(writer, watermark);
-                }
-                else if (val is LockingEventPrepare lockingEventPrepare)
-                {
-                    SerializeLockingEventPrepare(writer, lockingEventPrepare);
-                }
-                else if (val is ILockingEvent lockingEvent)
-                {
-                    SerializeLockingEvent(writer, lockingEvent);
-                }
-                else
-                {
-                    throw new NotImplementedException();
-                }
+        /// <summary>
+        /// Serializes a single event with a leading type byte. Also used for the wire format
+        /// when events are sent between substreams on different nodes. Serialization does not
+        /// allocate from a memory allocator, it only writes into the buffer writer.
+        /// </summary>
+        internal static void SerializeEvent(in IBufferWriter<byte> writer, IStreamEvent val, EventBatchBPlusTreeSerializer batchSerializer)
+        {
+            if (val is StreamMessage<StreamEventBatch> batch)
+            {
+                SerializeBatch(writer, batch, batchSerializer);
+            }
+            else if (val is Watermark watermark)
+            {
+                SerializeWatermark(writer, watermark);
+            }
+            else if (val is LockingEventPrepare lockingEventPrepare)
+            {
+                SerializeLockingEventPrepare(writer, lockingEventPrepare);
+            }
+            else if (val is ILockingEvent lockingEvent)
+            {
+                SerializeLockingEvent(writer, lockingEvent);
+            }
+            else
+            {
+                throw new NotImplementedException();
             }
         }
     }

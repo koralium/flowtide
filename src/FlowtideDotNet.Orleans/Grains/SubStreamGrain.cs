@@ -24,6 +24,8 @@ using FlowtideDotNet.DependencyInjection.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using FlowtideDotNet.Storage;
 using Orleans.Concurrency;
+using Orleans.Serialization.Buffers;
+using System.Buffers;
 
 namespace FlowtideDotNet.Orleans.Grains
 {
@@ -45,6 +47,8 @@ namespace FlowtideDotNet.Orleans.Grains
         private readonly Action<string, string, IFlowtideStorageBuilder> _storageBuilder;
         private Base.Engine.DataflowStream? _stream;
         private OrleansCommunicationFactory? _orleansCommunicationFactory;
+        // Only used to serialize outgoing events, serializing never allocates batch memory.
+        private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
 
         public SubStreamGrain(
             [PersistentState("substream", "stream_metadata")] IPersistentState<SubStreamGrainStorage> state,
@@ -88,10 +92,32 @@ namespace FlowtideDotNet.Orleans.Grains
             if (_orleansCommunicationFactory == null ||
                 !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
             {
-                return new FetchDataResponse(new List<SubstreamEventData>());
+                return new FetchDataResponse(default);
             }
             var data = await handler.GetData(request.TargetIds, request.NumberOfEvents, default);
-            return new FetchDataResponse(data);
+            // The events are serialized into pooled segments so they can cross silo
+            // boundaries without allocating byte arrays, the local copies end their journey
+            // here and their receiver claims are released, the other substream works with
+            // the deserialized copies. PooledBuffer is a mutable struct, writing through a
+            // single boxed IBufferWriter reference keeps one authoritative instance which is
+            // read back out when the response is created. The response consumer owns the
+            // buffer from here on, see FetchDataResponse.Events.
+            var buffer = new PooledBuffer();
+            IBufferWriter<byte> bufferWriter = buffer;
+            try
+            {
+                _wireSerializer.Serialize(data, bufferWriter);
+            }
+            catch
+            {
+                ((PooledBuffer)bufferWriter).Dispose();
+                throw;
+            }
+            finally
+            {
+                SubstreamEventWireSerializer.ReturnEvents(data);
+            }
+            return new FetchDataResponse((PooledBuffer)bufferWriter);
         }
 
         public async Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request)

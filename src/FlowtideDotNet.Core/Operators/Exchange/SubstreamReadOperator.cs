@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
@@ -77,6 +78,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public override string DisplayName => "Substream Read";
 
         public int ExchangeTargetId => _exchangeReferenceRelation.ExchangeTargetId;
+
+        /// <summary>
+        /// Allocator that received events for this operators exchange target are deserialized
+        /// with, so data fetched over the network is accounted on the operator that consumes
+        /// it. Only valid after the operator has been initialized, which is guaranteed since
+        /// events are only fetched for subscribed targets.
+        /// </summary>
+        internal IMemoryAllocator ReceiveMemoryAllocator => MemoryAllocator;
 
         /// <summary>
         /// The stream may first finish stopping when this operator has consumed the other

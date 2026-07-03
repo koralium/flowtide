@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Storage.Memory;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
@@ -72,6 +73,28 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             this.substreamName = substreamName;
             this._substreamCommunicationHandler = substreamCommunicationHandler;
             substreamCommunicationHandler.Initialize(GetData, DoFailAndRecover, OnTargetSubstreamInitialize, RecieveCheckpointDone);
+            substreamCommunicationHandler.SetReceiveAllocatorResolver(GetReceiveAllocator);
+        }
+
+        /// <summary>
+        /// Returns the allocator that received events for the given exchange target are
+        /// deserialized with, the allocator of the read operator that consumes the target.
+        /// Events are only fetched for subscribed targets, so the operator has been
+        /// initialized when this is called.
+        /// </summary>
+        private IMemoryAllocator GetReceiveAllocator(int exchangeTargetId)
+        {
+            lock (_readOperators)
+            {
+                foreach (var readOperator in _readOperators)
+                {
+                    if (readOperator.ExchangeTargetId == exchangeTargetId)
+                    {
+                        return readOperator.ReceiveMemoryAllocator;
+                    }
+                }
+            }
+            throw new InvalidOperationException($"No read operator registered for exchange target {exchangeTargetId}");
         }
 
         public void RegisterReadOperator(SubstreamReadOperator substreamReadOperator)
