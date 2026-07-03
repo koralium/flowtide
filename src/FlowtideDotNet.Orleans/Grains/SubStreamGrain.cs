@@ -104,6 +104,17 @@ namespace FlowtideDotNet.Orleans.Grains
             return new GetEventsResponse(msg.LastEventId, msg.OutEvents, false);
         }
 
+        public async Task StopStreamAsync()
+        {
+            if (_stream != null)
+            {
+                var stream = _stream;
+                _stream = null;
+                await stream.StopAsync();
+            }
+            DeactivateOnIdle();
+        }
+
         public override async Task OnDeactivateAsync(DeactivationReason reason, CancellationToken cancellationToken)
         {
             if (_stream != null)

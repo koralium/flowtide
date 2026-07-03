@@ -61,10 +61,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private int _pendingCheckpointDoneSignals;
         private Channel<IStreamEvent>? _channel;
         private IObjectState<SubstreamReadState>? _state;
-        // Set when the other substreams stop barrier has been consumed, the stream may first
-        // finish stopping after it so all events the other substream sent are part of this
-        // streams final state.
+        // Set when the other substreams stop barrier has been consumed. The stream may first
+        // finish stopping when the consumption is part of a committed checkpoint, so all
+        // events the other substream sent are part of this streams final state.
         private volatile bool _peerStopConsumed;
+        private volatile bool _peerStopConsumedCommitted;
 
         public SubstreamReadOperator(SubstreamCommunicationPoint communicationPoint, SubstreamExchangeReferenceRelation referenceRelation, DataflowBlockOptions options) : base(options)
         {
@@ -79,10 +80,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         /// <summary>
         /// The stream may first finish stopping when this operator has consumed the other
-        /// substreams stop barrier, everything the other substream sent before it is then
-        /// part of this streams final state.
+        /// substreams stop barrier and committed a checkpoint that covers it, everything the
+        /// other substream sent before it is then part of this streams final state. The
+        /// stopping stream runs stop checkpoint cycles until this is true, with a drain
+        /// timeout that protects against another substream that never stops.
         /// </summary>
-        public override bool ReadyToStop => _peerStopConsumed;
+        public override bool ReadyToStop => _peerStopConsumedCommitted;
 
         public override Task Compact()
         {
@@ -120,6 +123,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _waitForCheckpoint = null;
                 _initWatermarksHandled = false;
                 _peerStopConsumed = false;
+                _peerStopConsumedCommitted = false;
             }
             // Cancel outside the lock so a stale fetch loop that awaits it can complete and stop.
             staleWaitForCheckpoint?.TrySetCanceled();
@@ -152,6 +156,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             Debug.Assert(_state != null);
             await _state.Commit();
+            // Everything processed before this commit is covered by the checkpoint, including
+            // the other substreams stop barrier when it has been consumed.
+            _peerStopConsumedCommitted = _peerStopConsumed;
         }
 
         protected override Task SendInitial(IngressOutput<StreamEventBatch> output)
@@ -189,14 +196,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // checkpoint, keep the loop running for further stop cycles.
                         continue;
                     }
-                    if (!_peerStopConsumed)
-                    {
-                        // The other substreams stop barrier has not been consumed yet, keep
-                        // draining, the stop checkpoint pairs with the next event from the
-                        // other substream instead so its data is part of the final state.
-                        continue;
-                    }
-                    Logger.LogDebug("Substream read {name} forwards the stop checkpoint, the other substreams stop barrier has been consumed", Name);
+                    // The stop checkpoint is forwarded without waiting for an event from the
+                    // other substream, it may never send one when it has crashed. Events that
+                    // arrive after this cycle are covered by the next stop checkpoint cycle,
+                    // the stopping stream runs cycles until the other substreams stop barrier
+                    // has been consumed and committed.
+                    Logger.LogDebug("Substream read {name} forwards the stop checkpoint", Name);
                     await OnCheckpoint(stopCheckpoint.CheckpointTime);
                     await output.SendLockingEvent(stopCheckpoint);
                     bool replayStopSignal = false;

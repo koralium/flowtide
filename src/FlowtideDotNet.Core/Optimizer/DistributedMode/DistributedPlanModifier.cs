@@ -86,6 +86,14 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 var operatorsVisitor = new DistributeOperatorsVisitor(plan, options.SubstreamCount, nameGenerator, GetNextExchangeTargetId(plan));
                 for (int i = 0; i < sinkRoots.Count; i++)
                 {
+                    if (ContainsIteration(plan.Relations[sinkRoots[i]]))
+                    {
+                        // Iterations, for example recursive queries, run a loop that must stay
+                        // inside one stream, the checkpoint prepare events that coordinate the
+                        // loop do not flow between substreams. The sink tree stays whole in
+                        // its assigned substream instead of being partitioned.
+                        continue;
+                    }
                     plan.Relations[sinkRoots[i]] = operatorsVisitor.VisitSinkRoot(plan.Relations[sinkRoots[i]], i);
                 }
 
@@ -298,6 +306,34 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
             }
             visiting.Remove(relationId);
             return null;
+        }
+
+        private static bool ContainsIteration(Relation relation)
+        {
+            var visitor = new IterationDetector();
+            visitor.Visit(relation, null!);
+            return visitor.FoundIteration;
+        }
+
+        /// <summary>
+        /// Detects iteration relations inside a relation tree, they run loops that cannot be
+        /// split across substreams.
+        /// </summary>
+        private sealed class IterationDetector : OptimizerBaseVisitor
+        {
+            public bool FoundIteration { get; private set; }
+
+            public override Relation VisitIterationRelation(IterationRelation iterationRelation, object state)
+            {
+                FoundIteration = true;
+                return iterationRelation;
+            }
+
+            public override Relation VisitIterationReferenceReadRelation(IterationReferenceReadRelation iterationReferenceReadRelation, object state)
+            {
+                FoundIteration = true;
+                return iterationReferenceReadRelation;
+            }
         }
 
         private static int GetNextExchangeTargetId(Plan plan)

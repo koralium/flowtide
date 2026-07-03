@@ -557,7 +557,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             Func<string, (int CrashCount, int CheckpointsBeforeCrash)>? crashConfig = null,
             Func<string, Storage.StateManager.StateManagerOptions>? stateOptions = null,
             bool debugLog = false,
-            Func<string, Microsoft.Extensions.Logging.ILoggerFactory>? loggerFactory = null)
+            Func<string, Microsoft.Extensions.Logging.ILoggerFactory>? loggerFactory = null,
+            TimeSpan? stopDrainTimeout = null)
         {
             return new DistributedStreamBuilder(testName)
                 .AddPlan(() =>
@@ -576,6 +577,10 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, crash.CrashCount, watermark => { }, crash.CheckpointsBeforeCrash));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    if (stopDrainTimeout.HasValue)
+                    {
+                        substreamBuilder.SetStopDrainTimeout(stopDrainTimeout.Value);
+                    }
                     if (loggerFactory != null)
                     {
                         substreamBuilder.WithLoggerFactory(loggerFactory(substreamName));
@@ -779,6 +784,88 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await _stream.StartAsync();
 
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+        }
+
+        /// <summary>
+        /// Stopping a single substream while the other substream keeps running must not hang.
+        /// The drain waits for the other substreams stop barrier which never comes, after the
+        /// configured drain timeout the stop finishes anyway.
+        /// </summary>
+        [Fact]
+        public async Task LoneSubstreamStopFinishesAfterDrainTimeout()
+        {
+            _generator.Generate(200);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            _stream = BuildHost("e2e_lone_stop", NormalJoinSql, latestData, failures,
+                stopDrainTimeout: TimeSpan.FromSeconds(2));
+
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // Stop only one substream, the other keeps running and never sends a stop barrier
+            var stopTask = _stream.Substreams["substream_0"].StopAsync();
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(30)));
+            Assert.True(finished == stopTask, "Stopping a lone substream did not finish within the drain timeout");
+            await stopTask;
+        }
+
+        /// <summary>
+        /// The exchange queues can spill their pages to temporary storage when the page cache
+        /// is small, the exchanged events must survive the serialize and reload round trip.
+        /// </summary>
+        [Fact]
+        public async Task ExchangeSpillsPagesUnderMemoryPressure()
+        {
+            _generator.Generate(1000);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            Storage.StateManager.StateManagerOptions CreateSmallCacheOptions(string substreamName)
+            {
+                return new Storage.StateManager.StateManagerOptions()
+                {
+                    // A very small page cache forces pages, including the exchange queue
+                    // pages, to be evicted to temporary storage and reloaded.
+                    CachePageCount = 64,
+                    PersistentStorage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                    {
+                        FileProvider = new MemoryFileProvider()
+                    }),
+                    DefaultBPlusTreePageSize = 128,
+                    DefaultBPlusTreePageSizeBytes = 8 * 1024,
+                    TemporaryStorageOptions = new Storage.FileCacheOptions()
+                    {
+                        DirectoryPath = $"./data/tempFiles/e2e_spill/{substreamName}/tmp"
+                    }
+                };
+            }
+
+            _stream = BuildHost("e2e_spill", NormalJoinSql, latestData, failures, stateOptions: CreateSmallCacheOptions);
+
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // More data and deletes must flow correctly through the spilled queues
+            _generator.Generate(500);
+            foreach (var order in _generator.Orders.Take(100).ToList())
+            {
+                _generator.DeleteOrder(order);
+            }
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            Assert.Empty(failures);
+
+            var stopTask = _stream.StopAsync();
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping the distributed stream timed out");
+            await stopTask;
         }
 
         /// <summary>

@@ -34,9 +34,42 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task StartStreamAsync(StartStreamRequest request)
         {
+            var substreams = GetSubstreamNames(request.SqlText, request.SubstreamCount);
+
+            List<Task> startTasks = new List<Task>();
+            foreach (var substream in substreams)
+            {
+                var substreamKey = $"{this.GetPrimaryKeyString()}_{substream}";
+                var substreamGrain = GrainFactory.GetGrain<ISubStreamGrain>(substreamKey);
+                startTasks.Add(substreamGrain.StartStreamAsync(new StartStreamMessage(this.GetPrimaryKeyString(), request.SqlText, substream, request.SubstreamCount)));
+            }
+
+            await Task.WhenAll(startTasks);
+        }
+
+        public async Task StopStreamAsync(StopStreamRequest request)
+        {
+            var substreams = GetSubstreamNames(request.SqlText, request.SubstreamCount);
+
+            // All substreams are stopped together so the coordinated stop can drain the data
+            // exchanged between them, a substream only finishes stopping when the other
+            // substreams have received everything it sent before its stop barrier.
+            List<Task> stopTasks = new List<Task>();
+            foreach (var substream in substreams)
+            {
+                var substreamKey = $"{this.GetPrimaryKeyString()}_{substream}";
+                var substreamGrain = GrainFactory.GetGrain<ISubStreamGrain>(substreamKey);
+                stopTasks.Add(substreamGrain.StopStreamAsync());
+            }
+
+            await Task.WhenAll(stopTasks);
+        }
+
+        private HashSet<string> GetSubstreamNames(string sqlText, int? substreamCount)
+        {
             // The plan is only built here to find the substream names, each substream grain
             // builds its own plan from the SQL text.
-            var plan = OrleansStreamPlanBuilder.BuildPlan(connectorManager, request.SqlText, request.SubstreamCount);
+            var plan = OrleansStreamPlanBuilder.BuildPlan(connectorManager, sqlText, substreamCount);
 
             HashSet<string> substreams = new HashSet<string>();
 
@@ -52,16 +85,7 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 substreams.Add("default");
             }
-
-            List<Task> startTasks = new List<Task>();
-            foreach (var substream in substreams)
-            {
-                var substreamKey = $"{this.GetPrimaryKeyString()}_{substream}";
-                var substreamGrain = GrainFactory.GetGrain<ISubStreamGrain>(substreamKey);
-                startTasks.Add(substreamGrain.StartStreamAsync(new StartStreamMessage(this.GetPrimaryKeyString(), request.SqlText, substream, request.SubstreamCount)));
-            }
-
-            await Task.WhenAll(startTasks);
+            return substreams;
         }
     }
 }

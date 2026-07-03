@@ -17,5 +17,12 @@ namespace FlowtideDotNet.Base.Engine.Internal
         public bool WaitForCheckpointAfterInitialData { get; set; } = true;
 
         public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
+
+        /// <summary>
+        /// How long a stopping stream waits for vertices that exchange data with other
+        /// substreams to drain before it finishes stopping anyway. Protects the stop from
+        /// waiting forever when another substream has crashed or never started.
+        /// </summary>
+        public TimeSpan StopDrainTimeout { get; set; } = TimeSpan.FromSeconds(30);
     }
 }

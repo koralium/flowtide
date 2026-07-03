@@ -333,6 +333,42 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             Assert.Equal(new List<string>() { "node_0", "node_1" }, names);
         }
 
+        /// <summary>
+        /// Iterations run a loop that must stay inside one stream, a plan with a recursive
+        /// query is not partitioned across substreams.
+        /// </summary>
+        [Fact]
+        public void PlanWithIterationIsNotPartitioned()
+        {
+            var plan = BuildPlan(@"
+            CREATE TABLE users (userkey any, managerkey any);
+
+            INSERT INTO output
+            WITH manager_cte AS (
+                SELECT userkey, managerkey FROM users WHERE managerkey is null
+                UNION ALL
+                SELECT u.userkey, u.managerkey FROM users u
+                INNER JOIN manager_cte c ON c.userkey = u.managerkey
+            )
+            SELECT userkey FROM manager_cte;
+            ");
+            plan = DistributedPlanModifier.ToDistributedPlan(plan, new DistributedPlanOptions()
+            {
+                SubstreamCount = 2
+            });
+
+            // The sink tree stays whole in a single substream, nothing is exchanged between
+            // substreams.
+            foreach (var relation in plan.Relations)
+            {
+                if (relation is SubStreamRootRelation root)
+                {
+                    Assert.Equal("substream_0", root.Name);
+                }
+                Assert.Empty(CollectReferences(relation).OfType<SubstreamExchangeReferenceRelation>());
+            }
+        }
+
         private static List<Relation> CollectReferences(Relation relation)
         {
             var collector = new ReferenceCollectingVisitor();

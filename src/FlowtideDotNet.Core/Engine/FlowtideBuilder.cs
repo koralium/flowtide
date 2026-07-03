@@ -193,6 +193,16 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        /// <summary>
+        /// Sets how long a stopping stream waits for vertices that exchange data with other
+        /// substreams to drain before it finishes stopping anyway.
+        /// </summary>
+        public FlowtideBuilder SetStopDrainTimeout(TimeSpan timeSpan)
+        {
+            dataflowStreamBuilder.SetStopDrainTimeout(timeSpan);
+            return this;
+        }
+
         public FlowtideBuilder SetTaskScheduler(TaskScheduler taskScheduler)
         {
             _taskScheduler = taskScheduler;

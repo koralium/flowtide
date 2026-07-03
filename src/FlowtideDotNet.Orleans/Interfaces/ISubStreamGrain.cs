@@ -33,5 +33,12 @@ namespace FlowtideDotNet.Orleans.Interfaces
         Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request);
 
         Task CheckpointDone(CheckpointDoneRequest request);
+
+        /// <summary>
+        /// Stops the substream gracefully. All substreams of a stream should be stopped
+        /// together, for example through the stream grain, so the coordinated stop can drain
+        /// the data exchanged between the substreams.
+        /// </summary>
+        Task StopStreamAsync();
     }
 }

@@ -22,5 +22,12 @@ namespace FlowtideDotNet.Orleans.Interfaces
     public interface IStreamGrain : IGrainWithStringKey
     {
         Task StartStreamAsync(StartStreamRequest request);
+
+        /// <summary>
+        /// Stops all substreams of the stream together. Stopping them together lets the
+        /// coordinated stop drain the data exchanged between the substreams, so everything
+        /// sent before the stop is part of the final checkpoints.
+        /// </summary>
+        Task StopStreamAsync(StopStreamRequest request);
     }
 }
