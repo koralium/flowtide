@@ -62,6 +62,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal long? _currentProvidedCheckpointVersion;
         internal long? _scheduledProvidedCheckpointVersion;
 
+        /// <summary>
+        /// Dependencies done signals that arrived while the stream was still starting, for
+        /// example checkpoint acknowledgements from other substreams. They are consumed by the
+        /// first checkpoint in the running state. Guarded by <see cref="_checkpointLock"/>.
+        /// </summary>
+        internal readonly HashSet<string> _earlyDependenciesDone = new HashSet<string>();
+
         internal TaskCompletionSource? _stopTask;
 
         private StreamStateMachineState? _state = null;

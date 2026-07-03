@@ -1,9 +1,9 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,19 +12,20 @@
 
 using FlowtideDotNet.Base;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
     public struct SubstreamEventData
     {
         public int ExchangeTargetId;
+
+        /// <summary>
+        /// The event id in the targets event storage, used by the reader to track and confirm
+        /// its position so events can be re-read after a recovery.
+        /// </summary>
+        public long EventId;
+
         public IStreamEvent StreamEvent;
     }
 
@@ -37,7 +38,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private ConcurrentDictionary<int, TargetInfo> _targetInfos;
         private Task? _fetchDataTask;
         private readonly object _fetchDataLock = new object();
-        private readonly Dictionary<int, Func<IStreamEvent, Task>> _subscribedTargets = new Dictionary<int, Func<IStreamEvent, Task>>();
+        private readonly Dictionary<int, SubscribedTarget> _subscribedTargets = new Dictionary<int, SubscribedTarget>();
         private long _subscribeTargetsVersion = 0;
         private bool _dataHandled = false;
         private readonly object _dataHandledLock = new object();
@@ -54,6 +55,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private long _lastSentCheckpointVersion;
         private readonly object _sendCheckpointLock = new object();
 
+        private sealed class SubscribedTarget
+        {
+            public required long NextEventId { get; set; }
+
+            public required Func<long, IStreamEvent, Task> OnData { get; init; }
+        }
 
         private class TargetInfo
         {
@@ -67,6 +74,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 Target = target;
             }
         }
+
+        internal ILogger Logger => _logger;
 
         public SubstreamCommunicationPoint(ILogger logger, string selfSubstreamName, string substreamName, ISubstreamCommunicationHandler substreamCommunicationHandler)
         {
@@ -82,7 +91,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             lock (_readOperators)
             {
-                _readOperators.Add(substreamReadOperator);
+                if (!_readOperators.Contains(substreamReadOperator))
+                {
+                    _readOperators.Add(substreamReadOperator);
+                }
             }
         }
 
@@ -211,38 +223,26 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// Fetches events from multiple exchange .
+        /// Fetches events from multiple exchange targets starting at the given event ids.
         /// The max event count is distributed as equally as possible across the different targets
         /// to fetch data from all of them if possible.
         /// </summary>
-        /// <param name="exchangeTargets"></param>
-        /// <param name="maxEventCount"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public async Task<IReadOnlyList<SubstreamEventData>> GetData(IReadOnlySet<int> exchangeTargets, int maxEventCount, CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<SubstreamEventData>> GetData(IReadOnlyDictionary<int, long> targetFromEventIds, int maxEventCount, CancellationToken cancellationToken)
         {
             List<SubstreamEventData> outputList = new List<SubstreamEventData>();
 
-            if (exchangeTargets.Count == 0)
+            if (targetFromEventIds.Count == 0)
             {
                 return outputList;
             }
 
-            bool hasMoreData = true;
-            int maxCountPerTarget = Math.Max(1, maxEventCount / exchangeTargets.Count);
-            while (!cancellationToken.IsCancellationRequested && hasMoreData && outputList.Count < maxEventCount)
-            {
-                hasMoreData = false;
-                cancellationToken.ThrowIfCancellationRequested();
+            int maxCountPerTarget = Math.Max(1, maxEventCount / targetFromEventIds.Count);
 
-                foreach (var exchangeTarget in exchangeTargets)
+            foreach (var target in targetFromEventIds)
+            {
+                if (_targetInfos.TryGetValue(target.Key, out var targetInfo))
                 {
-                    // Fetch target info
-                    if (_targetInfos.TryGetValue(exchangeTarget, out var targetInfo))
-                    {
-                        // Fetch a limited number of events from a target before switching to another target to allow fairness
-                        hasMoreData |= await targetInfo.Target.ReadData(outputList, maxCountPerTarget);
-                    }
+                    await targetInfo.Target.ReadData(target.Value, outputList, maxCountPerTarget);
                 }
             }
 
@@ -287,17 +287,32 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _substreamCommunicationHandler.SendFailAndRecover(recoveryPoint);
         }
 
-        private Task RecieveCheckpointDone(long checkpointVersion)
+        private Task RecieveCheckpointDone(long checkpointVersion, IReadOnlyDictionary<int, long> consumedEventIds)
         {
             _logger.LogDebug("Recieved checkpoint done from substream {substreamName} to {selfSubstreamName} with version {checkpointVersion}, notifying targets and read operators.", substreamName, _selfSubstreamName, checkpointVersion);
             // Call all targets and read operators that the connected substream have completed the checkpoint
-            return Task.Factory.StartNew(() =>
+            return Task.Factory.StartNew(async () =>
             {
                 try
                 {
                     foreach (var target in _targetInfos)
                     {
-                        target.Value.Target.TargetSubstreamCheckpointDone(checkpointVersion);
+                        if (consumedEventIds.TryGetValue(target.Key, out var consumedEventId))
+                        {
+                            try
+                            {
+                                // Events the other substream has included in its completed checkpoint
+                                // can no longer be requested and are removed.
+                                await target.Value.Target.TrimConsumedEvents(consumedEventId);
+                            }
+                            catch (Exception ex)
+                            {
+                                // Trimming is best effort, it can fail when the signal races with a
+                                // restart of this stream. The events are removed on the next signal.
+                                _logger.LogWarning(ex, "Failed to trim consumed events for target {targetId} from substream {substreamName}", target.Key, substreamName);
+                            }
+                        }
+                        await target.Value.Target.TargetSubstreamCheckpointDone(checkpointVersion);
                     }
                     List<SubstreamReadOperator> readOperators;
                     lock (_readOperators)
@@ -316,7 +331,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // pending until the next signal arrives.
                     _logger.LogWarning(ex, "Error handling checkpoint done from substream {substreamName}", substreamName);
                 }
-            }, default, TaskCreationOptions.None, TaskScheduler.Default);
+            }, default, TaskCreationOptions.None, TaskScheduler.Default).Unwrap();
         }
 
         public Task SendCheckpointDone(long checkpointVersion)
@@ -330,16 +345,36 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 _lastSentCheckpointVersion = checkpointVersion;
             }
+            // Collect the event ids this stream has included in its completed checkpoint,
+            // the other substream uses them to remove events that no longer can be requested.
+            var consumedEventIds = new Dictionary<int, long>();
+            lock (_readOperators)
+            {
+                foreach (var readOperator in _readOperators)
+                {
+                    consumedEventIds[readOperator.ExchangeTargetId] = readOperator.LastCommittedEventId;
+                }
+            }
             _logger.LogDebug("Sending checkpoint done to target: {substreamName} from {selfSubstreamName}", substreamName, _selfSubstreamName);
-            return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion);
+            return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion, consumedEventIds);
         }
 
-        public void Subscribe(int exchangeTarget, Func<IStreamEvent, Task> onData)
+        /// <summary>
+        /// Subscribes to events from an exchange target in the other substream.
+        /// </summary>
+        /// <param name="exchangeTarget">The exchange target id.</param>
+        /// <param name="fromEventId">The first event id to fetch, events before it are already part of this streams state.</param>
+        /// <param name="onData">Callback with the event id and the event.</param>
+        public void Subscribe(int exchangeTarget, long fromEventId, Func<long, IStreamEvent, Task> onData)
         {
             lock (_fetchDataLock)
             {
                 // Use the indexer so a re-subscribe after a failure replaces the old callback
-                _subscribedTargets[exchangeTarget] = onData;
+                _subscribedTargets[exchangeTarget] = new SubscribedTarget()
+                {
+                    NextEventId = fromEventId,
+                    OnData = onData
+                };
                 _subscribeTargetsVersion++;
             }
             TryStartFetchTask();
@@ -384,8 +419,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private async Task FetchDataLoop()
         {
             long currentVersion = 0;
-            HashSet<int> subscribedTargets = new HashSet<int>();
-            Dictionary<int, Func<IStreamEvent, Task>> currentSubscribedTargets = new Dictionary<int, Func<IStreamEvent, Task>>();
+            Dictionary<int, SubscribedTarget> currentSubscribedTargets = new Dictionary<int, SubscribedTarget>();
+            Dictionary<int, long> fromEventIds = new Dictionary<int, long>();
             while (true)
             {
 
@@ -394,15 +429,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     if (_subscribeTargetsVersion > currentVersion)
                     {
                         currentVersion = _subscribeTargetsVersion;
-                        subscribedTargets.Clear();
-                        subscribedTargets.UnionWith(_subscribedTargets.Keys);
                         currentSubscribedTargets.Clear();
+                        fromEventIds.Clear();
                         foreach (var kvp in _subscribedTargets)
                         {
                             currentSubscribedTargets[kvp.Key] = kvp.Value;
+                            fromEventIds[kvp.Key] = kvp.Value.NextEventId;
                         }
                     }
-                    if (subscribedTargets.Count == 0)
+                    if (currentSubscribedTargets.Count == 0)
                     {
                         // No targets to fetch data from, stop the loop.
                         // A new fetch task is started when a target subscribes again.
@@ -414,7 +449,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 try
                 {
                     // Fetch data from the substream communication handler
-                    var data = await _substreamCommunicationHandler.FetchData(subscribedTargets, 100, default);
+                    var data = await _substreamCommunicationHandler.FetchData(fromEventIds, 100, default);
                     if (data.Count > 0)
                     {
                         lock (_dataHandledLock)
@@ -424,11 +459,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // Process the fetched data
                         foreach (var substreamEventData in data)
                         {
-                            if (currentSubscribedTargets.TryGetValue(substreamEventData.ExchangeTargetId, out var onData))
+                            if (currentSubscribedTargets.TryGetValue(substreamEventData.ExchangeTargetId, out var subscribedTarget))
                             {
-                                await onData(substreamEventData.StreamEvent);
+                                await subscribedTarget.OnData(substreamEventData.EventId, substreamEventData.StreamEvent);
+                                fromEventIds[substreamEventData.ExchangeTargetId] = substreamEventData.EventId + 1;
                             }
                         }
+                    }
+                    else
+                    {
+                        // No data available, wait a short while before polling again
+                        await Task.Delay(10);
                     }
                 }
                 catch (Exception ex)

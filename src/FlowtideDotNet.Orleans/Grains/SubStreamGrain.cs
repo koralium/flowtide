@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Orleans.Grains
                 // for this notification so it can be ignored.
                 return;
             }
-            await handler.TargetCheckpointDone(request.CheckpointVersion);
+            await handler.TargetCheckpointDone(request.CheckpointVersion, request.ConsumedEventIds);
         }
 
         public async Task FailAndRecoverAsync(FailAndRecoverRequest request)
@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 return new FetchDataResponse(new List<SubstreamEventData>());
             }
-            var data = await handler.GetData(request.TargetIds, request.NumberOfEvents, default);
+            var data = await handler.GetData(request.TargetFromEventIds, request.NumberOfEvents, default);
             return new FetchDataResponse(data);
         }
 

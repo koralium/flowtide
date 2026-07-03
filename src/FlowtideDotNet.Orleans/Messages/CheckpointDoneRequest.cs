@@ -22,10 +22,11 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class CheckpointDoneRequest
     {
-        public CheckpointDoneRequest(string requestor, long checkpointVersion)
+        public CheckpointDoneRequest(string requestor, long checkpointVersion, IReadOnlyDictionary<int, long> consumedEventIds)
         {
             Requestor = requestor;
             CheckpointVersion = checkpointVersion;
+            ConsumedEventIds = consumedEventIds;
         }
 
         [Id(0)]
@@ -33,5 +34,12 @@ namespace FlowtideDotNet.Orleans.Messages
 
         [Id(1)]
         public long CheckpointVersion { get; }
+
+        /// <summary>
+        /// The last event id per exchange target that is included in the completed checkpoint,
+        /// the receiving substream can remove events up to and including these ids.
+        /// </summary>
+        [Id(2)]
+        public IReadOnlyDictionary<int, long> ConsumedEventIds { get; }
     }
 }

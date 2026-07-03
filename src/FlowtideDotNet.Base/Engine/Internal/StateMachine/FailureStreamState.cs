@@ -100,6 +100,21 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context.checkpointTask.SetCanceled();
                     _context.checkpointTask = null;
                 }
+                // Clear all checkpoint scheduling state, stale values from before the failure
+                // would otherwise make scheduling requests after the recovery compare against
+                // trigger times in the past and be dropped, leaving the stream without
+                // checkpoints until an external trigger arrives.
+                _context.inQueueCheckpoint = null;
+                _context._currentProvidedCheckpointVersion = default;
+                _context._scheduledProvidedCheckpointVersion = default;
+                if (_context._scheduleCheckpointCancelSource != null)
+                {
+                    _context._scheduleCheckpointCancelSource.Cancel();
+                    _context._scheduleCheckpointCancelSource.Dispose();
+                    _context._scheduleCheckpointCancelSource = null;
+                }
+                _context._scheduleCheckpointTask = null;
+                _context._triggerCheckpointTime = null;
             }
 
             _context.ForEachBlock((key, block) =>

@@ -1,32 +1,36 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Memory;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore;
+using Microsoft.Extensions.Logging;
+using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Storage.Queue;
 using FlowtideDotNet.Storage.StateManager;
-using System;
-using System.Collections.Generic;
+using FlowtideDotNet.Storage.Tree;
 using System.Diagnostics;
-using System.Diagnostics.Tracing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
+    /// <summary>
+    /// Exchange target that stores events for another substream.
+    ///
+    /// Events are stored in a tree keyed on a monotonically increasing event id and are kept
+    /// until the other substream has included them in a completed checkpoint, which it signals
+    /// with the consumed event id on its checkpoint done message. This makes the delivery safe
+    /// against rollbacks, after a recovery the other substream re-reads from the event id it
+    /// had persisted and no event can be lost or applied twice.
+    /// </summary>
     internal class SubstreamTarget : IExchangeTarget
     {
         private readonly DataValueContainer _dataValueContainer;
@@ -34,7 +38,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly int _columnCount;
         private readonly SubstreamCommunicationPoint _substreamCommunication;
         private readonly Action _targetCallDependenciesDone;
-        private IFlowtideQueue<IStreamEvent, StreamEventValueContainer>? _queue;
+        private int _targetId;
+        private long _eventCounter;
+        private IBPlusTree<long, IStreamEvent, FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer<long>, StreamEventValueContainer>? _events;
         private IMemoryAllocator? _memoryAllocator;
         private readonly SemaphoreSlim _lockSemaphore;
         private Func<long, Task>? _failAndRecoverFunc;
@@ -44,7 +50,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private IColumn[]? _columns;
 
         public SubstreamTarget(
-            int exchangeTargetId, 
+            int exchangeTargetId,
             int columnCount,
             SubstreamCommunicationPoint substreamCommunication,
             Action targetCallDependenciesDone)
@@ -71,9 +77,21 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _iterations = new PrimitiveList<uint>(_memoryAllocator);
         }
 
-        public Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState)
+        public async Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState)
         {
-            return Task.CompletedTask;
+            Debug.Assert(_events != null);
+            // The semaphore serializes the commit against concurrent reads and trims from
+            // the other substreams fetch requests.
+            await _lockSemaphore.WaitAsync();
+            try
+            {
+                await _events.Commit();
+            }
+            finally
+            {
+                _lockSemaphore.Release();
+            }
+            exchangeOperatorState.TargetsEventCounter[_targetId] = _eventCounter;
         }
 
         public ValueTask AddEvent(EventBatchWeighted weightedBatch, int index)
@@ -97,46 +115,58 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             Debug.Assert(_weights != null);
             Debug.Assert(_iterations != null);
-            Debug.Assert(_queue != null);
+            Debug.Assert(_events != null);
             Debug.Assert(_columns != null);
 
             if (_weights.Count > 0)
             {
+                _substreamCommunication.Logger.LogDebug("Target {targetId} waiting for lock to store batch", _exchangeTargetId);
                 await _lockSemaphore.WaitAsync();
                 try
                 {
                     var msg = new StreamMessage<StreamEventBatch>(new StreamEventBatch(new EventBatchWeighted(_weights, _iterations, new EventBatchData(_columns))), time);
-                    msg.Data.Rent(1);
-                    await _queue.Enqueue(msg);
+                    await _events.Upsert(_eventCounter++, msg);
                     NewColumns();
                 }
                 finally
                 {
                     _lockSemaphore.Release();
                 }
+                _substreamCommunication.Logger.LogDebug("Target {targetId} stored batch", _exchangeTargetId);
 
-                
                 await _substreamCommunication.TargetHasData(_exchangeTargetId);
             }
         }
 
         public async Task Initialize(
             long restoreVersion,
-            int targetId, 
-            IStateManagerClient stateManagerClient, 
-            ExchangeOperatorState state, 
+            int targetId,
+            IStateManagerClient stateManagerClient,
+            ExchangeOperatorState state,
             IMemoryAllocator memoryAllocator,
             Func<long, Task> failAndRecoverFunc)
         {
             _failAndRecoverFunc = failAndRecoverFunc;
             _memoryAllocator = memoryAllocator;
+            _targetId = targetId;
+            if (state.TargetsEventCounter.TryGetValue(_targetId, out var eventCounter))
+            {
+                _eventCounter = eventCounter;
+            }
+            else
+            {
+                _eventCounter = 0;
+            }
 
             await _substreamCommunication.InitializeOperator(restoreVersion);
 
-            _queue = await stateManagerClient.GetOrCreateQueue($"events_target_{targetId}", new FlowtideQueueOptions<IStreamEvent, StreamEventValueContainer>()
+            _events = await stateManagerClient.GetOrCreateTree($"events_target_{targetId}", new BPlusTreeOptions<long, IStreamEvent, FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer<long>, StreamEventValueContainer>()
             {
+                Comparer = new PrimitiveListComparer<long>(),
+                KeySerializer = new FlowtideDotNet.Storage.Serializers.PrimitiveListKeyContainerSerializer<long>(memoryAllocator),
+                ValueSerializer = new StreamEventValueSerializer(memoryAllocator),
                 MemoryAllocator = memoryAllocator,
-                ValueSerializer = new StreamEventValueSerializer(memoryAllocator)
+                UseByteBasedPageSizes = true
             });
 
             NewColumns();
@@ -148,26 +178,28 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public async Task OnLockingEvent(ILockingEvent lockingEvent)
         {
-            Debug.Assert(_queue != null);
+            Debug.Assert(_events != null);
+            _substreamCommunication.Logger.LogDebug("Target {targetId} waiting for lock to store locking event", _exchangeTargetId);
             await _lockSemaphore.WaitAsync();
             try
             {
-                await _queue.Enqueue(lockingEvent);
+                await _events.Upsert(_eventCounter++, lockingEvent);
             }
             finally
             {
                 _lockSemaphore.Release();
             }
+            _substreamCommunication.Logger.LogDebug("Target {targetId} stored locking event", _exchangeTargetId);
             await _substreamCommunication.TargetHasData(_exchangeTargetId);
         }
 
         public async Task OnLockingEventPrepare(LockingEventPrepare lockingEventPrepare)
         {
-            Debug.Assert(_queue != null);
+            Debug.Assert(_events != null);
             await _lockSemaphore.WaitAsync();
             try
             {
-                await _queue.Enqueue(lockingEventPrepare);
+                await _events.Upsert(_eventCounter++, lockingEventPrepare);
             }
             finally
             {
@@ -178,11 +210,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public async Task OnWatermark(Watermark watermark)
         {
-            Debug.Assert(_queue != null);
+            Debug.Assert(_events != null);
             await _lockSemaphore.WaitAsync();
             try
             {
-                await _queue.Enqueue(watermark);
+                await _events.Upsert(_eventCounter++, watermark);
             }
             finally
             {
@@ -191,41 +223,130 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             await _substreamCommunication.TargetHasData(_exchangeTargetId);
         }
 
-        public async ValueTask<bool> ReadData(List<SubstreamEventData> outputList, int maxCount)
+        /// <summary>
+        /// Reads events starting at the given event id without removing them from the tree.
+        /// Events are removed first when the other substream confirms them as part of a
+        /// completed checkpoint through <see cref="TrimConsumedEvents"/>.
+        /// </summary>
+        public async ValueTask<bool> ReadData(long fromEventId, List<SubstreamEventData> outputList, int maxCount)
         {
             // the target is not yet initialized
-            if (_queue == null)
+            if (_events == null)
             {
-                // Return false and empty list
                 return false;
             }
-            Debug.Assert(_queue != null);
+            _substreamCommunication.Logger.LogDebug("Target {targetId} read data from {fromEventId} starting", _exchangeTargetId, fromEventId);
             await _lockSemaphore.WaitAsync();
             try
             {
                 int count = 0;
-                while (_queue.Count > 0 && count < maxCount)
+                var iterator = _events.CreateIterator();
+                await iterator.Seek(fromEventId);
+                await foreach (var page in iterator)
                 {
-                    var val = await _queue.Dequeue();
-                    if (val is StreamMessage<StreamEventBatch> streamMessage)
+                    page.EnterWriteLock();
+                    foreach (var kv in page)
                     {
-                        if (streamMessage.Data is IRentable rent)
+                        if (count >= maxCount)
                         {
-                            rent.Rent(1);
+                            page.ExitWriteLock();
+                            return true;
                         }
+                        if (kv.Value is StreamMessage<StreamEventBatch> streamMessage)
+                        {
+                            if (streamMessage.Data is IRentable rent)
+                            {
+                                rent.Rent(1);
+                            }
+                        }
+                        outputList.Add(new SubstreamEventData()
+                        {
+                            ExchangeTargetId = _exchangeTargetId,
+                            EventId = kv.Key,
+                            StreamEvent = kv.Value
+                        });
+                        count++;
                     }
-                    outputList.Add(new SubstreamEventData()
-                    {
-                        ExchangeTargetId = _exchangeTargetId,
-                        StreamEvent = val
-                    });
-                    count++;
+                    page.ExitWriteLock();
                 }
-                return _queue.Count > 0;
+                return false;
             }
             finally
             {
                 _lockSemaphore.Release();
+                _substreamCommunication.Logger.LogDebug("Target {targetId} read data done", _exchangeTargetId);
+            }
+        }
+
+        /// <summary>
+        /// Removes all events up to and including the consumed event id, they are part of a
+        /// completed checkpoint in the other substream and can no longer be requested.
+        /// </summary>
+        public async Task TrimConsumedEvents(long consumedEventId)
+        {
+            if (_events == null)
+            {
+                return;
+            }
+            _substreamCommunication.Logger.LogDebug("Target {targetId} trim up to {consumedEventId} starting", _exchangeTargetId, consumedEventId);
+            await _lockSemaphore.WaitAsync();
+            try
+            {
+                var keysToRemove = new List<long>();
+                var iterator = _events.CreateIterator();
+                await iterator.SeekFirst();
+                bool done = false;
+                await foreach (var page in iterator)
+                {
+                    page.EnterWriteLock();
+                    foreach (var kv in page)
+                    {
+                        if (kv.Key > consumedEventId)
+                        {
+                            done = true;
+                            break;
+                        }
+                        keysToRemove.Add(kv.Key);
+                    }
+                    page.ExitWriteLock();
+                    if (done)
+                    {
+                        break;
+                    }
+                }
+                foreach (var key in keysToRemove)
+                {
+                    // Read modify write is used so the value can be disposed under the tree lock
+                    await _events.RMWNoResult(key, default, (input, current, exists) =>
+                    {
+                        if (exists)
+                        {
+                            DisposeEvent(current);
+                        }
+                        return (default, GenericWriteOperation.Delete);
+                    });
+                }
+            }
+            finally
+            {
+                _lockSemaphore.Release();
+                _substreamCommunication.Logger.LogDebug("Target {targetId} trim done", _exchangeTargetId);
+            }
+        }
+
+        private static void DisposeEvent(IStreamEvent? streamEvent)
+        {
+            if (streamEvent is StreamMessage<StreamEventBatch> streamMessage)
+            {
+                streamMessage.Data.Return();
+            }
+            else if (streamEvent is IRentable rentable)
+            {
+                rentable.Return();
+            }
+            else if (streamEvent is IDisposable disposable)
+            {
+                disposable.Dispose();
             }
         }
 

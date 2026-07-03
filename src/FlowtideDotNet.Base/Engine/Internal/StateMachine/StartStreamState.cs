@@ -69,12 +69,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Debug.Assert(_context != null, nameof(_context));
             lock (_context._checkpointLock)
             {
-                Debug.Assert(nonInitEgresses != null, nameof(nonInitEgresses));
-                Debug.Assert(waitingForDependencies != null, nameof(waitingForDependencies));
-                waitingForDependencies.Remove(name);
+                if (waitingForDependencies == null || !waitingForDependencies.Remove(name))
+                {
+                    // An extra signal during startup, for example a checkpoint acknowledgement
+                    // from another substream that arrived before or during initialization.
+                    // It must not be lost, the first checkpoint in the running state consumes it.
+                    _context._earlyDependenciesDone.Add(name);
+                    if (waitingForDependencies == null)
+                    {
+                        return;
+                    }
+                }
 
                 // Check if all egresses has done their checkpoint
-                if (nonInitEgresses.Count == 0 && waitingForDependencies.Count == 0)
+                if (nonInitEgresses != null && nonInitEgresses.Count == 0 && waitingForDependencies.Count == 0)
                 {
                     _context._logger.WatermarkSystemInitialized(_context.streamName);
                     InitEventsDone();

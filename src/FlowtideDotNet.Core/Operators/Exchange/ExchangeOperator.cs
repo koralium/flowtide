@@ -15,6 +15,7 @@ using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -168,6 +169,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         replaySignal = true;
                     }
                 }
+                Logger.LogDebug("Exchange {name} processed checkpoint event, replays buffered signal: {replay}", Name, replaySignal);
                 if (replaySignal)
                 {
                     TargetCallDependenciesDone();
@@ -186,10 +188,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // from the other substreams, so the signal must not be lost, it is buffered
                     // and replayed when a checkpoint runs.
                     _pendingDependenciesDoneSignals++;
+                    Logger.LogDebug("Exchange {name} buffered a dependencies done signal, total buffered: {count}", Name, _pendingDependenciesDoneSignals);
                     return;
                 }
 
                 _dependenciesDoneCalled++;
+                Logger.LogDebug("Exchange {name} dependencies done called {called} of {required}", Name, _dependenciesDoneCalled, _numberOfSubstreams);
 
                 if (_dependenciesDoneCalled >= _numberOfSubstreams)
                 {

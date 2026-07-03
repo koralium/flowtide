@@ -62,6 +62,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return;
                 }
                 waitingForDependencies.Remove(name);
+                _context._logger.LogDebug("Dependencies done for operator {Operator} on stream {Stream}, remaining: [{Remaining}], initial checkpoint taken: {InitialCheckpointTaken}", name, _context.streamName, string.Join(",", waitingForDependencies), _initialCheckpointTaken);
 
                 // Check if all egresses has done their dependencies
                 if (waitingForDependencies.Count > 0 || !_initialCheckpointTaken || _compactionStarted)
@@ -280,6 +281,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     // Reset the checkpoint version after the stream is in a running state
                     _context._restoreCheckpointVersion = default;
+
+                    // Dependencies done signals that arrived while the stream was starting are
+                    // consumed by the first checkpoint
+                    foreach (var earlyDependency in _context._earlyDependenciesDone)
+                    {
+                        _preCompletedDependencies.Add(earlyDependency);
+                    }
+                    _context._earlyDependenciesDone.Clear();
                 }
 
                 if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
@@ -367,6 +376,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     waitingForDependencies.Remove(precompleted);
                 }
                 _preCompletedDependencies.Clear();
+                _context._logger.LogDebug("Checkpoint started on stream {Stream}, waiting for dependencies: [{Waiting}]", _context.streamName, string.Join(",", waitingForDependencies));
 
                 _context.checkpointTask = new TaskCompletionSource();
                 var newTime = _context.producingTime + 1;

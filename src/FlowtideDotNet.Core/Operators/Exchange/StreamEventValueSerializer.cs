@@ -172,6 +172,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     throw new InvalidOperationException("Failed to read value");
                 }
 
+                if (watermarkValueTypeId == -1)
+                {
+                    // Null watermark value
+                    watermarksBuilder.Add(new KeyValuePair<string, AbstractWatermarkValue>(key, null!));
+                    continue;
+                }
+
                 var watermarkSerializer = WatermarkSerializeFactory.GetWatermarkSerializer(watermarkValueTypeId);
                 watermarksBuilder.Add(new KeyValuePair<string, AbstractWatermarkValue>(key, watermarkSerializer.Deserialize(ref reader)));
             }
@@ -310,10 +317,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 var span = writer.GetSpan(spanLength);
                 BinaryPrimitives.WriteInt32LittleEndian(span, keyLength);
                 Encoding.UTF8.GetBytes(wm.Key, span.Slice(4));
-                // Write the typeId of the watermark
-                BinaryPrimitives.WriteInt32LittleEndian(span.Slice(4 + keyLength), wm.Value.TypeId);
+                // Write the typeId of the watermark, -1 marks a null watermark value
+                var typeId = wm.Value?.TypeId ?? -1;
+                BinaryPrimitives.WriteInt32LittleEndian(span.Slice(4 + keyLength), typeId);
                 writer.Advance(spanLength);
-                WatermarkSerializeFactory.GetWatermarkSerializer(wm.Value.TypeId).Serialize(wm.Value, writer);
+                if (wm.Value != null)
+                {
+                    WatermarkSerializeFactory.GetWatermarkSerializer(typeId).Serialize(wm.Value, writer);
+                }
             }
         }
 

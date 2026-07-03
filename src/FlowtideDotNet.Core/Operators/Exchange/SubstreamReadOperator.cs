@@ -1,31 +1,47 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Memory;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices;
-using FlowtideDotNet.Storage.Queue;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading.Channels;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
+    internal class SubstreamReadState
+    {
+        public HashSet<string>? WatermarkNames { get; set; }
+
+        /// <summary>
+        /// The last event id from the other substream that has been processed by this operator.
+        /// Committed with each checkpoint, fetching resumes from the next id after a restore.
+        /// </summary>
+        public long LastEventId { get; set; } = -1;
+    }
+
+    /// <summary>
+    /// Ingress operator that reads events from an exchange in another substream.
+    ///
+    /// Events are fetched by event id through the substream communication point and buffered in
+    /// a transient channel. The processed position is part of this streams checkpoint state, so
+    /// after a restore the operator resumes fetching from the exact event that follows its
+    /// restored state. The other substream keeps events until this stream confirms them with
+    /// its checkpoint done message, which makes the delivery safe against rollbacks in either
+    /// substream.
+    /// </summary>
     internal class SubstreamReadOperator : IngressVertex<StreamEventBatch>
     {
         private readonly SubstreamCommunicationPoint _communicationPoint;
@@ -38,10 +54,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // Checkpoint done signals from the other substream that arrived before this stream
         // finished starting, replayed one per checkpoint cycle. Guarded by _lock.
         private int _pendingCheckpointDoneSignals;
-        private IFlowtideQueue<IStreamEvent, StreamEventValueContainer>? _queue;
-        private SemaphoreSlim _writeLock = new SemaphoreSlim(1);
-        private SemaphoreSlim? _waitLock;
-        private IObjectState<HashSet<string>>? _watermarkNamesState;
+        private Channel<(long EventId, IStreamEvent Event)>? _channel;
+        private IObjectState<SubstreamReadState>? _state;
+        private long _lastCommittedEventId = -1;
 
         public SubstreamReadOperator(SubstreamCommunicationPoint communicationPoint, SubstreamExchangeReferenceRelation referenceRelation, DataflowBlockOptions options) : base(options)
         {
@@ -51,6 +66,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         public override string DisplayName => "Substream Read";
+
+        public int ExchangeTargetId => _exchangeReferenceRelation.ExchangeTargetId;
+
+        /// <summary>
+        /// The last event id from the other substream that is included in this streams latest
+        /// completed checkpoint. Sent with checkpoint done messages so the other substream can
+        /// remove confirmed events.
+        /// </summary>
+        public long LastCommittedEventId => Interlocked.Read(ref _lastCommittedEventId);
 
         public override Task Compact()
         {
@@ -69,9 +93,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
-            Debug.Assert(_watermarkNamesState != null);
-            Debug.Assert(_watermarkNamesState.Value != null);
-            return Task.FromResult<IReadOnlySet<string>>(_watermarkNamesState.Value);
+            Debug.Assert(_state?.Value != null);
+            Debug.Assert(_state.Value.WatermarkNames != null);
+            return Task.FromResult<IReadOnlySet<string>>(_state.Value.WatermarkNames);
         }
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
@@ -91,21 +115,26 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             // Cancel outside the lock so a stale fetch loop that awaits it can complete and stop.
             staleWaitForCheckpoint?.TrySetCanceled();
 
-            _waitLock = new SemaphoreSlim(0);
-            _writeLock.Release();
-            _writeLock = new SemaphoreSlim(1);
-            _queue = await stateManagerClient.GetOrCreateQueue("queue", new FlowtideQueueOptions<IStreamEvent, StreamEventValueContainer>()
+            // A fresh channel is created on every restore, buffered events from before the
+            // failure are refetched from the other substream starting at the restored position.
+            _channel = Channel.CreateBounded<(long EventId, IStreamEvent Event)>(new BoundedChannelOptions(1024)
             {
-                MemoryAllocator = MemoryAllocator,
-                ValueSerializer = new StreamEventValueSerializer(MemoryAllocator)
+                SingleReader = true
             });
-            _watermarkNamesState = await stateManagerClient.GetOrCreateObjectStateAsync<HashSet<string>>("watermarkNames");
+
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<SubstreamReadState>("substream_read_state");
+            if (_state.Value == null)
+            {
+                _state.Value = new SubstreamReadState();
+            }
+            Interlocked.Exchange(ref _lastCommittedEventId, _state.Value.LastEventId);
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
         {
-            Debug.Assert(_watermarkNamesState != null);
-            await _watermarkNamesState.Commit();
+            Debug.Assert(_state != null);
+            await _state.Commit();
+            Interlocked.Exchange(ref _lastCommittedEventId, _state.Value!.LastEventId);
         }
 
         protected override Task SendInitial(IngressOutput<StreamEventBatch> output)
@@ -115,34 +144,27 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private async Task FetchData(IngressOutput<StreamEventBatch> output, object? state)
         {
-            Debug.Assert(_waitLock != null);
-            Debug.Assert(_queue != null);
-            Debug.Assert(_watermarkNamesState != null);
+            Debug.Assert(_state?.Value != null);
+            Debug.Assert(_channel != null);
 
-            // Fetch data from the communication point
-            _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, async (ev) =>
+            var channel = _channel;
+
+            // Fetch data from the communication point, starting after the last processed event
+            _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, _state.Value.LastEventId + 1, async (eventId, ev) =>
             {
-                await _writeLock.WaitAsync();
-                try
-                {
-                    await _queue.Enqueue(ev);
-                    _waitLock.Release();
-                }
-                finally
-                {
-                    _writeLock.Release();
-                }
+                await channel.Writer.WriteAsync((eventId, ev));
             });
 
             while (!output.CancellationToken.IsCancellationRequested)
             {
-                await _waitLock.WaitAsync(output.CancellationToken);
+                var (eventId, ev) = await channel.Reader.ReadAsync(output.CancellationToken);
 
-                await _writeLock.WaitAsync(output.CancellationToken);
-
-                var ev = await _queue.Dequeue();
-
-                _writeLock.Release();
+                if (eventId <= _state.Value.LastEventId)
+                {
+                    // The event is already part of this streams state, can happen when events
+                    // overlap after a resubscribe.
+                    continue;
+                }
 
                 output.CancellationToken.ThrowIfCancellationRequested();
 
@@ -162,19 +184,29 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             scheduleCheckpoint = true;
                         }
                     }
+                    Logger.LogDebug("Substream read {name} recieved checkpoint event with time {time}, schedules own checkpoint: {schedule}", Name, checkpointEvent.CheckpointTime, scheduleCheckpoint);
                     if (scheduleCheckpoint)
                     {
                         // Schedule outside the lock to hinder any deadlocks with OnLockingEvent
                         // we also provide the checkpoint time to make sure that the same checkpoint from the target is scheduled twice.
                         ScheduleCheckpoint(TimeSpan.FromMilliseconds(1), checkpointEvent.CheckpointTime);
                     }
-                    
+                    else
+                    {
+                        // The event from the other substream is paired with a local checkpoint
+                        // that is already running. Data the other substream sent before its
+                        // barrier can be processed after this streams barrier due to barrier
+                        // alignment in operators with multiple inputs, so a follow up cycle is
+                        // scheduled to cover that data.
+                        ScheduleCheckpoint(TimeSpan.FromMilliseconds(100), checkpointEvent.CheckpointTime);
+                    }
+
                     if (inStreamCheckpoint == null)
                     {
                         // Wait until the checkpoint event has been collected from this stream.
                         Debug.Assert(_waitForCheckpoint != null);
                         await _waitForCheckpoint.Task;
-                        
+
                         lock (_lock)
                         {
                             _waitForCheckpoint = null; // Reset wait for checkpoint after this is completed
@@ -183,6 +215,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     }
                     if (inStreamCheckpoint != null)
                     {
+                        // The checkpoint event is included in the committed position
+                        _state.Value.LastEventId = eventId;
                         await OnCheckpoint(inStreamCheckpoint.CheckpointTime);
                         // Forward this streams own checkpoint event, the checkpoint event from
                         // the other substream has that streams times and must not flow here.
@@ -226,21 +260,39 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         await FailAndRollback();
                         return;
                     }
-                    _watermarkNamesState.Value = initWatermarksEvent.WatermarkNames.ToHashSet();
+                    _state.Value.WatermarkNames = initWatermarksEvent.WatermarkNames.ToHashSet();
+                    _state.Value.LastEventId = eventId;
                     await output.SendLockingEvent(initWatermarksEvent);
                     SetDependenciesDone();
                 }
                 else if (ev is ILockingEvent lockingEvent)
                 {
+                    _state.Value.LastEventId = eventId;
                     await output.SendLockingEvent(lockingEvent);
                 }
                 else if (ev is StreamMessage<StreamEventBatch> streamMessage)
                 {
+                    Logger.LogDebug("Substream read {name} recieved data batch with {count} rows", Name, streamMessage.Data.Data.Count);
                     await output.SendAsync(streamMessage.Data);
+                    _state.Value.LastEventId = eventId;
+                    // Data from another substream must eventually be covered by a checkpoint in
+                    // this stream, even when no local source change triggers one. Without this,
+                    // data that arrives after a checkpoint barrier could wait forever when both
+                    // substreams paired their cycles and no new source data arrives.
+                    // The scheduling is deduplicated by the stream context, so requesting it for
+                    // every batch is cheap.
+                    ScheduleCheckpoint(TimeSpan.FromMilliseconds(100));
                 }
                 else if (ev is Watermark watermark)
                 {
+                    _state.Value.LastEventId = eventId;
                     await output.SendWatermark(watermark);
+                }
+                else
+                {
+                    // Other event types such as locking event prepares are counted as processed
+                    // but do not flow into this stream.
+                    _state.Value.LastEventId = eventId;
                 }
             }
         }
@@ -249,6 +301,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
             await _communicationPoint.SendFailAndRecover(rollbackVersion);
+        }
+
+        public override ValueTask DisposeAsync()
+        {
+            // Stop the communication point from fetching data for this operator, the fetch
+            // loop would otherwise keep delivering events after the operator is disposed.
+            _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
+            return base.DisposeAsync();
         }
 
         public override Task CheckpointDone(long checkpointVersion)
@@ -321,8 +381,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
             }
             if (lockingEvent is InitWatermarksEvent initWatermarksEvent &&
-                _watermarkNamesState != null && 
-                _watermarkNamesState.Value != null)
+                _state?.Value != null &&
+                _state.Value.WatermarkNames != null)
             {
                 // Run task to send watermark values
                 base.DoLockingEvent(lockingEvent);

@@ -26,17 +26,19 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly Action<EventBatchData> onDataUpdate;
         private readonly Action<Watermark> onWatemrark;
         private readonly int egressCrashOnCheckpointCount;
+        private readonly int checkpointsBeforeCrash;
 
-        public MockSinkFactory(string regexPattern, Action<EventBatchData> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark) : base(regexPattern)
+        public MockSinkFactory(string regexPattern, Action<EventBatchData> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark, int checkpointsBeforeCrash = 0) : base(regexPattern)
         {
             this.onDataUpdate = onDataUpdate;
             this.egressCrashOnCheckpointCount = egressCrashOnCheckpointCount;
             this.onWatemrark = onwatermark;
+            this.checkpointsBeforeCrash = checkpointsBeforeCrash;
         }
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new MockDataSink(writeRelation, dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark);
+            return new MockDataSink(writeRelation, dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark, checkpointsBeforeCrash);
         }
 
         public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)

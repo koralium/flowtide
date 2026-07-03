@@ -19,6 +19,7 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -68,6 +69,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             Debug.Assert(_state?.Value != null);
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
+            Logger.LogDebug("Mock source {table} fetch changes from offset {offset} to offset {fetchedOffset}", readRelation.NamedTable.DotSeperated, _state.Value.LatestOffset, fetchedOffset);
             bool sentData = false;
 
 
@@ -273,6 +275,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             Debug.Assert(_state?.Value != null);
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
+            Logger.LogDebug("Mock source {table} sending initial from offset {offset} to offset {fetchedOffset}", tableName, _state.Value.LatestOffset, fetchedOffset);
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
