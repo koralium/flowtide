@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
@@ -126,13 +127,50 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      if (t.IsFaulted)
                      {
                          await _context.OnFailure(t.Exception);
+                         @this.CheckpointCompleted();
+                         _context._logger.ShutdownCheckpointDone(_context.streamName);
+                         await @this.StopAll();
+                         return;
                      }
                      // Finish the checkpoint
                      @this.CheckpointCompleted();
                      _context._logger.ShutdownCheckpointDone(_context.streamName);
-                     await @this.StopAll();
+                     if (@this.AllVerticesReadyToStop())
+                     {
+                         await @this.StopAll();
+                     }
+                     else
+                     {
+                         // Vertices that exchange data with other substreams are not drained
+                         // yet, either an ingress has not consumed the other substreams stop
+                         // barrier or another substream has not fetched this streams stop
+                         // barrier. Another stop checkpoint cycle runs so the exchanged events
+                         // are part of the final state on both sides.
+                         _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(25), default);
+                     }
                  }, this)
                  .Unwrap();
+        }
+
+        private bool AllVerticesReadyToStop()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+
+            bool ready = true;
+            _context.ForEachBlock((key, block) =>
+            {
+                if (block is IStreamIngressVertex ingressVertex && !ingressVertex.ReadyToStop)
+                {
+                    _context._logger.LogDebug("Ingress {operator} is not ready to stop, running another stop checkpoint cycle.", key);
+                    ready = false;
+                }
+                else if (block is IStreamEgressVertex egressVertex && !egressVertex.ReadyToStop)
+                {
+                    _context._logger.LogDebug("Egress {operator} is not ready to stop, running another stop checkpoint cycle.", key);
+                    ready = false;
+                }
+            });
+            return ready;
         }
 
         private void CheckpointCompleted()

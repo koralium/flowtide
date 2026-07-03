@@ -261,5 +261,20 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             return Task.WhenAll(tasks);
         }
+
+        public bool ReadyToStop
+        {
+            get
+            {
+                foreach (var target in _targets)
+                {
+                    if (!target.ReadyToStop)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
     }
 }

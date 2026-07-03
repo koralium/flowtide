@@ -37,6 +37,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private const byte LockingEventPrepareType = 2;
         private const byte InitWatermarksEventType = 3;
         private const byte CheckpointType = 4;
+        // Stop checkpoints keep their own type so the receiving substream can recognize the
+        // other substreams stop barrier after serialization.
+        private const byte StopCheckpointType = 5;
 
         private readonly IMemoryAllocator memoryAllocator;
         private readonly EventBatchBPlusTreeSerializer _eventBatchBPlusTreeSerializer;
@@ -118,7 +121,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return new InitWatermarksEvent(watermarkNames);
         }
 
-        private Checkpoint DeserializeCheckpoint(ref SequenceReader<byte> reader)
+        private Checkpoint DeserializeCheckpoint(ref SequenceReader<byte> reader, bool isStopCheckpoint)
         {
             if (!reader.TryReadLittleEndian(out long checkpointTime))
             {
@@ -130,6 +133,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 throw new InvalidOperationException("Failed to read new time");
             }
 
+            if (isStopCheckpoint)
+            {
+                return new StopStreamCheckpoint(checkpointTime, newTime);
+            }
             return new Checkpoint(checkpointTime, newTime);
         }
 
@@ -219,7 +226,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     lockingEvent = DeserializeInitWatermark(ref reader);
                     break;
                 case CheckpointType:
-                    lockingEvent =  DeserializeCheckpoint(ref reader);
+                    lockingEvent = DeserializeCheckpoint(ref reader, isStopCheckpoint: false);
+                    break;
+                case StopCheckpointType:
+                    lockingEvent = DeserializeCheckpoint(ref reader, isStopCheckpoint: true);
                     break;
                 default:
                     throw new NotImplementedException();
@@ -256,7 +266,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         container.Add(DeserializeLockingEventPrepare(ref reader));
                         break;
                     case CheckpointType:
-                        container.Add(DeserializeCheckpoint(ref reader));
+                        container.Add(DeserializeCheckpoint(ref reader, isStopCheckpoint: false));
+                        break;
+                    case StopCheckpointType:
+                        container.Add(DeserializeCheckpoint(ref reader, isStopCheckpoint: true));
                         break;
                     case InitWatermarksEventType:
                         container.Add(DeserializeInitWatermark(ref reader));
@@ -343,7 +356,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private void SerializeCheckpoint(in IBufferWriter<byte> writer, Checkpoint checkpoint)
         {
             var destinationSpan = writer.GetSpan(17);
-            destinationSpan[0] = CheckpointType;
+            destinationSpan[0] = checkpoint is StopStreamCheckpoint ? StopCheckpointType : CheckpointType;
             BinaryPrimitives.WriteInt64LittleEndian(destinationSpan.Slice(1), checkpoint.CheckpointTime);
             BinaryPrimitives.WriteInt64LittleEndian(destinationSpan.Slice(9), checkpoint.NewTime);
             writer.Advance(17);

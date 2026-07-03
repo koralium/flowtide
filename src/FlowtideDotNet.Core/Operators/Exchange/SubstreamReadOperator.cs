@@ -24,26 +24,31 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     internal class SubstreamReadState
     {
         public HashSet<string>? WatermarkNames { get; set; }
-
-        /// <summary>
-        /// The last event id from the other substream that has been processed by this operator.
-        /// Committed with each checkpoint, fetching resumes from the next id after a restore.
-        /// </summary>
-        public long LastEventId { get; set; } = -1;
     }
 
     /// <summary>
     /// Ingress operator that reads events from an exchange in another substream.
     ///
-    /// Events are fetched by event id through the substream communication point and buffered in
-    /// a transient channel. The processed position is part of this streams checkpoint state, so
-    /// after a restore the operator resumes fetching from the exact event that follows its
-    /// restored state. The other substream keeps events until this stream confirms them with
-    /// its checkpoint done message, which makes the delivery safe against rollbacks in either
-    /// substream.
+    /// Events are fetched through the substream communication point and buffered in a
+    /// transient channel. The delivery is transient, checkpoint cycles in the other substream
+    /// only complete when this stream has consumed the checkpoint barrier and sent its
+    /// checkpoint done message. After a failure both substreams roll back to a common
+    /// checkpoint and the other substream regenerates the events by replaying from it.
     /// </summary>
     internal class SubstreamReadOperator : IngressVertex<StreamEventBatch>
     {
+        /// <summary>
+        /// Marker placed in the channel when this stream takes its stop checkpoint. The fetch
+        /// loop forwards the stop barrier when it reads the marker, after all already buffered
+        /// events, so the stop does not depend on more events from the other substream which
+        /// may already have stopped completely.
+        /// </summary>
+        private sealed class LocalStopCheckpointMarker : IStreamEvent
+        {
+        }
+
+        private static readonly LocalStopCheckpointMarker s_localStopCheckpointMarker = new LocalStopCheckpointMarker();
+
         private readonly SubstreamCommunicationPoint _communicationPoint;
         private readonly SubstreamExchangeReferenceRelation _exchangeReferenceRelation;
         private readonly object _lock = new object();
@@ -54,9 +59,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // Checkpoint done signals from the other substream that arrived before this stream
         // finished starting, replayed one per checkpoint cycle. Guarded by _lock.
         private int _pendingCheckpointDoneSignals;
-        private Channel<(long EventId, IStreamEvent Event)>? _channel;
+        private Channel<IStreamEvent>? _channel;
         private IObjectState<SubstreamReadState>? _state;
-        private long _lastCommittedEventId = -1;
+        // Set when the other substreams stop barrier has been consumed, the stream may first
+        // finish stopping after it so all events the other substream sent are part of this
+        // streams final state.
+        private volatile bool _peerStopConsumed;
 
         public SubstreamReadOperator(SubstreamCommunicationPoint communicationPoint, SubstreamExchangeReferenceRelation referenceRelation, DataflowBlockOptions options) : base(options)
         {
@@ -70,11 +78,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public int ExchangeTargetId => _exchangeReferenceRelation.ExchangeTargetId;
 
         /// <summary>
-        /// The last event id from the other substream that is included in this streams latest
-        /// completed checkpoint. Sent with checkpoint done messages so the other substream can
-        /// remove confirmed events.
+        /// The stream may first finish stopping when this operator has consumed the other
+        /// substreams stop barrier, everything the other substream sent before it is then
+        /// part of this streams final state.
         /// </summary>
-        public long LastCommittedEventId => Interlocked.Read(ref _lastCommittedEventId);
+        public override bool ReadyToStop => _peerStopConsumed;
 
         public override Task Compact()
         {
@@ -111,13 +119,24 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 staleWaitForCheckpoint = _waitForCheckpoint;
                 _waitForCheckpoint = null;
                 _initWatermarksHandled = false;
+                _peerStopConsumed = false;
             }
             // Cancel outside the lock so a stale fetch loop that awaits it can complete and stop.
             staleWaitForCheckpoint?.TrySetCanceled();
 
-            // A fresh channel is created on every restore, buffered events from before the
-            // failure are refetched from the other substream starting at the restored position.
-            _channel = Channel.CreateBounded<(long EventId, IStreamEvent Event)>(new BoundedChannelOptions(1024)
+            // A fresh channel is created on every restore. Events buffered before the failure
+            // belong to the aborted epoch, they are disposed and regenerated by the other
+            // substream when it replays from the common checkpoint.
+            var staleChannel = _channel;
+            if (staleChannel != null)
+            {
+                staleChannel.Writer.TryComplete();
+                while (staleChannel.Reader.TryRead(out var staleEvent))
+                {
+                    SubstreamCommunicationPoint.DisposeEvent(staleEvent);
+                }
+            }
+            _channel = Channel.CreateBounded<IStreamEvent>(new BoundedChannelOptions(1024)
             {
                 SingleReader = true
             });
@@ -127,14 +146,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _state.Value = new SubstreamReadState();
             }
-            Interlocked.Exchange(ref _lastCommittedEventId, _state.Value.LastEventId);
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_state != null);
             await _state.Commit();
-            Interlocked.Exchange(ref _lastCommittedEventId, _state.Value!.LastEventId);
         }
 
         protected override Task SendInitial(IngressOutput<StreamEventBatch> output)
@@ -149,27 +166,71 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             var channel = _channel;
 
-            // Fetch data from the communication point, starting after the last processed event
-            _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, _state.Value.LastEventId + 1, async (eventId, ev) =>
+            // Fetch data from the communication point
+            _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, async (ev) =>
             {
-                await channel.Writer.WriteAsync((eventId, ev));
+                await channel.Writer.WriteAsync(ev);
             });
 
             while (!output.CancellationToken.IsCancellationRequested)
             {
-                var (eventId, ev) = await channel.Reader.ReadAsync(output.CancellationToken);
+                var ev = await channel.Reader.ReadAsync(output.CancellationToken);
 
-                if (eventId <= _state.Value.LastEventId)
+                if (ev is LocalStopCheckpointMarker)
                 {
-                    // The event is already part of this streams state, can happen when events
-                    // overlap after a resubscribe.
+                    ICheckpointEvent? stopCheckpoint;
+                    lock (_lock)
+                    {
+                        stopCheckpoint = _currentCheckpoint;
+                    }
+                    if (stopCheckpoint == null)
+                    {
+                        // An event from the other substream already paired with the stop
+                        // checkpoint, keep the loop running for further stop cycles.
+                        continue;
+                    }
+                    if (!_peerStopConsumed)
+                    {
+                        // The other substreams stop barrier has not been consumed yet, keep
+                        // draining, the stop checkpoint pairs with the next event from the
+                        // other substream instead so its data is part of the final state.
+                        continue;
+                    }
+                    Logger.LogDebug("Substream read {name} forwards the stop checkpoint, the other substreams stop barrier has been consumed", Name);
+                    await OnCheckpoint(stopCheckpoint.CheckpointTime);
+                    await output.SendLockingEvent(stopCheckpoint);
+                    bool replayStopSignal = false;
+                    lock (_lock)
+                    {
+                        _currentCheckpoint = null;
+                        if (_pendingCheckpointDoneSignals > 0)
+                        {
+                            _pendingCheckpointDoneSignals--;
+                            replayStopSignal = true;
+                        }
+                    }
+                    if (replayStopSignal)
+                    {
+                        SetDependenciesDone();
+                    }
                     continue;
                 }
+
+                Logger.LogDebug("Substream read {name} processing event of type {eventType}", Name, ev.GetType().Name);
 
                 output.CancellationToken.ThrowIfCancellationRequested();
 
                 if (ev is ICheckpointEvent checkpointEvent)
                 {
+                    if (ev is StopStreamCheckpoint)
+                    {
+                        // The other substream is stopping, everything it sent has now been
+                        // received. Stop fetching, the other substream disposes its queue
+                        // when it has finished stopping.
+                        _peerStopConsumed = true;
+                        _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
+                        Logger.LogDebug("Substream read {name} consumed the other substreams stop barrier", Name);
+                    }
                     ICheckpointEvent? inStreamCheckpoint = default;
                     bool scheduleCheckpoint = false;
                     lock (_lock)
@@ -215,8 +276,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     }
                     if (inStreamCheckpoint != null)
                     {
-                        // The checkpoint event is included in the committed position
-                        _state.Value.LastEventId = eventId;
                         await OnCheckpoint(inStreamCheckpoint.CheckpointTime);
                         // Forward this streams own checkpoint event, the checkpoint event from
                         // the other substream has that streams times and must not flow here.
@@ -261,20 +320,20 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         return;
                     }
                     _state.Value.WatermarkNames = initWatermarksEvent.WatermarkNames.ToHashSet();
-                    _state.Value.LastEventId = eventId;
                     await output.SendLockingEvent(initWatermarksEvent);
                     SetDependenciesDone();
                 }
                 else if (ev is ILockingEvent lockingEvent)
                 {
-                    _state.Value.LastEventId = eventId;
                     await output.SendLockingEvent(lockingEvent);
                 }
                 else if (ev is StreamMessage<StreamEventBatch> streamMessage)
                 {
                     Logger.LogDebug("Substream read {name} recieved data batch with {count} rows", Name, streamMessage.Data.Data.Count);
                     await output.SendAsync(streamMessage.Data);
-                    _state.Value.LastEventId = eventId;
+                    // Send async rents for the stream pipeline, the rent taken when the event
+                    // was read from the other substreams queue is returned.
+                    streamMessage.Data.Return();
                     // Data from another substream must eventually be covered by a checkpoint in
                     // this stream, even when no local source change triggers one. Without this,
                     // data that arrives after a checkpoint barrier could wait forever when both
@@ -285,14 +344,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 else if (ev is Watermark watermark)
                 {
-                    _state.Value.LastEventId = eventId;
                     await output.SendWatermark(watermark);
                 }
                 else
                 {
-                    // Other event types such as locking event prepares are counted as processed
-                    // but do not flow into this stream.
-                    _state.Value.LastEventId = eventId;
+                    // Other event types such as locking event prepares do not flow into this
+                    // stream, dispose them in case they hold rented memory.
+                    SubstreamCommunicationPoint.DisposeEvent(ev);
                 }
             }
         }
@@ -300,6 +358,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public override async Task OnFailure(long rollbackVersion)
         {
             _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
+            _communicationPoint.OnStreamFailure();
             await _communicationPoint.SendFailAndRecover(rollbackVersion);
         }
 
@@ -337,6 +396,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return FailAndRollback(restoreVersion: recoveryPoint);
         }
 
+        /// <summary>
+        /// Fails the stream after a fetch error. Fetching removes events from the other
+        /// substreams queue, so a failed fetch can mean events were removed there but never
+        /// arrived here. They cannot be fetched again, the stream fails and both substreams
+        /// recover to a common checkpoint where the events are regenerated.
+        /// </summary>
+        public Task FailAndRecoverOnFetchError(Exception exception)
+        {
+            return FailAndRollback(exception);
+        }
+
         public override void DoLockingEvent(ILockingEvent lockingEvent)
         {
             // At this point the operator states are stored in the checkpoint object
@@ -357,6 +427,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     // Set task completion source outside of lock to hinder any deadlocks
                     taskSource.TrySetResult();
+                }
+                if (checkpointEvent is StopStreamCheckpoint)
+                {
+                    // The stop checkpoint must complete without a checkpoint event from the
+                    // other substream, it may already have stopped and produces no more events.
+                    // The marker makes the fetch loop forward the stop barrier after the events
+                    // that are already buffered. If a checkpoint event from the other substream
+                    // arrives before the marker it pairs with the stop checkpoint as usual.
+                    var channel = _channel;
+                    if (channel != null)
+                    {
+                        _ = channel.Writer.WriteAsync(s_localStopCheckpointMarker).AsTask();
+                    }
                 }
             }
             lock (_lock)

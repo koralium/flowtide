@@ -20,6 +20,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Substrait.Sql;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
@@ -426,7 +427,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         /// When a substream crashes, the failure propagates to the other substream and both
         /// recover to a common checkpoint, after which the data becomes correct again.
         /// </summary>
-        [Fact(Skip = "Known issue: after a crash on the very first checkpoint, a later checkpoint barrier can be lost at the source and the stream stops taking checkpoints. Under investigation, see the distributed mode notes.")]
+        [Fact]
         public async Task SubstreamCrashRecoversAndProducesCorrectData()
         {
             _generator.Generate(500);
@@ -457,11 +458,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, crashCount, watermark => { }));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
-                    var serilogLogger = new Serilog.LoggerConfiguration()
-                        .MinimumLevel.Debug()
-                        .WriteTo.File($"./debugwrite/e2e_crash_recovery_{substreamName}.log")
-                        .CreateLogger();
-                    substreamBuilder.WithLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(b => b.AddSerilog(serilogLogger)));
                 })
                 .DistributeAutomatically(2)
                 .Build();
@@ -560,7 +556,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             int substreamCount = 2,
             Func<string, (int CrashCount, int CheckpointsBeforeCrash)>? crashConfig = null,
             Func<string, Storage.StateManager.StateManagerOptions>? stateOptions = null,
-            bool debugLog = false)
+            bool debugLog = false,
+            Func<string, Microsoft.Extensions.Logging.ILoggerFactory>? loggerFactory = null)
         {
             return new DistributedStreamBuilder(testName)
                 .AddPlan(() =>
@@ -579,7 +576,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, crash.CrashCount, watermark => { }, crash.CheckpointsBeforeCrash));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
-                    if (debugLog)
+                    if (loggerFactory != null)
+                    {
+                        substreamBuilder.WithLoggerFactory(loggerFactory(substreamName));
+                    }
+                    else if (debugLog)
                     {
                         var serilogLogger = new Serilog.LoggerConfiguration()
                             .MinimumLevel.Debug()
@@ -607,8 +608,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             // The sink completes its first checkpoint and crashes on the second
             _stream = BuildHost("e2e_midrun_crash", NormalJoinSql, latestData, failures,
-                crashConfig: substreamName => substreamName == "substream_0" ? (1, 1) : (0, 0),
-                debugLog: true);
+                crashConfig: substreamName => substreamName == "substream_0" ? (1, 1) : (0, 0));
 
             await _stream.StartAsync();
 
@@ -636,7 +636,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         /// persisted checkpoints, the substreams handshake on their restored versions and
         /// continue processing new data.
         /// </summary>
-        [Fact(Skip = "Known issue: the coordinated stop can time out when the substreams checkpoint versions have diverged before the stop. Under investigation, see the distributed mode notes.")]
+        [Fact]
         public async Task DistributedStreamRestartsFromCheckpoint()
         {
             _generator.Generate(500);
@@ -644,6 +644,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
             var fileProviders = new ConcurrentDictionary<string, MemoryFileProvider>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
 
             Storage.StateManager.StateManagerOptions CreateOptions(string substreamName)
             {
@@ -665,13 +666,35 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 };
             }
 
-            _stream = BuildHost("e2e_restart", NormalJoinSql, latestData, failures, stateOptions: CreateOptions);
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                    b.AddProvider(provider);
+                });
+            }
+
+            void DumpLogBuffers(string phase)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_restart_{phase}_{buffer.Key}.log");
+                }
+            }
+
+            _stream = BuildHost("e2e_restart", NormalJoinSql, latestData, failures, stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
             await _stream.StartAsync();
 
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
             var stopTask = _stream.StopAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            if (finished != stopTask)
+            {
+                DumpLogBuffers("firststop");
+            }
             Assert.True(finished == stopTask, "Stopping the distributed stream timed out");
             await stopTask;
             await _stream.DisposeAsync();
@@ -686,10 +709,83 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// Stopping while data is still flowing between the substreams must not lose the data
+        /// in flight. The stop drains, each substream keeps running stop cycles until it has
+        /// consumed the other substreams stop barrier, so everything sent before the stop is
+        /// part of the final checkpoints and a restarted host produces the complete result.
+        /// </summary>
+        [Fact]
+        public async Task StopUnderLoadKeepsDataCompleteAcrossRestart()
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, MemoryFileProvider>();
+
+            Storage.StateManager.StateManagerOptions CreateOptions(string substreamName)
+            {
+                return new Storage.StateManager.StateManagerOptions()
+                {
+                    CachePageCount = 100_000,
+                    PersistentStorage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                    {
+                        FileProvider = fileProviders.GetOrAdd(substreamName, _ => new MemoryFileProvider())
+                    }),
+                    DefaultBPlusTreePageSize = 1024,
+                    DefaultBPlusTreePageSizeBytes = 32 * 1024,
+                    TemporaryStorageOptions = new Storage.FileCacheOptions()
+                    {
+                        DirectoryPath = $"./data/tempFiles/e2e_stop_load/{substreamName}/tmp"
+                    }
+                };
+            }
+
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                    b.AddProvider(provider);
+                });
+            }
+
+            _stream = BuildHost("e2e_stop_load", NormalJoinSql, latestData, failures, stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // Generate new data and stop immediately while it is still flowing between the
+            // substreams, the stop must drain the in flight data.
+            _generator.Generate(500);
+
+            var stopTask = _stream.StopAsync();
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            if (finished != stopTask)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_stop_load_{buffer.Key}.log");
+                }
+            }
+            Assert.True(finished == stopTask, "Stopping the distributed stream under load timed out");
+            await stopTask;
+            await _stream.DisposeAsync();
+
+            // A new host started from the persisted state must produce the complete result.
+            _stream = BuildHost("e2e_stop_load", NormalJoinSql, latestData, failures, stateOptions: CreateOptions);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+        }
+
+        /// <summary>
         /// A window function partitioned by a column is distributed automatically, each
         /// substream computes the windows for its hash partition.
         /// </summary>
-        [Fact(Skip = "Known issue: the second data batch stalls before reaching the sink for distributed window functions. Under investigation, see the distributed mode notes.")]
+        [Fact]
         public async Task WindowFunctionIsDistributedAcrossSubstreams()
         {
             _generator.Generate(500);

@@ -79,6 +79,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public override string DisplayName => "Exchange";
 
+        /// <summary>
+        /// The stream may first finish stopping when other substreams have fetched this
+        /// streams stop barrier from all substream targets.
+        /// </summary>
+        public bool ReadyToStop => _executor.ReadyToStop;
+
         private Task FailAndRecoverMethod(long recoveryPoint)
         {
             return FailAndRollback(restoreVersion: recoveryPoint);

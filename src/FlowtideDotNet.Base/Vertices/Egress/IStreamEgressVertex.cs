@@ -20,5 +20,13 @@ namespace FlowtideDotNet.Base.Vertices
         internal void SetCheckpointDoneFunction(Action<string> checkpointDone, Action<string> dependenciesDone);
 
         Task CheckpointDone(long checkpointVersion);
+
+        /// <summary>
+        /// True when the vertex has everything it needs for the stream to finish stopping.
+        /// Exchanges that send to other substreams return false until the other substream
+        /// has fetched the stop barrier, so the stream does not dispose the exchanged events
+        /// before the other substream has received them.
+        /// </summary>
+        bool ReadyToStop => true;
     }
 }

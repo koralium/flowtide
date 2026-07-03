@@ -26,11 +26,11 @@ namespace FlowtideDotNet.Orleans.Internal
         private readonly string _substreamName;
         private readonly string selfName;
         private readonly IGrainFactory _grainFactory;
-        private Func<IReadOnlyDictionary<int, long>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
+        private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
         private ISubStreamGrain _streamGrain;
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
-        private Func<long, IReadOnlyDictionary<int, long>, Task>? _callRecieveCheckpointDone;
+        private Func<long, Task>? _callRecieveCheckpointDone;
 
         public OrleansCommunicationHandler(string streamName, string substreamName, string selfName, IGrainFactory grainFactory)
         {
@@ -41,17 +41,17 @@ namespace FlowtideDotNet.Orleans.Internal
             _streamGrain = _grainFactory.GetGrain<ISubStreamGrain>($"{streamName}_{_substreamName}");
         }
 
-        public async Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlyDictionary<int, long> targetFromEventIds, int numberOfEvents, CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
         {
-            var response = await _streamGrain.FetchDataAsync(new Messages.FetchDataRequest(selfName, targetFromEventIds, numberOfEvents));
+            var response = await _streamGrain.FetchDataAsync(new Messages.FetchDataRequest(selfName, targetIds, numberOfEvents));
             return response.Data;
         }
 
         public void Initialize(
-            Func<IReadOnlyDictionary<int, long>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
+            Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
             Func<long, Task<SubstreamInitializeResponse>> targetInitializeRequest,
-            Func<long, IReadOnlyDictionary<int, long>, Task> callRecieveCheckpointDone)
+            Func<long, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
             _callFailAndRecover = callFailAndRecover;
@@ -59,13 +59,13 @@ namespace FlowtideDotNet.Orleans.Internal
             _callRecieveCheckpointDone = callRecieveCheckpointDone;
         }
 
-        public async Task<IReadOnlyList<SubstreamEventData>> GetData(IReadOnlyDictionary<int, long> targetFromEventIds, int numberOfEvents, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<SubstreamEventData>> GetData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken = default)
         {
             if (_getDataFunction == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return await _getDataFunction(targetFromEventIds, numberOfEvents, cancellationToken);
+            return await _getDataFunction(targetIds, numberOfEvents, cancellationToken);
         }
 
         public Task SendFailAndRecover(long restoreVersion)
@@ -97,18 +97,18 @@ namespace FlowtideDotNet.Orleans.Internal
             return _targetInitializeRequest(restoreVersion);
         }
 
-        public Task SendCheckpointDone(long checkpointVersion, IReadOnlyDictionary<int, long> consumedEventIds)
+        public Task SendCheckpointDone(long checkpointVersion)
         {
-            return _streamGrain.CheckpointDone(new Messages.CheckpointDoneRequest(selfName, checkpointVersion, consumedEventIds));
+            return _streamGrain.CheckpointDone(new Messages.CheckpointDoneRequest(selfName, checkpointVersion));
         }
 
-        public Task TargetCheckpointDone(long checkpointVersion, IReadOnlyDictionary<int, long> consumedEventIds)
+        public Task TargetCheckpointDone(long checkpointVersion)
         {
             if (_callRecieveCheckpointDone == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _callRecieveCheckpointDone(checkpointVersion, consumedEventIds);
+            return _callRecieveCheckpointDone(checkpointVersion);
         }
     }
 }

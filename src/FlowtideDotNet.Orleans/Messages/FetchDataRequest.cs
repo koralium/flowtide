@@ -22,18 +22,18 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class FetchDataRequest
     {
-        public FetchDataRequest(string requestor, IReadOnlyDictionary<int, long> targetFromEventIds, int numberOfEvents)
+        public FetchDataRequest(string requestor, IReadOnlySet<int> targetIds, int numberOfEvents)
         {
-            TargetFromEventIds = targetFromEventIds;
+            TargetIds = targetIds;
             NumberOfEvents = numberOfEvents;
             Requestor = requestor;
         }
 
         /// <summary>
-        /// The exchange targets to fetch from with the first event id to fetch per target.
+        /// The exchange targets to fetch from.
         /// </summary>
         [Id(0)]
-        public IReadOnlyDictionary<int, long> TargetFromEventIds { get; set; }
+        public IReadOnlySet<int> TargetIds { get; set; }
 
         [Id(1)]
         public int NumberOfEvents { get; set; }

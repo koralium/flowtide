@@ -52,5 +52,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         Task OnFailure(long recoveryPoint);
 
         Task CheckpointDone(long checkpointVersion);
+
+        /// <summary>
+        /// True when the target has everything it needs for the stream to finish stopping.
+        /// Substream targets are ready first when the other substream has fetched the stop
+        /// barrier, so the events before it are not disposed before they have been received.
+        /// </summary>
+        bool ReadyToStop => true;
     }
 }

@@ -18,24 +18,24 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// Registers the local callbacks that are invoked when the other substream sends
         /// requests to this substream.
         /// </summary>
-        /// <param name="getDataFunction">Returns events for the given exchange targets, starting at the event id per target.</param>
+        /// <param name="getDataFunction">Returns events for the given exchange targets.</param>
         /// <param name="callFailAndRecover">Fails and recovers this substream to the given version.</param>
         /// <param name="initializeFromTarget">Handles an initialize request from the other substream.</param>
-        /// <param name="callRecieveCheckpointDone">Handles a checkpoint done message, with the checkpoint version and the event ids per exchange target that the other substream has included in its checkpoint.</param>
+        /// <param name="callRecieveCheckpointDone">Handles a checkpoint done message with the completed checkpoint version.</param>
         void Initialize(
-            Func<IReadOnlyDictionary<int, long>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
+            Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
             Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget,
-            Func<long, IReadOnlyDictionary<int, long>, Task> callRecieveCheckpointDone);
+            Func<long, Task> callRecieveCheckpointDone);
 
         /// <summary>
         /// Fetches events from the other substream.
         /// </summary>
-        /// <param name="targetFromEventIds">The exchange targets to fetch from, with the first event id to fetch per target.</param>
+        /// <param name="targetIds">The exchange targets to fetch from.</param>
         /// <param name="numberOfEvents">Max number of events to fetch in total.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         Task<IReadOnlyList<SubstreamEventData>> FetchData(
-            IReadOnlyDictionary<int, long> targetFromEventIds,
+            IReadOnlySet<int> targetIds,
             int numberOfEvents,
             CancellationToken cancellationToken);
 
@@ -47,7 +47,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// Notifies the other substream that a checkpoint has completed in this substream.
         /// </summary>
         /// <param name="checkpointVersion">The completed checkpoint version.</param>
-        /// <param name="consumedEventIds">The last event id per exchange target that is included in the checkpoint, the other substream can remove events up to and including these ids.</param>
-        Task SendCheckpointDone(long checkpointVersion, IReadOnlyDictionary<int, long> consumedEventIds);
+        Task SendCheckpointDone(long checkpointVersion);
     }
 }

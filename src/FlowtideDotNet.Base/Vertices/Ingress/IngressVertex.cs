@@ -297,14 +297,18 @@ namespace FlowtideDotNet.Base.Vertices
             Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
 
             var lockingEvent = (ILockingEvent)state!;
+            _logger?.LogDebug("Ingress {name} waiting for checkpoint lock for locking event {eventType}", Name, lockingEvent.GetType().Name);
             await _ingressState._checkpointLock.WaitAsync(_ingressState._output.CancellationToken);
+            _logger?.LogDebug("Ingress {name} acquired checkpoint lock for locking event {eventType}", Name, lockingEvent.GetType().Name);
             _ingressState._inCheckpointLock = true;
-            bool isStopStreamEvent = false;
             if (lockingEvent is ICheckpointEvent checkpoint)
             {
                 if (checkpoint is StopStreamCheckpoint)
                 {
-                    isStopStreamEvent = true;
+                    // Stop new data from being emitted, the stop checkpoint covers everything
+                    // emitted before it. The checkpoint lock is still released, a stopping
+                    // stream can run multiple stop checkpoint cycles while it drains data
+                    // exchanged with other substreams.
                     output.Stop();
                 }
                 await OnCheckpoint(checkpoint.CheckpointTime);
@@ -321,11 +325,9 @@ namespace FlowtideDotNet.Base.Vertices
                 SetDependenciesDone();
             }
 
-            if (!isStopStreamEvent)
-            {
-                _ingressState._inCheckpointLock = false;
-                _ingressState._checkpointLock.Release();
-            }
+            _ingressState._inCheckpointLock = false;
+            _ingressState._checkpointLock.Release();
+            _logger?.LogDebug("Ingress {name} finished locking event {eventType}", Name, lockingEvent.GetType().Name);
         }
 
         /// <summary>
@@ -410,6 +412,7 @@ namespace FlowtideDotNet.Base.Vertices
             {
                 if (_ingressState._block.Completion.IsFaulted || !_ingressState._taskEnabled)
                 {
+                    _logger?.LogDebug("Ingress {name} dropped a task, block faulted: {faulted}, tasks enabled: {enabled}", Name, _ingressState._block.Completion.IsFaulted, _ingressState._taskEnabled);
                     return Task.CompletedTask;
                 }
 
@@ -429,6 +432,7 @@ namespace FlowtideDotNet.Base.Vertices
                     var taskState = (TaskState)state!;
                     if (task.IsCanceled && !taskState.ingressOutput.CancellationToken.IsCancellationRequested)
                     {
+                        _logger?.LogDebug("Ingress {name} task was canceled without cancellation being requested, faulting output", Name);
                         taskState.ingressOutput.Fault(new InvalidOperationException($"Task was canceled without cancellation being requested"));
                     }
                     if (t.IsFaulted)
@@ -753,6 +757,13 @@ namespace FlowtideDotNet.Base.Vertices
         {
             _dependenciesDone = dependenciesDone;
         }
+
+        /// <summary>
+        /// True when the vertex has everything it needs for the stream to finish stopping.
+        /// Overridden by ingress vertices that read from other substreams, they are ready
+        /// first when the other substreams stop barrier has been consumed.
+        /// </summary>
+        public virtual bool ReadyToStop => true;
 
         /// <summary>
         /// Indicates a rollback behavior hook whenever a previous version is targeted for restoring due to errors.

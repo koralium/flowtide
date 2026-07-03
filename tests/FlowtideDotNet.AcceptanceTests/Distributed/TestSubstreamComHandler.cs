@@ -19,10 +19,10 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         private readonly Func<long, Task> _sendCheckpointDone;
         private readonly Func<long, Task> _sendFailAndRecover;
         private readonly Func<long, Task<SubstreamInitializeResponse>> _sendInitializeRequest;
-        private Func<IReadOnlyDictionary<int, long>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunc;
+        private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunc;
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
-        private Func<long, IReadOnlyDictionary<int, long>, Task>? _callRecieveCheckpointDone;
+        private Func<long, Task>? _callRecieveCheckpointDone;
 
         public TestSubstreamComHandler(
             Func<long, Task> sendCheckpointDone,
@@ -34,25 +34,25 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             _sendInitializeRequest = sendInitializeRequest;
         }
 
-        public Task<IReadOnlyList<SubstreamEventData>> GetData(IReadOnlyDictionary<int, long> targetFromEventIds, int numberOfEvents, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<SubstreamEventData>> GetData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
         {
             if (_getDataFunc == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _getDataFunc(targetFromEventIds, numberOfEvents, cancellationToken);
+            return _getDataFunc(targetIds, numberOfEvents, cancellationToken);
         }
 
-        public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlyDictionary<int, long> targetFromEventIds, int numberOfEvents, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
         public void Initialize(
-            Func<IReadOnlyDictionary<int, long>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
+            Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
             Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget,
-            Func<long, IReadOnlyDictionary<int, long>, Task> callRecieveCheckpointDone)
+            Func<long, Task> callRecieveCheckpointDone)
         {
             _getDataFunc = getDataFunction;
             _callFailAndRecover = callFailAndRecover;
@@ -60,7 +60,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             _callRecieveCheckpointDone = callRecieveCheckpointDone;
         }
 
-        public Task SendCheckpointDone(long checkpointVersion, IReadOnlyDictionary<int, long> consumedEventIds)
+        public Task SendCheckpointDone(long checkpointVersion)
         {
             return _sendCheckpointDone(checkpointVersion);
         }
@@ -84,7 +84,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _callRecieveCheckpointDone(checkpointVersion, new Dictionary<int, long>());
+            return _callRecieveCheckpointDone(checkpointVersion);
         }
 
         /// <summary>

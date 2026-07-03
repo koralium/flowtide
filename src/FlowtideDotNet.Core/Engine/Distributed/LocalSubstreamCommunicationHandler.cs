@@ -27,10 +27,10 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         private readonly string _selfSubstreamName;
         private readonly string _targetSubstreamName;
 
-        private Func<IReadOnlyDictionary<int, long>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
+        private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
-        private Func<long, IReadOnlyDictionary<int, long>, Task>? _callRecieveCheckpointDone;
+        private Func<long, Task>? _callRecieveCheckpointDone;
 
         public LocalSubstreamCommunicationHandler(LocalSubstreamCommunicationHub hub, string selfSubstreamName, string targetSubstreamName)
         {
@@ -45,10 +45,10 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         public bool IsInitialized => _initializeFromTarget != null;
 
         public void Initialize(
-            Func<IReadOnlyDictionary<int, long>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
+            Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
             Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget,
-            Func<long, IReadOnlyDictionary<int, long>, Task> callRecieveCheckpointDone)
+            Func<long, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
             _callFailAndRecover = callFailAndRecover;
@@ -56,12 +56,12 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             _callRecieveCheckpointDone = callRecieveCheckpointDone;
         }
 
-        public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlyDictionary<int, long> targetFromEventIds, int numberOfEvents, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
         {
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._getDataFunction != null)
             {
-                return peer._getDataFunction(targetFromEventIds, numberOfEvents, cancellationToken);
+                return peer._getDataFunction(targetIds, numberOfEvents, cancellationToken);
             }
             return Task.FromResult<IReadOnlyList<SubstreamEventData>>(new List<SubstreamEventData>());
         }
@@ -87,12 +87,12 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             return Task.CompletedTask;
         }
 
-        public Task SendCheckpointDone(long checkpointVersion, IReadOnlyDictionary<int, long> consumedEventIds)
+        public Task SendCheckpointDone(long checkpointVersion)
         {
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._callRecieveCheckpointDone != null)
             {
-                return peer._callRecieveCheckpointDone(checkpointVersion, consumedEventIds);
+                return peer._callRecieveCheckpointDone(checkpointVersion);
             }
             // The other substream has not started yet, there is no pending checkpoint
             // that waits for this notification.
