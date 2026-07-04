@@ -45,7 +45,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            // The tests using this handler drive data exchange manually through GetData,
+            // the fetch loop is never started so this is never called.
+            throw new NotSupportedException("This test handler exchanges data through GetData, fetching is not used.");
         }
 
         public void Initialize(

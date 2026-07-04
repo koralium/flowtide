@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices;
+using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
@@ -230,7 +231,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     continue;
                 }
 
-                Logger.LogDebug("Substream read {name} processing event of type {eventType}", Name, ev.GetType().Name);
+                // Guarded since this runs for every event and GetType().Name allocates.
+                if (Logger.IsEnabled(LogLevel.Debug))
+                {
+                    Logger.SubstreamReadProcessingEvent(Name, ev.GetType().Name);
+                }
 
                 output.CancellationToken.ThrowIfCancellationRequested();
 
@@ -380,7 +385,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 else if (ev is StreamMessage<StreamEventBatch> streamMessage)
                 {
-                    Logger.LogDebug("Substream read {name} recieved data batch with {count} rows", Name, streamMessage.Data.Data.Count);
+                    Logger.SubstreamReadRecievedDataBatch(Name, streamMessage.Data.Data.Count);
                     await output.SendAsync(streamMessage.Data);
                     // Send async rents for the stream pipeline, the rent taken when the event
                     // was read from the other substreams queue is returned.

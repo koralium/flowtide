@@ -10,23 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Ipc;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
-using Google.Protobuf.WellKnownTypes;
-using SqlParser.Ast;
-using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
@@ -232,7 +225,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     lockingEvent = DeserializeCheckpoint(ref reader, isStopCheckpoint: true);
                     break;
                 default:
-                    throw new NotImplementedException();
+                    throw new NotSupportedException($"Unknown locking event type id '{type}' inside a locking event prepare.");
             }
 
             return new LockingEventPrepare(lockingEvent, isInitEvent != 0, otherInputsNotInCheckpoint != 0, id);
@@ -282,7 +275,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 case InitWatermarksEventType:
                     return DeserializeInitWatermark(ref reader);
                 default:
-                    throw new NotImplementedException();
+                    throw new NotSupportedException($"Unknown stream event type id '{type}'.");
             }
         }
 
@@ -397,7 +390,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 SerializeCheckpoint(writer, checkpointEvent);
                 return;
             }
-            throw new NotImplementedException();
+            throw new NotSupportedException($"Locking event type '{lockingEvent.GetType().Name}' cannot be serialized for the exchange queue.");
         }
 
         public void Serialize(in IBufferWriter<byte> writer, in StreamEventValueContainer values)
@@ -436,7 +429,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             else
             {
-                throw new NotImplementedException();
+                throw new NotSupportedException($"Stream event type '{val.GetType().Name}' cannot be serialized for the exchange queue.");
             }
         }
     }

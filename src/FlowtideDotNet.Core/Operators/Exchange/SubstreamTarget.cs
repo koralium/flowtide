@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Utils;
 using Microsoft.Extensions.Logging;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
@@ -124,7 +125,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 try
                 {
                     var msg = new StreamMessage<StreamEventBatch>(new StreamEventBatch(new EventBatchWeighted(_weights, _iterations, new EventBatchData(_columns))), time);
-                    _substreamCommunication.Logger.LogDebug("Target {targetId} stores batch", _exchangeTargetId);
+                    _substreamCommunication.Logger.SubstreamTargetStoresBatch(_exchangeTargetId);
                     await _queue.Enqueue(msg);
                     NewColumns();
                 }
