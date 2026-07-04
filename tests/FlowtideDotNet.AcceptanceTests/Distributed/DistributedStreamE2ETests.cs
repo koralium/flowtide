@@ -1842,25 +1842,48 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            }
 
             _stream = BuildHost("e2e_aggregate_crash", aggregateSql, latestData, failures,
-                crashConfig: substreamName => substreamName == "substream_0" ? (1, 1) : (0, 0));
+                crashConfig: substreamName => substreamName == "substream_0" ? (1, 1) : (0, 0),
+                loggerFactory: CreateBufferedLoggerFactory);
             await _stream.StartAsync();
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedAggregateResult(), allowFailures: true);
-
-            // The next checkpoint crashes, the partial aggregates in both substreams must
-            // roll back together.
-            _generator.Generate(500);
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedAggregateResult(), allowFailures: true);
-            Assert.NotEmpty(failures);
-
-            // Deletes decrement the counts through the recovered aggregate state
-            foreach (var order in _generator.Orders.Take(200).ToList())
+            try
             {
-                _generator.DeleteOrder(order);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedAggregateResult(), allowFailures: true);
+
+                // The next checkpoint crashes, the partial aggregates in both substreams must
+                // roll back together.
+                _generator.Generate(500);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedAggregateResult(), allowFailures: true);
+                Assert.NotEmpty(failures);
+
+                // Deletes decrement the counts through the recovered aggregate state
+                foreach (var order in _generator.Orders.Take(200).ToList())
+                {
+                    _generator.DeleteOrder(order);
+                }
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedAggregateResult(), allowFailures: true);
             }
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedAggregateResult(), allowFailures: true);
+            catch
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_aggregate_crash_{buffer.Key}.log");
+                }
+                throw;
+            }
         }
 
         /// <summary>
@@ -2050,6 +2073,193 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 }
                 throw new Exception($"Chaos loop failed with seed {seed}", e);
             }
+        }
+
+        /// <summary>
+        /// A delete requested while the substreams are failing over. The delete must
+        /// complete even though blocks are being faulted and disposed by the failure
+        /// handling, and a fresh host on the same storage must start like a first start.
+        /// The stop equivalents of this interleaving exposed several hangs, delete goes
+        /// through a different state and is only covered here.
+        /// </summary>
+        [Fact]
+        public async Task DeleteDuringRecoveryRemovesStateAndRestartsFresh()
+        {
+            _generator.Generate(300);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, MemoryFileProvider>();
+
+            Storage.StateManager.StateManagerOptions CreateOptions(string substreamName)
+            {
+                return new Storage.StateManager.StateManagerOptions()
+                {
+                    CachePageCount = 100_000,
+                    PersistentStorage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                    {
+                        FileProvider = fileProviders.GetOrAdd(substreamName, _ => new MemoryFileProvider())
+                    }),
+                    DefaultBPlusTreePageSize = 1024,
+                    DefaultBPlusTreePageSizeBytes = 32 * 1024,
+                    TemporaryStorageOptions = new Storage.FileCacheOptions()
+                    {
+                        DirectoryPath = $"./data/tempFiles/e2e_delete_recovery/{substreamName}/tmp"
+                    }
+                };
+            }
+
+            _stream = BuildHost("e2e_delete_recovery", NormalJoinSql, latestData, failures, stateOptions: CreateOptions);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // Crash the lane substream and delete while the recovery runs
+            await _stream.Substreams["substream_1"].CallTrigger("crash", null);
+            var deleteTask = _stream.DeleteAsync();
+            var finished = await Task.WhenAny(deleteTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == deleteTask, "Delete during recovery did not complete");
+            await deleteTask;
+            await _stream.DisposeAsync();
+
+            // A fresh host must start from nothing and produce the full result
+            _generator.Generate(200);
+            _stream = BuildHost("e2e_delete_recovery", NormalJoinSql, latestData, failures, stateOptions: CreateOptions);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+        }
+
+        /// <summary>
+        /// A delete requested immediately after start, while the substreams are still
+        /// initializing and handshaking. The delete must complete without waiting out the
+        /// startup.
+        /// </summary>
+        [Fact]
+        public async Task DeleteDuringStartCompletes()
+        {
+            _generator.Generate(300);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            _stream = BuildHost("e2e_delete_during_start", NormalJoinSql, latestData, failures);
+            await _stream.StartAsync();
+
+            // Delete right away, the substreams are typically still starting up
+            var deleteTask = _stream.DeleteAsync();
+            var finished = await Task.WhenAny(deleteTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == deleteTask, "Delete during start did not complete");
+            await deleteTask;
+        }
+
+        /// <summary>
+        /// Repeated crash recoveries on an IDLE stream, no new data between the crashes, so
+        /// every recovery replays nothing, the sources resume at their committed offsets
+        /// with empty initial sends and the substreams must still align their checkpoints.
+        /// After the idle recoveries new data must flow normally.
+        /// </summary>
+        [Fact]
+        public async Task IdleCrashRecoveryLoopThenDataFlows()
+        {
+            _generator.Generate(300);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            _stream = BuildHost("e2e_idle_crash", NormalJoinSql, latestData, failures);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            for (int i = 0; i < 3; i++)
+            {
+                try
+                {
+                    await _stream.Substreams["substream_1"].CallTrigger("crash", null);
+                }
+                catch
+                {
+                    // The stream may still be recovering from the previous crash
+                }
+                await Task.Delay(500);
+            }
+            Assert.NotEmpty(failures);
+
+            // The stream must process new data after the idle recoveries
+            _generator.Generate(200);
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+            foreach (var order in _generator.Orders.Take(50).ToList())
+            {
+                _generator.DeleteOrder(order);
+            }
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+        }
+
+        /// <summary>
+        /// Several stop calls race each other while a crash recovery is running, every call
+        /// must complete and observe the same stop.
+        /// </summary>
+        [Fact]
+        public async Task ConcurrentStopsDuringRecoveryAllComplete()
+        {
+            _generator.Generate(300);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            _stream = BuildHost("e2e_concurrent_stops", NormalJoinSql, latestData, failures);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            await _stream.Substreams["substream_1"].CallTrigger("crash", null);
+
+            var stops = new[] { _stream.StopAsync(), _stream.StopAsync(), _stream.StopAsync() };
+            var all = Task.WhenAll(stops);
+            var finished = await Task.WhenAny(all, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == all, "Concurrent stops during recovery did not all complete");
+            await all;
+        }
+
+        /// <summary>
+        /// Orders are reassigned to different users after a crash recovery, an update on the
+        /// join key retracts the row from the old user and emits it for the new one, both
+        /// sides flow through different partition lanes when the keys hash differently. No
+        /// other test updates the join key.
+        /// </summary>
+        [Fact]
+        public async Task JoinKeyUpdatesRecoverAfterCrash()
+        {
+            _generator.Generate(300);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            _stream = BuildHost("e2e_joinkey_update", NormalJoinSql, latestData, failures,
+                crashConfig: substreamName => substreamName == "substream_0" ? (1, 1) : (0, 0));
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+            // New data triggers the crash checkpoint
+            _generator.Generate(200);
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+            Assert.NotEmpty(failures);
+
+            // Move the first orders to other users, the join key changes so the row is
+            // retracted from one lane and inserted through another
+            var userKeys = _generator.Users.Select(x => x.UserKey).ToList();
+            int target = 0;
+            foreach (var order in _generator.Orders.Take(100).ToList())
+            {
+                order.UserKey = userKeys[target % userKeys.Count];
+                target += 7;
+                _generator.AddOrUpdateOrder(order);
+            }
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
         }
 
         private static Storage.StateManager.StateManagerOptions CreateStateOptions(string testName, string substreamName)

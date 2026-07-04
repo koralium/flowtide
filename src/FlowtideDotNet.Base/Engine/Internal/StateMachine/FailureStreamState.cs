@@ -169,6 +169,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 return;
             }
 
+            if (_context._wantedState == StreamStateValue.Deleting)
+            {
+                // A delete was requested during the failure handling, the cleanup has
+                // finished so the delete can run now without racing it.
+                await TransitionTo(StreamStateValue.Deleting);
+                return;
+            }
+
             await TransitionTo(StreamStateValue.Starting);
         }
 
@@ -231,7 +239,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task DeleteAsync()
         {
-            return TransitionTo(StreamStateValue.Deleting);
+            Debug.Assert(_context != null, nameof(_context));
+            // The failure handling may be mid way through faulting and disposing the blocks,
+            // transitioning to deleting here would run the delete concurrently with that
+            // cleanup, both paths complete, dispose and delete the same blocks and state
+            // manager and corrupt it. The wish is honored by Transition when the cleanup has
+            // finished, the delete task the caller awaits completes when the delete is done.
+            _context._wantedState = StreamStateValue.Deleting;
+            return Task.CompletedTask;
         }
 
         public override Task StopAsync()

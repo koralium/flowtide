@@ -70,6 +70,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly HashSet<string> _earlyDependenciesDone = new HashSet<string>();
 
         internal TaskCompletionSource? _stopTask;
+        // Completed when a requested delete has fully finished, guarded by _checkpointLock.
+        internal TaskCompletionSource? _deleteTask;
 
         private StreamStateMachineState? _state = null;
 
@@ -269,52 +271,59 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        private Task TransitionTo(StreamStateMachineState current, StreamStateMachineState state, StreamStateValue previous)
+        private Task TransitionTo(StreamStateMachineState current, StreamStateMachineState state, StreamStateValue newValue)
         {
+            StreamStateValue previous;
             lock (_contextLock)
             {
                 if (current != _state)
                 {
+                    // The calling state has already been replaced, for example a delete
+                    // transitioned away while the failure handling still had a transition
+                    // scheduled. A stale transition must not swap the state, and it must not
+                    // update the reported state or notify about a transition that never
+                    // happens.
                     return Task.CompletedTask;
                 }
+                previous = currentState;
+                currentState = newValue;
                 this._state = state;
                 this._state.SetContext(this);
             }
-            return this._state.Initialize(previous);
-        }
 
-        public Task TransitionTo(StreamStateMachineState current, StreamStateValue newState)
-        {
             if (_notificationReciever != null)
             {
                 try
                 {
                     //The notification reciever exceptions should not interupt the transitions
-                    _notificationReciever.OnStreamStateChange(newState);
+                    _notificationReciever.OnStreamStateChange(newValue);
                 }
                 catch
                 {
                     // All errors are catched so notification reciever cant break the stream
                 }
             }
-            var oldState = currentState;
-            currentState = newState;
+            return this._state.Initialize(previous);
+        }
+
+        public Task TransitionTo(StreamStateMachineState current, StreamStateValue newState)
+        {
             switch (newState)
             {
                 case StreamStateValue.Starting:
-                    return TransitionTo(current, new StartStreamState(), oldState);
+                    return TransitionTo(current, new StartStreamState(), newState);
                 case StreamStateValue.Failure:
-                    return TransitionTo(current, new FailureStreamState(), oldState);
+                    return TransitionTo(current, new FailureStreamState(), newState);
                 case StreamStateValue.Running:
-                    return TransitionTo(current, new RunningStreamState(), oldState);
+                    return TransitionTo(current, new RunningStreamState(), newState);
                 case StreamStateValue.Deleting:
-                    return TransitionTo(current, new DeletingStreamState(), oldState);
+                    return TransitionTo(current, new DeletingStreamState(), newState);
                 case StreamStateValue.Deleted:
-                    return TransitionTo(current, new DeletedStreamState(), oldState);
+                    return TransitionTo(current, new DeletedStreamState(), newState);
                 case StreamStateValue.Stopping:
-                    return TransitionTo(current, new StoppingStreamState(), oldState);
+                    return TransitionTo(current, new StoppingStreamState(), newState);
                 case StreamStateValue.NotStarted:
-                    return TransitionTo(current, new NotStartedStreamState(), oldState);
+                    return TransitionTo(current, new NotStartedStreamState(), newState);
             }
             return Task.CompletedTask;
         }
@@ -679,10 +688,24 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task DeleteAsync()
         {
+            // The caller awaits the actual deletion, not just the transition into the
+            // deleting state. The delete itself runs as a background task, deleting states
+            // that only start it would let the caller dispose the stream while the delete
+            // still works on the blocks and the state manager.
+            Task result;
+            lock (_checkpointLock)
+            {
+                if (_deleteTask == null)
+                {
+                    _deleteTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                }
+                result = _deleteTask.Task;
+            }
             lock (_contextLock)
             {
-                return _state!.DeleteAsync();
+                _ = _state!.DeleteAsync();
             }
+            return result;
         }
 
         internal Task StopAsync()

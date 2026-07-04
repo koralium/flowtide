@@ -33,6 +33,17 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task DeleteAsync()
         {
+            Debug.Assert(_context != null, nameof(_context));
+            // The stream is already deleted, but the delete task the caller awaits was
+            // created before this state was consulted and must still be completed.
+            lock (_context._checkpointLock)
+            {
+                if (_context._deleteTask != null)
+                {
+                    _context._deleteTask.SetResult();
+                    _context._deleteTask = null;
+                }
+            }
             return Task.CompletedTask;
         }
 
@@ -48,6 +59,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
             _context.SetStatus(StreamStatus.Deleted);
+            lock (_context._checkpointLock)
+            {
+                // The caller of DeleteAsync awaits this, the delete has fully finished.
+                if (_context._deleteTask != null)
+                {
+                    _context._deleteTask.SetResult();
+                    _context._deleteTask = null;
+                }
+            }
             return Task.CompletedTask;
         }
 

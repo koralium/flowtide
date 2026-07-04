@@ -42,7 +42,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task DeleteAsync()
         {
-            TransitionTo(StreamStateValue.Deleting);
+            Debug.Assert(_context != null, nameof(_context));
+            // Transitioning to deleting directly would run the delete concurrently with the
+            // in-flight start, both paths work on the same blocks and state manager. The
+            // start is aborted through the failure path, the failure handling cleans up and
+            // then honors the delete wish, see StopAsync for the same pattern.
+            _context._wantedState = StreamStateValue.Deleting;
+            _ = Task.Run(() => _context.OnFailure(new OperationCanceledException("The stream was deleted while it was starting.")));
             return Task.CompletedTask;
         }
 
