@@ -34,10 +34,14 @@ namespace FlowtideDotNet.Orleans.Internal
         private Func<long, Task>? _callRecieveCheckpointDone;
         private Func<int, IMemoryAllocator>? _receiveAllocatorResolver;
         private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
-        // Seeded with the clock so it is unique per handler instance, an abandoned stream
-        // instance from a previous grain activation then never shares an epoch with the
-        // current one. Changed on every stream failure, see OnStreamFailure.
-        private long _fetchEpoch = DateTime.UtcNow.Ticks;
+        // Every handler instance gets a unique epoch: the process wide seed starts at the
+        // clock, so instances in different processes never collide, and increments per
+        // instance and failure, so instances created within the same clock tick never share
+        // an epoch either. An abandoned stream instance from a previous grain activation can
+        // then always be told apart from the current one. Changed on every stream failure,
+        // see OnStreamFailure.
+        private static long _epochSeed = DateTime.UtcNow.Ticks;
+        private long _fetchEpoch = Interlocked.Increment(ref _epochSeed);
 
         public OrleansCommunicationHandler(string streamName, string substreamName, string selfName, IGrainFactory grainFactory)
         {
@@ -58,8 +62,10 @@ namespace FlowtideDotNet.Orleans.Internal
             // Fetches remove events from the other substreams queues, a fetch that was in
             // flight when this stream failed would consume events that the restarted stream
             // needs. Changing the epoch makes the other substream refuse such fetches, the
-            // new epoch is announced with the initialize handshake at the restart.
-            Interlocked.Increment(ref _fetchEpoch);
+            // new epoch is announced with the initialize handshake at the restart. The new
+            // value comes from the shared seed so it can never collide with the epoch of
+            // another handler instance.
+            Interlocked.Exchange(ref _fetchEpoch, Interlocked.Increment(ref _epochSeed));
         }
 
         public async Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)

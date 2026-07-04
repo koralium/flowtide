@@ -230,8 +230,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _currentCheckpoint = null;
                     _context._currentProvidedCheckpointVersion = default;
 
-                    if (_context._wantedState == StreamStateValue.NotStarted && _doingCheckpoint)
+                    if (_context._wantedState == StreamStateValue.NotStarted)
                     {
+                        // A stop was requested, a completed cycle is a safe point to honor
+                        // it. This must not depend on a checkpoint being in progress: the
+                        // request can arrive while the stream waits for its initial data,
+                        // whose completion also lands here without a running checkpoint,
+                        // and the wish would otherwise never be picked up.
                         _doingCheckpoint = false;
                         // The transition takes the context lock and must not run under the
                         // checkpoint lock: checkpoint done acknowledgements from other
@@ -312,10 +317,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     List<Task> tasks = new List<Task>();
                     foreach (var block in _context.ingressBlocks)
                     {
+                        var key = block.Key;
                         // Signal to ingress blocks that all has been initialized and it can now start accepting data
-                        tasks.Add(block.Value.InitializationCompleted());
+                        tasks.Add(block.Value.InitializationCompleted().ContinueWith(t =>
+                        {
+                            _context._logger.LogDebug("Ingress {operator} completed its initial data, faulted: {faulted}", key, t.IsFaulted);
+                            return t;
+                        }).Unwrap());
                     }
                     await Task.WhenAll(tasks);
+                    _context._logger.LogDebug("All ingress blocks completed their initial data");
                 })
                     .Unwrap()
                     .ContinueWith((t) =>
@@ -349,14 +360,48 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            Checkpoint? checkpoint = null;
+            bool stopInsteadOfCheckpoint = false;
             lock (_context._checkpointLock)
             {
                 // If we are stopping, we should not do a checkpoint
                 if (_context._wantedState == StreamStateValue.NotStarted)
                 {
-                    return Task.CompletedTask;
+                    // A stop has been requested, no new checkpoint should start. The stop
+                    // itself must be honored here: the request can arrive while the stream is
+                    // still starting or between checkpoints, where nothing else ever picks
+                    // the wish up, silently dropping the trigger would then leave the stream
+                    // running forever with a stop caller that never completes.
+                    if (isScheduled)
+                    {
+                        _context._scheduleCheckpointTask = null;
+                        _context._triggerCheckpointTime = null;
+                        _context._scheduleCheckpointCancelSource = null;
+                    }
+                    if (_doingCheckpoint)
+                    {
+                        // A checkpoint is already in progress, its completion transitions to
+                        // stopping.
+                        return Task.CompletedTask;
+                    }
+                    stopInsteadOfCheckpoint = true;
                 }
+            }
+            if (stopInsteadOfCheckpoint)
+            {
+                // The transition takes the context lock and must run outside the checkpoint
+                // lock, see CheckpointCompleted.
+                TransitionTo(StreamStateValue.Stopping);
+                return Task.CompletedTask;
+            }
+            return TriggerCheckpoint_StartCore(isScheduled);
+        }
+
+        private Task TriggerCheckpoint_StartCore(bool isScheduled)
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            Checkpoint? checkpoint = null;
+            lock (_context._checkpointLock)
+            {
                 _doingCheckpoint = true;
                 // Only support a single concurrent checkpoint for now for simplicity
                 if (_context.checkpointTask != null)
@@ -444,9 +489,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (_doingCheckpoint)
                 {
+                    _context._logger.LogDebug("Stop requested while a checkpoint is in progress, the stop runs when the checkpoint completes");
                     return Task.CompletedTask;
                 }
             }
+            _context._logger.LogDebug("Stop requested, transitioning to stopping");
 
             // The transition takes the context lock and must not run under the checkpoint
             // lock: checkpoint done acknowledgements from other substreams take the context

@@ -859,6 +859,86 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// Rapid stop and start cycles while data is in flight. The first stop happens right
+        /// after start, so it hits streams that are still starting up, later stops hit
+        /// checkpoints in flight. This targets the races between stopping, checkpoint
+        /// completion and the checkpoint acknowledgements from the other substream, which
+        /// take the stream context and checkpoint locks and have deadlocked before when a
+        /// transition ran under the wrong lock. Every stop must finish, and the final host
+        /// must produce the complete result.
+        /// </summary>
+        [Fact]
+        public async Task RepeatedStopStartUnderLoadKeepsDataComplete()
+        {
+            _generator.Generate(300);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, MemoryFileProvider>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Storage.StateManager.StateManagerOptions CreateOptions(string substreamName)
+            {
+                return new Storage.StateManager.StateManagerOptions()
+                {
+                    CachePageCount = 100_000,
+                    PersistentStorage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                    {
+                        FileProvider = fileProviders.GetOrAdd(substreamName, _ => new MemoryFileProvider())
+                    }),
+                    DefaultBPlusTreePageSize = 1024,
+                    DefaultBPlusTreePageSizeBytes = 32 * 1024,
+                    TemporaryStorageOptions = new Storage.FileCacheOptions()
+                    {
+                        DirectoryPath = $"./data/tempFiles/e2e_stop_cycles/{substreamName}/tmp"
+                    }
+                };
+            }
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                    b.AddProvider(provider);
+                });
+            }
+
+            for (int cycle = 0; cycle < 5; cycle++)
+            {
+                _stream = BuildHost("e2e_stop_cycles", NormalJoinSql, latestData, failures, stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
+                await _stream.StartAsync();
+
+                // Fresh data every cycle so the stop always has data in flight, the stop is
+                // requested without waiting so it can hit startup and running checkpoints at
+                // different points every cycle.
+                _generator.Generate(200);
+                await Task.Delay(cycle * 20);
+
+                var stopTask = _stream.StopAsync();
+                var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+                if (finished != stopTask)
+                {
+                    foreach (var buffer in logBuffers)
+                    {
+                        buffer.Value.WriteToFile($"./debugwrite/e2e_stop_cycles_{cycle}_{buffer.Key}.log");
+                    }
+                }
+                Assert.True(finished == stopTask, $"Stopping the distributed stream timed out in cycle {cycle}");
+                await stopTask;
+                await _stream.DisposeAsync();
+                _stream = null;
+            }
+
+            // The final host must produce the complete result for all generated data.
+            _stream = BuildHost("e2e_stop_cycles", NormalJoinSql, latestData, failures, stateOptions: CreateOptions);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+        }
+
+        /// <summary>
         /// Stopping a single substream while the other substream keeps running must not hang.
         /// The drain waits for the other substreams stop barrier which never comes, after the
         /// configured drain timeout the stop finishes anyway.

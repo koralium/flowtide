@@ -680,18 +680,30 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task StopAsync()
         {
+            // The context lock must never be taken inside the checkpoint lock: the state
+            // machine takes the context lock first and the checkpoint lock second, for
+            // example when checkpoint acknowledgements from other substreams arrive, nesting
+            // them in the opposite order here deadlocks with those paths and every later
+            // lock taker piles up behind them, freezing the whole stream.
+            Task result;
+            bool dispatchStop = false;
             lock (_checkpointLock)
             {
                 if (_stopTask == null)
                 {
                     _stopTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                    lock (_contextLock)
-                    {
-                        _ = _state!.StopAsync();
-                    }
+                    dispatchStop = true;
                 }
-                return _stopTask.Task;
+                result = _stopTask.Task;
             }
+            if (dispatchStop)
+            {
+                lock (_contextLock)
+                {
+                    _ = _state!.StopAsync();
+                }
+            }
+            return result;
         }
 
         /// <summary>

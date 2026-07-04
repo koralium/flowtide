@@ -18,4 +18,8 @@
     <ProjectReference Include="..\FlowtideDotNet.DependencyInjection\FlowtideDotNet.DependencyInjection.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="FlowtideDotNet.Orleans.Tests" />
+  </ItemGroup>
+
 </Project>
