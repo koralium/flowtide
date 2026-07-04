@@ -168,5 +168,41 @@ namespace FlowtideDotNet.Orleans.Tests
             Assert.True(finished == stopTask, "Stopping the restarted stream timed out");
             await stopTask;
         }
+
+        /// <summary>
+        /// Rapid start and stop cycles through the grains, the stop lands while the
+        /// substream streams are still starting, which exercises the grain lifecycle,
+        /// reminder registration and the tick loop teardown under repetition. Every stop
+        /// must complete and the final cycle must produce correct results.
+        /// </summary>
+        [Fact]
+        public async Task RapidGrainStartStopCyclesComplete()
+        {
+            var sql = JoinSql("cycle");
+            TestTableStore.AddRows("cycle_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("cycle_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_cycle");
+
+            for (int cycle = 0; cycle < 3; cycle++)
+            {
+                await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+                // Stop immediately, the substream streams are typically still starting.
+                var cycleStop = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+                var cycleFinished = await Task.WhenAny(cycleStop, Task.Delay(TimeSpan.FromSeconds(60)));
+                Assert.True(cycleFinished == cycleStop, $"Stopping the stream timed out in cycle {cycle}");
+                await cycleStop;
+            }
+
+            // The final cycle runs to a full result and stops cleanly.
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+            var expected = Enumerable.Range(0, 50).Select(x => (long)x).ToList();
+            await WaitForResult("cycle_out", expected, TimeSpan.FromSeconds(90));
+
+            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping the final cycle timed out");
+            await stopTask;
+        }
     }
 }

@@ -43,8 +43,8 @@ namespace FlowtideDotNet.Base.Vertices
     /// </remarks>
     public abstract class EgressVertex<T> : ITargetBlock<IStreamEvent>, IStreamEgressVertex 
     {
-        private Action<string>? _checkpointDone;
-        private Action<string>? _dependenciesDone;
+        private Action<string, ILockingEvent?>? _checkpointDone;
+        private Action<string, ILockingEvent?>? _dependenciesDone;
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
         private IEgressImplementation? _targetBlock;
         private bool _isHealthy = true;
@@ -179,18 +179,18 @@ namespace FlowtideDotNet.Base.Vertices
             return Task.CompletedTask;
         }
 
-        private void HandleCheckpointDone()
+        private void HandleCheckpointDone(ILockingEvent lockingEvent)
         {
             if (_checkpointDone != null && Name != null)
             {
                 Logger.CallingCheckpointDone(StreamName, Name);
-                _checkpointDone(Name);
+                _checkpointDone(Name, lockingEvent);
             }
             else
             {
                 Logger.CheckpointDoneFunctionNotSet(StreamName, Name ?? "");
             }
-            DependenciesDone();
+            DependenciesDone(lockingEvent);
         }
 
         private Task HandleLockingEvent(ILockingEvent lockingEvent)
@@ -219,11 +219,11 @@ namespace FlowtideDotNet.Base.Vertices
             return Task.CompletedTask;
         }
 
-        private void DependenciesDone()
+        private void DependenciesDone(ILockingEvent? lockingEvent)
         {
             if (_dependenciesDone != null && Name != null)
             {
-                _dependenciesDone(Name);
+                _dependenciesDone(Name, lockingEvent);
             }
             else
             {
@@ -372,7 +372,7 @@ namespace FlowtideDotNet.Base.Vertices
             return _targetBlock.OfferMessage(messageHeader, messageValue, source, consumeToAccept);
         }
 
-        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string> checkpointDone, Action<string> dependenciesDone)
+        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string, ILockingEvent?> checkpointDone, Action<string, ILockingEvent?> dependenciesDone)
         {
             _checkpointDone = checkpointDone;
             _dependenciesDone = dependenciesDone;

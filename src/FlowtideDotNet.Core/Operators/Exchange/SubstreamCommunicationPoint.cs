@@ -250,9 +250,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 if (_initializedSent)
                 {
-                    if (_selfInitializeVersion != _targetInitializeVersion)
+                    // Compare against the version in the incoming request, _targetInitializeVersion
+                    // still holds the value from the previous epoch at this point which would
+                    // force both substreams down to that stale version.
+                    if (_selfInitializeVersion != restorePoint)
                     {
-                        var minVersion = Math.Min(_selfInitializeVersion, _targetInitializeVersion);
+                        var minVersion = Math.Min(_selfInitializeVersion, restorePoint);
                         return Task.FromResult(new SubstreamInitializeResponse(false, false, minVersion));
                     }
                 }
@@ -456,7 +459,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // deadlocked on checkpoint barrier alignment with another substream.
         private long _lastFetchLoopTick;
         private Timer? _stallWatchdog;
-        private static readonly TimeSpan StallLimit = TimeSpan.FromSeconds(60);
+        // Internal so tests can shorten them, a stall test would otherwise take over a
+        // minute.
+        internal static TimeSpan StallLimit = TimeSpan.FromSeconds(60);
+        internal static TimeSpan StallCheckInterval = TimeSpan.FromSeconds(15);
 
         private void TryStartFetchTask()
         {
@@ -468,7 +474,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
 
                 _lastFetchLoopTick = Environment.TickCount64;
-                _stallWatchdog ??= new Timer(CheckFetchLoopStall, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
+                _stallWatchdog ??= new Timer(CheckFetchLoopStall, null, StallCheckInterval, StallCheckInterval);
                 _fetchDataTask = Task.Factory.StartNew(async () =>
                 {
                     await FetchDataLoop();

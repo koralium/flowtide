@@ -84,13 +84,13 @@ namespace FlowtideDotNet.Core.Tests
 
             if (@operator is IStreamEgressVertex egressVertex)
             {
-                egressVertex.SetCheckpointDoneFunction((name) =>
+                egressVertex.SetCheckpointDoneFunction((name, lockingEvent) =>
                 {
                     if (_taskCompletion != null)
                     {
                         _taskCompletion.SetResult();
                     }
-                }, (name) => { });
+                }, (name, lockingEvent) => { });
             }
         }
 

@@ -35,8 +35,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
         internal readonly ExchangeRelation exchangeRelation;
         private readonly IExchangeKindExecutor _executor;
-        private Action<string>? _checkpointDone;
-        private Action<string>? _dependenciesDone;
+        private Action<string, ILockingEvent?>? _checkpointDone;
+        private Action<string, ILockingEvent?>? _dependenciesDone;
         private IObjectState<ExchangeOperatorState>? _state;
 
         private readonly object _dependenciesDoneLock = new object();
@@ -156,11 +156,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             if (_checkpointDone != null)
             {
-                _checkpointDone(Name);
+                _checkpointDone(Name, lockingEvent);
             }
             if (_dependenciesDone != null && (_numberOfSubstreams == 0 || lockingEvent is InitWatermarksEvent))
             {
-                _dependenciesDone(Name);
+                _dependenciesDone(Name, lockingEvent);
             }
             else if (lockingEvent is ICheckpointEvent)
             {
@@ -203,7 +203,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
                 if (_dependenciesDoneCalled >= _numberOfSubstreams)
                 {
-                    _dependenciesDone(Name);
+                    // Checkpoint acknowledgements from the other substreams, always checkpoint
+                    // related so no locking event instance is passed.
+                    _dependenciesDone(Name, null);
                     _dependenciesDoneCalled = 0;
                 }
             }
@@ -224,7 +226,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _executor.PartitionData(data, time);
         }
 
-        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string> checkpointDone, Action<string> dependenciesDone)
+        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string, ILockingEvent?> checkpointDone, Action<string, ILockingEvent?> dependenciesDone)
         {
             _checkpointDone = checkpointDone;
             _dependenciesDone = dependenciesDone;

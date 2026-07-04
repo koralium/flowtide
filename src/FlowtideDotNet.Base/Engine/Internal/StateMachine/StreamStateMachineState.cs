@@ -27,9 +27,19 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public abstract Task OnFailure();
 
-        public abstract void EgressCheckpointDone(string name);
+        /// <summary>
+        /// Called when an egress vertex has finished processing a locking event. The locking
+        /// event is null when the signal comes from a checkpoint acknowledgement path that has
+        /// no event instance, such acknowledgements are always checkpoint related.
+        /// </summary>
+        public abstract void EgressCheckpointDone(string name, ILockingEvent? lockingEvent);
 
-        public abstract void EgressDependenciesDone(string name);
+        /// <summary>
+        /// Called when an egress vertex has completed its dependencies for a locking event.
+        /// The locking event is null when the signal comes from a checkpoint acknowledgement
+        /// path that has no event instance, such acknowledgements are always checkpoint related.
+        /// </summary>
+        public abstract void EgressDependenciesDone(string name, ILockingEvent? lockingEvent);
 
         public abstract Task TriggerCheckpoint(bool isScheduled = false);
 

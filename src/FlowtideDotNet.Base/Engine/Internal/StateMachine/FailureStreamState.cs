@@ -175,12 +175,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return Initialize(StreamStateValue.Failure);
         }
 
-        public override void EgressCheckpointDone(string name)
+        public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
         {
             // Do nothing
         }
 
-        public override void EgressDependenciesDone(string name)
+        public override void EgressDependenciesDone(string name, ILockingEvent? lockingEvent)
         {
             // Do nothing
         }

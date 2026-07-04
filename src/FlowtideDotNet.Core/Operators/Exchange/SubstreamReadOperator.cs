@@ -314,12 +314,23 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             inStreamCheckpoint = _currentCheckpoint;
                         }
                     }
+                    if (inStreamCheckpoint == null)
+                    {
+                        // The wait completed but the local checkpoint has already been consumed,
+                        // the peer barrier cannot be paired and must not be dropped silently, the
+                        // barrier would never reach the egress operators and the running
+                        // checkpoint would never complete.
+                        Logger.LogWarning("Substream read {name} pairing wait completed without a local checkpoint for the other substreams barrier with time {time}, requesting a new checkpoint.", Name, checkpointEvent.CheckpointTime);
+                    }
                     if (inStreamCheckpoint != null)
                     {
+                        Logger.LogDebug("Substream read {name} forwards local checkpoint with time {time}", Name, inStreamCheckpoint.CheckpointTime);
                         await OnCheckpoint(inStreamCheckpoint.CheckpointTime);
+                        Logger.LogDebug("Substream read {name} committed state before forwarding checkpoint with time {time}", Name, inStreamCheckpoint.CheckpointTime);
                         // Forward this streams own checkpoint event, the checkpoint event from
                         // the other substream has that streams times and must not flow here.
                         await output.SendLockingEvent(inStreamCheckpoint);
+                        Logger.LogDebug("Substream read {name} forwarded checkpoint with time {time} downstream", Name, inStreamCheckpoint.CheckpointTime);
                         bool replaySignal = false;
                         lock (_lock)
                         {
@@ -469,6 +480,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         taskSource = _waitForCheckpoint;
                     }
                 }
+                Logger.LogDebug("Substream read {name} stored local checkpoint with time {time}, waiter present: {waiterPresent}", Name, checkpointEvent.CheckpointTime, taskSource != null);
                 if (taskSource != null)
                 {
                     // Set task completion source outside of lock to hinder any deadlocks
@@ -509,13 +521,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     _fetchTask = newTask;
                 }
             }
-            if (lockingEvent is InitWatermarksEvent initWatermarksEvent &&
-                _state?.Value != null &&
-                _state.Value.WatermarkNames != null)
-            {
-                // Run task to send watermark values
-                base.DoLockingEvent(lockingEvent);
-            }
+            // The local InitWatermarksEvent is never forwarded, only the other substreams
+            // event flows downstream, the fetch loop forwards it when it arrives. The other
+            // substream always reinitializes together with this stream, on the first start,
+            // on stop and start and on mutual failure recovery, so its event always comes.
+            // Forwarding the local event as well would make this operator emit two init
+            // watermark events after a restore while local exchange paths emit one, a
+            // downstream operator with multiple inputs then pairs a checkpoint barrier on one
+            // input with an init watermarks event on another and every barrier alignment after
+            // that is skewed by one event, hanging or corrupting the checkpoint.
         }
     }
 }

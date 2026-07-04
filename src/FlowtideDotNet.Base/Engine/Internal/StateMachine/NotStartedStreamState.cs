@@ -44,12 +44,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return TransitionTo(StreamStateValue.Deleting);
         }
 
-        public override void EgressCheckpointDone(string name)
+        public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
         {
 
         }
 
-        public override void EgressDependenciesDone(string name)
+        public override void EgressDependenciesDone(string name, ILockingEvent? lockingEvent)
         {
         }
 
@@ -74,6 +74,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task StopAsync()
         {
+            Debug.Assert(_context != null, nameof(_context));
+            // The stream is already stopped, but the stop task the caller awaits was created
+            // before this state was consulted and must still be completed, the caller would
+            // otherwise wait forever for a stop that has nothing to do.
+            lock (_context._checkpointLock)
+            {
+                if (_context._stopTask != null)
+                {
+                    _context._stopTask.SetResult();
+                    _context._stopTask = null;
+                }
+            }
             return Task.CompletedTask;
         }
 

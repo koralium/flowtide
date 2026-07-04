@@ -143,6 +143,7 @@ namespace FlowtideDotNet.Base.Vertices
                     allInput?.WriteLine($"Received locking event {ev.GetType().Name} from target {r.Key}");
                     allInput?.Flush();
 #endif
+                    Logger.LogTrace("Operator {operatorId} received locking event {eventType} on target {targetId}", Name, ev.GetType().Name, r.Key);
                     if (TargetInCheckpoint(r.Key, ev, out var checkpoints))
                     {
                         _lastSeenCheckpointEvents = checkpoints;
@@ -630,6 +631,21 @@ namespace FlowtideDotNet.Base.Vertices
                 if (allInCheckpoint)
                 {
                     Logger.CheckpointInOperator(StreamName, Name);
+
+                    for (int i = 0; i < _targetInCheckpoint.Length; i++)
+                    {
+                        if (_targetInCheckpoint[i]!.GetType() != checkpointEvent.GetType())
+                        {
+                            // The aligned locking events have different types, the inputs have
+                            // received different amounts of locking events and every alignment
+                            // from here on pairs unrelated events, which corrupts checkpoint
+                            // consistency between the inputs.
+                            Logger.LogError(
+                                "Operator {operatorId} aligned locking events of different types, target {targetId} has {targetEventType} while target {completingTargetId} has {completingEventType}. The inputs have diverged in locking event counts.",
+                                Name, i, _targetInCheckpoint[i]!.GetType().Name, targetId, checkpointEvent.GetType().Name);
+                        }
+                    }
+
                     // Create a new array here, have already checked that noone is null in the array
 #pragma warning disable CS8619 // Nullability of reference types in value doesn't match target type.
                     checkpoints = _targetInCheckpoint.ToArray();

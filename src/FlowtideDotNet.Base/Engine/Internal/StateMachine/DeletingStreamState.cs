@@ -34,12 +34,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return Task.CompletedTask;
         }
 
-        public override void EgressCheckpointDone(string name)
+        public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
         {
             // Ignore
         }
 
-        public override void EgressDependenciesDone(string name)
+        public override void EgressDependenciesDone(string name, ILockingEvent? lockingEvent)
         {
             // Ignore
         }

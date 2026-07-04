@@ -582,18 +582,32 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal void EgressCheckpointDone(string name)
         {
+            // Signals without a locking event come from checkpoint acknowledgement paths and
+            // are always treated as checkpoint related.
+            EgressCheckpointDone(name, null);
+        }
+
+        internal void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
+        {
             lock (_contextLock)
             {
                 _logger.CallingEgressCheckpointDone(streamName, currentState.ToString());
-                _state!.EgressCheckpointDone(name);
+                _state!.EgressCheckpointDone(name, lockingEvent);
             }
         }
 
         internal void EgressDependenciesDone(string name)
         {
+            // Signals without a locking event come from checkpoint acknowledgement paths and
+            // are always treated as checkpoint related.
+            EgressDependenciesDone(name, null);
+        }
+
+        internal void EgressDependenciesDone(string name, ILockingEvent? lockingEvent)
+        {
             lock (_contextLock)
             {
-                _state!.EgressDependenciesDone(name);
+                _state!.EgressDependenciesDone(name, lockingEvent);
             }
         }
 

@@ -31,10 +31,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private bool _initialCheckpointTaken = false;
         private bool _compactionStarted = false;
 
-        public override void EgressCheckpointDone(string name)
+        public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
         {
             Debug.Assert(_context != null, nameof(_context));
             Debug.Assert(nonCheckpointedEgresses != null, nameof(nonCheckpointedEgresses));
+
+            if (lockingEvent != null && lockingEvent is not ICheckpointEvent)
+            {
+                // A late acknowledgement of a non checkpoint locking event, for example an
+                // InitWatermarksEvent from the starting phase that reached the egress after the
+                // stream transitioned to running. Counting it would commit an in-flight
+                // checkpoint before the checkpoint barrier has reached the egress, losing its
+                // state on the next restore.
+                return;
+            }
 
             lock (_context._checkpointLock)
             {
@@ -48,9 +58,17 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        public override void EgressDependenciesDone(string name)
+        public override void EgressDependenciesDone(string name, ILockingEvent? lockingEvent)
         {
             Debug.Assert(_context != null, nameof(_context));
+
+            if (lockingEvent != null && lockingEvent is not ICheckpointEvent)
+            {
+                // See EgressCheckpointDone, a non checkpoint locking event must not be counted
+                // towards checkpoint completion.
+                return;
+            }
+
             lock (_context._checkpointLock)
             {
                 if (waitingForDependencies == null || !waitingForDependencies.Contains(name))

@@ -21,11 +21,11 @@ namespace FlowtideDotNet.Base.Vertices.Internal
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
         private readonly Func<T, long, Task> _recieveFunc;
         private readonly Func<ILockingEvent, Task> _doCheckpoint;
-        private readonly Action _checkpointDone;
+        private readonly Action<ILockingEvent> _checkpointDone;
         private readonly Func<string, object?, Task> _onTrigger;
         private readonly Func<Watermark, Task> _onWatermark;
 
-        public NonParallelEgressVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions, Func<T, long, Task> recieveFunc, Func<ILockingEvent, Task> doCheckpoint, Action checkpointDone, Func<string, object?, Task> onTrigger, Func<Watermark, Task> onWatermark)
+        public NonParallelEgressVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions, Func<T, long, Task> recieveFunc, Func<ILockingEvent, Task> doCheckpoint, Action<ILockingEvent> checkpointDone, Func<string, object?, Task> onTrigger, Func<Watermark, Task> onWatermark)
         {
             _executionDataflowBlockOptions = executionDataflowBlockOptions;
             _recieveFunc = recieveFunc;
@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Base.Vertices.Internal
         private async Task HandleLockingEvent(ILockingEvent lockingEvent)
         {
             await _doCheckpoint(lockingEvent);
-            _checkpointDone();
+            _checkpointDone(lockingEvent);
         }
 
         public Task Completion => _block.Completion;

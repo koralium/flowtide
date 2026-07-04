@@ -98,5 +98,107 @@ namespace FlowtideDotNet.Core.Tests
             // without any errors.
             SubstreamEventWireSerializer.ReturnEvents(result);
         }
+
+        /// <summary>
+        /// A watermark can carry a null value for a name, for example when a source has not
+        /// produced a watermark yet, the round trip must preserve the null instead of
+        /// failing.
+        /// </summary>
+        [Fact]
+        public void WatermarkWithNullValueRoundTrips()
+        {
+            var builder = System.Collections.Immutable.ImmutableDictionary.CreateBuilder<string, AbstractWatermarkValue>();
+            builder.Add("with_value", LongWatermarkValue.Create(42));
+            builder.Add("without_value", null!);
+            var watermark = new Watermark(builder.ToImmutable());
+
+            var serializer = new SubstreamEventWireSerializer();
+            var events = new List<SubstreamEventData>()
+            {
+                new SubstreamEventData() { ExchangeTargetId = 1, StreamEvent = watermark }
+            };
+            var writer = new ArrayBufferWriter<byte>();
+            serializer.Serialize(events, writer);
+            SubstreamEventWireSerializer.ReturnEvents(events);
+
+            var result = serializer.Deserialize(new ReadOnlySequence<byte>(writer.WrittenMemory), _ => GlobalMemoryManager.Instance);
+
+            var roundTripped = Assert.IsType<Watermark>(result[0].StreamEvent);
+            Assert.Equal(42, Assert.IsType<LongWatermarkValue>(roundTripped.Watermarks["with_value"]).Value);
+            Assert.True(roundTripped.Watermarks.ContainsKey("without_value"));
+            Assert.Null(roundTripped.Watermarks["without_value"]);
+            SubstreamEventWireSerializer.ReturnEvents(result);
+        }
+
+        /// <summary>
+        /// Init watermark events flow through the exchange when a substream starts, the
+        /// watermark names must survive the round trip.
+        /// </summary>
+        [Fact]
+        public void InitWatermarksEventRoundTrips()
+        {
+            var initEvent = new InitWatermarksEvent(new HashSet<string>() { "users", "orders" });
+
+            var serializer = new SubstreamEventWireSerializer();
+            var events = new List<SubstreamEventData>()
+            {
+                new SubstreamEventData() { ExchangeTargetId = 3, StreamEvent = initEvent }
+            };
+            var writer = new ArrayBufferWriter<byte>();
+            serializer.Serialize(events, writer);
+            SubstreamEventWireSerializer.ReturnEvents(events);
+
+            var result = serializer.Deserialize(new ReadOnlySequence<byte>(writer.WrittenMemory), _ => GlobalMemoryManager.Instance);
+
+            Assert.Equal(3, result[0].ExchangeTargetId);
+            var roundTripped = Assert.IsType<InitWatermarksEvent>(result[0].StreamEvent);
+            Assert.Equal(new HashSet<string>() { "users", "orders" }, roundTripped.WatermarkNames.ToHashSet());
+            SubstreamEventWireSerializer.ReturnEvents(result);
+        }
+
+        /// <summary>
+        /// Locking event prepares wrap another locking event with alignment flags, all parts
+        /// must survive the round trip.
+        /// </summary>
+        [Fact]
+        public void LockingEventPrepareRoundTrips()
+        {
+            var id = Guid.NewGuid();
+            var prepare = new LockingEventPrepare(new Checkpoint(11, 12), isInitEvent: true, otherInputsNotInCheckpoint: false, id: id);
+
+            var serializer = new SubstreamEventWireSerializer();
+            var events = new List<SubstreamEventData>()
+            {
+                new SubstreamEventData() { ExchangeTargetId = 2, StreamEvent = prepare }
+            };
+            var writer = new ArrayBufferWriter<byte>();
+            serializer.Serialize(events, writer);
+            SubstreamEventWireSerializer.ReturnEvents(events);
+
+            var result = serializer.Deserialize(new ReadOnlySequence<byte>(writer.WrittenMemory), _ => GlobalMemoryManager.Instance);
+
+            var roundTripped = Assert.IsType<LockingEventPrepare>(result[0].StreamEvent);
+            Assert.True(roundTripped.IsInitEvent);
+            Assert.False(roundTripped.OtherInputsNotInCheckpoint);
+            Assert.Equal(id, roundTripped.Id);
+            var inner = Assert.IsType<Checkpoint>(roundTripped.LockingEvent);
+            Assert.Equal(11, inner.CheckpointTime);
+            SubstreamEventWireSerializer.ReturnEvents(result);
+        }
+
+        /// <summary>
+        /// An empty fetch response serializes to a payload that deserializes back to an
+        /// empty list.
+        /// </summary>
+        [Fact]
+        public void EmptyEventListRoundTrips()
+        {
+            var serializer = new SubstreamEventWireSerializer();
+            var writer = new ArrayBufferWriter<byte>();
+            serializer.Serialize(new List<SubstreamEventData>(), writer);
+
+            var result = serializer.Deserialize(new ReadOnlySequence<byte>(writer.WrittenMemory), _ => GlobalMemoryManager.Instance);
+            Assert.Empty(result);
+        }
     }
 }

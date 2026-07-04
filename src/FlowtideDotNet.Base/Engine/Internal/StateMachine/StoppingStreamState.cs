@@ -43,10 +43,17 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             throw new NotSupportedException("Stream is stopping.");
         }
 
-        public override void EgressCheckpointDone(string name)
+        public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
         {
             Debug.Assert(_context != null, nameof(_context));
             Debug.Assert(nonCheckpointedEgresses != null, nameof(nonCheckpointedEgresses));
+
+            if (lockingEvent != null && lockingEvent is not ICheckpointEvent)
+            {
+                // A non checkpoint locking event must not be counted towards the final
+                // checkpoint completion, see RunningStreamState.EgressCheckpointDone.
+                return;
+            }
 
             lock (_context._checkpointLock)
             {
@@ -60,7 +67,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        public override void EgressDependenciesDone(string name)
+        public override void EgressDependenciesDone(string name, ILockingEvent? lockingEvent)
         {
             // TODO: Implement waiting for dependencies
             // Stopping a stream might need to be rethought how it will behave in a distributed setup.

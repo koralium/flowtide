@@ -250,6 +250,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 _state.Value = new MockDataSourceState();
             }
+            Logger.LogDebug("Mock source {table} initialized with restored offset {offset}, restore time {restoreTime}", readRelation.NamedTable.DotSeperated, _state.Value.LatestOffset, restoreTime);
             await RegisterTrigger("crash");
             await RegisterTrigger("ingress_no_autocomplete_dependencies");
             await RegisterTrigger("ingress_fail_and_rollback");

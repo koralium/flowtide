@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Base.Vertices
     /// </summary>
     public interface IStreamEgressVertex : IStreamVertex
     {
-        internal void SetCheckpointDoneFunction(Action<string> checkpointDone, Action<string> dependenciesDone);
+        internal void SetCheckpointDoneFunction(Action<string, ILockingEvent?> checkpointDone, Action<string, ILockingEvent?> dependenciesDone);
 
         Task CheckpointDone(long checkpointVersion);
 
