@@ -475,6 +475,78 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
         }
 
+        /// <summary>
+        /// Reproduces the mutual recovery storm seen when a node is lost: four substreams,
+        /// a crash in the sink substream propagates fail and recover to all of them, they
+        /// restart together and their checkpoint cycles collide while replay data is in
+        /// flight. The sink crashes on its first three checkpoints so every run goes through
+        /// several storms. Hunts the deadlock where one exchange never receives a checkpoint
+        /// barrier and every substream then waits forever on each others acknowledgements.
+        /// </summary>
+        [Fact]
+        public async Task FourSubstreamMutualRecoveryUnderLoadConverges()
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var ringLogger = new RingBufferLoggerProvider();
+            var loggerFactory = LoggerFactory.Create(logging =>
+            {
+                logging.SetMinimumLevel(LogLevel.Debug);
+                logging.AddProvider(ringLogger);
+            });
+
+            _stream = new DistributedStreamBuilder("e2e_mutual_recovery")
+                .AddPlan(() =>
+                {
+                    var sqlPlanBuilder = new SqlPlanBuilder();
+                    sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+                    sqlPlanBuilder.Sql(@"
+                    INSERT INTO output
+                    SELECT u.userkey FROM users u
+                    INNER JOIN orders o ON u.userkey = o.userkey;
+                    ");
+                    return sqlPlanBuilder.GetPlan();
+                })
+                .WithStateOptionsFactory(substreamName => CreateStateOptions("e2e_mutual_recovery", substreamName))
+                .ConfigureSubstream((substreamName, substreamBuilder) =>
+                {
+                    var connectorManager = new ConnectorManager();
+                    connectorManager.AddSource(new MockSourceFactory("*", _db, false));
+                    // Several crashes so each run goes through several mutual recoveries.
+                    var crashCount = substreamName == "substream_0" ? 3 : 0;
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, crashCount, watermark => { }));
+                    substreamBuilder.AddConnectorManager(connectorManager);
+                    substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    substreamBuilder.WithLoggerFactory(loggerFactory);
+                })
+                .DistributeAutomatically(4)
+                .Build();
+
+            await _stream.StartAsync();
+
+            try
+            {
+                // Fresh data in every wave so the colliding recovery cycles always have
+                // batches in flight between the substreams.
+                for (int wave = 0; wave < 5; wave++)
+                {
+                    _generator.Generate(500);
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                }
+            }
+            catch
+            {
+                var dumpPath = Path.GetFullPath($"./mutual_recovery_failure_{DateTime.UtcNow:HHmmss}.log");
+                ringLogger.WriteToFile(dumpPath);
+                throw new Exception($"Mutual recovery test failed, log dump: {dumpPath}");
+            }
+
+            // The crashes must actually have happened
+            Assert.NotEmpty(failures);
+        }
+
         private async Task RunTwoPartitionTest(
             string testName,
             string sql,

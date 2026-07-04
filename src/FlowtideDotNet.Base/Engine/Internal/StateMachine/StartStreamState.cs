@@ -206,7 +206,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
             }
 
-            _context.producingTime = _context._lastState.Time + 1;
+            // Seed the producing time with the wall clock so checkpoint times stay unique
+            // across a rollback. The restored time comes from the state manager metadata,
+            // which rolls back together with the state, so seeding with restored time + 1
+            // alone would mint the same times as the aborted epoch, whose barriers can still
+            // be in flight in exchange queues and messages between substreams. The pairing of
+            // checkpoint barriers between substreams relies on the times being unique. The
+            // max guards against a wall clock that moved backwards.
+            _context.producingTime = Math.Max(_context._lastState.Time + 1, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
             // Create the blocks
             _context._logger.SettingUpBlocks(_context.streamName);

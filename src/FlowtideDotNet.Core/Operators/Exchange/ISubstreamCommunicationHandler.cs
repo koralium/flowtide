@@ -27,6 +27,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
+        /// Called when the local stream fails, before it rolls back and restarts. Handlers
+        /// that fetch destructively over a network use this to change their fetch epoch, so
+        /// fetches that were started before the failure can be recognized as stale by the
+        /// other substream and refused instead of consuming events meant for the restarted
+        /// stream. Handlers inside a single process can ignore this.
+        /// </summary>
+        void OnStreamFailure()
+        {
+        }
+
+        /// <summary>
         /// Registers the local callbacks that are invoked when the other substream sends
         /// requests to this substream.
         /// </summary>

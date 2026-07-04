@@ -53,6 +53,7 @@
     <PackageVersion Include="Antlr4.Runtime.Standard" Version="4.13.1" />
 	<!-- Orleans -->
 	<PackageVersion Include="Microsoft.Orleans.Core" Version="8.1.0" />
+	<PackageVersion Include="Microsoft.Orleans.Reminders" Version="8.1.0" />
 	<PackageVersion Include="Microsoft.Orleans.Runtime" Version="8.1.0" />
 	<PackageVersion Include="Microsoft.Orleans.Sdk" Version="8.1.0" />
 	<PackageVersion Include="Microsoft.Orleans.Server" Version="8.1.0" />

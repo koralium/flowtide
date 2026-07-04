@@ -269,7 +269,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     nonCheckpointedEgresses.Add(key);
                 }
-                _context.checkpointTask = new TaskCompletionSource();
+                _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 var newTime = _context.producingTime + 1;
                 checkpoint = new StopStreamCheckpoint(_context.producingTime, newTime);
                 _context.producingTime = newTime;

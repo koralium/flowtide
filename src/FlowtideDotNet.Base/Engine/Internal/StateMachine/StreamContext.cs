@@ -684,7 +684,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (_stopTask == null)
                 {
-                    _stopTask = new TaskCompletionSource();
+                    _stopTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                     lock (_contextLock)
                     {
                         _ = _state!.StopAsync();
@@ -800,7 +800,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     return;
                 }
-                _pauseSource = new TaskCompletionSource();
+                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 _state!.Pause();
                 _statusBeforePause = Status;
                 SetStatus(StreamStatus.Paused);

@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core;
 using FlowtideDotNet.DependencyInjection;
+using FlowtideDotNet.Orleans;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -19,7 +20,8 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         public static IServiceCollection AddFlowtideOrleans(this IServiceCollection services,
             Action<IConnectorManager> connectors,
-            Action<string, string, IFlowtideStorageBuilder> storageBuilder)
+            Action<string, string, IFlowtideStorageBuilder> storageBuilder,
+            Action<FlowtideOrleansOptions>? options = null)
         {
             var connMgr = new ConnectorManager();
             connectors(connMgr);
@@ -27,6 +29,10 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton<IConnectorManager>(connMgr);
 
             services.AddSingleton<Action<string, string, IFlowtideStorageBuilder>>(storageBuilder);
+
+            var orleansOptions = new FlowtideOrleansOptions();
+            options?.Invoke(orleansOptions);
+            services.AddSingleton(orleansOptions);
 
             return services;
         }

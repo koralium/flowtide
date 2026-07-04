@@ -122,6 +122,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 block.Fault(new BlockStopException($"Faulting block due to stream failure."));
             });
 
+            _context._logger.LogDebug("Failure handling waiting for block completion on stream {stream}", _context.streamName);
             await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
 
             // Call failure for all blocks
@@ -129,14 +130,17 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 await _context.ForEachBlockAsync(async (key, block) =>
                 {
+                    _context._logger.LogDebug("Failure handling calling on failure on block {block} on stream {stream}", key, _context.streamName);
                     await block.OnFailure(_context._restoreCheckpointVersion.Value);
                 });
             }
 
             await _context.ForEachBlockAsync(async (key, block) =>
             {
+                _context._logger.LogDebug("Failure handling disposing block {block} on stream {stream}", key, _context.streamName);
                 await block.DisposeAsync();
             });
+            _context._logger.LogDebug("Failure handling stop and dispose finished on stream {stream}", _context.streamName);
         }
 
         private async Task Transition()

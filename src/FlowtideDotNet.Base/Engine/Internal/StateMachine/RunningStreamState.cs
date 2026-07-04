@@ -213,6 +213,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private void CheckpointCompleted()
         {
             Debug.Assert(_context != null, nameof(_context));
+            bool transitionToStopping = false;
             lock (_context._checkpointLock)
             {
                 if (_context.Status == StreamStatus.Failing)
@@ -232,29 +233,38 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     if (_context._wantedState == StreamStateValue.NotStarted && _doingCheckpoint)
                     {
                         _doingCheckpoint = false;
-                        TransitionTo(StreamStateValue.Stopping);
-                        return;
+                        // The transition takes the context lock and must not run under the
+                        // checkpoint lock: checkpoint done acknowledgements from other
+                        // substreams take the context lock first and the checkpoint lock
+                        // second, transitioning here would deadlock with them.
+                        transitionToStopping = true;
                     }
-
-                    _doingCheckpoint = false;
-                    if (_context.inQueueCheckpoint.HasValue)
+                    else
                     {
-                        var span = _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
-                        if (span.TotalMilliseconds < 0)
+                        _doingCheckpoint = false;
+                        if (_context.inQueueCheckpoint.HasValue)
                         {
-                            span = TimeSpan.FromMilliseconds(1);
-                        }
-                        if (_context.TryScheduleCheckpointIn_NoLock(span, _context._scheduledProvidedCheckpointVersion))
-                        {
-                            _context._scheduledProvidedCheckpointVersion = default;
-                            _context.inQueueCheckpoint = null;
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException("Checkpoint could not be scheduled.");
+                            var span = _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
+                            if (span.TotalMilliseconds < 0)
+                            {
+                                span = TimeSpan.FromMilliseconds(1);
+                            }
+                            if (_context.TryScheduleCheckpointIn_NoLock(span, _context._scheduledProvidedCheckpointVersion))
+                            {
+                                _context._scheduledProvidedCheckpointVersion = default;
+                                _context.inQueueCheckpoint = null;
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException("Checkpoint could not be scheduled.");
+                            }
                         }
                     }
                 }
+            }
+            if (transitionToStopping)
+            {
+                TransitionTo(StreamStateValue.Stopping);
             }
         }
 
@@ -294,7 +304,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
                 {
                     // Set the checkpoint task to stop any other checkpoint from happening
-                    _context.checkpointTask = new TaskCompletionSource();
+                    _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 }
 
                 _initialBatchTask = Task.Factory.StartNew(async () =>
@@ -378,7 +388,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _preCompletedDependencies.Clear();
                 _context._logger.LogDebug("Checkpoint started on stream {Stream}, waiting for dependencies: [{Waiting}]", _context.streamName, string.Join(",", waitingForDependencies));
 
-                _context.checkpointTask = new TaskCompletionSource();
+                _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 var newTime = _context.producingTime + 1;
                 checkpoint = new Checkpoint(_context.producingTime, newTime);
                 _context.producingTime = newTime;
@@ -436,12 +446,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     return Task.CompletedTask;
                 }
-                else
-                {
-                    TransitionTo(StreamStateValue.Stopping);
-                }
             }
 
+            // The transition takes the context lock and must not run under the checkpoint
+            // lock: checkpoint done acknowledgements from other substreams take the context
+            // lock first and the checkpoint lock second, transitioning under the checkpoint
+            // lock deadlocks with them. A checkpoint that starts between the release and the
+            // transition is harmless, the stopping state runs its own stop checkpoint cycles.
+            TransitionTo(StreamStateValue.Stopping);
             return Task.CompletedTask;
         }
 

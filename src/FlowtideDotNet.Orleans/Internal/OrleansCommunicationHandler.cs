@@ -34,6 +34,10 @@ namespace FlowtideDotNet.Orleans.Internal
         private Func<long, Task>? _callRecieveCheckpointDone;
         private Func<int, IMemoryAllocator>? _receiveAllocatorResolver;
         private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
+        // Seeded with the clock so it is unique per handler instance, an abandoned stream
+        // instance from a previous grain activation then never shares an epoch with the
+        // current one. Changed on every stream failure, see OnStreamFailure.
+        private long _fetchEpoch = DateTime.UtcNow.Ticks;
 
         public OrleansCommunicationHandler(string streamName, string substreamName, string selfName, IGrainFactory grainFactory)
         {
@@ -49,9 +53,18 @@ namespace FlowtideDotNet.Orleans.Internal
             _receiveAllocatorResolver = allocatorResolver;
         }
 
+        public void OnStreamFailure()
+        {
+            // Fetches remove events from the other substreams queues, a fetch that was in
+            // flight when this stream failed would consume events that the restarted stream
+            // needs. Changing the epoch makes the other substream refuse such fetches, the
+            // new epoch is announced with the initialize handshake at the restart.
+            Interlocked.Increment(ref _fetchEpoch);
+        }
+
         public async Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
         {
-            var response = await _streamGrain.FetchDataAsync(new Messages.FetchDataRequest(selfName, targetIds, numberOfEvents));
+            var response = await _streamGrain.FetchDataAsync(new Messages.FetchDataRequest(selfName, targetIds, numberOfEvents, Interlocked.Read(ref _fetchEpoch)));
             // As the consumer of the response this side owns the pooled payload buffer and
             // must dispose it, on a cross silo call it holds segments the codec rented when
             // the response arrived, on a same silo call it is the instance the serving grain
@@ -117,7 +130,7 @@ namespace FlowtideDotNet.Orleans.Internal
 
         public async Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, CancellationToken cancellationToken)
         {
-            var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion));
+            var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, Interlocked.Read(ref _fetchEpoch)));
             return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion);
         }
 

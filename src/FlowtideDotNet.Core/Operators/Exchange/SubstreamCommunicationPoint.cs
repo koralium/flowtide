@@ -223,6 +223,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _dataHandled = false;
             }
+            // Lets the handler change its fetch epoch so in flight fetches from before the
+            // failure are refused by the other substream instead of consuming events that the
+            // restarted stream needs.
+            _substreamCommunicationHandler.OnStreamFailure();
         }
 
         private Task<SubstreamInitializeResponse> OnTargetSubstreamInitialize(long restorePoint)
@@ -313,7 +317,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Failed to recover {recoveryPoint}");
+                    // No targets or read operators are registered yet, the stream is still
+                    // being built, there is nothing running that needs to be recovered. The
+                    // initialize handshake reconciles the checkpoint versions when the stream
+                    // starts.
+                    _logger.LogInformation("Received fail and recover to {recoveryPoint} before any exchange operators are registered, nothing to recover.", recoveryPoint);
                 }
             }
         }
@@ -323,11 +331,58 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _substreamCommunicationHandler.SendFailAndRecover(recoveryPoint);
         }
 
+        private long _notifyFailInFlightVersion = -1;
+        private readonly object _notifyFailLock = new object();
+
+        /// <summary>
+        /// Tells the other substream to fail and recover without waiting for the result. Used
+        /// from failure handling, where the other substream may be unreachable, often the
+        /// reason for the failure, and waiting out its response timeout would stall the
+        /// recovery here. Concurrent notifications for the same recovery point, one per
+        /// failing operator, are collapsed into one. If the notification is lost the
+        /// initialize handshake reconciles the checkpoint versions at the next start.
+        /// </summary>
+        public void NotifyFailAndRecover(long recoveryPoint)
+        {
+            lock (_notifyFailLock)
+            {
+                if (_notifyFailInFlightVersion == recoveryPoint)
+                {
+                    return;
+                }
+                _notifyFailInFlightVersion = recoveryPoint;
+            }
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _substreamCommunicationHandler.SendFailAndRecover(recoveryPoint);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning(e, "Failed to notify substream {substreamName} about the failure, versions are reconciled at the next initialize handshake.", substreamName);
+                }
+                finally
+                {
+                    lock (_notifyFailLock)
+                    {
+                        if (_notifyFailInFlightVersion == recoveryPoint)
+                        {
+                            _notifyFailInFlightVersion = -1;
+                        }
+                    }
+                }
+            });
+        }
+
         private Task RecieveCheckpointDone(long checkpointVersion)
         {
             _logger.LogDebug("Recieved checkpoint done from substream {substreamName} to {selfSubstreamName} with version {checkpointVersion}, notifying targets and read operators.", substreamName, _selfSubstreamName, checkpointVersion);
-            // Call all targets and read operators that the connected substream have completed the checkpoint
-            return Task.Factory.StartNew(async () =>
+            // Call all targets and read operators that the connected substream have completed
+            // the checkpoint. Task.Run so the work runs on the thread pool, this can be
+            // called from a grain turn where Task.Factory.StartNew would capture the grain
+            // activation scheduler.
+            return Task.Run(async () =>
             {
                 try
                 {
@@ -352,7 +407,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // pending until the next signal arrives.
                     _logger.LogWarning(ex, "Error handling checkpoint done from substream {substreamName}", substreamName);
                 }
-            }, default, TaskCreationOptions.None, TaskScheduler.Default).Unwrap();
+            });
         }
 
         public Task SendCheckpointDone(long checkpointVersion)
@@ -395,6 +450,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
+        // Last time the fetch loop completed an iteration, used by the stall watchdog. The
+        // loop runs continuously with short delays while any subscription exists, so a long
+        // gap means the loop is blocked, for example delivering an event into a pipeline that
+        // deadlocked on checkpoint barrier alignment with another substream.
+        private long _lastFetchLoopTick;
+        private Timer? _stallWatchdog;
+        private static readonly TimeSpan StallLimit = TimeSpan.FromSeconds(60);
+
         private void TryStartFetchTask()
         {
             lock (_fetchDataLock)
@@ -404,6 +467,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     return;
                 }
 
+                _lastFetchLoopTick = Environment.TickCount64;
+                _stallWatchdog ??= new Timer(CheckFetchLoopStall, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
                 _fetchDataTask = Task.Factory.StartNew(async () =>
                 {
                     await FetchDataLoop();
@@ -420,6 +485,52 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         }
                     }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
+        }
+
+        /// <summary>
+        /// Fails and recovers the stream when the fetch loop has been blocked for too long.
+        /// The loop normally iterates many times per second, a long stall means an event
+        /// delivery is stuck, which happens when the substreams deadlock on each others
+        /// checkpoint barriers or startup acks, every stream then sits in a healthy looking
+        /// running state while nothing moves. The recovery rolls the substreams back to a
+        /// common checkpoint and breaks the cycle.
+        /// </summary>
+        private void CheckFetchLoopStall(object? state)
+        {
+            lock (_fetchDataLock)
+            {
+                if (_fetchDataTask == null)
+                {
+                    _lastFetchLoopTick = Environment.TickCount64;
+                    return;
+                }
+                if (TimeSpan.FromMilliseconds(Environment.TickCount64 - _lastFetchLoopTick) < StallLimit)
+                {
+                    return;
+                }
+                // Reset so the watchdog does not fire again while the recovery runs.
+                _lastFetchLoopTick = Environment.TickCount64;
+            }
+            _logger.LogWarning("The fetch loop for substream {substreamName} has been stalled for over {limit}, failing and recovering to break a possible deadlock between the substreams.", substreamName, StallLimit);
+            _ = Task.Run(async () =>
+            {
+                SubstreamReadOperator? readOperator;
+                lock (_readOperators)
+                {
+                    readOperator = _readOperators.FirstOrDefault();
+                }
+                if (readOperator != null)
+                {
+                    try
+                    {
+                        await readOperator.FailAndRecoverOnFetchError(new TimeoutException($"The fetch loop was stalled for over {StallLimit}."));
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogWarning(e, "Failed to recover the stalled fetch loop for substream {substreamName}.", substreamName);
+                    }
+                }
+            });
         }
 
         /// <summary>
@@ -470,6 +581,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
                 lock (_fetchDataLock)
                 {
+                    _lastFetchLoopTick = Environment.TickCount64;
                     if (_subscribeTargetsVersion > currentVersion)
                     {
                         currentVersion = _subscribeTargetsVersion;

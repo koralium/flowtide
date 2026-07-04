@@ -33,23 +33,36 @@ namespace FlowtideDotNet.Orleans.Tests
     /// </summary>
     internal static class TestTableStore
     {
-        private static readonly ConcurrentDictionary<string, List<long>> _tables = new ConcurrentDictionary<string, List<long>>(StringComparer.OrdinalIgnoreCase);
+        private static readonly ConcurrentDictionary<string, List<(long Value, int Weight)>> _tables = new ConcurrentDictionary<string, List<(long Value, int Weight)>>(StringComparer.OrdinalIgnoreCase);
         private static readonly ConcurrentDictionary<string, List<long>> _results = new ConcurrentDictionary<string, List<long>>(StringComparer.OrdinalIgnoreCase);
 
         public static void AddRows(string table, IEnumerable<long> rows)
         {
-            var list = _tables.GetOrAdd(table, _ => new List<long>());
+            var list = _tables.GetOrAdd(table, _ => new List<(long, int)>());
             lock (list)
             {
-                list.AddRange(rows);
+                list.AddRange(rows.Select(x => (x, 1)));
             }
         }
 
-        public static IReadOnlyList<long> GetRows(string table)
+        /// <summary>
+        /// Removes previously added rows, the source emits them with a negative weight so the
+        /// removal retracts through the stream.
+        /// </summary>
+        public static void RemoveRows(string table, IEnumerable<long> rows)
+        {
+            var list = _tables.GetOrAdd(table, _ => new List<(long, int)>());
+            lock (list)
+            {
+                list.AddRange(rows.Select(x => (x, -1)));
+            }
+        }
+
+        public static IReadOnlyList<(long Value, int Weight)> GetRows(string table)
         {
             if (!_tables.TryGetValue(table, out var list))
             {
-                return Array.Empty<long>();
+                return Array.Empty<(long, int)>();
             }
             lock (list)
             {
@@ -154,9 +167,9 @@ namespace FlowtideDotNet.Orleans.Tests
 
             for (int i = _emittedCount; i < rows.Count; i++)
             {
-                weights.Add(1);
+                weights.Add(rows[i].Weight);
                 iterations.Add(0);
-                column.Add(new Int64Value(rows[i]));
+                column.Add(new Int64Value(rows[i].Value));
             }
             _emittedCount = rows.Count;
 

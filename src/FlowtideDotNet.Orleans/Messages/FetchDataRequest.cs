@@ -22,11 +22,12 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class FetchDataRequest
     {
-        public FetchDataRequest(string requestor, IReadOnlySet<int> targetIds, int numberOfEvents)
+        public FetchDataRequest(string requestor, IReadOnlySet<int> targetIds, int numberOfEvents, long fetchEpoch)
         {
             TargetIds = targetIds;
             NumberOfEvents = numberOfEvents;
             Requestor = requestor;
+            FetchEpoch = fetchEpoch;
         }
 
         /// <summary>
@@ -40,5 +41,16 @@ namespace FlowtideDotNet.Orleans.Messages
 
         [Id(3)]
         public string Requestor { get; set; }
+
+        /// <summary>
+        /// The requestors fetch epoch, announced through the initialize handshake. Fetches
+        /// remove events from the queues, so a fetch from any other epoch than the announced
+        /// one must not be served: it can come from an abandoned stream instance whose grain
+        /// moved to another silo, or from before the requestor rolled back, and the events it
+        /// takes would be lost for the current consumer, typically freezing both substreams
+        /// by consuming a checkpoint barrier that the real consumer waits for.
+        /// </summary>
+        [Id(4)]
+        public long FetchEpoch { get; set; }
     }
 }

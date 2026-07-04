@@ -280,7 +280,33 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     {
                         // Wait until the checkpoint event has been collected from this stream.
                         Debug.Assert(_waitForCheckpoint != null);
-                        await _waitForCheckpoint.Task;
+                        // The wait must not be unbounded: the request above can be dropped or
+                        // deferred, for example when the stream is still starting, and this
+                        // loop would then park forever with every event behind the barrier
+                        // unprocessed, deadlocking the substreams on each others startup and
+                        // checkpoint acks. The checkpoint is requested again a few times, and
+                        // when none arrives the streams are in different epochs, this stream
+                        // cannot pair the other substreams barrier with a cycle of its own, so
+                        // it fails and recovers to reconcile with the other substream through
+                        // the initialize handshake.
+                        bool checkpointArrived = false;
+                        for (int attempt = 0; attempt < 3; attempt++)
+                        {
+                            var completed = await Task.WhenAny(_waitForCheckpoint.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+                            if (completed == _waitForCheckpoint.Task)
+                            {
+                                checkpointArrived = true;
+                                break;
+                            }
+                            Logger.LogWarning("Substream read {name} is still waiting for a local checkpoint to pair with the other substreams barrier, requesting a new checkpoint.", Name);
+                            ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                        }
+                        if (!checkpointArrived)
+                        {
+                            Logger.LogWarning("Substream read {name} could not pair the other substreams barrier with a local checkpoint, failing and recovering to reconcile the substreams.", Name);
+                            await FailAndRollback();
+                            return;
+                        }
 
                         lock (_lock)
                         {
@@ -369,11 +395,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        public override async Task OnFailure(long rollbackVersion)
+        public override Task OnFailure(long rollbackVersion)
         {
             _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
             _communicationPoint.OnStreamFailure();
-            await _communicationPoint.SendFailAndRecover(rollbackVersion);
+            // Telling the other substream to fail and recover is best effort and must not
+            // delay the failure handling here: the other substream may be unreachable, which
+            // is often the reason this stream is failing, and waiting out its response
+            // timeout for every operator would stall the recovery. The initialize handshake
+            // at the restart reconciles the checkpoint versions when it is reachable again.
+            _communicationPoint.NotifyFailAndRecover(rollbackVersion);
+            return Task.CompletedTask;
         }
 
         public override ValueTask DisposeAsync()

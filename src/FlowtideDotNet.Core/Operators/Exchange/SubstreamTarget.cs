@@ -180,6 +180,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public async Task OnLockingEvent(ILockingEvent lockingEvent)
         {
             Debug.Assert(_queue != null);
+            // Logged before the semaphore so a barrier that reached the exchange but is
+            // blocked behind an in progress read or write is distinguishable from a barrier
+            // that never arrived.
+            _substreamCommunication.Logger.LogDebug("Target {targetId} received locking event {eventType}", _exchangeTargetId, lockingEvent.GetType().Name);
             await _lockSemaphore.WaitAsync();
             try
             {
@@ -305,14 +309,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _ready = false;
             _lockSemaphore.Release();
             _substreamCommunication.OnStreamFailure();
-            await _substreamCommunication.SendFailAndRecover(recoveryPoint);
+            // Best effort notification that must not delay the failure handling here, see
+            // NotifyFailAndRecover.
+            _substreamCommunication.NotifyFailAndRecover(recoveryPoint);
         }
 
         public Task FailAndRecover(long recoveryPoint)
         {
             if (_failAndRecoverFunc == null)
             {
-                throw new InvalidOperationException("Not initialized");
+                // The stream has not initialized this target yet, there is no committed work
+                // past the recovery point to roll back. The initialize handshake reconciles
+                // the checkpoint versions when the stream starts.
+                return Task.CompletedTask;
             }
             return _failAndRecoverFunc(recoveryPoint);
         }

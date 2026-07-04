@@ -125,5 +125,48 @@ namespace FlowtideDotNet.Orleans.Tests
             Assert.NotNull(resultA);
             Assert.Equal(expectedA, resultA);
         }
+
+        /// <summary>
+        /// A stopped stream can be started again with the same SQL and produces complete
+        /// results including data that arrived while it was stopped. The stop cleared the
+        /// grain state, so this verifies the whole start-stop-start grain lifecycle and the
+        /// substream initialize handshake on the second start.
+        /// </summary>
+        [Fact]
+        public async Task StreamRestartsAndProducesCompleteResults()
+        {
+            var sql = JoinSql("restart");
+            TestTableStore.AddRows("restart_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("restart_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_restart");
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            var expected = Enumerable.Range(0, 50).Select(x => (long)x).ToList();
+            await WaitForResult("restart_out", expected, TimeSpan.FromSeconds(60));
+
+            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping the stream before the restart timed out");
+            await stopTask;
+
+            // Data arriving while the stream is stopped must show up after the restart
+            TestTableStore.AddRows("restart_right", Enumerable.Range(50, 25).Select(x => (long)x));
+
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            expected = Enumerable.Range(0, 75).Select(x => (long)x).ToList();
+            await WaitForResult("restart_out", expected, TimeSpan.FromSeconds(60));
+
+            // The restarted stream keeps processing live changes and stops cleanly again
+            TestTableStore.AddRows("restart_right", Enumerable.Range(75, 25).Select(x => (long)x));
+            expected = Enumerable.Range(0, 100).Select(x => (long)x).ToList();
+            await WaitForResult("restart_out", expected, TimeSpan.FromSeconds(60));
+
+            stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping the restarted stream timed out");
+            await stopTask;
+        }
     }
 }

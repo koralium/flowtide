@@ -22,10 +22,11 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class InitSubstreamRequest
     {
-        public InitSubstreamRequest(string requestor, long restorePoint)
+        public InitSubstreamRequest(string requestor, long restorePoint, long fetchEpoch)
         {
             Requestor = requestor;
             RestorePoint = restorePoint;
+            FetchEpoch = fetchEpoch;
         }
 
         [Id(0)]
@@ -33,5 +34,13 @@ namespace FlowtideDotNet.Orleans.Messages
 
         [Id(1)]
         public long RestorePoint { get; }
+
+        /// <summary>
+        /// The requestors current fetch epoch, the receiving grain only serves fetches that
+        /// carry this epoch until the next handshake announces a new one, see
+        /// <see cref="FetchDataRequest.FetchEpoch"/>.
+        /// </summary>
+        [Id(2)]
+        public long FetchEpoch { get; }
     }
 }
