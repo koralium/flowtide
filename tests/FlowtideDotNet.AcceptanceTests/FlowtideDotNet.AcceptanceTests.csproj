@@ -32,4 +32,8 @@
     <ProjectReference Include="..\..\src\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="FlowtideDotNet.Benchmarks" />
+  </ItemGroup>
+
 </Project>
