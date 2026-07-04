@@ -329,9 +329,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     }
                     if (inStreamCheckpoint != null)
                     {
-                        Logger.LogDebug("Substream read {name} forwards local checkpoint with time {time}", Name, inStreamCheckpoint.CheckpointTime);
                         await OnCheckpoint(inStreamCheckpoint.CheckpointTime);
-                        Logger.LogDebug("Substream read {name} committed state before forwarding checkpoint with time {time}", Name, inStreamCheckpoint.CheckpointTime);
                         // Forward this streams own checkpoint event, the checkpoint event from
                         // the other substream has that streams times and must not flow here.
                         await output.SendLockingEvent(inStreamCheckpoint);

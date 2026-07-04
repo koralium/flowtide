@@ -163,8 +163,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _context._stopTask = null;
                     }
                 }
-                // Transition to not started
+                // Transition to not started, the stream must not fall through and restart
+                // after honoring the stop.
                 await TransitionTo(StreamStateValue.NotStarted);
+                return;
             }
 
             await TransitionTo(StreamStateValue.Starting);
@@ -235,8 +237,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override Task StopAsync()
         {
             Debug.Assert(_context != null, nameof(_context));
+            // The failure handling may be mid way through faulting and disposing the blocks,
+            // transitioning to stopping here would start a stop checkpoint against blocks
+            // that can never complete it and the stop would hang. The wish is honored by
+            // Transition when the cleanup has finished, which also completes the stop task
+            // the caller awaits.
             _context._wantedState = StreamStateValue.NotStarted;
-            return TransitionTo(StreamStateValue.Stopping);
+            return Task.CompletedTask;
         }
     }
 }
