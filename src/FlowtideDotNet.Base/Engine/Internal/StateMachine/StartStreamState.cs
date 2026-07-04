@@ -340,6 +340,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
             _context._wantedState = StreamStateValue.NotStarted;
+            // The start can block for a long time waiting on another substream, for example
+            // the initialize handshake retries for close to a minute when the other
+            // substream is also stopping and answers not started. Waiting for the start to
+            // finish would delay the stop by that long, so the start is aborted through the
+            // failure path. The failure handling cleans up the blocks, honors the stop wish
+            // and completes the stop task the caller awaits. Nothing new has been committed
+            // during the start, so stopping without a final checkpoint loses no data, the
+            // next start replays from the last committed checkpoint.
+            _ = Task.Run(() => _context.OnFailure(new OperationCanceledException("The stream was stopped while it was starting.")));
             return Task.CompletedTask;
         }
     }

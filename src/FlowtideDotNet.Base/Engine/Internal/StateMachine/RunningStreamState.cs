@@ -508,6 +508,27 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (_doingCheckpoint)
                 {
                     _context._logger.LogDebug("Stop requested while a checkpoint is in progress, the stop runs when the checkpoint completes");
+                    // The checkpoint the stop defers behind can hang forever when another
+                    // substream stopped or died mid cycle, its acknowledgements then never
+                    // arrive and nothing else detects it, a dead peer produces empty fetches
+                    // which look healthy to the fetch loop watchdog. The wait is bounded, if
+                    // the stop is still pending after the drain timeout the stream fails so
+                    // the failure handling honors the stop and completes the stop task.
+                    var context = _context;
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(context._dataflowStreamOptions.StopDrainTimeout);
+                        bool stillWaiting;
+                        lock (context._checkpointLock)
+                        {
+                            stillWaiting = context._wantedState == StreamStateValue.NotStarted && context._stopTask != null;
+                        }
+                        if (stillWaiting && context.currentState == StreamStateValue.Running)
+                        {
+                            context._logger.LogWarning("Stop timed out waiting for the in-progress checkpoint on stream {stream}, failing the stream to complete the stop.", context.streamName);
+                            await context.OnFailure(new OperationCanceledException("The stop timed out waiting for a checkpoint to complete."));
+                        }
+                    });
                     return Task.CompletedTask;
                 }
             }

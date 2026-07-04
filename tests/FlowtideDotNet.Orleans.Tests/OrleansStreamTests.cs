@@ -170,6 +170,50 @@ namespace FlowtideDotNet.Orleans.Tests
         }
 
         /// <summary>
+        /// A stop through the stream grain lands while a substream grain is running a fail
+        /// and recover in the background. The grain acknowledges the recovery request
+        /// immediately and recovers asynchronously, so the coordinated stop races the whole
+        /// recovery including the restart handshake between the grains. The stop must
+        /// complete and a restart afterwards must produce complete results.
+        /// </summary>
+        [Fact]
+        public async Task StopDuringGrainRecoveryCompletesAndRestarts()
+        {
+            var sql = JoinSql("stoprec");
+            TestTableStore.AddRows("stoprec_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("stoprec_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_stoprec");
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            var expected = Enumerable.Range(0, 50).Select(x => (long)x).ToList();
+            await WaitForResult("stoprec_out", expected, TimeSpan.FromSeconds(60));
+
+            // Force a recovery in one substream grain, the request is acknowledged
+            // immediately and the recovery runs in the background on the grain.
+            var substreamGrain = _fixture.Cluster.GrainFactory.GetGrain<ISubStreamGrain>("orleans_stoprec_substream_0");
+            await substreamGrain.FailAndRecoverAsync(new FailAndRecoverRequest("substream_1", 0));
+
+            // Stop while the recovery runs.
+            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(90)));
+            Assert.True(finished == stopTask, "Stopping the stream during a grain recovery timed out");
+            await stopTask;
+
+            // Data added while stopped and a restart must produce the complete result.
+            TestTableStore.AddRows("stoprec_right", Enumerable.Range(50, 25).Select(x => (long)x));
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            expected = Enumerable.Range(0, 75).Select(x => (long)x).ToList();
+            await WaitForResult("stoprec_out", expected, TimeSpan.FromSeconds(60));
+
+            var finalStop = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            finished = await Task.WhenAny(finalStop, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == finalStop, "The final stop timed out");
+            await finalStop;
+        }
+
+        /// <summary>
         /// Rapid start and stop cycles through the grains, the stop lands while the
         /// substream streams are still starting, which exercises the grain lifecycle,
         /// reminder registration and the tick loop teardown under repetition. Every stop

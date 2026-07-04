@@ -1863,6 +1863,195 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedAggregateResult(), allowFailures: true);
         }
 
+        /// <summary>
+        /// A stop that lands during a crash recovery skips the final checkpoint, the stream
+        /// stops at the last committed state. A fresh host restoring from that storage must
+        /// produce complete data, verifying that the stop during failure path leaves fully
+        /// consistent storage behind.
+        /// </summary>
+        [Fact]
+        public async Task StopDuringRecoveryThenColdRestartHasCompleteData()
+        {
+            _generator.Generate(300);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, MemoryFileProvider>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Storage.StateManager.StateManagerOptions CreateOptions(string substreamName)
+            {
+                return new Storage.StateManager.StateManagerOptions()
+                {
+                    CachePageCount = 100_000,
+                    PersistentStorage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                    {
+                        FileProvider = fileProviders.GetOrAdd(substreamName, _ => new MemoryFileProvider())
+                    }),
+                    DefaultBPlusTreePageSize = 1024,
+                    DefaultBPlusTreePageSizeBytes = 32 * 1024,
+                    TemporaryStorageOptions = new Storage.FileCacheOptions()
+                    {
+                        DirectoryPath = $"./data/tempFiles/e2e_stoprec_restart/{substreamName}/tmp"
+                    }
+                };
+            }
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                    b.AddProvider(provider);
+                });
+            }
+
+            _stream = BuildHost("e2e_stoprec_restart", NormalJoinSql, latestData, failures,
+                stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // Crash the lane substream and stop while the recovery runs
+            await _stream.Substreams["substream_1"].CallTrigger("crash", null);
+            var stopTask = _stream.StopAsync();
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            if (finished != stopTask)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_stoprec_restart_{buffer.Key}.log");
+                }
+            }
+            Assert.True(finished == stopTask, "Stop during recovery did not complete");
+            await stopTask;
+            await _stream.DisposeAsync();
+
+            // New data while stopped, a fresh host restores from whatever the interrupted
+            // stop left behind and must catch up to the complete result.
+            _generator.Generate(200);
+
+            _stream = BuildHost("e2e_stoprec_restart", NormalJoinSql, latestData, failures, stateOptions: CreateOptions);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+        }
+
+        /// <summary>
+        /// A randomized loop of data waves, crashes in either or both substreams and full
+        /// stop and restart cycles. Every iteration must converge to the complete join
+        /// result. The seed is logged on failure so a failing sequence can be replayed.
+        /// </summary>
+        [Fact]
+        public async Task ChaosCrashStopLoopConverges()
+        {
+            int seed = Environment.TickCount;
+            var random = new Random(seed);
+
+            _generator.Generate(200);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, MemoryFileProvider>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Storage.StateManager.StateManagerOptions CreateOptions(string substreamName)
+            {
+                return new Storage.StateManager.StateManagerOptions()
+                {
+                    CachePageCount = 100_000,
+                    PersistentStorage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                    {
+                        FileProvider = fileProviders.GetOrAdd(substreamName, _ => new MemoryFileProvider())
+                    }),
+                    DefaultBPlusTreePageSize = 1024,
+                    DefaultBPlusTreePageSizeBytes = 32 * 1024,
+                    TemporaryStorageOptions = new Storage.FileCacheOptions()
+                    {
+                        DirectoryPath = $"./data/tempFiles/e2e_chaos/{substreamName}/tmp"
+                    }
+                };
+            }
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                    b.AddProvider(provider);
+                });
+            }
+
+            _stream = BuildHost("e2e_chaos", NormalJoinSql, latestData, failures,
+                stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+            try
+            {
+                for (int iteration = 0; iteration < 8; iteration++)
+                {
+                    var action = random.Next(5);
+                    switch (action)
+                    {
+                        case 0:
+                            _generator.Generate(100);
+                            break;
+                        case 1:
+                        case 2:
+                            // Crash one substream, the call itself may fail when the stream
+                            // is already failing over, that interleaving is part of the chaos.
+                            try
+                            {
+                                await _stream.Substreams[$"substream_{action - 1}"].CallTrigger("crash", null);
+                            }
+                            catch
+                            {
+                            }
+                            break;
+                        case 3:
+                            try
+                            {
+                                await Task.WhenAll(
+                                    _stream.Substreams["substream_0"].CallTrigger("crash", null),
+                                    _stream.Substreams["substream_1"].CallTrigger("crash", null));
+                            }
+                            catch
+                            {
+                            }
+                            break;
+                        case 4:
+                            var stopTask = _stream.StopAsync();
+                            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+                            if (finished != stopTask)
+                            {
+                                throw new TimeoutException($"Chaos stop hung in iteration {iteration}");
+                            }
+                            await stopTask;
+                            await _stream.DisposeAsync();
+                            _stream = BuildHost("e2e_chaos", NormalJoinSql, latestData, failures,
+                                stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
+                            await _stream.StartAsync();
+                            break;
+                    }
+
+                    _generator.Generate(50);
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                }
+            }
+            catch (Exception e)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_chaos_seed{seed}_{buffer.Key}.log");
+                }
+                throw new Exception($"Chaos loop failed with seed {seed}", e);
+            }
+        }
+
         private static Storage.StateManager.StateManagerOptions CreateStateOptions(string testName, string substreamName)
         {
             return new Storage.StateManager.StateManagerOptions()
