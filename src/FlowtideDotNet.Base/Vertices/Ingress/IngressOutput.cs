@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Base.Vertices
         {
             if (_stopEvents != null)
             {
-                return _stopEvents.Task;
+                return SendAsync_WaitForResume(data);
             }
             if (data is IRentable rentable)
             {
@@ -63,6 +63,30 @@ namespace FlowtideDotNet.Base.Vertices
                 return _targetBlock.SendAsync(new StreamMessage<T>(data, _ingressState._currentTime), CancellationToken);
             }
             return SendAsync_Slow(data);
+        }
+
+        private async Task SendAsync_WaitForResume(T data)
+        {
+            // The output is stopped, for example because the stream is paused. The data must
+            // be held back and sent after the resume, NOT dropped: completing without sending
+            // is indistinguishable from a successful send for the caller, a source would
+            // advance its position past data that never entered the stream and commit that
+            // position at the next checkpoint, making the loss permanent.
+            //
+            // The wait observes the vertex cancellation: when the stream fails while a send
+            // is parked here, the send must throw instead of delivering a stale batch, the
+            // rollback replays the data in the new epoch.
+            while (true)
+            {
+                var stopEvents = _stopEvents;
+                if (stopEvents == null)
+                {
+                    break;
+                }
+                await stopEvents.Task.WaitAsync(CancellationToken);
+            }
+            CancellationToken.ThrowIfCancellationRequested();
+            await SendAsync(data);
         }
 
         private async Task SendAsync_Slow(T data)
@@ -140,7 +164,7 @@ namespace FlowtideDotNet.Base.Vertices
         {
             if (_stopEvents != null)
             {
-                return _stopEvents.Task;
+                return SendWatermark_WaitForResume(watermark);
             }
             Debug.Assert(_ingressState._vertexHandler != null, nameof(_ingressState._vertexHandler));
             watermark.SourceOperatorId = _ingressState._vertexHandler.OperatorId;
@@ -149,6 +173,23 @@ namespace FlowtideDotNet.Base.Vertices
                 return _targetBlock.SendAsync(watermark, CancellationToken);
             }
             return SendWatermark_Slow(watermark);
+        }
+
+        private async Task SendWatermark_WaitForResume(Watermark watermark)
+        {
+            // See SendAsync_WaitForResume: a dropped watermark makes downstream consumers
+            // believe the data before it never completed.
+            while (true)
+            {
+                var stopEvents = _stopEvents;
+                if (stopEvents == null)
+                {
+                    break;
+                }
+                await stopEvents.Task.WaitAsync(CancellationToken);
+            }
+            CancellationToken.ThrowIfCancellationRequested();
+            await SendWatermark(watermark);
         }
 
         private async Task SendWatermark_Slow(Watermark watermark)
