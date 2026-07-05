@@ -56,11 +56,9 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task StartStreamAsync(StartStreamRequest request)
         {
-            // A started stream keeps running the plan it was started with, silently
-            // accepting a changed plan would have the existing substream grains run the old
-            // plan while substreams that are new in this request start the new one, a mixed
-            // topology that cannot work. Starting again with the identical request is a
-            // no-op retry.
+            // A started stream keeps the plan it was started with, silently accepting a
+            // changed plan would mix substreams running the old and the new plan.
+            // Starting again with the identical request is a no-op retry.
             if (_state.RecordExists && _state.State.SqlText != null)
             {
                 if (!string.Equals(_state.State.SqlText, request.SqlText, StringComparison.Ordinal) ||
@@ -74,8 +72,8 @@ namespace FlowtideDotNet.Orleans.Grains
             var substreams = GetSubstreamNames(request.SqlText, request.SubstreamCount);
 
             // The started set is persisted before the substream grains start, a stop uses
-            // only this set. Missing a started substream grain here would leave it running
-            // with no way to stop it, its keep alive reminder restarts it forever.
+            // only this set. A missed substream grain would keep running forever, restarted
+            // by its keep alive reminder with no way left to stop it.
             _state.State.SqlText = request.SqlText;
             _state.State.SubstreamCount = request.SubstreamCount;
             foreach (var substream in substreams)
@@ -147,15 +145,13 @@ namespace FlowtideDotNet.Orleans.Grains
                 try
                 {
                     var status = await GrainFactory.GetGrain<ISubStreamGrain>(substreamKey).GetStatusAsync();
-                    // The stream grain knows the name authoritatively, a substream grain
-                    // that lost its state cannot.
+                    // A substream grain that lost its state does not know its own name
                     status.SubstreamName = substream;
                     return status;
                 }
                 catch (Exception e)
                 {
-                    // An unreachable substream grain, for example during a silo failure,
-                    // must not make the whole status call fail.
+                    // An unreachable substream grain must not fail the whole status call
                     return new SubstreamStatus
                     {
                         SubstreamName = substream,

@@ -409,14 +409,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// A substream whose startup takes much longer than its peers must not fail and
-        /// recover just because a peer barrier arrives while it is still starting. The peer
-        /// finishes startup fast, checkpoints, and its barrier reaches the slow substreams
-        /// read operator which cannot pair it with a local cycle until its own startup
-        /// completes. This is a normal condition that startup itself resolves, treating it
-        /// like an unpairable barrier and recovering after 15 seconds caused rare failures
-        /// under load where a startup taking that long is real (observed 2026-07-05 in
-        /// NonCoPartitionedAggregateOverJoinIsDistributed under full class load).
+        /// A substream whose startup takes much longer than the others must not fail and
+        /// recover just because a barrier from another substream arrives while it is still
+        /// starting. The barrier cannot pair with a local cycle until the startup completes,
+        /// which is a normal condition that startup itself resolves, treating it like an
+        /// unpairable barrier would restart the slow startup in a loop.
         /// </summary>
         [Fact]
         public async Task SlowStartingSubstreamDoesNotTriggerStartupRecovery()
@@ -505,8 +502,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
-            // Ring buffers armed after a data stall under full suite load (2026-07-05, the
-            // sink sat at 950 of 1000 rows for the whole wait after a pause and resume).
+            // Ring buffers dumped on failure so a data stall after the resume is diagnosable
             var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
             var testName = "e2e_pause_resume";
 
@@ -963,12 +959,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
-            // Ring buffers dumped on failure. A failure of this test under full class load
-            // was root caused to the startup pairing bound (a slow ramp up next to an
-            // already checkpointing peer, see SlowStartingSubstreamDoesNotTriggerStartupRecovery,
-            // fixed in SubstreamReadOperator). The arming stays: this plan has the longest
-            // exchange chain in the suite, so cross substream regressions tend to surface
-            // here first and the dump makes them diagnosable.
+            // Ring buffers dumped on failure. This plan has the longest exchange chain in
+            // the suite, cross substream regressions tend to surface here first and the
+            // dump makes them diagnosable.
             var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
 
             Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)

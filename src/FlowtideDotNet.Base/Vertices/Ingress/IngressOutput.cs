@@ -67,15 +67,11 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async Task SendAsync_WaitForResume(T data)
         {
-            // The output is stopped, for example because the stream is paused. The data must
-            // be held back and sent after the resume, NOT dropped: completing without sending
-            // is indistinguishable from a successful send for the caller, a source would
-            // advance its position past data that never entered the stream and commit that
-            // position at the next checkpoint, making the loss permanent.
-            //
-            // The wait observes the vertex cancellation: when the stream fails while a send
-            // is parked here, the send must throw instead of delivering a stale batch, the
-            // rollback replays the data in the new epoch.
+            // The output is stopped, for example because the stream is paused. The data is
+            // held back and sent after the resume, dropping it would look like a successful
+            // send to the caller which then commits its position past the lost data.
+            // The wait observes the cancellation, a send parked across a stream failure must
+            // throw instead of delivering a stale batch, the rollback replays the data.
             while (true)
             {
                 var stopEvents = _stopEvents;
@@ -177,7 +173,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async Task SendWatermark_WaitForResume(Watermark watermark)
         {
-            // See SendAsync_WaitForResume: a dropped watermark makes downstream consumers
+            // See SendAsync_WaitForResume, a dropped watermark makes downstream consumers
             // believe the data before it never completed.
             while (true)
             {

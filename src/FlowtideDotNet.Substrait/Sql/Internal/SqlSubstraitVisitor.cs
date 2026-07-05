@@ -63,10 +63,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 subRelations.Add(relData.Relation);
             }
 
-            // When the plan uses substreams every root must belong to one: only substream
-            // wrapped trees are filtered per substream host at build time, an unwrapped root
-            // would be built and run in EVERY substream, silently duplicating its sink
-            // writes once per substream.
+            // When the plan uses substreams every root must belong to one, an unwrapped
+            // root would be built in every substream and duplicate its sink writes.
             if (subRelations.Any(x => x is SubStreamRootRelation) &&
                 subRelations.Any(x => x is not SubStreamRootRelation))
             {

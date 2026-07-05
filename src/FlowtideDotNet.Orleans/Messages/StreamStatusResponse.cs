@@ -46,10 +46,9 @@ namespace FlowtideDotNet.Orleans.Messages
 
         /// <summary>
         /// The most recent failure of the stream on the current grain activation, null when
-        /// no failure has occurred. Streams start in the background after the start call
-        /// returns and retry failures on their own, this is where the reason surfaces, for
-        /// example a connector that cannot initialize. A Running state next to a non null
-        /// value means the stream recovered after the failure.
+        /// no failure has occurred. Streams start and retry failures in the background, this
+        /// is where the reason surfaces. A running state next to a non null value means the
+        /// stream recovered after the failure.
         /// </summary>
         [Id(4)]
         public string? LastFailure { get; set; }

@@ -258,10 +258,9 @@ namespace FlowtideDotNet.Base.Engine
         /// <returns>A task that completes when the stream has fully stopped.</returns>
         public Task StopAsync()
         {
-            // Stopping supersedes a pause: the stop needs checkpoint cycles, but a source
-            // that is blocked sending into a paused output holds its checkpoint lock, so no
-            // cycle could ever run. The paused data flows during the stop and becomes part
-            // of the final state. Resuming a stream that is not paused is a no-op.
+            // Stopping supersedes a pause, a source blocked in a paused send holds its
+            // checkpoint lock and the stop checkpoint cycles could never run. The paused
+            // data flows during the stop and becomes part of the final state.
             streamContext.Resume();
             return streamContext.StopAsync();
         }

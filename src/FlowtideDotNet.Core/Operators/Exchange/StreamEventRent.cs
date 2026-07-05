@@ -15,14 +15,11 @@ using FlowtideDotNet.Base;
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
     /// <summary>
-    /// The single owner of the rent and return type dispatch for stream events in the
-    /// exchange. Batches are reference counted: every holder takes a claim with
-    /// <see cref="Rent"/> and releases it with <see cref="Return"/>, an imbalance either
-    /// frees memory that is still in use or leaks it. For a
-    /// <see cref="StreamMessage{T}"/> carrying a <see cref="StreamEventBatch"/> the claim
-    /// belongs to the batch data, not the message wrapper. Every place that holds or
-    /// releases events must go through this class, a second copy of this dispatch drifts
-    /// and a new event type then leaks or double frees in the copies that were not updated.
+    /// Single owner of the rent and return type dispatch for stream events in the exchange.
+    /// Every holder takes a claim with <see cref="Rent"/> and releases it with
+    /// <see cref="Return"/>, for a stream message the claim belongs to the batch data.
+    /// All rent and return of events must go through this class so a new event type only
+    /// needs to be handled in one place.
     /// </summary>
     internal static class StreamEventRent
     {

@@ -21,14 +21,10 @@ using System.Threading.Tasks;
 namespace FlowtideDotNet.Orleans.Interfaces
 {
     /// <summary>
-    /// Grain running one substream of a stream.
-    ///
-    /// Most methods on this interface are the internal protocol between the substream
-    /// grains: fetching exchanged data, checkpoint notifications, recovery and the
-    /// initialize handshake. Do not call them from application code, and do not start,
-    /// stop or delete a single substream directly — a substream acting alone breaks the
-    /// coordinated checkpointing of its peers. Use <see cref="IStreamGrain"/> to manage
-    /// streams.
+    /// Grain running one substream of a stream. Most methods are the internal protocol
+    /// between the substream grains, do not call them from application code and do not
+    /// start, stop or delete a single substream directly, use <see cref="IStreamGrain"/>
+    /// to manage streams.
     /// </summary>
     public interface ISubStreamGrain : IGrainWithStringKey
     {

@@ -29,23 +29,17 @@ using System.Buffers;
 
 namespace FlowtideDotNet.Orleans.Grains
 {
-    // Reentrant so the grain can serve fetch, checkpoint done and initialize calls from the
-    // other substreams while it is itself running a long operation such as the coordinated
-    // stop, which drains data by fetching the other substreams stop barrier. A non reentrant
-    // grain would deadlock, the stopping grain would wait for the other substream to serve a
-    // fetch while it is busy waiting for this grain to serve one. The message handlers only
-    // read fields set once at startup and delegate to the stream and handlers, which do their
-    // own synchronization, so interleaving is safe.
+    // Reentrant so the grain can serve fetches from the other substreams while it runs a
+    // long operation itself, two stopping grains would otherwise deadlock waiting for each
+    // other to serve the stop drain fetches. The handlers only read fields set at startup
+    // and delegate to the stream which does its own synchronization.
     [Reentrant]
     [KeepAlive]
     internal class SubStreamGrain : Grain, ISubStreamGrain, IRemindable
     {
-        // Reminder that keeps the substream running across silo failures. KeepAlive only
-        // protects a live activation, when the hosting silo dies nothing reactivates the
-        // grain unless something calls it, another substreams fetch loop does when parts of
-        // the stream survive, but if all substream grains were on the lost silo no call ever
-        // comes. The reminder fires on a surviving silo and its delivery activates the grain,
-        // which resumes the stream from its stored state.
+        // Keeps the substream running across silo failures. KeepAlive only protects a live
+        // activation, if all substream grains were on a lost silo no call ever reactivates
+        // them, the reminder fires on a surviving silo and resumes the stream.
         private const string KeepAliveReminderName = "flowtide_keepalive";
 
         private readonly IPersistentState<SubStreamGrainStorage> _state;
@@ -56,9 +50,7 @@ namespace FlowtideDotNet.Orleans.Grains
         private readonly FlowtideOrleansOptions _options;
         private Base.Engine.DataflowStream? _stream;
         private OrleansCommunicationFactory? _orleansCommunicationFactory;
-        // Only used to serialize outgoing events, serializing never allocates batch memory.
         private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
-        // Ends the trigger tick loop when the stream is stopped or the grain deactivates.
         private CancellationTokenSource? _tickCancellation;
 
         public SubStreamGrain(
@@ -82,8 +74,7 @@ namespace FlowtideDotNet.Orleans.Grains
             if (_orleansCommunicationFactory == null ||
                 !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
             {
-                // The stream has not started yet, there is no pending checkpoint that waits
-                // for this notification so it can be ignored.
+                // The stream has not started yet, nothing waits for this notification
                 return;
             }
             await handler.TargetCheckpointDone(request.CheckpointVersion);
@@ -97,10 +88,7 @@ namespace FlowtideDotNet.Orleans.Grains
                 // The stream has not started yet, there is nothing to recover.
                 return Task.CompletedTask;
             }
-            // Acknowledge immediately and recover in the background. The recovery stops and
-            // restarts the whole stream, which includes calls to other substreams that can
-            // take longer than the callers response timeout, awaiting it here would time the
-            // caller out and trigger another recovery, cascading across the substreams.
+            // Acknowledge immediately, awaiting the recovery would time the caller out
             _ = Task.Run(async () =>
             {
                 try
@@ -124,32 +112,24 @@ namespace FlowtideDotNet.Orleans.Grains
             }
             if (!_peerFetchEpochs.TryGetValue(request.Requestor, out var announcedEpoch))
             {
-                // This activation has never seen an announcement from the requestor, which
-                // happens when this grain was reactivated, for example on another silo, and
-                // lost the per activation epoch table. The requestor is told so it can fail
-                // and recover, its initialize handshake then re-announces the epoch. Serving
-                // the fetch blind would risk handing events to an abandoned instance.
+                // This activation has never seen an epoch announcement from the requestor,
+                // for example after a reactivation on another silo. The requestor is told so
+                // it can fail and recover, the handshake then re-announces the epoch.
                 _loggerFactory.CreateLogger<SubStreamGrain>().LogDebug("Refusing fetch from {requestor} with fetch epoch {requestEpoch}, no epoch has been announced to this activation.", request.Requestor, request.FetchEpoch);
                 return new FetchDataResponse(default) { RequestorUnknown = true };
             }
             if (announcedEpoch != request.FetchEpoch)
             {
-                // The fetch does not come from the requestors current epoch: it can be from
-                // an abandoned stream instance whose grain moved to another silo, or a fetch
-                // started before the requestor rolled back. Fetching removes events from the
-                // queues, serving it would hand events, including checkpoint barriers, to a
-                // consumer that throws them away, freezing the real consumer.
+                // The fetch is not from the requestors current epoch, it comes from an
+                // abandoned stream instance or was started before a rollback. Serving it
+                // would hand events to a consumer that throws them away.
                 _loggerFactory.CreateLogger<SubStreamGrain>().LogDebug("Refusing fetch from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.Requestor, request.FetchEpoch, announcedEpoch);
                 return new FetchDataResponse(default);
             }
             var data = await handler.GetData(request.TargetIds, request.NumberOfEvents, default);
-            // The events are serialized into pooled segments so they can cross silo
-            // boundaries without allocating byte arrays, the local copies end their journey
-            // here and their receiver claims are released, the other substream works with
-            // the deserialized copies. PooledBuffer is a mutable struct, writing through a
-            // single boxed IBufferWriter reference keeps one authoritative instance which is
-            // read back out when the response is created. The response consumer owns the
-            // buffer from here on, see FetchDataResponse.Events.
+            // Serialized into pooled segments, no byte arrays are allocated. PooledBuffer is
+            // a mutable struct so all writes go through one boxed IBufferWriter reference.
+            // The response consumer owns the buffer, see FetchDataResponse.Events.
             var buffer = new PooledBuffer();
             IBufferWriter<byte> bufferWriter = buffer;
             try
@@ -210,16 +190,14 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task DeleteStreamAsync()
         {
-            // Make sure a stream instance exists so its state storage is the one deleted, a
-            // reactivated grain may not have built the stream yet. StartStream is a no-op
-            // when the stream already runs or when there is no start record.
+            // A reactivated grain may not have built the stream yet, the delete needs the
+            // instance to reach its state storage.
             StartStream();
             if (_stream != null)
             {
                 var stream = _stream;
                 _stream = null;
-                // The engine handles delete in any state, including while the stream is
-                // still starting, and completes when the state is actually deleted.
+                // The engine handles delete in any state and completes when the state is deleted
                 await stream.DeleteAsync();
                 await stream.DisposeAsync();
             }
@@ -234,11 +212,9 @@ namespace FlowtideDotNet.Orleans.Grains
             DeactivateOnIdle();
         }
 
-        // The most recent stream failure on this activation, surfaced through
-        // GetStatusAsync. Failures inside the stream, for example a connector that cannot
-        // initialize, do not propagate out of StartAsync, the stream retries them in the
-        // background, so they are captured through the failure listener. Written from
-        // stream threads, read from grain turns.
+        // The most recent stream failure on this activation, surfaced through GetStatusAsync.
+        // Failures do not propagate out of StartAsync, the stream retries them in the
+        // background, so they are captured through the failure listener.
         private volatile string? _lastFailure;
 
         public Task<SubstreamStatus> GetStatusAsync()
@@ -265,13 +241,10 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public Task ReceiveReminder(string reminderName, TickStatus status)
         {
-            // The reminder is the watchdog that keeps the substream running across failures.
-            // Delivering it activates the grain, which resumes the stream from its stored
-            // state when no stream is running. A stream can also die without the grain
-            // noticing, for example when a recovery hangs on a call to a lost silo, so a
-            // stream that sits in the same non running state for a whole reminder period is
-            // recreated by deactivating the grain, disposing the stream, and letting the next
-            // call or reminder tick activate it again.
+            // Delivering the reminder activates the grain, which resumes the stream when
+            // none is running. A stream stuck in the same non running state for a whole
+            // reminder period, for example when a recovery hangs on a lost silo, is
+            // recreated by deactivating the grain.
             var stream = _stream;
             if (stream == null)
             {
@@ -299,17 +272,12 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 var stream = _stream;
                 _stream = null;
-                // The grain is deactivating, for example because its silo shuts down, the
-                // stream itself is not stopped. Tear down locally instead of running the
-                // coordinated stop: the stop drain needs the other substreams to fetch this
-                // streams stop barrier, which cannot happen while a shutting down silo blocks
-                // application messages, and a checkpoint in flight defers the stop until acks
-                // arrive, so a stop here can hang until the deactivation timeout. The state
-                // stays at the last checkpoint, the next activation resumes from it and the
-                // initialize handshake reconciles the versions with the other substreams.
-                // The dispose gets a bounded wait, it can hang on in flight calls to lost
-                // silos and must not stall the deactivation, a new activation does not share
-                // any files with the abandoned instance.
+                // The grain is deactivating, tear down locally instead of running the
+                // coordinated stop, the stop drain needs fetches from other substreams which
+                // a shutting down silo blocks. The next activation resumes from the last
+                // checkpoint and the initialize handshake reconciles the versions.
+                // Bounded wait, the dispose can hang on in flight calls to lost silos and
+                // must not stall the deactivation.
                 var disposeTask = stream.DisposeAsync().AsTask();
                 await Task.WhenAny(disposeTask, Task.Delay(TimeSpan.FromSeconds(5), cancellationToken));
             }
@@ -320,9 +288,8 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request)
         {
-            // The handshake announces the requestors current fetch epoch, only fetches from
-            // this epoch are served from now on. Recorded even when the stream here has not
-            // started so the epoch is known as soon as it starts.
+            // Only fetches from the announced epoch are served, recorded even when the
+            // stream has not started so the epoch is known as soon as it does.
             _peerFetchEpochs[request.Requestor] = request.FetchEpoch;
             if (_orleansCommunicationFactory == null ||
                 !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
@@ -343,17 +310,15 @@ namespace FlowtideDotNet.Orleans.Grains
         {
             if (_state.RecordExists)
             {
-                // Defense in depth, the stream grain already rejects a changed plan. A
-                // direct start with different SQL must not be silently ignored, this grain
-                // would keep running the old plan next to substreams running the new one.
+                // The stream grain already rejects a changed plan, but a direct start with
+                // different SQL must not be silently ignored either.
                 if (!string.Equals(_state.State.SqlText, startStreamMessage.SqlText, StringComparison.Ordinal) ||
                     _state.State.SubstreamCount != startStreamMessage.SubstreamCount)
                 {
                     throw new InvalidOperationException(
                         $"Substream '{this.GetPrimaryKeyString()}' is already started with a different SQL text or substream count. Stop the stream before starting it with a new plan.");
                 }
-                // Same plan, a repeated start is the natural retry after a failed start,
-                // make sure the stream is running.
+                // Same plan, make sure the stream is running
                 StartStream();
                 return;
             }
@@ -364,8 +329,7 @@ namespace FlowtideDotNet.Orleans.Grains
             _state.State.SubstreamCount = startStreamMessage.SubstreamCount;
             await _state.WriteStateAsync();
 
-            // Keeps the substream alive across silo failures, see KeepAliveReminderName.
-            // One minute is the smallest period Orleans reminders allow.
+            // One minute is the smallest period Orleans reminders allow
             await this.RegisterOrUpdateReminder(KeepAliveReminderName, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
 
             StartStream();
@@ -380,10 +344,8 @@ namespace FlowtideDotNet.Orleans.Grains
             ServiceCollection serviceCollection = new ServiceCollection();
             serviceCollection.AddKeyedSingleton(_state.State.StreamName, new FileCacheOptions()
             {
-                // The file cache is transient scratch space for this stream instance. The
-                // path must be unique per activation: after a silo failure a new activation
-                // can start while the old activations files are not released yet, sharing a
-                // directory would collide on the files.
+                // Unique path per activation, after a silo failure a new activation can start
+                // while the old activations files are not released yet.
                 DirectoryPath = $"./temp/{this.GetPrimaryKeyString()}/{Guid.NewGuid():N}"
             });
             var storageBuild = new FlowtideStorageBuilder(_state.State.StreamName, serviceCollection);
@@ -391,8 +353,7 @@ namespace FlowtideDotNet.Orleans.Grains
 
             var stateManagerOptions = storageBuild.Build(serviceCollection.BuildServiceProvider());
 
-            // Rebuild the plan from the SQL text, the plan builder is deterministic so all
-            // substream grains compute an identical plan.
+            // The plan builder is deterministic so all substream grains compute an identical plan
             var connectorManager = _connectorManagerFactory.Create(_state.State.StreamName);
             var plan = OrleansStreamPlanBuilder.BuildPlan(connectorManager, _state.State.SqlText, _state.State.SubstreamCount);
 
@@ -402,12 +363,9 @@ namespace FlowtideDotNet.Orleans.Grains
             flowtideBuilder.WithStateOptions(stateManagerOptions);
 
             _orleansCommunicationFactory = new OrleansCommunicationFactory(_state.State.StreamName, _grainFactory);
-            // The stream uses the default scheduler instead of grain timers. Grain timers
-            // require the grain activation context, but the stream registers triggers again
-            // when it restarts after a failure, which happens on stream threads outside any
-            // grain turn and would fail with an activation access violation. The default
-            // scheduler must be ticked externally, the grain runs a tick loop next to the
-            // stream, see below.
+            // Grain timers cannot be used, the stream re-registers triggers during failure
+            // recovery outside any grain turn which fails with an activation access
+            // violation. The default scheduler is ticked by a loop below instead.
             var scheduler = new Base.Engine.DefaultStreamScheduler();
             flowtideBuilder.WithScheduler(scheduler);
             flowtideBuilder.WithLoggerFactory(_loggerFactory);
@@ -431,11 +389,9 @@ namespace FlowtideDotNet.Orleans.Grains
             _tickCancellation = new CancellationTokenSource();
             var tickToken = _tickCancellation.Token;
             var logger = _loggerFactory.CreateLogger<SubStreamGrain>();
-            // Task.Run so the stream runs on the thread pool. StartStream is called from a
-            // grain turn, Task.Factory.StartNew would capture the grain activation scheduler
-            // and run the streams state machine as activation work items, a single
-            // synchronous wait in that machinery then blocks the whole activation, no grain
-            // call, not even from other substreams fetching data, is served anymore.
+            // Task.Run so the stream runs on the thread pool, Task.Factory.StartNew from a
+            // grain turn would capture the activation scheduler and a single synchronous
+            // wait in the stream would then block the whole activation.
             _lastFailure = null;
             _ = Task.Run(async () =>
             {
@@ -445,20 +401,15 @@ namespace FlowtideDotNet.Orleans.Grains
                 }
                 catch (Exception e)
                 {
-                    // The failure must be logged here, the task is fire and forget so the
-                    // exception is otherwise never observed anywhere. The keep alive reminder
-                    // sees the stream stuck in a non running state and recreates the grain,
-                    // but without this log the root cause would be undiagnosable. The failure
-                    // is also kept so GetStatusAsync can surface it to the caller, the start
-                    // call itself already returned success.
+                    // The task is fire and forget, without logging here the exception is
+                    // never observed. The failure is also kept so GetStatusAsync can report
+                    // why the stream did not start.
                     _lastFailure = e.ToString();
                     logger.LogError(e, "Starting the stream for substream {substream} failed.", this.GetPrimaryKeyString());
                     return;
                 }
-                // Drive the schedulers trigger dispatch, StartAsync does not tick it. Without
-                // the ticks no recurring operator trigger ever fires, sources that poll for
-                // changes through triggers would never emit new data. The loop ends when the
-                // stream is stopped or the grain deactivates.
+                // Drive the schedulers trigger dispatch, StartAsync does not tick it and no
+                // recurring trigger would ever fire without the loop.
                 try
                 {
                     using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));

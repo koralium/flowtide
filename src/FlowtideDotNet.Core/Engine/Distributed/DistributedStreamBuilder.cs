@@ -55,10 +55,9 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         /// </summary>
         /// <param name="planFactory">Factory that creates a new identical plan on every call.</param>
         /// <param name="optimize">
-        /// If true each plan is optimized before it is handed to the substream, the optimizer is
-        /// deterministic so all substreams get the same result. When false together with
-        /// <see cref="DistributeAutomatically"/> the factory must return an already optimized plan,
-        /// distribution can only partition joins that have been converted to merge joins.
+        /// If true each plan is optimized before it is handed to the substream. When false
+        /// together with <see cref="DistributeAutomatically"/> the factory must return an
+        /// already optimized plan, only merge joins can be partitioned.
         /// </param>
         /// <param name="planOptimizerSettings">Optional optimizer settings.</param>
         public DistributedStreamBuilder AddPlan(Func<Plan> planFactory, bool optimize = true, PlanOptimizerSettings? planOptimizerSettings = default)

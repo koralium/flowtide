@@ -707,8 +707,8 @@ namespace FlowtideDotNet.Base.Vertices
 
         /// <summary>
         /// Temporarily stops the data output generation for the connected streams.
-        /// A vertex that has not been initialized yet has no output to gate, the gates are
-        /// aligned with the pause state again when the stream enters its running state.
+        /// A vertex that is not initialized yet has no output to gate, the gates are applied
+        /// again when the stream enters its running state.
         /// </summary>
         public void Pause()
         {

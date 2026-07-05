@@ -49,17 +49,12 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         public Base.FlowtideHealth Health => _substreams.Values.Max(x => x.Health);
 
         /// <summary>
-        /// Starts all substreams and begins driving their schedulers.
-        /// Recurring connector triggers, for example sources polling for changes, are
-        /// dispatched by the stream itself, there is no need to call RunAsync on the
-        /// substreams.
-        ///
-        /// Failures inside a substream, for example a connector that cannot initialize, do
-        /// not fail this call: the substream retries them in the background and they
-        /// surface through the failure listeners and <see cref="Health"/>. In the rare case
-        /// where starting itself throws, the substreams that did start are stopped before
-        /// the failure is rethrown so a failed start never leaves part of the topology
-        /// running.
+        /// Starts all substreams and begins driving their schedulers, there is no need to
+        /// call RunAsync on the substreams.
+        /// Failures inside a substream do not fail this call, the substream retries them in
+        /// the background and they surface through the failure listeners and
+        /// <see cref="Health"/>. If starting itself throws, the substreams that did start
+        /// are stopped before the failure is rethrown.
         /// </summary>
         public async Task StartAsync()
         {
@@ -108,11 +103,9 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         }
 
         /// <summary>
-        /// Drives the default schedulers of all substreams. DataflowStream.StartAsync does
-        /// not tick the scheduler, only RunAsync does, so without this loop no recurring
-        /// operator trigger would ever fire and sources that poll for changes through
-        /// triggers would never emit new data. One loop runs for the lifetime of this
-        /// instance, it survives stop and restart and ends on dispose.
+        /// Drives the default schedulers of all substreams, StartAsync does not tick the
+        /// scheduler and no recurring trigger would ever fire without the loop. One loop
+        /// runs for the lifetime of this instance, it survives stop and restart.
         /// </summary>
         private void EnsureTickLoop()
         {
@@ -133,8 +126,7 @@ namespace FlowtideDotNet.Core.Engine.Distributed
                         {
                             foreach (var substream in _substreams.Values)
                             {
-                                // Substreams with a custom scheduler are managed externally
-                                // by whoever configured them.
+                                // Custom schedulers are managed externally by whoever configured them
                                 if (substream.Scheduler is Base.Engine.DefaultStreamScheduler scheduler)
                                 {
                                     try
@@ -143,9 +135,8 @@ namespace FlowtideDotNet.Core.Engine.Distributed
                                     }
                                     catch (Exception e)
                                     {
-                                        // A trigger dispatch can fail while a substream is
-                                        // failing over, the loop must keep ticking for the
-                                        // other substreams and the restarted stream.
+                                        // A trigger dispatch can fail while a substream is failing over,
+                                        // the loop must keep ticking for the others.
                                         _logger.LogDebug(e, "Trigger tick failed in stream {stream}, retrying at the next tick.", StreamName);
                                     }
                                 }
@@ -179,11 +170,9 @@ namespace FlowtideDotNet.Core.Engine.Distributed
 
         public async ValueTask DisposeAsync()
         {
-            // The substreams are stopped together first: disposing them one by one while
-            // the others keep running would have live substreams exchanging data with an
-            // already disposed peer. The stop is bounded internally by the drain timeout
-            // and the stop watchdogs, and failures are swallowed since dispose must always
-            // continue to the actual disposal.
+            // Stop all substreams first, disposing them one by one would have live
+            // substreams exchanging data with an already disposed one. The stop is bounded
+            // by the drain timeout and dispose must always continue to the disposal.
             try
             {
                 await Task.WhenAll(_substreams.Values.Select(x => x.StopAsync()));
@@ -206,10 +195,9 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             }
             if (tickLoop != null)
             {
-                // A tick dispatches triggers into the substreams, a dispatch into a stream
-                // that failed while being disposed can hang, and dispose must not hang with
-                // it. The loop observes the cancellation at the next timer tick, when the
-                // in-flight dispatch never returns the loop is abandoned.
+                // A trigger dispatch into a stream that failed while being disposed can
+                // hang, the loop is abandoned after the timeout so dispose does not hang
+                // with it.
                 var finished = await Task.WhenAny(tickLoop, Task.Delay(TimeSpan.FromSeconds(5)));
                 if (finished != tickLoop)
                 {

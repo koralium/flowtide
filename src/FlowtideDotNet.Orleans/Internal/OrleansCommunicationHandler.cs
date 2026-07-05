@@ -34,12 +34,9 @@ namespace FlowtideDotNet.Orleans.Internal
         private Func<long, Task>? _callRecieveCheckpointDone;
         private Func<int, IMemoryAllocator>? _receiveAllocatorResolver;
         private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
-        // Every handler instance gets a unique epoch: the process wide seed starts at the
-        // clock, so instances in different processes never collide, and increments per
-        // instance and failure, so instances created within the same clock tick never share
-        // an epoch either. An abandoned stream instance from a previous grain activation can
-        // then always be told apart from the current one. Changed on every stream failure,
-        // see OnStreamFailure.
+        // Every handler instance gets a unique epoch, the seed starts at the clock so
+        // processes never collide and increments per instance and failure. An abandoned
+        // stream instance can then always be told apart from the current one.
         private static long _epochSeed = DateTime.UtcNow.Ticks;
         private long _fetchEpoch = Interlocked.Increment(ref _epochSeed);
         // Tick timestamp of the first consecutive fetch refused as unknown, 0 when fetches

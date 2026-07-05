@@ -38,10 +38,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             if (lockingEvent != null && lockingEvent is not ICheckpointEvent)
             {
                 // A late acknowledgement of a non checkpoint locking event, for example an
-                // InitWatermarksEvent from the starting phase that reached the egress after the
-                // stream transitioned to running. Counting it would commit an in-flight
-                // checkpoint before the checkpoint barrier has reached the egress, losing its
-                // state on the next restore.
+                // init watermarks event from the starting phase. Counting it would commit an
+                // in-flight checkpoint before the barrier reached the egress.
                 return;
             }
 
@@ -258,10 +256,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _context._wantedState == StreamStateValue.Deleting)
                     {
                         // A stop or delete was requested, a completed cycle is a safe point
-                        // to honor it. This must not depend on a checkpoint being in
-                        // progress: the request can arrive while the stream waits for its
-                        // initial data, whose completion also lands here without a running
-                        // checkpoint, and the wish would otherwise never be picked up.
+                        // to honor it. Must not depend on a checkpoint being in progress,
+                        // initial data completion also lands here without one.
                         _doingCheckpoint = false;
                         // The transition takes the context lock and must not run under the
                         // checkpoint lock: checkpoint done acknowledgements from other
@@ -310,10 +306,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context.SetStatus(StreamStatus.Running);
             }
 
-            // The vertex gates are aligned with the pause marker instead of blocking here: a
-            // stream that was paused before it started or while it recovered comes up with
-            // its data paths gated and its lifecycle machinery running, and gates left over
-            // on reused operators from a resume in a non running state are released.
+            // Apply the pause gates when the stream was paused before it started or while
+            // it recovered, the stream then comes up with its data paths gated.
             _context.SyncPauseGates();
 
             _context._logger.StreamIsInRunningState(_context.streamName);
@@ -400,10 +394,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context._wantedState == StreamStateValue.Deleting)
                 {
                     // A stop or delete has been requested, no new checkpoint should start.
-                    // The wish itself must be honored here: the request can arrive while the
-                    // stream is still starting or between checkpoints, where nothing else
-                    // ever picks the wish up, silently dropping the trigger would then leave
-                    // the stream running forever with a caller that never completes.
+                    // The wish must be honored here, between checkpoints nothing else picks
+                    // it up and the caller would wait forever.
                     if (isScheduled)
                     {
                         _context._scheduleCheckpointTask = null;
@@ -478,10 +470,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (_context.checkpointTask != null)
                 {
                     // Enqueue the checkpoint as soon as possible. The scheduled provided
-                    // version is NOT cleared here: on success the call stores the same value
-                    // back for the queued cycles later promotion, and on failure an earlier
-                    // queued entry still owns it — clearing in either case would promote the
-                    // queued cycle without its version and break the same version dedup.
+                    // version must not be cleared here, the queued cycle is later promoted
+                    // with it and the same version dedup would break without it.
                     _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1), _context._scheduledProvidedCheckpointVersion);
                     return _context.checkpointTask.Task;
                 }
@@ -558,12 +548,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (_doingCheckpoint)
                 {
-                    // A checkpoint is in progress, transitioning to deleting now would run
-                    // the delete concurrently with the state manager checkpoint that the
-                    // checkpoint done task is still writing, corrupting the state manager.
-                    // The wish is honored when the checkpoint completes, with the same
-                    // bounded watchdog as a deferred stop since the checkpoint can hang
-                    // forever when another substream died mid cycle.
+                    // A checkpoint is in progress, deleting now would run concurrently with
+                    // the state manager checkpoint and corrupt it. The wish is honored when
+                    // the checkpoint completes, with the same bounded watchdog as a
+                    // deferred stop.
                     _context._logger.LogDebug("Delete requested while a checkpoint is in progress, the delete runs when the checkpoint completes");
                     var context = _context;
                     var observedDeleteTask = ObservedTask(context, forDelete: true);
@@ -592,14 +580,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         }
 
         /// <summary>
-        /// Watchdog check for a deferred stop or delete. The check normally runs under the
-        /// checkpoint lock, but that lock can itself be part of the hang the watchdog exists
-        /// to break, for example when a checkpoint cycle holds it while waiting on an
-        /// operator that can never make progress. Taking the lock unconditionally would then
-        /// silence the watchdog together with everything else. When the lock cannot be taken
-        /// within a second the fields are read without it: the wanted state and observed task
-        /// identity still gate the decision, and a stale read only risks a spurious recovery,
-        /// never a lost stop or delete.
+        /// Watchdog check for a deferred stop or delete. The checkpoint lock can itself be
+        /// part of the hang the watchdog exists to break, so when it cannot be taken within
+        /// a second the fields are read without it, a stale read only risks a spurious
+        /// recovery, never a lost stop or delete.
         /// </summary>
         private static bool WatchdogStillWaiting(StreamContext context, TaskCompletionSource? observedTask, bool forDelete)
         {
@@ -630,11 +614,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     _context._logger.LogDebug("Stop requested while a checkpoint is in progress, the stop runs when the checkpoint completes");
                     // The checkpoint the stop defers behind can hang forever when another
-                    // substream stopped or died mid cycle, its acknowledgements then never
-                    // arrive and nothing else detects it, a dead peer produces empty fetches
-                    // which look healthy to the fetch loop watchdog. The wait is bounded, if
-                    // the stop is still pending after the drain timeout the stream fails so
-                    // the failure handling honors the stop and completes the stop task.
+                    // substream died mid cycle, a dead substream produces healthy looking
+                    // empty fetches so nothing else detects it. The wait is bounded, after
+                    // the drain timeout the stream fails so the failure handling honors the
+                    // stop.
                     var context = _context;
                     var observedStopTask = ObservedTask(context, forDelete: false);
                     _ = Task.Run(async () =>

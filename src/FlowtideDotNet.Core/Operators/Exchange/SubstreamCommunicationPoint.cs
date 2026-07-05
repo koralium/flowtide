@@ -236,11 +236,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 if (_dataHandled)
                 {
                     // The other substream restarted while this stream is running with events
-                    // already exchanged in this epoch. This streams state can depend on events
-                    // the other substream no longer knows about, so this stream rolls back to
-                    // the restore point of the other substream. Not started is returned so the
-                    // other substream retries the handshake after the failure here has reset
-                    // the handshake state.
+                    // already exchanged, this streams state can depend on events the other
+                    // substream no longer knows about. Roll back to its restore point and
+                    // return not started so it retries the handshake.
                     _logger.LogInformation("Substream {substreamName} initialized with restore point {restorePoint} while this stream has live exchanged data, failing over to it.", substreamName, restorePoint);
                     _ = Task.Run(async () =>
                     {
@@ -250,10 +248,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         }
                         catch (Exception e)
                         {
-                            // The rollback this stream promised the restarted peer failed, the
-                            // peer retries the handshake and the fail over runs again. The
-                            // failure must be visible, an unobserved fault here means the two
-                            // substreams silently diverge until the retries run out.
+                            // The rollback failed, the other substream retries the handshake.
+                            // Must be logged, an unobserved fault here would let the
+                            // substreams silently diverge.
                             _logger.LogWarning(e, "Failing over to the restarted substream {substreamName} failed, the handshake retry runs the fail over again.", substreamName);
                         }
                     });
@@ -352,12 +349,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly object _notifyFailLock = new object();
 
         /// <summary>
-        /// Tells the other substream to fail and recover without waiting for the result. Used
-        /// from failure handling, where the other substream may be unreachable, often the
-        /// reason for the failure, and waiting out its response timeout would stall the
-        /// recovery here. Concurrent notifications for the same recovery point, one per
-        /// failing operator, are collapsed into one. If the notification is lost the
-        /// initialize handshake reconciles the checkpoint versions at the next start.
+        /// Tells the other substream to fail and recover without waiting for the result, it
+        /// may be unreachable and waiting out its response timeout would stall the recovery
+        /// here. Concurrent notifications for the same recovery point are collapsed into one.
         /// </summary>
         public void NotifyFailAndRecover(long recoveryPoint)
         {
@@ -508,12 +502,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// Fails and recovers the stream when the fetch loop has been blocked for too long.
-        /// The loop normally iterates many times per second, a long stall means an event
-        /// delivery is stuck, which happens when the substreams deadlock on each others
-        /// checkpoint barriers or startup acks, every stream then sits in a healthy looking
-        /// running state while nothing moves. The recovery rolls the substreams back to a
-        /// common checkpoint and breaks the cycle.
+        /// Fails and recovers the stream when the fetch loop has been blocked for too long,
+        /// which happens when the substreams deadlock on each others checkpoint barriers or
+        /// startup acks. The recovery rolls both back to a common checkpoint.
         /// </summary>
         private void CheckFetchLoopStall(object? state)
         {
@@ -523,11 +514,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     if (_subscribedTargets.Count == 0)
                     {
-                        // No fetch loop and no subscribers, the stream that used this
-                        // communication point stopped or was disposed. The timer must stop
-                        // itself, communication points are abandoned when a new stream is
-                        // built and a live timer would root this object graph forever. A
-                        // later subscribe creates a new timer.
+                        // No fetch loop and no subscribers, the stream stopped or was
+                        // disposed. The timer stops itself, a live timer would root this
+                        // object graph forever, a later subscribe creates a new one.
                         _stallWatchdog?.Dispose();
                         _stallWatchdog = null;
                         return;
