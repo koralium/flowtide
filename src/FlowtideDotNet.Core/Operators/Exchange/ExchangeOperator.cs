@@ -97,6 +97,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // Reset counts from a checkpoint that was aborted by a failure so an old
                 // checkpoint done message cannot complete dependencies for a new checkpoint.
                 _dependenciesDoneCalled = 0;
+                // Buffered signals from before the restore belong to the aborted epoch. The
+                // rollback re-aligns both substreams at a common version, the peer sends a
+                // fresh acknowledgement when it completes a checkpoint in the new epoch.
+                // Replaying a stale one would complete a new checkpoints dependencies before
+                // the peer stored it, and every cycle after that completes one ack early.
+                _pendingDependenciesDoneSignals = 0;
             }
             _state = await stateManagerClient.GetOrCreateObjectStateAsync<ExchangeOperatorState>("state");
             if (_state.Value == null)

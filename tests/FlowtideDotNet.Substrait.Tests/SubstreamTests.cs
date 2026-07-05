@@ -24,16 +24,22 @@ namespace FlowtideDotNet.Substrait.Tests
     /// </summary>
     public class SubstreamTests
     {
+        /// <summary>
+        /// A distributed view WITHOUT a scatter field consumed from another substream would
+        /// be a broadcast across substreams. The runtime substream exchange has no broadcast
+        /// support, the data would silently be dropped and checkpoints would hang, so the
+        /// plan build rejects it with an actionable error pointing at SCATTER_BY.
+        /// </summary>
         [Fact]
         public void TestDistributedViewOnly()
         {
             var builder = new SqlPlanBuilder();
-            builder.Sql(@"
+            var exception = Assert.Throws<InvalidOperationException>(() => builder.Sql(@"
             CREATE TABLE table1 (val any);
 
             SUBSTREAM stream1;
 
-            -- Create an exchange relation here that will be broadcasted
+            -- A view without SCATTER_BY would be broadcasted, which substreams do not support
             CREATE VIEW test WITH (DISTRIBUTED = true) AS
             SELECT val FROM table1;
 
@@ -41,113 +47,8 @@ namespace FlowtideDotNet.Substrait.Tests
 
             INSERT INTO output
             SELECT * FROM test;
-            ");
-
-            var plan = builder.GetPlan();
-
-            var expectedPlan = new Plan()
-            {
-                Relations = new List<Relations.Relation>()
-                {
-                    new SubStreamRootRelation()
-                    {
-                        Name = "stream1",
-                        Input = new ExchangeRelation()
-                        {
-                            PartitionCount = default,
-                            ExchangeKind = new BroadcastExchangeKind(),
-                            Input = new ProjectRelation()
-                            {
-                                Emit = new List<int>(){ 1 },
-                                Expressions = new List<Expressions.Expression>()
-                                {
-                                    new DirectFieldReference()
-                                    {
-                                        ReferenceSegment = new StructReferenceSegment()
-                                        {
-                                            Field = 0
-                                        }
-                                    }
-                                },
-                                Input = new ReadRelation()
-                                {
-                                    NamedTable = new Type.NamedTable()
-                                    {
-                                        Names = new List<string>()
-                                        {
-                                            "table1"
-                                        }
-                                    },
-                                    BaseSchema = new Type.NamedStruct()
-                                    {
-                                        Names = new List<string>()
-                                        {
-                                            "val"
-                                        },
-                                        Struct = new Type.Struct()
-                                        {
-                                            Types = new List<Type.SubstraitBaseType>()
-                                            {
-                                                new AnyType()
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                            Targets = new List<ExchangeTarget>()
-                            {
-                                new SubstreamExchangeTarget()
-                                {
-                                    ExchangeTargetId = 0,
-                                    PartitionIds = new List<int>(),
-                                    SubstreamName = "stream2"
-                                }
-                            }
-                        }
-                    },
-                    new SubStreamRootRelation()
-                    {
-                        Name = "stream2",
-                        Input = new WriteRelation()
-                        {
-                            NamedObject = new Type.NamedTable(){ Names = new List<string>() { "output" }},
-                            TableSchema = new Type.NamedStruct()
-                            {
-                                Names = new List<string>() {"val" },
-                                Struct = new Struct()
-                                {
-                                    Types = new List<SubstraitBaseType>()
-                                    {
-                                        new AnyType() { Nullable = true }
-                                    }
-                                }
-                            },
-                            Input = new ProjectRelation()
-                            {
-                                Emit = new List<int>() { 1 },
-                                Expressions = new List<Expressions.Expression>()
-                                {
-                                    new DirectFieldReference()
-                                    {
-                                        ReferenceSegment = new StructReferenceSegment()
-                                        {
-                                            Field = 0
-                                        }
-                                    }
-                                },
-                                Input = new SubstreamExchangeReferenceRelation()
-                                {
-                                    ExchangeTargetId = 0,
-                                    SubStreamName = "stream1",
-                                    ReferenceOutputLength = 1
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-
-            Assert.Equal(expectedPlan, plan);
+            "));
+            Assert.Contains("SCATTER_BY", exception.Message);
         }
 
 
@@ -277,16 +178,21 @@ namespace FlowtideDotNet.Substrait.Tests
             Assert.Equal(expectedPlan, plan);
         }
 
+        /// <summary>
+        /// The same broadcast rejection also applies when the view is consumed both inside
+        /// its own substream and from another substream, the cross substream consumer is the
+        /// one that makes it a broadcast across substreams.
+        /// </summary>
         [Fact]
         public void TestDistributedViewSelectInSameSubstreamAndOtherStream()
         {
             var builder = new SqlPlanBuilder();
-            builder.Sql(@"
+            var exception = Assert.Throws<InvalidOperationException>(() => builder.Sql(@"
             CREATE TABLE table1 (val any);
 
             SUBSTREAM stream1;
 
-            -- Create an exchange relation here that will be broadcasted
+            -- A view without SCATTER_BY would be broadcasted, which substreams do not support
             CREATE VIEW test WITH (DISTRIBUTED = true) AS
             SELECT val FROM table1;
 
@@ -297,156 +203,8 @@ namespace FlowtideDotNet.Substrait.Tests
 
             INSERT INTO output
             SELECT * FROM test;
-            ");
-
-            var plan = builder.GetPlan();
-
-            var expectedPlan = new Plan()
-            {
-                Relations = new List<Relations.Relation>()
-                {
-                    new SubStreamRootRelation()
-                    {
-                        Name = "stream1",
-                        Input = new ExchangeRelation()
-                        {
-                            PartitionCount = default,
-                            ExchangeKind = new BroadcastExchangeKind(),
-                            Input = new ProjectRelation()
-                            {
-                                Emit = new List<int>(){ 1 },
-                                Expressions = new List<Expressions.Expression>()
-                                {
-                                    new DirectFieldReference()
-                                    {
-                                        ReferenceSegment = new StructReferenceSegment()
-                                        {
-                                            Field = 0
-                                        }
-                                    }
-                                },
-                                Input = new ReadRelation()
-                                {
-                                    NamedTable = new Type.NamedTable()
-                                    {
-                                        Names = new List<string>()
-                                        {
-                                            "table1"
-                                        }
-                                    },
-                                    BaseSchema = new Type.NamedStruct()
-                                    {
-                                        Names = new List<string>()
-                                        {
-                                            "val"
-                                        },
-                                        Struct = new Type.Struct()
-                                        {
-                                            Types = new List<Type.SubstraitBaseType>()
-                                            {
-                                                new AnyType()
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                            Targets = new List<ExchangeTarget>()
-                            {
-                                new StandardOutputExchangeTarget()
-                                {
-                                    PartitionIds = new List<int>()
-                                },
-                                new SubstreamExchangeTarget()
-                                {
-                                    ExchangeTargetId = 0,
-                                    PartitionIds = new List<int>(),
-                                    SubstreamName = "stream2"
-                                }
-                            }
-                        }
-                    },
-                    new SubStreamRootRelation()
-                    {
-                        Name = "stream1",
-                        Input = new WriteRelation()
-                        {
-                            NamedObject = new Type.NamedTable(){ Names = new List<string>() { "output" }},
-                            TableSchema = new Type.NamedStruct()
-                            {
-                                Names = new List<string>() {"val" },
-                                Struct = new Struct()
-                                {
-                                    Types = new List<SubstraitBaseType>()
-                                    {
-                                        new AnyType() { Nullable = true }
-                                    }
-                                }
-                            },
-                            Input = new ProjectRelation()
-                            {
-                                Emit = new List<int>() { 1 },
-                                Expressions = new List<Expressions.Expression>()
-                                {
-                                    new DirectFieldReference()
-                                    {
-                                        ReferenceSegment = new StructReferenceSegment()
-                                        {
-                                            Field = 0
-                                        }
-                                    }
-                                },
-                                Input = new StandardOutputExchangeReferenceRelation()
-                                {
-                                    RelationId = 0,
-                                    TargetId = 0,
-                                    ReferenceOutputLength = 1
-                                }
-                            }
-                        }
-                    },
-                    new SubStreamRootRelation()
-                    {
-                        Name = "stream2",
-                        Input = new WriteRelation()
-                        {
-                            NamedObject = new Type.NamedTable(){ Names = new List<string>() { "output" }},
-                            TableSchema = new Type.NamedStruct()
-                            {
-                                Names = new List<string>() {"val" },
-                                Struct = new Struct()
-                                {
-                                    Types = new List<SubstraitBaseType>()
-                                    {
-                                        new AnyType() { Nullable = true }
-                                    }
-                                }
-                            },
-                            Input = new ProjectRelation()
-                            {
-                                Emit = new List<int>() { 1 },
-                                Expressions = new List<Expressions.Expression>()
-                                {
-                                    new DirectFieldReference()
-                                    {
-                                        ReferenceSegment = new StructReferenceSegment()
-                                        {
-                                            Field = 0
-                                        }
-                                    }
-                                },
-                                Input = new SubstreamExchangeReferenceRelation()
-                                {
-                                    ExchangeTargetId = 0,
-                                    SubStreamName = "stream1",
-                                    ReferenceOutputLength = 1
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-
-            Assert.Equal(expectedPlan, plan);
+            "));
+            Assert.Contains("SCATTER_BY", exception.Message);
         }
 
         [Fact]

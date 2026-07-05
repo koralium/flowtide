@@ -134,6 +134,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _initWatermarksHandled = false;
                 _peerStopConsumed = false;
                 _peerStopConsumedCommitted = false;
+                // Buffered checkpoint done signals from before the restore belong to the
+                // aborted epoch, replaying them into a new cycle would complete it before the
+                // peer stored the new version, see ExchangeOperator.InitializeOrRestore.
+                _pendingCheckpointDoneSignals = 0;
             }
             // Cancel outside the lock so a stale fetch loop that awaits it can complete and stop.
             staleWaitForCheckpoint?.TrySetCanceled();
@@ -277,8 +281,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // that is already running. Data the other substream sent before its
                         // barrier can be processed after this streams barrier due to barrier
                         // alignment in operators with multiple inputs, so a follow up cycle is
-                        // scheduled to cover that data.
-                        ScheduleCheckpoint(TimeSpan.FromMilliseconds(100), checkpointEvent.CheckpointTime);
+                        // scheduled to cover that data. The request carries NO version on
+                        // purpose: with the peer barriers time the same version dedup that
+                        // collapses the sibling read operators requests for the CURRENT cycle
+                        // would also swallow this follow up request, leaving the residual
+                        // data uncovered until unrelated data arrives.
+                        ScheduleCheckpoint(TimeSpan.FromMilliseconds(100));
                     }
 
                     if (inStreamCheckpoint == null)

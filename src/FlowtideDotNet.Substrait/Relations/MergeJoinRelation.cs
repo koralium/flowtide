@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Substrait.Relations
         /// comparison, so a null list and a list of all equal comparisons describe the same
         /// join. This matches how the comparison types are serialized.
         /// </summary>
-        private JoinComparisonType GetComparisonType(int index)
+        public JoinComparisonType GetComparisonType(int index)
         {
             if (ComparisonTypes != null && index < ComparisonTypes.Count)
             {

@@ -257,6 +257,47 @@ namespace FlowtideDotNet.Orleans.Tests
         }
 
         /// <summary>
+        /// A stop request with a different substream count than the stream was started with
+        /// must still stop EVERY substream grain that was started. The stream grain persists
+        /// the started set for this, deriving the names from the stop request alone would
+        /// orphan running grains whose keep alive reminders restart them forever with no
+        /// remaining way to stop them.
+        /// </summary>
+        [Fact]
+        public async Task StopWithDifferentSubstreamCountStopsAllStartedGrains()
+        {
+            var sql = JoinSql("mismatch");
+            TestTableStore.AddRows("mismatch_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("mismatch_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_mismatch");
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            var expected = Enumerable.Range(0, 50).Select(x => (long)x).ToList();
+            await WaitForResult("mismatch_out", expected, TimeSpan.FromSeconds(60));
+
+            // Stop with a DIFFERENT substream count, the derived names only cover one
+            // substream but the persisted started set must cover both.
+            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 1));
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping with a different substream count timed out");
+            await stopTask;
+
+            // A restart with yet another count must come up cleanly, an orphaned running
+            // grain from the first start would collide with the new topology.
+            TestTableStore.AddRows("mismatch_right", Enumerable.Range(50, 25).Select(x => (long)x));
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 3));
+
+            expected = Enumerable.Range(0, 75).Select(x => (long)x).ToList();
+            await WaitForResult("mismatch_out", expected, TimeSpan.FromSeconds(90));
+
+            var finalStop = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 3));
+            finished = await Task.WhenAny(finalStop, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == finalStop, "The final stop timed out");
+            await finalStop;
+        }
+
+        /// <summary>
         /// Rapid start and stop cycles through the grains, the stop lands while the
         /// substream streams are still starting, which exercises the grain lifecycle,
         /// reminder registration and the tick loop teardown under repetition. Every stop

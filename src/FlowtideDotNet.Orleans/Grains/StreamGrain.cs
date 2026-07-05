@@ -15,6 +15,7 @@ using FlowtideDotNet.Orleans.Interfaces;
 using FlowtideDotNet.Orleans.Internal;
 using FlowtideDotNet.Orleans.Messages;
 using FlowtideDotNet.Substrait.Relations;
+using Orleans.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,18 +24,43 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Orleans.Grains
 {
+    [GenerateSerializer]
+    public class StreamGrainStorage
+    {
+        [Id(0)]
+        public List<string> StartedSubstreams { get; set; } = new List<string>();
+    }
+
     internal class StreamGrain : Grain, IStreamGrain
     {
         private readonly IConnectorManager connectorManager;
+        private readonly IPersistentState<StreamGrainStorage> _state;
 
-        public StreamGrain(IConnectorManager connectorManager)
+        public StreamGrain(
+            IConnectorManager connectorManager,
+            [PersistentState("stream", "stream_metadata")] IPersistentState<StreamGrainStorage> state)
         {
             this.connectorManager = connectorManager;
+            _state = state;
         }
 
         public async Task StartStreamAsync(StartStreamRequest request)
         {
             var substreams = GetSubstreamNames(request.SqlText, request.SubstreamCount);
+
+            // The started set is persisted before the substream grains start. A later stop
+            // request may carry a different SQL text or substream count, deriving the names
+            // from the request alone would then miss substream grains that are still running
+            // from this start, and their keep alive reminders would restart them forever
+            // with no way left to stop them.
+            foreach (var substream in substreams)
+            {
+                if (!_state.State.StartedSubstreams.Contains(substream))
+                {
+                    _state.State.StartedSubstreams.Add(substream);
+                }
+            }
+            await _state.WriteStateAsync();
 
             List<Task> startTasks = new List<Task>();
             foreach (var substream in substreams)
@@ -49,7 +75,13 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task StopStreamAsync(StopStreamRequest request)
         {
+            // The union of the persisted started set and the names derived from the request
+            // covers substreams from an earlier start with a different SQL text or count.
             var substreams = GetSubstreamNames(request.SqlText, request.SubstreamCount);
+            foreach (var started in _state.State.StartedSubstreams)
+            {
+                substreams.Add(started);
+            }
 
             // All substreams are stopped together so the coordinated stop can drain the data
             // exchanged between them, a substream only finishes stopping when the other
@@ -63,6 +95,9 @@ namespace FlowtideDotNet.Orleans.Grains
             }
 
             await Task.WhenAll(stopTasks);
+
+            _state.State.StartedSubstreams.Clear();
+            await _state.ClearStateAsync();
         }
 
         private HashSet<string> GetSubstreamNames(string sqlText, int? substreamCount)

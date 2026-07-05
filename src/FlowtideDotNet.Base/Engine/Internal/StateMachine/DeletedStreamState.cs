@@ -90,7 +90,19 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task StopAsync()
         {
-            throw new NotSupportedException("Stream already deleted");
+            Debug.Assert(_context != null, nameof(_context));
+            // A deleted stream is stopped. The stop task the caller awaits was created
+            // before this state was consulted and must be completed, throwing here would
+            // orphan it and every later stop call would await it forever.
+            lock (_context._checkpointLock)
+            {
+                if (_context._stopTask != null)
+                {
+                    _context._stopTask.SetResult();
+                    _context._stopTask = null;
+                }
+            }
+            return Task.CompletedTask;
         }
 
         public override Task TriggerCheckpoint(bool isScheduled = false)

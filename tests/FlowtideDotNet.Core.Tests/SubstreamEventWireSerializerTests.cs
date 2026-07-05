@@ -131,6 +131,38 @@ namespace FlowtideDotNet.Core.Tests
         }
 
         /// <summary>
+        /// The batch id splits a watermark with the same value into multiple batches and is
+        /// the tie breaker in watermark comparisons. It lives on the base class so the per
+        /// type serializers do not write it, losing it across the wire collapses batched
+        /// watermarks into one and progress between batches disappears.
+        /// </summary>
+        [Fact]
+        public void WatermarkBatchIdSurvivesRoundTrip()
+        {
+            var value = LongWatermarkValue.Create(42);
+            value.BatchID = 7;
+            var builder = System.Collections.Immutable.ImmutableDictionary.CreateBuilder<string, AbstractWatermarkValue>();
+            builder.Add("users", value);
+            var watermark = new Watermark(builder.ToImmutable());
+
+            var serializer = new SubstreamEventWireSerializer();
+            var events = new List<SubstreamEventData>()
+            {
+                new SubstreamEventData() { ExchangeTargetId = 1, StreamEvent = watermark }
+            };
+            var writer = new ArrayBufferWriter<byte>();
+            serializer.Serialize(events, writer);
+            SubstreamEventWireSerializer.ReturnEvents(events);
+
+            var result = serializer.Deserialize(new ReadOnlySequence<byte>(writer.WrittenMemory), _ => GlobalMemoryManager.Instance);
+
+            var roundTripped = Assert.IsType<LongWatermarkValue>(Assert.IsType<Watermark>(result[0].StreamEvent).Watermarks["users"]);
+            Assert.Equal(42, roundTripped.Value);
+            Assert.Equal(7, roundTripped.BatchID);
+            SubstreamEventWireSerializer.ReturnEvents(result);
+        }
+
+        /// <summary>
         /// Init watermark events flow through the exchange when a substream starts, the
         /// watermark names must survive the round trip.
         /// </summary>

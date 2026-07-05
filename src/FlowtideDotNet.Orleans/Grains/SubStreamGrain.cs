@@ -122,15 +122,24 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 return new FetchDataResponse(default);
             }
-            if (!_peerFetchEpochs.TryGetValue(request.Requestor, out var announcedEpoch) ||
-                announcedEpoch != request.FetchEpoch)
+            if (!_peerFetchEpochs.TryGetValue(request.Requestor, out var announcedEpoch))
+            {
+                // This activation has never seen an announcement from the requestor, which
+                // happens when this grain was reactivated, for example on another silo, and
+                // lost the per activation epoch table. The requestor is told so it can fail
+                // and recover, its initialize handshake then re-announces the epoch. Serving
+                // the fetch blind would risk handing events to an abandoned instance.
+                _loggerFactory.CreateLogger<SubStreamGrain>().LogDebug("Refusing fetch from {requestor} with fetch epoch {requestEpoch}, no epoch has been announced to this activation.", request.Requestor, request.FetchEpoch);
+                return new FetchDataResponse(default) { RequestorUnknown = true };
+            }
+            if (announcedEpoch != request.FetchEpoch)
             {
                 // The fetch does not come from the requestors current epoch: it can be from
                 // an abandoned stream instance whose grain moved to another silo, or a fetch
                 // started before the requestor rolled back. Fetching removes events from the
                 // queues, serving it would hand events, including checkpoint barriers, to a
                 // consumer that throws them away, freezing the real consumer.
-                _loggerFactory.CreateLogger<SubStreamGrain>().LogDebug("Refusing fetch from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.Requestor, request.FetchEpoch, _peerFetchEpochs.TryGetValue(request.Requestor, out var known) ? known : null);
+                _loggerFactory.CreateLogger<SubStreamGrain>().LogDebug("Refusing fetch from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.Requestor, request.FetchEpoch, announcedEpoch);
                 return new FetchDataResponse(default);
             }
             var data = await handler.GetData(request.TargetIds, request.NumberOfEvents, default);
@@ -366,7 +375,19 @@ namespace FlowtideDotNet.Orleans.Grains
             // call, not even from other substreams fetching data, is served anymore.
             _ = Task.Run(async () =>
             {
-                await stream.StartAsync();
+                try
+                {
+                    await stream.StartAsync();
+                }
+                catch (Exception e)
+                {
+                    // The failure must be logged here, the task is fire and forget so the
+                    // exception is otherwise never observed anywhere. The keep alive reminder
+                    // sees the stream stuck in a non running state and recreates the grain,
+                    // but without this log the root cause would be undiagnosable.
+                    logger.LogError(e, "Starting the stream for substream {substream} failed.", this.GetPrimaryKeyString());
+                    return;
+                }
                 // Drive the schedulers trigger dispatch, StartAsync does not tick it. Without
                 // the ticks no recurring operator trigger ever fires, sources that poll for
                 // changes through triggers would never emit new data. The loop ends when the

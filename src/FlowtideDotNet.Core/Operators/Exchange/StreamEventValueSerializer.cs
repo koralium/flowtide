@@ -179,8 +179,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     continue;
                 }
 
+                if (!reader.TryReadLittleEndian(out long batchId))
+                {
+                    throw new InvalidOperationException("Failed to read watermark batch id");
+                }
+
                 var watermarkSerializer = WatermarkSerializeFactory.GetWatermarkSerializer(watermarkValueTypeId);
-                watermarksBuilder.Add(new KeyValuePair<string, AbstractWatermarkValue>(key, watermarkSerializer.Deserialize(ref reader)));
+                var watermarkValue = watermarkSerializer.Deserialize(ref reader);
+                watermarkValue.BatchID = batchId;
+                watermarksBuilder.Add(new KeyValuePair<string, AbstractWatermarkValue>(key, watermarkValue));
             }
 
             return new Watermark(watermarksBuilder.ToImmutableDictionary(), startTime, sourceOperatorId);
@@ -334,6 +341,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 writer.Advance(spanLength);
                 if (wm.Value != null)
                 {
+                    // The batch id is written here since it lives on the base class, the per
+                    // type serializers only write their own value. Losing it collapses
+                    // batched watermarks with the same value into one, the comparison tie
+                    // break on batch id then reports no progress between batches.
+                    var batchIdSpan = writer.GetSpan(8);
+                    BinaryPrimitives.WriteInt64LittleEndian(batchIdSpan, wm.Value.BatchID);
+                    writer.Advance(8);
                     WatermarkSerializeFactory.GetWatermarkSerializer(typeId).Serialize(wm.Value, writer);
                 }
             }

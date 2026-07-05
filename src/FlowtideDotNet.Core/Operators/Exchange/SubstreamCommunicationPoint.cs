@@ -242,7 +242,21 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // other substream retries the handshake after the failure here has reset
                     // the handshake state.
                     _logger.LogInformation("Substream {substreamName} initialized with restore point {restorePoint} while this stream has live exchanged data, failing over to it.", substreamName, restorePoint);
-                    _ = Task.Run(() => DoFailAndRecover(restorePoint));
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await DoFailAndRecover(restorePoint);
+                        }
+                        catch (Exception e)
+                        {
+                            // The rollback this stream promised the restarted peer failed, the
+                            // peer retries the handshake and the fail over runs again. The
+                            // failure must be visible, an unobserved fault here means the two
+                            // substreams silently diverge until the retries run out.
+                            _logger.LogWarning(e, "Failing over to the restarted substream {substreamName} failed, the handshake retry runs the fail over again.", substreamName);
+                        }
+                    });
                     return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint));
                 }
             }
@@ -507,6 +521,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 if (_fetchDataTask == null)
                 {
+                    if (_subscribedTargets.Count == 0)
+                    {
+                        // No fetch loop and no subscribers, the stream that used this
+                        // communication point stopped or was disposed. The timer must stop
+                        // itself, communication points are abandoned when a new stream is
+                        // built and a live timer would root this object graph forever. A
+                        // later subscribe creates a new timer.
+                        _stallWatchdog?.Dispose();
+                        _stallWatchdog = null;
+                        return;
+                    }
                     _lastFetchLoopTick = Environment.TickCount64;
                     return;
                 }

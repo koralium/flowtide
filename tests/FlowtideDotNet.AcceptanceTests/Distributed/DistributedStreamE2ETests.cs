@@ -2526,6 +2526,129 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await all;
         }
 
+        /// <summary>
+        /// A join with an equality key AND an inequality condition in the join. The
+        /// distributed lane copies must keep the comparison types and the partitioning must
+        /// only use the equality key, otherwise the inequality is evaluated as equality and
+        /// matching rows land in different partitions, silently producing wrong results.
+        /// </summary>
+        [Fact]
+        public async Task InequalityJoinIsDistributedCorrectly()
+        {
+            const string inequalityJoinSql = @"
+            INSERT INTO output
+            SELECT u.userkey FROM users u
+            INNER JOIN orders o ON u.userkey = o.userkey AND o.orderkey >= u.userkey;
+            ";
+
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            _stream = BuildHost("e2e_inequality_join", inequalityJoinSql, latestData, failures);
+            await _stream.StartAsync();
+
+            List<UserKeyRow> Expected() => _generator.Orders
+                .Join(_generator.Users, o => o.UserKey, u => u.UserKey, (o, u) => (o, u))
+                .Where(x => x.o.OrderKey >= x.u.UserKey)
+                .Select(x => new UserKeyRow(x.u.UserKey))
+                .ToList();
+
+            await WaitForSinkData(latestData, failures, "substream_0", Expected());
+
+            _generator.Generate(500);
+            await WaitForSinkData(latestData, failures, "substream_0", Expected());
+
+            foreach (var order in _generator.Orders.Take(100).ToList())
+            {
+                _generator.DeleteOrder(order);
+            }
+            await WaitForSinkData(latestData, failures, "substream_0", Expected());
+
+            Assert.Empty(failures);
+        }
+
+        /// <summary>
+        /// A distributed view without SCATTER_BY consumed from another substream would be a
+        /// broadcast across substreams, which the executor does not support, the data would
+        /// silently be dropped and the checkpoints would hang. The plan build must fail with
+        /// an actionable error instead.
+        /// </summary>
+        [Fact]
+        public void BroadcastAcrossSubstreamsFailsAtPlanBuild()
+        {
+            var sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+
+            var exception = Assert.Throws<InvalidOperationException>(() => sqlPlanBuilder.Sql(@"
+            SUBSTREAM sub1;
+
+            CREATE VIEW broadcast_view WITH (DISTRIBUTED = true) AS
+            SELECT userkey FROM users;
+
+            INSERT INTO output1 SELECT userkey FROM broadcast_view;
+
+            SUBSTREAM sub2;
+
+            INSERT INTO output2 SELECT userkey FROM broadcast_view;
+            "));
+            Assert.Contains("SCATTER_BY", exception.Message);
+        }
+
+        /// <summary>
+        /// A plan that uses substreams but leaves an insert at top level would run that
+        /// insert in every substream and silently duplicate its output. The plan build must
+        /// reject the mix.
+        /// </summary>
+        [Fact]
+        public void TopLevelInsertMixedWithSubstreamsFailsAtPlanBuild()
+        {
+            var sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+
+            var exception = Assert.Throws<InvalidOperationException>(() => sqlPlanBuilder.Sql(@"
+            INSERT INTO output1 SELECT userkey FROM users;
+
+            SUBSTREAM sub1;
+
+            INSERT INTO output2 SELECT userkey FROM users;
+            "));
+            Assert.Contains("substream", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// A stop after a completed delete must complete, the stop task is created before
+        /// the deleted state is consulted and has to be finished by it.
+        /// </summary>
+        [Fact]
+        public async Task StopAfterDeleteCompletes()
+        {
+            _generator.Generate(200);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            _stream = BuildHost("e2e_stop_after_delete", NormalJoinSql, latestData, failures);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            var deleteTask = _stream.DeleteAsync();
+            var finished = await Task.WhenAny(deleteTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == deleteTask, "Delete did not complete");
+            await deleteTask;
+
+            // Stops after the delete must complete, repeatedly
+            for (int i = 0; i < 2; i++)
+            {
+                var stopTask = _stream.StopAsync();
+                finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(30)));
+                Assert.True(finished == stopTask, $"Stop {i} after delete did not complete");
+                await stopTask;
+            }
+        }
+
         private static Storage.StateManager.StateManagerOptions CreateStateOptions(string testName, string substreamName)
         {
             return new Storage.StateManager.StateManagerOptions()

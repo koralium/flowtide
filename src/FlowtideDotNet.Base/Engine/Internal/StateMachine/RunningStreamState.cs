@@ -34,7 +34,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
         {
             Debug.Assert(_context != null, nameof(_context));
-            Debug.Assert(nonCheckpointedEgresses != null, nameof(nonCheckpointedEgresses));
 
             if (lockingEvent != null && lockingEvent is not ICheckpointEvent)
             {
@@ -48,6 +47,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             lock (_context._checkpointLock)
             {
+                if (nonCheckpointedEgresses == null)
+                {
+                    // No checkpoint has started in this state instance yet, the
+                    // acknowledgement belongs to a cycle of a previous state instance and is
+                    // ignored.
+                    return;
+                }
                 nonCheckpointedEgresses.Remove(name);
 
                 // Check if all egresses has done their checkpoint
@@ -466,9 +472,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // Only support a single concurrent checkpoint for now for simplicity
                 if (_context.checkpointTask != null)
                 {
-                    // Enqueue the checkpoint as soon as possible
-                    _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1),_context._scheduledProvidedCheckpointVersion);
-                    _context._scheduledProvidedCheckpointVersion = default;
+                    // Enqueue the checkpoint as soon as possible. The scheduled provided
+                    // version is NOT cleared here: on success the call stores the same value
+                    // back for the queued cycles later promotion, and on failure an earlier
+                    // queued entry still owns it — clearing in either case would promote the
+                    // queued cycle without its version and break the same version dedup.
+                    _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1), _context._scheduledProvidedCheckpointVersion);
                     return _context.checkpointTask.Task;
                 }
                 _context._logger.StartingCheckpoint(_context.streamName);

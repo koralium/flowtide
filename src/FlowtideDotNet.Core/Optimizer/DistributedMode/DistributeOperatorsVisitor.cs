@@ -243,6 +243,20 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 return mergeJoinRelation;
             }
 
+            // Only equality keys can drive the partitioning: rows must land in the same
+            // partition to be able to match, which only holds for keys compared with
+            // equality. Inequality keys (range joins) carry different values on the two
+            // sides of a match.
+            var equalityKeyIndices = GetEqualityKeyIndices(mergeJoinRelation);
+            if (equalityKeyIndices.Count == 0)
+            {
+                // A pure inequality join cannot be co-partitioned, it stays in a single
+                // substream. The inputs are still visited so joins below it distribute.
+                mergeJoinRelation.Left = Visit(mergeJoinRelation.Left, state);
+                mergeJoinRelation.Right = Visit(mergeJoinRelation.Right, state);
+                return mergeJoinRelation;
+            }
+
             var copySubstreams = GetCopySubstreams();
 
             var rightKeys = mergeJoinRelation.RightKeys.Select(x =>
@@ -264,8 +278,11 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 return x;
             }).ToList();
 
-            var leftReferences = AddScatterExchange(mergeJoinRelation.Left, new List<FieldReference>(mergeJoinRelation.LeftKeys), copySubstreams);
-            var rightReferences = AddScatterExchange(mergeJoinRelation.Right, new List<FieldReference>(rightKeys), copySubstreams);
+            var scatterLeftKeys = equalityKeyIndices.Select(i => (FieldReference)mergeJoinRelation.LeftKeys[i]).ToList();
+            var scatterRightKeys = equalityKeyIndices.Select(i => (FieldReference)rightKeys[i]).ToList();
+
+            var leftReferences = AddScatterExchange(mergeJoinRelation.Left, scatterLeftKeys, copySubstreams);
+            var rightReferences = AddScatterExchange(mergeJoinRelation.Right, scatterRightKeys, copySubstreams);
 
             var copies = new Relation[_substreamCount];
             for (int i = 0; i < _substreamCount; i++)
@@ -276,32 +293,51 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                     Right = rightReferences[i],
                     LeftKeys = mergeJoinRelation.LeftKeys,
                     RightKeys = mergeJoinRelation.RightKeys,
+                    // The comparison types must follow the copies, without them every key is
+                    // treated as an equality comparison and range joins return wrong results.
+                    ComparisonTypes = mergeJoinRelation.ComparisonTypes,
                     Type = mergeJoinRelation.Type,
                     PostJoinFilter = mergeJoinRelation.PostJoinFilter,
                     Emit = mergeJoinRelation.Emit
                 };
             }
 
-            return GatherCopies(copies, copySubstreams, GetJoinPartitionKeyColumns(mergeJoinRelation));
+            return GatherCopies(copies, copySubstreams, GetJoinPartitionKeyColumns(mergeJoinRelation, equalityKeyIndices));
+        }
+
+        private static List<int> GetEqualityKeyIndices(MergeJoinRelation mergeJoinRelation)
+        {
+            var indices = new List<int>();
+            for (int i = 0; i < mergeJoinRelation.LeftKeys.Count; i++)
+            {
+                if (mergeJoinRelation.GetComparisonType(i) == JoinComparisonType.Equal)
+                {
+                    indices.Add(i);
+                }
+            }
+            return indices;
         }
 
         /// <summary>
         /// Gets the columns in the join output that carry the partition key values, or null
-        /// when they cannot be determined. Since the join is an equality join both the left and
-        /// the right key columns carry the values the data was partitioned on.
+        /// when they cannot be determined. Only equality compared key columns carry the
+        /// values the data was partitioned on, inequality keys differ between the two sides
+        /// of a match.
         /// </summary>
-        private static List<int>? GetJoinPartitionKeyColumns(MergeJoinRelation mergeJoinRelation)
+        private static List<int>? GetJoinPartitionKeyColumns(MergeJoinRelation mergeJoinRelation, List<int> equalityKeyIndices)
         {
+            var equalityLeftKeys = equalityKeyIndices.Select(i => mergeJoinRelation.LeftKeys[i]).ToList();
             var leftKeyColumns = LanePushdownVisitor.MapColumnsThroughEmit(
-                LanePushdownVisitor.GetDirectFieldColumns(mergeJoinRelation.LeftKeys),
+                LanePushdownVisitor.GetDirectFieldColumns(equalityLeftKeys),
                 mergeJoinRelation.Emit);
             if (leftKeyColumns != null)
             {
                 return leftKeyColumns;
             }
             // The right keys are in join output coordinates and carry the same values
+            var equalityRightKeys = equalityKeyIndices.Select(i => mergeJoinRelation.RightKeys[i]).ToList();
             return LanePushdownVisitor.MapColumnsThroughEmit(
-                LanePushdownVisitor.GetDirectFieldColumns(mergeJoinRelation.RightKeys),
+                LanePushdownVisitor.GetDirectFieldColumns(equalityRightKeys),
                 mergeJoinRelation.Emit);
         }
 
@@ -458,7 +494,14 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 }
                 else if (current is MergeJoinRelation mergeJoinRelation)
                 {
-                    var keyColumns = GetJoinPartitionKeyColumns(mergeJoinRelation);
+                    var equalityKeyIndices = GetEqualityKeyIndices(mergeJoinRelation);
+                    if (equalityKeyIndices.Count == 0)
+                    {
+                        // A pure inequality join is never distributed, so nothing below is
+                        // co-partitioned with it.
+                        return false;
+                    }
+                    var keyColumns = GetJoinPartitionKeyColumns(mergeJoinRelation, equalityKeyIndices);
                     if (keyColumns == null)
                     {
                         return false;

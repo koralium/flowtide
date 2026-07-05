@@ -63,6 +63,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 subRelations.Add(relData.Relation);
             }
 
+            // When the plan uses substreams every root must belong to one: only substream
+            // wrapped trees are filtered per substream host at build time, an unwrapped root
+            // would be built and run in EVERY substream, silently duplicating its sink
+            // writes once per substream.
+            if (subRelations.Any(x => x is SubStreamRootRelation) &&
+                subRelations.Any(x => x is not SubStreamRootRelation))
+            {
+                throw new InvalidOperationException(
+                    "The plan mixes substream statements with top level statements. When SUBSTREAM is used, every INSERT must be placed inside a substream, a top level insert would run in every substream and duplicate its output.");
+            }
+
             return subRelations;
         }
 
@@ -1260,6 +1271,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     if (exchangeRelationsContainer.SubStreamName == null)
                     {
                         throw new InvalidOperationException("Trying to access an exchange relation that is not in a substream from a different stream.");
+                    }
+                    if (exchangeRelationsContainer.ExchangeRelation.ExchangeKind is BroadcastExchangeKind)
+                    {
+                        // Broadcast exchanges have no runtime support for substream targets,
+                        // the executor would silently drop the data and the producing
+                        // substreams checkpoints would wait forever for acknowledgements
+                        // that never come. Failing at plan build gives an actionable error.
+                        throw new InvalidOperationException($"The distributed view '{tableName}' is consumed from another substream but has no SCATTER_BY hint. Broadcast distribution across substreams is not supported, add SCATTER_BY to the view.");
                     }
                     var exchangeTargetId = exchangeTargetIdCounter++;
                     var exchangeRelReference = new SubstreamExchangeReferenceRelation()

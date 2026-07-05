@@ -21,7 +21,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
     {
         private HashSet<string>? nonCheckpointedEgresses;
         private Checkpoint? _currentCheckpoint;
-        private DateTimeOffset _stoppingStartedAt;
+        private long _stoppingStartedTimestamp;
+        private int _stopAllStarted;
 
         public override Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
         {
@@ -52,17 +53,24 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
         {
             Debug.Assert(_context != null, nameof(_context));
-            Debug.Assert(nonCheckpointedEgresses != null, nameof(nonCheckpointedEgresses));
 
             if (lockingEvent != null && lockingEvent is not ICheckpointEvent)
             {
                 // A non checkpoint locking event must not be counted towards the final
-                // checkpoint completion, see RunningStreamState.EgressCheckpointDone.
+                // checkpoint completion, see RunningStreamState.EgressCheckpointDone. This
+                // runs before the assert below, a filtered acknowledgement can arrive before
+                // the first stop cycle has created the tracking set.
                 return;
             }
 
             lock (_context._checkpointLock)
             {
+                if (nonCheckpointedEgresses == null)
+                {
+                    // No stop cycle has started yet, the acknowledgement belongs to a cycle
+                    // of a previous state and is ignored.
+                    return;
+                }
                 nonCheckpointedEgresses.Remove(name);
 
                 // Check if all egresses has done their checkpoint
@@ -153,7 +161,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      {
                          await @this.StopAll();
                      }
-                     else if (DateTimeOffset.UtcNow - @this._stoppingStartedAt > _context._dataflowStreamOptions.StopDrainTimeout)
+                     else if (Stopwatch.GetElapsedTime(@this._stoppingStartedTimestamp) > _context._dataflowStreamOptions.StopDrainTimeout)
                      {
                          // Another substream is not making progress, it may have crashed or
                          // never started. Stop anyway, data that did not reach the other
@@ -215,6 +223,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
+            // StopAll can be reached from multiple paths at once, for example the stop
+            // checkpoint continuation racing a block failure whose OnFailure also stops all.
+            // The blocks must only be completed and disposed once, dispose is not idempotent
+            // in every operator.
+            if (Interlocked.Exchange(ref _stopAllStarted, 1) == 1)
+            {
+                return;
+            }
+
             _context.ForEachBlock((key, block) =>
             {
                 block.Complete();
@@ -232,9 +249,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             await TransitionTo(StreamStateValue.NotStarted);
             _context._logger.StoppedStream(_context.streamName);
 
-            if (_context._stopTask != null)
+            lock (_context._checkpointLock)
             {
-                lock (_context._checkpointLock)
+                if (_context._stopTask != null)
                 {
                     _context._stopTask.SetResult();
                     _context._stopTask = null;
@@ -248,7 +265,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _context.CheckForPause();
             _context.SetStatus(StreamStatus.Stopping);
             _context._logger.StoppingStream(_context.streamName);
-            _stoppingStartedAt = DateTimeOffset.UtcNow;
+            // Monotonic clock, a wall clock step during the drain would extend or cut the
+            // drain timeout by the step size.
+            _stoppingStartedTimestamp = Stopwatch.GetTimestamp();
             _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(1), default);
             return Task.CompletedTask;
         }

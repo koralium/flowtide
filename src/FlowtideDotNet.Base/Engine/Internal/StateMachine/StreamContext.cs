@@ -80,7 +80,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal CancellationTokenSource? _scheduleCheckpointCancelSource;
 
         internal StreamStateValue currentState;
-        internal StreamStateValue _wantedState;
+        // Volatile: the wish is written by stop and delete calls on caller threads and read
+        // by the state machine on its own threads, often outside locks. Volatile guarantees
+        // the reads observe the latest wish, the honoring points tolerate the remaining
+        // check-then-act window by re-checking at every safe point.
+        internal volatile StreamStateValue _wantedState;
 
         private StreamStatus _streamStatus;
 

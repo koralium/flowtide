@@ -42,6 +42,9 @@ namespace FlowtideDotNet.Orleans.Internal
         // see OnStreamFailure.
         private static long _epochSeed = DateTime.UtcNow.Ticks;
         private long _fetchEpoch = Interlocked.Increment(ref _epochSeed);
+        // Tick timestamp of the first consecutive fetch refused as unknown, 0 when fetches
+        // are being served. Only touched from the single fetch loop.
+        private long _requestorUnknownSince;
 
         public OrleansCommunicationHandler(string streamName, string substreamName, string selfName, IGrainFactory grainFactory)
         {
@@ -71,6 +74,28 @@ namespace FlowtideDotNet.Orleans.Internal
         public async Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
         {
             var response = await _streamGrain.FetchDataAsync(new Messages.FetchDataRequest(selfName, targetIds, numberOfEvents, Interlocked.Read(ref _fetchEpoch)));
+            if (response.RequestorUnknown)
+            {
+                // The serving grain lost its epoch table, for example after it was
+                // reactivated on another silo, so this streams announcement is gone and
+                // every fetch is refused. Refused fetches look exactly like empty polls, the
+                // fetch loop keeps iterating and no stall watchdog ever fires, so without an
+                // escalation the stream starves silently forever. After the grace period the
+                // fetch fails, the recovery re-runs the initialize handshake which announces
+                // the epoch to the new activation. The grace period exists so a briefly
+                // restarting or zombie fetcher does not immediately force recoveries.
+                if (_requestorUnknownSince == 0)
+                {
+                    _requestorUnknownSince = Environment.TickCount64;
+                }
+                else if (TimeSpan.FromMilliseconds(Environment.TickCount64 - _requestorUnknownSince) > SubstreamCommunicationPoint.StallLimit)
+                {
+                    _requestorUnknownSince = 0;
+                    throw new TimeoutException($"Fetches from substream {selfName} have been refused as unknown by {_substreamName} for over {SubstreamCommunicationPoint.StallLimit}, failing and recovering to re-announce the fetch epoch.");
+                }
+                return Array.Empty<SubstreamEventData>();
+            }
+            _requestorUnknownSince = 0;
             // As the consumer of the response this side owns the pooled payload buffer and
             // must dispose it, on a cross silo call it holds segments the codec rented when
             // the response arrived, on a same silo call it is the instance the serving grain
