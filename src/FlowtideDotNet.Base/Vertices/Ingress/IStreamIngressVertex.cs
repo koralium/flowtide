@@ -32,9 +32,16 @@ namespace FlowtideDotNet.Base.Vertices
         internal void DoLockingEvent(ILockingEvent lockingEvent);
 
         /// <summary>
-        /// Invoked when a checkpoint has successfully completed.
+        /// Invoked when a checkpoint has successfully completed and its state is durable.
         /// </summary>
-        /// <param name="checkpointVersion">The completed checkpoint version.</param>
+        /// <param name="checkpointVersion">
+        /// The state manager version of the completed checkpoint. This is the same domain as
+        /// the restore version the vertex receives at initialization, so a source can
+        /// correlate external side effects, for example committed offsets or an advanced
+        /// replication position, with the version it later restores from. Earlier releases
+        /// passed the checkpoints timestamp here, values persisted from those releases must
+        /// not be compared against these versions.
+        /// </param>
         /// <returns>A task representing the completion callback operation.</returns>
         Task CheckpointDone(long checkpointVersion);
 

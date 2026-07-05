@@ -530,6 +530,7 @@ namespace FlowtideDotNet.Base.Vertices
             return Task.CompletedTask;
         }
 
+        /// <inheritdoc cref="IStreamEgressVertex.CheckpointDone"/>
         public virtual Task CheckpointDone(long checkpointVersion)
         {
             return Task.CompletedTask;

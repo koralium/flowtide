@@ -699,11 +699,7 @@ namespace FlowtideDotNet.Base.Vertices
             return _links.Select(x => x.Item1);
         }
 
-        /// <summary>
-        /// Invoked when a checkpoint has successfully completed.
-        /// </summary>
-        /// <param name="checkpointVersion">The completed checkpoint version.</param>
-        /// <returns>A task representing the completion callback operation.</returns>
+        /// <inheritdoc cref="IStreamIngressVertex.CheckpointDone"/>
         public virtual Task CheckpointDone(long checkpointVersion)
         {
             return Task.CompletedTask;

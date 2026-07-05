@@ -19,6 +19,13 @@ namespace FlowtideDotNet.Base.Vertices
     {
         internal void SetCheckpointDoneFunction(Action<string, ILockingEvent?> checkpointDone, Action<string, ILockingEvent?> dependenciesDone);
 
+        /// <summary>
+        /// Invoked when a checkpoint has successfully completed and its state is durable.
+        /// </summary>
+        /// <param name="checkpointVersion">
+        /// The state manager version of the completed checkpoint, the same domain as the
+        /// restore version the vertex receives at initialization.
+        /// </param>
         Task CheckpointDone(long checkpointVersion);
 
         /// <summary>
