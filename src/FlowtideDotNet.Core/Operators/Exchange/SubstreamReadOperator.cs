@@ -68,6 +68,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // events the other substream sent are part of this streams final state.
         private volatile bool _peerStopConsumed;
         private volatile bool _peerStopConsumedCommitted;
+        // True after the first local checkpoint barrier since the last restore. Before it,
+        // an unpairable peer barrier means this stream is still ramping up, not that the
+        // substreams are in different epochs, and the pairing wait must be patient.
+        private volatile bool _localCheckpointSeen;
 
         public SubstreamReadOperator(SubstreamCommunicationPoint communicationPoint, SubstreamExchangeReferenceRelation referenceRelation, DataflowBlockOptions options) : base(options)
         {
@@ -134,6 +138,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _initWatermarksHandled = false;
                 _peerStopConsumed = false;
                 _peerStopConsumedCommitted = false;
+                _localCheckpointSeen = false;
                 // Buffered checkpoint done signals from before the restore belong to the
                 // aborted epoch, replaying them into a new cycle would complete it before the
                 // peer stored the new version, see ExchangeOperator.InitializeOrRestore.
@@ -302,8 +307,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // cannot pair the other substreams barrier with a cycle of its own, so
                         // it fails and recovers to reconcile with the other substream through
                         // the initialize handshake.
+                        //
+                        // Before the FIRST local checkpoint the budget is much larger: a peer
+                        // barrier arriving while this stream still ramps up (initial data can
+                        // take a long time, and checkpoint requests are absorbed until it
+                        // completes) is a normal condition that the ramp up itself resolves
+                        // with the alignment checkpoint, and an epoch mismatch cannot be the
+                        // cause since the initialize handshake reconciled the versions before
+                        // fetching began. A short budget here turned a slow start next to an
+                        // already running peer into an endless recover-and-ramp-up loop.
                         bool checkpointArrived = false;
-                        for (int attempt = 0; attempt < 3; attempt++)
+                        int attemptBudget = _localCheckpointSeen ? 3 : 24;
+                        for (int attempt = 0; attempt < attemptBudget; attempt++)
                         {
                             var completed = await Task.WhenAny(_waitForCheckpoint.Task, Task.Delay(TimeSpan.FromSeconds(5)));
                             if (completed == _waitForCheckpoint.Task)
@@ -488,6 +503,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 lock (_lock)
                 {
                     _currentCheckpoint = checkpointEvent;
+                    _localCheckpointSeen = true;
                     if (_waitForCheckpoint != null)
                     {
                         taskSource = _waitForCheckpoint;

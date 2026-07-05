@@ -182,6 +182,90 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// A substream whose startup takes much longer than its peers must not fail and
+        /// recover just because a peer barrier arrives while it is still starting. The peer
+        /// finishes startup fast, checkpoints, and its barrier reaches the slow substreams
+        /// read operator which cannot pair it with a local cycle until its own startup
+        /// completes. This is a normal condition that startup itself resolves, treating it
+        /// like an unpairable barrier and recovering after 15 seconds caused rare failures
+        /// under load where a startup taking that long is real (observed 2026-07-05 in
+        /// NonCoPartitionedAggregateOverJoinIsDistributed under full class load).
+        /// </summary>
+        [Fact]
+        public async Task SlowStartingSubstreamDoesNotTriggerStartupRecovery()
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+            var testName = "e2e_slow_start";
+
+            void DumpLogBuffers(string phase)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_slow_start_{phase}_{buffer.Key}.log");
+                }
+            }
+
+            _stream = new DistributedStreamBuilder(testName)
+                .AddPlan(() =>
+                {
+                    var sqlPlanBuilder = new SqlPlanBuilder();
+                    sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+                    sqlPlanBuilder.Sql(NormalJoinSql);
+                    return sqlPlanBuilder.GetPlan();
+                })
+                .WithStateOptionsFactory(substreamName => CreateStateOptions(testName, substreamName))
+                .AddConnectorManager(substreamName =>
+                {
+                    var connectorManager = new ConnectorManager();
+                    // The sink substream starts 20 seconds slower than its peer, longer
+                    // than the pairing bound of 3 x 5 seconds in the read operator.
+                    var initialDataDelay = substreamName == "substream_0" ? TimeSpan.FromSeconds(20) : (TimeSpan?)null;
+                    connectorManager.AddSource(new MockSourceFactory("*", _db, false, initialDataDelay));
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
+                    return connectorManager;
+                })
+                .ConfigureSubstream((substreamName, substreamBuilder) =>
+                {
+                    substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                    substreamBuilder.WithLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                    {
+                        b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                        b.AddProvider(provider);
+                    }));
+                })
+                .DistributeAutomatically(2)
+                .Build();
+
+            // The start must be bounded: a repeating startup recovery makes it never
+            // complete, which is exactly the failure mode this test guards against.
+            var startTask = _stream.StartAsync();
+            var startFinished = await Task.WhenAny(startTask, Task.Delay(TimeSpan.FromSeconds(90)));
+            if (startFinished != startTask)
+            {
+                DumpLogBuffers("starthang");
+            }
+            Assert.True(startFinished == startTask, "Starting the stream did not complete, the slow substream is likely stuck in a startup recovery loop, see the e2e_slow_start_starthang log dumps.");
+            await startTask;
+
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+            catch
+            {
+                DumpLogBuffers("data");
+                throw;
+            }
+
+            Assert.Empty(failures);
+        }
+
+        /// <summary>
         /// The aggregate members of the distributed stream work: connectors wired through
         /// the AddConnectorManager factory (one manager per substream), the aggregate Health
         /// reaches Healthy, and Pause/Resume fan out to all substreams with data flowing
@@ -424,39 +508,56 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         [Fact]
         public async Task NonCoPartitionedAggregateOverJoinIsDistributed()
         {
+            const string aggregateSql = @"
+            INSERT INTO output
+            SELECT o.orderkey, count(*) FROM orders o
+            INNER JOIN users u ON o.userkey = u.userkey
+            GROUP BY o.orderkey;
+            ";
+
             _generator.Generate(500);
 
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            // Ring buffers dumped on failure. A failure of this test under full class load
+            // was root caused to the startup pairing bound (a slow ramp up next to an
+            // already checkpointing peer, see SlowStartingSubstreamDoesNotTriggerStartupRecovery,
+            // fixed in SubstreamReadOperator). The arming stays: this plan has the longest
+            // exchange chain in the suite, so cross substream regressions tend to surface
+            // here first and the dump makes them diagnosable.
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
 
-            _stream = new DistributedStreamBuilder("e2e_noncopart_agg")
-                .AddPlan(() =>
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
                 {
-                    var sqlPlanBuilder = new SqlPlanBuilder();
-                    sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
-                    sqlPlanBuilder.Sql(@"
-                    INSERT INTO output
-                    SELECT o.orderkey, count(*) FROM orders o
-                    INNER JOIN users u ON o.userkey = u.userkey
-                    GROUP BY o.orderkey;
-                    ");
-                    return sqlPlanBuilder.GetPlan();
-                })
-                .WithStateOptionsFactory(substreamName => CreateStateOptions("e2e_noncopart_agg", substreamName))
-                .ConfigureSubstream((substreamName, substreamBuilder) =>
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            }
+
+            void DumpLogBuffers(string phase)
+            {
+                foreach (var buffer in logBuffers)
                 {
-                    var connectorManager = new ConnectorManager();
-                    connectorManager.AddSource(new MockSourceFactory("*", _db, false));
-                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
-                    substreamBuilder.AddConnectorManager(connectorManager);
-                    substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
-                })
-                .DistributeAutomatically(2)
-                .Build();
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_noncopart_{phase}_{buffer.Key}.log");
+                }
+            }
+
+            _stream = BuildHost("e2e_noncopart_agg", aggregateSql, latestData, failures, loggerFactory: CreateBufferedLoggerFactory);
 
             await _stream.StartAsync();
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedOrderCountResult());
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedOrderCountResult());
+            }
+            catch
+            {
+                DumpLogBuffers("initial");
+                throw;
+            }
 
             // Delete some orders and verify the retractions
             foreach (var order in _generator.Orders.Take(100).ToList())
@@ -464,7 +565,15 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 _generator.DeleteOrder(order);
             }
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedOrderCountResult());
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedOrderCountResult());
+            }
+            catch
+            {
+                DumpLogBuffers("afterdelete");
+                throw;
+            }
 
             Assert.Empty(failures);
         }

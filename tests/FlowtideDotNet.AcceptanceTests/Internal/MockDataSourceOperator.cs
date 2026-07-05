@@ -45,10 +45,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public static Dictionary<string, System.Threading.Tasks.TaskCompletionSource> TableInitialSignals { get; } = new Dictionary<string, System.Threading.Tasks.TaskCompletionSource>();
         public static Dictionary<string, string> TableWaitSignals { get; } = new Dictionary<string, string>();
 
-        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options) : base(options)
+        private readonly TimeSpan? _initialDataDelay;
+
+        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null) : base(options)
         {
             this.readRelation = readRelation;
             this.mockDatabase = mockDatabase;
+            _initialDataDelay = initialDataDelay;
 
             _table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
 
@@ -271,6 +274,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 TableInitialSignals.TryGetValue(waitTableName, out var waitTcs))
             {
                 await waitTcs.Task;
+            }
+
+            if (_initialDataDelay.HasValue)
+            {
+                // Keeps this stream in its starting phase, simulating a substream whose
+                // startup is much slower than its peers.
+                await Task.Delay(_initialDataDelay.Value);
             }
 
             Debug.Assert(_state?.Value != null);

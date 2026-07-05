@@ -24,11 +24,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         private readonly MockDatabase mockDatabase;
         private readonly bool immutable;
+        private readonly TimeSpan? initialDataDelay;
 
-        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase, bool immutable) : base(regexPattern)
+        /// <param name="initialDataDelay">
+        /// Delays the initial data send, keeping the stream in its starting phase for the
+        /// duration. Used to test streams whose startup is slower than their peers.
+        /// </param>
+        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase, bool immutable, TimeSpan? initialDataDelay = null) : base(regexPattern)
         {
             this.mockDatabase = mockDatabase;
             this.immutable = immutable;
+            this.initialDataDelay = initialDataDelay;
         }
 
         public override Relation ModifyPlan(ReadRelation readRelation)
@@ -81,7 +87,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new MockDataSourceOperator(readRelation, mockDatabase, dataflowBlockOptions);
+            return new MockDataSourceOperator(readRelation, mockDatabase, dataflowBlockOptions, initialDataDelay);
         }
 
         public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)

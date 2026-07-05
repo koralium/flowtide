@@ -203,7 +203,15 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             }
             if (tickLoop != null)
             {
-                await tickLoop;
+                // A tick dispatches triggers into the substreams, a dispatch into a stream
+                // that failed while being disposed can hang, and dispose must not hang with
+                // it. The loop observes the cancellation at the next timer tick, when the
+                // in-flight dispatch never returns the loop is abandoned.
+                var finished = await Task.WhenAny(tickLoop, Task.Delay(TimeSpan.FromSeconds(5)));
+                if (finished != tickLoop)
+                {
+                    _logger.LogWarning("The trigger tick loop of stream {stream} did not stop within the timeout during dispose, a trigger dispatch is stuck and the loop is abandoned.", StreamName);
+                }
             }
         }
     }
