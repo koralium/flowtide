@@ -1,9 +1,15 @@
-# In-Process Distributed Hosting
+---
+sidebar_position: 4
+---
+
+# In-Process Hosting
 
 > [!WARNING]
 > Distributed mode is still experimental.
 
-The in-process host runs every substream inside one process, with the exchange between them passing events by reference. It behaves exactly like a real distributed deployment, including coordinated checkpoints, stop drain and failure recovery, which makes it useful for testing plans and connectors before deploying them, and for verifying how a plan distributes.
+The in-process host runs every substream inside one process. It behaves the same as a real distributed deployment, including coordinated checkpoints, stop drain and failure recovery. This makes it useful for testing plans and connectors before deploying them, and for verifying how a plan distributes.
+
+To create a distributed stream, use the *DistributedStreamBuilder*:
 
 ```csharp
 var stream = new DistributedStreamBuilder("my_stream")
@@ -19,7 +25,7 @@ var stream = new DistributedStreamBuilder("my_stream")
     })
     .WithStateOptionsFactory(substreamName => new StateManagerOptions
     {
-        // Every substream needs its OWN state storage
+        // Every substream needs its own state storage
         PersistentStorage = CreateStorageFor(substreamName)
     })
     .AddConnectorManager(substreamName =>
@@ -39,15 +45,25 @@ await stream.StopAsync();
 await stream.DisposeAsync();
 ```
 
-## Notes
+*AddPlan* takes a plan **factory** and not a plan instance. Building a stream modifies the plan in place, so every substream must build from its own fresh plan.
 
-* `StartAsync` also drives the recurring connector triggers of all substreams, sources that poll for changes work without calling `RunAsync` on the individual substreams. Failures inside a substream, for example a connector that cannot initialize, do not fail the start call: the substream retries them in the background, observe them through `WithFailureListener` on the substream builders and through `Health`.
-* `AddPlan` takes a plan **factory**, not a plan instance. Building a stream modifies the plan in place through connector hooks, so every substream must build from its own fresh plan.
-* `WithStateOptionsFactory` is called once per substream. Substreams must not share persistent storage, each one owns its own checkpoints.
-* `AddConnectorManager` takes a factory called once per substream, so connector factories holding per stream state are never shared between substreams.
-* `ConfigureSubstream` is the hook for any other per substream settings on the underlying `FlowtideBuilder`, for example failure listeners or custom schedulers.
-* `Health` reports the worst health across the substreams, `Pause` and `Resume` pause and resume all substreams together.
-* `DistributeAutomatically(count)` applies [automatic distribution](automaticdistribution.md). Plans that already use [SQL substream statements](sqlsubstreams.md) are built as written instead.
-* `StopAsync` performs the coordinated stop: the substreams run stop checkpoint cycles until the data they exchanged has been drained on both sides, bounded by the stop drain timeout (default 30 seconds, configurable per substream with `SetStopDrainTimeout` on the `FlowtideBuilder`).
-* `DeleteAsync` deletes the state of every substream and completes when the deletion has fully finished.
-* The built stream exposes the individual substreams through the `Substreams` dictionary, keyed by substream name.
+*DistributeAutomatically* applies [automatic distribution](automaticdistribution.md). Plans that already use [SQL substream statements](sqlsubstreams.md) are built as written instead.
+
+## Starting
+
+*StartAsync* starts all substreams and also drives their recurring connector triggers, there is no need to call *RunAsync* on the individual substreams.
+
+Failures inside a substream, for example a connector that can not initialize, do not fail the start call. The substream retries them in the background. Failures can be observed with *WithFailureListener* on the substream builders and through the *Health* property.
+
+## Stopping
+
+*StopAsync* performs the coordinated stop. The substreams run stop checkpoint cycles until the data they exchanged has been drained on both sides. The drain is bounded by the stop drain timeout, default 30 seconds, which can be changed with *SetStopDrainTimeout* on the substream builders.
+
+*DeleteAsync* deletes the state of every substream and completes when the deletion has finished.
+
+## Other members
+
+* *Health* reports the worst health across the substreams.
+* *Pause* and *Resume* pause and resume all substreams together.
+* *ConfigureSubstream* is a hook for any other per substream settings on the underlying *FlowtideBuilder*, for example failure listeners.
+* *Substreams* exposes the individual substreams, keyed by substream name.

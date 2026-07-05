@@ -1,11 +1,17 @@
-# Orleans Distributed Hosting
+---
+sidebar_position: 5
+---
+
+# Orleans Hosting
 
 > [!WARNING]
 > Distributed mode is still experimental.
 
-The Orleans host runs every substream as a grain, so the substreams of a stream spread across the silo cluster with Orleans handling placement, and streams recover automatically when a silo fails.
+The Orleans host runs every substream as a grain. The substreams of a stream spread across the silo cluster, Orleans handles the placement, and streams recover automatically when a silo fails.
 
 ## Setup
+
+Add Flowtide to the silo with *AddFlowtideOrleans*:
 
 ```csharp
 builder.Services.AddOrleans(b =>
@@ -24,7 +30,7 @@ builder.Services.AddOrleans(b =>
         connectors.AddSink(...);
     }, (streamName, substreamName, storage) =>
     {
-        // Called once per substream, every substream needs its OWN storage
+        // Called once per substream, every substream needs its own storage
         storage.AddTemporaryDevelopmentStorage(o =>
         {
             o.DirectoryPath = $"./temp/{streamName}/{substreamName}";
@@ -33,7 +39,14 @@ builder.Services.AddOrleans(b =>
 });
 ```
 
-Streams are started and stopped through the stream grain. The grains are keyed by stream name and only carry the SQL text, every substream grain builds its own plan from it:
+Two things must be registered on the silo:
+
+* Grain storage with the name **stream_metadata**. The stream grain persists which substreams it started there, so a stop always reaches every started substream.
+* **Reminders**. Every running substream registers a keep alive reminder that restarts the stream when its grain was lost with a silo. With in-memory reminders the streams survive individual silo failures, persistent reminders also survive full cluster restarts.
+
+## Starting and stopping streams
+
+Streams are started and stopped through the stream grain. The grain is keyed by the stream name and only carries the SQL text, every substream grain builds its own plan from it.
 
 ```csharp
 var streamGrain = grainFactory.GetGrain<IStreamGrain>("my_stream");
@@ -41,34 +54,39 @@ var streamGrain = grainFactory.GetGrain<IStreamGrain>("my_stream");
 // substreamCount applies automatic distribution to a normal plan
 await streamGrain.StartStreamAsync(new StartStreamRequest(sqlText, substreamCount: 4));
 
-// Starting returns before the streams have started in the background,
-// poll the status to observe the substreams becoming healthy
+// The coordinated stop drains the data exchanged between the substreams
+await streamGrain.StopStreamAsync();
+```
+
+Plans that use [SQL substream statements](sqlsubstreams.md) run one grain per declared substream instead, *substreamCount* can then be omitted.
+
+A started stream keeps running the plan it was started with. Starting the same stream again with the identical request does nothing, starting it with a different SQL text or substream count throws an exception. To deploy a new plan, stop the stream and start it with the new SQL.
+
+## Status
+
+The start call returns before the streams have started, they start in the background. Use *GetStatusAsync* to see the substreams becoming healthy:
+
+```csharp
 var status = await streamGrain.GetStatusAsync();
 foreach (var substream in status.Substreams)
 {
     Console.WriteLine($"{substream.SubstreamName}: {substream.State} {substream.Health} {substream.LastFailure}");
 }
-
-// The grain remembers which substreams it started, the coordinated stop
-// drains the data exchanged between them
-await streamGrain.StopStreamAsync();
 ```
 
-Plans that use [SQL substream statements](sqlsubstreams.md) run one grain per declared substream instead, `substreamCount` can then be omitted.
+A stream that cannot start, for example because a connector cannot initialize, retries in the background and reports the reason in *LastFailure*.
 
-A started stream keeps running the plan it was started with: starting the same stream again with the identical request is a no-op, starting it with a different SQL text or substream count throws. To deploy a new plan version, stop the stream and start it with the new SQL.
+## Deleting a stream
 
-`GetStatusAsync` is also how background failures surface. The start call returns success once the substream grains accepted the start, the streams themselves start asynchronously — a stream that cannot start, for example because a connector cannot initialize, retries in the background and reports the reason in `LastFailure`.
+*DeleteStreamAsync* stops all substreams and deletes their state, and completes when the deletion has finished. Only substreams recorded as started are reached, to delete the state of a stopped stream, start it again first and then delete.
 
-## Requirements
+```csharp
+await streamGrain.DeleteStreamAsync();
+```
 
-* **Grain storage named `stream_metadata`** must be registered. The stream grain persists which substreams it started there, which is what lets the argument free stop reach every started substream, and the substream grains persist their start records there.
-* **Reminders** must be registered. Every running substream registers a keep alive reminder that restarts the stream when its grain was lost with a silo, and recreates a grain whose stream is stuck. With in-memory reminders the streams survive individual silo failures as long as the cluster itself lives, persistent reminders survive full restarts.
+## Options
 
-## Operational behavior
-
-* **Silo failure**: substream grains on the lost silo are reactivated on surviving silos by their reminders, roll back together with the substreams they exchange data with, and catch up by replay. Fetches from abandoned stream instances are fenced by fetch epochs so they cannot steal data from the recovered streams.
-* **Stopping** uses the same coordinated drain as the in-process host, bounded by the stop drain timeout (default 30 seconds). It can be changed through the options:
+The stop drain timeout (default 30 seconds) and other stream settings can be changed per substream:
 
 ```csharp
 services.AddFlowtideOrleans(connectors => { ... }, (streamName, substreamName, storage) => { ... },
@@ -81,10 +99,14 @@ services.AddFlowtideOrleans(connectors => { ... }, (streamName, substreamName, s
     });
 ```
 
-* **Deleting**: `IStreamGrain.DeleteStreamAsync` stops all substreams and deletes their state, completing when the deletion has finished. Only substreams recorded as started are reached, so to delete the state of a stopped stream, start it again first and then delete.
-* **Per stream connectors**: the `AddFlowtideOrleans` overload whose connectors callback receives the stream name configures connectors per stream, for example when different streams read from different systems. The callback must be deterministic per stream name, every substream grain builds its plan from the connectors it returns.
+There is also an *AddFlowtideOrleans* overload where the connectors callback receives the stream name, which allows different streams to use different connectors. The callback must return the same connectors for the same stream name, every substream grain builds its plan from them.
 
-* **Status**: `IStreamGrain.GetStatusAsync` reports every started substream with its stream state, health and any background start failure — use it for readiness checks and to verify a deployment actually came up.
-* **Metrics**: `app.StartFlowtideMetrics("/stream")` exposes the Flowtide metrics endpoints without the UI, which fits silo hosts. The regular Flowtide monitoring described under [Monitoring](../monitoring/generalmetrics.md) applies per substream.
+## Silo failures
 
-A runnable example is available in the repository under `samples/OrleansSample`.
+Substream grains on a lost silo are reactivated on the surviving silos by their reminders. They roll back together with the substreams they exchange data with and catch up by replaying from the sources. Fetches from abandoned stream instances are refused so they can not steal data from the recovered streams.
+
+## Metrics
+
+*app.StartFlowtideMetrics("/stream")* exposes the Flowtide metrics endpoints without the UI, which fits silo hosts. The monitoring described under [Monitoring](../monitoring/generalmetrics.md) applies per substream.
+
+A runnable example is available in the repository under *samples/OrleansSample*.
