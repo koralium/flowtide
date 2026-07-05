@@ -2262,6 +2262,240 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
         }
 
+        /// <summary>
+        /// Repeated crashes landing while INSERT AND DELETE traffic is crossing the exchange
+        /// at the same time, on the aggregate topology. Counts move up and down between
+        /// every crash, a lost retraction or a double applied update after any recovery
+        /// leaves a stale (user, count) row in the sink. This is the targeted amplifier for
+        /// a once-observed off-by-one group row after a recovery.
+        /// </summary>
+        [Fact]
+        public async Task RepeatedCrashesWithDeletesAggregateConverges()
+        {
+            const string aggregateSql = @"
+            INSERT INTO output
+            SELECT userkey, count(*) FROM orders
+            GROUP BY userkey;
+            ";
+
+            _generator.Generate(400);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            }
+
+            _stream = BuildHost("e2e_agg_crash_deletes", aggregateSql, latestData, failures,
+                crashConfig: substreamName => substreamName == "substream_0" ? (3, 1) : (0, 0),
+                loggerFactory: CreateBufferedLoggerFactory);
+            await _stream.StartAsync();
+
+            try
+            {
+                for (int wave = 0; wave < 5; wave++)
+                {
+                    // Inserts and deletes in the same wave, the crash checkpoints land while
+                    // both cross the exchange
+                    _generator.Generate(150);
+                    foreach (var order in _generator.Orders.Take(50).ToList())
+                    {
+                        _generator.DeleteOrder(order);
+                    }
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedAggregateResult(), allowFailures: true);
+                }
+                Assert.NotEmpty(failures);
+            }
+            catch
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_agg_crash_deletes_{buffer.Key}.log");
+                }
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// The same crash cadence over mixed insert and delete traffic for the join
+        /// topology, retractions of joined rows cross the exchange while the crash
+        /// checkpoints land.
+        /// </summary>
+        [Fact]
+        public async Task RepeatedCrashesWithDeletesJoinConverges()
+        {
+            _generator.Generate(400);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            }
+
+            _stream = BuildHost("e2e_join_crash_deletes", NormalJoinSql, latestData, failures,
+                crashConfig: substreamName => substreamName == "substream_0" ? (3, 1) : (0, 0),
+                loggerFactory: CreateBufferedLoggerFactory);
+            await _stream.StartAsync();
+
+            try
+            {
+                for (int wave = 0; wave < 5; wave++)
+                {
+                    _generator.Generate(150);
+                    foreach (var order in _generator.Orders.Take(50).ToList())
+                    {
+                        _generator.DeleteOrder(order);
+                    }
+                    foreach (var user in _generator.Users.Take(5).ToList())
+                    {
+                        _generator.DeleteUser(user);
+                    }
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                }
+                Assert.NotEmpty(failures);
+            }
+            catch
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_join_crash_deletes_{buffer.Key}.log");
+                }
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// The chaos loop over THREE substreams, crashes hit random substreams and the
+        /// version convergence after every failure is a three way handshake instead of a
+        /// pair. Stop and rebuild cycles are included. The seed is logged on failure.
+        /// </summary>
+        [Fact]
+        public async Task ThreeSubstreamChaosConverges()
+        {
+            int seed = Environment.TickCount;
+            var random = new Random(seed);
+
+            _generator.Generate(200);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, MemoryFileProvider>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Storage.StateManager.StateManagerOptions CreateOptions(string substreamName)
+            {
+                return new Storage.StateManager.StateManagerOptions()
+                {
+                    CachePageCount = 100_000,
+                    PersistentStorage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                    {
+                        FileProvider = fileProviders.GetOrAdd(substreamName, _ => new MemoryFileProvider())
+                    }),
+                    DefaultBPlusTreePageSize = 1024,
+                    DefaultBPlusTreePageSizeBytes = 32 * 1024,
+                    TemporaryStorageOptions = new Storage.FileCacheOptions()
+                    {
+                        DirectoryPath = $"./data/tempFiles/e2e_chaos3/{substreamName}/tmp"
+                    }
+                };
+            }
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                    b.AddProvider(provider);
+                });
+            }
+
+            _stream = BuildHost("e2e_chaos3", NormalJoinSql, latestData, failures,
+                substreamCount: 3, stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+            try
+            {
+                for (int iteration = 0; iteration < 8; iteration++)
+                {
+                    var action = random.Next(6);
+                    switch (action)
+                    {
+                        case 0:
+                            _generator.Generate(100);
+                            break;
+                        case 1:
+                        case 2:
+                        case 3:
+                            try
+                            {
+                                await _stream.Substreams[$"substream_{action - 1}"].CallTrigger("crash", null);
+                            }
+                            catch
+                            {
+                            }
+                            break;
+                        case 4:
+                            // Two random substreams crash at the same time
+                            var first = random.Next(3);
+                            var second = (first + 1 + random.Next(2)) % 3;
+                            try
+                            {
+                                await Task.WhenAll(
+                                    _stream.Substreams[$"substream_{first}"].CallTrigger("crash", null),
+                                    _stream.Substreams[$"substream_{second}"].CallTrigger("crash", null));
+                            }
+                            catch
+                            {
+                            }
+                            break;
+                        case 5:
+                            var stopTask = _stream.StopAsync();
+                            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+                            if (finished != stopTask)
+                            {
+                                throw new TimeoutException($"Chaos stop hung in iteration {iteration}");
+                            }
+                            await stopTask;
+                            await _stream.DisposeAsync();
+                            _stream = BuildHost("e2e_chaos3", NormalJoinSql, latestData, failures,
+                                substreamCount: 3, stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
+                            await _stream.StartAsync();
+                            break;
+                    }
+
+                    _generator.Generate(50);
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                }
+            }
+            catch (Exception e)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_chaos3_seed{seed}_{buffer.Key}.log");
+                }
+                throw new Exception($"Three substream chaos failed with seed {seed}", e);
+            }
+        }
+
         private static Storage.StateManager.StateManagerOptions CreateStateOptions(string testName, string substreamName)
         {
             return new Storage.StateManager.StateManagerOptions()

@@ -55,6 +55,7 @@ namespace FlowtideDotNet.Base.Vertices
         private string? _name;
         private string? _streamName;
         private ILockingEvent? _waitingLockingEvent;
+        private Guid _currentPrepareId;
         private int _messageCountSinceLockingEventPrepare;
         private long _currentTime;
         private Watermark? _latestWatermark;
@@ -176,9 +177,12 @@ namespace FlowtideDotNet.Base.Vertices
             // recieved from the loop until the prepare message is recieved.
             _waitingLockingEvent = ev;
             _messageCountSinceLockingEventPrepare = 0;
+            _targetPrepareCount = 0;
             bool isInitEvent = ev is InitWatermarksEvent;
+            var prepare = new LockingEventPrepare(ev, isInitEvent);
+            _currentPrepareId = prepare.Id;
             // Return a CheckpointPrepare message to the loop
-            return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(ev, isInitEvent)));
+            return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, prepare));
         }
 
         private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> FeedbackInCheckpoint(ILockingEvent ev)
@@ -217,6 +221,17 @@ namespace FlowtideDotNet.Base.Vertices
 
         private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> OnLockingPrepareEvent(LockingEventPrepare lockingEventPrepare)
         {
+            // A prepare can outlive the round it was sent in: multiple input vertices in the loop
+            // forward every copy of an init prepare, and retried rounds leave stragglers behind the
+            // locking event. Only prepares from the most recently sent round may drive the checkpoint
+            // decision. Resending stale ones would leave prepares circulating the loop indefinitely,
+            // and a stale prepare that passed the loop while it looked quiet could otherwise release
+            // the locking event while iteration data is still in flight.
+            if (_waitingLockingEvent == null || lockingEventPrepare.Id != _currentPrepareId)
+            {
+                return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
+            }
+
             _targetPrepareCount++;
 
             // Wait until all messages have been recieved from the loop
@@ -229,16 +244,6 @@ namespace FlowtideDotNet.Base.Vertices
             // Check that no other messages have been recieved, and that there is no vertex that does not have a depedent input that is not yet in checkpoint.
             if (_messageCountSinceLockingEventPrepare == 0 && (!lockingEventPrepare.OtherInputsNotInCheckpoint || singleReadSource))
             {
-                // Send out the locking event
-                if (_waitingLockingEvent == null)
-                {
-                    if (lockingEventPrepare.IsInitEvent)
-                    {
-                        return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
-                    }
-                    
-                    throw new InvalidOperationException("Prepare locking event without a waiting checkpoint.");
-                }
                 if (!_sentLockingEvent)
                 {
                     _sentLockingEvent = true;
@@ -251,7 +256,9 @@ namespace FlowtideDotNet.Base.Vertices
             else
             {
                 _messageCountSinceLockingEventPrepare = 0;
-                return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(lockingEventPrepare.LockingEvent, lockingEventPrepare.IsInitEvent)));
+                var retryPrepare = new LockingEventPrepare(lockingEventPrepare.LockingEvent, lockingEventPrepare.IsInitEvent);
+                _currentPrepareId = retryPrepare.Id;
+                return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, retryPrepare));
             }
         }
 
