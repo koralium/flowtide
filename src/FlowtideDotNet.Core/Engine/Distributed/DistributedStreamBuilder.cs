@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.Engine.Distributed
     {
         private readonly string _streamName;
         private Func<Plan>? _planFactory;
-        private IConnectorManager? _connectorManager;
+        private Func<string, IConnectorManager>? _connectorManagerFactory;
         private Func<string, StateManagerOptions>? _stateOptionsFactory;
         private ILoggerFactory? _loggerFactory;
         private PlanOptimizerSettings? _planOptimizerSettings;
@@ -54,7 +54,12 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         /// cannot communicate with each other.
         /// </summary>
         /// <param name="planFactory">Factory that creates a new identical plan on every call.</param>
-        /// <param name="optimize">If true each plan is optimized before it is handed to the substream, the optimizer is deterministic so all substreams get the same result.</param>
+        /// <param name="optimize">
+        /// If true each plan is optimized before it is handed to the substream, the optimizer is
+        /// deterministic so all substreams get the same result. When false together with
+        /// <see cref="DistributeAutomatically"/> the factory must return an already optimized plan,
+        /// distribution can only partition joins that have been converted to merge joins.
+        /// </param>
         /// <param name="planOptimizerSettings">Optional optimizer settings.</param>
         public DistributedStreamBuilder AddPlan(Func<Plan> planFactory, bool optimize = true, PlanOptimizerSettings? planOptimizerSettings = default)
         {
@@ -64,9 +69,15 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             return this;
         }
 
-        public DistributedStreamBuilder AddConnectorManager(IConnectorManager connectorManager)
+        /// <summary>
+        /// Sets the factory that creates the connector manager for each substream, called once
+        /// per substream with the substream name. Each substream gets its own manager so
+        /// connector factories that hold per stream state, for example sinks capturing
+        /// callbacks, are never shared between substreams.
+        /// </summary>
+        public DistributedStreamBuilder AddConnectorManager(Func<string, IConnectorManager> connectorManagerFactory)
         {
-            _connectorManager = connectorManager;
+            _connectorManagerFactory = connectorManagerFactory;
             return this;
         }
 
@@ -93,6 +104,10 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         /// </summary>
         public DistributedStreamBuilder DistributeAutomatically(int substreamCount, Func<int, string>? substreamNameGenerator = default)
         {
+            if (substreamCount < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(substreamCount), substreamCount, "The substream count must be at least 1.");
+            }
             _distributedPlanOptions = new DistributedPlanOptions()
             {
                 SubstreamCount = substreamCount,
@@ -146,9 +161,9 @@ namespace FlowtideDotNet.Core.Engine.Distributed
                     .AddPlan(CreatePlan(), false)
                     .WithStateOptions(_stateOptionsFactory(substreamName));
 
-                if (_connectorManager != null)
+                if (_connectorManagerFactory != null)
                 {
-                    builder.AddConnectorManager(_connectorManager);
+                    builder.AddConnectorManager(_connectorManagerFactory(substreamName));
                 }
                 if (_loggerFactory != null)
                 {

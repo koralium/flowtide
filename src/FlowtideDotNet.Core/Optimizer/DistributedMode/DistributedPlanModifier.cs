@@ -29,8 +29,10 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
     /// into substream targets and references, which are executed with cross substream
     /// communication at runtime.
     ///
-    /// The transform works best on an optimized plan where joins have been converted to merge
-    /// joins, it runs as the last step in the plan optimizer when
+    /// The transform requires an optimized plan to be effective: only merge joins can be
+    /// partitioned, generic join relations (joins the optimizer could not convert, or joins in
+    /// a plan that was never optimized) stay whole inside their assigned substream. It runs as
+    /// the last step in the plan optimizer when
     /// <see cref="PlanOptimizerSettings.DistributedPlanOptions"/> is set.
     ///
     /// The transform is deterministic, running it on the same plan with the same options always

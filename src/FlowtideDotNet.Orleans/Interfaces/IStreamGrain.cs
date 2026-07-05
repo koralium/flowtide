@@ -40,6 +40,13 @@ namespace FlowtideDotNet.Orleans.Interfaces
         Task<StreamStatusResponse> GetStatusAsync();
 
         /// <summary>
+        /// Stops all substreams and deletes their state, completing when the deletion has
+        /// finished. Only substreams recorded as started are reached: a stopped stream has
+        /// no recorded substreams, to delete its state start it again first and then delete.
+        /// </summary>
+        Task DeleteStreamAsync();
+
+        /// <summary>
         /// Stops all substreams of the stream together. Stopping them together lets the
         /// coordinated stop drain the data exchanged between the substreams, so everything
         /// sent before the stop is part of the final checkpoints. The grain persists which

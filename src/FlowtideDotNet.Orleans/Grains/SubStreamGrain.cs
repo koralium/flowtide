@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Orleans.Grains
     // own synchronization, so interleaving is safe.
     [Reentrant]
     [KeepAlive]
-    public class SubStreamGrain : Grain, ISubStreamGrain, IRemindable
+    internal class SubStreamGrain : Grain, ISubStreamGrain, IRemindable
     {
         // Reminder that keeps the substream running across silo failures. KeepAlive only
         // protects a live activation, when the hosting silo dies nothing reactivates the
@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Orleans.Grains
         private const string KeepAliveReminderName = "flowtide_keepalive";
 
         private readonly IPersistentState<SubStreamGrainStorage> _state;
-        private readonly IConnectorManager _connectorManager;
+        private readonly ConnectorManagerFactory _connectorManagerFactory;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IGrainFactory _grainFactory;
         private readonly Action<string, string, IFlowtideStorageBuilder> _storageBuilder;
@@ -63,14 +63,14 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public SubStreamGrain(
             [PersistentState("substream", "stream_metadata")] IPersistentState<SubStreamGrainStorage> state,
-            IConnectorManager connectorManager,
+            ConnectorManagerFactory connectorManagerFactory,
             ILoggerFactory loggerFactory,
             IGrainFactory grainFactory,
             Action<string, string, IFlowtideStorageBuilder> storageBuilder,
             FlowtideOrleansOptions options)
         {
             this._state = state;
-            this._connectorManager = connectorManager;
+            this._connectorManagerFactory = connectorManagerFactory;
             this._loggerFactory = loggerFactory;
             this._grainFactory = grainFactory;
             this._storageBuilder = storageBuilder;
@@ -204,6 +204,32 @@ namespace FlowtideDotNet.Orleans.Grains
             }
             // Clear the grain state so a reactivation does not start the stream again, the
             // stream state itself stays in its storage and a new start resumes from it.
+            await _state.ClearStateAsync();
+            DeactivateOnIdle();
+        }
+
+        public async Task DeleteStreamAsync()
+        {
+            // Make sure a stream instance exists so its state storage is the one deleted, a
+            // reactivated grain may not have built the stream yet. StartStream is a no-op
+            // when the stream already runs or when there is no start record.
+            StartStream();
+            if (_stream != null)
+            {
+                var stream = _stream;
+                _stream = null;
+                // The engine handles delete in any state, including while the stream is
+                // still starting, and completes when the state is actually deleted.
+                await stream.DeleteAsync();
+                await stream.DisposeAsync();
+            }
+            _tickCancellation?.Cancel();
+            _tickCancellation = null;
+            var reminder = await this.GetReminder(KeepAliveReminderName);
+            if (reminder != null)
+            {
+                await this.UnregisterReminder(reminder);
+            }
             await _state.ClearStateAsync();
             DeactivateOnIdle();
         }
@@ -365,11 +391,12 @@ namespace FlowtideDotNet.Orleans.Grains
 
             // Rebuild the plan from the SQL text, the plan builder is deterministic so all
             // substream grains compute an identical plan.
-            var plan = OrleansStreamPlanBuilder.BuildPlan(_connectorManager, _state.State.SqlText, _state.State.SubstreamCount);
+            var connectorManager = _connectorManagerFactory.Create(_state.State.StreamName);
+            var plan = OrleansStreamPlanBuilder.BuildPlan(connectorManager, _state.State.SqlText, _state.State.SubstreamCount);
 
             FlowtideBuilder flowtideBuilder = new FlowtideBuilder(this.GetPrimaryKeyString());
             flowtideBuilder.AddPlan(plan, false);
-            flowtideBuilder.AddConnectorManager(_connectorManager);
+            flowtideBuilder.AddConnectorManager(connectorManager);
             flowtideBuilder.WithStateOptions(stateManagerOptions);
 
             _orleansCommunicationFactory = new OrleansCommunicationFactory(_state.State.StreamName, _grainFactory);
@@ -391,7 +418,7 @@ namespace FlowtideDotNet.Orleans.Grains
             }
 
             // Applied last so user configuration can override the defaults set above.
-            _options.ConfigureBuilder?.Invoke(flowtideBuilder);
+            _options.ConfigureBuilder?.Invoke(_state.State.StreamName, _state.State.SubstreamName!, flowtideBuilder);
 
             _stream = flowtideBuilder.Build();
             var stream = _stream;

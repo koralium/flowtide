@@ -51,6 +51,7 @@ namespace FlowtideDotNet.Orleans.Tests
             public Task FailAndRecoverAsync(FailAndRecoverRequest request) => Task.CompletedTask;
             public Task CheckpointDone(CheckpointDoneRequest request) => Task.CompletedTask;
             public Task StopStreamAsync() => Task.CompletedTask;
+            public Task DeleteStreamAsync() => Task.CompletedTask;
             public Task<SubstreamStatus> GetStatusAsync() => Task.FromResult(new SubstreamStatus());
         }
 

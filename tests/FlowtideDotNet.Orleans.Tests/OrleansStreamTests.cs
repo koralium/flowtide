@@ -191,7 +191,7 @@ namespace FlowtideDotNet.Orleans.Tests
 
             // Force a recovery in one substream grain, the request is acknowledged
             // immediately and the recovery runs in the background on the grain.
-            var substreamGrain = _fixture.Cluster.GrainFactory.GetGrain<ISubStreamGrain>("orleans_stoprec_substream_0");
+            var substreamGrain = _fixture.Cluster.GrainFactory.GetGrain<ISubStreamGrain>(Internal.SubStreamGrainKey.Create("orleans_stoprec", "substream_0"));
             await substreamGrain.FailAndRecoverAsync(new FailAndRecoverRequest("substream_1", 0));
 
             // Stop while the recovery runs.
@@ -236,7 +236,7 @@ namespace FlowtideDotNet.Orleans.Tests
             // Start the coordinated stop and inject a recovery while it drains
             var stopTask = streamGrain.StopStreamAsync();
             await Task.Delay(50);
-            var substreamGrain = _fixture.Cluster.GrainFactory.GetGrain<ISubStreamGrain>("orleans_recstop_substream_0");
+            var substreamGrain = _fixture.Cluster.GrainFactory.GetGrain<ISubStreamGrain>(Internal.SubStreamGrainKey.Create("orleans_recstop", "substream_0"));
             await substreamGrain.FailAndRecoverAsync(new FailAndRecoverRequest("substream_1", 0));
 
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(90)));
@@ -396,6 +396,44 @@ namespace FlowtideDotNet.Orleans.Tests
             status = await streamGrain.GetStatusAsync();
             Assert.False(status.IsStarted);
             Assert.Empty(status.Substreams);
+        }
+
+        /// <summary>
+        /// Deleting a stream stops all substreams, deletes their state, completes, and the
+        /// stream reports not started afterwards. A fresh start with a different plan then
+        /// works, which would be rejected if the delete had not cleared the stream record.
+        /// </summary>
+        [Fact]
+        public async Task DeleteStreamRemovesStateAndAllowsFreshStart()
+        {
+            var sql = JoinSql("del");
+            TestTableStore.AddRows("del_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("del_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_delete");
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+            await WaitForResult("del_out", Enumerable.Range(0, 50).Select(x => (long)x).ToList(), TimeSpan.FromSeconds(60));
+
+            var deleteTask = streamGrain.DeleteStreamAsync();
+            var finished = await Task.WhenAny(deleteTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == deleteTask, "Deleting the stream timed out");
+            await deleteTask;
+
+            var status = await streamGrain.GetStatusAsync();
+            Assert.False(status.IsStarted);
+            Assert.Empty(status.Substreams);
+
+            // A different plan starts fresh after the delete, proving the stream record and
+            // the changed plan guard were cleared.
+            TestTableStore.AddRows("del2_left", Enumerable.Range(0, 30).Select(x => (long)x));
+            TestTableStore.AddRows("del2_right", Enumerable.Range(0, 10).Select(x => (long)x));
+            await streamGrain.StartStreamAsync(new StartStreamRequest(JoinSql("del2"), substreamCount: 2));
+            await WaitForResult("del2_out", Enumerable.Range(0, 10).Select(x => (long)x).ToList(), TimeSpan.FromSeconds(60));
+
+            var stopTask = streamGrain.StopStreamAsync();
+            finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping after the delete timed out");
+            await stopTask;
         }
 
         /// <summary>

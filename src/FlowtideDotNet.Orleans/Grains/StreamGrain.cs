@@ -43,14 +43,14 @@ namespace FlowtideDotNet.Orleans.Grains
 
     internal class StreamGrain : Grain, IStreamGrain
     {
-        private readonly IConnectorManager connectorManager;
+        private readonly ConnectorManagerFactory connectorManagerFactory;
         private readonly IPersistentState<StreamGrainStorage> _state;
 
         public StreamGrain(
-            IConnectorManager connectorManager,
+            ConnectorManagerFactory connectorManagerFactory,
             [PersistentState("stream", "stream_metadata")] IPersistentState<StreamGrainStorage> state)
         {
-            this.connectorManager = connectorManager;
+            this.connectorManagerFactory = connectorManagerFactory;
             _state = state;
         }
 
@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Orleans.Grains
             List<Task> startTasks = new List<Task>();
             foreach (var substream in substreams)
             {
-                var substreamKey = $"{this.GetPrimaryKeyString()}_{substream}";
+                var substreamKey = SubStreamGrainKey.Create(this.GetPrimaryKeyString(), substream);
                 var substreamGrain = GrainFactory.GetGrain<ISubStreamGrain>(substreamKey);
                 startTasks.Add(substreamGrain.StartStreamAsync(new StartStreamMessage(this.GetPrimaryKeyString(), request.SqlText, substream, request.SubstreamCount)));
             }
@@ -106,12 +106,30 @@ namespace FlowtideDotNet.Orleans.Grains
             List<Task> stopTasks = new List<Task>();
             foreach (var substream in _state.State.StartedSubstreams)
             {
-                var substreamKey = $"{this.GetPrimaryKeyString()}_{substream}";
+                var substreamKey = SubStreamGrainKey.Create(this.GetPrimaryKeyString(), substream);
                 var substreamGrain = GrainFactory.GetGrain<ISubStreamGrain>(substreamKey);
                 stopTasks.Add(substreamGrain.StopStreamAsync());
             }
 
             await Task.WhenAll(stopTasks);
+
+            _state.State.StartedSubstreams.Clear();
+            await _state.ClearStateAsync();
+        }
+
+        public async Task DeleteStreamAsync()
+        {
+            // Deleted in parallel like the coordinated stop, deleting one substream while
+            // its peers keep running would have the peers recover against missing state.
+            List<Task> deleteTasks = new List<Task>();
+            foreach (var substream in _state.State.StartedSubstreams)
+            {
+                var substreamKey = SubStreamGrainKey.Create(this.GetPrimaryKeyString(), substream);
+                var substreamGrain = GrainFactory.GetGrain<ISubStreamGrain>(substreamKey);
+                deleteTasks.Add(substreamGrain.DeleteStreamAsync());
+            }
+
+            await Task.WhenAll(deleteTasks);
 
             _state.State.StartedSubstreams.Clear();
             await _state.ClearStateAsync();
@@ -125,7 +143,7 @@ namespace FlowtideDotNet.Orleans.Grains
             };
             var statusTasks = _state.State.StartedSubstreams.Select(async substream =>
             {
-                var substreamKey = $"{this.GetPrimaryKeyString()}_{substream}";
+                var substreamKey = SubStreamGrainKey.Create(this.GetPrimaryKeyString(), substream);
                 try
                 {
                     var status = await GrainFactory.GetGrain<ISubStreamGrain>(substreamKey).GetStatusAsync();
@@ -153,7 +171,7 @@ namespace FlowtideDotNet.Orleans.Grains
         {
             // The plan is only built here to find the substream names, each substream grain
             // builds its own plan from the SQL text.
-            var plan = OrleansStreamPlanBuilder.BuildPlan(connectorManager, sqlText, substreamCount);
+            var plan = OrleansStreamPlanBuilder.BuildPlan(connectorManagerFactory.Create(this.GetPrimaryKeyString()), sqlText, substreamCount);
 
             HashSet<string> substreams = new HashSet<string>();
 

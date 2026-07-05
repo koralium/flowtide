@@ -182,6 +182,62 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// The aggregate members of the distributed stream work: connectors wired through
+        /// the AddConnectorManager factory (one manager per substream), the aggregate Health
+        /// reaches Healthy, and Pause/Resume fan out to all substreams with data flowing
+        /// correctly after the resume.
+        /// </summary>
+        [Fact]
+        public async Task PauseResumeAndAggregateHealth()
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var testName = "e2e_pause_resume";
+
+            _stream = new DistributedStreamBuilder(testName)
+                .AddPlan(() =>
+                {
+                    var sqlPlanBuilder = new SqlPlanBuilder();
+                    sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+                    sqlPlanBuilder.Sql(@"
+                    INSERT INTO output
+                    SELECT u.userkey FROM users u
+                    INNER JOIN orders o ON u.userkey = o.userkey;
+                    ");
+                    return sqlPlanBuilder.GetPlan();
+                })
+                .WithStateOptionsFactory(substreamName => CreateStateOptions(testName, substreamName))
+                .AddConnectorManager(substreamName =>
+                {
+                    var connectorManager = new ConnectorManager();
+                    connectorManager.AddSource(new MockSourceFactory("*", _db, false));
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
+                    return connectorManager;
+                })
+                .ConfigureSubstream((substreamName, substreamBuilder) =>
+                {
+                    substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                })
+                .DistributeAutomatically(2)
+                .Build();
+
+            await _stream.StartAsync();
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            Assert.Equal(FlowtideDotNet.Base.FlowtideHealth.Healthy, _stream.Health);
+
+            _stream.Pause();
+            _generator.Generate(500);
+            _stream.Resume();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            Assert.Empty(failures);
+        }
+
+        /// <summary>
         /// A normal aggregation plan is distributed automatically, each substream aggregates
         /// its own hash partition of the groups.
         /// </summary>

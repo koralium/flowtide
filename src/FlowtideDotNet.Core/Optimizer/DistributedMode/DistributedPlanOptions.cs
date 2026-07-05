@@ -20,8 +20,9 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
     {
         /// <summary>
         /// The number of substreams to split the plan into.
-        /// Sink roots are assigned to substreams round robin, so the effective number of
-        /// substreams is at most the number of sink roots in the plan.
+        /// Partitionable operators such as joins, aggregates and window functions get one
+        /// partition copy in every substream, so even a plan with a single sink uses all
+        /// substreams. Sink roots themselves are assigned to substreams round robin.
         /// </summary>
         public required int SubstreamCount { get; init; }
 

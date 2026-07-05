@@ -20,6 +20,16 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Orleans.Interfaces
 {
+    /// <summary>
+    /// Grain running one substream of a stream.
+    ///
+    /// Most methods on this interface are the internal protocol between the substream
+    /// grains: fetching exchanged data, checkpoint notifications, recovery and the
+    /// initialize handshake. Do not call them from application code, and do not start,
+    /// stop or delete a single substream directly — a substream acting alone breaks the
+    /// coordinated checkpointing of its peers. Use <see cref="IStreamGrain"/> to manage
+    /// streams.
+    /// </summary>
     public interface ISubStreamGrain : IGrainWithStringKey
     {
         Task StartStreamAsync(StartStreamMessage startStreamMessage);
@@ -46,5 +56,13 @@ namespace FlowtideDotNet.Orleans.Interfaces
         /// attempt when the stream could not start.
         /// </summary>
         Task<SubstreamStatus> GetStatusAsync();
+
+        /// <summary>
+        /// Stops the substream and deletes its state, completing when the deletion has
+        /// finished. All substreams of a stream should be deleted together through the
+        /// stream grain, a substream whose peers keep running would be recovered against
+        /// missing state.
+        /// </summary>
+        Task DeleteStreamAsync();
     }
 }

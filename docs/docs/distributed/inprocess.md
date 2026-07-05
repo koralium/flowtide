@@ -22,12 +22,13 @@ var stream = new DistributedStreamBuilder("my_stream")
         // Every substream needs its OWN state storage
         PersistentStorage = CreateStorageFor(substreamName)
     })
-    .ConfigureSubstream((substreamName, flowtideBuilder) =>
+    .AddConnectorManager(substreamName =>
     {
+        // Called once per substream, each substream gets its own connector manager
         var connectorManager = new ConnectorManager();
         connectorManager.AddSource(...);
         connectorManager.AddSink(...);
-        flowtideBuilder.AddConnectorManager(connectorManager);
+        return connectorManager;
     })
     .DistributeAutomatically(substreamCount: 2)
     .Build();
@@ -40,10 +41,12 @@ await stream.DisposeAsync();
 
 ## Notes
 
-* `StartAsync` also drives the recurring connector triggers of all substreams, sources that poll for changes work without calling `RunAsync` on the individual substreams.
+* `StartAsync` also drives the recurring connector triggers of all substreams, sources that poll for changes work without calling `RunAsync` on the individual substreams. When any substream fails to start, the substreams that did start are stopped before the failure is rethrown, a failed start never leaves part of the topology running.
 * `AddPlan` takes a plan **factory**, not a plan instance. Building a stream modifies the plan in place through connector hooks, so every substream must build from its own fresh plan.
 * `WithStateOptionsFactory` is called once per substream. Substreams must not share persistent storage, each one owns its own checkpoints.
-* `ConfigureSubstream` runs for every substream and configures its connectors and any per substream settings on the underlying `FlowtideBuilder`.
+* `AddConnectorManager` takes a factory called once per substream, so connector factories holding per stream state are never shared between substreams.
+* `ConfigureSubstream` is the hook for any other per substream settings on the underlying `FlowtideBuilder`, for example failure listeners or custom schedulers.
+* `Health` reports the worst health across the substreams, `Pause` and `Resume` pause and resume all substreams together.
 * `DistributeAutomatically(count)` applies [automatic distribution](automaticdistribution.md). Plans that already use [SQL substream statements](sqlsubstreams.md) are built as written instead.
 * `StopAsync` performs the coordinated stop: the substreams run stop checkpoint cycles until the data they exchanged has been drained on both sides, bounded by the stop drain timeout (default 30 seconds, configurable per substream with `SetStopDrainTimeout` on the `FlowtideBuilder`).
 * `DeleteAsync` deletes the state of every substream and completes when the deletion has fully finished.

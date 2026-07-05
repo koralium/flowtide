@@ -70,8 +70,7 @@ namespace FlowtideDotNet.Orleans.Internal
 
         protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            // Substream grains are keyed on "{streamName}_{substreamName}"
-            _referenceGrain = grainFactory.GetGrain<ISubStreamGrain>($"{streamName}_{exchangeReferenceRelation.SubStreamName}");
+            _referenceGrain = grainFactory.GetGrain<ISubStreamGrain>(SubStreamGrainKey.Create(streamName, exchangeReferenceRelation.SubStreamName));
 
             return Task.CompletedTask;
         }

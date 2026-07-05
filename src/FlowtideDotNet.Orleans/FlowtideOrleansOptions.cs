@@ -20,10 +20,11 @@ namespace FlowtideDotNet.Orleans
     public class FlowtideOrleansOptions
     {
         /// <summary>
-        /// Called with the builder of each substream before it is built, after the substream
-        /// grain has applied its own configuration. Can be used to change stream options such
-        /// as the stop drain timeout.
+        /// Called with the stream name, substream name and the builder of each substream
+        /// before it is built, after the substream grain has applied its own configuration.
+        /// Can be used to change stream options such as the stop drain timeout, per stream
+        /// or per substream.
         /// </summary>
-        public Action<FlowtideBuilder>? ConfigureBuilder { get; set; }
+        public Action<string, string, FlowtideBuilder>? ConfigureBuilder { get; set; }
     }
 }

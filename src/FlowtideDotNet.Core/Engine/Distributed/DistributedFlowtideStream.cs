@@ -42,15 +42,66 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         public IReadOnlyDictionary<string, Base.Engine.DataflowStream> Substreams => _substreams;
 
         /// <summary>
+        /// The worst health across all substreams. The stream only processes data correctly
+        /// when every substream is healthy, per substream details are available through
+        /// <see cref="Substreams"/>.
+        /// </summary>
+        public Base.FlowtideHealth Health => _substreams.Values.Max(x => x.Health);
+
+        /// <summary>
         /// Starts all substreams and begins driving their schedulers.
         /// Recurring connector triggers, for example sources polling for changes, are
         /// dispatched by the stream itself, there is no need to call RunAsync on the
         /// substreams.
+        ///
+        /// When any substream fails to start, the substreams that did start are stopped
+        /// before the failure is rethrown, so a failed start never leaves part of the
+        /// topology running.
         /// </summary>
-        public Task StartAsync()
+        public async Task StartAsync()
         {
             EnsureTickLoop();
-            return Task.WhenAll(_substreams.Values.Select(x => x.StartAsync()));
+            try
+            {
+                await Task.WhenAll(_substreams.Values.Select(x => x.StartAsync()));
+            }
+            catch
+            {
+                // The stop is bounded by the drain timeout, and its own failures must not
+                // hide the start failure.
+                try
+                {
+                    await Task.WhenAll(_substreams.Values.Select(x => x.StopAsync()));
+                }
+                catch
+                {
+                }
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Pauses all substreams, they stop emitting data to their sinks until
+        /// <see cref="Resume"/> is called. Data exchanged between the substreams pauses with
+        /// them since it is produced by the paused operators.
+        /// </summary>
+        public void Pause()
+        {
+            foreach (var substream in _substreams.Values)
+            {
+                substream.Pause();
+            }
+        }
+
+        /// <summary>
+        /// Resumes all substreams after <see cref="Pause"/>.
+        /// </summary>
+        public void Resume()
+        {
+            foreach (var substream in _substreams.Values)
+            {
+                substream.Resume();
+            }
         }
 
         /// <summary>

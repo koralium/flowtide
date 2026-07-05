@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Orleans.Internal
             this._substreamName = substreamName;
             this.selfName = selfName;
             this._grainFactory = grainFactory;
-            _streamGrain = _grainFactory.GetGrain<ISubStreamGrain>($"{streamName}_{_substreamName}");
+            _streamGrain = _grainFactory.GetGrain<ISubStreamGrain>(SubStreamGrainKey.Create(streamName, substreamName));
         }
 
         public void SetReceiveAllocatorResolver(Func<int, IMemoryAllocator> allocatorResolver)

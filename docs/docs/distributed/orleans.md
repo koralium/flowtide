@@ -74,12 +74,15 @@ A started stream keeps running the plan it was started with: starting the same s
 services.AddFlowtideOrleans(connectors => { ... }, (streamName, substreamName, storage) => { ... },
     options =>
     {
-        options.ConfigureBuilder = flowtideBuilder =>
+        options.ConfigureBuilder = (streamName, substreamName, flowtideBuilder) =>
         {
             flowtideBuilder.SetStopDrainTimeout(TimeSpan.FromSeconds(10));
         };
     });
 ```
+
+* **Deleting**: `IStreamGrain.DeleteStreamAsync` stops all substreams and deletes their state, completing when the deletion has finished. Only substreams recorded as started are reached, so to delete the state of a stopped stream, start it again first and then delete.
+* **Per stream connectors**: the `AddFlowtideOrleans` overload whose connectors callback receives the stream name configures connectors per stream, for example when different streams read from different systems. The callback must be deterministic per stream name, every substream grain builds its plan from the connectors it returns.
 
 * **Status**: `IStreamGrain.GetStatusAsync` reports every started substream with its stream state, health and any background start failure — use it for readiness checks and to verify a deployment actually came up.
 * **Metrics**: `app.StartFlowtideMetrics("/stream")` exposes the Flowtide metrics endpoints without the UI, which fits silo hosts. The regular Flowtide monitoring described under [Monitoring](../monitoring/generalmetrics.md) applies per substream.

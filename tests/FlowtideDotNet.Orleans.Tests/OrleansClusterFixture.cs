@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Orleans.Tests
                     // A substream stopping alone, for example when its silo shuts down, waits
                     // for peer stop barriers that never come since the peers keep running, a
                     // short drain timeout keeps deactivation fast in tests.
-                    options.ConfigureBuilder = builder => builder.SetStopDrainTimeout(TimeSpan.FromSeconds(2));
+                    options.ConfigureBuilder = (streamName, substreamName, builder) => builder.SetStopDrainTimeout(TimeSpan.FromSeconds(2));
                 });
             }
         }
