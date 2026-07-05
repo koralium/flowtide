@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Orleans.Tests
             await WaitForResult("silostop_out", expected, TimeSpan.FromSeconds(240));
 
             // The recovered stream still stops cleanly.
-            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 4));
+            var stopTask = streamGrain.StopStreamAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(120)));
             Assert.True(finished == stopTask, "Stopping the stream after the silo failure timed out");
             await stopTask;

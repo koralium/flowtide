@@ -73,8 +73,8 @@ namespace FlowtideDotNet.Orleans.Tests
             await WaitForResult("dualfail_b_out", Enumerable.Range(0, 100).Select(x => (long)x).ToList(), TimeSpan.FromSeconds(240));
 
             // Both streams still stop cleanly after the recovery.
-            var stopA = streamA.StopStreamAsync(new StopStreamRequest(sqlA, substreamCount: 2));
-            var stopB = streamB.StopStreamAsync(new StopStreamRequest(sqlB, substreamCount: 2));
+            var stopA = streamA.StopStreamAsync();
+            var stopB = streamB.StopStreamAsync();
             var both = Task.WhenAll(stopA, stopB);
             var finished = await Task.WhenAny(both, Task.Delay(TimeSpan.FromSeconds(120)));
             Assert.True(finished == both, "Stopping the streams after the silo failure timed out");

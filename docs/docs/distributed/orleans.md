@@ -41,15 +41,16 @@ var streamGrain = grainFactory.GetGrain<IStreamGrain>("my_stream");
 // substreamCount applies automatic distribution to a normal plan
 await streamGrain.StartStreamAsync(new StartStreamRequest(sqlText, substreamCount: 4));
 
-// The coordinated stop drains the data exchanged between the substreams
-await streamGrain.StopStreamAsync(new StopStreamRequest(sqlText, substreamCount: 4));
+// The grain remembers which substreams it started, the coordinated stop
+// drains the data exchanged between them
+await streamGrain.StopStreamAsync();
 ```
 
 Plans that use [SQL substream statements](sqlsubstreams.md) run one grain per declared substream instead, `substreamCount` can then be omitted.
 
 ## Requirements
 
-* **Grain storage named `stream_metadata`** must be registered. The stream grain persists which substreams it started there, so a later stop reaches every started substream even if the request differs, and the substream grains persist their start records there.
+* **Grain storage named `stream_metadata`** must be registered. The stream grain persists which substreams it started there, which is what lets the argument free stop reach every started substream, and the substream grains persist their start records there.
 * **Reminders** must be registered. Every running substream registers a keep alive reminder that restarts the stream when its grain was lost with a silo, and recreates a grain whose stream is stuck. With in-memory reminders the streams survive individual silo failures as long as the cluster itself lives, persistent reminders survive full restarts.
 
 ## Operational behavior

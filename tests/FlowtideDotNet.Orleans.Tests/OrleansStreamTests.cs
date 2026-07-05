@@ -80,7 +80,7 @@ namespace FlowtideDotNet.Orleans.Tests
             await WaitForResult("s1_out", expected, TimeSpan.FromSeconds(60));
 
             // The coordinated stop drains the substreams and completes
-            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            var stopTask = streamGrain.StopStreamAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
             Assert.True(finished == stopTask, "Stopping the stream through the stream grain timed out");
             await stopTask;
@@ -111,7 +111,7 @@ namespace FlowtideDotNet.Orleans.Tests
             await WaitForResult("iso_b_out", expectedB, TimeSpan.FromSeconds(60));
 
             // Stop stream A, stream B must keep processing new data afterwards
-            var stopTask = streamA.StopStreamAsync(new StopStreamRequest(sqlA, substreamCount: 2));
+            var stopTask = streamA.StopStreamAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
             Assert.True(finished == stopTask, "Stopping stream A timed out");
             await stopTask;
@@ -145,7 +145,7 @@ namespace FlowtideDotNet.Orleans.Tests
             var expected = Enumerable.Range(0, 50).Select(x => (long)x).ToList();
             await WaitForResult("restart_out", expected, TimeSpan.FromSeconds(60));
 
-            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            var stopTask = streamGrain.StopStreamAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
             Assert.True(finished == stopTask, "Stopping the stream before the restart timed out");
             await stopTask;
@@ -163,7 +163,7 @@ namespace FlowtideDotNet.Orleans.Tests
             expected = Enumerable.Range(0, 100).Select(x => (long)x).ToList();
             await WaitForResult("restart_out", expected, TimeSpan.FromSeconds(60));
 
-            stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            stopTask = streamGrain.StopStreamAsync();
             finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
             Assert.True(finished == stopTask, "Stopping the restarted stream timed out");
             await stopTask;
@@ -195,7 +195,7 @@ namespace FlowtideDotNet.Orleans.Tests
             await substreamGrain.FailAndRecoverAsync(new FailAndRecoverRequest("substream_1", 0));
 
             // Stop while the recovery runs.
-            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            var stopTask = streamGrain.StopStreamAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(90)));
             Assert.True(finished == stopTask, "Stopping the stream during a grain recovery timed out");
             await stopTask;
@@ -207,7 +207,7 @@ namespace FlowtideDotNet.Orleans.Tests
             expected = Enumerable.Range(0, 75).Select(x => (long)x).ToList();
             await WaitForResult("stoprec_out", expected, TimeSpan.FromSeconds(60));
 
-            var finalStop = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            var finalStop = streamGrain.StopStreamAsync();
             finished = await Task.WhenAny(finalStop, Task.Delay(TimeSpan.FromSeconds(60)));
             Assert.True(finished == finalStop, "The final stop timed out");
             await finalStop;
@@ -234,7 +234,7 @@ namespace FlowtideDotNet.Orleans.Tests
             await WaitForResult("recstop_out", expected, TimeSpan.FromSeconds(60));
 
             // Start the coordinated stop and inject a recovery while it drains
-            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            var stopTask = streamGrain.StopStreamAsync();
             await Task.Delay(50);
             var substreamGrain = _fixture.Cluster.GrainFactory.GetGrain<ISubStreamGrain>("orleans_recstop_substream_0");
             await substreamGrain.FailAndRecoverAsync(new FailAndRecoverRequest("substream_1", 0));
@@ -250,21 +250,20 @@ namespace FlowtideDotNet.Orleans.Tests
             expected = Enumerable.Range(0, 75).Select(x => (long)x).ToList();
             await WaitForResult("recstop_out", expected, TimeSpan.FromSeconds(60));
 
-            var finalStop = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            var finalStop = streamGrain.StopStreamAsync();
             finished = await Task.WhenAny(finalStop, Task.Delay(TimeSpan.FromSeconds(60)));
             Assert.True(finished == finalStop, "The final stop timed out");
             await finalStop;
         }
 
         /// <summary>
-        /// A stop request with a different substream count than the stream was started with
-        /// must still stop EVERY substream grain that was started. The stream grain persists
-        /// the started set for this, deriving the names from the stop request alone would
-        /// orphan running grains whose keep alive reminders restart them forever with no
-        /// remaining way to stop them.
+        /// Stop takes no arguments, EVERY substream grain that was started must be stopped
+        /// from the persisted started set alone. Missing one would orphan a running grain
+        /// whose keep alive reminder restarts it forever with no remaining way to stop it.
+        /// A restart with a different substream count must then come up cleanly.
         /// </summary>
         [Fact]
-        public async Task StopWithDifferentSubstreamCountStopsAllStartedGrains()
+        public async Task StopFromPersistedStateStopsAllStartedGrains()
         {
             var sql = JoinSql("mismatch");
             TestTableStore.AddRows("mismatch_left", Enumerable.Range(0, 100).Select(x => (long)x));
@@ -276,11 +275,9 @@ namespace FlowtideDotNet.Orleans.Tests
             var expected = Enumerable.Range(0, 50).Select(x => (long)x).ToList();
             await WaitForResult("mismatch_out", expected, TimeSpan.FromSeconds(60));
 
-            // Stop with a DIFFERENT substream count, the derived names only cover one
-            // substream but the persisted started set must cover both.
-            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 1));
+            var stopTask = streamGrain.StopStreamAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
-            Assert.True(finished == stopTask, "Stopping with a different substream count timed out");
+            Assert.True(finished == stopTask, "Stopping from the persisted started set timed out");
             await stopTask;
 
             // A restart with yet another count must come up cleanly, an orphaned running
@@ -291,7 +288,7 @@ namespace FlowtideDotNet.Orleans.Tests
             expected = Enumerable.Range(0, 75).Select(x => (long)x).ToList();
             await WaitForResult("mismatch_out", expected, TimeSpan.FromSeconds(90));
 
-            var finalStop = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 3));
+            var finalStop = streamGrain.StopStreamAsync();
             finished = await Task.WhenAny(finalStop, Task.Delay(TimeSpan.FromSeconds(60)));
             Assert.True(finished == finalStop, "The final stop timed out");
             await finalStop;
@@ -316,7 +313,7 @@ namespace FlowtideDotNet.Orleans.Tests
             {
                 await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
                 // Stop immediately, the substream streams are typically still starting.
-                var cycleStop = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+                var cycleStop = streamGrain.StopStreamAsync();
                 var cycleFinished = await Task.WhenAny(cycleStop, Task.Delay(TimeSpan.FromSeconds(60)));
                 Assert.True(cycleFinished == cycleStop, $"Stopping the stream timed out in cycle {cycle}");
                 await cycleStop;
@@ -327,7 +324,7 @@ namespace FlowtideDotNet.Orleans.Tests
             var expected = Enumerable.Range(0, 50).Select(x => (long)x).ToList();
             await WaitForResult("cycle_out", expected, TimeSpan.FromSeconds(90));
 
-            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 2));
+            var stopTask = streamGrain.StopStreamAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
             Assert.True(finished == stopTask, "Stopping the final cycle timed out");
             await stopTask;

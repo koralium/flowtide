@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Orleans.Tests
             expected = Enumerable.Range(0, 150).Select(x => (long)x).ToList();
             await WaitForResult("twosilo_out", expected, TimeSpan.FromSeconds(90));
 
-            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 4));
+            var stopTask = streamGrain.StopStreamAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(90)));
             Assert.True(finished == stopTask, "Stopping the two silo stream timed out");
             await stopTask;
@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Orleans.Tests
             expected = Enumerable.Range(0, 25).Concat(Enumerable.Range(50, 50)).Select(x => (long)x).ToList();
             await WaitForResult("retract_out", expected, TimeSpan.FromSeconds(90));
 
-            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 4));
+            var stopTask = streamGrain.StopStreamAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(90)));
             Assert.True(finished == stopTask, "Stopping the retraction stream timed out");
             await stopTask;
@@ -153,7 +153,7 @@ namespace FlowtideDotNet.Orleans.Tests
             expected = values.OrderBy(x => x).ToList();
             await WaitForResult("large_out", expected, TimeSpan.FromSeconds(120));
 
-            var stopTask = streamGrain.StopStreamAsync(new StopStreamRequest(sql, substreamCount: 4));
+            var stopTask = streamGrain.StopStreamAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(120)));
             Assert.True(finished == stopTask, "Stopping the large batch stream timed out");
             await stopTask;

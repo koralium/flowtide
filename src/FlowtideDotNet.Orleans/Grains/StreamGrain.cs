@@ -48,11 +48,9 @@ namespace FlowtideDotNet.Orleans.Grains
         {
             var substreams = GetSubstreamNames(request.SqlText, request.SubstreamCount);
 
-            // The started set is persisted before the substream grains start. A later stop
-            // request may carry a different SQL text or substream count, deriving the names
-            // from the request alone would then miss substream grains that are still running
-            // from this start, and their keep alive reminders would restart them forever
-            // with no way left to stop them.
+            // The started set is persisted before the substream grains start, a stop uses
+            // only this set. Missing a started substream grain here would leave it running
+            // with no way to stop it, its keep alive reminder restarts it forever.
             foreach (var substream in substreams)
             {
                 if (!_state.State.StartedSubstreams.Contains(substream))
@@ -73,21 +71,13 @@ namespace FlowtideDotNet.Orleans.Grains
             await Task.WhenAll(startTasks);
         }
 
-        public async Task StopStreamAsync(StopStreamRequest request)
+        public async Task StopStreamAsync()
         {
-            // The union of the persisted started set and the names derived from the request
-            // covers substreams from an earlier start with a different SQL text or count.
-            var substreams = GetSubstreamNames(request.SqlText, request.SubstreamCount);
-            foreach (var started in _state.State.StartedSubstreams)
-            {
-                substreams.Add(started);
-            }
-
             // All substreams are stopped together so the coordinated stop can drain the data
             // exchanged between them, a substream only finishes stopping when the other
             // substreams have received everything it sent before its stop barrier.
             List<Task> stopTasks = new List<Task>();
-            foreach (var substream in substreams)
+            foreach (var substream in _state.State.StartedSubstreams)
             {
                 var substreamKey = $"{this.GetPrimaryKeyString()}_{substream}";
                 var substreamGrain = GrainFactory.GetGrain<ISubStreamGrain>(substreamKey);

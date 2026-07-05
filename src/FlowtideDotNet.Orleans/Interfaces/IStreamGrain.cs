@@ -26,8 +26,9 @@ namespace FlowtideDotNet.Orleans.Interfaces
         /// <summary>
         /// Stops all substreams of the stream together. Stopping them together lets the
         /// coordinated stop drain the data exchanged between the substreams, so everything
-        /// sent before the stop is part of the final checkpoints.
+        /// sent before the stop is part of the final checkpoints. The grain persists which
+        /// substreams it started, so the caller does not need to supply anything.
         /// </summary>
-        Task StopStreamAsync(StopStreamRequest request);
+        Task StopStreamAsync();
     }
 }
