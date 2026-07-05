@@ -41,12 +41,24 @@ var streamGrain = grainFactory.GetGrain<IStreamGrain>("my_stream");
 // substreamCount applies automatic distribution to a normal plan
 await streamGrain.StartStreamAsync(new StartStreamRequest(sqlText, substreamCount: 4));
 
+// Starting returns before the streams have started in the background,
+// poll the status to observe the substreams becoming healthy
+var status = await streamGrain.GetStatusAsync();
+foreach (var substream in status.Substreams)
+{
+    Console.WriteLine($"{substream.SubstreamName}: {substream.State} {substream.Health} {substream.StartFailure}");
+}
+
 // The grain remembers which substreams it started, the coordinated stop
 // drains the data exchanged between them
 await streamGrain.StopStreamAsync();
 ```
 
 Plans that use [SQL substream statements](sqlsubstreams.md) run one grain per declared substream instead, `substreamCount` can then be omitted.
+
+A started stream keeps running the plan it was started with: starting the same stream again with the identical request is a no-op, starting it with a different SQL text or substream count throws. To deploy a new plan version, stop the stream and start it with the new SQL.
+
+`GetStatusAsync` is also how background start failures surface. The start call returns success once the substream grains accepted the start, the streams themselves start asynchronously — a stream that cannot start, for example because its storage is unreachable, reports the failure in `StartFailure` and is retried by the keep alive watchdog.
 
 ## Requirements
 
@@ -69,6 +81,7 @@ services.AddFlowtideOrleans(connectors => { ... }, (streamName, substreamName, s
     });
 ```
 
+* **Status**: `IStreamGrain.GetStatusAsync` reports every started substream with its stream state, health and any background start failure — use it for readiness checks and to verify a deployment actually came up.
 * **Metrics**: `app.StartFlowtideMetrics("/stream")` exposes the Flowtide metrics endpoints without the UI, which fits silo hosts. The regular Flowtide monitoring described under [Monitoring](../monitoring/generalmetrics.md) applies per substream.
 
 A runnable example is available in the repository under `samples/OrleansSample`.

@@ -295,6 +295,110 @@ namespace FlowtideDotNet.Orleans.Tests
         }
 
         /// <summary>
+        /// Starting an already running stream with a different SQL text or substream count
+        /// must throw. Silently accepting it would leave the existing substream grains
+        /// running the old plan while substreams new in the request start the new one, a
+        /// mixed topology. Starting with the identical request is an idempotent no-op, and
+        /// after a stop a new plan starts normally.
+        /// </summary>
+        [Fact]
+        public async Task StartWithChangedPlanWithoutStopThrows()
+        {
+            var sql = JoinSql("chg");
+            TestTableStore.AddRows("chg_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("chg_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_changed_plan");
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            var expected = Enumerable.Range(0, 50).Select(x => (long)x).ToList();
+            await WaitForResult("chg_out", expected, TimeSpan.FromSeconds(60));
+
+            // Different SQL text and different substream count are both rejected
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => streamGrain.StartStreamAsync(new StartStreamRequest(JoinSql("chg2"), substreamCount: 2)));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 3)));
+
+            // The identical request is an idempotent no-op and the stream keeps running
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+            TestTableStore.AddRows("chg_right", Enumerable.Range(50, 25).Select(x => (long)x));
+            expected = Enumerable.Range(0, 75).Select(x => (long)x).ToList();
+            await WaitForResult("chg_out", expected, TimeSpan.FromSeconds(60));
+
+            var stopTask = streamGrain.StopStreamAsync();
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping the stream timed out");
+            await stopTask;
+
+            // After the stop a changed plan starts normally
+            TestTableStore.AddRows("chg2_left", Enumerable.Range(0, 30).Select(x => (long)x));
+            TestTableStore.AddRows("chg2_right", Enumerable.Range(0, 10).Select(x => (long)x));
+            await streamGrain.StartStreamAsync(new StartStreamRequest(JoinSql("chg2"), substreamCount: 2));
+            await WaitForResult("chg2_out", Enumerable.Range(0, 10).Select(x => (long)x).ToList(), TimeSpan.FromSeconds(60));
+
+            var finalStop = streamGrain.StopStreamAsync();
+            finished = await Task.WhenAny(finalStop, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == finalStop, "The final stop timed out");
+            await finalStop;
+        }
+
+        /// <summary>
+        /// The status call reports every started substream, their states become Running on
+        /// a healthy stream, and a stopped stream reports not started with no substreams.
+        /// This is the only way a caller can observe the stream actually running, the start
+        /// call returns before the streams start in the background.
+        /// </summary>
+        [Fact]
+        public async Task StatusReportsSubstreamsRunningAndStopped()
+        {
+            var sql = JoinSql("stat");
+            TestTableStore.AddRows("stat_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("stat_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_status");
+
+            // Before any start the stream reports not started
+            var status = await streamGrain.GetStatusAsync();
+            Assert.False(status.IsStarted);
+            Assert.Empty(status.Substreams);
+
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            // The substreams must become Running within the timeout
+            var deadline = DateTime.UtcNow.AddSeconds(60);
+            while (true)
+            {
+                status = await streamGrain.GetStatusAsync();
+                Assert.True(status.IsStarted);
+                Assert.Equal(2, status.Substreams.Count);
+                Assert.All(status.Substreams, s => Assert.True(s.IsStarted));
+                Assert.All(status.Substreams, s => Assert.Null(s.StartFailure));
+                if (status.Substreams.All(s => s.State == FlowtideDotNet.Base.Engine.StreamStateValue.Running))
+                {
+                    break;
+                }
+                Assert.True(DateTime.UtcNow < deadline,
+                    $"Substreams did not reach Running, states: [{string.Join(",", status.Substreams.Select(s => $"{s.SubstreamName}={s.State}"))}]");
+                await Task.Delay(100);
+            }
+            Assert.Equal(
+                new[] { "substream_0", "substream_1" },
+                status.Substreams.Select(s => s.SubstreamName).OrderBy(x => x).ToArray());
+
+            await WaitForResult("stat_out", Enumerable.Range(0, 50).Select(x => (long)x).ToList(), TimeSpan.FromSeconds(60));
+
+            var stopTask = streamGrain.StopStreamAsync();
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping the stream timed out");
+            await stopTask;
+
+            status = await streamGrain.GetStatusAsync();
+            Assert.False(status.IsStarted);
+            Assert.Empty(status.Substreams);
+        }
+
+        /// <summary>
         /// Rapid start and stop cycles through the grains, the stop lands while the
         /// substream streams are still starting, which exercises the grain lifecycle,
         /// reminder registration and the tick loop teardown under repetition. Every stop

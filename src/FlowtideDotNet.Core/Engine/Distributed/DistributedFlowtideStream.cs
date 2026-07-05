@@ -10,6 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace FlowtideDotNet.Core.Engine.Distributed
 {
     /// <summary>
@@ -19,11 +22,16 @@ namespace FlowtideDotNet.Core.Engine.Distributed
     public sealed class DistributedFlowtideStream : IAsyncDisposable
     {
         private readonly IReadOnlyDictionary<string, Base.Engine.DataflowStream> _substreams;
+        private readonly ILogger _logger;
+        private readonly object _tickLock = new object();
+        private CancellationTokenSource? _tickCancellation;
+        private Task? _tickLoop;
 
-        internal DistributedFlowtideStream(string streamName, IReadOnlyDictionary<string, Base.Engine.DataflowStream> substreams)
+        internal DistributedFlowtideStream(string streamName, IReadOnlyDictionary<string, Base.Engine.DataflowStream> substreams, ILogger? logger)
         {
             StreamName = streamName;
             _substreams = substreams;
+            _logger = logger ?? NullLogger.Instance;
         }
 
         public string StreamName { get; }
@@ -34,11 +42,67 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         public IReadOnlyDictionary<string, Base.Engine.DataflowStream> Substreams => _substreams;
 
         /// <summary>
-        /// Starts all substreams.
+        /// Starts all substreams and begins driving their schedulers.
+        /// Recurring connector triggers, for example sources polling for changes, are
+        /// dispatched by the stream itself, there is no need to call RunAsync on the
+        /// substreams.
         /// </summary>
         public Task StartAsync()
         {
+            EnsureTickLoop();
             return Task.WhenAll(_substreams.Values.Select(x => x.StartAsync()));
+        }
+
+        /// <summary>
+        /// Drives the default schedulers of all substreams. DataflowStream.StartAsync does
+        /// not tick the scheduler, only RunAsync does, so without this loop no recurring
+        /// operator trigger would ever fire and sources that poll for changes through
+        /// triggers would never emit new data. One loop runs for the lifetime of this
+        /// instance, it survives stop and restart and ends on dispose.
+        /// </summary>
+        private void EnsureTickLoop()
+        {
+            lock (_tickLock)
+            {
+                if (_tickCancellation != null)
+                {
+                    return;
+                }
+                _tickCancellation = new CancellationTokenSource();
+                var token = _tickCancellation.Token;
+                _tickLoop = Task.Run(async () =>
+                {
+                    using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
+                    try
+                    {
+                        while (await timer.WaitForNextTickAsync(token))
+                        {
+                            foreach (var substream in _substreams.Values)
+                            {
+                                // Substreams with a custom scheduler are managed externally
+                                // by whoever configured them.
+                                if (substream.Scheduler is Base.Engine.DefaultStreamScheduler scheduler)
+                                {
+                                    try
+                                    {
+                                        await scheduler.Tick();
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        // A trigger dispatch can fail while a substream is
+                                        // failing over, the loop must keep ticking for the
+                                        // other substreams and the restarted stream.
+                                        _logger.LogDebug(e, "Trigger tick failed in stream {stream}, retrying at the next tick.", StreamName);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+                });
+            }
         }
 
         /// <summary>
@@ -76,6 +140,20 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             // Disposed in parallel like start, stop and delete, the substreams can wait on
             // each other while shutting down.
             await Task.WhenAll(_substreams.Values.Select(x => x.DisposeAsync().AsTask()));
+
+            Task? tickLoop;
+            lock (_tickLock)
+            {
+                _tickCancellation?.Cancel();
+                _tickCancellation?.Dispose();
+                _tickCancellation = null;
+                tickLoop = _tickLoop;
+                _tickLoop = null;
+            }
+            if (tickLoop != null)
+            {
+                await tickLoop;
+            }
         }
     }
 }

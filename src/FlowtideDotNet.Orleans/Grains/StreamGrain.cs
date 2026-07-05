@@ -29,6 +29,16 @@ namespace FlowtideDotNet.Orleans.Grains
     {
         [Id(0)]
         public List<string> StartedSubstreams { get; set; } = new List<string>();
+
+        /// <summary>
+        /// The SQL text the stream was started with, used to reject a start with a changed
+        /// plan while the stream is running.
+        /// </summary>
+        [Id(1)]
+        public string? SqlText { get; set; }
+
+        [Id(2)]
+        public int? SubstreamCount { get; set; }
     }
 
     internal class StreamGrain : Grain, IStreamGrain
@@ -46,11 +56,28 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task StartStreamAsync(StartStreamRequest request)
         {
+            // A started stream keeps running the plan it was started with, silently
+            // accepting a changed plan would have the existing substream grains run the old
+            // plan while substreams that are new in this request start the new one, a mixed
+            // topology that cannot work. Starting again with the identical request is a
+            // no-op retry.
+            if (_state.RecordExists && _state.State.SqlText != null)
+            {
+                if (!string.Equals(_state.State.SqlText, request.SqlText, StringComparison.Ordinal) ||
+                    _state.State.SubstreamCount != request.SubstreamCount)
+                {
+                    throw new InvalidOperationException(
+                        $"Stream '{this.GetPrimaryKeyString()}' is already started with a different SQL text or substream count. Stop the stream before starting it with a new plan.");
+                }
+            }
+
             var substreams = GetSubstreamNames(request.SqlText, request.SubstreamCount);
 
             // The started set is persisted before the substream grains start, a stop uses
             // only this set. Missing a started substream grain here would leave it running
             // with no way to stop it, its keep alive reminder restarts it forever.
+            _state.State.SqlText = request.SqlText;
+            _state.State.SubstreamCount = request.SubstreamCount;
             foreach (var substream in substreams)
             {
                 if (!_state.State.StartedSubstreams.Contains(substream))
@@ -88,6 +115,38 @@ namespace FlowtideDotNet.Orleans.Grains
 
             _state.State.StartedSubstreams.Clear();
             await _state.ClearStateAsync();
+        }
+
+        public async Task<StreamStatusResponse> GetStatusAsync()
+        {
+            var response = new StreamStatusResponse
+            {
+                IsStarted = _state.RecordExists
+            };
+            var statusTasks = _state.State.StartedSubstreams.Select(async substream =>
+            {
+                var substreamKey = $"{this.GetPrimaryKeyString()}_{substream}";
+                try
+                {
+                    var status = await GrainFactory.GetGrain<ISubStreamGrain>(substreamKey).GetStatusAsync();
+                    // The stream grain knows the name authoritatively, a substream grain
+                    // that lost its state cannot.
+                    status.SubstreamName = substream;
+                    return status;
+                }
+                catch (Exception e)
+                {
+                    // An unreachable substream grain, for example during a silo failure,
+                    // must not make the whole status call fail.
+                    return new SubstreamStatus
+                    {
+                        SubstreamName = substream,
+                        Error = e.Message
+                    };
+                }
+            }).ToList();
+            response.Substreams.AddRange(await Task.WhenAll(statusTasks));
+            return response;
         }
 
         private HashSet<string> GetSubstreamNames(string sqlText, int? substreamCount)

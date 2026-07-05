@@ -21,7 +21,23 @@ namespace FlowtideDotNet.Orleans.Interfaces
 {
     public interface IStreamGrain : IGrainWithStringKey
     {
+        /// <summary>
+        /// Starts all substreams of the stream. Starting an already started stream with the
+        /// same SQL text and substream count is a no-op, starting it with a different plan
+        /// throws, the stream must be stopped first.
+        ///
+        /// The call returns when the substream grains have accepted the start, the streams
+        /// themselves start in the background, poll <see cref="GetStatusAsync"/> to observe
+        /// them becoming healthy.
+        /// </summary>
         Task StartStreamAsync(StartStreamRequest request);
+
+        /// <summary>
+        /// Returns the status of the stream and each substream it started, including start
+        /// failures that happened in the background after <see cref="StartStreamAsync"/>
+        /// returned.
+        /// </summary>
+        Task<StreamStatusResponse> GetStatusAsync();
 
         /// <summary>
         /// Stops all substreams of the stream together. Stopping them together lets the

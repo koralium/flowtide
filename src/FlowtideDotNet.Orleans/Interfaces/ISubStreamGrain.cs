@@ -40,5 +40,11 @@ namespace FlowtideDotNet.Orleans.Interfaces
         /// the data exchanged between the substreams.
         /// </summary>
         Task StopStreamAsync();
+
+        /// <summary>
+        /// Returns the status of this substream, including the failure of the last start
+        /// attempt when the stream could not start.
+        /// </summary>
+        Task<SubstreamStatus> GetStatusAsync();
     }
 }

@@ -897,14 +897,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var stopwatch = Stopwatch.StartNew();
             while (true)
             {
-                foreach (var substream in _stream.Substreams.Values)
-                {
-                    if (substream.Scheduler is DefaultStreamScheduler scheduler)
-                    {
-                        await scheduler.Tick();
-                    }
-                }
-
                 if (latestWatermarks.TryGetValue(substreamName, out var watermark) &&
                     watermark.Watermarks.TryGetValue("users", out var usersValue) && usersValue is LongWatermarkValue usersLong && usersLong.Value >= expectedUsersOffset &&
                     watermark.Watermarks.TryGetValue("orders", out var ordersValue) && ordersValue is LongWatermarkValue ordersLong && ordersLong.Value >= expectedOrdersOffset)
@@ -2695,14 +2687,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var stopwatch = Stopwatch.StartNew();
             while (true)
             {
-                foreach (var substream in _stream.Substreams.Values)
-                {
-                    if (substream.Scheduler is DefaultStreamScheduler scheduler)
-                    {
-                        await scheduler.Tick();
-                    }
-                }
-
                 if (!allowFailures)
                 {
                     var failure = failures.FirstOrDefault(x => x.Exception != null);

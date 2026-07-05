@@ -165,7 +165,7 @@ namespace FlowtideDotNet.Core.Engine.Distributed
                 substreams.Add(substreamName, builder.Build());
             }
 
-            return new DistributedFlowtideStream(_streamName, substreams);
+            return new DistributedFlowtideStream(_streamName, substreams, _loggerFactory?.CreateLogger<DistributedFlowtideStream>());
         }
 
         /// <summary>

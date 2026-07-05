@@ -208,6 +208,24 @@ namespace FlowtideDotNet.Orleans.Grains
             DeactivateOnIdle();
         }
 
+        // Failure of the last background start attempt on this activation, surfaced through
+        // GetStatusAsync. Written from the start task on the thread pool, read from grain
+        // turns.
+        private volatile string? _lastStartFailure;
+
+        public Task<SubstreamStatus> GetStatusAsync()
+        {
+            var stream = _stream;
+            return Task.FromResult(new SubstreamStatus
+            {
+                SubstreamName = _state.State.SubstreamName,
+                IsStarted = _state.RecordExists,
+                State = stream?.State,
+                Health = stream?.Health,
+                StartFailure = _lastStartFailure
+            });
+        }
+
         // Stream state observed by the previous keep alive reminder tick, used to detect a
         // stream that is stuck in the same non running state for a whole reminder period.
         private Base.Engine.StreamStateValue? _reminderObservedState;
@@ -297,6 +315,18 @@ namespace FlowtideDotNet.Orleans.Grains
         {
             if (_state.RecordExists)
             {
+                // Defense in depth, the stream grain already rejects a changed plan. A
+                // direct start with different SQL must not be silently ignored, this grain
+                // would keep running the old plan next to substreams running the new one.
+                if (!string.Equals(_state.State.SqlText, startStreamMessage.SqlText, StringComparison.Ordinal) ||
+                    _state.State.SubstreamCount != startStreamMessage.SubstreamCount)
+                {
+                    throw new InvalidOperationException(
+                        $"Substream '{this.GetPrimaryKeyString()}' is already started with a different SQL text or substream count. Stop the stream before starting it with a new plan.");
+                }
+                // Same plan, a repeated start is the natural retry after a failed start,
+                // make sure the stream is running.
+                StartStream();
                 return;
             }
 
@@ -373,6 +403,7 @@ namespace FlowtideDotNet.Orleans.Grains
             // and run the streams state machine as activation work items, a single
             // synchronous wait in that machinery then blocks the whole activation, no grain
             // call, not even from other substreams fetching data, is served anymore.
+            _lastStartFailure = null;
             _ = Task.Run(async () =>
             {
                 try
@@ -384,7 +415,10 @@ namespace FlowtideDotNet.Orleans.Grains
                     // The failure must be logged here, the task is fire and forget so the
                     // exception is otherwise never observed anywhere. The keep alive reminder
                     // sees the stream stuck in a non running state and recreates the grain,
-                    // but without this log the root cause would be undiagnosable.
+                    // but without this log the root cause would be undiagnosable. The failure
+                    // is also kept so GetStatusAsync can surface it to the caller, the start
+                    // call itself already returned success.
+                    _lastStartFailure = e.ToString();
                     logger.LogError(e, "Starting the stream for substream {substream} failed.", this.GetPrimaryKeyString());
                     return;
                 }

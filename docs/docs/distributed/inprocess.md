@@ -40,6 +40,7 @@ await stream.DisposeAsync();
 
 ## Notes
 
+* `StartAsync` also drives the recurring connector triggers of all substreams, sources that poll for changes work without calling `RunAsync` on the individual substreams.
 * `AddPlan` takes a plan **factory**, not a plan instance. Building a stream modifies the plan in place through connector hooks, so every substream must build from its own fresh plan.
 * `WithStateOptionsFactory` is called once per substream. Substreams must not share persistent storage, each one owns its own checkpoints.
 * `ConfigureSubstream` runs for every substream and configures its connectors and any per substream settings on the underlying `FlowtideBuilder`.
