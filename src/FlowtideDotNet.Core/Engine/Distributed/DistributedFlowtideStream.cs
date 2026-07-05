@@ -61,10 +61,21 @@ namespace FlowtideDotNet.Core.Engine.Distributed
 
         public async ValueTask DisposeAsync()
         {
-            foreach (var substream in _substreams.Values)
+            // The substreams are stopped together first: disposing them one by one while
+            // the others keep running would have live substreams exchanging data with an
+            // already disposed peer. The stop is bounded internally by the drain timeout
+            // and the stop watchdogs, and failures are swallowed since dispose must always
+            // continue to the actual disposal.
+            try
             {
-                await substream.DisposeAsync();
+                await Task.WhenAll(_substreams.Values.Select(x => x.StopAsync()));
             }
+            catch
+            {
+            }
+            // Disposed in parallel like start, stop and delete, the substreams can wait on
+            // each other while shutting down.
+            await Task.WhenAll(_substreams.Values.Select(x => x.DisposeAsync().AsTask()));
         }
     }
 }
