@@ -61,6 +61,13 @@ namespace FlowtideDotNet.Orleans.Tests
             // primary silo when the surviving substreams call them.
             await _fixture.Cluster.StopSiloAsync(_fixture.Cluster.SecondarySilos[0]);
 
+            // The status call must survive the failure window: unreachable substream grains
+            // become Error entries instead of failing the whole call, and every started
+            // substream is always reported.
+            var statusDuringRecovery = await streamGrain.GetStatusAsync();
+            Assert.True(statusDuringRecovery.IsStarted);
+            Assert.Equal(4, statusDuringRecovery.Substreams.Count);
+
             // Data added after the silo stopped must still reach the result. The recovery can
             // take a few minutes, grains whose activations died with the silo are reactivated
             // by the keep alive reminder, which fires at most a minute after the failure, and

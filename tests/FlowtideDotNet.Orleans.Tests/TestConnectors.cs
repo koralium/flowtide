@@ -136,6 +136,12 @@ namespace FlowtideDotNet.Orleans.Tests
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
+            // Tables whose name starts with poison fail initialization, used to test that
+            // background start failures surface through the status API.
+            if (_tableName.StartsWith("poison", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Poisoned table {_tableName} fails initialization.");
+            }
             _emittedCount = 0;
             await RegisterTrigger("changes", TimeSpan.FromMilliseconds(100));
         }

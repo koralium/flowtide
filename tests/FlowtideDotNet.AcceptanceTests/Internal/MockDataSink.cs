@@ -172,6 +172,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
+            Logger.LogDebug("Mock sink recieved batch with {count} rows", msg.Data.Weights.Count);
 #if DEBUG_WRITE
             allInput!.WriteLine("New batch");
             foreach (var e in msg.Events)

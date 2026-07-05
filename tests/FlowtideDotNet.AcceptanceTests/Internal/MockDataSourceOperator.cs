@@ -46,12 +46,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public static Dictionary<string, string> TableWaitSignals { get; } = new Dictionary<string, string>();
 
         private readonly TimeSpan? _initialDataDelay;
+        private readonly bool _failInitialize;
 
-        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null) : base(options)
+        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false) : base(options)
         {
             this.readRelation = readRelation;
             this.mockDatabase = mockDatabase;
             _initialDataDelay = initialDataDelay;
+            _failInitialize = failInitialize;
 
             _table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
 
@@ -232,6 +234,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
+            if (_failInitialize)
+            {
+                throw new InvalidOperationException($"Mock source {readRelation.NamedTable.DotSeperated} is configured to fail initialization.");
+            }
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))
             {

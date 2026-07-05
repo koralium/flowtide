@@ -75,7 +75,9 @@ namespace FlowtideDotNet.Orleans.Tests
                 {
                     options.ResponseTimeout = TimeSpan.FromSeconds(10);
                 });
-                siloBuilder.Services.AddFlowtideOrleans(connectors =>
+                // The stream name aware overload so the per stream connector routing is
+                // exercised by every test.
+                siloBuilder.Services.AddFlowtideOrleans((streamName, connectors) =>
                 {
                     connectors.AddSource(new TestDataSourceFactory("*"));
                     connectors.AddSink(new TestDataSinkFactory("*"));

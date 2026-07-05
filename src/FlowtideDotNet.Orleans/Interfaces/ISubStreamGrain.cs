@@ -52,8 +52,8 @@ namespace FlowtideDotNet.Orleans.Interfaces
         Task StopStreamAsync();
 
         /// <summary>
-        /// Returns the status of this substream, including the failure of the last start
-        /// attempt when the stream could not start.
+        /// Returns the status of this substream, including the most recent stream failure,
+        /// which is how a stream that cannot start reports why.
         /// </summary>
         Task<SubstreamStatus> GetStatusAsync();
 

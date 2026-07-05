@@ -141,7 +141,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         return;
                     }
                     var msg = new StreamMessage<StreamEventBatch>(new StreamEventBatch(new EventBatchWeighted(_weights, _iterations, new EventBatchData(_columns))), time);
-                    _substreamCommunication.Logger.SubstreamTargetStoresBatch(_exchangeTargetId);
+                    _substreamCommunication.Logger.SubstreamTargetStoresBatch(_exchangeTargetId, msg.Data.Data.Weights.Count);
                     await _queue.Enqueue(msg);
                     NewColumns();
                 }

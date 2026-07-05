@@ -54,9 +54,12 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         /// dispatched by the stream itself, there is no need to call RunAsync on the
         /// substreams.
         ///
-        /// When any substream fails to start, the substreams that did start are stopped
-        /// before the failure is rethrown, so a failed start never leaves part of the
-        /// topology running.
+        /// Failures inside a substream, for example a connector that cannot initialize, do
+        /// not fail this call: the substream retries them in the background and they
+        /// surface through the failure listeners and <see cref="Health"/>. In the rare case
+        /// where starting itself throws, the substreams that did start are stopped before
+        /// the failure is rethrown so a failed start never leaves part of the topology
+        /// running.
         /// </summary>
         public async Task StartAsync()
         {

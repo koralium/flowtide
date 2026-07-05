@@ -373,7 +373,7 @@ namespace FlowtideDotNet.Orleans.Tests
                 Assert.True(status.IsStarted);
                 Assert.Equal(2, status.Substreams.Count);
                 Assert.All(status.Substreams, s => Assert.True(s.IsStarted));
-                Assert.All(status.Substreams, s => Assert.Null(s.StartFailure));
+                Assert.All(status.Substreams, s => Assert.Null(s.LastFailure));
                 if (status.Substreams.All(s => s.State == FlowtideDotNet.Base.Engine.StreamStateValue.Running))
                 {
                     break;
@@ -396,6 +396,53 @@ namespace FlowtideDotNet.Orleans.Tests
             status = await streamGrain.GetStatusAsync();
             Assert.False(status.IsStarted);
             Assert.Empty(status.Substreams);
+        }
+
+        /// <summary>
+        /// Starting returns success before the streams start in the background, a stream
+        /// that can never start, for example because a connector fails to initialize, must
+        /// surface the failure through the status API since the start call cannot. The
+        /// stream must also still stop cleanly.
+        /// </summary>
+        [Fact]
+        public async Task BackgroundStartFailureSurfacesInStatus()
+        {
+            // Tables starting with poison fail source initialization, see TestConnectors.
+            var sql = @"
+            CREATE TABLE poison_left (val any);
+            CREATE TABLE bsf_right (val any);
+
+            INSERT INTO bsf_out
+            SELECT l.val FROM poison_left l
+            INNER JOIN bsf_right r ON l.val = r.val;
+            ";
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_start_failure");
+            // The start call itself succeeds, the streams fail in the background
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            var deadline = DateTime.UtcNow.AddSeconds(60);
+            while (true)
+            {
+                var status = await streamGrain.GetStatusAsync();
+                Assert.True(status.IsStarted);
+                if (status.Substreams.Any(s => s.LastFailure != null && s.LastFailure.Contains("Poisoned")))
+                {
+                    break;
+                }
+                Assert.True(DateTime.UtcNow < deadline,
+                    $"No substream reported the start failure, statuses: [{string.Join(",", status.Substreams.Select(s => $"{s.SubstreamName}={s.State} failure={s.LastFailure != null}"))}]");
+                await Task.Delay(100);
+            }
+
+            // A stream whose substreams never started must still stop cleanly
+            var stopTask = streamGrain.StopStreamAsync();
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping the failed stream timed out");
+            await stopTask;
+
+            var stoppedStatus = await streamGrain.GetStatusAsync();
+            Assert.False(stoppedStatus.IsStarted);
         }
 
         /// <summary>

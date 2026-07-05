@@ -565,13 +565,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _ = Task.Run(async () =>
                     {
                         await Task.Delay(context._dataflowStreamOptions.StopDrainTimeout);
-                        bool stillWaiting;
-                        lock (context._checkpointLock)
-                        {
-                            stillWaiting = context._wantedState == StreamStateValue.Deleting &&
-                                context._deleteTask != null &&
-                                ReferenceEquals(context._deleteTask, observedDeleteTask);
-                        }
+                        bool stillWaiting = WatchdogStillWaiting(context, observedDeleteTask, forDelete: true);
                         if (stillWaiting && context.currentState == StreamStateValue.Running)
                         {
                             context._logger.LogWarning("Delete timed out waiting for the in-progress checkpoint on stream {stream}, failing the stream to complete the delete.", context.streamName);
@@ -589,6 +583,35 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             lock (context._checkpointLock)
             {
                 return forDelete ? context._deleteTask : context._stopTask;
+            }
+        }
+
+        /// <summary>
+        /// Watchdog check for a deferred stop or delete. The check normally runs under the
+        /// checkpoint lock, but that lock can itself be part of the hang the watchdog exists
+        /// to break, for example when a checkpoint cycle holds it while waiting on an
+        /// operator that can never make progress. Taking the lock unconditionally would then
+        /// silence the watchdog together with everything else. When the lock cannot be taken
+        /// within a second the fields are read without it: the wanted state and observed task
+        /// identity still gate the decision, and a stale read only risks a spurious recovery,
+        /// never a lost stop or delete.
+        /// </summary>
+        private static bool WatchdogStillWaiting(StreamContext context, TaskCompletionSource? observedTask, bool forDelete)
+        {
+            bool lockTaken = false;
+            try
+            {
+                Monitor.TryEnter(context._checkpointLock, TimeSpan.FromSeconds(1), ref lockTaken);
+                var wantedState = forDelete ? StreamStateValue.Deleting : StreamStateValue.NotStarted;
+                var task = forDelete ? context._deleteTask : context._stopTask;
+                return context._wantedState == wantedState && task != null && ReferenceEquals(task, observedTask);
+            }
+            finally
+            {
+                if (lockTaken)
+                {
+                    Monitor.Exit(context._checkpointLock);
+                }
             }
         }
 
@@ -612,16 +635,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _ = Task.Run(async () =>
                     {
                         await Task.Delay(context._dataflowStreamOptions.StopDrainTimeout);
-                        bool stillWaiting;
-                        lock (context._checkpointLock)
-                        {
-                            // The identity check makes sure the watchdog only fires for the
-                            // stop it was armed for, not for a later stop after the stream
-                            // was stopped and started again in the meantime.
-                            stillWaiting = context._wantedState == StreamStateValue.NotStarted &&
-                                context._stopTask != null &&
-                                ReferenceEquals(context._stopTask, observedStopTask);
-                        }
+                        // The identity check makes sure the watchdog only fires for the
+                        // stop it was armed for, not for a later stop after the stream
+                        // was stopped and started again in the meantime.
+                        bool stillWaiting = WatchdogStillWaiting(context, observedStopTask, forDelete: false);
                         if (stillWaiting && context.currentState == StreamStateValue.Running)
                         {
                             context._logger.LogWarning("Stop timed out waiting for the in-progress checkpoint on stream {stream}, failing the stream to complete the stop.", context.streamName);

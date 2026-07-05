@@ -182,6 +182,233 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// A stopped distributed stream can be started again on the SAME instance, resuming
+        /// from its state, and data added after the restart flows through, which also
+        /// verifies that the internal trigger tick loop survives a stop and restart.
+        /// </summary>
+        [Fact]
+        public async Task StopThenStartSameInstanceResumes()
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            }
+
+            async Task Bounded(Task task, string what)
+            {
+                var finished = await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(90)));
+                if (finished != task)
+                {
+                    foreach (var buffer in logBuffers)
+                    {
+                        buffer.Value.WriteToFile($"./debugwrite/e2e_inplace_restart_{buffer.Key}.log");
+                    }
+                    Assert.Fail($"{what} did not complete, see the e2e_inplace_restart log dumps.");
+                }
+                await task;
+            }
+
+            _stream = BuildHost("e2e_inplace_restart", NormalJoinSql, latestData, failures, loggerFactory: CreateBufferedLoggerFactory);
+            await Bounded(_stream.StartAsync(), "The first start");
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            await Bounded(_stream.StopAsync(), "The first stop");
+
+            // Start the same instance again and add new data, the sources must pick it up
+            // through their recurring triggers.
+            await Bounded(_stream.StartAsync(), "The restart on the same instance");
+            _generator.Generate(500);
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+            catch
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_inplace_restart_data_{buffer.Key}.log");
+                }
+                throw;
+            }
+
+            await Bounded(_stream.StopAsync(), "The final stop");
+
+            Assert.Empty(failures);
+        }
+
+        /// <summary>
+        /// Stopping a paused stream must complete. Pausing gates the data output of the
+        /// sources but locking events still flow, so the coordinated stop can drain the
+        /// substreams while the data itself stays frozen.
+        /// </summary>
+        [Fact]
+        public async Task PauseThenStopCompletes()
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            }
+
+            void DumpLogBuffers(string phase)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_pause_stop_{phase}_{buffer.Key}.log");
+                }
+            }
+
+            _stream = BuildHost("e2e_pause_stop", NormalJoinSql, latestData, failures, loggerFactory: CreateBufferedLoggerFactory);
+            var startTask = _stream.StartAsync();
+            var startFinished = await Task.WhenAny(startTask, Task.Delay(TimeSpan.FromSeconds(90)));
+            if (startFinished != startTask)
+            {
+                DumpLogBuffers("start");
+            }
+            Assert.True(startFinished == startTask, "Starting the stream timed out");
+            await startTask;
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            _stream.Pause();
+            // Data arriving while paused must not wedge the stop drain
+            _generator.Generate(500);
+
+            var stopTask = _stream.StopAsync();
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            if (finished != stopTask)
+            {
+                DumpLogBuffers("stop");
+            }
+            Assert.True(finished == stopTask, "Stopping a paused stream timed out, see the e2e_pause_stop log dumps");
+            await stopTask;
+
+            Assert.Empty(failures);
+        }
+
+        /// <summary>
+        /// Failures inside a substream, for example a connector that cannot initialize, do
+        /// not propagate out of StartAsync, the stream retries them in the background. They
+        /// must surface through the failure listener, and the stream must still stop
+        /// cleanly even though one substream never came up and is cycling through failure
+        /// retries.
+        /// </summary>
+        [Fact]
+        public async Task PartialStartFailureIsObservableAndStopCompletes()
+        {
+            _generator.Generate(100);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+            var testName = "e2e_start_failure";
+
+            _stream = new DistributedStreamBuilder(testName)
+                .AddPlan(() =>
+                {
+                    var sqlPlanBuilder = new SqlPlanBuilder();
+                    sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+                    sqlPlanBuilder.Sql(NormalJoinSql);
+                    return sqlPlanBuilder.GetPlan();
+                })
+                .WithStateOptionsFactory(substreamName => CreateStateOptions(testName, substreamName))
+                .AddConnectorManager(substreamName =>
+                {
+                    var connectorManager = new ConnectorManager();
+                    connectorManager.AddSource(new MockSourceFactory("*", _db, false, failInitialize: substreamName == "substream_1"));
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
+                    return connectorManager;
+                })
+                .ConfigureSubstream((substreamName, substreamBuilder) =>
+                {
+                    substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                    substreamBuilder.WithLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                    {
+                        b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                        b.AddProvider(provider);
+                    }));
+                })
+                .DistributeAutomatically(2)
+                .Build();
+
+            void DumpLogBuffers(string phase)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_start_failure_{phase}_{buffer.Key}.log");
+                }
+            }
+
+            // StartAsync completes even though a substream cannot start, its failures are
+            // retried in the background.
+            var startTask = _stream.StartAsync();
+            var startFinished = await Task.WhenAny(startTask, Task.Delay(TimeSpan.FromSeconds(90)));
+            if (startFinished != startTask)
+            {
+                DumpLogBuffers("start");
+            }
+            Assert.True(startFinished == startTask, "StartAsync did not complete, see the e2e_start_failure log dumps.");
+            await startTask;
+
+            // The failure must surface through the failure listener.
+            var deadline = DateTime.UtcNow.AddSeconds(30);
+            while (!failures.Any(f => f.Substream == "substream_1"))
+            {
+                if (DateTime.UtcNow >= deadline)
+                {
+                    DumpLogBuffers("nofailure");
+                    Assert.Fail("The failing substream never reported a failure through the failure listener.");
+                }
+                await Task.Delay(100);
+            }
+
+            // The stream must stop cleanly even though substream_1 is cycling through
+            // failure retries and never came up.
+            var stopTask = _stream.StopAsync();
+            var stopFinished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(90)));
+            if (stopFinished != stopTask)
+            {
+                DumpLogBuffers("stop");
+            }
+            Assert.True(stopFinished == stopTask, "Stopping with a failing substream did not complete, see the e2e_start_failure log dumps.");
+            await stopTask;
+
+            // No substream may be left running after the stop.
+            deadline = DateTime.UtcNow.AddSeconds(10);
+            while (true)
+            {
+                if (_stream.Substreams.Values.All(x => x.State != FlowtideDotNet.Base.Engine.StreamStateValue.Running))
+                {
+                    break;
+                }
+                Assert.True(DateTime.UtcNow < deadline,
+                    $"Substreams still running after the stop: [{string.Join(",", _stream.Substreams.Select(kv => $"{kv.Key}={kv.Value.State}"))}]");
+                await Task.Delay(100);
+            }
+        }
+
+        /// <summary>
         /// A substream whose startup takes much longer than its peers must not fail and
         /// recover just because a peer barrier arrives while it is still starting. The peer
         /// finishes startup fast, checkpoints, and its barrier reaches the slow substreams
@@ -278,7 +505,18 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            // Ring buffers armed after a data stall under full suite load (2026-07-05, the
+            // sink sat at 950 of 1000 rows for the whole wait after a pause and resume).
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
             var testName = "e2e_pause_resume";
+
+            void DumpLogBuffers(string phase)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_pause_resume_{phase}_{buffer.Key}.log");
+                }
+            }
 
             _stream = new DistributedStreamBuilder(testName)
                 .AddPlan(() =>
@@ -303,6 +541,12 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                    substreamBuilder.WithLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                    {
+                        b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                        b.AddProvider(provider);
+                    }));
                 })
                 .DistributeAutomatically(2)
                 .Build();
@@ -316,7 +560,15 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             _generator.Generate(500);
             _stream.Resume();
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+            catch
+            {
+                DumpLogBuffers("afterresume");
+                throw;
+            }
 
             Assert.Empty(failures);
         }

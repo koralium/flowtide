@@ -234,10 +234,12 @@ namespace FlowtideDotNet.Orleans.Grains
             DeactivateOnIdle();
         }
 
-        // Failure of the last background start attempt on this activation, surfaced through
-        // GetStatusAsync. Written from the start task on the thread pool, read from grain
-        // turns.
-        private volatile string? _lastStartFailure;
+        // The most recent stream failure on this activation, surfaced through
+        // GetStatusAsync. Failures inside the stream, for example a connector that cannot
+        // initialize, do not propagate out of StartAsync, the stream retries them in the
+        // background, so they are captured through the failure listener. Written from
+        // stream threads, read from grain turns.
+        private volatile string? _lastFailure;
 
         public Task<SubstreamStatus> GetStatusAsync()
         {
@@ -248,7 +250,7 @@ namespace FlowtideDotNet.Orleans.Grains
                 IsStarted = _state.RecordExists,
                 State = stream?.State,
                 Health = stream?.Health,
-                StartFailure = _lastStartFailure
+                LastFailure = _lastFailure
             });
         }
 
@@ -409,6 +411,10 @@ namespace FlowtideDotNet.Orleans.Grains
             var scheduler = new Base.Engine.DefaultStreamScheduler();
             flowtideBuilder.WithScheduler(scheduler);
             flowtideBuilder.WithLoggerFactory(_loggerFactory);
+            // Failures inside the stream are retried in the background and never propagate
+            // to a grain call, the listener captures them so GetStatusAsync can report why
+            // a stream does not become healthy.
+            flowtideBuilder.WithFailureListener(e => _lastFailure = e.ToString());
             if (_state.State.SubstreamName != null)
             {
                 flowtideBuilder.SetDistributedOptions(new DistributedOptions(
@@ -430,7 +436,7 @@ namespace FlowtideDotNet.Orleans.Grains
             // and run the streams state machine as activation work items, a single
             // synchronous wait in that machinery then blocks the whole activation, no grain
             // call, not even from other substreams fetching data, is served anymore.
-            _lastStartFailure = null;
+            _lastFailure = null;
             _ = Task.Run(async () =>
             {
                 try
@@ -445,7 +451,7 @@ namespace FlowtideDotNet.Orleans.Grains
                     // but without this log the root cause would be undiagnosable. The failure
                     // is also kept so GetStatusAsync can surface it to the caller, the start
                     // call itself already returned success.
-                    _lastStartFailure = e.ToString();
+                    _lastFailure = e.ToString();
                     logger.LogError(e, "Starting the stream for substream {substream} failed.", this.GetPrimaryKeyString());
                     return;
                 }

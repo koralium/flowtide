@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
@@ -227,9 +228,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _executor.OnWatermark(watermark);
         }
 
-        protected override IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
+        protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
         {
-            return _executor.PartitionData(data, time);
+            Logger.ExchangePartitionInput(Name, data.Data.Weights.Count);
+            await foreach (var partition in _executor.PartitionData(data, time))
+            {
+                Logger.ExchangePartitionOutput(Name, partition.Value.Data.Data.Weights.Count, partition.Key);
+                yield return partition;
+            }
         }
 
         void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string, ILockingEvent?> checkpointDone, Action<string, ILockingEvent?> dependenciesDone)

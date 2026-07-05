@@ -46,7 +46,7 @@ await streamGrain.StartStreamAsync(new StartStreamRequest(sqlText, substreamCoun
 var status = await streamGrain.GetStatusAsync();
 foreach (var substream in status.Substreams)
 {
-    Console.WriteLine($"{substream.SubstreamName}: {substream.State} {substream.Health} {substream.StartFailure}");
+    Console.WriteLine($"{substream.SubstreamName}: {substream.State} {substream.Health} {substream.LastFailure}");
 }
 
 // The grain remembers which substreams it started, the coordinated stop
@@ -58,7 +58,7 @@ Plans that use [SQL substream statements](sqlsubstreams.md) run one grain per de
 
 A started stream keeps running the plan it was started with: starting the same stream again with the identical request is a no-op, starting it with a different SQL text or substream count throws. To deploy a new plan version, stop the stream and start it with the new SQL.
 
-`GetStatusAsync` is also how background start failures surface. The start call returns success once the substream grains accepted the start, the streams themselves start asynchronously — a stream that cannot start, for example because its storage is unreachable, reports the failure in `StartFailure` and is retried by the keep alive watchdog.
+`GetStatusAsync` is also how background failures surface. The start call returns success once the substream grains accepted the start, the streams themselves start asynchronously — a stream that cannot start, for example because a connector cannot initialize, retries in the background and reports the reason in `LastFailure`.
 
 ## Requirements
 

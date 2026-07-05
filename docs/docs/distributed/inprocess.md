@@ -41,7 +41,7 @@ await stream.DisposeAsync();
 
 ## Notes
 
-* `StartAsync` also drives the recurring connector triggers of all substreams, sources that poll for changes work without calling `RunAsync` on the individual substreams. When any substream fails to start, the substreams that did start are stopped before the failure is rethrown, a failed start never leaves part of the topology running.
+* `StartAsync` also drives the recurring connector triggers of all substreams, sources that poll for changes work without calling `RunAsync` on the individual substreams. Failures inside a substream, for example a connector that cannot initialize, do not fail the start call: the substream retries them in the background, observe them through `WithFailureListener` on the substream builders and through `Health`.
 * `AddPlan` takes a plan **factory**, not a plan instance. Building a stream modifies the plan in place through connector hooks, so every substream must build from its own fresh plan.
 * `WithStateOptionsFactory` is called once per substream. Substreams must not share persistent storage, each one owns its own checkpoints.
 * `AddConnectorManager` takes a factory called once per substream, so connector factories holding per stream state are never shared between substreams.
