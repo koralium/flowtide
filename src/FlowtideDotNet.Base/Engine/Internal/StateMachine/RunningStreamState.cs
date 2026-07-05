@@ -303,13 +303,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
-            _context.CheckForPause();
 
             if (_context.Status != StreamStatus.Failing)
             {
                 // Failure status is removed when a checkpoint has been made, since a failure could happen in the middle of doing a checkpoint
                 _context.SetStatus(StreamStatus.Running);
             }
+
+            // The vertex gates are aligned with the pause marker instead of blocking here: a
+            // stream that was paused before it started or while it recovered comes up with
+            // its data paths gated and its lifecycle machinery running, and gates left over
+            // on reused operators from a resume in a non running state are released.
+            _context.SyncPauseGates();
 
             _context._logger.StreamIsInRunningState(_context.streamName);
             lock (_lock)
@@ -659,22 +664,5 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return Task.CompletedTask;
         }
 
-        public override void Pause()
-        {
-            Debug.Assert(_context != null, nameof(_context));
-            _context.ForEachBlock((id, block) =>
-            {
-                block.Pause();
-            });
-        }
-
-        public override void Resume()
-        {
-            Debug.Assert(_context != null, nameof(_context));
-            _context.ForEachBlock((id, block) =>
-            {
-                block.Resume();
-            });
-        }
     }
 }

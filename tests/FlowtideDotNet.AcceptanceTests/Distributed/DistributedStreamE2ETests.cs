@@ -574,6 +574,198 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// Builds the standard armed host for the pause matrix tests: buffered trace logs
+        /// per substream, dumped through the returned action when a phase fails.
+        /// </summary>
+        private (DistributedFlowtideStream Stream, Action<string> Dump) BuildArmedHost(
+            string testName,
+            ConcurrentDictionary<string, EventBatchData> latestData,
+            ConcurrentBag<(string Substream, Exception? Exception)> failures)
+        {
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+            var stream = BuildHost(testName, NormalJoinSql, latestData, failures, loggerFactory: substreamName =>
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            });
+            return (stream, phase =>
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/{testName}_{phase}_{buffer.Key}.log");
+                }
+            });
+        }
+
+        /// <summary>
+        /// Asserts that the sink stays unchanged for the duration, used to verify that a
+        /// paused stream emits nothing. The counts are compared, a paused stream that leaks
+        /// data would grow the sink.
+        /// </summary>
+        private static async Task AssertSinkUnchanged(ConcurrentDictionary<string, EventBatchData> latestData, string substreamName, TimeSpan duration)
+        {
+            int CountOf() => latestData.TryGetValue(substreamName, out var d) ? d.Count : 0;
+            var before = CountOf();
+            await Task.Delay(duration);
+            var after = CountOf();
+            Assert.True(before == after, $"The sink changed while the stream was paused: {before} -> {after} rows.");
+        }
+
+        /// <summary>
+        /// A crash while the stream is paused must not break the pause: no new data may
+        /// reach the sink until the resume, and after the resume the stream recovers and
+        /// produces the complete result.
+        /// </summary>
+        [Fact]
+        public async Task PauseSurvivesCrashRecovery()
+        {
+            _generator.Generate(500);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var (stream, dump) = BuildArmedHost("e2e_pause_crash", latestData, failures);
+            _stream = stream;
+
+            await _stream.StartAsync();
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            _stream.Pause();
+            // Crash a source while paused, then add data. Nothing may reach the sink until
+            // the resume, regardless of whether the recovery runs before or after it.
+            await _stream.Substreams["substream_0"].CallTrigger("crash", null);
+            _generator.Generate(300);
+            await AssertSinkUnchanged(latestData, "substream_0", TimeSpan.FromSeconds(4));
+
+            _stream.Resume();
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+            }
+            catch
+            {
+                dump("afterresume");
+                throw;
+            }
+            Assert.NotEmpty(failures);
+        }
+
+        /// <summary>
+        /// Deleting a paused stream must complete, delete supersedes the pause like stop.
+        /// </summary>
+        [Fact]
+        public async Task DeleteWhilePausedCompletes()
+        {
+            _generator.Generate(500);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var (stream, dump) = BuildArmedHost("e2e_pause_delete", latestData, failures);
+            _stream = stream;
+
+            await _stream.StartAsync();
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            _stream.Pause();
+            // Data arriving while paused must not wedge the delete
+            _generator.Generate(300);
+
+            var deleteTask = _stream.DeleteAsync();
+            var finished = await Task.WhenAny(deleteTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            if (finished != deleteTask)
+            {
+                dump("delete");
+            }
+            Assert.True(finished == deleteTask, "Deleting a paused stream timed out, see the e2e_pause_delete log dumps");
+            await deleteTask;
+        }
+
+        /// <summary>
+        /// A stream paused before it is started must come up paused: the status is Paused
+        /// from the pause call on, and no data may reach the sink until the resume. Without
+        /// re-applying the pause when the stream reaches its running state, the pause call
+        /// only marks the status and the stream runs with open gates, silently ignoring the
+        /// operators intent.
+        /// </summary>
+        [Fact]
+        public async Task PauseBeforeStartHoldsDataUntilResume()
+        {
+            _generator.Generate(500);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var (stream, dump) = BuildArmedHost("e2e_pause_before_start", latestData, failures);
+            _stream = stream;
+
+            _stream.Pause();
+            var startTask = _stream.StartAsync();
+            var startFinished = await Task.WhenAny(startTask, Task.Delay(TimeSpan.FromSeconds(90)));
+            if (startFinished != startTask)
+            {
+                dump("start");
+            }
+            Assert.True(startFinished == startTask, "Starting a paused stream timed out, see the e2e_pause_before_start log dumps");
+            await startTask;
+
+            // A stream started while paused is frozen from the beginning: the substreams
+            // gate their data paths as they come up, which also freezes the startup
+            // alignment between them, so nothing reaches the sink, not even the initial
+            // state. Data added during the pause is held as well.
+            _generator.Generate(300);
+            await AssertSinkUnchanged(latestData, "substream_0", TimeSpan.FromSeconds(4));
+
+            _stream.Resume();
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+            catch
+            {
+                dump("afterresume");
+                throw;
+            }
+            Assert.Empty(failures);
+        }
+
+        /// <summary>
+        /// Rapid pause and resume cycles with data arriving in every pause window must not
+        /// lose or duplicate anything, exercising the held back sends being released on
+        /// every resume.
+        /// </summary>
+        [Fact]
+        public async Task RapidPauseResumeCyclesKeepDataComplete()
+        {
+            _generator.Generate(500);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var (stream, dump) = BuildArmedHost("e2e_pause_cycles", latestData, failures);
+            _stream = stream;
+
+            await _stream.StartAsync();
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            for (int cycle = 0; cycle < 8; cycle++)
+            {
+                _stream.Pause();
+                _generator.Generate(60);
+                await Task.Delay(50);
+                _stream.Resume();
+                await Task.Delay(50);
+            }
+
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+            catch
+            {
+                dump("final");
+                throw;
+            }
+            Assert.Empty(failures);
+        }
+
+        /// <summary>
         /// A normal aggregation plan is distributed automatically, each substream aggregates
         /// its own hash partition of the groups.
         /// </summary>

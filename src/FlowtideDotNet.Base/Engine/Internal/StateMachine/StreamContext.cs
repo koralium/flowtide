@@ -847,9 +847,24 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return;
                 }
                 _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                _state!.Pause();
                 _statusBeforePause = Status;
                 SetStatus(StreamStatus.Paused);
+            }
+            // The pause marker is the source of truth, the vertex gates are derived from it:
+            // they are applied here for the vertices that exist right now, and re-applied by
+            // SyncPauseGates when the stream enters the running state, which covers a pause
+            // that was requested before the stream started or while it was failing or
+            // starting, states whose vertices are rebuilt or not yet present.
+            ForEachBlock((id, block) => block.Pause());
+            bool cleared;
+            lock (_pauseLock)
+            {
+                cleared = _pauseSource == null;
+            }
+            if (cleared)
+            {
+                // A concurrent resume won the race after the gates were applied, undo them.
+                ForEachBlock((id, block) => block.Resume());
             }
         }
 
@@ -857,12 +872,50 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             lock (_pauseLock)
             {
-                if (_pauseSource != null)
+                if (_pauseSource == null)
                 {
-                    SetStatus(_statusBeforePause);
-                    _pauseSource.SetResult();
-                    _pauseSource = null;
-                    _state!.Resume();
+                    return;
+                }
+                SetStatus(_statusBeforePause);
+                _pauseSource.SetResult();
+                _pauseSource = null;
+            }
+            // The gates are released directly from the block registry instead of through the
+            // current state: a paused stream that failed parks its recovery until the resume,
+            // so the state here can be Failure or Starting whose Resume used to be a no-op,
+            // while the vertex gates survive on the reused operator instances across the
+            // block rebuild. Releasing a vertex that is not paused is a no-op.
+            ForEachBlock((id, block) => block.Resume());
+        }
+
+        /// <summary>
+        /// Applies the vertex gates when the pause marker is set, called when the stream
+        /// enters the running state. Operators are rebuilt or not yet present while the
+        /// stream is starting or failing, so a pause requested in those states only marks
+        /// the context and must be applied here. When the marker is not set nothing is
+        /// touched: releasing gates here would also release the stop freeze of a
+        /// concurrent stop cycle, which shares the ingress gate, and stale pause gates
+        /// cannot exist since <see cref="Resume"/> releases them independent of the state.
+        /// </summary>
+        internal void SyncPauseGates()
+        {
+            bool paused;
+            lock (_pauseLock)
+            {
+                paused = _pauseSource != null;
+            }
+            if (paused)
+            {
+                ForEachBlock((id, block) => block.Pause());
+                SetStatus(StreamStatus.Paused);
+                lock (_pauseLock)
+                {
+                    paused = _pauseSource != null;
+                }
+                if (!paused)
+                {
+                    // A concurrent resume won the race, undo the gates.
+                    ForEachBlock((id, block) => block.Resume());
                 }
             }
         }

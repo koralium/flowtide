@@ -707,11 +707,12 @@ namespace FlowtideDotNet.Base.Vertices
 
         /// <summary>
         /// Temporarily stops the data output generation for the connected streams.
+        /// A vertex that has not been initialized yet has no output to gate, the gates are
+        /// aligned with the pause state again when the stream enters its running state.
         /// </summary>
         public void Pause()
         {
-            Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
-            _ingressState._output.Stop();
+            _ingressState?._output?.Stop();
         }
 
         /// <summary>
@@ -719,8 +720,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Resume()
         {
-            Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
-            _ingressState._output.Resume();
+            _ingressState?._output?.Resume();
         }
 
         /// <summary>
