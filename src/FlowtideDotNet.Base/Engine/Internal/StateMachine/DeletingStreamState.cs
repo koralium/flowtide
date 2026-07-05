@@ -123,7 +123,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task StopAsync()
         {
-            throw new NotSupportedException("Stream is being deleted");
+            // A delete implies the stop. The stop task the caller awaits was created before
+            // this state was consulted, the deleted state completes it together with the
+            // delete task when the delete has finished.
+            return Task.CompletedTask;
         }
     }
 }

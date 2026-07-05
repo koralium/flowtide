@@ -40,7 +40,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task DeleteAsync()
         {
-            throw new NotSupportedException("Stream is stopping.");
+            Debug.Assert(_context != null, nameof(_context));
+            // The stop is already draining the substreams and must not race a delete over
+            // the same blocks. The wish is honored when the stop finishes in the not started
+            // state, which runs the delete against the stopped stream, the delete task the
+            // caller awaits completes when the delete is done.
+            _context._wantedState = StreamStateValue.Deleting;
+            return Task.CompletedTask;
         }
 
         public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)

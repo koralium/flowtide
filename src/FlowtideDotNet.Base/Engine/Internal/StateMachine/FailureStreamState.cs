@@ -149,6 +149,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             await Task.Delay(TimeSpan.FromMilliseconds(500));
 
+            // A pending delete takes precedence over a pending stop: the wish holds only the
+            // last requested value, but a created delete task means a caller awaits a delete,
+            // and a delete implies the stop, the deleted state completes both tasks.
+            bool deletePending;
+            lock (_context._checkpointLock)
+            {
+                deletePending = _context._deleteTask != null;
+            }
+            if (deletePending || _context._wantedState == StreamStateValue.Deleting)
+            {
+                // A delete was requested during the failure handling, the cleanup has
+                // finished so the delete can run now without racing it.
+                await TransitionTo(StreamStateValue.Deleting);
+                return;
+            }
+
             // Check if the stream should be in not started
             if (_context._wantedState == StreamStateValue.NotStarted)
             {
@@ -166,14 +182,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // Transition to not started, the stream must not fall through and restart
                 // after honoring the stop.
                 await TransitionTo(StreamStateValue.NotStarted);
-                return;
-            }
-
-            if (_context._wantedState == StreamStateValue.Deleting)
-            {
-                // A delete was requested during the failure handling, the cleanup has
-                // finished so the delete can run now without racing it.
-                await TransitionTo(StreamStateValue.Deleting);
                 return;
             }
 

@@ -2496,6 +2496,36 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }
         }
 
+        /// <summary>
+        /// Deletes fired right after generating data, so the delete frequently lands while a
+        /// checkpoint is being written. The delete must wait for the checkpoint instead of
+        /// disposing the state manager under it, and a concurrent stop must also complete
+        /// since the delete implies the stop.
+        /// </summary>
+        [Fact]
+        public async Task DeleteDuringActiveCheckpointCompletes()
+        {
+            _generator.Generate(300);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            _stream = BuildHost("e2e_delete_active_checkpoint", NormalJoinSql, latestData, failures);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // New data makes checkpoints run, the delete lands in the middle of them
+            _generator.Generate(300);
+            var deleteTask = _stream.DeleteAsync();
+            var stopTask = _stream.StopAsync();
+
+            var all = Task.WhenAll(deleteTask, stopTask);
+            var finished = await Task.WhenAny(all, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == all, "Delete and stop during an active checkpoint did not complete");
+            await all;
+        }
+
         private static Storage.StateManager.StateManagerOptions CreateStateOptions(string testName, string substreamName)
         {
             return new Storage.StateManager.StateManagerOptions()

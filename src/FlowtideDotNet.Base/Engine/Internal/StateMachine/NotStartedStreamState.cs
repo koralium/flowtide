@@ -57,6 +57,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
             _context.SetStatus(StreamStatus.Stopped);
+
+            // A delete requested while the stream was stopping is honored now that the stop
+            // has finished, the delete task the caller awaits would otherwise never complete.
+            bool deletePending;
+            lock (_context._checkpointLock)
+            {
+                deletePending = _context._deleteTask != null;
+            }
+            if (deletePending)
+            {
+                return DeleteAsync();
+            }
             return Task.CompletedTask;
         }
 

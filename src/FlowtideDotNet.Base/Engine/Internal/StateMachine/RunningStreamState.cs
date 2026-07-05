@@ -231,7 +231,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private void CheckpointCompleted()
         {
             Debug.Assert(_context != null, nameof(_context));
-            bool transitionToStopping = false;
+            StreamStateValue? wishTransition = null;
             lock (_context._checkpointLock)
             {
                 if (_context.Status == StreamStatus.Failing)
@@ -248,19 +248,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _currentCheckpoint = null;
                     _context._currentProvidedCheckpointVersion = default;
 
-                    if (_context._wantedState == StreamStateValue.NotStarted)
+                    if (_context._wantedState == StreamStateValue.NotStarted ||
+                        _context._wantedState == StreamStateValue.Deleting)
                     {
-                        // A stop was requested, a completed cycle is a safe point to honor
-                        // it. This must not depend on a checkpoint being in progress: the
-                        // request can arrive while the stream waits for its initial data,
-                        // whose completion also lands here without a running checkpoint,
-                        // and the wish would otherwise never be picked up.
+                        // A stop or delete was requested, a completed cycle is a safe point
+                        // to honor it. This must not depend on a checkpoint being in
+                        // progress: the request can arrive while the stream waits for its
+                        // initial data, whose completion also lands here without a running
+                        // checkpoint, and the wish would otherwise never be picked up.
                         _doingCheckpoint = false;
                         // The transition takes the context lock and must not run under the
                         // checkpoint lock: checkpoint done acknowledgements from other
                         // substreams take the context lock first and the checkpoint lock
                         // second, transitioning here would deadlock with them.
-                        transitionToStopping = true;
+                        wishTransition = _context._wantedState == StreamStateValue.Deleting
+                            ? StreamStateValue.Deleting
+                            : StreamStateValue.Stopping;
                     }
                     else
                     {
@@ -285,9 +288,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     }
                 }
             }
-            if (transitionToStopping)
+            if (wishTransition.HasValue)
             {
-                TransitionTo(StreamStateValue.Stopping);
+                TransitionTo(wishTransition.Value);
             }
         }
 
@@ -378,17 +381,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            bool stopInsteadOfCheckpoint = false;
+            StreamStateValue? wishTransition = null;
             lock (_context._checkpointLock)
             {
-                // If we are stopping, we should not do a checkpoint
-                if (_context._wantedState == StreamStateValue.NotStarted)
+                // If we are stopping or deleting, we should not do a checkpoint
+                if (_context._wantedState == StreamStateValue.NotStarted ||
+                    _context._wantedState == StreamStateValue.Deleting)
                 {
-                    // A stop has been requested, no new checkpoint should start. The stop
-                    // itself must be honored here: the request can arrive while the stream is
-                    // still starting or between checkpoints, where nothing else ever picks
-                    // the wish up, silently dropping the trigger would then leave the stream
-                    // running forever with a stop caller that never completes.
+                    // A stop or delete has been requested, no new checkpoint should start.
+                    // The wish itself must be honored here: the request can arrive while the
+                    // stream is still starting or between checkpoints, where nothing else
+                    // ever picks the wish up, silently dropping the trigger would then leave
+                    // the stream running forever with a caller that never completes.
                     if (isScheduled)
                     {
                         _context._scheduleCheckpointTask = null;
@@ -397,18 +401,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     }
                     if (_doingCheckpoint)
                     {
-                        // A checkpoint is already in progress, its completion transitions to
-                        // stopping.
+                        // A checkpoint is already in progress, its completion honors the
+                        // wish.
                         return Task.CompletedTask;
                     }
-                    stopInsteadOfCheckpoint = true;
+                    wishTransition = _context._wantedState == StreamStateValue.Deleting
+                        ? StreamStateValue.Deleting
+                        : StreamStateValue.Stopping;
                 }
             }
-            if (stopInsteadOfCheckpoint)
+            if (wishTransition.HasValue)
             {
                 // The transition takes the context lock and must run outside the checkpoint
                 // lock, see CheckpointCompleted.
-                TransitionTo(StreamStateValue.Stopping);
+                TransitionTo(wishTransition.Value);
                 return Task.CompletedTask;
             }
             return TriggerCheckpoint_StartCore(isScheduled);
@@ -418,9 +424,45 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
             Checkpoint? checkpoint = null;
+            StreamStateValue? wishTransition = null;
+            bool wishWaitsForCheckpoint = false;
             lock (_context._checkpointLock)
             {
-                _doingCheckpoint = true;
+                // The wish is re-checked under the lock: a stop or delete can set it between
+                // the callers check and this point, starting a checkpoint here would then run
+                // it concurrently with the stopping or deleting state working on the same
+                // blocks and state manager.
+                if (_context._wantedState == StreamStateValue.NotStarted ||
+                    _context._wantedState == StreamStateValue.Deleting)
+                {
+                    if (_doingCheckpoint)
+                    {
+                        // A checkpoint is already in progress, its completion honors the wish.
+                        wishWaitsForCheckpoint = true;
+                    }
+                    else
+                    {
+                        wishTransition = _context._wantedState == StreamStateValue.Deleting
+                            ? StreamStateValue.Deleting
+                            : StreamStateValue.Stopping;
+                    }
+                }
+                else
+                {
+                    _doingCheckpoint = true;
+                }
+            }
+            if (wishTransition.HasValue)
+            {
+                TransitionTo(wishTransition.Value);
+                return Task.CompletedTask;
+            }
+            if (wishWaitsForCheckpoint)
+            {
+                return Task.CompletedTask;
+            }
+            lock (_context._checkpointLock)
+            {
                 // Only support a single concurrent checkpoint for now for simplicity
                 if (_context.checkpointTask != null)
                 {
@@ -496,7 +538,49 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task DeleteAsync()
         {
+            Debug.Assert(_context != null, nameof(_context));
+            _context._wantedState = StreamStateValue.Deleting;
+            lock (_context._checkpointLock)
+            {
+                if (_doingCheckpoint)
+                {
+                    // A checkpoint is in progress, transitioning to deleting now would run
+                    // the delete concurrently with the state manager checkpoint that the
+                    // checkpoint done task is still writing, corrupting the state manager.
+                    // The wish is honored when the checkpoint completes, with the same
+                    // bounded watchdog as a deferred stop since the checkpoint can hang
+                    // forever when another substream died mid cycle.
+                    _context._logger.LogDebug("Delete requested while a checkpoint is in progress, the delete runs when the checkpoint completes");
+                    var context = _context;
+                    var observedDeleteTask = ObservedTask(context, forDelete: true);
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(context._dataflowStreamOptions.StopDrainTimeout);
+                        bool stillWaiting;
+                        lock (context._checkpointLock)
+                        {
+                            stillWaiting = context._wantedState == StreamStateValue.Deleting &&
+                                context._deleteTask != null &&
+                                ReferenceEquals(context._deleteTask, observedDeleteTask);
+                        }
+                        if (stillWaiting && context.currentState == StreamStateValue.Running)
+                        {
+                            context._logger.LogWarning("Delete timed out waiting for the in-progress checkpoint on stream {stream}, failing the stream to complete the delete.", context.streamName);
+                            await context.OnFailure(new OperationCanceledException("The delete timed out waiting for a checkpoint to complete."));
+                        }
+                    });
+                    return Task.CompletedTask;
+                }
+            }
             return TransitionTo(StreamStateValue.Deleting);
+        }
+
+        private static TaskCompletionSource? ObservedTask(StreamContext context, bool forDelete)
+        {
+            lock (context._checkpointLock)
+            {
+                return forDelete ? context._deleteTask : context._stopTask;
+            }
         }
 
         public override Task StopAsync()
@@ -515,13 +599,19 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     // the stop is still pending after the drain timeout the stream fails so
                     // the failure handling honors the stop and completes the stop task.
                     var context = _context;
+                    var observedStopTask = ObservedTask(context, forDelete: false);
                     _ = Task.Run(async () =>
                     {
                         await Task.Delay(context._dataflowStreamOptions.StopDrainTimeout);
                         bool stillWaiting;
                         lock (context._checkpointLock)
                         {
-                            stillWaiting = context._wantedState == StreamStateValue.NotStarted && context._stopTask != null;
+                            // The identity check makes sure the watchdog only fires for the
+                            // stop it was armed for, not for a later stop after the stream
+                            // was stopped and started again in the meantime.
+                            stillWaiting = context._wantedState == StreamStateValue.NotStarted &&
+                                context._stopTask != null &&
+                                ReferenceEquals(context._stopTask, observedStopTask);
                         }
                         if (stillWaiting && context.currentState == StreamStateValue.Running)
                         {

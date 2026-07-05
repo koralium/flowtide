@@ -324,8 +324,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // The wait completed but the local checkpoint has already been consumed,
                         // the peer barrier cannot be paired and must not be dropped silently, the
                         // barrier would never reach the egress operators and the running
-                        // checkpoint would never complete.
+                        // checkpoint would never complete. A new local checkpoint is requested
+                        // so the next cycle covers the unpaired barrier.
                         Logger.LogWarning("Substream read {name} pairing wait completed without a local checkpoint for the other substreams barrier with time {time}, requesting a new checkpoint.", Name, checkpointEvent.CheckpointTime);
+                        ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                     }
                     if (inStreamCheckpoint != null)
                     {

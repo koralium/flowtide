@@ -67,6 +67,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context._deleteTask.SetResult();
                     _context._deleteTask = null;
                 }
+                // A delete implies the stop, a stop that raced the delete must also
+                // complete or its caller waits forever.
+                if (_context._stopTask != null)
+                {
+                    _context._stopTask.SetResult();
+                    _context._stopTask = null;
+                }
             }
             return Task.CompletedTask;
         }
