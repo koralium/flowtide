@@ -289,14 +289,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // Dequeuing advances an index but the queue page still references the
                     // event and returns its rent when the page is disposed, so the event is
                     // rented again for the receiver.
-                    if (val is StreamMessage<StreamEventBatch> streamMessage && streamMessage.Data is IRentable rentableData)
-                    {
-                        rentableData.Rent(1);
-                    }
-                    else if (val is IRentable rentable)
-                    {
-                        rentable.Rent(1);
-                    }
+                    StreamEventRent.Rent(val);
                     if (val is StopStreamCheckpoint)
                     {
                         // The other substream has now received everything up to and including

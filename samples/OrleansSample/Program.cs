@@ -21,6 +21,9 @@ builder.Services.AddOrleans(b =>
 {
     b.UseLocalhostClustering();
     b.AddMemoryGrainStorage("stream_metadata");
+    // Backs the substream keep alive reminder, use a persistent reminder
+    // service in production so streams restart after a full cluster restart.
+    b.UseInMemoryReminderService();
     b.Services.AddFlowtideOrleans(c =>
     {
         c.AddSource(new DummyReadFactory("*"));

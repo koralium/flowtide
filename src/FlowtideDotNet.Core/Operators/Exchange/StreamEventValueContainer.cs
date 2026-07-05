@@ -51,26 +51,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private static void RentEvent(IStreamEvent value)
         {
-            if (value is StreamMessage<StreamEventBatch> streamMessage)
-            {
-                streamMessage.Data.Rent(1);
-            }
-            else if (value is IRentable rentable)
-            {
-                rentable.Rent(1);
-            }
+            StreamEventRent.Rent(value);
         }
 
         private static void ReturnEvent(IStreamEvent value)
         {
-            if (value is StreamMessage<StreamEventBatch> streamMessage)
-            {
-                streamMessage.Data.Return();
-            }
-            else if (value is IRentable rentable)
-            {
-                rentable.Return();
-            }
+            StreamEventRent.Return(value);
         }
 
         public void AddRangeFrom(IValueContainer<IStreamEvent> container, int start, int count)

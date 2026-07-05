@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             for (int i = 0; i < events.Count; i++)
             {
-                SubstreamCommunicationPoint.DisposeEvent(events[i].StreamEvent);
+                StreamEventRent.Dispose(events[i].StreamEvent);
             }
         }
 
@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 var allocator = allocatorResolver(exchangeTargetId);
                 var streamEvent = StreamEventValueSerializer.DeserializeEvent(ref reader, allocator, _batchSerializer);
-                RentEvent(streamEvent);
+                StreamEventRent.Rent(streamEvent);
                 result.Add(new SubstreamEventData()
                 {
                     ExchangeTargetId = exchangeTargetId,
@@ -114,16 +114,5 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return result;
         }
 
-        private static void RentEvent(IStreamEvent streamEvent)
-        {
-            if (streamEvent is StreamMessage<StreamEventBatch> streamMessage && streamMessage.Data is IRentable rentableData)
-            {
-                rentableData.Rent(1);
-            }
-            else if (streamEvent is IRentable rentable)
-            {
-                rentable.Rent(1);
-            }
-        }
     }
 }

@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -588,18 +588,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         internal static void DisposeEvent(IStreamEvent streamEvent)
         {
-            if (streamEvent is StreamMessage<StreamEventBatch> streamMessage)
-            {
-                streamMessage.Data.Return();
-            }
-            else if (streamEvent is IRentable rentable)
-            {
-                rentable.Return();
-            }
-            else if (streamEvent is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
+            StreamEventRent.Dispose(streamEvent);
         }
 
         private async Task FetchDataLoop()
