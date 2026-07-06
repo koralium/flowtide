@@ -82,6 +82,58 @@ connectorManager.AddCustomSource(
 
 All rows must return an identifier that is used when calculating changes of the data. This key can be accessed when querying with the special name of `__key`.
 
+### Push-based delta loading
+
+As an alternative to the pull-based `DeltaLoadAsync`, you can use the push-based `RunDeltaLoad` API. This is useful when your source pushes changes (e.g., message queues, webhooks, event streams) rather than being polled on an interval.
+
+To use push-based loading, override `IsPushBased` to return `true` and implement `RunDeltaLoad`:
+
+```csharp
+public class EventDrivenSource : GenericDataSourceAsync<User>
+{
+    private readonly Channel<User> _channel = Channel.CreateUnbounded<User>();
+
+    // Opt in to push-based model
+    public override bool IsPushBased => true;
+
+    // DeltaLoadInterval can be set to control how often the trigger is invoked,
+    // or set to null if you only want manual triggering via the delta_load trigger.
+    public override TimeSpan? DeltaLoadInterval => null;
+
+    public override async Task RunDeltaLoad(
+        IDeltaLoadContext<User> context,
+        CancellationToken cancellationToken)
+    {
+        while (await _channel.Reader.WaitToReadAsync(cancellationToken))
+        {
+            // Begin a transaction — this acquires the checkpoint lock
+            // ensuring all items in this batch are included in the same checkpoint.
+            await using var tx = await context.BeginTransactionAsync();
+
+            while (_channel.Reader.TryRead(out var user))
+            {
+                var obj = new FlowtideGenericObject<User>(
+                    user.Id, user, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), false);
+                await tx.SubmitAsync(obj);
+            }
+            // Disposing the transaction releases the checkpoint lock
+        }
+    }
+
+    public override IAsyncEnumerable<FlowtideGenericObject<User>> FullLoadAsync()
+    {
+        // Return initial data...
+    }
+}
+```
+
+Key differences from the pull-based model:
+
+* `RunDeltaLoad` is a **long-running method** that controls its own loop, rather than returning an enumerable per interval.
+* Data is submitted through **transactions** (`IDeltaLoadTransaction<T>`), which manage the checkpoint lock automatically.
+* The method receives a `CancellationToken` to support graceful shutdown.
+
+
 ### Trigger data reloads programatically
 
 The generic data source also registers triggers that allows the user to notify the stream when a reload should happen.

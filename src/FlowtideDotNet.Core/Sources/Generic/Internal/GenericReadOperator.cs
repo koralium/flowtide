@@ -38,7 +38,6 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         private IObjectState<long>? _lastWatermark;
         private List<int> _primaryKeyIndices;
         private int _keyIndex;
-        private bool _isPushBased;
 
         private IColumn[]? _keyLookupColumns;
         private EventBatchData? _keyLookupBatch;
@@ -130,9 +129,6 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             _genericDataSource.SetLookupRowFunc(LookupStoredObject);
             await _genericDataSource.Initialize(_readRelation, stateManagerClient.GetChildManager("impl"));
 
-            var method = _genericDataSource.GetType().GetMethod(nameof(GenericDataSourceAsync<T>.RunDeltaLoad));
-            _isPushBased = method != null && method.DeclaringType != typeof(GenericDataSourceAsync<T>);
-
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
@@ -183,7 +179,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         {
             Debug.Assert(_lastWatermark != null);
 
-            if (_isPushBased)
+            if (_genericDataSource.IsPushBased)
             {
                 var channel = Channel.CreateUnbounded<DeltaLoadCommand>();
                 var context = new DeltaLoadContext(channel);
@@ -272,8 +268,9 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                     {
                         await runTask;
                     }
-                    catch (Exception)
+                    catch (OperationCanceledException)
                     {
+                        // Expected during shutdown
                     }
                 }
             }

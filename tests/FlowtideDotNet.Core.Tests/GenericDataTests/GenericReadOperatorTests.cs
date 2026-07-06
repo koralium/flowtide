@@ -429,6 +429,8 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             _semaphore.Release();
         }
 
+        public override bool IsPushBased => true;
+
         public override TimeSpan? DeltaLoadInterval => default;
 
         public override async Task RunDeltaLoad(IDeltaLoadContext<User> context, CancellationToken cancellationToken)
@@ -479,6 +481,8 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
         {
             _semaphore.Release();
         }
+
+        public override bool IsPushBased => true;
 
         public override TimeSpan? DeltaLoadInterval => default;
 
