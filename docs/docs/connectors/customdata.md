@@ -147,11 +147,39 @@ internal class TestDataSink : GenericDataSink<User>
 }
 ```
 
+
 Add the generic data sink to the *ConnectorManager*:
 
 ```csharp
 connectorManager.AddCustomSink("{tableName}", (rel) => new testDataSink());
 ```
+
+### Fetching existing data
+
+On initial startup, fetching existing data from the destination is optional. If you do not override this method, Flowtide assumes the destination is empty and simply sends all current stream data to `OnChanges` as initial inserts.
+
+However, if you want Flowtide to calculate a delta based on the current state of the destination system (e.g., to only push changes, and to emit delete operations for any rows in the destination that are no longer in the incoming stream), you can override the `GetExistingData` method:
+
+```csharp
+public override IAsyncEnumerable<User> GetExistingData()
+{
+    // Fetch all existing users from your destination system and return them
+    return _userRepository.GetAllUsersAsync();
+}
+```
+
+If you override this method:
+* During initial load, Flowtide compares the existing destination data with the incoming stream data.
+* It will automatically trigger insert/update operations for new or changed data, and delete operations for any rows in the destination that are no longer present in the source stream.
+
+
+> [!NOTE]
+> `GetExistingData` is only executed when the stream starts up for the first time. Once the initial synchronization is complete and the first checkpoint has been committed, it will not be called again (even on subsequent stream restarts). From that point onward, the sink relies entirely on Flowtide's internally persisted state to calculate subsequent changes.
+
+
+### Custom sink sample
+
+A complete, runnable console application demonstrating a custom source and sink implementation is available in the repository under the [samples/CustomSinkSample](https://github.com/koralium/flowtide/tree/main/samples/CustomSinkSample) directory. This sample showcases how to use the push-based `RunDeltaLoad` API to wait for console updates asynchronously, as well as how the initial sink synchronization (`GetExistingData`) behaves.
 
 ## Adding custom converters
 
