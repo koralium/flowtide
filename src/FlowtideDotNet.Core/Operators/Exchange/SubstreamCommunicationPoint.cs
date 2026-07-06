@@ -521,7 +521,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         _stallWatchdog = null;
                         return;
                     }
+                    // A dead loop with live subscribers starves the stream silently, for
+                    // example when the recovery started by a fetch error itself failed.
+                    // The loop is restarted for the remaining subscribers.
+                    _logger.LogWarning("The fetch loop for substream {substreamName} is not running while subscribers exist, restarting it.", substreamName);
                     _lastFetchLoopTick = Environment.TickCount64;
+                    TryStartFetchTask();
                     return;
                 }
                 if (TimeSpan.FromMilliseconds(Environment.TickCount64 - _lastFetchLoopTick) < StallLimit)

@@ -120,5 +120,77 @@ namespace FlowtideDotNet.Core.Tests
             Assert.True(handler.SendFailAndRecoverCalls >= 1, "The fail and recover notification was never sent");
             Assert.True(handler.SendFailAndRecoverCalls < 10, $"Expected the concurrent notifications to collapse, got {handler.SendFailAndRecoverCalls} sends");
         }
+
+        private class ThrowOnceHandler : ISubstreamCommunicationHandler
+        {
+            public int FetchDataCalls;
+
+            public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
+            {
+                if (Interlocked.Increment(ref FetchDataCalls) == 1)
+                {
+                    throw new InvalidOperationException("Transient fetch failure");
+                }
+                return Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>());
+            }
+
+            public void Initialize(
+                Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
+                Func<long, Task> callFailAndRecover,
+                Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<long, Task> callRecieveCheckpointDone)
+            {
+            }
+
+            public Task SendCheckpointDone(long checkpointVersion)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task SendFailAndRecover(long restoreVersion)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
+            }
+        }
+
+        /// <summary>
+        /// A fetch error ends the fetch loop and starts a fail and recover; when that
+        /// recovery cannot run (or throws), the stall watchdog must restart the loop for
+        /// the remaining subscribers, a dead loop with live subscribers otherwise starves
+        /// the stream silently forever.
+        /// </summary>
+        [Fact]
+        public async Task DeadFetchLoopWithSubscribersIsRestartedByTheStallWatchdog()
+        {
+            var originalInterval = SubstreamCommunicationPoint.StallCheckInterval;
+            SubstreamCommunicationPoint.StallCheckInterval = TimeSpan.FromMilliseconds(100);
+            try
+            {
+                var handler = new ThrowOnceHandler();
+                var communicationPoint = new SubstreamCommunicationPoint(NullLogger.Instance, "substream_0", "substream_1", handler);
+
+                // The first fetch throws, ending the loop; no read operator is registered
+                // so the started recovery has nothing to do and the loop stays dead.
+                communicationPoint.Subscribe(1, ev => Task.CompletedTask);
+
+                var deadline = DateTime.UtcNow.AddSeconds(10);
+                while (Volatile.Read(ref handler.FetchDataCalls) < 2 && DateTime.UtcNow < deadline)
+                {
+                    await Task.Delay(50);
+                }
+                Assert.True(Volatile.Read(ref handler.FetchDataCalls) >= 2, "The fetch loop was never restarted after it died with live subscribers");
+
+                communicationPoint.Unsubscribe(1);
+            }
+            finally
+            {
+                SubstreamCommunicationPoint.StallCheckInterval = originalInterval;
+            }
+        }
     }
 }

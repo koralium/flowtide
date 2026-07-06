@@ -31,6 +31,17 @@ namespace FlowtideDotNet.Orleans.Internal
         }
 
         /// <summary>
+        /// Checks that the key is exactly the one <see cref="Create"/> produces for the
+        /// given names. Legacy detection must use this when grain state exists: format
+        /// parsing alone misclassifies old keys whose stream name is a small integer,
+        /// for example the old-format key "2_ab_x" parses as a valid current key.
+        /// </summary>
+        public static bool MatchesState(string key, string streamName, string substreamName)
+        {
+            return key == Create(streamName, substreamName);
+        }
+
+        /// <summary>
         /// Parses a key created by <see cref="Create"/>. Returns false for keys in another
         /// format, for example keys persisted in reminder tables by versions that used a
         /// key without the length prefix, such activations must clean themselves up instead

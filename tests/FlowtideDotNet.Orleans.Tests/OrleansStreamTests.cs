@@ -349,6 +349,46 @@ namespace FlowtideDotNet.Orleans.Tests
         /// This is the only way a caller can observe the stream actually running, the start
         /// call returns before the streams start in the background.
         /// </summary>
+        /// <summary>
+        /// Stop then start again immediately, landing on the same grain activations before
+        /// they deactivate. The restarted stream must actually run, a stale teardown latch
+        /// that silently refuses the start reports success while no stream processes data.
+        /// </summary>
+        [Fact]
+        public async Task StopThenImmediateStartRunsTheStreamAgain()
+        {
+            var sql = JoinSql("restart2");
+            TestTableStore.AddRows("restart2_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("restart2_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_restart2");
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+            await WaitForResult("restart2_out", Enumerable.Range(0, 50).Select(x => (long)x).ToList(), TimeSpan.FromSeconds(60));
+
+            await streamGrain.StopStreamAsync();
+
+            // No delay: the start lands on the same activations the stop ran on.
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            TestTableStore.AddRows("restart2_right", Enumerable.Range(50, 25).Select(x => (long)x));
+            await WaitForResult("restart2_out", Enumerable.Range(0, 75).Select(x => (long)x).ToList(), TimeSpan.FromSeconds(60));
+        }
+
+        /// <summary>
+        /// A fetch from a grain that has no stream, for example because its state was
+        /// cleared by a stop while a peer still fetches, must be flagged so the fetcher
+        /// escalates instead of treating it as a healthy empty poll and starving forever.
+        /// </summary>
+        [Fact]
+        public async Task FetchFromGrainWithoutStreamSignalsRequestorUnknown()
+        {
+            var substreamGrain = _fixture.Cluster.GrainFactory.GetGrain<ISubStreamGrain>(Internal.SubStreamGrainKey.Create("orleans_fetch_unknown", "substream_0"));
+
+            var response = await substreamGrain.FetchDataAsync(new FetchDataRequest("substream_1", new HashSet<int>() { 1 }, 10, 123));
+
+            Assert.True(response.RequestorUnknown, "A fetch from a grain without a stream must be flagged, an unflagged empty response starves the fetcher silently");
+        }
+
         [Fact]
         public async Task StatusReportsSubstreamsRunningAndStopped()
         {

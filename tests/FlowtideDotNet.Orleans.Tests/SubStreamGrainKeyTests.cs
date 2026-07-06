@@ -35,5 +35,27 @@ namespace FlowtideDotNet.Orleans.Tests
                 SubStreamGrainKey.Create("orders", "substream_0"),
                 SubStreamGrainKey.Create("orders", "substream_0"));
         }
+
+        /// <summary>
+        /// Legacy detection cannot rely on the key FORMAT alone: an old-format key whose
+        /// stream name is a small integer, for example stream "2" with substream "ab_x"
+        /// giving "2_ab_x", parses as a valid current-format key for stream "ab". The real
+        /// invariant is that the key matches the names persisted in the grain state, which
+        /// must be checked when state exists.
+        /// </summary>
+        [Fact]
+        public void KeyMatchingUsesPersistedStateNotFormat()
+        {
+            // Old format "{stream}_{substream}" for stream "2", substream "ab_x".
+            var legacyKey = "2_ab_x";
+            Assert.True(SubStreamGrainKey.TryParse(legacyKey, out _, out _), "The ambiguity exists: the legacy key parses as current format");
+
+            // The state-based check must classify it as NOT matching its persisted names.
+            Assert.False(SubStreamGrainKey.MatchesState(legacyKey, "2", "ab_x"));
+
+            // And a real current-format key must match its own state.
+            var currentKey = SubStreamGrainKey.Create("orders", "substream_0");
+            Assert.True(SubStreamGrainKey.MatchesState(currentKey, "orders", "substream_0"));
+        }
     }
 }

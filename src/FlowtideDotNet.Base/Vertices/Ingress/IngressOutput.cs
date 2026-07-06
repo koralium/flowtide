@@ -71,13 +71,13 @@ namespace FlowtideDotNet.Base.Vertices
             return SendAsync_Slow(data);
         }
 
-        private async Task SendAsync_WaitForResume(T data)
+        /// <summary>
+        /// Waits until both gates are open. The wait observes the cancellation, a sender
+        /// parked across a stream failure must throw instead of delivering a stale batch,
+        /// the rollback replays the data.
+        /// </summary>
+        private async Task WaitForGatesAsync()
         {
-            // The output is stopped, for example because the stream is paused. The data is
-            // held back and sent after the resume, dropping it would look like a successful
-            // send to the caller which then commits its position past the lost data.
-            // The wait observes the cancellation, a send parked across a stream failure must
-            // throw instead of delivering a stale batch, the rollback replays the data.
             while (true)
             {
                 var gate = _stopGate ?? _pauseGate;
@@ -88,12 +88,31 @@ namespace FlowtideDotNet.Base.Vertices
                 await gate.Task.WaitAsync(CancellationToken);
             }
             CancellationToken.ThrowIfCancellationRequested();
+        }
+
+        private async Task SendAsync_WaitForResume(T data)
+        {
+            // The output is stopped, for example because the stream is paused. The data is
+            // held back and sent after the resume, dropping it would look like a successful
+            // send to the caller which then commits its position past the lost data.
+            await WaitForGatesAsync();
             await SendAsync(data);
         }
 
         private async Task SendAsync_Slow(T data)
         {
             await EnterCheckpointLock();
+            while (_stopGate != null || _pauseGate != null)
+            {
+                // A gate was set while this sender waited for the lock, for example the
+                // stop barrier that was injected under it. Sending now would deliver the
+                // data after the barrier, so the lock is released and the send parks. The
+                // data was already rented at the entry check, the send happens here once
+                // the gates open instead of re-dispatching.
+                ExitCheckpointLock();
+                await WaitForGatesAsync();
+                await EnterCheckpointLock();
+            }
             await _targetBlock.SendAsync(new StreamMessage<T>(data, _ingressState._currentTime), CancellationToken);
             ExitCheckpointLock();
         }
@@ -191,22 +210,21 @@ namespace FlowtideDotNet.Base.Vertices
         {
             // See SendAsync_WaitForResume, a dropped watermark makes downstream consumers
             // believe the data before it never completed.
-            while (true)
-            {
-                var gate = _stopGate ?? _pauseGate;
-                if (gate == null)
-                {
-                    break;
-                }
-                await gate.Task.WaitAsync(CancellationToken);
-            }
-            CancellationToken.ThrowIfCancellationRequested();
+            await WaitForGatesAsync();
             await SendWatermark(watermark);
         }
 
         private async Task SendWatermark_Slow(Watermark watermark)
         {
             await EnterCheckpointLock();
+            while (_stopGate != null || _pauseGate != null)
+            {
+                // See SendAsync_Slow, a gate set while waiting for the lock must park the
+                // watermark instead of delivering it after the barrier.
+                ExitCheckpointLock();
+                await WaitForGatesAsync();
+                await EnterCheckpointLock();
+            }
             await _targetBlock.SendAsync(watermark, CancellationToken);
             ExitCheckpointLock();
         }

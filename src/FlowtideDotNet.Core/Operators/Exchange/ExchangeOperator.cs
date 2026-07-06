@@ -194,7 +194,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        private void TargetCallDependenciesDone()
+        // Internal so tests can drive the acknowledgement path without a running peer.
+        internal int PendingDependenciesDoneSignalsForTests
+        {
+            get
+            {
+                lock (_dependenciesDoneLock)
+                {
+                    return _pendingDependenciesDoneSignals;
+                }
+            }
+        }
+
+        internal void TargetCallDependenciesDone()
         {
             lock (_dependenciesDoneLock)
             {
@@ -203,8 +215,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // The signal arrived before this stream finished starting, the dependencies
                     // done callback is not wired yet. Each checkpoint cycle consumes the signals
                     // from the other substreams, so the signal must not be lost, it is buffered
-                    // and replayed when a checkpoint runs.
-                    _pendingDependenciesDoneSignals++;
+                    // and replayed when a checkpoint runs. The buffer is capped at one signal
+                    // per peer: a peer can only have one un-acknowledged cycle in flight, extra
+                    // signals come from a peer running its own stop cycles and counting them
+                    // would let a later cycle complete without a real acknowledgement.
+                    if (_pendingDependenciesDoneSignals < _numberOfSubstreams)
+                    {
+                        _pendingDependenciesDoneSignals++;
+                    }
                     Logger.LogDebug("Exchange {name} buffered a dependencies done signal, total buffered: {count}", Name, _pendingDependenciesDoneSignals);
                     return;
                 }

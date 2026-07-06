@@ -51,6 +51,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private static readonly LocalStopCheckpointMarker s_localStopCheckpointMarker = new LocalStopCheckpointMarker();
 
+        // Internal so tests can shorten it, forcing the pairing budget to expire would
+        // otherwise take minutes.
+        internal static TimeSpan PairingAttemptDelay = TimeSpan.FromSeconds(5);
+
         private readonly SubstreamCommunicationPoint _communicationPoint;
         private readonly SubstreamExchangeReferenceRelation _exchangeReferenceRelation;
         private readonly object _lock = new object();
@@ -297,7 +301,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             // The wait observes the cancellation. A stop, delete or failure
                             // teardown waits for this task to complete, an uncancellable wait
                             // would hold the whole teardown for the remaining budget.
-                            var completed = await Task.WhenAny(_waitForCheckpoint.Task, Task.Delay(TimeSpan.FromSeconds(5), output.CancellationToken));
+                            var completed = await Task.WhenAny(_waitForCheckpoint.Task, Task.Delay(PairingAttemptDelay, output.CancellationToken));
                             output.CancellationToken.ThrowIfCancellationRequested();
                             if (completed == _waitForCheckpoint.Task)
                             {
@@ -310,7 +314,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         if (!checkpointArrived)
                         {
                             Logger.LogWarning("Substream read {name} could not pair the other substreams barrier with a local checkpoint, failing and recovering to reconcile the substreams.", Name);
-                            await FailAndRollback();
+                            DispatchFailAndRollback();
                             return;
                         }
 
@@ -328,7 +332,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // cycle would then never be acknowledged. Fail and recover so the
                         // initialize handshake reconciles the substreams.
                         Logger.LogWarning("Substream read {name} pairing wait completed without a local checkpoint for the other substreams barrier with time {time}, failing and recovering to reconcile the substreams.", Name, checkpointEvent.CheckpointTime);
-                        await FailAndRollback();
+                        DispatchFailAndRollback();
                         return;
                     }
                     await OnCheckpoint(inStreamCheckpoint.CheckpointTime);
@@ -438,6 +442,28 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public Task FailAndRecover(long recoveryPoint)
         {
             return FailAndRollback(restoreVersion: recoveryPoint);
+        }
+
+        /// <summary>
+        /// Starts a fail and recover without awaiting it. The failure teardown waits for
+        /// this operators own fetch task to complete, so a rollback initiated from inside
+        /// that task must never be awaited there, the await would deadlock the recovery.
+        /// </summary>
+        private void DispatchFailAndRollback()
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await FailAndRollback();
+                }
+                catch (Exception e)
+                {
+                    // Must be logged, an unobserved fault would leave the stream running
+                    // against a barrier that was never reconciled.
+                    Logger.LogWarning(e, "Substream read {name} fail and recover after an unpairable barrier failed, the fetch stall watchdog escalates if the stream does not progress.", Name);
+                }
+            });
         }
 
         /// <summary>

@@ -108,7 +108,11 @@ namespace FlowtideDotNet.Orleans.Grains
             if (_orleansCommunicationFactory == null ||
                 !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
             {
-                return new FetchDataResponse(default);
+                // No stream runs on this activation, for example because a stop cleared the
+                // grain state while a peer still fetches. Flagged for the same reason as the
+                // epoch refusals below, an unflagged empty response looks like a healthy
+                // poll and the fetcher starves silently forever.
+                return new FetchDataResponse(default) { RequestorUnknown = true };
             }
             if (!_peerFetchEpochs.TryGetValue(request.Requestor, out var announcedEpoch))
             {
@@ -226,9 +230,17 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 var stream = _stream;
                 _stream = null;
-                // The engine handles delete in any state and completes when the state is deleted
-                await stream.DeleteAsync();
-                await stream.DisposeAsync();
+                // The engine handles delete in any state and completes when the state is
+                // deleted. The dispose runs even when the delete throws, an undisposed
+                // instance keeps storage handles that make every retry fail too.
+                try
+                {
+                    await stream.DeleteAsync();
+                }
+                finally
+                {
+                    await stream.DisposeAsync();
+                }
             }
             _tickCancellation?.Cancel();
             _tickCancellation = null;
@@ -257,6 +269,12 @@ namespace FlowtideDotNet.Orleans.Grains
                     _teardownTask = null;
                 }
                 throw;
+            }
+            // Cleared on success too: the grain state is already cleared, and a stale
+            // completed teardown must not refuse a fresh start on this activation.
+            if (ReferenceEquals(_teardownTask, teardown))
+            {
+                _teardownTask = null;
             }
         }
 
@@ -350,7 +368,16 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)
         {
-            if (!SubStreamGrainKey.TryParse(this.GetPrimaryKeyString(), out _, out _))
+            // Format parsing alone misclassifies old keys whose stream name is a small
+            // integer, when state exists the key must match the persisted names exactly.
+            var key = this.GetPrimaryKeyString();
+            bool legacyKey = !SubStreamGrainKey.TryParse(key, out _, out _);
+            if (!legacyKey && _state.RecordExists &&
+                _state.State.StreamName != null && _state.State.SubstreamName != null)
+            {
+                legacyKey = !SubStreamGrainKey.MatchesState(key, _state.State.StreamName, _state.State.SubstreamName);
+            }
+            if (legacyKey)
             {
                 // The activation was reached through a key in the old format, typically by a
                 // reminder persisted before the key format changed. It must not run a
@@ -377,6 +404,14 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task StartStreamAsync(StartStreamMessage startStreamMessage)
         {
+            if (_teardownTask is { IsCompleted: false })
+            {
+                // The grain is reentrant, a start interleaving a running stop or delete at
+                // their await points would re-persist state and re-register the reminder
+                // the teardown is removing, resurrecting the stream it tears down.
+                throw new InvalidOperationException(
+                    $"Substream '{this.GetPrimaryKeyString()}' is stopping or being deleted, start it again when the teardown has completed.");
+            }
             if (_state.RecordExists)
             {
                 // The stream grain already rejects a changed plan, but a direct start with

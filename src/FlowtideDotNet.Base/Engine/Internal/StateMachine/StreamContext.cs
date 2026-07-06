@@ -114,6 +114,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public StreamStatus Status => _streamStatus;
 
+        /// <summary>
+        /// The status the state machine recorded, ignoring the Paused mask. Internal
+        /// protocol checks, for example Failing until a checkpoint proves the recovery,
+        /// must read this, the masked Status would corrupt them while paused.
+        /// </summary>
+        internal StreamStatus RawStatus
+        {
+            get
+            {
+                lock (_pauseLock)
+                {
+                    return _pauseSource != null ? _statusBeforePause : _streamStatus;
+                }
+            }
+        }
+
         public FlowtideHealth Health
         {
             get
@@ -704,6 +720,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task StartAsync()
         {
+            // A pause that was refused while a stop or delete was pending must still apply
+            // to the next start. The options monitor only fires on changes, so the current
+            // value is read here, otherwise the stream would run while the configuration
+            // says paused.
+            if (_pauseMonitor?.CurrentValue.IsPaused == true)
+            {
+                Pause();
+            }
             return _state!.StartAsync();
         }
 
@@ -878,6 +902,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     // lock that the stop cycle needs to inject its barrier.
                     return;
                 }
+                if (currentState == StreamStateValue.Stopping ||
+                    currentState == StreamStateValue.Deleting ||
+                    currentState == StreamStateValue.Deleted)
+                {
+                    // The task check above misses a teardown whose caller tasks were already
+                    // completed or failed, for example a delete that gave up. Pausing here
+                    // would mask the terminal status as Paused forever, nothing resumes a
+                    // deleted stream.
+                    return;
+                }
                 _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 _statusBeforePause = Status;
                 SetStatus(StreamStatus.Paused);
@@ -917,6 +951,27 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // and the gates survive on the reused operators across a block rebuild.
             // Resuming a vertex that is not paused is a no-op.
             ForEachBlock((id, block) => block.Resume());
+            bool marked;
+            lock (_pauseLock)
+            {
+                marked = _pauseSource != null;
+            }
+            if (marked)
+            {
+                // A newer pause raced this resume and its gates were just released,
+                // re-apply them, the same undo protocol as Pause uses for the
+                // symmetric race.
+                ForEachBlock((id, block) => block.Pause());
+                bool cleared;
+                lock (_pauseLock)
+                {
+                    cleared = _pauseSource == null;
+                }
+                if (cleared)
+                {
+                    ForEachBlock((id, block) => block.Resume());
+                }
+            }
         }
 
         /// <summary>

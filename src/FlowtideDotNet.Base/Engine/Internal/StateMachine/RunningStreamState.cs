@@ -246,7 +246,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             StreamStateValue? wishTransition = null;
             lock (_context._checkpointLock)
             {
-                if (_context.Status == StreamStatus.Failing)
+                if (_context.RawStatus == StreamStatus.Failing)
                 {
                     // If the stream was in the failure status, we can now set it to running to mark that it is operational
                     _context.SetStatus(StreamStatus.Running);
@@ -308,7 +308,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            if (_context.Status != StreamStatus.Failing)
+            if (_context.RawStatus != StreamStatus.Failing)
             {
                 // Failure status is removed when a checkpoint has been made, since a failure could happen in the middle of doing a checkpoint
                 _context.SetStatus(StreamStatus.Running);
