@@ -153,8 +153,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _context._notificationReciever.OnCheckpointComplete();
                     }
 
-                    await run._context.stateHandler.WriteLatestState(run._context.streamName, run._context._lastState);
-
                     await _context.ForEachIngressBlockAsync((key, block) =>
                     {
                         if (block is IStreamIngressVertex streamIngressVertex)
