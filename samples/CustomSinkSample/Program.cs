@@ -11,8 +11,8 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 List<SinkModel> existingData = new List<SinkModel>();
 
-Console.WriteLine("Enter rows that should already exist in the sink, this is to visualize FetchExisting in the sink.");
-Console.WriteLine("Enter rows in the format: <id> <name>, to continue write 'C'.");
+Console.WriteLine("Enter rows that should already exist in the destination (sink). This demonstrates how Flowtide fetches existing data during sink initialization.");
+Console.WriteLine("Enter rows in the format '<id> <name>'. Type 'C' and press Enter to continue.");
 
 while (true)
 {
@@ -37,8 +37,8 @@ while (true)
 
 List<InputModel> initialDataToSend = new List<InputModel>();
 
-Console.WriteLine("Enter initial rows that should be sent from the source, for any row entered in sink existing data not entered here will trigger a delete operation");
-Console.WriteLine("Enter rows in the format: <id> <name>, to continue write 'C'.");
+Console.WriteLine("Enter initial rows to be sent from the source. (Note: Any row previously entered in the sink that is NOT entered here will sent to sink as deleted to sync the two stores).");
+Console.WriteLine("Enter rows in the format '<id> <name>'. Type 'C' and press Enter to continue.");
 
 while (true)
 {
@@ -88,7 +88,7 @@ await app.StartAsync();
 
 while (true)
 {
-    Console.WriteLine("Enter row updates use format '<id> <name>' for update or 'D <id>' for deletes. To simulate a crash write 'crash'");
+    Console.WriteLine("Enter row updates. Use the format '<id> <name>' for updates/inserts, or 'D <id>' to delete. To simulate a stream crash, type 'crash'. To exit, type 'exit'.");
 
     var data = Console.ReadLine();
 
