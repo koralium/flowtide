@@ -96,20 +96,30 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
 
             var result = new List<SubstreamEventData>(count);
-            for (int i = 0; i < count; i++)
+            try
             {
-                if (!reader.TryReadLittleEndian(out int exchangeTargetId))
+                for (int i = 0; i < count; i++)
                 {
-                    throw new InvalidOperationException("Failed to read exchange target id");
+                    if (!reader.TryReadLittleEndian(out int exchangeTargetId))
+                    {
+                        throw new InvalidOperationException("Failed to read exchange target id");
+                    }
+                    var allocator = allocatorResolver(exchangeTargetId);
+                    var streamEvent = StreamEventValueSerializer.DeserializeEvent(ref reader, allocator, _batchSerializer);
+                    StreamEventRent.Rent(streamEvent);
+                    result.Add(new SubstreamEventData()
+                    {
+                        ExchangeTargetId = exchangeTargetId,
+                        StreamEvent = streamEvent
+                    });
                 }
-                var allocator = allocatorResolver(exchangeTargetId);
-                var streamEvent = StreamEventValueSerializer.DeserializeEvent(ref reader, allocator, _batchSerializer);
-                StreamEventRent.Rent(streamEvent);
-                result.Add(new SubstreamEventData()
-                {
-                    ExchangeTargetId = exchangeTargetId,
-                    StreamEvent = streamEvent
-                });
+            }
+            catch
+            {
+                // A failure mid payload must not abandon the events already materialized,
+                // their claims would never be returned and the batch memory leaks.
+                ReturnEvents(result);
+                throw;
             }
             return result;
         }

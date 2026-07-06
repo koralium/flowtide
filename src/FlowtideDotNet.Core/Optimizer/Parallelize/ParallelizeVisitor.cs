@@ -222,6 +222,20 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
                 return mergeJoinRelation;
             }
 
+            // Only equality keys can drive the partitioning: rows must land in the same
+            // partition to be able to match, which only holds for keys compared with
+            // equality. Inequality keys (range joins) carry different values on the two
+            // sides of a match.
+            var equalityKeyIndices = GetEqualityKeyIndices(mergeJoinRelation);
+            if (equalityKeyIndices.Count == 0)
+            {
+                // A pure inequality join cannot be co-partitioned, it is not parallelized.
+                // The inputs are still visited so operators below it parallelize.
+                mergeJoinRelation.Left = Visit(mergeJoinRelation.Left, state);
+                mergeJoinRelation.Right = Visit(mergeJoinRelation.Right, state);
+                return mergeJoinRelation;
+            }
+
             List<ExchangeTarget> exchangeTargets = new List<ExchangeTarget>();
 
             for (int i = 0; i < parallelCount; i++)
@@ -232,11 +246,30 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
                 });
             }
 
+            var rightKeys = mergeJoinRelation.RightKeys.Select(x =>
+            {
+                if (x is DirectFieldReference directField)
+                {
+                    if (directField.ReferenceSegment is StructReferenceSegment structRef)
+                    {
+                        return new DirectFieldReference()
+                        {
+                            ReferenceSegment = new StructReferenceSegment()
+                            {
+                                Field = structRef.Field - mergeJoinRelation.Left.OutputLength,
+                                Child = structRef.Child
+                            }
+                        };
+                    }
+                }
+                return x;
+            }).ToList();
+
             var leftExchange = new ExchangeRelation()
             {
                 ExchangeKind = new ScatterExchangeKind()
                 {
-                    Fields = mergeJoinRelation.LeftKeys
+                    Fields = equalityKeyIndices.Select(i => (FieldReference)mergeJoinRelation.LeftKeys[i]).ToList()
                 },
                 Input = mergeJoinRelation.Left,
                 Targets = exchangeTargets,
@@ -246,24 +279,7 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
             {
                 ExchangeKind = new ScatterExchangeKind()
                 {
-                    Fields = mergeJoinRelation.RightKeys.Select(x =>
-                    {
-                        if (x is DirectFieldReference directField)
-                        {
-                            if (directField.ReferenceSegment is StructReferenceSegment structRef)
-                            {
-                                return new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
-                                        Field = structRef.Field - mergeJoinRelation.Left.OutputLength,
-                                        Child = structRef.Child
-                                    }
-                                };
-                            }
-                        }
-                        return x;
-                    }).ToList()
+                    Fields = equalityKeyIndices.Select(i => (FieldReference)rightKeys[i]).ToList()
                 },
                 Input = mergeJoinRelation.Right,
                 Targets = exchangeTargets,
@@ -295,6 +311,9 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
                     },
                     LeftKeys = mergeJoinRelation.LeftKeys,
                     RightKeys = mergeJoinRelation.RightKeys,
+                    // The comparison types must follow the copies, without them every key is
+                    // treated as an equality comparison and range joins return wrong results.
+                    ComparisonTypes = mergeJoinRelation.ComparisonTypes,
                     Type = mergeJoinRelation.Type,
                     PostJoinFilter = mergeJoinRelation.PostJoinFilter,
                     Emit = mergeJoinRelation.Emit
@@ -308,6 +327,19 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
             };
 
             return setRelation;
+        }
+
+        private static List<int> GetEqualityKeyIndices(MergeJoinRelation mergeJoinRelation)
+        {
+            var indices = new List<int>();
+            for (int i = 0; i < mergeJoinRelation.LeftKeys.Count; i++)
+            {
+                if (mergeJoinRelation.GetComparisonType(i) == JoinComparisonType.Equal)
+                {
+                    indices.Add(i);
+                }
+            }
+            return indices;
         }
     }
 }

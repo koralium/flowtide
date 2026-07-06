@@ -31,8 +31,8 @@ namespace FlowtideDotNet.Core.Engine.Distributed
     {
         private readonly string _streamName;
         private Func<Plan>? _planFactory;
-        private Func<string, IConnectorManager>? _connectorManagerFactory;
-        private Func<string, StateManagerOptions>? _stateOptionsFactory;
+        private Func<string, string, IConnectorManager>? _connectorManagerFactory;
+        private Func<string, string, StateManagerOptions>? _stateOptionsFactory;
         private ILoggerFactory? _loggerFactory;
         private PlanOptimizerSettings? _planOptimizerSettings;
         private bool _optimizePlan = true;
@@ -70,22 +70,24 @@ namespace FlowtideDotNet.Core.Engine.Distributed
 
         /// <summary>
         /// Sets the factory that creates the connector manager for each substream, called once
-        /// per substream with the substream name. Each substream gets its own manager so
-        /// connector factories that hold per stream state, for example sinks capturing
-        /// callbacks, are never shared between substreams.
+        /// per substream with the stream and substream name. Each substream gets its own
+        /// manager so connector factories that hold per stream state, for example sinks
+        /// capturing callbacks, are never shared between substreams.
         /// </summary>
-        public DistributedStreamBuilder AddConnectorManager(Func<string, IConnectorManager> connectorManagerFactory)
+        public DistributedStreamBuilder AddConnectorManager(Func<string, string, IConnectorManager> connectorManagerFactory)
         {
             _connectorManagerFactory = connectorManagerFactory;
             return this;
         }
 
         /// <summary>
-        /// Sets the factory that creates the state manager options for each substream.
-        /// Each substream must have its own storage location, the factory gets the substream
-        /// name as input.
+        /// Sets the factory that creates the state manager options for each substream, called
+        /// with the stream and substream name. Each substream must have its own storage
+        /// location, keyed on both names: substream names repeat between streams, storage
+        /// keyed on the substream name alone collides when two distributed streams run in
+        /// the same process.
         /// </summary>
-        public DistributedStreamBuilder WithStateOptionsFactory(Func<string, StateManagerOptions> stateOptionsFactory)
+        public DistributedStreamBuilder WithStateOptionsFactory(Func<string, string, StateManagerOptions> stateOptionsFactory)
         {
             _stateOptionsFactory = stateOptionsFactory;
             return this;
@@ -156,13 +158,16 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             var substreams = new Dictionary<string, Base.Engine.DataflowStream>();
             foreach (var substreamName in substreamNames)
             {
-                var builder = new FlowtideBuilder($"{_streamName}_{substreamName}")
+                // Length prefixed for the same reason as the Orleans grain key, a plain
+                // "{stream}_{substream}" is not injective and two streams in one process
+                // could collide on the same stream identity.
+                var builder = new FlowtideBuilder($"{_streamName.Length}_{_streamName}_{substreamName}")
                     .AddPlan(CreatePlan(), false)
-                    .WithStateOptions(_stateOptionsFactory(substreamName));
+                    .WithStateOptions(_stateOptionsFactory(_streamName, substreamName));
 
                 if (_connectorManagerFactory != null)
                 {
-                    builder.AddConnectorManager(_connectorManagerFactory(substreamName));
+                    builder.AddConnectorManager(_connectorManagerFactory(_streamName, substreamName));
                 }
                 if (_loggerFactory != null)
                 {

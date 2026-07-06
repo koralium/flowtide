@@ -558,7 +558,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// checkpoint with the other substream. A new fetch loop starts when a read operator
         /// subscribes again after the restore.
         /// </summary>
-        private async Task FailFetchLoop(Exception exception)
+        private Task FailFetchLoop(Exception exception)
         {
             lock (_fetchDataLock)
             {
@@ -571,8 +571,25 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             if (readOperator != null)
             {
-                await readOperator.FailAndRecoverOnFetchError(exception);
+                // Fire and forget: the failure handling can wait for this fetch loops own
+                // task during teardown, awaiting the recovery from inside the loop would
+                // deadlock it. The loop exits right after, a new one starts when a read
+                // operator subscribes again after the restore.
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await readOperator.FailAndRecoverOnFetchError(exception);
+                    }
+                    catch (Exception e)
+                    {
+                        // Must be logged, an unobserved fault here would leave the stream
+                        // running against a fetch loop that already ended.
+                        _logger.LogWarning(e, "Failing the stream after a fetch error on substream {substreamName} failed, the stall watchdog retries the recovery.", substreamName);
+                    }
+                });
             }
+            return Task.CompletedTask;
         }
 
         internal static void DisposeEvent(IStreamEvent streamEvent)

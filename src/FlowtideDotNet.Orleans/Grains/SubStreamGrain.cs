@@ -122,9 +122,12 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 // The fetch is not from the requestors current epoch, it comes from an
                 // abandoned stream instance or was started before a rollback. Serving it
-                // would hand events to a consumer that throws them away.
+                // would hand events to a consumer that throws them away. The refusal is
+                // flagged, when an abandoned instance overwrote the announcement the live
+                // fetcher lands here and must fail and recover to re-announce its epoch, a
+                // silent refusal would starve it forever while looking healthy.
                 _loggerFactory.CreateLogger<SubStreamGrain>().LogDebug("Refusing fetch from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.Requestor, request.FetchEpoch, announcedEpoch);
-                return new FetchDataResponse(default);
+                return new FetchDataResponse(default) { RequestorUnknown = true };
             }
             var data = await handler.GetData(request.TargetIds, request.NumberOfEvents, default);
             // Serialized into pooled segments, no byte arrays are allocated. PooledBuffer is
@@ -167,7 +170,23 @@ namespace FlowtideDotNet.Orleans.Grains
             return new GetEventsResponse(msg.LastEventId, msg.OutEvents, false);
         }
 
+        // The teardown in progress, stop and delete share it. The grain is reentrant, so a
+        // retried or interleaved call must await the same teardown instead of starting a
+        // second one, and while it is set the stream must not be rebuilt, a keep alive
+        // reminder or start could otherwise run a new stream over the same storage that the
+        // teardown still works on.
+        private Task? _teardownTask;
+
         public async Task StopStreamAsync()
+        {
+            if (_teardownTask == null)
+            {
+                _teardownTask = StopStreamCore();
+            }
+            await AwaitTeardown();
+        }
+
+        private async Task StopStreamCore()
         {
             if (_stream != null)
             {
@@ -190,9 +209,19 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task DeleteStreamAsync()
         {
-            // A reactivated grain may not have built the stream yet, the delete needs the
-            // instance to reach its state storage.
-            StartStream();
+            if (_teardownTask == null)
+            {
+                // A reactivated grain may not have built the stream yet, the delete needs
+                // the instance to reach its state storage. Rebuilt before the teardown task
+                // is set, StartStream refuses while a teardown is in progress.
+                StartStream();
+                _teardownTask = DeleteStreamCore();
+            }
+            await AwaitTeardown();
+        }
+
+        private async Task DeleteStreamCore()
+        {
             if (_stream != null)
             {
                 var stream = _stream;
@@ -210,6 +239,25 @@ namespace FlowtideDotNet.Orleans.Grains
             }
             await _state.ClearStateAsync();
             DeactivateOnIdle();
+        }
+
+        private async Task AwaitTeardown()
+        {
+            var teardown = _teardownTask!;
+            try
+            {
+                await teardown;
+            }
+            catch
+            {
+                // A failed teardown may be retried, the next call starts a fresh attempt.
+                // Only the observed task is cleared, a retry may already have replaced it.
+                if (ReferenceEquals(_teardownTask, teardown))
+                {
+                    _teardownTask = null;
+                }
+                throw;
+            }
         }
 
         // The most recent stream failure on this activation, surfaced through GetStatusAsync.
@@ -300,10 +348,31 @@ namespace FlowtideDotNet.Orleans.Grains
             return new InitSubstreamResponse(false, response.Success, response.RestoreVersion);
         }
 
-        public override Task OnActivateAsync(CancellationToken cancellationToken)
+        public override async Task OnActivateAsync(CancellationToken cancellationToken)
         {
+            if (!SubStreamGrainKey.TryParse(this.GetPrimaryKeyString(), out _, out _))
+            {
+                // The activation was reached through a key in the old format, typically by a
+                // reminder persisted before the key format changed. It must not run a
+                // stream, stop and delete route through the new key and could never reach
+                // it. The reminder and grain state are removed so the identity dies out, the
+                // streams own state storage is untouched and a start under the new key
+                // resumes from it.
+                _loggerFactory.CreateLogger<SubStreamGrain>().LogWarning(
+                    "Substream grain key '{key}' uses an old format, cleaning up its reminder and state. Start the stream again to run it under the current key format.",
+                    this.GetPrimaryKeyString());
+                var reminder = await this.GetReminder(KeepAliveReminderName);
+                if (reminder != null)
+                {
+                    await this.UnregisterReminder(reminder);
+                }
+                await _state.ClearStateAsync();
+                DeactivateOnIdle();
+                await base.OnActivateAsync(cancellationToken);
+                return;
+            }
             StartStream();
-            return base.OnActivateAsync(cancellationToken);
+            await base.OnActivateAsync(cancellationToken);
         }
 
         public async Task StartStreamAsync(StartStreamMessage startStreamMessage)
@@ -337,7 +406,8 @@ namespace FlowtideDotNet.Orleans.Grains
 
         private void StartStream()
         {
-            if (_stream != null || _state.State.StreamName == null || _state.State.SqlText == null || _state.State.SubstreamName == null)
+            if (_stream != null || _teardownTask != null ||
+                _state.State.StreamName == null || _state.State.SqlText == null || _state.State.SubstreamName == null)
             {
                 return;
             }

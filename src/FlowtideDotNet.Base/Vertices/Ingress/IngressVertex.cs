@@ -712,7 +712,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Pause()
         {
-            _ingressState?._output?.Stop();
+            _ingressState?._output?.Pause();
         }
 
         /// <summary>

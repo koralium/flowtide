@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         {
             _distributedStream = new DistributedStreamBuilder($"bench_dist_{_iteration}")
                 .AddPlan(BuildPlan)
-                .WithStateOptionsFactory(substreamName => CreateStateOptions($"dist_{_iteration}_{substreamName}"))
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions($"dist_{_iteration}_{substreamName}"))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
                     var connectorManager = new ConnectorManager();

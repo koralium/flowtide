@@ -128,42 +128,50 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 Debug.Assert(run._currentCheckpoint != null, nameof(_context));
                 Debug.Assert(run.waitingForDependencies != null);
 
-                // Write the latest state
-                run._context._lastState = new StreamState(
-                    run._currentCheckpoint.CheckpointTime,
-                    _context._streamVersionInformation?.Hash ?? string.Empty);
-
-                run._context._stateManager.Metadata = run._context._lastState;
-
-                await _context.ForEachBlockAsync(static async (key, block) =>
+                run._context._checkpointCommitActive = true;
+                try
                 {
-                    await block.BeforeSaveCheckpoint();
-                });
+                    // Write the latest state
+                    run._context._lastState = new StreamState(
+                        run._currentCheckpoint.CheckpointTime,
+                        _context._streamVersionInformation?.Hash ?? string.Empty);
 
-                // Take state checkpoint
-                _context._logger.StartingStateManagerCheckpoint(_context.streamName);
-                await run._context._stateManager.CheckpointAsync(false);
-                _context._logger.StateManagerCheckpointDone(_context.streamName);
+                    run._context._stateManager.Metadata = run._context._lastState;
 
-                if (_context._notificationReciever != null)
-                {
-                    _context._notificationReciever.OnCheckpointComplete();
-                }
-
-                await run._context.stateHandler.WriteLatestState(run._context.streamName, run._context._lastState);
-
-                await _context.ForEachIngressBlockAsync((key, block) =>
-                {
-                    if (block is IStreamIngressVertex streamIngressVertex)
+                    await _context.ForEachBlockAsync(static async (key, block) =>
                     {
-                        return streamIngressVertex.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
+                        await block.BeforeSaveCheckpoint();
+                    });
+
+                    // Take state checkpoint
+                    _context._logger.StartingStateManagerCheckpoint(_context.streamName);
+                    await run._context._stateManager.CheckpointAsync(false);
+                    _context._logger.StateManagerCheckpointDone(_context.streamName);
+
+                    if (_context._notificationReciever != null)
+                    {
+                        _context._notificationReciever.OnCheckpointComplete();
                     }
-                    return Task.CompletedTask;
-                });
-                await _context.ForEachEgressBlockAsync((key, block) =>
+
+                    await run._context.stateHandler.WriteLatestState(run._context.streamName, run._context._lastState);
+
+                    await _context.ForEachIngressBlockAsync((key, block) =>
+                    {
+                        if (block is IStreamIngressVertex streamIngressVertex)
+                        {
+                            return streamIngressVertex.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
+                        }
+                        return Task.CompletedTask;
+                    });
+                    await _context.ForEachEgressBlockAsync((key, block) =>
+                    {
+                        return block.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
+                    });
+                }
+                finally
                 {
-                    return block.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
-                });
+                    run._context._checkpointCommitActive = false;
+                }
             }, this)
                 .Unwrap()
                  .ContinueWith(async (t, state) =>
@@ -426,9 +434,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private Task TriggerCheckpoint_StartCore(bool isScheduled)
         {
             Debug.Assert(_context != null, nameof(_context));
-            Checkpoint? checkpoint = null;
-            StreamStateValue? wishTransition = null;
-            bool wishWaitsForCheckpoint = false;
+            StreamStateValue wishTransition;
             lock (_context._checkpointLock)
             {
                 // The wish is re-checked under the lock: a stop or delete can set it between
@@ -441,80 +447,74 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     if (_doingCheckpoint)
                     {
                         // A checkpoint is already in progress, its completion honors the wish.
-                        wishWaitsForCheckpoint = true;
+                        return Task.CompletedTask;
                     }
-                    else
-                    {
-                        wishTransition = _context._wantedState == StreamStateValue.Deleting
-                            ? StreamStateValue.Deleting
-                            : StreamStateValue.Stopping;
-                    }
+                    wishTransition = _context._wantedState == StreamStateValue.Deleting
+                        ? StreamStateValue.Deleting
+                        : StreamStateValue.Stopping;
                 }
                 else
                 {
+                    // The wish check and the checkpoint start must share one lock scope. If
+                    // the lock is released in between, a completing cycle can clear
+                    // _doingCheckpoint and the new cycle would run without the flag that
+                    // defers stop and delete while a checkpoint writes state.
                     _doingCheckpoint = true;
-                }
-            }
-            if (wishTransition.HasValue)
-            {
-                TransitionTo(wishTransition.Value);
-                return Task.CompletedTask;
-            }
-            if (wishWaitsForCheckpoint)
-            {
-                return Task.CompletedTask;
-            }
-            lock (_context._checkpointLock)
-            {
-                // Only support a single concurrent checkpoint for now for simplicity
-                if (_context.checkpointTask != null)
-                {
-                    // Enqueue the checkpoint as soon as possible. The scheduled provided
-                    // version must not be cleared here, the queued cycle is later promoted
-                    // with it and the same version dedup would break without it.
-                    _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1), _context._scheduledProvidedCheckpointVersion);
+
+                    // Only support a single concurrent checkpoint for now for simplicity
+                    if (_context.checkpointTask != null)
+                    {
+                        // Enqueue the checkpoint as soon as possible. The scheduled provided
+                        // version must not be cleared here, the queued cycle is later promoted
+                        // with it and the same version dedup would break without it.
+                        _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1), _context._scheduledProvidedCheckpointVersion);
+                        return _context.checkpointTask.Task;
+                    }
+                    _context._logger.StartingCheckpoint(_context.streamName);
+
+                    _initialCheckpointTaken = false;
+                    _compactionStarted = false;
+                    nonCheckpointedEgresses = new HashSet<string>();
+                    waitingForDependencies = new HashSet<string>();
+                    foreach (var key in _context.egressBlocks.Keys)
+                    {
+                        nonCheckpointedEgresses.Add(key);
+                        waitingForDependencies.Add(key);
+                    }
+                    foreach(var key in _context.ingressBlocks.Keys)
+                    {
+                        waitingForDependencies.Add(key);
+                    }
+                    foreach(var precompleted in _preCompletedDependencies)
+                    {
+                        waitingForDependencies.Remove(precompleted);
+                    }
+                    _preCompletedDependencies.Clear();
+                    _context._logger.LogDebug("Checkpoint started on stream {Stream}, waiting for dependencies: [{Waiting}]", _context.streamName, string.Join(",", waitingForDependencies));
+
+                    _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    var newTime = _context.producingTime + 1;
+                    var checkpoint = new Checkpoint(_context.producingTime, newTime);
+                    _context.producingTime = newTime;
+                    _currentCheckpoint = checkpoint;
+
+                    if (isScheduled)
+                    {
+                        _context._scheduleCheckpointTask = null;
+                        _context._triggerCheckpointTime = null;
+                        _context._scheduleCheckpointCancelSource = null;
+                    }
+                    foreach (var ingress in _context.ingressBlocks)
+                    {
+                        ingress.Value.DoLockingEvent(checkpoint);
+                    }
                     return _context.checkpointTask.Task;
                 }
-                _context._logger.StartingCheckpoint(_context.streamName);
-
-                _initialCheckpointTaken = false;
-                _compactionStarted = false;
-                nonCheckpointedEgresses = new HashSet<string>();
-                waitingForDependencies = new HashSet<string>();
-                foreach (var key in _context.egressBlocks.Keys)
-                {
-                    nonCheckpointedEgresses.Add(key);
-                    waitingForDependencies.Add(key);
-                }
-                foreach(var key in _context.ingressBlocks.Keys)
-                {
-                    waitingForDependencies.Add(key);
-                }
-                foreach(var precompleted in _preCompletedDependencies)
-                {
-                    waitingForDependencies.Remove(precompleted);
-                }
-                _preCompletedDependencies.Clear();
-                _context._logger.LogDebug("Checkpoint started on stream {Stream}, waiting for dependencies: [{Waiting}]", _context.streamName, string.Join(",", waitingForDependencies));
-
-                _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                var newTime = _context.producingTime + 1;
-                checkpoint = new Checkpoint(_context.producingTime, newTime);
-                _context.producingTime = newTime;
-                _currentCheckpoint = checkpoint;
-
-                if (isScheduled)
-                {
-                    _context._scheduleCheckpointTask = null;
-                    _context._triggerCheckpointTime = null;
-                    _context._scheduleCheckpointCancelSource = null;
-                }
-                foreach (var ingress in _context.ingressBlocks)
-                {
-                    ingress.Value.DoLockingEvent(checkpoint);
-                }
             }
-            return _context.checkpointTask.Task;
+            // The transition takes the context lock and must run outside the checkpoint
+            // lock, see CheckpointCompleted.
+            TransitionTo(wishTransition);
+            return Task.CompletedTask;
         }
 
         public override Task CallTrigger(string operatorName, string triggerName, object? state)
@@ -553,18 +553,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     // the checkpoint completes, with the same bounded watchdog as a
                     // deferred stop.
                     _context._logger.LogDebug("Delete requested while a checkpoint is in progress, the delete runs when the checkpoint completes");
-                    var context = _context;
-                    var observedDeleteTask = ObservedTask(context, forDelete: true);
-                    _ = Task.Run(async () =>
-                    {
-                        await Task.Delay(context._dataflowStreamOptions.StopDrainTimeout);
-                        bool stillWaiting = WatchdogStillWaiting(context, observedDeleteTask, forDelete: true);
-                        if (stillWaiting && context.currentState == StreamStateValue.Running)
-                        {
-                            context._logger.LogWarning("Delete timed out waiting for the in-progress checkpoint on stream {stream}, failing the stream to complete the delete.", context.streamName);
-                            await context.OnFailure(new OperationCanceledException("The delete timed out waiting for a checkpoint to complete."));
-                        }
-                    });
+                    ArmDeferredWishWatchdog(_context, ObservedTask(_context, forDelete: true), forDelete: true);
                     return Task.CompletedTask;
                 }
             }
@@ -577,6 +566,38 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 return forDelete ? context._deleteTask : context._stopTask;
             }
+        }
+
+        /// <summary>
+        /// Bounds a stop or delete that was deferred behind an in-progress checkpoint. The
+        /// checkpoint can hang forever when another substream died mid cycle, a dead
+        /// substream produces healthy looking empty fetches so nothing else detects it.
+        /// After the drain timeout the stream fails so the failure handling honors the
+        /// wish. The identity check makes sure the watchdog only fires for the request it
+        /// was armed for, not for a later one after the stream was stopped and started
+        /// again in the meantime. A checkpoint inside its local commit work is never
+        /// interrupted, it is progressing and the wish is honored at its completion,
+        /// failing there would run the failure teardown concurrently with the state
+        /// manager checkpoint.
+        /// </summary>
+        private static void ArmDeferredWishWatchdog(StreamContext context, TaskCompletionSource? observedTask, bool forDelete)
+        {
+            var operation = forDelete ? "delete" : "stop";
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(context._dataflowStreamOptions.StopDrainTimeout);
+                while (WatchdogStillWaiting(context, observedTask, forDelete) && context.currentState == StreamStateValue.Running)
+                {
+                    if (context._checkpointCommitActive)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(1));
+                        continue;
+                    }
+                    context._logger.LogWarning("The {operation} timed out waiting for the in-progress checkpoint on stream {stream}, failing the stream to complete it.", operation, context.streamName);
+                    await context.OnFailure(new OperationCanceledException($"The {operation} timed out waiting for a checkpoint to complete."));
+                    return;
+                }
+            });
         }
 
         /// <summary>
@@ -613,26 +634,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (_doingCheckpoint)
                 {
                     _context._logger.LogDebug("Stop requested while a checkpoint is in progress, the stop runs when the checkpoint completes");
-                    // The checkpoint the stop defers behind can hang forever when another
-                    // substream died mid cycle, a dead substream produces healthy looking
-                    // empty fetches so nothing else detects it. The wait is bounded, after
-                    // the drain timeout the stream fails so the failure handling honors the
-                    // stop.
-                    var context = _context;
-                    var observedStopTask = ObservedTask(context, forDelete: false);
-                    _ = Task.Run(async () =>
-                    {
-                        await Task.Delay(context._dataflowStreamOptions.StopDrainTimeout);
-                        // The identity check makes sure the watchdog only fires for the
-                        // stop it was armed for, not for a later stop after the stream
-                        // was stopped and started again in the meantime.
-                        bool stillWaiting = WatchdogStillWaiting(context, observedStopTask, forDelete: false);
-                        if (stillWaiting && context.currentState == StreamStateValue.Running)
-                        {
-                            context._logger.LogWarning("Stop timed out waiting for the in-progress checkpoint on stream {stream}, failing the stream to complete the stop.", context.streamName);
-                            await context.OnFailure(new OperationCanceledException("The stop timed out waiting for a checkpoint to complete."));
-                        }
-                    });
+                    ArmDeferredWishWatchdog(_context, ObservedTask(_context, forDelete: false), forDelete: false);
                     return Task.CompletedTask;
                 }
             }

@@ -29,5 +29,32 @@ namespace FlowtideDotNet.Orleans.Internal
         {
             return $"{streamName.Length}_{streamName}_{substreamName}";
         }
+
+        /// <summary>
+        /// Parses a key created by <see cref="Create"/>. Returns false for keys in another
+        /// format, for example keys persisted in reminder tables by versions that used a
+        /// key without the length prefix, such activations must clean themselves up instead
+        /// of running a substream that stop and delete can no longer reach.
+        /// </summary>
+        public static bool TryParse(string key, out string streamName, out string substreamName)
+        {
+            streamName = string.Empty;
+            substreamName = string.Empty;
+            var lengthEnd = key.IndexOf('_');
+            if (lengthEnd <= 0 || !int.TryParse(key.AsSpan(0, lengthEnd), out var streamNameLength) || streamNameLength < 1)
+            {
+                return false;
+            }
+            var streamStart = lengthEnd + 1;
+            // The separator after the stream name and at least one substream name character
+            var substreamStart = streamStart + streamNameLength + 1;
+            if (substreamStart >= key.Length || key[substreamStart - 1] != '_')
+            {
+                return false;
+            }
+            streamName = key.Substring(streamStart, streamNameLength);
+            substreamName = key.Substring(substreamStart);
+            return true;
+        }
     }
 }

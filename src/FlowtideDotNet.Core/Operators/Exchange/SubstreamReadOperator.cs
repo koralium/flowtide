@@ -294,7 +294,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         int attemptBudget = _localCheckpointSeen ? 3 : 24;
                         for (int attempt = 0; attempt < attemptBudget; attempt++)
                         {
-                            var completed = await Task.WhenAny(_waitForCheckpoint.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+                            // The wait observes the cancellation. A stop, delete or failure
+                            // teardown waits for this task to complete, an uncancellable wait
+                            // would hold the whole teardown for the remaining budget.
+                            var completed = await Task.WhenAny(_waitForCheckpoint.Task, Task.Delay(TimeSpan.FromSeconds(5), output.CancellationToken));
+                            output.CancellationToken.ThrowIfCancellationRequested();
                             if (completed == _waitForCheckpoint.Task)
                             {
                                 checkpointArrived = true;
@@ -318,37 +322,34 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     }
                     if (inStreamCheckpoint == null)
                     {
-                        // The local checkpoint was already consumed, the unpaired barrier must
-                        // not be dropped silently, a new checkpoint is requested to cover it.
-                        Logger.LogWarning("Substream read {name} pairing wait completed without a local checkpoint for the other substreams barrier with time {time}, requesting a new checkpoint.", Name, checkpointEvent.CheckpointTime);
-                        ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                        // The pairing wait completed but the local cycle is already gone, for
+                        // example because a concurrent failure reset it. The barrier can not
+                        // be consumed without a paired local checkpoint, the other substreams
+                        // cycle would then never be acknowledged. Fail and recover so the
+                        // initialize handshake reconciles the substreams.
+                        Logger.LogWarning("Substream read {name} pairing wait completed without a local checkpoint for the other substreams barrier with time {time}, failing and recovering to reconcile the substreams.", Name, checkpointEvent.CheckpointTime);
+                        await FailAndRollback();
+                        return;
                     }
-                    if (inStreamCheckpoint != null)
+                    await OnCheckpoint(inStreamCheckpoint.CheckpointTime);
+                    // Forward this streams own checkpoint event, the other substreams
+                    // event carries that streams times.
+                    await output.SendLockingEvent(inStreamCheckpoint);
+                    Logger.LogDebug("Substream read {name} forwarded checkpoint with time {time} downstream", Name, inStreamCheckpoint.CheckpointTime);
+                    bool replaySignal = false;
+                    lock (_lock)
                     {
-                        await OnCheckpoint(inStreamCheckpoint.CheckpointTime);
-                        // Forward this streams own checkpoint event, the other substreams
-                        // event carries that streams times.
-                        await output.SendLockingEvent(inStreamCheckpoint);
-                        Logger.LogDebug("Substream read {name} forwarded checkpoint with time {time} downstream", Name, inStreamCheckpoint.CheckpointTime);
-                        bool replaySignal = false;
-                        lock (_lock)
+                        _currentCheckpoint = null;
+                        if (_pendingCheckpointDoneSignals > 0)
                         {
-                            _currentCheckpoint = null;
-                            if (_pendingCheckpointDoneSignals > 0)
-                            {
-                                _pendingCheckpointDoneSignals--;
-                                replaySignal = true;
-                            }
-                        }
-                        if (replaySignal)
-                        {
-                            // Replay a signal that arrived before this stream finished starting
-                            SetDependenciesDone();
+                            _pendingCheckpointDoneSignals--;
+                            replaySignal = true;
                         }
                     }
-                    else
+                    if (replaySignal)
                     {
-                        throw new InvalidOperationException("Checkpoint event not found in stream");
+                        // Replay a signal that arrived before this stream finished starting
+                        SetDependenciesDone();
                     }
                 }
                 else if (ev is InitWatermarksEvent initWatermarksEvent)

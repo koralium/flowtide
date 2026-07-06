@@ -29,7 +29,13 @@ namespace FlowtideDotNet.Base.Vertices
         private readonly IngressState<T> _ingressState;
         private readonly ITargetBlock<IStreamEvent> _targetBlock;
         private bool _inLock;
-        private TaskCompletionSource? _stopEvents;
+        private readonly object _gateLock = new object();
+        // The two gates are separate on purpose. The stop gate is set at the stop
+        // checkpoint and must survive until the run is torn down, the pause gate is
+        // released by a resume. With a single shared gate a resume during a stopping
+        // stream would release the stop freeze and deliver data after the stop barrier.
+        private volatile TaskCompletionSource? _stopGate;
+        private volatile TaskCompletionSource? _pauseGate;
 
         internal IngressOutput(IngressState<T> ingressState, ITargetBlock<IStreamEvent> targetBlock)
         {
@@ -50,7 +56,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// <returns>A <see cref="Task"/> that represents the asynchronous send operation.</returns>
         public Task SendAsync(T data)
         {
-            if (_stopEvents != null)
+            if (_stopGate != null || _pauseGate != null)
             {
                 return SendAsync_WaitForResume(data);
             }
@@ -74,12 +80,12 @@ namespace FlowtideDotNet.Base.Vertices
             // throw instead of delivering a stale batch, the rollback replays the data.
             while (true)
             {
-                var stopEvents = _stopEvents;
-                if (stopEvents == null)
+                var gate = _stopGate ?? _pauseGate;
+                if (gate == null)
                 {
                     break;
                 }
-                await stopEvents.Task.WaitAsync(CancellationToken);
+                await gate.Task.WaitAsync(CancellationToken);
             }
             CancellationToken.ThrowIfCancellationRequested();
             await SendAsync(data);
@@ -116,19 +122,29 @@ namespace FlowtideDotNet.Base.Vertices
 
         internal void Stop()
         {
-            if (_stopEvents == null)
+            lock (_gateLock)
             {
-                _stopEvents = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _stopGate ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        internal void Pause()
+        {
+            lock (_gateLock)
+            {
+                _pauseGate ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             }
         }
 
         internal void Resume()
         {
-            if (_stopEvents != null)
+            TaskCompletionSource? gate;
+            lock (_gateLock)
             {
-                _stopEvents.SetResult();
-                _stopEvents = null;
+                gate = _pauseGate;
+                _pauseGate = null;
             }
+            gate?.TrySetResult();
         }
 
         internal void Fault(Exception exception)
@@ -158,7 +174,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// <returns>A <see cref="Task"/> that represents the asynchronous send operation.</returns>
         public Task SendWatermark(Watermark watermark)
         {
-            if (_stopEvents != null)
+            if (_stopGate != null || _pauseGate != null)
             {
                 return SendWatermark_WaitForResume(watermark);
             }
@@ -177,12 +193,12 @@ namespace FlowtideDotNet.Base.Vertices
             // believe the data before it never completed.
             while (true)
             {
-                var stopEvents = _stopEvents;
-                if (stopEvents == null)
+                var gate = _stopGate ?? _pauseGate;
+                if (gate == null)
                 {
                     break;
                 }
-                await stopEvents.Task.WaitAsync(CancellationToken);
+                await gate.Task.WaitAsync(CancellationToken);
             }
             CancellationToken.ThrowIfCancellationRequested();
             await SendWatermark(watermark);
@@ -200,11 +216,19 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Dispose()
         {
-            if (_stopEvents != null)
+            TaskCompletionSource? stopGate;
+            TaskCompletionSource? pauseGate;
+            lock (_gateLock)
             {
-                _stopEvents.SetResult();
-                _stopEvents = null;
+                stopGate = _stopGate;
+                _stopGate = null;
+                pauseGate = _pauseGate;
+                _pauseGate = null;
             }
+            // Parked senders wake up and observe the cancellation, every teardown path
+            // cancels the token before the outputs are disposed.
+            stopGate?.TrySetResult();
+            pauseGate?.TrySetResult();
         }
     }
 }

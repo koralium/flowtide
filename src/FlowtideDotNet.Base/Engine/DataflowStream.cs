@@ -224,8 +224,6 @@ namespace FlowtideDotNet.Base.Engine
         /// <returns>A task representing the asynchronous delete operation.</returns>
         public Task DeleteAsync()
         {
-            // Delete implies stop, and stopping supersedes a pause, see StopAsync.
-            streamContext.Resume();
             return streamContext.DeleteAsync();
         }
 
@@ -258,10 +256,8 @@ namespace FlowtideDotNet.Base.Engine
         /// <returns>A task that completes when the stream has fully stopped.</returns>
         public Task StopAsync()
         {
-            // Stopping supersedes a pause, a source blocked in a paused send holds its
-            // checkpoint lock and the stop checkpoint cycles could never run. The paused
-            // data flows during the stop and becomes part of the final state.
-            streamContext.Resume();
+            // Stopping supersedes a pause, the paused data flows during the stop and
+            // becomes part of the final state, see StreamContext.StopAsync.
             return streamContext.StopAsync();
         }
 

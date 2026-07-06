@@ -73,14 +73,15 @@ namespace FlowtideDotNet.Orleans.Internal
             var response = await _streamGrain.FetchDataAsync(new Messages.FetchDataRequest(selfName, targetIds, numberOfEvents, Interlocked.Read(ref _fetchEpoch)));
             if (response.RequestorUnknown)
             {
-                // The serving grain lost its epoch table, for example after it was
-                // reactivated on another silo, so this streams announcement is gone and
-                // every fetch is refused. Refused fetches look exactly like empty polls, the
-                // fetch loop keeps iterating and no stall watchdog ever fires, so without an
-                // escalation the stream starves silently forever. After the grace period the
-                // fetch fails, the recovery re-runs the initialize handshake which announces
-                // the epoch to the new activation. The grace period exists so a briefly
-                // restarting or zombie fetcher does not immediately force recoveries.
+                // This streams announcement is not current at the serving grain, either the
+                // grain lost its epoch table after a reactivation on another silo or an
+                // abandoned stream instance overwrote the announcement. Refused fetches look
+                // exactly like empty polls, the fetch loop keeps iterating and no stall
+                // watchdog ever fires, so without an escalation the stream starves silently
+                // forever. After the grace period the fetch fails, the recovery re-runs the
+                // initialize handshake which re-announces the epoch. The grace period exists
+                // so a briefly restarting or zombie fetcher does not immediately force
+                // recoveries.
                 if (_requestorUnknownSince == 0)
                 {
                     _requestorUnknownSince = Environment.TickCount64;

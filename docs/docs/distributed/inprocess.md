@@ -23,12 +23,13 @@ var stream = new DistributedStreamBuilder("my_stream")
         ");
         return sqlPlanBuilder.GetPlan();
     })
-    .WithStateOptionsFactory(substreamName => new StateManagerOptions
+    .WithStateOptionsFactory((streamName, substreamName) => new StateManagerOptions
     {
-        // Every substream needs its own state storage
-        PersistentStorage = CreateStorageFor(substreamName)
+        // Every substream needs its own state storage, key it on both names so
+        // substreams of different streams never share a location
+        PersistentStorage = CreateStorageFor(streamName, substreamName)
     })
-    .AddConnectorManager(substreamName =>
+    .AddConnectorManager((streamName, substreamName) =>
     {
         // Called once per substream, each substream gets its own connector manager
         var connectorManager = new ConnectorManager();

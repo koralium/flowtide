@@ -44,7 +44,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private int _dependenciesDoneCalled = 0;
         private int _numberOfSubstreams = 0;
         // Checkpoint done signals from other substreams that arrived before this stream
-        // finished starting, replayed one per checkpoint cycle. Guarded by _dependenciesDoneLock.
+        // finished starting, replayed on the first checkpoint cycle. Guarded by
+        // _dependenciesDoneLock.
         private int _pendingDependenciesDoneSignals = 0;
 
 
@@ -172,18 +173,21 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             else if (lockingEvent is ICheckpointEvent)
             {
                 // Replay checkpoint done signals that arrived before this stream finished
-                // starting, one per checkpoint cycle so no signal is lost.
-                bool replaySignal = false;
+                // starting. A cycle needs one signal per peer substream, so every buffered
+                // signal is replayed at once, they can only belong to this cycle: no
+                // barriers were produced while the callback was unwired, so each peer can
+                // have at most one acknowledgement in flight from before the start.
+                int replaySignals;
                 lock (_dependenciesDoneLock)
                 {
-                    if (_pendingDependenciesDoneSignals > 0)
-                    {
-                        _pendingDependenciesDoneSignals--;
-                        replaySignal = true;
-                    }
+                    replaySignals = _pendingDependenciesDoneSignals;
+                    _pendingDependenciesDoneSignals = 0;
                 }
-                Logger.LogDebug("Exchange {name} processed checkpoint event, replays buffered signal: {replay}", Name, replaySignal);
-                if (replaySignal)
+                if (replaySignals > 0)
+                {
+                    Logger.LogDebug("Exchange {name} processed checkpoint event, replays {count} buffered signals", Name, replaySignals);
+                }
+                for (int i = 0; i < replaySignals; i++)
                 {
                     TargetCallDependenciesDone();
                 }

@@ -133,7 +133,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     ");
                     return sqlPlanBuilder.GetPlan();
                 })
-                .WithStateOptionsFactory(substreamName => CreateStateOptions(testName, substreamName))
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
                     var connectorManager = new ConnectorManager();
@@ -331,8 +331,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     sqlPlanBuilder.Sql(NormalJoinSql);
                     return sqlPlanBuilder.GetPlan();
                 })
-                .WithStateOptionsFactory(substreamName => CreateStateOptions(testName, substreamName))
-                .AddConnectorManager(substreamName =>
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
+                .AddConnectorManager((streamName, substreamName) =>
                 {
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false, failInitialize: substreamName == "substream_1"));
@@ -441,8 +441,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     sqlPlanBuilder.Sql(NormalJoinSql);
                     return sqlPlanBuilder.GetPlan();
                 })
-                .WithStateOptionsFactory(substreamName => CreateStateOptions(testName, substreamName))
-                .AddConnectorManager(substreamName =>
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
+                .AddConnectorManager((streamName, substreamName) =>
                 {
                     var connectorManager = new ConnectorManager();
                     // The sink substream starts 20 seconds slower than its peer, longer
@@ -526,8 +526,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     ");
                     return sqlPlanBuilder.GetPlan();
                 })
-                .WithStateOptionsFactory(substreamName => CreateStateOptions(testName, substreamName))
-                .AddConnectorManager(substreamName =>
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
+                .AddConnectorManager((streamName, substreamName) =>
                 {
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
@@ -785,7 +785,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     ");
                     return sqlPlanBuilder.GetPlan();
                 })
-                .WithStateOptionsFactory(substreamName => CreateStateOptions("e2e_normal_aggregate", substreamName))
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_normal_aggregate", substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
                     var connectorManager = new ConnectorManager();
@@ -844,7 +844,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     ");
                     return sqlPlanBuilder.GetPlan();
                 })
-                .WithStateOptionsFactory(substreamName => CreateStateOptions("e2e_agg_over_join", substreamName))
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_agg_over_join", substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
                     var connectorManager = new ConnectorManager();
@@ -910,7 +910,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     ");
                     return sqlPlanBuilder.GetPlan();
                 })
-                .WithStateOptionsFactory(substreamName => CreateStateOptions("e2e_having_over_join", substreamName))
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_having_over_join", substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
                     var connectorManager = new ConnectorManager();
@@ -1050,7 +1050,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     ");
                     return sqlPlanBuilder.GetPlan();
                 })
-                .WithStateOptionsFactory(substreamName => CreateStateOptions("e2e_crash_recovery", substreamName))
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_crash_recovery", substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
                     var connectorManager = new ConnectorManager();
@@ -1112,7 +1112,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     ");
                     return sqlPlanBuilder.GetPlan();
                 })
-                .WithStateOptionsFactory(substreamName => CreateStateOptions("e2e_mutual_recovery", substreamName))
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_mutual_recovery", substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
                     var connectorManager = new ConnectorManager();
@@ -1172,7 +1172,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     sqlPlanBuilder.Sql(sql);
                     return sqlPlanBuilder.GetPlan();
                 })
-                .WithStateOptionsFactory(substreamName => CreateStateOptions(testName, substreamName))
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
                     var connectorManager = new ConnectorManager();
@@ -1244,7 +1244,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     sqlPlanBuilder.Sql(sql);
                     return sqlPlanBuilder.GetPlan();
                 })
-                .WithStateOptionsFactory(substreamName => stateOptions != null ? stateOptions(substreamName) : CreateStateOptions(testName, substreamName))
+                .WithStateOptionsFactory((streamName, substreamName) => stateOptions != null ? stateOptions(substreamName) : CreateStateOptions(testName, substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
                     var connectorManager = new ConnectorManager();
@@ -1272,6 +1272,56 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 })
                 .DistributeAutomatically(substreamCount)
                 .Build();
+        }
+
+        /// <summary>
+        /// Deleting a running distributed stream races the delete against the cross
+        /// substream recovery cascade: the substream that tears down first makes its peer
+        /// fail and recover while the peers own delete is still arriving, and the delete
+        /// must still complete. Repeated since the interleaving is timing dependent.
+        /// </summary>
+        [Fact]
+        public async Task RepeatedDeleteOfRunningStreamCompletes()
+        {
+            _generator.Generate(200);
+
+            for (int i = 0; i < 15; i++)
+            {
+                var latestData = new ConcurrentDictionary<string, EventBatchData>();
+                var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+                var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+                Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+                {
+                    var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                    return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                    {
+                        b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                        b.AddProvider(provider);
+                    });
+                }
+
+                _stream = BuildHost($"e2e_repeat_delete_{i}", NormalJoinSql, latestData, failures,
+                    loggerFactory: CreateBufferedLoggerFactory,
+                    stopDrainTimeout: TimeSpan.FromSeconds(2));
+                await _stream.StartAsync();
+
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                var deleteTask = _stream.DeleteAsync();
+                var finished = await Task.WhenAny(deleteTask, Task.Delay(TimeSpan.FromSeconds(45)));
+                if (finished != deleteTask)
+                {
+                    foreach (var buffer in logBuffers)
+                    {
+                        buffer.Value.WriteToFile($"./debugwrite/e2e_repeat_delete_{i}_{buffer.Key}.log");
+                    }
+                    Assert.Fail($"Deleting the distributed stream timed out in cycle {i}, log dumps in debugwrite/e2e_repeat_delete_{i}_*.log");
+                }
+                await deleteTask;
+                await _stream.DisposeAsync();
+                _stream = null;
+            }
         }
 
         /// <summary>

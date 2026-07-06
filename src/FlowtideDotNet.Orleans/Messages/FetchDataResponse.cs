@@ -40,9 +40,10 @@ namespace FlowtideDotNet.Orleans.Messages
         public PooledBuffer Events { get; set; }
 
         /// <summary>
-        /// True when the serving grain does not know the requestors announced fetch epoch,
-        /// for example after the serving grain was reactivated on another silo and lost its
-        /// per activation epoch table. The fetching side must not treat this like an empty
+        /// True when the requestors fetch epoch is not the one announced to the serving
+        /// grain, either because the grain was reactivated on another silo and lost its per
+        /// activation epoch table, or because another instance of the requestors stream
+        /// announced a different epoch. The fetching side must not treat this like an empty
         /// poll: refused fetches never return data, and a persistently refused fetcher must
         /// fail and recover so the initialize handshake re-announces its epoch.
         /// </summary>

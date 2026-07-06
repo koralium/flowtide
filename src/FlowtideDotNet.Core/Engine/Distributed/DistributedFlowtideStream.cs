@@ -120,26 +120,37 @@ namespace FlowtideDotNet.Core.Engine.Distributed
                 _tickLoop = Task.Run(async () =>
                 {
                     using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
+                    // The dispatches are not awaited inline, a dispatch into a paused or
+                    // backpressured substream can park until the substream moves again and
+                    // one blocked substream must not stall trigger dispatch for the others.
+                    // Tracking the task per substream bounds it to one in flight dispatch
+                    // each, a substream whose dispatch has not finished is skipped.
+                    var inflightTicks = new Dictionary<string, Task>();
+                    long tickCount = 0;
                     try
                     {
                         while (await timer.WaitForNextTickAsync(token))
                         {
-                            foreach (var substream in _substreams.Values)
+                            foreach (var substream in _substreams)
                             {
                                 // Custom schedulers are managed externally by whoever configured them
-                                if (substream.Scheduler is Base.Engine.DefaultStreamScheduler scheduler)
+                                if (substream.Value.Scheduler is not Base.Engine.DefaultStreamScheduler scheduler)
                                 {
-                                    try
-                                    {
-                                        await scheduler.Tick();
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        // A trigger dispatch can fail while a substream is failing over,
-                                        // the loop must keep ticking for the others.
-                                        _logger.LogDebug(e, "Trigger tick failed in stream {stream}, retrying at the next tick.", StreamName);
-                                    }
+                                    continue;
                                 }
+                                if (inflightTicks.TryGetValue(substream.Key, out var previous) && !previous.IsCompleted)
+                                {
+                                    continue;
+                                }
+                                inflightTicks[substream.Key] = TickScheduler(scheduler);
+                            }
+                            tickCount++;
+                            if (tickCount % 1000 == 0)
+                            {
+                                // Run garbage collection once every 10 seconds, the same
+                                // native memory pressure mitigation DataflowStream.RunAsync
+                                // performs for a single stream.
+                                GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
                             }
                         }
                     }
@@ -147,6 +158,20 @@ namespace FlowtideDotNet.Core.Engine.Distributed
                     {
                     }
                 });
+            }
+        }
+
+        private async Task TickScheduler(Base.Engine.DefaultStreamScheduler scheduler)
+        {
+            try
+            {
+                await scheduler.Tick();
+            }
+            catch (Exception e)
+            {
+                // A trigger dispatch can fail while a substream is failing over, the loop
+                // must keep ticking for the others.
+                _logger.LogDebug(e, "Trigger tick failed in stream {stream}, retrying at the next tick.", StreamName);
             }
         }
 

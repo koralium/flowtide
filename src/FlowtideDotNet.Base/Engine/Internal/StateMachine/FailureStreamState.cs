@@ -26,7 +26,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override async Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
+            _context._logger.LogDebug("Failure state initialize entered on stream {stream}", _context.streamName);
             _context.CheckForPause();
+            _context._logger.LogDebug("Failure state initialize passed the pause check on stream {stream}", _context.streamName);
 
             try
             {
@@ -119,6 +121,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _context.ForEachBlock((key, block) =>
             {
+                _context._logger.LogDebug("Failure handling faulting block {block} on stream {stream}", key, _context.streamName);
                 block.Fault(new BlockStopException($"Faulting block due to stream failure."));
             });
 
@@ -160,7 +163,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             if (deletePending || _context._wantedState == StreamStateValue.Deleting)
             {
                 // A delete was requested during the failure handling, the cleanup has
-                // finished so the delete can run now without racing it.
+                // finished so the delete can run now without racing it. The failure
+                // handling disposed every block, they must be created before delete can
+                // be called, see NotStartedStreamState.DeleteAsync.
+                _context.ForEachBlock((key, block) =>
+                {
+                    block.Setup(_context.streamName, key);
+                    block.CreateBlock();
+                });
                 await TransitionTo(StreamStateValue.Deleting);
                 return;
             }

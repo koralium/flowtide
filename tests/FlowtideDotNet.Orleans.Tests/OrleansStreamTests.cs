@@ -463,8 +463,20 @@ namespace FlowtideDotNet.Orleans.Tests
 
             var deleteTask = streamGrain.DeleteStreamAsync();
             var finished = await Task.WhenAny(deleteTask, Task.Delay(TimeSpan.FromSeconds(60)));
-            Assert.True(finished == deleteTask, "Deleting the stream timed out");
-            await deleteTask;
+            if (finished != deleteTask)
+            {
+                var timeoutDump = SharedRingBufferLogger.Dump($"delete_timeout_{DateTime.UtcNow:HHmmss}.log");
+                Assert.Fail($"Deleting the stream timed out. Log dump: {timeoutDump}");
+            }
+            try
+            {
+                await deleteTask;
+            }
+            catch (Exception e)
+            {
+                var failureDump = SharedRingBufferLogger.Dump($"delete_failure_{DateTime.UtcNow:HHmmss}.log");
+                Assert.Fail($"Deleting the stream failed: {e}. Log dump: {failureDump}");
+            }
 
             var status = await streamGrain.GetStatusAsync();
             Assert.False(status.IsStarted);

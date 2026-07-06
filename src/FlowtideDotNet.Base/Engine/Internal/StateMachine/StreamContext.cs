@@ -86,6 +86,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // check-then-act window by re-checking at every safe point.
         internal volatile StreamStateValue _wantedState;
 
+        // True while a checkpoint runs its local commit work, from before save through the
+        // state manager checkpoint and the checkpoint done notifications. Read by the
+        // deferred stop and delete watchdog, a committing checkpoint is progressing and
+        // must not be interrupted.
+        internal volatile bool _checkpointCommitActive;
+
         private StreamStatus _streamStatus;
 
         internal object _pauseLock = new object();
@@ -351,7 +357,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal void SetStatus(StreamStatus status)
         {
-            _streamStatus = status;
+            lock (_pauseLock)
+            {
+                if (_pauseSource != null && status != StreamStatus.Paused)
+                {
+                    // A paused stream keeps showing Paused. Transitions that happen while
+                    // paused, for example a recovery, are recorded and become the visible
+                    // status again at the resume.
+                    _statusBeforePause = status;
+                    return;
+                }
+                _streamStatus = status;
+            }
         }
 
         internal Task CallTrigger_Internal(string triggerName, object? state)
@@ -705,6 +722,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 result = _deleteTask.Task;
             }
+            // The delete supersedes a pause. The resume runs after the delete task is
+            // created, a pause that races this call either sees the pending delete and is
+            // refused or is cleared here, a paused source would freeze the teardown.
+            Resume();
             lock (_contextLock)
             {
                 _ = _state!.DeleteAsync();
@@ -732,6 +753,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
             if (dispatchStop)
             {
+                // The stop supersedes a pause. The resume runs after the stop task is
+                // created, a pause that races this call either sees the pending stop and is
+                // refused or is cleared here, a paused source would freeze the stop drain.
+                Resume();
                 lock (_contextLock)
                 {
                     _ = _state!.StopAsync();
@@ -846,6 +871,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     return;
                 }
+                if (_stopTask != null || _deleteTask != null)
+                {
+                    // A stop or delete supersedes the pause. Gating the sources here would
+                    // freeze the drain, a parked source can hold the ingress checkpoint
+                    // lock that the stop cycle needs to inject its barrier.
+                    return;
+                }
                 _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 _statusBeforePause = Status;
                 SetStatus(StreamStatus.Paused);
@@ -874,9 +906,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     return;
                 }
-                SetStatus(_statusBeforePause);
+                // The marker must be cleared before the status is restored, SetStatus
+                // records instead of writes while the marker is set.
                 _pauseSource.SetResult();
                 _pauseSource = null;
+                SetStatus(_statusBeforePause);
             }
             // Release the gates directly from the block registry, the state here can be
             // failure or starting since a paused stream parks its recovery until the resume,
@@ -888,8 +922,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         /// <summary>
         /// Applies the vertex gates when the pause marker is set, called when the stream
         /// enters the running state, a pause requested while starting or failing only marks
-        /// the context. Nothing is released when the marker is not set, that would also
-        /// release the stop freeze of a concurrent stop cycle which shares the ingress gate.
+        /// the context. Nothing is released when the marker is not set, gates are only ever
+        /// applied together with the marker. The visible status is owned by Pause and
+        /// Resume, SetStatus keeps it at Paused while the marker is set.
         /// </summary>
         internal void SyncPauseGates()
         {
@@ -901,7 +936,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             if (paused)
             {
                 ForEachBlock((id, block) => block.Pause());
-                SetStatus(StreamStatus.Paused);
                 lock (_pauseLock)
                 {
                     paused = _pauseSource != null;
@@ -912,6 +946,27 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     ForEachBlock((id, block) => block.Resume());
                 }
             }
+        }
+
+        /// <summary>
+        /// Fails the tasks that stop and delete callers await. Used when a teardown gives
+        /// up, the callers must observe the failure instead of waiting forever. The stop
+        /// task is failed too, a delete implies the stop and a stop caller must not
+        /// outwait a failed delete.
+        /// </summary>
+        internal void FailTeardownWaiters(Exception exception)
+        {
+            TaskCompletionSource? deleteTask;
+            TaskCompletionSource? stopTask;
+            lock (_checkpointLock)
+            {
+                deleteTask = _deleteTask;
+                _deleteTask = null;
+                stopTask = _stopTask;
+                _stopTask = null;
+            }
+            deleteTask?.SetException(exception);
+            stopTask?.SetException(exception);
         }
 
         internal Task FailAndRollback(Exception? exception, long? restoreVersion = default)
