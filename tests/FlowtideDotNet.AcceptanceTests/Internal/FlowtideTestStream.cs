@@ -521,9 +521,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource));
         }
 
+        /// <summary>
+        /// Makes the sinks DeleteAsync throw this many times, simulating a storage delete
+        /// that fails transiently, or permanently when set above the delete retry budget.
+        /// </summary>
+        public int SinkDeleteFailCount { get; set; }
+
         protected virtual void AddWriteResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark));
+            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark, deleteFailCount: SinkDeleteFailCount));
         }
 
         protected virtual void OnWatermark(Watermark watermark)

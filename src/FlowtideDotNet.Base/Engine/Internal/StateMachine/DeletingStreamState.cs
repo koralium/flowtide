@@ -20,12 +20,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
     {
         // Bounds the retries so a delete that keeps failing surfaces the failure to the
         // callers instead of retrying forever, 20 attempts with the 500ms delay gives
-        // transient storage faults ten seconds to clear.
-        private const int MaxDeleteAttempts = 20;
+        // transient storage faults ten seconds to clear. Internal so tests can shorten them.
+        internal static int MaxDeleteAttempts = 20;
+        internal static TimeSpan DeleteRetryDelay = TimeSpan.FromMilliseconds(500);
 
         private readonly object _lock = new object();
         private Task? _deleteTask;
-        private int _deleteAttempts;
 
         public override Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
         {
@@ -59,38 +59,56 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             lock (_lock)
             {
                 _context.SetStatus(StreamStatus.Deleting);
+                // A single task owns every attempt. It is only replaced once it has
+                // completed, so a concurrent delete or a retry can never start a second
+                // teardown running against the same blocks and state manager.
                 if (_deleteTask != null && !_deleteTask.IsCompleted)
                 {
                     return Task.CompletedTask;
                 }
-                _deleteTask = Task.Factory.StartNew(async () =>
-                {
-                    await DeleteEntireStream();
-                })
-                .Unwrap()
-                .ContinueWith(async t =>
-                {
-                    if (t.IsFaulted)
-                    {
-                        _deleteAttempts++;
-                        if (_deleteAttempts >= MaxDeleteAttempts)
-                        {
-                            _context._logger.LogError(t.Exception, "Deleting the stream {stream} failed after {attempts} attempts, giving up. A new delete call starts fresh attempts.", _context.streamName, _deleteAttempts);
-                            _deleteAttempts = 0;
-                            _context.FailTeardownWaiters(t.Exception!);
-                            return;
-                        }
-                        // A silently retried delete looks like a hung delete from the
-                        // outside, every failed attempt is logged.
-                        _context._logger.LogWarning(t.Exception, "Delete attempt {attempt} failed on stream {stream}, retrying.", _deleteAttempts, _context.streamName);
-                        // Wait a while before trying to delete again
-                        await Task.Delay(TimeSpan.FromMilliseconds(500));
-
-                        await Initialize(StreamStateValue.Deleting);
-                    }
-                });
+                _deleteTask = Task.Run(RunDeleteWithRetries);
             }
             return Task.CompletedTask;
+        }
+
+        private async Task RunDeleteWithRetries()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            Exception? lastError = null;
+            for (int attempt = 1; attempt <= MaxDeleteAttempts; attempt++)
+            {
+                try
+                {
+                    if (attempt > 1)
+                    {
+                        // Wait, then re-create the blocks the previous attempt faulted and
+                        // disposed, delete needs live blocks. Dispose is not idempotent in
+                        // every operator, so retrying against disposed blocks would turn a
+                        // transient storage fault into a permanent failure. This is the same
+                        // precondition NotStartedStreamState.DeleteAsync establishes.
+                        await Task.Delay(DeleteRetryDelay);
+                        _context.ForEachBlock((key, block) =>
+                        {
+                            block.Setup(_context.streamName, key);
+                            block.CreateBlock();
+                        });
+                    }
+                    await DeleteEntireStream();
+                    return;
+                }
+                catch (Exception e)
+                {
+                    lastError = e;
+                    // A silently retried delete looks like a hung delete from the outside,
+                    // every failed attempt is logged.
+                    _context._logger.LogWarning(e, "Delete attempt {attempt} failed on stream {stream}.", attempt, _context.streamName);
+                }
+            }
+            // Every attempt failed, surface it to the callers instead of retrying forever.
+            // The stream stays in the deleting state, a new delete call restarts the
+            // attempts and a stop is honored by StopAsync since the blocks are torn down.
+            _context._logger.LogError(lastError, "Deleting the stream {stream} failed after {attempts} attempts, giving up. A new delete call starts fresh attempts.", _context.streamName, MaxDeleteAttempts);
+            _context.FailTeardownWaiters(lastError!);
         }
 
         private async Task DeleteEntireStream()
@@ -131,7 +149,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task StartAsync()
         {
-            return Task.CompletedTask;
+            Debug.Assert(_context != null, nameof(_context));
+            // Starting a stream that is being deleted is a caller error, silently reporting
+            // success would let a restart loop believe the stream came back while it stays
+            // deleted.
+            throw new NotSupportedException($"Stream '{_context.streamName}' is being deleted and cannot be started.");
         }
 
         public override Task TriggerCheckpoint(bool isScheduled = false)
@@ -148,9 +170,30 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task StopAsync()
         {
-            // A delete implies the stop. The stop task the caller awaits was created before
-            // this state was consulted, the deleted state completes it together with the
-            // delete task when the delete has finished.
+            Debug.Assert(_context != null, nameof(_context));
+            Task? deleteTask;
+            lock (_lock)
+            {
+                deleteTask = _deleteTask;
+            }
+            if (deleteTask != null && !deleteTask.IsCompleted)
+            {
+                // A delete is running, a delete implies the stop. The deleted state completes
+                // the stop task together with the delete task when the delete has finished.
+                return Task.CompletedTask;
+            }
+            // No delete is running, for example it gave up after exhausting its attempts.
+            // The blocks are already faulted and disposed so the stop has nothing left to
+            // do, its task must be completed or the caller waits forever. Shares the
+            // checkpoint lock with the deleted state so only one of them completes it.
+            lock (_context._checkpointLock)
+            {
+                if (_context._stopTask != null)
+                {
+                    _context._stopTask.SetResult();
+                    _context._stopTask = null;
+                }
+            }
             return Task.CompletedTask;
         }
     }

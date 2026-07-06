@@ -42,19 +42,23 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private StreamWriter? allInput;
 #endif
 
+        private int _deleteFailCount;
+
         public MockDataSink(
             WriteRelation writeRelation,
             ExecutionDataflowBlockOptions executionDataflowBlockOptions,
             Action<EventBatchData> onDataChange,
             int crashOnCheckpointCount,
             Action<Watermark> onWatermark,
-            int checkpointsBeforeCrash = 0) : base(executionDataflowBlockOptions)
+            int checkpointsBeforeCrash = 0,
+            int deleteFailCount = 0) : base(executionDataflowBlockOptions)
         {
             this.writeRelation = writeRelation;
             this.onDataChange = onDataChange;
             this.crashOnCheckpointCount = crashOnCheckpointCount;
             this.onWatermark = onWatermark;
             _checkpointsBeforeCrash = checkpointsBeforeCrash;
+            _deleteFailCount = deleteFailCount;
         }
 
         public override string DisplayName => "Mock Data Sink";
@@ -66,6 +70,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public override Task DeleteAsync()
         {
+            if (_deleteFailCount > 0)
+            {
+                // Simulates a storage delete that fails transiently, or permanently when the
+                // count is set higher than the retry budget.
+                _deleteFailCount--;
+                throw new InvalidOperationException("Simulated delete failure");
+            }
             return Task.CompletedTask;
         }
 

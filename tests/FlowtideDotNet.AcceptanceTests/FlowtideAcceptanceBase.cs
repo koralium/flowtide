@@ -72,6 +72,11 @@ namespace FlowtideDotNet.AcceptanceTests
 
         protected Task StartStream() => flowtideTestStream.StartStream();
 
+        /// <summary>
+        /// Makes the sinks DeleteAsync throw this many times, set before StartStream.
+        /// </summary>
+        protected int SinkDeleteFailCount { set => flowtideTestStream.SinkDeleteFailCount = value; }
+
         public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)

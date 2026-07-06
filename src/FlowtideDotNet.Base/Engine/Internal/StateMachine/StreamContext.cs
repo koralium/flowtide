@@ -1020,8 +1020,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 stopTask = _stopTask;
                 _stopTask = null;
             }
-            deleteTask?.SetException(exception);
-            stopTask?.SetException(exception);
+            deleteTask?.TrySetException(exception);
+            stopTask?.TrySetException(exception);
         }
 
         internal Task FailAndRollback(Exception? exception, long? restoreVersion = default)
