@@ -19,7 +19,7 @@ while (true)
     var data = Console.ReadLine();
     if (data != null)
     {
-        if (data == "C")
+        if (data.Equals("C", StringComparison.OrdinalIgnoreCase))
         {
             break;
         }
@@ -45,7 +45,7 @@ while (true)
     var data = Console.ReadLine();
     if (data != null)
     {
-        if (data == "C")
+        if (data.Equals("C", StringComparison.OrdinalIgnoreCase))
         {
             break;
         }
@@ -65,7 +65,7 @@ while (true)
 // Add services to the container.
 builder.Services.AddSingleton(new ConsoleInputSource(initialDataToSend));
 
-builder.Services.AddSingleton<CustomSink>((provider) => new CustomSink(existingData, provider.GetRequiredService<ILogger<CustomSink>>()));
+builder.Services.AddSingleton((provider) => new CustomSink(existingData, provider.GetRequiredService<ILogger<CustomSink>>()));
 
 builder.Services.AddFlowtideStream("test")
     .AddSqlFileAsPlan("query.sql")
@@ -100,7 +100,7 @@ while (true)
         {
             bool isDeleted = false;
 
-            if (split[0] == "D")
+            if (split[0].Equals("D", StringComparison.OrdinalIgnoreCase))
             {
                 isDeleted = true;
             }
