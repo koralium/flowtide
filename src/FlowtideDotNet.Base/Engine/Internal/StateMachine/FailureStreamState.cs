@@ -26,9 +26,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override async Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
-            _context._logger.LogDebug("Failure state initialize entered on stream {stream}", _context.streamName);
             _context.CheckForPause();
-            _context._logger.LogDebug("Failure state initialize passed the pause check on stream {stream}", _context.streamName);
 
             try
             {
