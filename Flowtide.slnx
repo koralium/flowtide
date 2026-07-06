@@ -2,6 +2,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/AspireSamples/AspireSamples.csproj" />
     <Project Path="samples/AspireTestSample/AspireTestSample.csproj" />
+    <Project Path="samples/CustomSinkSample/CustomSinkSample.csproj" Id="7b1b96a2-c2e6-4ff2-a25a-8518f475e916" />
     <Project Path="samples/DeltaLakeSourceUsage/DeltaLakeSourceUsage.csproj" />
     <Project Path="samples/MongoDbToConsoleSample/MongoDbToConsoleSample.csproj" />
     <Project Path="samples/MonitoringAzureMonitor/MonitoringAzureMonitor.csproj" />
@@ -13,7 +14,6 @@
     <Project Path="samples/SqlServerToSqlServerStream/SqlServerToSqlServerStream.csproj" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/FlowtideDotNet.Storage.FasterKV/FlowtideDotNet.Storage.FasterKV.csproj" />
     <Project Path="src/FlowtideDotNet.AspNetCore/FlowtideDotNet.AspNetCore.csproj" />
     <Project Path="src/FlowtideDotNet.Base/FlowtideDotNet.Base.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.CosmosDB/FlowtideDotNet.Connector.CosmosDB.csproj" />
@@ -32,6 +32,7 @@
     <Project Path="src/FlowtideDotNet.Core/FlowtideDotNet.Core.csproj" />
     <Project Path="src/FlowtideDotNet.DependencyInjection/FlowtideDotNet.DependencyInjection.csproj" />
     <Project Path="src/FlowtideDotNet.Storage.Azure/FlowtideDotNet.Storage.AzureBlobs.csproj" />
+    <Project Path="src/FlowtideDotNet.Storage.FasterKV/FlowtideDotNet.Storage.FasterKV.csproj" />
     <Project Path="src/FlowtideDotNet.Storage.SqlServer/FlowtideDotNet.Storage.SqlServer.csproj" />
     <Project Path="src/FlowtideDotNet.Storage/FlowtideDotNet.Storage.csproj" />
     <Project Path="src/FlowtideDotNet.Substrait/FlowtideDotNet.Substrait.csproj" />

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -23,6 +23,7 @@ using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks.Dataflow;
+using System.Threading.Channels;
 
 namespace FlowtideDotNet.Core.Sources.Generic.Internal
 {
@@ -37,6 +38,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         private IObjectState<long>? _lastWatermark;
         private List<int> _primaryKeyIndices;
         private int _keyIndex;
+        private bool _isPushBased;
 
         private IColumn[]? _keyLookupColumns;
         private EventBatchData? _keyLookupBatch;
@@ -128,6 +130,9 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             _genericDataSource.SetLookupRowFunc(LookupStoredObject);
             await _genericDataSource.Initialize(_readRelation, stateManagerClient.GetChildManager("impl"));
 
+            var method = _genericDataSource.GetType().GetMethod(nameof(GenericDataSourceAsync<T>.RunDeltaLoad));
+            _isPushBased = method != null && method.DeclaringType != typeof(GenericDataSourceAsync<T>);
+
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
@@ -177,54 +182,152 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         protected override async IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
         {
             Debug.Assert(_lastWatermark != null);
-            IColumn[] columns = new Column[_readRelation.BaseSchema.Names.Count];
 
-            for (int i = 0; i < columns.Length; i++)
+            if (_isPushBased)
             {
-                columns[i] = new Column(MemoryAllocator);
-            }
+                var channel = Channel.CreateUnbounded<DeltaLoadCommand>();
+                var context = new DeltaLoadContext(channel);
 
-            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
-
-            await EnterCheckpointLock();
-
-            await foreach (var ev in _genericDataSource.DeltaLoadAsync(_lastWatermark.Value))
-            {
-                AppendToColumns(columns, weights, iterations, ev);
-                _tempLookup[ev.Key] = ev.Value;
-                _lastWatermark.Value = ev.Watermark;
-
-                if (weights.Count >= 100)
+                // Run the background loop
+                var runTask = Task.Run(async () =>
                 {
-                    yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_lastWatermark.Value)));
-                    columns = new Column[_readRelation.BaseSchema.Names.Count];
+                    try
+                    {
+                        await _genericDataSource.RunDeltaLoad(context, cancellationToken);
+                        channel.Writer.TryComplete();
+                    }
+                    catch (Exception ex)
+                    {
+                        channel.Writer.TryComplete(ex);
+                    }
+                }, cancellationToken);
+
+                IColumn[] columns = new Column[_readRelation.BaseSchema.Names.Count];
+                for (int i = 0; i < columns.Length; i++)
+                {
+                    columns[i] = new Column(MemoryAllocator);
+                }
+                PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+                PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+
+                try
+                {
+                    await foreach (var cmd in channel.Reader.ReadAllAsync(cancellationToken))
+                    {
+                        if (cmd.Type == DeltaLoadCommandType.BeginTransaction)
+                        {
+                            await EnterCheckpointLock();
+                            cmd.CompletionSource!.SetResult();
+                        }
+                        else if (cmd.Type == DeltaLoadCommandType.SubmitItem)
+                        {
+                            var ev = cmd.Item!;
+                            AppendToColumns(columns, weights, iterations, ev);
+                            _tempLookup[ev.Key] = ev.Value;
+                            _lastWatermark.Value = ev.Watermark;
+
+                            if (weights.Count >= 100)
+                            {
+                                yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_lastWatermark.Value)));
+                                columns = new Column[_readRelation.BaseSchema.Names.Count];
+                                for (int i = 0; i < columns.Length; i++)
+                                {
+                                    columns[i] = new Column(MemoryAllocator);
+                                }
+                                weights = new PrimitiveList<int>(MemoryAllocator);
+                                iterations = new PrimitiveList<uint>(MemoryAllocator);
+                                _tempLookup.Clear();
+                            }
+                            cmd.CompletionSource!.SetResult();
+                        }
+                        else if (cmd.Type == DeltaLoadCommandType.DisposeTransaction)
+                        {
+                            if (weights.Count > 0)
+                            {
+                                yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_lastWatermark.Value)));
+                                columns = new Column[_readRelation.BaseSchema.Names.Count];
+                                for (int i = 0; i < columns.Length; i++)
+                                {
+                                    columns[i] = new Column(MemoryAllocator);
+                                }
+                                weights = new PrimitiveList<int>(MemoryAllocator);
+                                iterations = new PrimitiveList<uint>(MemoryAllocator);
+                                _tempLookup.Clear();
+                            }
+                            ExitCheckpointLock();
+                            cmd.CompletionSource!.SetResult();
+                        }
+                    }
+                }
+                finally
+                {
+                    weights.Dispose();
+                    iterations.Dispose();
                     for (int i = 0; i < columns.Length; i++)
                     {
-                        columns[i] = new Column(MemoryAllocator);
+                        columns[i].Dispose();
                     }
-                    weights = new PrimitiveList<int>(MemoryAllocator);
-                    iterations = new PrimitiveList<uint>(MemoryAllocator);
-                    _tempLookup.Clear();
-                }
-            }
 
-            if (weights.Count > 0)
-            {
-                yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_lastWatermark.Value)));
-                _tempLookup.Clear();
+                    try
+                    {
+                        await runTask;
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
             }
             else
             {
-                weights.Dispose();
-                iterations.Dispose();
+                IColumn[] columns = new Column[_readRelation.BaseSchema.Names.Count];
+
                 for (int i = 0; i < columns.Length; i++)
                 {
-                    columns[i].Dispose();
+                    columns[i] = new Column(MemoryAllocator);
                 }
-            }
 
-            ExitCheckpointLock();
+                PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+                PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+
+                await EnterCheckpointLock();
+
+                await foreach (var ev in _genericDataSource.DeltaLoadAsync(_lastWatermark.Value))
+                {
+                    AppendToColumns(columns, weights, iterations, ev);
+                    _tempLookup[ev.Key] = ev.Value;
+                    _lastWatermark.Value = ev.Watermark;
+
+                    if (weights.Count >= 100)
+                    {
+                        yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_lastWatermark.Value)));
+                        columns = new Column[_readRelation.BaseSchema.Names.Count];
+                        for (int i = 0; i < columns.Length; i++)
+                        {
+                            columns[i] = new Column(MemoryAllocator);
+                        }
+                        weights = new PrimitiveList<int>(MemoryAllocator);
+                        iterations = new PrimitiveList<uint>(MemoryAllocator);
+                        _tempLookup.Clear();
+                    }
+                }
+
+                if (weights.Count > 0)
+                {
+                    yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_lastWatermark.Value)));
+                    _tempLookup.Clear();
+                }
+                else
+                {
+                    weights.Dispose();
+                    iterations.Dispose();
+                    for (int i = 0; i < columns.Length; i++)
+                    {
+                        columns[i].Dispose();
+                    }
+                }
+
+                ExitCheckpointLock();
+            }
         }
 
         private void AppendToColumns(IColumn[] columnsWithKeyLast, PrimitiveList<int> weights, PrimitiveList<uint> iterations, FlowtideGenericObject<T> obj)
@@ -303,6 +406,87 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { _watermarkName });
+        }
+
+        private enum DeltaLoadCommandType
+        {
+            BeginTransaction,
+            SubmitItem,
+            DisposeTransaction
+        }
+
+        private class DeltaLoadCommand
+        {
+            public DeltaLoadCommand(DeltaLoadCommandType type, FlowtideGenericObject<T>? item, TaskCompletionSource completionSource)
+            {
+                Type = type;
+                Item = item;
+                CompletionSource = completionSource;
+            }
+
+            public DeltaLoadCommandType Type { get; }
+            public FlowtideGenericObject<T>? Item { get; }
+            public TaskCompletionSource CompletionSource { get; }
+        }
+
+        private class DeltaLoadContext : IDeltaLoadContext<T>
+        {
+            private readonly Channel<DeltaLoadCommand> _channel;
+
+            public DeltaLoadContext(Channel<DeltaLoadCommand> channel)
+            {
+                _channel = channel;
+            }
+
+            public async ValueTask<IDeltaLoadTransaction<T>> BeginTransactionAsync()
+            {
+                var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.BeginTransaction, null, tcs));
+                await tcs.Task;
+                return new DeltaLoadTransaction(_channel);
+            }
+
+            public async ValueTask SubmitBatchAsync(IEnumerable<FlowtideGenericObject<T>> batch)
+            {
+                await using var tx = await BeginTransactionAsync();
+                foreach (var item in batch)
+                {
+                    await tx.SubmitAsync(item);
+                }
+            }
+        }
+
+        private class DeltaLoadTransaction : IDeltaLoadTransaction<T>
+        {
+            private readonly Channel<DeltaLoadCommand> _channel;
+            private bool _disposed;
+
+            public DeltaLoadTransaction(Channel<DeltaLoadCommand> channel)
+            {
+                _channel = channel;
+            }
+
+            public async ValueTask SubmitAsync(FlowtideGenericObject<T> obj)
+            {
+                if (_disposed)
+                {
+                    throw new ObjectDisposedException(nameof(DeltaLoadTransaction));
+                }
+                var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.SubmitItem, obj, tcs));
+                await tcs.Task;
+            }
+
+            public async ValueTask DisposeAsync()
+            {
+                if (!_disposed)
+                {
+                    _disposed = true;
+                    var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.DisposeTransaction, null, tcs));
+                    await tcs.Task;
+                }
+            }
         }
     }
 }

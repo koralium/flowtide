@@ -20,6 +20,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -159,7 +160,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         {
             Debug.Assert(m_hasSentInitialData != null);
             Debug.Assert(m_tree != null);
-            if (m_executionMode == ExecutionMode.OnCheckpoint || (m_executionMode == ExecutionMode.Hybrid && !m_hasSentInitialData.Value))
+            if (m_executionMode == ExecutionMode.OnCheckpoint || (!m_hasSentInitialData.Value))
             {
                 await SendData();
             }
@@ -383,12 +384,21 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         private async Task SendData()
         {
             Debug.Assert(m_modified != null);
-            Debug.Assert(m_latestWatermark != null);
             Debug.Assert(m_hasSentInitialData != null);
-            if (m_hasModified)
+            if (m_hasModified || !m_hasSentInitialData.Value)
             {
+                var watermark = m_latestWatermark;
+
+                // If no watermark has been received yet, we create a default watermark to use for the upload.
+                // This is important for the initial data upload, where we may not have received any watermarks yet.
+                // This is required since GetExistingData might have fetched data, but current dataset has no rows, so no watermark
+                if (watermark == null)
+                {
+                    watermark = new Watermark(ImmutableDictionary<string, AbstractWatermarkValue>.Empty);
+                }
+
                 var changedRows = GetChangedRows();
-                await UploadChanges(changedRows, m_latestWatermark, !m_hasSentInitialData.Value, CancellationToken);
+                await UploadChanges(changedRows, watermark, !m_hasSentInitialData.Value, CancellationToken);
                 await m_modified.Clear();
                 m_hasModified = false;
             }

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -334,6 +334,164 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             source.AddChange(new FlowtideGenericObject<User>("1", null, 4, true));
             await stream.WaitForUpdate();
             stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 2, FirstName = "Test3" } }.Select(x => new { x.UserKey, x.FirstName }));
+        }
+
+        [Fact]
+        public async Task TestGenericDataSourceWithCustomLocking()
+        {
+            var source = new TestDataSourceWithCustomLocking();
+            source.AddChange(new FlowtideGenericObject<User>("1", new User { UserKey = 1, FirstName = "Test" }, 1, false));
+
+            var stream = new GenericDataTestStream<User>(source, "TestGenericDataSourceWithCustomLocking");
+            stream.RegisterTableProviders(builder =>
+            {
+                builder.AddGenericDataTable<User>("users");
+            });
+
+            await stream.StartStream(@"
+                INSERT INTO output
+                SELECT 
+                    UserKey, 
+                    FirstName 
+                FROM users
+            ");
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 1, FirstName = "Test" } }.Select(x => new { x.UserKey, x.FirstName }));
+
+            // Trigger the delta load trigger once to start the background reactive wait loop.
+            // This is needed because the DeltaLoadInterval is null, so it's not run automatically.
+            await stream.Trigger("delta_load");
+
+            // Update user 1
+            source.AddChange(new FlowtideGenericObject<User>("1", new User { UserKey = 1, FirstName = "Test2" }, 2, false));
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 1, FirstName = "Test2" } }.Select(x => new { x.UserKey, x.FirstName }));
+
+            // Add another change
+            source.AddChange(new FlowtideGenericObject<User>("2", new User { UserKey = 2, FirstName = "Test3" }, 3, false));
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 1, FirstName = "Test2" }, new User { UserKey = 2, FirstName = "Test3" } }.Select(x => new { x.UserKey, x.FirstName }));
+        }
+
+        [Fact]
+        public async Task TestGenericDataSourceErrorPropagation()
+        {
+            var source = new TestDataSourceWithException();
+            var stream = new GenericDataTestStream<User>(source, "TestGenericDataSourceErrorPropagation");
+            stream.RegisterTableProviders(builder =>
+            {
+                builder.AddGenericDataTable<User>("users");
+            });
+
+            await stream.StartStream(@"
+                INSERT INTO output
+                SELECT 
+                    UserKey, 
+                    FirstName 
+                FROM users
+            ");
+            await stream.WaitForUpdate();
+
+            await stream.Trigger("delta_load");
+
+            source.TriggerError();
+
+            var exception = await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                await stream.WaitForUpdate();
+            });
+
+            var inner = exception;
+            if (exception is AggregateException agg)
+            {
+                inner = agg.Flatten().InnerException!;
+            }
+            Assert.IsType<InvalidOperationException>(inner);
+            Assert.Equal("Simulated error in RunDeltaLoad", inner.Message);
+        }
+    }
+
+    internal class TestDataSourceWithCustomLocking : GenericDataSourceAsync<User>
+    {
+        private readonly List<FlowtideGenericObject<User>> _changes = new List<FlowtideGenericObject<User>>();
+        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(0);
+        private int _index = 0;
+
+        public void AddChange(FlowtideGenericObject<User> change)
+        {
+            lock (_changes)
+            {
+                _changes.Add(change);
+            }
+            _semaphore.Release();
+        }
+
+        public override TimeSpan? DeltaLoadInterval => default;
+
+        public override async Task RunDeltaLoad(IDeltaLoadContext<User> context, CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await _semaphore.WaitAsync(cancellationToken);
+
+                await using var tx = await context.BeginTransactionAsync();
+
+                List<FlowtideGenericObject<User>> localChanges;
+                lock (_changes)
+                {
+                    localChanges = new List<FlowtideGenericObject<User>>(_changes);
+                }
+
+                for (; _index < localChanges.Count; _index++)
+                {
+                    await tx.SubmitAsync(localChanges[_index]);
+                }
+            }
+        }
+
+        public override IAsyncEnumerable<FlowtideGenericObject<User>> FullLoadAsync()
+        {
+            lock (_changes)
+            {
+                return _changes.ToAsyncEnumerable();
+            }
+        }
+
+        public override Task Checkpoint()
+        {
+            return base.Checkpoint();
+        }
+
+        public override IEnumerable<IObjectColumnResolver> GetCustomConverters()
+        {
+            yield return new EnumResolver(enumAsStrings: true);
+        }
+    }
+
+    internal class TestDataSourceWithException : GenericDataSourceAsync<User>
+    {
+        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(0);
+
+        public void TriggerError()
+        {
+            _semaphore.Release();
+        }
+
+        public override TimeSpan? DeltaLoadInterval => default;
+
+        public override async Task RunDeltaLoad(IDeltaLoadContext<User> context, CancellationToken cancellationToken)
+        {
+            await _semaphore.WaitAsync(cancellationToken);
+            throw new InvalidOperationException("Simulated error in RunDeltaLoad");
+        }
+
+        public override IAsyncEnumerable<FlowtideGenericObject<User>> FullLoadAsync()
+        {
+            // Return a single user
+            return new List<User>() { new User() { UserKey = 1, FirstName = "Test" } }.Select(u => new FlowtideGenericObject<User>(u.UserKey.ToString(), u, 1, false)).ToAsyncEnumerable();
         }
     }
 }
