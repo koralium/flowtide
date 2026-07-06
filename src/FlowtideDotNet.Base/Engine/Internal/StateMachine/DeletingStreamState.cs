@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Exceptions;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
@@ -96,9 +97,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
+            // The blocks are faulted, not completed: a delete can land on a pipeline with
+            // in flight data that has nowhere to go, and graceful completion then waits
+            // forever for a drain that cannot happen. Discarding is always correct here,
+            // the delete destroys all state anyway.
             _context.ForEachBlock((key, block) =>
             {
-                block.Complete();
+                block.Fault(new BlockStopException("Faulting block due to stream deletion."));
             });
 
             await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });

@@ -1336,20 +1336,48 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            }
+
+            async Task WaitWithDump(string phase)
+            {
+                try
+                {
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                }
+                catch
+                {
+                    foreach (var buffer in logBuffers)
+                    {
+                        buffer.Value.WriteToFile($"./debugwrite/e2e_midrun_crash_{phase}_{buffer.Key}.log");
+                    }
+                    throw;
+                }
+            }
 
             // The sink completes its first checkpoint and crashes on the second
             _stream = BuildHost("e2e_midrun_crash", NormalJoinSql, latestData, failures,
-                crashConfig: substreamName => substreamName == "substream_0" ? (1, 1) : (0, 0));
+                crashConfig: substreamName => substreamName == "substream_0" ? (1, 1) : (0, 0),
+                loggerFactory: CreateBufferedLoggerFactory);
 
             await _stream.StartAsync();
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+            await WaitWithDump("initial");
 
             // New data triggers the next checkpoint where the sink crashes,
             // both substreams must recover to the first checkpoint and catch up
             _generator.Generate(500);
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+            await WaitWithDump("newdata");
 
             Assert.NotEmpty(failures);
 
@@ -1359,7 +1387,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 _generator.DeleteOrder(order);
             }
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+            await WaitWithDump("deletes");
         }
 
         /// <summary>
@@ -2810,8 +2838,35 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
 
-            _stream = BuildHost("e2e_idle_crash", NormalJoinSql, latestData, failures);
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            }
+
+            async Task WaitWithDump(string phase)
+            {
+                try
+                {
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                }
+                catch
+                {
+                    foreach (var buffer in logBuffers)
+                    {
+                        buffer.Value.WriteToFile($"./debugwrite/e2e_idle_crash_{phase}_{buffer.Key}.log");
+                    }
+                    throw;
+                }
+            }
+
+            _stream = BuildHost("e2e_idle_crash", NormalJoinSql, latestData, failures, loggerFactory: CreateBufferedLoggerFactory);
             await _stream.StartAsync();
 
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
@@ -2832,13 +2887,167 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             // The stream must process new data after the idle recoveries
             _generator.Generate(200);
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+            await WaitWithDump("newdata");
 
             foreach (var order in _generator.Orders.Take(50).ToList())
             {
                 _generator.DeleteOrder(order);
             }
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+            await WaitWithDump("deletes");
+        }
+
+        /// <summary>
+        /// Amplifier for the post-recovery retraction loss (MidRunCrash 905-vs-900 family):
+        /// the failing shape is a PURE delete wave sent into a quiet stream after a
+        /// converged sink crash recovery. Inserts mixed into the wave mask it, see
+        /// RepeatedCrashesWithDeletesJoinConverges which stayed green for ~970 cycles.
+        /// The sink crashes on the first checkpoint after every recovery, so each rounds
+        /// convergence and delete wave runs against fresh recovery skew.
+        /// </summary>
+        [Fact]
+        public async Task PureDeleteWavesAcrossSinkCrashRecoveriesConverge()
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            }
+
+            async Task WaitWithDump(string phase)
+            {
+                try
+                {
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                }
+                catch
+                {
+                    foreach (var buffer in logBuffers)
+                    {
+                        buffer.Value.WriteToFile($"./debugwrite/e2e_pure_del_{phase}_{buffer.Key}.log");
+                    }
+                    throw;
+                }
+            }
+
+            _stream = BuildHost("e2e_pure_del", NormalJoinSql, latestData, failures,
+                crashConfig: substreamName => substreamName == "substream_0" ? (5, 1) : (0, 0),
+                loggerFactory: CreateBufferedLoggerFactory);
+            await _stream.StartAsync();
+
+            await WaitWithDump("initial");
+
+            for (int round = 0; round < 5; round++)
+            {
+                // New data drives checkpoints so the sinks next crash fires, then the
+                // stream converges through the recovery.
+                _generator.Generate(150);
+                await WaitWithDump($"r{round}_newdata");
+
+                // The pure delete wave into the quiet recovered stream.
+                foreach (var order in _generator.Orders.Take(60).ToList())
+                {
+                    _generator.DeleteOrder(order);
+                }
+                await WaitWithDump($"r{round}_deletes");
+            }
+        }
+
+        /// <summary>
+        /// Amplifier for the idle-crash retraction loss: rapid overlapping idle recoveries
+        /// followed by delete waves with one more crash landing in the middle of the
+        /// deletes. A recovery that commits source offsets past delete events whose
+        /// retractions were still crossing the exchange loses them permanently, the sink
+        /// then converges to too many rows.
+        /// </summary>
+        [Fact]
+        public async Task CrashDuringDeleteWaveAfterIdleRecoveriesConverges()
+        {
+            _generator.Generate(300);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            }
+
+            async Task WaitWithDump(string phase)
+            {
+                try
+                {
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                }
+                catch
+                {
+                    foreach (var buffer in logBuffers)
+                    {
+                        buffer.Value.WriteToFile($"./debugwrite/e2e_crash_del_wave_{phase}_{buffer.Key}.log");
+                    }
+                    throw;
+                }
+            }
+
+            async Task TryCrash()
+            {
+                try
+                {
+                    await _stream!.Substreams["substream_1"].CallTrigger("crash", null);
+                }
+                catch
+                {
+                    // The stream may still be recovering from the previous crash
+                }
+            }
+
+            _stream = BuildHost("e2e_crash_del_wave", NormalJoinSql, latestData, failures, loggerFactory: CreateBufferedLoggerFactory);
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            for (int round = 0; round < 5; round++)
+            {
+                // Rapid overlapping idle recoveries, the crashes land while the previous
+                // recovery is still running.
+                for (int i = 0; i < 3; i++)
+                {
+                    await TryCrash();
+                    await Task.Delay(200);
+                }
+
+                _generator.Generate(100);
+                await WaitWithDump($"r{round}_newdata");
+
+                // Deletes with a crash in the middle of the wave, retractions are crossing
+                // the exchange when the recovery rolls both substreams back.
+                var orders = _generator.Orders.Take(60).ToList();
+                foreach (var order in orders.Take(30))
+                {
+                    _generator.DeleteOrder(order);
+                }
+                await TryCrash();
+                foreach (var order in orders.Skip(30))
+                {
+                    _generator.DeleteOrder(order);
+                }
+                await WaitWithDump($"r{round}_deletes");
+            }
         }
 
         /// <summary>
