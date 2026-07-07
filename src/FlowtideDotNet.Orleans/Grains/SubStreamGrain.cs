@@ -45,6 +45,7 @@ namespace FlowtideDotNet.Orleans.Grains
         private readonly IPersistentState<SubStreamGrainStorage> _state;
         private readonly ConnectorManagerFactory _connectorManagerFactory;
         private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger<SubStreamGrain> _logger;
         private readonly IGrainFactory _grainFactory;
         private readonly Action<string, string, IFlowtideStorageBuilder> _storageBuilder;
         private readonly FlowtideOrleansOptions _options;
@@ -64,6 +65,7 @@ namespace FlowtideDotNet.Orleans.Grains
             this._state = state;
             this._connectorManagerFactory = connectorManagerFactory;
             this._loggerFactory = loggerFactory;
+            this._logger = loggerFactory.CreateLogger<SubStreamGrain>();
             this._grainFactory = grainFactory;
             this._storageBuilder = storageBuilder;
             this._options = options;
@@ -97,7 +99,7 @@ namespace FlowtideDotNet.Orleans.Grains
                 }
                 catch (Exception e)
                 {
-                    _loggerFactory.CreateLogger<SubStreamGrain>().LogWarning(e, "Fail and recover of substream {substream} failed, the initialize handshake reconciles the versions at the next start.", this.GetPrimaryKeyString());
+                    _logger.LogWarning(e, "Fail and recover of substream {substream} failed, the initialize handshake reconciles the versions at the next start.", this.GetPrimaryKeyString());
                 }
             });
             return Task.CompletedTask;
@@ -119,7 +121,7 @@ namespace FlowtideDotNet.Orleans.Grains
                 // This activation has never seen an epoch announcement from the requestor,
                 // for example after a reactivation on another silo. The requestor is told so
                 // it can fail and recover, the handshake then re-announces the epoch.
-                _loggerFactory.CreateLogger<SubStreamGrain>().LogDebug("Refusing fetch from {requestor} with fetch epoch {requestEpoch}, no epoch has been announced to this activation.", request.Requestor, request.FetchEpoch);
+                _logger.LogDebug("Refusing fetch from {requestor} with fetch epoch {requestEpoch}, no epoch has been announced to this activation.", request.Requestor, request.FetchEpoch);
                 return new FetchDataResponse(default) { RequestorUnknown = true };
             }
             if (announcedEpoch != request.FetchEpoch)
@@ -130,7 +132,7 @@ namespace FlowtideDotNet.Orleans.Grains
                 // flagged, when an abandoned instance overwrote the announcement the live
                 // fetcher lands here and must fail and recover to re-announce its epoch, a
                 // silent refusal would starve it forever while looking healthy.
-                _loggerFactory.CreateLogger<SubStreamGrain>().LogDebug("Refusing fetch from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.Requestor, request.FetchEpoch, announcedEpoch);
+                _logger.LogDebug("Refusing fetch from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.Requestor, request.FetchEpoch, announcedEpoch);
                 return new FetchDataResponse(default) { RequestorUnknown = true };
             }
             var data = await handler.GetData(request.TargetIds, request.NumberOfEvents, default);
@@ -305,6 +307,10 @@ namespace FlowtideDotNet.Orleans.Grains
         // accessed from grain turns.
         private readonly Dictionary<string, long> _peerFetchEpochs = new Dictionary<string, long>();
 
+        // Test seam: the fetch epoch currently announced for a requestor, so the epoch
+        // fencing decision can be asserted without wiring up a live communication factory.
+        internal bool TryGetAnnouncedFetchEpoch(string requestor, out long epoch) => _peerFetchEpochs.TryGetValue(requestor, out epoch);
+
         public Task ReceiveReminder(string reminderName, TickStatus status)
         {
             // Delivering the reminder activates the grain, which resumes the stream when
@@ -321,7 +327,7 @@ namespace FlowtideDotNet.Orleans.Grains
             if (state != Base.Engine.StreamStateValue.Running &&
                 _reminderObservedState == state)
             {
-                _loggerFactory.CreateLogger<SubStreamGrain>().LogWarning(
+                _logger.LogWarning(
                     "Substream {substream} has been stuck in state {state} for a whole reminder period, recreating it.",
                     this.GetPrimaryKeyString(), state);
                 _reminderObservedState = null;
@@ -354,6 +360,27 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request)
         {
+            // Fetch epochs come from a monotonically increasing seed, so a newer stream
+            // instance always announces a higher epoch than an abandoned one. A handshake
+            // carrying an older epoch than the one already recorded is therefore a stale
+            // instance, for example one still running on a silo the requestors grain has
+            // moved off of. Installing it would overwrite the live instances announcement and
+            // make every fetch from the live instance mismatch the recorded epoch, fencing
+            // the healthy consumer out of its own data. The announcement is kept and the
+            // stale instance is answered as an already reconciled success: refusing or
+            // reporting a version mismatch would drive the live serving stream into a needless
+            // fail over to the abandoned instances restore point. The stale instance stops
+            // once its grain deactivates, or recovers on its own refused fetches, and
+            // re-announces a newer epoch when it comes back.
+            if (_peerFetchEpochs.TryGetValue(request.Requestor, out var recordedEpoch) &&
+                request.FetchEpoch < recordedEpoch)
+            {
+                _logger.LogWarning(
+                    "Refusing stale initialize handshake from {requestor} with fetch epoch {requestEpoch}, a newer epoch {recordedEpoch} is already announced to this activation.",
+                    request.Requestor, request.FetchEpoch, recordedEpoch);
+                return new InitSubstreamResponse(false, true, request.RestorePoint);
+            }
+
             // Only fetches from the announced epoch are served, recorded even when the
             // stream has not started so the epoch is known as soon as it does.
             _peerFetchEpochs[request.Requestor] = request.FetchEpoch;
@@ -385,7 +412,7 @@ namespace FlowtideDotNet.Orleans.Grains
                 // it. The reminder and grain state are removed so the identity dies out, the
                 // streams own state storage is untouched and a start under the new key
                 // resumes from it.
-                _loggerFactory.CreateLogger<SubStreamGrain>().LogWarning(
+                _logger.LogWarning(
                     "Substream grain key '{key}' uses an old format, cleaning up its reminder and state. Start the stream again to run it under the current key format.",
                     this.GetPrimaryKeyString());
                 var reminder = await this.GetReminder(KeepAliveReminderName);
@@ -493,7 +520,6 @@ namespace FlowtideDotNet.Orleans.Grains
             var stream = _stream;
             _tickCancellation = new CancellationTokenSource();
             var tickToken = _tickCancellation.Token;
-            var logger = _loggerFactory.CreateLogger<SubStreamGrain>();
             // Task.Run so the stream runs on the thread pool, Task.Factory.StartNew from a
             // grain turn would capture the activation scheduler and a single synchronous
             // wait in the stream would then block the whole activation.
@@ -510,7 +536,7 @@ namespace FlowtideDotNet.Orleans.Grains
                     // never observed. The failure is also kept so GetStatusAsync can report
                     // why the stream did not start.
                     _lastFailure = e.ToString();
-                    logger.LogError(e, "Starting the stream for substream {substream} failed.", this.GetPrimaryKeyString());
+                    _logger.LogError(e, "Starting the stream for substream {substream} failed.", this.GetPrimaryKeyString());
                     return;
                 }
                 // Drive the schedulers trigger dispatch, StartAsync does not tick it and no
@@ -528,7 +554,7 @@ namespace FlowtideDotNet.Orleans.Grains
                         {
                             // A trigger dispatch can fail while the stream is failing over,
                             // the tick loop must keep running for the restarted stream.
-                            logger.LogDebug(e, "Trigger tick failed, retrying at the next tick.");
+                            _logger.LogDebug(e, "Trigger tick failed, retrying at the next tick.");
                         }
                     }
                 }
