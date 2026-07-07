@@ -89,6 +89,37 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private async Task StopAndDispose()
         {
             Debug.Assert(_context != null, nameof(_context));
+
+            // Wait for any in-flight checkpoint commit or compaction to finish before
+            // tearing anything down. Faulting or disposing blocks, or disposing the state
+            // manager, while the state manager is being written corrupts it. Bounded, a
+            // write wedged on unresponsive storage cannot be made safe by waiting and must
+            // not hang the recovery forever.
+            var writeWaitStart = Stopwatch.GetTimestamp();
+            while (System.Threading.Volatile.Read(ref _context._stateManagerWriteCount) > 0)
+            {
+                if (Stopwatch.GetElapsedTime(writeWaitStart) > _context._dataflowStreamOptions.StopDrainTimeout)
+                {
+                    _context._logger.LogWarning("Failure teardown on stream {stream} proceeded while a state manager write was still active after {timeout}, the write may be wedged on storage.", _context.streamName, _context._dataflowStreamOptions.StopDrainTimeout);
+                    break;
+                }
+                await Task.Delay(10);
+            }
+
+            // Decide the restore version now that any in-flight commit has settled. A
+            // checkpoint that completed during the failure is a valid, more recent recovery
+            // point and is kept. A peer requested rollback version, captured earlier through
+            // FailAndRollback, caps this so the substreams roll back to the lowest common
+            // version.
+            lock (_context._checkpointLock)
+            {
+                var completed = _context._stateManager.LastCompletedCheckpointVersion;
+                if (!_context._restoreCheckpointVersion.HasValue || _context._restoreCheckpointVersion.Value > completed)
+                {
+                    _context._restoreCheckpointVersion = completed;
+                }
+            }
+
             // Clear all triggers before cancelling and stop registering new triggers
             _context.CancelTriggerRegistration();
             await _context.ClearTriggers();
@@ -117,6 +148,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context._triggerCheckpointTime = null;
             }
 
+            StreamContext.BeforeFailureDisposeForTests?.Invoke(_context.streamName);
+
             _context.ForEachBlock((key, block) =>
             {
                 _context._logger.LogDebug("Failure handling faulting block {block} on stream {stream}", key, _context.streamName);
@@ -127,6 +160,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
 
             // Call failure for all blocks
+            StreamContext.RestoreVersionForTests?.Invoke(_context.streamName, _context._restoreCheckpointVersion ?? -1);
             if (_context._restoreCheckpointVersion.HasValue)
             {
                 await _context.ForEachBlockAsync(async (key, block) =>

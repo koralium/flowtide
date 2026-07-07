@@ -86,8 +86,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 waitingForDependencies.Remove(name);
                 _context._logger.LogDebug("Dependencies done for operator {Operator} on stream {Stream}, remaining: [{Remaining}], initial checkpoint taken: {InitialCheckpointTaken}", name, _context.streamName, string.Join(",", waitingForDependencies), _initialCheckpointTaken);
 
-                // Check if all egresses has done their dependencies
-                if (waitingForDependencies.Count > 0 || !_initialCheckpointTaken || _compactionStarted)
+                // Check if all egresses has done their dependencies. Do not start
+                // compaction once a teardown has moved the stream out of the running state,
+                // it would write the state manager the teardown is about to dispose.
+                if (waitingForDependencies.Count > 0 || !_initialCheckpointTaken || _compactionStarted || _context.currentState != StreamStateValue.Running)
                 {
                     return;
                 }
@@ -128,9 +130,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 Debug.Assert(run._currentCheckpoint != null, nameof(_context));
                 Debug.Assert(run.waitingForDependencies != null);
 
-                run._context._checkpointCommitActive = true;
+                System.Threading.Interlocked.Increment(ref run._context._stateManagerWriteCount);
                 try
                 {
+                    var commitHook = StreamContext.CheckpointCommitHookForTests;
+                    if (commitHook != null)
+                    {
+                        await commitHook(run._context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
+                    }
+
                     // Write the latest state
                     run._context._lastState = new StreamState(
                         run._currentCheckpoint.CheckpointTime,
@@ -168,7 +176,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 finally
                 {
-                    run._context._checkpointCommitActive = false;
+                    System.Threading.Interlocked.Decrement(ref run._context._stateManagerWriteCount);
                 }
             }, this)
                 .Unwrap()
@@ -185,9 +193,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      lock (_context._checkpointLock)
                      {
                          _initialCheckpointTaken = true;
-                         // Check if all egresses has done their dependencies
-                         // if not return
-                         if (@this.waitingForDependencies.Count > 0 || _compactionStarted)
+                         // Check if all egresses has done their dependencies. Do not start
+                         // compaction once a teardown has moved the stream out of the running
+                         // state, it would write the state manager the teardown disposes.
+                         if (@this.waitingForDependencies.Count > 0 || _compactionStarted || _context.currentState != StreamStateValue.Running)
                          {
                              return;
                          }
@@ -216,26 +225,43 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null);
 
-            // After writing do compaction
-            _context._logger.StartingCompactionOnVertices(_context.streamName);
-            List<Task> tasks = new List<Task>();
-            foreach (var ingressNode in _context.ingressBlocks)
+            // Compaction writes the state manager, so it counts as an in-flight write a
+            // teardown must wait for, the same as the checkpoint commit. This runs after the
+            // commit body in a separate continuation, so the count is taken again here.
+            System.Threading.Interlocked.Increment(ref _context._stateManagerWriteCount);
+            try
             {
-                tasks.Add(ingressNode.Value.Compact());
-            }
-            foreach (var block in _context.propagatorBlocks)
-            {
-                tasks.Add(block.Value.Compact());
-            }
-            foreach (var block in _context.egressBlocks)
-            {
-                tasks.Add(block.Value.Compact());
-            }
+                var compactionHook = StreamContext.CompactionHookForTests;
+                if (compactionHook != null)
+                {
+                    await compactionHook(_context.streamName);
+                }
 
-            await Task.WhenAll(tasks);
+                // After writing do compaction
+                _context._logger.StartingCompactionOnVertices(_context.streamName);
+                List<Task> tasks = new List<Task>();
+                foreach (var ingressNode in _context.ingressBlocks)
+                {
+                    tasks.Add(ingressNode.Value.Compact());
+                }
+                foreach (var block in _context.propagatorBlocks)
+                {
+                    tasks.Add(block.Value.Compact());
+                }
+                foreach (var block in _context.egressBlocks)
+                {
+                    tasks.Add(block.Value.Compact());
+                }
 
-            await _context._stateManager.Compact();
-            _context._logger.CompactionDoneOnVertices(_context.streamName);
+                await Task.WhenAll(tasks);
+
+                await _context._stateManager.Compact();
+                _context._logger.CompactionDoneOnVertices(_context.streamName);
+            }
+            finally
+            {
+                System.Threading.Interlocked.Decrement(ref _context._stateManagerWriteCount);
+            }
         }
 
         private void CheckpointCompleted()
@@ -586,7 +612,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 await Task.Delay(context._dataflowStreamOptions.StopDrainTimeout);
                 while (WatchdogStillWaiting(context, observedTask, forDelete) && context.currentState == StreamStateValue.Running)
                 {
-                    if (context._checkpointCommitActive)
+                    if (System.Threading.Volatile.Read(ref context._stateManagerWriteCount) > 0)
                     {
                         await Task.Delay(TimeSpan.FromSeconds(1));
                         continue;

@@ -415,6 +415,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
+        /// <summary>
+        /// Fires the crash trigger without waiting for the stream to reach the failure
+        /// state, so a test can control scheduler ticks around the crash itself.
+        /// </summary>
+        public Task FireCrashTrigger()
+        {
+            return _stream!.CallTrigger("crash", default);
+        }
+
         public async Task StopMockIngressAutocompleteDependencies()
         {
             await _stream!.CallTrigger("ingress_no_autocomplete_dependencies", default);

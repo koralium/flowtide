@@ -86,11 +86,26 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // check-then-act window by re-checking at every safe point.
         internal volatile StreamStateValue _wantedState;
 
-        // True while a checkpoint runs its local commit work, from before save through the
-        // state manager checkpoint and the checkpoint done notifications. Read by the
-        // deferred stop and delete watchdog, a committing checkpoint is progressing and
-        // must not be interrupted.
-        internal volatile bool _checkpointCommitActive;
+        // Counts the state manager writes in flight, the checkpoint commit and compaction
+        // spans. A teardown must wait for this to reach zero before it faults and disposes
+        // blocks or disposes the state manager, doing either while the state manager is
+        // being written corrupts it. A counter, not a flag: spans that overlap across a
+        // failure epoch boundary must not let one finishing clear the guard while another
+        // is still writing. Written with Interlocked, read with Volatile.Read.
+        internal int _stateManagerWriteCount;
+
+        // Test hooks, null in production. All receive the stream name so a test can filter
+        // to its own stream and not disturb streams from tests running in parallel.
+        // CheckpointCommitHookForTests is awaited inside the checkpoint commit (with the
+        // last completed version before this commit) so a test can hold a state manager
+        // write in flight; BeforeFailureDisposeForTests fires when the failure teardown is
+        // about to tear down the blocks, so a test can observe whether it overlaps an
+        // in-flight write; RestoreVersionForTests reports the version the failure teardown
+        // rolls back to.
+        internal static Func<string, long, Task>? CheckpointCommitHookForTests;
+        internal static Func<string, Task>? CompactionHookForTests;
+        internal static Action<string>? BeforeFailureDisposeForTests;
+        internal static Action<string, long>? RestoreVersionForTests;
 
         private StreamStatus _streamStatus;
 
@@ -681,14 +696,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 activity.Dispose();
             }
 
-            lock (_checkpointLock)
-            {
-                if (!_restoreCheckpointVersion.HasValue || _restoreCheckpointVersion.Value > _stateManager.LastCompletedCheckpointVersion)
-                {
-                    _restoreCheckpointVersion = _stateManager.LastCompletedCheckpointVersion;
-                }
-            }
-            
+            // The local restore version is not captured here. A checkpoint may still be
+            // committing, capturing the last completed version now would discard it. The
+            // failure teardown decides the version after the commit settles, see
+            // FailureStreamState.StopAndDispose. A peer requested rollback still caps it
+            // through FailAndRollback.
+
             _logger.StreamError(e, streamName);
             lock (_contextLock)
             {
@@ -1030,14 +1043,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (restoreVersion.HasValue)
                 {
+                    // A peer requested rollback version, it caps how far the teardown can
+                    // roll forward. The local last completed version is decided later, after
+                    // any in-flight commit settled, see FailureStreamState.StopAndDispose.
                     if (!_restoreCheckpointVersion.HasValue || _restoreCheckpointVersion.Value > restoreVersion.Value)
                     {
                         _restoreCheckpointVersion = restoreVersion.Value;
                     }
-                }
-                else if (!_restoreCheckpointVersion.HasValue || _restoreCheckpointVersion.Value > _stateManager.LastCompletedCheckpointVersion)
-                {
-                    _restoreCheckpointVersion = _stateManager.LastCompletedCheckpointVersion;
                 }
             }
             

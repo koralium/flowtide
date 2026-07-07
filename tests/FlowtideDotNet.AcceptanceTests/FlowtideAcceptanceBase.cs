@@ -154,6 +154,16 @@ namespace FlowtideDotNet.AcceptanceTests
             return flowtideTestStream.Crash();
         }
 
+        protected Task SchedulerTick()
+        {
+            return flowtideTestStream.SchedulerTick();
+        }
+
+        protected Task FireCrashTrigger()
+        {
+            return flowtideTestStream.FireCrashTrigger();
+        }
+
         protected Task StopMockIngressAutocompleteDependencies()
         {
             return flowtideTestStream.StopMockIngressAutocompleteDependencies();
