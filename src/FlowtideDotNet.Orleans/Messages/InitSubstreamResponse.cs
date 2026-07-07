@@ -29,6 +29,7 @@ namespace FlowtideDotNet.Orleans.Messages
             RestoreVersion = restoreVersion;
         }
 
+        [Id(2)]
         public bool NotStarted { get; }
 
         [Id(0)]

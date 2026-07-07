@@ -200,6 +200,12 @@ namespace FlowtideDotNet.Orleans.Grains
                 _stream = null;
                 await stream.StopAsync();
             }
+            // Clear the communication factory and announced epochs now the stream is gone, so
+            // a peer fetch that races in before deactivation takes FetchDataAsync's 'no stream
+            // runs' RequestorUnknown fast-path instead of being routed into the torn-down
+            // exchange point. A restart rebuilds the factory and re-runs the handshake.
+            _orleansCommunicationFactory = null;
+            _peerFetchEpochs.Clear();
             _tickCancellation?.Cancel();
             _tickCancellation = null;
             var reminder = await this.GetReminder(KeepAliveReminderName);
@@ -244,6 +250,10 @@ namespace FlowtideDotNet.Orleans.Grains
                     await stream.DisposeAsync();
                 }
             }
+            // See StopStreamCore: drop the communication factory and epochs so a racing peer
+            // fetch hits the RequestorUnknown fast-path rather than the deleted exchange point.
+            _orleansCommunicationFactory = null;
+            _peerFetchEpochs.Clear();
             _tickCancellation?.Cancel();
             _tickCancellation = null;
             var reminder = await this.GetReminder(KeepAliveReminderName);

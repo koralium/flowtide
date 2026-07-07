@@ -26,6 +26,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override async Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
+            // KNOWN LIMITATION (reviewed 2026-07-07): this runs synchronously inside
+            // StreamContext.OnFailure's _contextLock hold, so a paused stream that faults
+            // blocks here holding _contextLock until a resume (a transient wedge of the
+            // context-lock paths). Switching to an awaited pause removes the wedge but breaks
+            // distributed pause-crash recovery (releasing _contextLock lets the tick loop and
+            // peer messages race the failing substream's teardown -> flaky recovery hang in
+            // DistributedStreamE2ETests.PauseSurvivesCrashRecovery). A correct fix must resume
+            // to release the source parked on the checkpoint lock while preserving the pause
+            // intent so the recovered stream comes up paused; left as-is for now.
             _context.CheckForPause();
 
             try

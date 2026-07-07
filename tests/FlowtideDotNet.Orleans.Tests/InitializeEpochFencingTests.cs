@@ -127,5 +127,34 @@ namespace FlowtideDotNet.Orleans.Tests
             Assert.False(response.NotStarted);
             Assert.Equal(42, response.RestoreVersion);
         }
+
+        /// <summary>
+        /// A stop must clear the recorded fetch epochs (and, in the same teardown block, the
+        /// communication factory), so a peer fetch that races the stop takes FetchDataAsync's
+        /// RequestorUnknown fast-path instead of being routed into the torn-down exchange
+        /// point. Without the clear the announcement survives the stop and the guard's stated
+        /// purpose ('a stop cleared the grain state') is defeated.
+        /// </summary>
+        [Fact]
+        public async Task StopClearsAnnouncedFetchEpochs()
+        {
+            var grain = CreateGrain();
+            const string requestor = "peer";
+            await grain.InitializeSubstreamRequest(new InitSubstreamRequest(requestor, 0, 5000));
+            Assert.True(grain.TryGetAnnouncedFetchEpoch(requestor, out _), "The epoch should be recorded after the handshake.");
+
+            // StopStreamCore clears the epochs and factory before it reaches the reminder
+            // unregister, which needs the grain runtime and throws on a bare grain; the clear
+            // runs first, so the swallowed exception does not affect what is under test.
+            try
+            {
+                await grain.StopStreamAsync();
+            }
+            catch
+            {
+            }
+
+            Assert.False(grain.TryGetAnnouncedFetchEpoch(requestor, out _), "A stop must clear the recorded fetch epochs.");
+        }
     }
 }

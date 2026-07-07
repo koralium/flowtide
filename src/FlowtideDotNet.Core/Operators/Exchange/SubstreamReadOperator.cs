@@ -432,6 +432,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 // The dependencies done callback is not wired yet. Each checkpoint cycle
                 // consumes exactly one signal, so it must be buffered instead of lost.
+                // Deliberately uncapped: these are all real acks and stale ones reset on restore.
                 lock (_lock)
                 {
                     _pendingCheckpointDoneSignals++;

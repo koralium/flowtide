@@ -36,6 +36,7 @@ namespace FlowtideDotNet.Orleans.Messages
         [Id(2)]
         public List<IStreamEvent> Events { get; }
 
+        [Id(0)]
         public bool NotStarted { get; }
     }
 }

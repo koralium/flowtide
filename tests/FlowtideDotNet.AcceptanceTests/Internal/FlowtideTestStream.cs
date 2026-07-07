@@ -598,6 +598,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return _stream!.GetDiagnosticsGraph();
         }
 
+        public void Pause()
+        {
+            _stream!.Pause();
+        }
+
+        public void Resume()
+        {
+            _stream!.Resume();
+        }
+
         public Task StopStream()
         {
             return _stream!.StopAsync();

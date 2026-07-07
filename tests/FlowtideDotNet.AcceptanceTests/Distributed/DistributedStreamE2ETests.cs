@@ -248,6 +248,39 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// The scheduler tick loop must be torn down when the stream stops and re-armed when
+        /// it starts again. A stopped-but-not-disposed stream that keeps its tick loop running
+        /// wastes CPU ticking its now idle (NotStarted) substreams and runs a periodic
+        /// blocking full GC; the restart path must bring the loop back so recurring triggers
+        /// fire again.
+        /// </summary>
+        [Fact]
+        public async Task TickLoopStopsWhenStreamStopsAndRestartsOnStart()
+        {
+            _generator.Generate(200);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            _stream = BuildHost("e2e_tickloop_lifecycle", NormalJoinSql, latestData, failures);
+
+            await _stream.StartAsync();
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            Assert.True(_stream.IsTickLoopRunning, "The tick loop must run while the stream is started.");
+
+            await _stream.StopAsync();
+            Assert.False(_stream.IsTickLoopRunning, "The tick loop must stop when the stream stops, otherwise it keeps ticking the idle substreams and running a blocking GC every ten seconds.");
+
+            await _stream.StartAsync();
+            Assert.True(_stream.IsTickLoopRunning, "The tick loop must be re-armed when the stream starts again.");
+
+            await _stream.StopAsync();
+            Assert.False(_stream.IsTickLoopRunning, "The tick loop must stop again on the second stop.");
+            // No failures assertion: the rapid second start/stop can trip a normal transient
+            // fail-and-recover in the substreams; this test is about the tick loop lifecycle,
+            // which the IsTickLoopRunning assertions cover.
+        }
+
+        /// <summary>
         /// Stopping a paused stream must complete. Pausing gates the data output of the
         /// sources but locking events still flow, so the coordinated stop can drain the
         /// substreams while the data itself stays frozen.

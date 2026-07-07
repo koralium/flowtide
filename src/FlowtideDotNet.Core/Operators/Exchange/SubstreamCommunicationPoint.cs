@@ -179,7 +179,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             if (!response.Success)
             {
+                // The peer already reconciled to response.RestoreVersion, recover to it and
+                // stop. Falling through to the mismatch check below would recover a second
+                // time for the same handshake (RestoreVersion is <= restorePoint on a refusal).
                 await DoFailAndRecover(response.RestoreVersion);
+                return;
             }
 
             if (response.RestoreVersion != restorePoint)

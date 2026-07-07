@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         }
                         else
                         {
-                            throw new NotSupportedException("Pull bucket type must implement PullBucketExchangeTarget");
+                            throw new NotSupportedException("Substream type must implement SubstreamExchangeTarget");
                         }
                         break;
                     default:

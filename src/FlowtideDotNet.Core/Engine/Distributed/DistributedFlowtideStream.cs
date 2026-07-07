@@ -42,6 +42,22 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         public IReadOnlyDictionary<string, Base.Engine.DataflowStream> Substreams => _substreams;
 
         /// <summary>
+        /// Test seam: whether the scheduler tick loop is currently armed. It must run while the
+        /// stream is started and be torn down when the stream stops, so a stopped stream does
+        /// not keep ticking its substreams and running a periodic blocking GC.
+        /// </summary>
+        internal bool IsTickLoopRunning
+        {
+            get
+            {
+                lock (_tickLock)
+                {
+                    return _tickCancellation != null;
+                }
+            }
+        }
+
+        /// <summary>
         /// The worst health across all substreams. The stream only processes data correctly
         /// when every substream is healthy, per substream details are available through
         /// <see cref="Substreams"/>.
@@ -180,17 +196,48 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         /// The substreams are stopped in parallel since a final checkpoint requires
         /// communication between the substreams.
         /// </summary>
-        public Task StopAsync()
+        public async Task StopAsync()
         {
-            return Task.WhenAll(_substreams.Values.Select(x => x.StopAsync()));
+            await Task.WhenAll(_substreams.Values.Select(x => x.StopAsync()));
+            // Stop driving the schedulers now the substreams are idle. A stopped-but-not-
+            // disposed stream must not keep ticking its NotStarted substreams (each overdue
+            // trigger throws) and running a blocking full GC every 10 seconds. StartAsync's
+            // EnsureTickLoop restarts the loop on a restart.
+            await CancelTickLoopAsync();
         }
 
         /// <summary>
         /// Deletes the state of all substreams.
         /// </summary>
-        public Task DeleteAsync()
+        public async Task DeleteAsync()
         {
-            return Task.WhenAll(_substreams.Values.Select(x => x.DeleteAsync()));
+            await Task.WhenAll(_substreams.Values.Select(x => x.DeleteAsync()));
+            await CancelTickLoopAsync();
+        }
+
+        /// <summary>
+        /// Cancels and awaits the scheduler tick loop, bounded so a stuck trigger dispatch
+        /// cannot hang stop or dispose. A restart re-arms it through <see cref="StartAsync"/>.
+        /// </summary>
+        private async Task CancelTickLoopAsync()
+        {
+            Task? tickLoop;
+            lock (_tickLock)
+            {
+                _tickCancellation?.Cancel();
+                _tickCancellation?.Dispose();
+                _tickCancellation = null;
+                tickLoop = _tickLoop;
+                _tickLoop = null;
+            }
+            if (tickLoop != null)
+            {
+                var finished = await Task.WhenAny(tickLoop, Task.Delay(TimeSpan.FromSeconds(5)));
+                if (finished != tickLoop)
+                {
+                    _logger.LogWarning("The trigger tick loop of stream {stream} did not stop within the timeout, a trigger dispatch is stuck and the loop is abandoned.", StreamName);
+                }
+            }
         }
 
         public async ValueTask DisposeAsync()
@@ -205,30 +252,12 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             catch
             {
             }
+            // Stop the tick loop BEFORE disposing the substreams, so it cannot drive a
+            // scheduler tick into a substream whose blocks are being completed and disposed.
+            await CancelTickLoopAsync();
             // Disposed in parallel like start, stop and delete, the substreams can wait on
             // each other while shutting down.
             await Task.WhenAll(_substreams.Values.Select(x => x.DisposeAsync().AsTask()));
-
-            Task? tickLoop;
-            lock (_tickLock)
-            {
-                _tickCancellation?.Cancel();
-                _tickCancellation?.Dispose();
-                _tickCancellation = null;
-                tickLoop = _tickLoop;
-                _tickLoop = null;
-            }
-            if (tickLoop != null)
-            {
-                // A trigger dispatch into a stream that failed while being disposed can
-                // hang, the loop is abandoned after the timeout so dispose does not hang
-                // with it.
-                var finished = await Task.WhenAny(tickLoop, Task.Delay(TimeSpan.FromSeconds(5)));
-                if (finished != tickLoop)
-                {
-                    _logger.LogWarning("The trigger tick loop of stream {stream} did not stop within the timeout during dispose, a trigger dispatch is stuck and the loop is abandoned.", StreamName);
-                }
-            }
         }
     }
 }
