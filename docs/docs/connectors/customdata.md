@@ -225,7 +225,7 @@ If you override this method:
 
 ### Custom sink sample
 
-A runnable console application demonstrating a custom sink and sounrce is available under [samples/CustomSinkSample](https://github.com/koralium/flowtide/tree/main/samples/CustomSinkSample).
+A runnable console application demonstrating a custom sink and source is available under [samples/CustomSinkSample](https://github.com/koralium/flowtide/tree/main/samples/CustomSinkSample).
 It shows how initial sink synchronization with `GetExistingData` works and how the sink handles data updates.
 
 ## Adding custom converters
