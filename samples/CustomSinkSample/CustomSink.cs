@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -44,11 +44,11 @@ namespace CustomSinkSample
             {
                 if (change.IsDeleted)
                 {
-                    _logger.LogInformation($"Sink delete received for id '{change.Value.Id}'");
+                    _logger.LogInformation("Sink delete received for id '{Id}'", change.Value.Id);
                 }
                 else
                 {
-                    _logger.LogInformation($"Sink update received for id '{change.Value.Id}' with name '{change.Value.Name}'");
+                    _logger.LogInformation("Sink update received for id '{Id}' with name '{Name}'", change.Value.Id, change.Value.Name);
                 }
             }
         }
