@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -46,6 +46,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         private IReadOnlyList<int>? m_primaryKeyColumns;
         private readonly IColumn[] _deleteBatchColumns;
         private readonly EventBatchData _deleteEventBatch;
+        private bool m_hasExistingData;
 
         public ColumnGroupedWriteOperator(ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -136,6 +137,10 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             Debug.Assert(m_existingData != null);
             await foreach (var batch in GetExistingData())
             {
+                if (batch.Count > 0)
+                {
+                    m_hasExistingData = true;
+                }
                 for (int i = 0; i < batch.Count; i++)
                 {
                     await m_existingData.Upsert(new ColumnRowReference() { referenceBatch = batch, RowIndex = i }, 1);
@@ -148,7 +153,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         {
             Debug.Assert(m_hasSentInitialData != null);
             m_latestWatermark = watermark;
-            if (m_executionMode == ExecutionMode.OnWatermark ||
+            bool shouldWait = !m_hasSentInitialData.Value && FetchExistingData && m_hasExistingData;
+            if ((m_executionMode == ExecutionMode.OnWatermark && !shouldWait) ||
                 (m_executionMode == ExecutionMode.Hybrid && m_hasSentInitialData.Value))
             {
                 return SendData();
@@ -163,11 +169,6 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             if (m_executionMode == ExecutionMode.OnCheckpoint || (!m_hasSentInitialData.Value))
             {
                 await SendData();
-            }
-            if (!m_hasSentInitialData.Value)
-            {
-                await OnInitialDataSent();
-                m_hasSentInitialData.Value = true;
             }
             Checkpoint(checkpointTime);
             await m_hasSentInitialData.Commit();
@@ -401,6 +402,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 await UploadChanges(changedRows, watermark, !m_hasSentInitialData.Value, CancellationToken);
                 await m_modified.Clear();
                 m_hasModified = false;
+            }
+            if (!m_hasSentInitialData.Value)
+            {
+                await OnInitialDataSent();
+                m_hasSentInitialData.Value = true;
             }
         }
 
