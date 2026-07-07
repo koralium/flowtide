@@ -17,7 +17,7 @@ namespace CustomSinkSample
 {
     public class ConsoleInputSource : GenericDataSourceAsync<InputModel>
     {
-        private Channel<InputModel> _channel = Channel.CreateUnbounded<InputModel>();
+        private readonly Channel<InputModel> _channel = Channel.CreateUnbounded<InputModel>();
         private readonly List<InputModel> _initialData;
 
         public ConsoleInputSource(List<InputModel> initialData)
