@@ -291,16 +291,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         // to honor it. Must not depend on a checkpoint being in progress,
                         // initial data completion also lands here without one.
                         _doingCheckpoint = false;
-                        // A stop or delete that arrived while this placeholder held the
-                        // checkpoint slot already transitioned the stream to Stopping or
-                        // Deleting, whose Initialize could only queue its checkpoint cycle as
-                        // inQueueCheckpoint because the slot was taken. Now that the slot is
-                        // free the queued cycle must be promoted to a real schedule: the
-                        // TransitionTo below is then a no-op (the stream is already in the
-                        // wished state) and nothing else would ever start the cycle, hanging
-                        // the stop or delete forever. A failed promotion here means a schedule
-                        // already exists, which is fine during a stop, so it does not throw.
-                        TryPromoteQueuedCheckpoint();
+                        if (_context._wantedState == StreamStateValue.NotStarted)
+                        {
+                            // A stop that arrived while this placeholder held the checkpoint
+                            // slot already transitioned the stream to Stopping, whose
+                            // Initialize could only queue its stop cycle as inQueueCheckpoint
+                            // because the slot was taken. Now that the slot is free the queued
+                            // cycle must be promoted to a real schedule: the TransitionTo below
+                            // is then a no-op (already Stopping) and nothing else would ever
+                            // start the stop drain, hanging the stop forever. A failed
+                            // promotion means a schedule already exists, fine during a stop, so
+                            // it does not throw. A delete needs no promotion, it tears down
+                            // directly in the deleting state and runs no checkpoint cycle, so
+                            // scheduling one would only leave a checkpoint the deleting state
+                            // ignores.
+                            TryPromoteQueuedCheckpoint();
+                        }
                         // The transition takes the context lock and must not run under the
                         // checkpoint lock: checkpoint done acknowledgements from other
                         // substreams take the context lock first and the checkpoint lock
