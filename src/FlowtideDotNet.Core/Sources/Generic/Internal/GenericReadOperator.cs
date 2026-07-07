@@ -443,20 +443,20 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                 _channel = channel;
             }
 
-            public async ValueTask<IDeltaLoadTransaction<T>> BeginTransactionAsync()
+            public async ValueTask<IDeltaLoadTransaction<T>> BeginTransactionAsync(CancellationToken cancellationToken = default)
             {
                 var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.BeginTransaction, null, tcs));
-                await tcs.Task;
-                return new DeltaLoadTransaction(_channel);
+                await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.BeginTransaction, null, tcs), cancellationToken);
+                await tcs.Task.WaitAsync(cancellationToken);
+                return new DeltaLoadTransaction(_channel, cancellationToken);
             }
 
-            public async ValueTask SubmitBatchAsync(IEnumerable<FlowtideGenericObject<T>> batch)
+            public async ValueTask SubmitBatchAsync(IEnumerable<FlowtideGenericObject<T>> batch, CancellationToken cancellationToken = default)
             {
-                await using var tx = await BeginTransactionAsync();
+                await using var tx = await BeginTransactionAsync(cancellationToken);
                 foreach (var item in batch)
                 {
-                    await tx.SubmitAsync(item);
+                    await tx.SubmitAsync(item, cancellationToken);
                 }
             }
         }
@@ -464,22 +464,24 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         private class DeltaLoadTransaction : IDeltaLoadTransaction<T>
         {
             private readonly Channel<DeltaLoadCommand> _channel;
+            private readonly CancellationToken _cancellationToken;
             private bool _disposed;
 
-            public DeltaLoadTransaction(Channel<DeltaLoadCommand> channel)
+            public DeltaLoadTransaction(Channel<DeltaLoadCommand> channel, CancellationToken cancellationToken)
             {
                 _channel = channel;
+                _cancellationToken = cancellationToken;
             }
 
-            public async ValueTask SubmitAsync(FlowtideGenericObject<T> obj)
+            public async ValueTask SubmitAsync(FlowtideGenericObject<T> obj, CancellationToken cancellationToken = default)
             {
                 if (_disposed)
                 {
                     throw new ObjectDisposedException(nameof(DeltaLoadTransaction));
                 }
                 var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.SubmitItem, obj, tcs));
-                await tcs.Task;
+                await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.SubmitItem, obj, tcs), cancellationToken);
+                await tcs.Task.WaitAsync(cancellationToken);
             }
 
             public async ValueTask DisposeAsync()
@@ -487,9 +489,20 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                 if (!_disposed)
                 {
                     _disposed = true;
-                    var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                    await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.DisposeTransaction, null, tcs));
-                    await tcs.Task;
+                    try
+                    {
+                        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                        await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.DisposeTransaction, null, tcs), _cancellationToken);
+                        await tcs.Task.WaitAsync(_cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Cancellation during shutdown; reader's finally block handles lock cleanup.
+                    }
+                    catch (ChannelClosedException)
+                    {
+                        // Channel already closed; reader's finally block handles lock cleanup.
+                    }
                 }
             }
         }

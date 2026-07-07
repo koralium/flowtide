@@ -18,12 +18,12 @@ namespace FlowtideDotNet.Core.Sources.Generic
 {
     public interface IDeltaLoadContext<T> where T : class
     {
-        ValueTask<IDeltaLoadTransaction<T>> BeginTransactionAsync();
-        ValueTask SubmitBatchAsync(IEnumerable<FlowtideGenericObject<T>> batch);
+        ValueTask<IDeltaLoadTransaction<T>> BeginTransactionAsync(CancellationToken cancellationToken = default);
+        ValueTask SubmitBatchAsync(IEnumerable<FlowtideGenericObject<T>> batch, CancellationToken cancellationToken = default);
     }
 
     public interface IDeltaLoadTransaction<T> : IAsyncDisposable where T : class
     {
-        ValueTask SubmitAsync(FlowtideGenericObject<T> obj);
+        ValueTask SubmitAsync(FlowtideGenericObject<T> obj, CancellationToken cancellationToken = default);
     }
 }

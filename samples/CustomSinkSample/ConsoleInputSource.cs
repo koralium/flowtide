@@ -40,7 +40,7 @@ namespace CustomSinkSample
             while(await _channel.Reader.WaitToReadAsync(cancellationToken))
             {
                 // Begin transaction to take lock so all data is sent inside one checkpoint
-                await using var transaction = await context.BeginTransactionAsync();
+                await using var transaction = await context.BeginTransactionAsync(cancellationToken);
 
                 while (_channel.Reader.TryRead(out var item))
                 {
@@ -53,7 +53,7 @@ namespace CustomSinkSample
                         throw new InvalidOperationException("InputModel Id cannot be null");
                     }
                     var flowtideObject = new FlowtideGenericObject<InputModel>(item.Id, item, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), item.IsDeleted);
-                    await transaction.SubmitAsync(flowtideObject);
+                    await transaction.SubmitAsync(flowtideObject, cancellationToken);
                 }
             }
         }
