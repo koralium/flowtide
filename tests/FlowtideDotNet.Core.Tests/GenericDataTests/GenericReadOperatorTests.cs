@@ -456,10 +456,12 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
 
         public override IAsyncEnumerable<FlowtideGenericObject<User>> FullLoadAsync()
         {
+            List<FlowtideGenericObject<User>> snapshot;
             lock (_changes)
             {
-                return _changes.ToAsyncEnumerable();
+                snapshot = new List<FlowtideGenericObject<User>>(_changes);
             }
+            return snapshot.ToAsyncEnumerable();
         }
 
         public override Task Checkpoint()
