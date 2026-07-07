@@ -37,7 +37,7 @@ while (true)
 
 List<InputModel> initialDataToSend = new List<InputModel>();
 
-Console.WriteLine("Enter initial rows to be sent from the source. (Note: Any row previously entered in the sink that is NOT entered here will sent to sink as deleted to sync the two stores).");
+Console.WriteLine("Enter initial rows to be sent from the source. (Note: Any row previously entered in the sink that is NOT entered here will be sent to the sink as deleted to sync the two stores).");
 Console.WriteLine("Enter rows in the format '<id> <name>'. Type 'C' and press Enter to continue.");
 
 while (true)
