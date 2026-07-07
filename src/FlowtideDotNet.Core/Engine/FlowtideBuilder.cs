@@ -203,6 +203,16 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        /// <summary>
+        /// When enabled the stream takes a checkpoint right after its initial data has been
+        /// loaded, holding off any other checkpoint until then.
+        /// </summary>
+        public FlowtideBuilder WaitForCheckpointAfterInitialData(bool wait)
+        {
+            dataflowStreamBuilder.WaitForCheckpointAfterInitialData(wait);
+            return this;
+        }
+
         public FlowtideBuilder SetTaskScheduler(TaskScheduler taskScheduler)
         {
             _taskScheduler = taskScheduler;

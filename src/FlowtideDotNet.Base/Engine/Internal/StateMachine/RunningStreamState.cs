@@ -291,6 +291,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         // to honor it. Must not depend on a checkpoint being in progress,
                         // initial data completion also lands here without one.
                         _doingCheckpoint = false;
+                        // A stop or delete that arrived while this placeholder held the
+                        // checkpoint slot already transitioned the stream to Stopping or
+                        // Deleting, whose Initialize could only queue its checkpoint cycle as
+                        // inQueueCheckpoint because the slot was taken. Now that the slot is
+                        // free the queued cycle must be promoted to a real schedule: the
+                        // TransitionTo below is then a no-op (the stream is already in the
+                        // wished state) and nothing else would ever start the cycle, hanging
+                        // the stop or delete forever. A failed promotion here means a schedule
+                        // already exists, which is fine during a stop, so it does not throw.
+                        TryPromoteQueuedCheckpoint();
                         // The transition takes the context lock and must not run under the
                         // checkpoint lock: checkpoint done acknowledgements from other
                         // substreams take the context lock first and the checkpoint lock
@@ -302,22 +312,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     else
                     {
                         _doingCheckpoint = false;
-                        if (_context.inQueueCheckpoint.HasValue)
+                        if (!TryPromoteQueuedCheckpoint())
                         {
-                            var span = _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
-                            if (span.TotalMilliseconds < 0)
-                            {
-                                span = TimeSpan.FromMilliseconds(1);
-                            }
-                            if (_context.TryScheduleCheckpointIn_NoLock(span, _context._scheduledProvidedCheckpointVersion))
-                            {
-                                _context._scheduledProvidedCheckpointVersion = default;
-                                _context.inQueueCheckpoint = null;
-                            }
-                            else
-                            {
-                                throw new InvalidOperationException("Checkpoint could not be scheduled.");
-                            }
+                            throw new InvalidOperationException("Checkpoint could not be scheduled.");
                         }
                     }
                 }
@@ -326,6 +323,34 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 TransitionTo(wishTransition.Value);
             }
+        }
+
+        /// <summary>
+        /// Promotes a checkpoint that was queued while a cycle held the checkpoint slot to a
+        /// real schedule, now that the slot is free. Returns false only when there is a queued
+        /// checkpoint that could not be scheduled because an earlier schedule already exists;
+        /// true when it promoted the queued checkpoint or there was nothing queued. Must be
+        /// called while holding the checkpoint lock.
+        /// </summary>
+        private bool TryPromoteQueuedCheckpoint()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            if (!_context.inQueueCheckpoint.HasValue)
+            {
+                return true;
+            }
+            var span = _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
+            if (span.TotalMilliseconds < 0)
+            {
+                span = TimeSpan.FromMilliseconds(1);
+            }
+            if (_context.TryScheduleCheckpointIn_NoLock(span, _context._scheduledProvidedCheckpointVersion))
+            {
+                _context._scheduledProvidedCheckpointVersion = default;
+                _context.inQueueCheckpoint = null;
+                return true;
+            }
+            return false;
         }
 
         public override Task Initialize(StreamStateValue previousState)

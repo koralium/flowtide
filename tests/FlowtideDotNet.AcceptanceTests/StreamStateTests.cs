@@ -36,6 +36,47 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Equal(StreamStateValue.NotStarted, State);
         }
 
+        /// <summary>
+        /// A stop that lands while the stream is still loading its initial data must still
+        /// finish. With the checkpoint-after-initial-data option a checkpoint placeholder
+        /// holds the checkpoint slot during startup; a stop arriving then transitions to
+        /// Stopping, whose stop cycle can only be queued behind the placeholder. When the
+        /// initial data completes and the placeholder clears, the queued stop cycle has to
+        /// actually run, otherwise the stop never completes and the caller hangs forever.
+        /// </summary>
+        [Fact]
+        public async Task StopDuringInitialDataCheckpointPlaceholderCompletes()
+        {
+            GenerateData();
+            // The option installs the startup checkpoint placeholder; the delay keeps the
+            // stream parked in that window so the stop reliably lands while it is held.
+            WaitForCheckpointAfterInitialData = true;
+            InitialDataDelay = TimeSpan.FromSeconds(3);
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+
+            // The stream reaches Running (installing the checkpoint placeholder) before its
+            // initial data, which is delayed. Wait for Running so the stop lands during the
+            // placeholder window, not during the earlier starting phase.
+            var runningDeadline = DateTime.UtcNow.AddSeconds(5);
+            while (State != StreamStateValue.Running && DateTime.UtcNow < runningDeadline)
+            {
+                await Task.Delay(10);
+            }
+            Assert.Equal(StreamStateValue.Running, State);
+
+            // Stop while the placeholder still holds the checkpoint slot. Not awaited: the
+            // stop only completes once its drain runs, which is the behavior under test.
+            var stopTask = StopStream();
+
+            var completed = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(30)));
+            Assert.True(completed == stopTask, "StopAsync hung: the stop landed during the initial-data checkpoint placeholder and no stop cycle was ever scheduled.");
+            await stopTask;
+            Assert.Equal(StreamStateValue.NotStarted, State);
+        }
+
         //[Fact]
         //public async Task TestStopStreamThenStart()
         //{

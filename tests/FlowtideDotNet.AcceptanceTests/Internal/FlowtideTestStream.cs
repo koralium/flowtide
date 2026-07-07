@@ -84,6 +84,19 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public int CachePageCount { get; set; } = 100_000;
 
+        /// <summary>
+        /// Enables the stream option that takes a checkpoint right after initial data, which
+        /// installs a checkpoint placeholder during startup. Set before starting the stream.
+        /// </summary>
+        public bool WaitForCheckpointAfterInitialData { get; set; }
+
+        /// <summary>
+        /// Delays every source's initial data send by this amount, keeping the stream in its
+        /// starting phase so a test can act while startup is still in progress. Set before
+        /// starting the stream.
+        /// </summary>
+        public TimeSpan? InitialDataDelay { get; set; }
+
         public int BPlusTreePageSizeBytes { get; set; } = 32 * 1024;
 
         public Watermark? LastWatermark => _lastWatermark;
@@ -342,6 +355,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 flowtideBuilder.WithCheckFailureListener(checkFailureListener);
             }
 
+            if (WaitForCheckpointAfterInitialData)
+            {
+                flowtideBuilder.WaitForCheckpointAfterInitialData(true);
+            }
+
             var stream = flowtideBuilder.Build();
             _stream = stream;
             return Task.CompletedTask;
@@ -527,7 +545,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource));
+            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay));
         }
 
         /// <summary>

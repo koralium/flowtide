@@ -77,6 +77,17 @@ namespace FlowtideDotNet.AcceptanceTests
         /// </summary>
         protected int SinkDeleteFailCount { set => flowtideTestStream.SinkDeleteFailCount = value; }
 
+        /// <summary>
+        /// Enables the checkpoint-after-initial-data stream option, set before StartStream.
+        /// </summary>
+        protected bool WaitForCheckpointAfterInitialData { set => flowtideTestStream.WaitForCheckpointAfterInitialData = value; }
+
+        /// <summary>
+        /// Delays every source's initial data send, keeping the stream in startup, set before
+        /// StartStream.
+        /// </summary>
+        protected TimeSpan? InitialDataDelay { set => flowtideTestStream.InitialDataDelay = value; }
+
         public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)
