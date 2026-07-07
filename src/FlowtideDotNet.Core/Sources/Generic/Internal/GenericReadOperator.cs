@@ -205,6 +205,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                 }
                 PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
                 PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+                bool checkpointLockHeld = false;
 
                 try
                 {
@@ -213,6 +214,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                         if (cmd.Type == DeltaLoadCommandType.BeginTransaction)
                         {
                             await EnterCheckpointLock();
+                            checkpointLockHeld = true;
                             cmd.CompletionSource!.SetResult();
                         }
                         else if (cmd.Type == DeltaLoadCommandType.SubmitItem)
@@ -251,12 +253,18 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                                 _tempLookup.Clear();
                             }
                             ExitCheckpointLock();
+                            checkpointLockHeld = false;
                             cmd.CompletionSource!.SetResult();
                         }
                     }
                 }
                 finally
                 {
+                    if (checkpointLockHeld)
+                    {
+                        ExitCheckpointLock();
+                    }
+
                     weights.Dispose();
                     iterations.Dispose();
                     for (int i = 0; i < columns.Length; i++)
