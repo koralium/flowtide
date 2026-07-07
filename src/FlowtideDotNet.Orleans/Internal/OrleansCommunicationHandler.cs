@@ -59,12 +59,9 @@ namespace FlowtideDotNet.Orleans.Internal
 
         public void OnStreamFailure()
         {
-            // Fetches remove events from the other substreams queues, a fetch that was in
-            // flight when this stream failed would consume events that the restarted stream
-            // needs. Changing the epoch makes the other substream refuse such fetches, the
-            // new epoch is announced with the initialize handshake at the restart. The new
-            // value comes from the shared seed so it can never collide with the epoch of
-            // another handler instance.
+            // A fetch in flight when this stream failed would consume events the restarted stream
+            // needs. Bumping the epoch makes the other substream refuse such fetches; the new epoch
+            // (from the shared seed, so it never collides) is announced at the restart handshake.
             Interlocked.Exchange(ref _fetchEpoch, Interlocked.Increment(ref _epochSeed));
         }
 
@@ -73,15 +70,11 @@ namespace FlowtideDotNet.Orleans.Internal
             var response = await _streamGrain.FetchDataAsync(new Messages.FetchDataRequest(selfName, targetIds, numberOfEvents, Interlocked.Read(ref _fetchEpoch)));
             if (response.RequestorUnknown)
             {
-                // This streams announcement is not current at the serving grain, either the
-                // grain lost its epoch table after a reactivation on another silo or an
-                // abandoned stream instance overwrote the announcement. Refused fetches look
-                // exactly like empty polls, the fetch loop keeps iterating and no stall
-                // watchdog ever fires, so without an escalation the stream starves silently
-                // forever. After the grace period the fetch fails, the recovery re-runs the
-                // initialize handshake which re-announces the epoch. The grace period exists
-                // so a briefly restarting or zombie fetcher does not immediately force
-                // recoveries.
+                // This streams announcement is not current at the serving grain (it lost its epoch
+                // table after a reactivation, or an abandoned instance overwrote the announcement).
+                // Refused fetches look like empty polls, so no stall watchdog fires and the stream
+                // would starve silently; after a grace period the fetch fails and recovery re-announces
+                // the epoch. The grace period avoids forcing recoveries for a briefly restarting fetcher.
                 if (_requestorUnknownSince == 0)
                 {
                     _requestorUnknownSince = Environment.TickCount64;
@@ -94,11 +87,9 @@ namespace FlowtideDotNet.Orleans.Internal
                 return Array.Empty<SubstreamEventData>();
             }
             _requestorUnknownSince = 0;
-            // As the consumer of the response this side owns the pooled payload buffer and
-            // must dispose it, on a cross silo call it holds segments the codec rented when
-            // the response arrived, on a same silo call it is the instance the serving grain
-            // created. Nothing deserialized references the buffer, so it is safe to release
-            // as soon as deserialization is done.
+            // This side consumes and owns the pooled payload buffer: cross-silo it holds segments the
+            // codec rented, same-silo it is the serving grain's instance. Nothing deserialized
+            // references it, so it is safe to release once deserialization is done.
             var payload = response.Events;
             try
             {

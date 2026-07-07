@@ -16,27 +16,15 @@ using FlowtideDotNet.Substrait.Relations;
 namespace FlowtideDotNet.Core.Optimizer.DistributedMode
 {
     /// <summary>
-    /// Takes a plan that is not yet distributed and splits it into substreams.
+    /// Splits a not-yet-distributed plan into substreams. Sink roots are assigned round robin, and
+    /// partitionable operators (merge joins, aggregates, window functions) are split into one copy
+    /// per substream by <see cref="DistributeOperatorsVisitor"/>. Existing exchange relations (e.g.
+    /// from distributed views) are placed in one consumer's substream; consumers in other substreams
+    /// get cross-substream targets and references.
     ///
-    /// Sink roots (relations that are not referenced by any other relation) are assigned to
-    /// substreams round robin. Partitionable operators such as merge joins, aggregates and
-    /// window functions are split into one partition copy per substream with
-    /// <see cref="DistributeOperatorsVisitor"/>, so a completely normal plan without any
-    /// distribution hints is spread across the substreams.
-    /// Exchange relations that already exist in the plan (created for example by distributed
-    /// views in SQL) are placed in the substream of one of their consumers, consumers of an
-    /// exchange in another substream get their standard output targets and references converted
-    /// into substream targets and references, which are executed with cross substream
-    /// communication at runtime.
-    ///
-    /// The transform requires an optimized plan to be effective: only merge joins can be
-    /// partitioned, generic join relations (joins the optimizer could not convert, or joins in
-    /// a plan that was never optimized) stay whole inside their assigned substream. It runs as
-    /// the last step in the plan optimizer when
-    /// <see cref="PlanOptimizerSettings.DistributedPlanOptions"/> is set.
-    ///
-    /// The transform is deterministic, running it on the same plan with the same options always
-    /// produces the same result, which allows each substream host to compute the plan independently.
+    /// Requires an optimized plan (only merge joins can be partitioned) and runs as the last optimizer
+    /// step when <see cref="PlanOptimizerSettings.DistributedPlanOptions"/> is set. Deterministic, so
+    /// each substream host can compute the plan independently.
     /// </summary>
     public static class DistributedPlanModifier
     {
@@ -90,19 +78,15 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 {
                     if (ContainsIteration(plan.Relations[sinkRoots[i]]))
                     {
-                        // Iterations, for example recursive queries, run a loop that must stay
-                        // inside one stream, the checkpoint prepare events that coordinate the
-                        // loop do not flow between substreams. The sink tree stays whole in
-                        // its assigned substream instead of being partitioned.
+                        // A loop must stay in one stream; its checkpoint prepares don't cross
+                        // substreams. Keep the sink tree whole instead of partitioning it.
                         continue;
                     }
                     plan.Relations[sinkRoots[i]] = operatorsVisitor.VisitSinkRoot(plan.Relations[sinkRoots[i]], i);
                 }
 
-                // Push operators that sit above the lane unions down into the partition lanes,
-                // for example filters and projects run inside each substream before the data
-                // is gathered, which keeps a pipeline in one lane and reduces how much data
-                // is shuffled between the substreams.
+                // Push operators above the lane unions (filters, projects) down into the lanes so
+                // they run per substream before the gather, reducing shuffled data.
                 if (operatorsVisitor.LaneUnions.Count > 0)
                 {
                     var pushdownVisitor = new LanePushdownVisitor(operatorsVisitor.LaneUnions);

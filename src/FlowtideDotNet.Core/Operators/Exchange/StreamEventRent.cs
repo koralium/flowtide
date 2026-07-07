@@ -15,11 +15,9 @@ using FlowtideDotNet.Base;
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
     /// <summary>
-    /// Single owner of the rent and return type dispatch for stream events in the exchange.
-    /// Every holder takes a claim with <see cref="Rent"/> and releases it with
-    /// <see cref="Return"/>, for a stream message the claim belongs to the batch data.
-    /// All rent and return of events must go through this class so a new event type only
-    /// needs to be handled in one place.
+    /// Single place for rent/return type dispatch of exchange stream events. Every holder takes a
+    /// claim with <see cref="Rent"/> and releases it with <see cref="Return"/> (for a stream message
+    /// the claim belongs to the batch data), so a new event type is only handled here.
     /// </summary>
     internal static class StreamEventRent
     {

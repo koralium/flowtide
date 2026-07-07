@@ -77,10 +77,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// Returns the allocator that received events for the given exchange target are
-        /// deserialized with, the allocator of the read operator that consumes the target.
-        /// Events are only fetched for subscribed targets, so the operator has been
-        /// initialized when this is called.
+        /// Allocator that received events for the target are deserialized with (the consuming read
+        /// operator's). Only fetched for subscribed targets, so that operator is already initialized.
         /// </summary>
         private IMemoryAllocator GetReceiveAllocator(int exchangeTargetId)
         {
@@ -239,10 +237,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 if (_dataHandled)
                 {
-                    // The other substream restarted while this stream is running with events
-                    // already exchanged, this streams state can depend on events the other
-                    // substream no longer knows about. Roll back to its restore point and
-                    // return not started so it retries the handshake.
+                    // The other substream restarted mid-run after events were exchanged, so this
+                    // streams state can depend on events it no longer knows about. Roll back to its
+                    // restore point and return not started so it retries the handshake.
                     _logger.LogInformation("Substream {substreamName} initialized with restore point {restorePoint} while this stream has live exchanged data, failing over to it.", substreamName, restorePoint);
                     _ = Task.Run(async () =>
                     {
@@ -335,10 +332,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 else
                 {
-                    // No targets or read operators are registered yet, the stream is still
-                    // being built, there is nothing running that needs to be recovered. The
-                    // initialize handshake reconciles the checkpoint versions when the stream
-                    // starts.
+                    // Nothing is registered yet, the stream is still being built, so there is
+                    // nothing to recover. The initialize handshake reconciles versions at start.
                     _logger.LogInformation("Received fail and recover to {recoveryPoint} before any exchange operators are registered, nothing to recover.", recoveryPoint);
                 }
             }
@@ -393,10 +388,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private Task RecieveCheckpointDone(long checkpointVersion)
         {
             _logger.LogDebug("Recieved checkpoint done from substream {substreamName} to {selfSubstreamName} with version {checkpointVersion}, notifying targets and read operators.", substreamName, _selfSubstreamName, checkpointVersion);
-            // Call all targets and read operators that the connected substream have completed
-            // the checkpoint. Task.Run so the work runs on the thread pool, this can be
-            // called from a grain turn where Task.Factory.StartNew would capture the grain
-            // activation scheduler.
+            // Tell all targets and read operators the connected substream completed the checkpoint.
+            // Task.Run to use the thread pool, this can be called from a grain turn where the grain
+            // activation scheduler would otherwise be captured.
             return Task.Run(async () =>
             {
                 try

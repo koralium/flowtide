@@ -45,10 +45,8 @@ namespace FlowtideDotNet.Orleans.Messages
         public FlowtideHealth? Health { get; set; }
 
         /// <summary>
-        /// The most recent failure of the stream on the current grain activation, null when
-        /// no failure has occurred. Streams start and retry failures in the background, this
-        /// is where the reason surfaces. A running state next to a non null value means the
-        /// stream recovered after the failure.
+        /// Most recent failure on the current grain activation, null when none. Failures are retried
+        /// in the background; a running state next to a non-null value means the stream recovered.
         /// </summary>
         [Id(4)]
         public string? LastFailure { get; set; }

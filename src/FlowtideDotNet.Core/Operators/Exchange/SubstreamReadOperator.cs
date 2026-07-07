@@ -29,21 +29,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     }
 
     /// <summary>
-    /// Ingress operator that reads events from an exchange in another substream.
-    ///
-    /// Events are fetched through the substream communication point and buffered in a
-    /// transient channel. The delivery is transient, checkpoint cycles in the other substream
-    /// only complete when this stream has consumed the checkpoint barrier and sent its
-    /// checkpoint done message. After a failure both substreams roll back to a common
-    /// checkpoint and the other substream regenerates the events by replaying from it.
+    /// Ingress operator that reads events from an exchange in another substream. Events are fetched
+    /// through the communication point and buffered in a transient channel; after a failure both
+    /// substreams roll back to a common checkpoint and the other substream replays the events.
     /// </summary>
     internal class SubstreamReadOperator : IngressVertex<StreamEventBatch>
     {
         /// <summary>
-        /// Marker placed in the channel when this stream takes its stop checkpoint. The fetch
-        /// loop forwards the stop barrier when it reads the marker, after all already buffered
-        /// events, so the stop does not depend on more events from the other substream which
-        /// may already have stopped completely.
+        /// Placed in the channel when this stream takes its stop checkpoint, so the fetch loop
+        /// forwards the stop barrier after buffered events without waiting on the other substream.
         /// </summary>
         private sealed class LocalStopCheckpointMarker : IStreamEvent
         {
@@ -87,19 +81,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public int ExchangeTargetId => _exchangeReferenceRelation.ExchangeTargetId;
 
         /// <summary>
-        /// Allocator that received events for this operators exchange target are deserialized
-        /// with, so data fetched over the network is accounted on the operator that consumes
-        /// it. Only valid after the operator has been initialized, which is guaranteed since
-        /// events are only fetched for subscribed targets.
+        /// Allocator that received events are deserialized with, so fetched data is accounted on the
+        /// operator that consumes it. Only valid after initialization (events are only fetched for
+        /// subscribed targets).
         /// </summary>
         internal IMemoryAllocator ReceiveMemoryAllocator => MemoryAllocator;
 
         /// <summary>
-        /// The stream may first finish stopping when this operator has consumed the other
-        /// substreams stop barrier and committed a checkpoint that covers it, everything the
-        /// other substream sent before it is then part of this streams final state. The
-        /// stopping stream runs stop checkpoint cycles until this is true, with a drain
-        /// timeout that protects against another substream that never stops.
+        /// True once this operator has consumed the other substreams stop barrier and committed a
+        /// checkpoint covering it. The stopping stream runs stop cycles until then, bounded by a
+        /// drain timeout in case the other substream never stops.
         /// </summary>
         public override bool ReadyToStop => _peerStopConsumedCommitted;
 
@@ -275,25 +266,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     }
                     else
                     {
-                        // The event pairs with a checkpoint that is already running. Data sent
-                        // before the other substreams barrier can be processed after this
-                        // streams barrier due to barrier alignment, a follow up cycle covers it.
-                        // The request must be versionless, the version dedup would otherwise
-                        // swallow it together with the sibling requests for the current cycle.
+                        // Pairs with a checkpoint already running. Data sent before the other
+                        // substreams barrier can land after this streams barrier, a follow up cycle
+                        // covers it. Versionless, or the dedup swallows it with the cycle's siblings.
                         ScheduleCheckpoint(TimeSpan.FromMilliseconds(100));
                     }
 
                     if (inStreamCheckpoint == null)
                     {
                         Debug.Assert(_waitForCheckpoint != null);
-                        // The wait is bounded, an unpairable barrier from another epoch would
-                        // otherwise park this loop forever. The checkpoint is requested again a
-                        // few times, when none arrives the stream fails and recovers so the
-                        // initialize handshake can reconcile the substreams.
-                        // Before the first local checkpoint the budget is much larger, a barrier
-                        // arriving while this stream is still starting up is resolved by the
-                        // checkpoint after initial data, failing on it would restart the slow
-                        // startup in a loop.
+                        // Bounded so an unpairable barrier from another epoch does not park this loop
+                        // forever: requested a few more times, then fail and recover so the initialize
+                        // handshake reconciles. The budget is larger before the first local checkpoint,
+                        // a startup barrier is resolved by the checkpoint after initial data.
                         bool checkpointArrived = false;
                         int attemptBudget = _localCheckpointSeen ? 3 : 24;
                         for (int attempt = 0; attempt < attemptBudget; attempt++)
@@ -536,10 +521,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     _fetchTask = newTask;
                 }
             }
-            // Only the other substreams init watermarks event is forwarded, it always comes
-            // since the substreams reinitialize together. Forwarding the local event as well
-            // would emit two init watermark events after a restore while local paths emit one,
-            // skewing every barrier alignment downstream by one event.
+            // Only the other substreams init watermarks event is forwarded (it always comes, the
+            // substreams reinitialize together). Forwarding the local one too would emit two after a
+            // restore and skew every downstream barrier alignment by one event.
         }
     }
 }

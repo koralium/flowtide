@@ -23,14 +23,10 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
     /// <summary>
-    /// Exchange target that stores events for another substream.
-    ///
-    /// The queue is transient, its content is never part of a checkpoint. A checkpoint cycle
-    /// in this stream only completes when the other substream has consumed the checkpoint
-    /// barrier and sent its checkpoint done message, so everything in the queue is always
-    /// ahead of the latest complete checkpoint. After a failure both substreams roll back to
-    /// a common checkpoint and this stream regenerates the queue content by replaying from
-    /// that checkpoint.
+    /// Exchange target that stores events for another substream. The queue is transient (never part
+    /// of a checkpoint): a checkpoint only completes once the other substream consumed the barrier
+    /// and acked, so the queue is always ahead of the latest checkpoint. After a failure both roll
+    /// back to a common checkpoint and this stream regenerates the queue by replaying from it.
     /// </summary>
     internal class SubstreamTarget : IExchangeTarget
     {
@@ -44,15 +40,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly SemaphoreSlim _lockSemaphore;
         private Func<long, Task>? _failAndRecoverFunc;
 
-        // False between a failure and the following initialize. The queue contents belong to
-        // the aborted epoch until the state manager has rolled back and the stream regenerates
-        // them, serving reads from them would deliver events from the old epoch.
+        // False between a failure and the next initialize: the queue still holds aborted-epoch events
+        // until the rollback and regeneration, serving them would deliver stale events.
         private bool _ready;
 
-        // Set when this streams stop barrier has been stored in the queue, no more events are
-        // stored after it. The stream may first finish stopping when the other substream has
-        // fetched the stop barrier, otherwise the events before it would be disposed before
-        // the other substream has received them.
+        // Set once this streams stop barrier is stored (nothing is stored after it). The stream can
+        // only finish stopping after the other substream has fetched it, or events before it would
+        // be disposed before that substream received them.
         private volatile bool _stopBarrierStored;
         private volatile bool _stopBarrierFetched;
 

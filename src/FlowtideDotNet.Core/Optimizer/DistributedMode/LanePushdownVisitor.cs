@@ -17,19 +17,12 @@ using FlowtideDotNet.Substrait.Relations;
 namespace FlowtideDotNet.Core.Optimizer.DistributedMode
 {
     /// <summary>
-    /// Pushes operators that sit above a distributed lane union down into each partition lane,
-    /// so a pipeline stays in one lane instead of gathering the data across substreams first.
-    ///
-    /// For example join -&gt; filter -&gt; project becomes one filter and project per lane running
-    /// in the lanes substream, and the gather union moves to the top:
-    /// union(project(filter(join_0)), project(filter(join_1)), ...).
-    /// Filters run before the data is shuffled which also reduces how much data is sent
-    /// between the substreams.
-    ///
-    /// Filters and projects are always safe to push since they are row local. Aggregates and
-    /// window functions are only pushed when their grouping or partition columns cover the
-    /// partition key columns of the lanes, every group is then fully contained in one lane and
-    /// no extra shuffle is required.
+    /// Pushes operators above a distributed lane union down into each partition lane, so a pipeline
+    /// stays in one lane instead of gathering across substreams first. For example join -&gt; filter
+    /// -&gt; project becomes union(project(filter(join_0)), project(filter(join_1)), ...), running the
+    /// filter and project per lane and shuffling less data. Filters and projects are always safe (row
+    /// local); aggregates and window functions only when their grouping/partition columns cover the
+    /// lane partition keys, so every group stays in one lane.
     /// </summary>
     internal sealed class LanePushdownVisitor : OptimizerBaseVisitor
     {

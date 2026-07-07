@@ -110,10 +110,9 @@ namespace FlowtideDotNet.Orleans.Grains
             if (_orleansCommunicationFactory == null ||
                 !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
             {
-                // No stream runs on this activation, for example because a stop cleared the
-                // grain state while a peer still fetches. Flagged for the same reason as the
-                // epoch refusals below, an unflagged empty response looks like a healthy
-                // poll and the fetcher starves silently forever.
+                // No stream runs on this activation (e.g. a stop cleared the grain state while a peer
+                // still fetches). Marked unknown so the fetcher fails and recovers instead of reading
+                // an empty response as a healthy poll and starving forever.
                 return new FetchDataResponse(default) { RequestorUnknown = true };
             }
             if (!_peerFetchEpochs.TryGetValue(request.Requestor, out var announcedEpoch))
@@ -126,12 +125,9 @@ namespace FlowtideDotNet.Orleans.Grains
             }
             if (announcedEpoch != request.FetchEpoch)
             {
-                // The fetch is not from the requestors current epoch, it comes from an
-                // abandoned stream instance or was started before a rollback. Serving it
-                // would hand events to a consumer that throws them away. The refusal is
-                // flagged, when an abandoned instance overwrote the announcement the live
-                // fetcher lands here and must fail and recover to re-announce its epoch, a
-                // silent refusal would starve it forever while looking healthy.
+                // Fetch from a stale epoch (an abandoned instance, or from before a rollback); serving
+                // it would hand events to a consumer that discards them. Marked unknown so a live
+                // fetcher that landed here after an overwrite fails and recovers instead of starving.
                 _logger.LogDebug("Refusing fetch from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.Requestor, request.FetchEpoch, announcedEpoch);
                 return new FetchDataResponse(default) { RequestorUnknown = true };
             }

@@ -20,12 +20,10 @@ using Microsoft.Extensions.Logging;
 namespace FlowtideDotNet.Core.Engine.Distributed
 {
     /// <summary>
-    /// Builds a distributed stream where all substreams run in the same process.
-    ///
-    /// The plan can either already contain substreams (for example from SQL SUBSTREAM statements)
-    /// or be split automatically with <see cref="DistributeAutomatically"/>.
-    /// Each substream runs as its own stream with its own state storage, the substreams
-    /// communicate in process through a <see cref="LocalSubstreamCommunicationHub"/>.
+    /// Builds a distributed stream where all substreams run in the same process. The plan may
+    /// already contain substreams (e.g. from SQL SUBSTREAM) or be split with
+    /// <see cref="DistributeAutomatically"/>; each substream runs as its own stream with its own
+    /// storage and they communicate through a <see cref="LocalSubstreamCommunicationHub"/>.
     /// </summary>
     public class DistributedStreamBuilder
     {
@@ -45,13 +43,9 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         }
 
         /// <summary>
-        /// Adds a factory that creates the plan to run.
-        ///
-        /// The factory is called once per substream since building a stream modifies the plan
-        /// in place, each substream requires its own plan instance.
-        /// The factory must be deterministic and return an identical plan on every call,
-        /// for example by rebuilding it from the same SQL text, otherwise the substreams
-        /// cannot communicate with each other.
+        /// Adds the factory that creates the plan to run. Called once per substream (building a stream
+        /// mutates the plan in place), so it must be deterministic and return an identical plan every
+        /// call, e.g. by rebuilding from the same SQL, or the substreams cannot communicate.
         /// </summary>
         /// <param name="planFactory">Factory that creates a new identical plan on every call.</param>
         /// <param name="optimize">
@@ -69,10 +63,9 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         }
 
         /// <summary>
-        /// Sets the factory that creates the connector manager for each substream, called once
-        /// per substream with the stream and substream name. Each substream gets its own
-        /// manager so connector factories that hold per stream state, for example sinks
-        /// capturing callbacks, are never shared between substreams.
+        /// Sets the factory that creates the connector manager per substream (called with the stream
+        /// and substream name). Each substream gets its own so connectors holding per-stream state,
+        /// like sinks capturing callbacks, are never shared.
         /// </summary>
         public DistributedStreamBuilder AddConnectorManager(Func<string, string, IConnectorManager> connectorManagerFactory)
         {
@@ -81,11 +74,9 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         }
 
         /// <summary>
-        /// Sets the factory that creates the state manager options for each substream, called
-        /// with the stream and substream name. Each substream must have its own storage
-        /// location, keyed on both names: substream names repeat between streams, storage
-        /// keyed on the substream name alone collides when two distributed streams run in
-        /// the same process.
+        /// Sets the factory that creates state manager options per substream (called with the stream
+        /// and substream name). Storage must be keyed on both names: substream names repeat between
+        /// streams and would collide if keyed on the substream name alone.
         /// </summary>
         public DistributedStreamBuilder WithStateOptionsFactory(Func<string, string, StateManagerOptions> stateOptionsFactory)
         {
@@ -188,10 +179,9 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         }
 
         /// <summary>
-        /// Creates the plan for one substream.
-        /// Building a stream modifies the plan in place, so each substream must get its own
-        /// plan instance. The plan factory, the distributed plan modifier and the optimizer
-        /// are all deterministic which makes every instance identical.
+        /// Creates the plan for one substream. Building mutates the plan in place, so each substream
+        /// needs its own instance; the factory, plan modifier and optimizer are all deterministic so
+        /// every instance is identical.
         /// </summary>
         private Plan CreatePlan()
         {

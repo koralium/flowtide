@@ -19,10 +19,9 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
     public class DistributedPlanOptions
     {
         /// <summary>
-        /// The number of substreams to split the plan into.
-        /// Partitionable operators such as joins, aggregates and window functions get one
-        /// partition copy in every substream, so even a plan with a single sink uses all
-        /// substreams. Sink roots themselves are assigned to substreams round robin.
+        /// Number of substreams to split the plan into. Partitionable operators (joins, aggregates,
+        /// window functions) get one copy per substream, so even a single-sink plan uses them all;
+        /// sink roots are assigned round robin.
         /// </summary>
         public required int SubstreamCount { get; init; }
 

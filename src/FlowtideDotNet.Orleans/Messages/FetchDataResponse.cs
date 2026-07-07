@@ -24,28 +24,20 @@ namespace FlowtideDotNet.Orleans.Messages
         }
 
         /// <summary>
-        /// The fetched events serialized with the substream event wire format, an opaque
-        /// buffer so the events can cross silo boundaries without Orleans knowing about the
-        /// event types. Data batches use the same columnar encoding as the exchange queues
-        /// use when pages spill to disk.
-        ///
-        /// A <see cref="PooledBuffer"/> so no byte arrays are allocated for the payload, the
-        /// events are written into pooled segments which the Orleans codec sends directly.
-        /// Ownership: the consumer of the response disposes the buffer, on a cross silo call
-        /// the codec consumes it when the response is serialized and the receiving side gets
-        /// its own pooled copy, on a same silo call the receiver gets this instance since the
-        /// response is immutable. The producing grain must not touch it after returning.
+        /// The fetched events in the substream event wire format, an opaque <see cref="PooledBuffer"/>
+        /// so they cross silo boundaries without Orleans knowing the event types and without allocating
+        /// byte arrays. Ownership: the response consumer disposes it (cross-silo the codec consumes it
+        /// and the receiver gets its own pooled copy, same-silo the receiver gets this instance); the
+        /// producing grain must not touch it after returning.
         /// </summary>
         [Id(0)]
         public PooledBuffer Events { get; set; }
 
         /// <summary>
-        /// True when the requestors fetch epoch is not the one announced to the serving
-        /// grain, either because the grain was reactivated on another silo and lost its per
-        /// activation epoch table, or because another instance of the requestors stream
-        /// announced a different epoch. The fetching side must not treat this like an empty
-        /// poll: refused fetches never return data, and a persistently refused fetcher must
-        /// fail and recover so the initialize handshake re-announces its epoch.
+        /// True when the requestors fetch epoch is not the one announced to the serving grain (the
+        /// grain lost its epoch table after a reactivation, or another instance announced a different
+        /// epoch). The fetcher must not treat this as an empty poll: a persistently refused fetcher
+        /// fails and recovers so the initialize handshake re-announces its epoch.
         /// </summary>
         [Id(1)]
         public bool RequestorUnknown { get; set; }

@@ -15,10 +15,9 @@ using FlowtideDotNet.Core.Operators.Exchange;
 namespace FlowtideDotNet.Core.Engine.Distributed
 {
     /// <summary>
-    /// Connects substreams that run in the same process with each other.
-    /// Each substream gets its own <see cref="ISubstreamCommunicationHandlerFactory"/> from
-    /// <see cref="CreateFactory"/>, messages sent from one substream are dispatched directly
-    /// to the callbacks registered by the other substream.
+    /// Connects substreams that run in the same process. Each gets its own
+    /// <see cref="ISubstreamCommunicationHandlerFactory"/> from <see cref="CreateFactory"/>; messages
+    /// are dispatched directly to the callbacks the other substream registered.
     /// </summary>
     public class LocalSubstreamCommunicationHub
     {

@@ -42,9 +42,8 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         public IReadOnlyDictionary<string, Base.Engine.DataflowStream> Substreams => _substreams;
 
         /// <summary>
-        /// Test seam: whether the scheduler tick loop is currently armed. It must run while the
-        /// stream is started and be torn down when the stream stops, so a stopped stream does
-        /// not keep ticking its substreams and running a periodic blocking GC.
+        /// Test seam: whether the scheduler tick loop is armed. It runs while the stream is started
+        /// and is torn down on stop, so a stopped stream does not keep ticking or running a blocking GC.
         /// </summary>
         internal bool IsTickLoopRunning
         {
@@ -65,12 +64,10 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         public Base.FlowtideHealth Health => _substreams.Values.Max(x => x.Health);
 
         /// <summary>
-        /// Starts all substreams and begins driving their schedulers, there is no need to
-        /// call RunAsync on the substreams.
-        /// Failures inside a substream do not fail this call, the substream retries them in
-        /// the background and they surface through the failure listeners and
-        /// <see cref="Health"/>. If starting itself throws, the substreams that did start
-        /// are stopped before the failure is rethrown.
+        /// Starts all substreams and drives their schedulers (no need to call RunAsync). A substream
+        /// failure does not fail this call, it is retried in the background and surfaces through the
+        /// failure listeners and <see cref="Health"/>. If the start itself throws, the substreams
+        /// that did start are stopped before rethrowing.
         /// </summary>
         public async Task StartAsync()
         {
@@ -119,9 +116,8 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         }
 
         /// <summary>
-        /// Drives the default schedulers of all substreams, StartAsync does not tick the
-        /// scheduler and no recurring trigger would ever fire without the loop. One loop
-        /// runs for the lifetime of this instance, it survives stop and restart.
+        /// Drives the substream schedulers so recurring triggers fire; StartAsync does not tick them.
+        /// One loop runs for the lifetime of this instance, surviving stop and restart.
         /// </summary>
         private void EnsureTickLoop()
         {
@@ -136,11 +132,9 @@ namespace FlowtideDotNet.Core.Engine.Distributed
                 _tickLoop = Task.Run(async () =>
                 {
                     using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
-                    // The dispatches are not awaited inline, a dispatch into a paused or
-                    // backpressured substream can park until the substream moves again and
-                    // one blocked substream must not stall trigger dispatch for the others.
-                    // Tracking the task per substream bounds it to one in flight dispatch
-                    // each, a substream whose dispatch has not finished is skipped.
+                    // Dispatches are not awaited inline: one into a paused or backpressured substream
+                    // can park, and it must not stall dispatch for the others. Tracked per substream
+                    // to bound it to one in flight each; a substream still dispatching is skipped.
                     var inflightTicks = new Dictionary<string, Task>();
                     long tickCount = 0;
                     try

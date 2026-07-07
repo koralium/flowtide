@@ -182,13 +182,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// A recursive query distributed automatically across substreams must produce correct output.
-        /// The optimizer hoists the recursion into a global <c>IterationRelation</c> that is built whole
-        /// in every substream; this verifies that global iteration reads the base tables correctly and
-        /// feeds the partitioned join above it, so the loop is not silently miscomputed per substream.
-        /// The generated manager hierarchy is a tree rooted at the null-manager users, so the recursive
-        /// manager_cte reaches every user and joining it with orders equals the plain users-orders join.
-        /// If the distributed iteration dropped users, this oracle would mismatch.
+        /// A recursive query distributed across substreams produces correct output. The manager tree
+        /// reaches every user, so joining manager_cte with orders equals the plain users-orders join,
+        /// which acts as an oracle: a dropped user would make the result mismatch.
         /// </summary>
         [Theory]
         [InlineData(2)]
@@ -234,7 +230,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
-            // New data added after start must flow through the global iteration and the partitioned join.
+            // New data added after start must flow through.
             _generator.Generate(500);
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 

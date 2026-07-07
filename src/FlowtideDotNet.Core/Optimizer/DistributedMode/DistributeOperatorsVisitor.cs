@@ -71,9 +71,8 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
         }
 
         /// <summary>
-        /// The substream names for the partition copies, one copy per substream.
-        /// The copy for partition 0 is placed in the sink substream so its output
-        /// does not require any cross substream communication.
+        /// Substream name per partition copy. Partition 0 is placed in the sink substream so its
+        /// output needs no cross substream communication.
         /// </summary>
         private string[] GetCopySubstreams()
         {
@@ -86,10 +85,9 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
         }
 
         /// <summary>
-        /// Adds a scatter exchange as a new top level relation wrapped in the substream it should run in.
-        /// Creates one target per partition, standard output targets for copies in the same substream
-        /// and substream targets for copies in other substreams, and returns the reference relation
-        /// that each partition copy should read from.
+        /// Adds a scatter exchange as a new top level relation in the substream it runs in, with one
+        /// target per partition (standard output in the same substream, substream target otherwise),
+        /// and returns the reference relation each partition copy reads from.
         /// </summary>
         private Relation[] AddScatterExchange(Relation input, List<FieldReference> scatterFields, string[] copySubstreams)
         {

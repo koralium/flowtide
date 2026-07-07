@@ -19,28 +19,19 @@ using System.Buffers.Binary;
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
     /// <summary>
-    /// Wire format for events fetched between substreams on different nodes.
+    /// Wire format for events fetched between substreams on different nodes. The payload is a single
+    /// opaque byte stream, so any transport (Orleans grain calls, an actor framework) can move it,
+    /// using the same columnar encoding the exchange queues spill with (no per-row work).
     ///
-    /// The payload is a single opaque byte stream, so any transport, for example Orleans
-    /// grain calls or an actor framework, can move it without knowing anything about the
-    /// events. Data batches use the same columnar encoding as the exchange queues use when
-    /// pages spill to disk, no per row work is done when serializing.
+    /// Serialize writes into an <see cref="IBufferWriter{T}"/> and Deserialize reads from a
+    /// <see cref="ReadOnlySequence{T}"/>, so pooled segmented buffers (e.g. Orleans PooledBuffer)
+    /// move events without intermediate byte arrays. Serialize never allocates batch memory;
+    /// Deserialize allocates from the target's resolved allocator and references nothing in the
+    /// payload, so the transport may release it once Deserialize returns.
     ///
-    /// Serialization writes into an <see cref="IBufferWriter{T}"/> and deserialization reads
-    /// from a <see cref="ReadOnlySequence{T}"/>, so a transport with pooled segmented
-    /// buffers, such as Orleans PooledBuffer, moves events without allocating or copying any
-    /// intermediate byte arrays.
-    ///
-    /// Memory ownership over the wire: serializing only writes into the buffer, it never
-    /// allocates batch memory. Deserializing allocates batch memory from the allocator
-    /// resolved for the events exchange target, so received data is accounted on the read
-    /// operator that consumes it. Nothing deserialized references the payload sequence, so
-    /// the transport may release it as soon as <see cref="Deserialize"/> returns.
-    ///
-    /// Rent ownership over the wire: the receiver claim taken when the events were dequeued
-    /// is released by <see cref="ReturnEvents"/> on the sending side after serializing, the
-    /// events created by <see cref="Deserialize"/> carry a fresh receiver claim, so from the
-    /// fetching sides point of view the contract is the same as a local fetch.
+    /// Rent ownership: the receiver claim from the dequeue is released by <see cref="ReturnEvents"/>
+    /// on the sending side after serializing, and deserialized events carry a fresh claim, so the
+    /// fetching side sees the same contract as a local fetch.
     /// </summary>
     public sealed class SubstreamEventWireSerializer
     {

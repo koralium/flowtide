@@ -29,18 +29,16 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
         public required List<DistributedLaneInput> Inputs { get; init; }
 
         /// <summary>
-        /// The columns in the union output that carry the partition key values, or null when
-        /// they are unknown or no longer present. Used to decide if stateful operators such as
-        /// aggregates can run inside the lanes without another shuffle.
+        /// Columns in the union output carrying the partition key values, or null when unknown. Used
+        /// to decide if stateful operators like aggregates can run in the lanes without a reshuffle.
         /// </summary>
         public List<int>? PartitionKeyColumns { get; set; }
     }
 
     /// <summary>
-    /// Where one lane of a distributed union lives.
-    /// The lane either runs in the same substream as the union (both properties are null and
-    /// the lane is the union input itself), or it runs in another substream where the gather
-    /// exchange sends its result to the union through the substream reference.
+    /// Where one lane of a distributed union lives: either in the union's own substream (both
+    /// properties null, the lane is the union input), or in another substream whose gather exchange
+    /// sends its result back through the substream reference.
     /// </summary>
     internal sealed class DistributedLaneInput
     {

@@ -289,11 +289,8 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
         }
 
         /// <summary>
-        /// A recursive query hidden behind a view reference is still not split across substreams.
-        /// The optimizer hoists the recursion into its own top level <see cref="IterationRelation"/>
-        /// that is referenced from the consumers; a referenced relation is built whole in every
-        /// substream, so the loop stays intact even though the join and aggregate above it are
-        /// partitioned. Guards the case the sink tree only reaches the iteration through a reference.
+        /// A recursive query reached only through a reference is still not split across substreams:
+        /// the iteration is hoisted to a global relation and built whole in every substream.
         /// </summary>
         [Theory]
         [InlineData(@"
@@ -334,13 +331,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
             var iterationRoot = Assert.Single(plan.Relations.Where(ContainsRelation<IterationRelation>));
 
-            // The iteration is a global relation (no substream root wrapper), so it is built whole
-            // in every substream instead of being partitioned.
+            // Global (no substream wrapper), so built whole in every substream, and the loop
+            // never crosses a substream boundary.
             Assert.IsNotType<SubStreamRootRelation>(iterationRoot);
-
-            // Nothing inside the loop crosses a substream boundary.
-            Assert.False(ContainsRelation<SubstreamExchangeReferenceRelation>(iterationRoot),
-                "The recursive loop must not contain a cross-substream exchange reference.");
+            Assert.False(ContainsRelation<SubstreamExchangeReferenceRelation>(iterationRoot));
         }
 
         private static bool ContainsRelation<T>(Relation root) where T : Relation

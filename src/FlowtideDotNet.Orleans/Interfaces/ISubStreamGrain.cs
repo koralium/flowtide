@@ -21,10 +21,9 @@ using System.Threading.Tasks;
 namespace FlowtideDotNet.Orleans.Interfaces
 {
     /// <summary>
-    /// Grain running one substream of a stream. Most methods are the internal protocol
-    /// between the substream grains, do not call them from application code and do not
-    /// start, stop or delete a single substream directly, use <see cref="IStreamGrain"/>
-    /// to manage streams.
+    /// Grain running one substream. Most methods are the internal protocol between substream grains;
+    /// don't call them from application code or manage a single substream directly, use
+    /// <see cref="IStreamGrain"/>.
     /// </summary>
     public interface ISubStreamGrain : IGrainWithStringKey
     {
@@ -54,10 +53,8 @@ namespace FlowtideDotNet.Orleans.Interfaces
         Task<SubstreamStatus> GetStatusAsync();
 
         /// <summary>
-        /// Stops the substream and deletes its state, completing when the deletion has
-        /// finished. All substreams of a stream should be deleted together through the
-        /// stream grain, a substream whose peers keep running would be recovered against
-        /// missing state.
+        /// Stops the substream and deletes its state. Delete all substreams together through the
+        /// stream grain, or a substream whose peers keep running would be recovered against missing state.
         /// </summary>
         Task DeleteStreamAsync();
     }

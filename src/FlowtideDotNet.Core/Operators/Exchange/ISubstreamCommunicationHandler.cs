@@ -17,21 +17,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     public interface ISubstreamCommunicationHandler
     {
         /// <summary>
-        /// Provides the memory allocators used when received events are deserialized, keyed
-        /// by exchange target id. The allocator belongs to the read operator that consumes
-        /// the target, so received data is accounted on that operator. Handlers that pass
-        /// events by reference, for example inside a single process, can ignore this.
+        /// Provides the allocators (keyed by exchange target id) used when received events are
+        /// deserialized, so received data is accounted on the consuming read operator. Handlers that
+        /// pass events by reference (e.g. in-process) can ignore this.
         /// </summary>
         void SetReceiveAllocatorResolver(Func<int, IMemoryAllocator> allocatorResolver)
         {
         }
 
         /// <summary>
-        /// Called when the local stream fails, before it rolls back and restarts. Handlers
-        /// that fetch destructively over a network use this to change their fetch epoch, so
-        /// fetches that were started before the failure can be recognized as stale by the
-        /// other substream and refused instead of consuming events meant for the restarted
-        /// stream. Handlers inside a single process can ignore this.
+        /// Called when the local stream fails, before rollback and restart. Handlers that fetch
+        /// destructively over a network change their fetch epoch here so pre-failure fetches are
+        /// recognized as stale and refused. In-process handlers can ignore this.
         /// </summary>
         void OnStreamFailure()
         {

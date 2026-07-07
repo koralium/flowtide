@@ -20,10 +20,8 @@ namespace FlowtideDotNet.Orleans.Internal
     internal static class SubStreamGrainKey
     {
         /// <summary>
-        /// The stream name length prefix makes the key injective: a plain
-        /// "{stream}_{substream}" would map stream "orders" with substream "eu_west" and
-        /// stream "orders_eu" with substream "west" to the same grain, silently mixing the
-        /// state of two different streams.
+        /// The stream name length prefix makes the key injective: without it, stream "orders" +
+        /// substream "eu_west" and stream "orders_eu" + substream "west" would map to the same grain.
         /// </summary>
         public static string Create(string streamName, string substreamName)
         {
@@ -31,10 +29,9 @@ namespace FlowtideDotNet.Orleans.Internal
         }
 
         /// <summary>
-        /// Checks that the key is exactly the one <see cref="Create"/> produces for the
-        /// given names. Legacy detection must use this when grain state exists: format
-        /// parsing alone misclassifies old keys whose stream name is a small integer,
-        /// for example the old-format key "2_ab_x" parses as a valid current key.
+        /// True when the key is exactly what <see cref="Create"/> produces for the names. Legacy
+        /// detection needs this when state exists: format parsing alone misclassifies old keys whose
+        /// stream name is a small integer (e.g. "2_ab_x" parses as a valid current key).
         /// </summary>
         public static bool MatchesState(string key, string streamName, string substreamName)
         {
@@ -42,10 +39,9 @@ namespace FlowtideDotNet.Orleans.Internal
         }
 
         /// <summary>
-        /// Parses a key created by <see cref="Create"/>. Returns false for keys in another
-        /// format, for example keys persisted in reminder tables by versions that used a
-        /// key without the length prefix, such activations must clean themselves up instead
-        /// of running a substream that stop and delete can no longer reach.
+        /// Parses a key created by <see cref="Create"/>. Returns false for other formats, e.g. keys
+        /// persisted by versions without the length prefix; those activations must clean themselves
+        /// up instead of running a substream that stop and delete can no longer reach.
         /// </summary>
         public static bool TryParse(string key, out string streamName, out string substreamName)
         {

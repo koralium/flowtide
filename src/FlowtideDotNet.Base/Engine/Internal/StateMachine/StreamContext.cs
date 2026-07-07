@@ -80,28 +80,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal CancellationTokenSource? _scheduleCheckpointCancelSource;
 
         internal StreamStateValue currentState;
-        // Volatile: the wish is written by stop and delete calls on caller threads and read
-        // by the state machine on its own threads, often outside locks. Volatile guarantees
-        // the reads observe the latest wish, the honoring points tolerate the remaining
-        // check-then-act window by re-checking at every safe point.
+        // Volatile: written by stop/delete on caller threads, read by the state machine on its own
+        // threads, often outside locks. The honoring points tolerate the check-then-act window by
+        // re-checking at every safe point.
         internal volatile StreamStateValue _wantedState;
 
-        // Counts the state manager writes in flight, the checkpoint commit and compaction
-        // spans. A teardown must wait for this to reach zero before it faults and disposes
-        // blocks or disposes the state manager, doing either while the state manager is
-        // being written corrupts it. A counter, not a flag: spans that overlap across a
-        // failure epoch boundary must not let one finishing clear the guard while another
-        // is still writing. Written with Interlocked, read with Volatile.Read.
+        // Counts state manager writes in flight (checkpoint commit and compaction). A teardown must
+        // wait for zero before faulting/disposing, or it corrupts the state manager. A counter, not a
+        // flag, so overlapping spans across a failure epoch don't let one finishing clear the guard.
         internal int _stateManagerWriteCount;
 
-        // Test hooks, null in production. All receive the stream name so a test can filter
-        // to its own stream and not disturb streams from tests running in parallel.
-        // CheckpointCommitHookForTests is awaited inside the checkpoint commit (with the
-        // last completed version before this commit) so a test can hold a state manager
-        // write in flight; BeforeFailureDisposeForTests fires when the failure teardown is
-        // about to tear down the blocks, so a test can observe whether it overlaps an
-        // in-flight write; RestoreVersionForTests reports the version the failure teardown
-        // rolls back to.
+        // Test hooks, null in production. Each gets the stream name so a test can filter to its own
+        // stream: CheckpointCommitHookForTests awaits inside the commit (so a test can hold a write in
+        // flight), BeforeFailureDisposeForTests fires as the failure teardown disposes blocks, and
+        // RestoreVersionForTests reports the rollback version.
         internal static Func<string, long, Task>? CheckpointCommitHookForTests;
         internal static Func<string, Task>? CompactionHookForTests;
         internal static Action<string>? BeforeFailureDisposeForTests;

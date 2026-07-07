@@ -22,13 +22,9 @@ namespace FlowtideDotNet.Orleans.Interfaces
     public interface IStreamGrain : IGrainWithStringKey
     {
         /// <summary>
-        /// Starts all substreams of the stream. Starting an already started stream with the
-        /// same SQL text and substream count is a no-op, starting it with a different plan
-        /// throws, the stream must be stopped first.
-        ///
-        /// The call returns when the substream grains have accepted the start, the streams
-        /// themselves start in the background, poll <see cref="GetStatusAsync"/> to observe
-        /// them becoming healthy.
+        /// Starts all substreams. Starting an already started stream with the same SQL and substream
+        /// count is a no-op; a different plan throws (stop it first). Returns once the grains accept
+        /// the start; the streams start in the background, poll <see cref="GetStatusAsync"/> for health.
         /// </summary>
         Task StartStreamAsync(StartStreamRequest request);
 
@@ -47,10 +43,9 @@ namespace FlowtideDotNet.Orleans.Interfaces
         Task DeleteStreamAsync();
 
         /// <summary>
-        /// Stops all substreams of the stream together. Stopping them together lets the
-        /// coordinated stop drain the data exchanged between the substreams, so everything
-        /// sent before the stop is part of the final checkpoints. The grain persists which
-        /// substreams it started, so the caller does not need to supply anything.
+        /// Stops all substreams together, so the coordinated stop drains the data exchanged between
+        /// them and everything sent before the stop is part of the final checkpoints. The grain
+        /// persists which substreams it started, so the caller supplies nothing.
         /// </summary>
         Task StopStreamAsync();
     }
