@@ -46,6 +46,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private long _targetInitializeVersion = 0;
         private readonly object _initializeLock = new object();
 
+        // Checkpoint epoch, guarded by _initializeLock. Bumped on every failure; the point survives
+        // restarts so it is monotonic. The self epoch is announced through the handshake and recorded
+        // by the peer as its peer epoch. Checkpoint done acks are tagged with the peer epoch, so a
+        // stale ack from before a restart carries an old epoch and is dropped by RecieveCheckpointDone.
+        private long _selfCheckpointEpoch = 0;
+        private long _peerCheckpointEpoch = 0;
+
         // Send checkpoint fields
         private long _lastSentCheckpointVersion;
         private readonly object _sendCheckpointLock = new object();
@@ -142,6 +149,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private async Task SendInitializeRequest(long restorePoint)
         {
             SubstreamInitializeResponse? response;
+            long selfEpoch;
+            lock (_initializeLock)
+            {
+                selfEpoch = _selfCheckpointEpoch;
+            }
 
             try
             {
@@ -150,7 +162,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 do
                 {
                     _logger.LogInformation("Sending initialize request to substream {substreamName} with restore point {restorePoint}, try {tryCount}", substreamName, restorePoint, tryCount);
-                    response = await _substreamCommunicationHandler.SendInitializeRequest(restorePoint, default);
+                    response = await _substreamCommunicationHandler.SendInitializeRequest(restorePoint, selfEpoch, default);
                     tryCount++;
 
                     if (tryCount > 10)
@@ -173,6 +185,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     _initializedSent = false;
                 }
                 throw;
+            }
+
+            lock (_initializeLock)
+            {
+                _peerCheckpointEpoch = response.CheckpointEpoch;
             }
 
             if (!response.Success)
@@ -220,6 +237,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _initializedSent = false;
                 _initializeRecieved = false;
+                // New generation: acks tagged with the old epoch are now stale and get dropped.
+                _selfCheckpointEpoch++;
             }
             lock (_dataHandledLock)
             {
@@ -231,8 +250,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _substreamCommunicationHandler.OnStreamFailure();
         }
 
-        private Task<SubstreamInitializeResponse> OnTargetSubstreamInitialize(long restorePoint)
+        private Task<SubstreamInitializeResponse> OnTargetSubstreamInitialize(long restorePoint, long peerCheckpointEpoch)
         {
+            long selfEpoch;
+            lock (_initializeLock)
+            {
+                _peerCheckpointEpoch = peerCheckpointEpoch;
+                selfEpoch = _selfCheckpointEpoch;
+            }
             lock (_dataHandledLock)
             {
                 if (_dataHandled)
@@ -255,7 +280,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             _logger.LogWarning(e, "Failing over to the restarted substream {substreamName} failed, the handshake retry runs the fail over again.", substreamName);
                         }
                     });
-                    return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint));
+                    return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint, selfEpoch));
                 }
             }
             lock (_initializeLock)
@@ -268,13 +293,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     if (_selfInitializeVersion != restorePoint)
                     {
                         var minVersion = Math.Min(_selfInitializeVersion, restorePoint);
-                        return Task.FromResult(new SubstreamInitializeResponse(false, false, minVersion));
+                        return Task.FromResult(new SubstreamInitializeResponse(false, false, minVersion, selfEpoch));
                     }
                 }
                 _initializeRecieved = true;
                 _targetInitializeVersion = restorePoint;
             }
-            return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint));
+            return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch));
         }
 
         /// <summary>
@@ -385,8 +410,21 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             });
         }
 
-        private Task RecieveCheckpointDone(long checkpointVersion)
+        private Task RecieveCheckpointDone(long checkpointVersion, long checkpointEpoch)
         {
+            long selfEpoch;
+            lock (_initializeLock)
+            {
+                selfEpoch = _selfCheckpointEpoch;
+            }
+            if (checkpointEpoch != selfEpoch)
+            {
+                // Stale ack from a previous epoch, for example one in flight across a restart.
+                // Crediting it would complete the current cycle without the peer acking it, so
+                // it is dropped. The next handshake re-announces the current epoch.
+                _logger.LogWarning("Dropping stale checkpoint done from substream {substreamName}: epoch {ackEpoch} does not match current {selfEpoch}.", substreamName, checkpointEpoch, selfEpoch);
+                return Task.CompletedTask;
+            }
             _logger.LogDebug("Recieved checkpoint done from substream {substreamName} to {selfSubstreamName} with version {checkpointVersion}, notifying targets and read operators.", substreamName, _selfSubstreamName, checkpointVersion);
             // Tell all targets and read operators the connected substream completed the checkpoint.
             // Task.Run to use the thread pool, this can be called from a grain turn where the grain
@@ -430,8 +468,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 _lastSentCheckpointVersion = checkpointVersion;
             }
+            long targetEpoch;
+            lock (_initializeLock)
+            {
+                targetEpoch = _peerCheckpointEpoch;
+            }
             _logger.LogDebug("Sending checkpoint done to target: {substreamName} from {selfSubstreamName}", substreamName, _selfSubstreamName);
-            return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion);
+            return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion, targetEpoch);
         }
 
         /// <summary>

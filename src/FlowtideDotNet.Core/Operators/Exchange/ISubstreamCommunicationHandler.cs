@@ -41,12 +41,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <param name="getDataFunction">Returns events for the given exchange targets.</param>
         /// <param name="callFailAndRecover">Fails and recovers this substream to the given version.</param>
         /// <param name="initializeFromTarget">Handles an initialize request from the other substream.</param>
-        /// <param name="callRecieveCheckpointDone">Handles a checkpoint done message with the completed checkpoint version.</param>
+        /// <param name="callRecieveCheckpointDone">Handles a checkpoint done message with the completed checkpoint version and the epoch it was sent under.</param>
         void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
-            Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget,
-            Func<long, Task> callRecieveCheckpointDone);
+            Func<long, long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<long, long, Task> callRecieveCheckpointDone);
 
         /// <summary>
         /// Fetches events from the other substream.
@@ -61,12 +61,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         Task SendFailAndRecover(long restoreVersion);
 
-        Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, CancellationToken cancellationToken);
+        Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken);
 
         /// <summary>
         /// Notifies the other substream that a checkpoint has completed in this substream.
         /// </summary>
         /// <param name="checkpointVersion">The completed checkpoint version.</param>
-        Task SendCheckpointDone(long checkpointVersion);
+        /// <param name="targetCheckpointEpoch">The receiving substream's checkpoint epoch as last learned through the handshake, so it can drop the ack if it is stale.</param>
+        Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch);
     }
 }

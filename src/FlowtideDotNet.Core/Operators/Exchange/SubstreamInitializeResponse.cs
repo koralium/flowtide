@@ -20,11 +20,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     public class SubstreamInitializeResponse
     {
-        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion)
+        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0)
         {
             NotStarted = notStarted;
             Success = success;
             RestoreVersion = restoreVersion;
+            CheckpointEpoch = checkpointEpoch;
         }
 
         public bool NotStarted { get; }
@@ -32,5 +33,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public bool Success { get; }
 
         public long RestoreVersion { get; }
+
+        /// <summary>
+        /// The responding substream's current checkpoint epoch. The requester records it as the
+        /// peer epoch and tags its checkpoint done acks with it, so a stale ack from before a
+        /// restart carries an old epoch and is dropped by the receiver.
+        /// </summary>
+        public long CheckpointEpoch { get; }
     }
 }

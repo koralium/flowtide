@@ -22,11 +22,12 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class InitSubstreamResponse
     {
-        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion)
+        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0)
         {
             NotStarted = notStarted;
             Success = success;
             RestoreVersion = restoreVersion;
+            CheckpointEpoch = checkpointEpoch;
         }
 
         [Id(2)]
@@ -37,5 +38,12 @@ namespace FlowtideDotNet.Orleans.Messages
 
         [Id(1)]
         public long RestoreVersion { get; }
+
+        /// <summary>
+        /// The responding substream's checkpoint epoch, recorded by the requestor as the peer epoch
+        /// and used to tag its checkpoint done acks.
+        /// </summary>
+        [Id(3)]
+        public long CheckpointEpoch { get; }
     }
 }

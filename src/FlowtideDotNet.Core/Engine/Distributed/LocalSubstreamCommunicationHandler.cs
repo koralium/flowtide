@@ -29,8 +29,8 @@ namespace FlowtideDotNet.Core.Engine.Distributed
 
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
         private Func<long, Task>? _callFailAndRecover;
-        private Func<long, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
-        private Func<long, Task>? _callRecieveCheckpointDone;
+        private Func<long, long, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
+        private Func<long, long, Task>? _callRecieveCheckpointDone;
 
         public LocalSubstreamCommunicationHandler(LocalSubstreamCommunicationHub hub, string selfSubstreamName, string targetSubstreamName)
         {
@@ -47,8 +47,8 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
-            Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget,
-            Func<long, Task> callRecieveCheckpointDone)
+            Func<long, long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<long, long, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
             _callFailAndRecover = callFailAndRecover;
@@ -66,12 +66,12 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             return Task.FromResult<IReadOnlyList<SubstreamEventData>>(new List<SubstreamEventData>());
         }
 
-        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, CancellationToken cancellationToken)
+        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
         {
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._initializeFromTarget != null)
             {
-                return peer._initializeFromTarget(restoreVersion);
+                return peer._initializeFromTarget(restoreVersion, checkpointEpoch);
             }
             return Task.FromResult(new SubstreamInitializeResponse(true, false, restoreVersion));
         }
@@ -87,12 +87,12 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             return Task.CompletedTask;
         }
 
-        public Task SendCheckpointDone(long checkpointVersion)
+        public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)
         {
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._callRecieveCheckpointDone != null)
             {
-                return peer._callRecieveCheckpointDone(checkpointVersion);
+                return peer._callRecieveCheckpointDone(checkpointVersion, targetCheckpointEpoch);
             }
             // The other substream has not started yet, there is no pending checkpoint
             // that waits for this notification.

@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Orleans.Grains
                 // The stream has not started yet, nothing waits for this notification
                 return;
             }
-            await handler.TargetCheckpointDone(request.CheckpointVersion);
+            await handler.TargetCheckpointDone(request.CheckpointVersion, request.CheckpointEpoch);
         }
 
         public Task FailAndRecoverAsync(FailAndRecoverRequest request)
@@ -395,8 +395,8 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 return new InitSubstreamResponse(true, false, request.RestorePoint);
             }
-            var response = await handler.TargetInitializeRequest(request.RestorePoint);
-            return new InitSubstreamResponse(false, response.Success, response.RestoreVersion);
+            var response = await handler.TargetInitializeRequest(request.RestorePoint, request.CheckpointEpoch);
+            return new InitSubstreamResponse(false, response.Success, response.RestoreVersion, response.CheckpointEpoch);
         }
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)

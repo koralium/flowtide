@@ -22,10 +22,11 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class CheckpointDoneRequest
     {
-        public CheckpointDoneRequest(string requestor, long checkpointVersion)
+        public CheckpointDoneRequest(string requestor, long checkpointVersion, long checkpointEpoch)
         {
             Requestor = requestor;
             CheckpointVersion = checkpointVersion;
+            CheckpointEpoch = checkpointEpoch;
         }
 
         [Id(0)]
@@ -33,5 +34,12 @@ namespace FlowtideDotNet.Orleans.Messages
 
         [Id(1)]
         public long CheckpointVersion { get; }
+
+        /// <summary>
+        /// The receiving substream's checkpoint epoch as the sender last learned it through the
+        /// handshake. The receiver drops the ack if it no longer matches its current epoch.
+        /// </summary>
+        [Id(2)]
+        public long CheckpointEpoch { get; }
     }
 }

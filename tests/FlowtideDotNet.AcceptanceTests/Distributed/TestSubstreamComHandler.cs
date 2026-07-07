@@ -16,18 +16,18 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 {
     internal class TestSubstreamComHandler : ISubstreamCommunicationHandler
     {
-        private readonly Func<long, Task> _sendCheckpointDone;
+        private readonly Func<long, long, Task> _sendCheckpointDone;
         private readonly Func<long, Task> _sendFailAndRecover;
-        private readonly Func<long, Task<SubstreamInitializeResponse>> _sendInitializeRequest;
+        private readonly Func<long, long, Task<SubstreamInitializeResponse>> _sendInitializeRequest;
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunc;
         private Func<long, Task>? _callFailAndRecover;
-        private Func<long, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
-        private Func<long, Task>? _callRecieveCheckpointDone;
+        private Func<long, long, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
+        private Func<long, long, Task>? _callRecieveCheckpointDone;
 
         public TestSubstreamComHandler(
-            Func<long, Task> sendCheckpointDone,
+            Func<long, long, Task> sendCheckpointDone,
             Func<long, Task> sendFailAndRecover,
-            Func<long, Task<SubstreamInitializeResponse>> sendInitializeRequest)
+            Func<long, long, Task<SubstreamInitializeResponse>> sendInitializeRequest)
         {
             _sendCheckpointDone = sendCheckpointDone;
             _sendFailAndRecover = sendFailAndRecover;
@@ -53,8 +53,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
-            Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget,
-            Func<long, Task> callRecieveCheckpointDone)
+            Func<long, long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<long, long, Task> callRecieveCheckpointDone)
         {
             _getDataFunc = getDataFunction;
             _callFailAndRecover = callFailAndRecover;
@@ -62,9 +62,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             _callRecieveCheckpointDone = callRecieveCheckpointDone;
         }
 
-        public Task SendCheckpointDone(long checkpointVersion)
+        public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)
         {
-            return _sendCheckpointDone(checkpointVersion);
+            return _sendCheckpointDone(checkpointVersion, targetCheckpointEpoch);
         }
 
         public Task SendFailAndRecover(long restoreVersion)
@@ -72,21 +72,22 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             return _sendFailAndRecover(restoreVersion);
         }
 
-        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, CancellationToken cancellationToken)
+        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
         {
-            return _sendInitializeRequest(restoreVersion);
+            return _sendInitializeRequest(restoreVersion, checkpointEpoch);
         }
 
         /// <summary>
-        /// Simulates the other substream reporting that it has completed a checkpoint.
+        /// Simulates the other substream reporting that it has completed a checkpoint, tagged with
+        /// the checkpoint epoch it believes this stream is on.
         /// </summary>
-        public Task CallRecieveCheckpointDone(long checkpointVersion)
+        public Task CallRecieveCheckpointDone(long checkpointVersion, long checkpointEpoch)
         {
             if (_callRecieveCheckpointDone == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _callRecieveCheckpointDone(checkpointVersion);
+            return _callRecieveCheckpointDone(checkpointVersion, checkpointEpoch);
         }
 
         /// <summary>

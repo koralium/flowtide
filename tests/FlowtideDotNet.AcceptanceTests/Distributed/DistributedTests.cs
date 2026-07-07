@@ -41,7 +41,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         {
             long currentVersion = 1;
             int numberOfcheckpoints = 0;
-            TestSubstreamComFactory comFactory = new TestSubstreamComFactory((v) =>
+            TestSubstreamComFactory comFactory = new TestSubstreamComFactory((v, epoch) =>
             {
                 currentVersion = v;
                 numberOfcheckpoints++;
@@ -50,7 +50,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             {
                 currentVersion = v;
                 return Task.CompletedTask;
-            }, (v) =>
+            }, (v, epoch) =>
             {
                 return Task.FromResult(new SubstreamInitializeResponse(false, true, currentVersion));
             });
@@ -105,20 +105,23 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         {
             int numberOfcheckpoints = 0;
             int numberOfFailAndRecover = 0;
+            long capturedSelfEpoch = 0;
             TestSubstreamComFactory comFactory = null!;
-            comFactory = new TestSubstreamComFactory(async (v) =>
+            comFactory = new TestSubstreamComFactory(async (v, targetEpoch) =>
             {
                 Interlocked.Increment(ref numberOfcheckpoints);
-                // Simulate the other substream completing its own checkpoint,
-                // which marks the dependencies as done in this stream.
-                await comFactory.ComHandler.CallRecieveCheckpointDone(v);
+                // Simulate the other substream completing its own checkpoint, acked with this
+                // stream's current epoch (learned through the handshake) so it is not fenced.
+                await comFactory.ComHandler.CallRecieveCheckpointDone(v, Volatile.Read(ref capturedSelfEpoch));
             }, (v) =>
             {
                 Interlocked.Increment(ref numberOfFailAndRecover);
                 return Task.CompletedTask;
-            }, (v) =>
+            }, (v, selfEpoch) =>
             {
-                // Respond with the same restore version as requested, no recovery needed.
+                // Record the epoch this stream announced so acks can carry it, and respond with
+                // the same restore version as requested, no recovery needed.
+                Volatile.Write(ref capturedSelfEpoch, selfEpoch);
                 return Task.FromResult(new SubstreamInitializeResponse(false, true, v));
             });
             GenerateData();
@@ -160,6 +163,79 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             AssertCurrentDataEqual(expected);
             Assert.Equal(0, numberOfFailAndRecover);
             Assert.True(numberOfcheckpoints >= 2, $"Expected at least two checkpoints, got {numberOfcheckpoints}");
+        }
+
+        /// <summary>
+        /// A checkpoint-done ack completes a checkpoint's cross-substream dependency, which lets the
+        /// checkpoint finalize (compact) and the next checkpoint start. The ack must only count when
+        /// it belongs to the stream's current epoch: an ack tagged with a stale epoch (the peer's
+        /// aborted-epoch ack delivered late after this stream restarted) must be dropped, otherwise
+        /// it completes cycles the peer never acked, breaking the transient-queue invariant. Here the
+        /// peer only ever sends stale-epoch acks; a fenced stream drops them, so no checkpoint's
+        /// dependency completes and checkpoints stall (like a stream that receives no acks at all,
+        /// see TestWrongHigherStartupVersionInOtherSubstream). The buggy version credits the stale
+        /// acks and keeps completing checkpoints.
+        /// </summary>
+        [Fact]
+        public async Task StaleEpochCheckpointDoneAcksDoNotCompleteCheckpoints()
+        {
+            int checkpointsSeen = 0;
+            long capturedSelfEpoch = 0;
+            long lastSentCheckpointVersion = -1;
+            TestSubstreamComFactory comFactory = null!;
+            comFactory = new TestSubstreamComFactory(async (v, targetEpoch) =>
+            {
+                Interlocked.Increment(ref checkpointsSeen);
+                Volatile.Write(ref lastSentCheckpointVersion, v);
+                // The peer only ever acks with a STALE epoch (one generation older than the current),
+                // exactly as an aborted-epoch ack delivered late after a restart would.
+                await comFactory.ComHandler.CallRecieveCheckpointDone(v, Volatile.Read(ref capturedSelfEpoch) - 1);
+            }, (v) =>
+            {
+                return Task.CompletedTask;
+            }, (restore, selfEpoch) =>
+            {
+                Volatile.Write(ref capturedSelfEpoch, selfEpoch);
+                return Task.FromResult(new SubstreamInitializeResponse(false, true, restore));
+            });
+
+            GenerateData();
+            await StartStream(@"
+            SUBSTREAM sub1;
+
+            CREATE VIEW read_users WITH (DISTRIBUTED = true, SCATTER_BY = userkey, PARTITION_COUNT = 2) AS
+            SELECT userkey FROM users;
+
+            INSERT INTO output SELECT userkey FROM read_users WITH (PARTITION_ID = 0);
+
+            SUBSTREAM sub2;
+
+            INSERT INTO output SELECT userkey FROM read_users WITH (PARTITION_ID = 1);
+            ", distributedOptions: new Core.Engine.DistributedOptions("sub1", default, comFactory));
+
+            // Drive the scheduler and feed data repeatedly. Every checkpoint only ever receives a
+            // stale-epoch ack. A fenced stream drops them, so phase two never completes and no new
+            // checkpoint can start; the count stays at the one checkpoint that reached its notify
+            // phase. The buggy version credits the stale acks and the count climbs with the data.
+            for (int i = 0; i < 12; i++)
+            {
+                GenerateData();
+                await SchedulerTick();
+                await Task.Delay(100);
+            }
+
+            int seen = Volatile.Read(ref checkpointsSeen);
+
+            // Let any stalled checkpoint finish with a current-epoch ack so dispose does not hang.
+            long lastVersion = Volatile.Read(ref lastSentCheckpointVersion);
+            if (lastVersion >= 0)
+            {
+                await comFactory.ComHandler.CallRecieveCheckpointDone(lastVersion, Volatile.Read(ref capturedSelfEpoch));
+            }
+
+            Assert.True(
+                seen <= 2,
+                $"Checkpoints kept completing on stale-epoch acks ({seen}); the checkpoint-done ack was not fenced by epoch.");
         }
     }
 }

@@ -30,8 +30,8 @@ namespace FlowtideDotNet.Orleans.Internal
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
         private ISubStreamGrain _streamGrain;
         private Func<long, Task>? _callFailAndRecover;
-        private Func<long, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
-        private Func<long, Task>? _callRecieveCheckpointDone;
+        private Func<long, long, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
+        private Func<long, long, Task>? _callRecieveCheckpointDone;
         private Func<int, IMemoryAllocator>? _receiveAllocatorResolver;
         private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
         // Every handler instance gets a unique epoch, the seed starts at the clock so
@@ -116,8 +116,8 @@ namespace FlowtideDotNet.Orleans.Internal
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
-            Func<long, Task<SubstreamInitializeResponse>> targetInitializeRequest,
-            Func<long, Task> callRecieveCheckpointDone)
+            Func<long, long, Task<SubstreamInitializeResponse>> targetInitializeRequest,
+            Func<long, long, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
             _callFailAndRecover = callFailAndRecover;
@@ -148,33 +148,33 @@ namespace FlowtideDotNet.Orleans.Internal
             return _callFailAndRecover(restorePoint);
         }
 
-        public async Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, CancellationToken cancellationToken)
+        public async Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
         {
-            var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, Interlocked.Read(ref _fetchEpoch)));
-            return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion);
+            var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, Interlocked.Read(ref _fetchEpoch), checkpointEpoch));
+            return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch);
         }
 
-        public Task<SubstreamInitializeResponse> TargetInitializeRequest(long restoreVersion)
+        public Task<SubstreamInitializeResponse> TargetInitializeRequest(long restoreVersion, long peerCheckpointEpoch)
         {
             if (_targetInitializeRequest == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _targetInitializeRequest(restoreVersion);
+            return _targetInitializeRequest(restoreVersion, peerCheckpointEpoch);
         }
 
-        public Task SendCheckpointDone(long checkpointVersion)
+        public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)
         {
-            return _streamGrain.CheckpointDone(new Messages.CheckpointDoneRequest(selfName, checkpointVersion));
+            return _streamGrain.CheckpointDone(new Messages.CheckpointDoneRequest(selfName, checkpointVersion, targetCheckpointEpoch));
         }
 
-        public Task TargetCheckpointDone(long checkpointVersion)
+        public Task TargetCheckpointDone(long checkpointVersion, long checkpointEpoch)
         {
             if (_callRecieveCheckpointDone == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _callRecieveCheckpointDone(checkpointVersion);
+            return _callRecieveCheckpointDone(checkpointVersion, checkpointEpoch);
         }
     }
 }

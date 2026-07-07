@@ -22,11 +22,12 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class InitSubstreamRequest
     {
-        public InitSubstreamRequest(string requestor, long restorePoint, long fetchEpoch)
+        public InitSubstreamRequest(string requestor, long restorePoint, long fetchEpoch, long checkpointEpoch = 0)
         {
             Requestor = requestor;
             RestorePoint = restorePoint;
             FetchEpoch = fetchEpoch;
+            CheckpointEpoch = checkpointEpoch;
         }
 
         [Id(0)]
@@ -42,5 +43,12 @@ namespace FlowtideDotNet.Orleans.Messages
         /// </summary>
         [Id(2)]
         public long FetchEpoch { get; }
+
+        /// <summary>
+        /// The requestors current checkpoint epoch, recorded by the receiver so it can tag its
+        /// checkpoint done acks with it, letting the requestor drop acks from a previous epoch.
+        /// </summary>
+        [Id(3)]
+        public long CheckpointEpoch { get; }
     }
 }
