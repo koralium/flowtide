@@ -84,7 +84,8 @@ All rows must return an identifier that is used when calculating changes of the 
 
 ### Push-based delta loading
 
-As an alternative to the pull-based `DeltaLoadAsync`, you can use the push-based `RunDeltaLoad` API. This is useful when your source pushes changes (e.g., message queues, webhooks, event streams) rather than being polled on an interval.
+Instead of polling with `DeltaLoadAsync`, it is possible to use a push-based model where the source controls when data is submitted.
+This can be useful for sources such as message queues, webhooks or event streams.
 
 To use push-based loading, override `IsPushBased` to return `true` and implement `RunDeltaLoad`:
 
@@ -93,11 +94,9 @@ public class EventDrivenSource : GenericDataSourceAsync<User>
 {
     private readonly Channel<User> _channel = Channel.CreateUnbounded<User>();
 
-    // Opt in to push-based model
     public override bool IsPushBased => true;
 
-    // DeltaLoadInterval can be set to control how often the trigger is invoked,
-    // or set to null if you only want manual triggering via the delta_load trigger.
+    // Set to null to disable interval-based triggering
     public override TimeSpan? DeltaLoadInterval => null;
 
     public override async Task RunDeltaLoad(
@@ -106,7 +105,7 @@ public class EventDrivenSource : GenericDataSourceAsync<User>
     {
         while (await _channel.Reader.WaitToReadAsync(cancellationToken))
         {
-            // Begin a transaction — this acquires the checkpoint lock
+            // Begin a transaction, this acquires the checkpoint lock
             // ensuring all items in this batch are included in the same checkpoint.
             await using var tx = await context.BeginTransactionAsync();
 
@@ -127,12 +126,8 @@ public class EventDrivenSource : GenericDataSourceAsync<User>
 }
 ```
 
-Key differences from the pull-based model:
-
-* `RunDeltaLoad` is a **long-running method** that controls its own loop, rather than returning an enumerable per interval.
-* Data is submitted through **transactions** (`IDeltaLoadTransaction<T>`), which manage the checkpoint lock automatically.
-* The method receives a `CancellationToken` to support graceful shutdown.
-
+`RunDeltaLoad` is a long-running method that controls its own loop, instead of returning an enumerable per interval.
+Data is submitted through transactions which manage the checkpoint lock, ensuring all items in one transaction end up in the same checkpoint.
 
 ### Trigger data reloads programatically
 
@@ -215,23 +210,23 @@ However, if you want Flowtide to calculate a delta based on the current state of
 ```csharp
 public override IAsyncEnumerable<User> GetExistingData()
 {
-    // Fetch all existing users from your destination system and return them
+    // Fetch all existing users from the destination
     return _userRepository.GetAllUsersAsync();
 }
 ```
 
 If you override this method:
 * During initial load, Flowtide compares the existing destination data with the incoming stream data.
-* It will automatically trigger insert/update operations for new or changed data, and delete operations for any rows in the destination that are no longer present in the source stream.
+* It will automatically trigger insert/update operations for new or changed data, and delete operations for any rows in the destination that are no longer present in the incoming stream data.
 
 
 > [!NOTE]
 > `GetExistingData` is only executed when the stream starts up for the first time. Once the initial synchronization is complete and the first checkpoint has been committed, it will not be called again (even on subsequent stream restarts). From that point onward, the sink relies entirely on Flowtide's internally persisted state to calculate subsequent changes.
 
-
 ### Custom sink sample
 
-A complete, runnable console application demonstrating a custom source and sink implementation is available in the repository under the [samples/CustomSinkSample](https://github.com/koralium/flowtide/tree/main/samples/CustomSinkSample) directory. This sample showcases how to use the push-based `RunDeltaLoad` API to wait for console updates asynchronously, as well as how the initial sink synchronization (`GetExistingData`) behaves.
+A runnable console application demonstrating a custom sink and sounrce is available under [samples/CustomSinkSample](https://github.com/koralium/flowtide/tree/main/samples/CustomSinkSample).
+It shows how initial sink synchronization with `GetExistingData` works and how the sink handles data updates.
 
 ## Adding custom converters
 
