@@ -288,6 +288,61 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             Assert.False(ContainsRelation<MergeJoinRelation>(gatherExchange.Input), "The join must not be copied into the aggregate lanes");
         }
 
+        /// <summary>
+        /// A recursive query hidden behind a view reference is still not split across substreams.
+        /// The optimizer hoists the recursion into its own top level <see cref="IterationRelation"/>
+        /// that is referenced from the consumers; a referenced relation is built whole in every
+        /// substream, so the loop stays intact even though the join and aggregate above it are
+        /// partitioned. Guards the case the sink tree only reaches the iteration through a reference.
+        /// </summary>
+        [Theory]
+        [InlineData(@"
+            CREATE TABLE users (userkey any, managerkey any);
+            CREATE TABLE orders (orderkey any, userkey any);
+
+            CREATE VIEW mgr AS
+            WITH manager_cte AS (
+                SELECT userkey, managerkey FROM users WHERE managerkey is null
+                UNION ALL
+                SELECT u.userkey, u.managerkey FROM users u INNER JOIN manager_cte c ON c.userkey = u.managerkey
+            )
+            SELECT userkey FROM manager_cte;
+
+            INSERT INTO output
+            SELECT m.userkey, count(*) FROM mgr m INNER JOIN orders o ON m.userkey = o.userkey GROUP BY m.userkey;
+        ")]
+        [InlineData(@"
+            CREATE TABLE users (userkey any, managerkey any);
+
+            CREATE VIEW mgr WITH (DISTRIBUTED = true, SCATTER_BY = userkey, PARTITION_COUNT = 2) AS
+            WITH manager_cte AS (
+                SELECT userkey, managerkey FROM users WHERE managerkey is null
+                UNION ALL
+                SELECT u.userkey, u.managerkey FROM users u INNER JOIN manager_cte c ON c.userkey = u.managerkey
+            )
+            SELECT userkey, managerkey FROM manager_cte;
+
+            INSERT INTO output SELECT userkey FROM mgr WITH (PARTITION_ID = 0);
+            INSERT INTO output SELECT userkey FROM mgr WITH (PARTITION_ID = 1);
+        ")]
+        public void ReferencedIterationIsNotSplitAcrossSubstreams(string sql)
+        {
+            var plan = PlanOptimizer.Optimize(BuildPlan(sql), new PlanOptimizerSettings()
+            {
+                DistributedPlanOptions = new DistributedPlanOptions() { SubstreamCount = 2 }
+            });
+
+            var iterationRoot = Assert.Single(plan.Relations.Where(ContainsRelation<IterationRelation>));
+
+            // The iteration is a global relation (no substream root wrapper), so it is built whole
+            // in every substream instead of being partitioned.
+            Assert.IsNotType<SubStreamRootRelation>(iterationRoot);
+
+            // Nothing inside the loop crosses a substream boundary.
+            Assert.False(ContainsRelation<SubstreamExchangeReferenceRelation>(iterationRoot),
+                "The recursive loop must not contain a cross-substream exchange reference.");
+        }
+
         private static bool ContainsRelation<T>(Relation root) where T : Relation
         {
             return FindRelation<T>(root) != null;

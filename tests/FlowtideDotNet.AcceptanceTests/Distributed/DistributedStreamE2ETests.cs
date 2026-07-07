@@ -182,6 +182,66 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// A recursive query distributed automatically across substreams must produce correct output.
+        /// The optimizer hoists the recursion into a global <c>IterationRelation</c> that is built whole
+        /// in every substream; this verifies that global iteration reads the base tables correctly and
+        /// feeds the partitioned join above it, so the loop is not silently miscomputed per substream.
+        /// The generated manager hierarchy is a tree rooted at the null-manager users, so the recursive
+        /// manager_cte reaches every user and joining it with orders equals the plain users-orders join.
+        /// If the distributed iteration dropped users, this oracle would mismatch.
+        /// </summary>
+        [Theory]
+        [InlineData(2)]
+        [InlineData(3)]
+        public async Task DistributedRecursiveCteProducesCorrectOutput(int substreamCount)
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var testName = $"e2e_recursive_cte_{substreamCount}";
+
+            _stream = new DistributedStreamBuilder(testName)
+                .AddPlan(() =>
+                {
+                    var sqlPlanBuilder = new SqlPlanBuilder();
+                    sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+                    sqlPlanBuilder.Sql(@"
+                    INSERT INTO output
+                    WITH manager_cte AS (
+                        SELECT userkey, managerkey FROM users WHERE managerkey is null
+                        UNION ALL
+                        SELECT u.userkey, u.managerkey FROM users u
+                        INNER JOIN manager_cte c ON c.userkey = u.managerkey
+                    )
+                    SELECT m.userkey FROM manager_cte m INNER JOIN orders o ON m.userkey = o.userkey;
+                    ");
+                    return sqlPlanBuilder.GetPlan();
+                })
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
+                .ConfigureSubstream((substreamName, substreamBuilder) =>
+                {
+                    var connectorManager = new ConnectorManager();
+                    connectorManager.AddSource(new MockSourceFactory("*", _db, false));
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
+                    substreamBuilder.AddConnectorManager(connectorManager);
+                    substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                })
+                .DistributeAutomatically(substreamCount)
+                .Build();
+
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // New data added after start must flow through the global iteration and the partitioned join.
+            _generator.Generate(500);
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            Assert.Empty(failures);
+        }
+
+        /// <summary>
         /// A stopped distributed stream can be started again on the SAME instance, resuming
         /// from its state, and data added after the restart flows through, which also
         /// verifies that the internal trigger tick loop survives a stop and restart.
