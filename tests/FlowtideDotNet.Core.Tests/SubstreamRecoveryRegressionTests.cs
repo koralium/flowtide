@@ -38,13 +38,13 @@ namespace FlowtideDotNet.Core.Tests
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
                 Func<long, Task> callFailAndRecover,
-                Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget,
-                Func<long, Task> callRecieveCheckpointDone)
+                Func<long, long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<long, long, Task> callRecieveCheckpointDone)
             {
                 CallFailAndRecover = callFailAndRecover;
             }
 
-            public Task SendCheckpointDone(long checkpointVersion)
+            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)
             {
                 return Task.CompletedTask;
             }
@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.Tests
                 return Task.CompletedTask;
             }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
             {
                 return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
             }
@@ -137,12 +137,12 @@ namespace FlowtideDotNet.Core.Tests
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
                 Func<long, Task> callFailAndRecover,
-                Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget,
-                Func<long, Task> callRecieveCheckpointDone)
+                Func<long, long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<long, long, Task> callRecieveCheckpointDone)
             {
             }
 
-            public Task SendCheckpointDone(long checkpointVersion)
+            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)
             {
                 return Task.CompletedTask;
             }
@@ -152,7 +152,7 @@ namespace FlowtideDotNet.Core.Tests
                 return Task.CompletedTask;
             }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
             {
                 return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
             }
