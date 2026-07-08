@@ -22,13 +22,14 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class InitSubstreamResponse
     {
-        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedFetchEpoch = 0)
+        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedFetchEpoch = 0, long recordedCheckpointEpoch = 0)
         {
             NotStarted = notStarted;
             Success = success;
             RestoreVersion = restoreVersion;
             CheckpointEpoch = checkpointEpoch;
             RecordedFetchEpoch = recordedFetchEpoch;
+            RecordedCheckpointEpoch = recordedCheckpointEpoch;
         }
 
         [Id(2)]
@@ -59,5 +60,15 @@ namespace FlowtideDotNet.Orleans.Messages
         /// </summary>
         [Id(4)]
         public long RecordedFetchEpoch { get; }
+
+        /// <summary>
+        /// The checkpoint epoch the responding substream has recorded for the requestor, the
+        /// checkpoint-epoch counterpart of <see cref="RecordedFetchEpoch"/>: when it is higher than
+        /// the epoch the requestor announced, a dead generation's record still stands and the
+        /// requestor re-seeds above it and re-announces, see
+        /// SubstreamCommunicationPoint.SendInitializeRequest.
+        /// </summary>
+        [Id(5)]
+        public long RecordedCheckpointEpoch { get; }
     }
 }

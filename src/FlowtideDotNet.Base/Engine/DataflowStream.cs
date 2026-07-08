@@ -62,6 +62,16 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
+        /// Test seam: injects a failure as if a block had faulted, so tests can drive the
+        /// state machine's failure paths at a precise moment, for example while a state
+        /// manager write is held in flight by another test hook.
+        /// </summary>
+        internal Task InjectFailureForTests(Exception exception)
+        {
+            return streamContext.OnFailure(exception);
+        }
+
+        /// <summary>
         /// Gets the current high-level state machine value of the stream.
         /// </summary>
         /// <remarks>

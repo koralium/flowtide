@@ -20,12 +20,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     public class SubstreamInitializeResponse
     {
-        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0)
+        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedCheckpointEpoch = 0)
         {
             NotStarted = notStarted;
             Success = success;
             RestoreVersion = restoreVersion;
             CheckpointEpoch = checkpointEpoch;
+            RecordedCheckpointEpoch = recordedCheckpointEpoch;
         }
 
         public bool NotStarted { get; }
@@ -40,5 +41,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// restart carries an old epoch and is dropped by the receiver.
         /// </summary>
         public long CheckpointEpoch { get; }
+
+        /// <summary>
+        /// The checkpoint epoch the responder has recorded for the REQUESTOR after handling this
+        /// handshake (its record is highest-wins). Epochs are clock-seeded per process, so after a
+        /// hard fail over onto a process whose clock seed is behind, a live requestor announces a
+        /// lower epoch than its dead predecessor and the responder keeps the dead record - every
+        /// ack the responder sends is then tagged with it and dropped by the requestor. When this
+        /// value is higher than the epoch the requestor announced, it re-seeds above it and re-runs
+        /// the handshake (see SubstreamCommunicationPoint.SendInitializeRequest) instead of being
+        /// permanently fenced out of its acks.
+        /// </summary>
+        public long RecordedCheckpointEpoch { get; }
     }
 }

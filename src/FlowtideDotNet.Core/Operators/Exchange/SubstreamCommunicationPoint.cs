@@ -151,6 +151,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private async Task SendInitializeRequest(long restorePoint)
         {
+            await SendInitializeRequest(restorePoint, allowEpochReseed: true);
+        }
+
+        private async Task SendInitializeRequest(long restorePoint, bool allowEpochReseed)
+        {
             SubstreamInitializeResponse? response;
             long selfEpoch;
             lock (_initializeLock)
@@ -204,6 +209,41 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     }
                 }
                 throw;
+            }
+
+            if (allowEpochReseed && response.RecordedCheckpointEpoch > selfEpoch)
+            {
+                // The peer holds a higher checkpoint epoch for this substream than this
+                // generation announced, recorded from a generation that no longer exists:
+                // epochs are clock-seeded per process, so a hard fail over onto a process
+                // whose clock seed is behind announces lower than the dead generation did.
+                // The peer's highest-wins guard keeps the dead record, so every ack it sends
+                // would be tagged with it and dropped here - a permanent, silent checkpoint
+                // stall. The seed is raised above the recorded epoch and the handshake re-run
+                // once with a fresh draw, moving the record to this generation. Re-seeding is
+                // capped at once per handshake; a lost race against an even higher claim
+                // converges through the next recovery's handshake.
+                lock (_initializeLock)
+                {
+                    if (_selfCheckpointEpoch != selfEpoch)
+                    {
+                        // The stream failed while the response was in flight, the restarted
+                        // generation runs its own handshake.
+                        return;
+                    }
+                    long seed;
+                    do
+                    {
+                        seed = Interlocked.Read(ref _checkpointEpochSeed);
+                    } while (seed < response.RecordedCheckpointEpoch &&
+                             Interlocked.CompareExchange(ref _checkpointEpochSeed, response.RecordedCheckpointEpoch, seed) != seed);
+                    _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
+                }
+                _logger.LogWarning(
+                    "The initialize handshake to substream {substreamName} announced checkpoint epoch {announced} but a higher epoch {recorded} is recorded there, re-announcing with a fresh epoch.",
+                    substreamName, selfEpoch, response.RecordedCheckpointEpoch);
+                await SendInitializeRequest(restorePoint, allowEpochReseed: false);
+                return;
             }
 
             lock (_initializeLock)
@@ -283,6 +323,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private Task<SubstreamInitializeResponse> OnTargetSubstreamInitialize(long restorePoint, long peerCheckpointEpoch)
         {
             long selfEpoch;
+            long recordedPeerEpoch;
             lock (_initializeLock)
             {
                 // Highest wins: a handshake from an aborted generation can land after the current
@@ -290,12 +331,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // Applying it would regress the record, and every ack sent afterwards would be
                 // tagged stale and dropped - stalling the peer's checkpoints while data still
                 // flows, so no watchdog would fire. Peer generations draw from a clock seed, so
-                // the current generation's epoch is always the highest.
-                // NOTE: a peer that hard-fails over onto a process whose clock is far behind could
-                // legitimately announce a lower epoch and stay fenced here; the fetch epoch has a
-                // re-seed escape for that case (OrleansCommunicationHandler.SendInitializeRequest),
-                // the checkpoint epoch needs the same escape if that setup ever materializes.
+                // the current generation's epoch is always the highest. A peer that hard-fails
+                // over onto a process whose clock is far behind legitimately announces a lower
+                // epoch and is refused here; the response carries the recorded epoch so it can
+                // re-seed above it and re-announce, see SendInitializeRequest.
                 _peerCheckpointEpoch = Math.Max(_peerCheckpointEpoch, peerCheckpointEpoch);
+                recordedPeerEpoch = _peerCheckpointEpoch;
                 selfEpoch = _selfCheckpointEpoch;
             }
             lock (_dataHandledLock)
@@ -320,7 +361,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             _logger.LogWarning(e, "Failing over to the restarted substream {substreamName} failed, the handshake retry runs the fail over again.", substreamName);
                         }
                     });
-                    return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint, selfEpoch));
+                    return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint, selfEpoch, recordedPeerEpoch));
                 }
             }
             lock (_initializeLock)
@@ -333,13 +374,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     if (_selfInitializeVersion != restorePoint)
                     {
                         var minVersion = Math.Min(_selfInitializeVersion, restorePoint);
-                        return Task.FromResult(new SubstreamInitializeResponse(false, false, minVersion, selfEpoch));
+                        return Task.FromResult(new SubstreamInitializeResponse(false, false, minVersion, selfEpoch, recordedPeerEpoch));
                     }
                 }
                 _initializeRecieved = true;
                 _targetInitializeVersion = restorePoint;
             }
-            return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch));
+            return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch));
         }
 
         /// <summary>

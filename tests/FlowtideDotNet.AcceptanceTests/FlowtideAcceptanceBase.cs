@@ -64,6 +64,8 @@ namespace FlowtideDotNet.AcceptanceTests
 
         protected Task StopStream() => flowtideTestStream.StopStream();
 
+        protected Task InjectFailure(Exception exception) => flowtideTestStream.InjectFailure(exception);
+
         protected void Pause() => flowtideTestStream.Pause();
 
         protected void Resume() => flowtideTestStream.Resume();

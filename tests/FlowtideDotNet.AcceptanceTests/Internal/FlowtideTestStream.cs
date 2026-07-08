@@ -613,6 +613,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return _stream!.StopAsync();
         }
 
+        /// <summary>
+        /// Injects a failure as if a block had faulted, so a test can drive the failure
+        /// paths at a precise moment, for example while a state manager write is held in
+        /// flight by a test hook.
+        /// </summary>
+        public Task InjectFailure(Exception exception)
+        {
+            return _stream!.InjectFailureForTests(exception);
+        }
+
         public Task StartStream()
         {
             return _stream!.StartAsync();

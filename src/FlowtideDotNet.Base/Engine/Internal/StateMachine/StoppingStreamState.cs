@@ -93,32 +93,60 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Debug.Assert(_context != null, nameof(_context));
 
             _context._logger.StartCheckpointDoneTask(_context.streamName);
+            // The stop commit is claimed as an in-flight state manager write here, at the
+            // decision (the caller holds the checkpoint lock), not when the thread pool runs
+            // the task: a failure during the stop tears down through StopAll, whose write
+            // wait could otherwise read zero in the scheduling gap and dispose the state
+            // manager the queued commit is about to write. The task body releases the count
+            // in its finally.
+            System.Threading.Interlocked.Increment(ref _context._stateManagerWriteCount);
             Task.Factory.StartNew(async (state) =>
             {
                 var run = (StoppingStreamState)state!;
                 Debug.Assert(run._context != null, nameof(_context));
                 Debug.Assert(run._currentCheckpoint != null, nameof(_context));
 
-                // Write the latest state
-                run._context._lastState = new StreamState(
-                    run._currentCheckpoint.CheckpointTime,
-                    _context._streamVersionInformation?.Hash ?? string.Empty);
-
-                run._context._stateManager.Metadata = run._context._lastState;
-
-                long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
-                var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
-
-                // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
-                if (changesSinceLastCompaction > compactionThreshold)
+                try
                 {
-                    await run._context._stateManager.Compact();
-                }
+                    // Holds the task in the window between being scheduled and starting its
+                    // work, the window a failure during the stop races.
+                    var scheduledHook = StreamContext.CheckpointCommitScheduledHookForTests;
+                    if (scheduledHook != null)
+                    {
+                        await scheduledHook(run._context.streamName);
+                    }
 
-                // Take state checkpoint
-                _context._logger.StartingStateManagerCheckpoint(_context.streamName);
-                await run._context._stateManager.CheckpointAsync(false);
-                _context._logger.StateManagerCheckpointDone(_context.streamName);
+                    var commitHook = StreamContext.CheckpointCommitHookForTests;
+                    if (commitHook != null)
+                    {
+                        await commitHook(run._context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
+                    }
+
+                    // Write the latest state
+                    run._context._lastState = new StreamState(
+                        run._currentCheckpoint.CheckpointTime,
+                        _context._streamVersionInformation?.Hash ?? string.Empty);
+
+                    run._context._stateManager.Metadata = run._context._lastState;
+
+                    long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
+                    var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
+
+                    // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
+                    if (changesSinceLastCompaction > compactionThreshold)
+                    {
+                        await run._context._stateManager.Compact();
+                    }
+
+                    // Take state checkpoint
+                    _context._logger.StartingStateManagerCheckpoint(_context.streamName);
+                    await run._context._stateManager.CheckpointAsync(false);
+                    _context._logger.StateManagerCheckpointDone(_context.streamName);
+                }
+                finally
+                {
+                    System.Threading.Interlocked.Decrement(ref run._context._stateManagerWriteCount);
+                }
 
                 if (_context._notificationReciever != null)
                 {
@@ -231,8 +259,43 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 return;
             }
 
+            // Wait for an in-flight or scheduled stop checkpoint commit to finish before
+            // tearing anything down, faulting or disposing blocks or the state manager while
+            // it is being written corrupts it - the same wait the failure state's teardown
+            // runs. On the graceful path the commit already completed and this is a no-op.
+            // Bounded, a write wedged on unresponsive storage cannot be made safe by waiting
+            // and must not hang the stop forever.
+            var writeWaitStart = Stopwatch.GetTimestamp();
+            while (true)
+            {
+                if (Volatile.Read(ref _context._stateManagerWriteCount) > 0)
+                {
+                    if (Stopwatch.GetElapsedTime(writeWaitStart) > _context._dataflowStreamOptions.StopDrainTimeout)
+                    {
+                        _context._logger.LogWarning("Stop teardown on stream {stream} proceeded while a state manager write was still active after {timeout}, the write may be wedged on storage.", _context.streamName, _context._dataflowStreamOptions.StopDrainTimeout);
+                        break;
+                    }
+                    await Task.Delay(10);
+                    continue;
+                }
+                // The stop commit claims its write count at the decision point, under the
+                // checkpoint lock, before its task is scheduled. Re-reading under that lock
+                // means every claim decided before this teardown is visible, so a zero here
+                // cannot race a commit that was scheduled but not yet counted.
+                bool settled;
+                lock (_context._checkpointLock)
+                {
+                    settled = Volatile.Read(ref _context._stateManagerWriteCount) == 0;
+                }
+                if (settled)
+                {
+                    break;
+                }
+            }
+
             if (faultBlocks)
             {
+                StreamContext.BeforeFailureDisposeForTests?.Invoke(_context.streamName);
                 // The stop did not finish its drain, the pipeline can hold in flight data
                 // that has nowhere to go. Graceful completion waits for every block to
                 // drain its queues, a blocked pipeline then never completes and the stop

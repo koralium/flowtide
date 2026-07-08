@@ -456,5 +456,183 @@ namespace FlowtideDotNet.AcceptanceTests
                 StreamContext.BeforeFailureDisposeForTests = null;
             }
         }
+
+        /// <summary>
+        /// The stopping path has its own checkpoint commit (the stop drain cycles), and a
+        /// failure during the stop tears down through StopAll(faultBlocks) instead of the
+        /// failure state. That teardown must also wait for an in-flight stop checkpoint
+        /// commit: faulting and disposing the blocks and the state manager while the commit
+        /// is writing corrupts the persisted checkpoint, the same hazard the failure state's
+        /// write wait exists to prevent.
+        /// </summary>
+        [Fact]
+        public async Task StopFailureTeardownWaitsForInFlightStopCheckpointCommit()
+        {
+            int writeInFlight = 0;
+            bool disposedDuringWrite = false;
+            var writeStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var disposeObserved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Task? stopTask = null;
+            Task? failureTask = null;
+
+            try
+            {
+                GenerateData();
+                await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
+                await WaitForUpdate();
+
+                // Armed after the initial checkpoint; the next commit the hook sees is the
+                // stop drain cycle's.
+                StreamContext.CheckpointCommitHookForTests = async (streamName, lastVersion) =>
+                {
+                    if (!streamName.Contains(Token))
+                    {
+                        return;
+                    }
+                    Interlocked.Exchange(ref writeInFlight, 1);
+                    writeStarted.TrySetResult();
+                    await release.Task;
+                    Interlocked.Exchange(ref writeInFlight, 0);
+                };
+                StreamContext.BeforeFailureDisposeForTests = (streamName) =>
+                {
+                    if (!streamName.Contains(Token))
+                    {
+                        return;
+                    }
+                    if (Volatile.Read(ref writeInFlight) == 1)
+                    {
+                        disposedDuringWrite = true;
+                    }
+                    disposeObserved.TrySetResult();
+                };
+
+                // Start the stop; its drain checkpoint's commit parks in the hook.
+                stopTask = StopStream();
+
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (!writeStarted.Task.IsCompleted && DateTime.UtcNow < deadline)
+                {
+                    await SchedulerTick();
+                    await Task.Delay(10);
+                }
+                Assert.True(writeStarted.Task.IsCompleted, "No stop checkpoint commit was held by the hook");
+
+                // A block faults while the stop commit is writing, for example a peer
+                // substream dying mid-drain. Not awaited yet: the teardown it drives must
+                // wait for the held commit, which the test releases below.
+                failureTask = InjectFailure(new InvalidOperationException("Simulated block failure during stop drain"));
+
+                // Give the unfixed teardown a moment to reach the dispose point while the
+                // commit is still held.
+                await Task.Delay(500);
+
+                release.TrySetResult();
+
+                var observed = await Task.WhenAny(disposeObserved.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+                Assert.True(observed == disposeObserved.Task, "The stop failure teardown never reached the dispose point");
+
+                Assert.False(disposedDuringWrite, "The stop failure teardown faulted and disposed the blocks while the stop checkpoint commit was still writing the state manager");
+            }
+            finally
+            {
+                release.TrySetResult();
+                StreamContext.CheckpointCommitHookForTests = null;
+                StreamContext.BeforeFailureDisposeForTests = null;
+                if (failureTask != null)
+                {
+                    await Task.WhenAny(failureTask, Task.Delay(TimeSpan.FromSeconds(30)));
+                }
+                if (stopTask != null)
+                {
+                    await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(30)));
+                }
+            }
+        }
+
+        /// <summary>
+        /// The stop checkpoint commit is decided under the checkpoint lock but runs later as
+        /// a thread pool task, the same scheduling gap as the running state's commit. A
+        /// failure during the stop that lands in that gap must also be waited for, otherwise
+        /// the queued stop commit writes the state manager StopAll disposed.
+        /// </summary>
+        [Fact]
+        public async Task StopFailureTeardownWaitsForScheduledButNotStartedStopCheckpointCommit()
+        {
+            int pendingInGap = 0;
+            bool disposedWhilePending = false;
+            var gapEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var disposeObserved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Task? stopTask = null;
+            Task? failureTask = null;
+
+            try
+            {
+                GenerateData();
+                await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
+                await WaitForUpdate();
+
+                StreamContext.CheckpointCommitScheduledHookForTests = async (streamName) =>
+                {
+                    if (!streamName.Contains(Token))
+                    {
+                        return;
+                    }
+                    Interlocked.Exchange(ref pendingInGap, 1);
+                    gapEntered.TrySetResult();
+                    await release.Task;
+                    Interlocked.Exchange(ref pendingInGap, 0);
+                };
+                StreamContext.BeforeFailureDisposeForTests = (streamName) =>
+                {
+                    if (!streamName.Contains(Token))
+                    {
+                        return;
+                    }
+                    if (Volatile.Read(ref pendingInGap) == 1)
+                    {
+                        disposedWhilePending = true;
+                    }
+                    disposeObserved.TrySetResult();
+                };
+
+                stopTask = StopStream();
+
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (!gapEntered.Task.IsCompleted && DateTime.UtcNow < deadline)
+                {
+                    await SchedulerTick();
+                    await Task.Delay(10);
+                }
+                Assert.True(gapEntered.Task.IsCompleted, "No stop checkpoint commit task was held in the scheduling gap by the hook");
+
+                failureTask = InjectFailure(new InvalidOperationException("Simulated block failure during stop drain"));
+
+                await Task.Delay(500);
+
+                release.TrySetResult();
+
+                var observed = await Task.WhenAny(disposeObserved.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+                Assert.True(observed == disposeObserved.Task, "The stop failure teardown never reached the dispose point");
+
+                Assert.False(disposedWhilePending, "The stop failure teardown faulted and disposed the blocks while the stop checkpoint commit was scheduled but had not yet started");
+            }
+            finally
+            {
+                release.TrySetResult();
+                StreamContext.CheckpointCommitScheduledHookForTests = null;
+                StreamContext.BeforeFailureDisposeForTests = null;
+                if (failureTask != null)
+                {
+                    await Task.WhenAny(failureTask, Task.Delay(TimeSpan.FromSeconds(30)));
+                }
+                if (stopTask != null)
+                {
+                    await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(30)));
+                }
+            }
+        }
     }
 }

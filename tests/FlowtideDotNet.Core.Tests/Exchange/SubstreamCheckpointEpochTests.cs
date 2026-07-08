@@ -212,5 +212,44 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             await pointB.SendCheckpointDone(6);
             Assert.Equal(1, Volatile.Read(ref credited));
         }
+
+        /// <summary>
+        /// The highest-wins guard on the peer epoch record assumes a peer's generations only
+        /// ever announce higher epochs. Generations are clock-seeded per process, so after a
+        /// hard fail over onto a process whose clock seed is behind the dead generation's,
+        /// the LIVE peer announces a LOWER epoch: the guard keeps the dead generation's
+        /// record, every ack gets tagged with it, and the live peer drops them all - a
+        /// silent, permanent checkpoint stall, data keeps flowing so no watchdog fires. Like
+        /// the fetch epoch's failover escape, the handshake response must let the announcer
+        /// detect that a higher epoch is recorded for it and re-seed above it, so its acks
+        /// are credited again.
+        /// </summary>
+        [Fact]
+        public async Task FailedOverPeerWithLowerEpochIsNotPermanentlyFencedByTheHighestWinsGuard()
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var handlerA = hub.CreateFactory("subA").GetCommunicationHandler("subB", "subA");
+            var handlerB = hub.CreateFactory("subB").GetCommunicationHandler("subA", "subB");
+
+            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB);
+
+            // The dead generation of A ran on a process whose clock seeded its epochs a day
+            // ahead; its announcement is what B has recorded when A fails over.
+            await handlerA.SendInitializeRequest(0, DateTime.UtcNow.Ticks + TimeSpan.FromDays(1).Ticks, default);
+
+            // The failed-over live A: a fresh point whose clock-seeded epoch is far below
+            // the dead generation's announcement.
+            int credited = 0;
+            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA);
+            _ = new SubstreamTarget(1, 1, pointA, () => Interlocked.Increment(ref credited));
+            await pointA.InitializeOperator(0);
+
+            // B completes a checkpoint and acks it, tagged with the epoch it has recorded
+            // for A. If the dead generation's record still stands the ack is dropped, and
+            // since A re-announces the same lower epoch on every recovery, it would never be
+            // credited again.
+            await pointB.SendCheckpointDone(5);
+            Assert.Equal(1, Volatile.Read(ref credited));
+        }
     }
 }

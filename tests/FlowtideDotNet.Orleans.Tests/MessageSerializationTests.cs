@@ -51,15 +51,16 @@ namespace FlowtideDotNet.Orleans.Tests
         public void InitSubstreamResponseRoundTripsRecordedFetchEpoch()
         {
             var serializer = CreateSerializer();
-            var original = new InitSubstreamResponse(notStarted: false, success: true, restoreVersion: 7, checkpointEpoch: 11, recordedFetchEpoch: 42);
+            var original = new InitSubstreamResponse(notStarted: false, success: true, restoreVersion: 7, checkpointEpoch: 11, recordedFetchEpoch: 42, recordedCheckpointEpoch: 43);
 
             var bytes = serializer.SerializeToArray(original);
             var roundTripped = serializer.Deserialize<InitSubstreamResponse>(bytes);
 
-            // RecordedFetchEpoch is how a failed-over substream detects that a dead instance's
-            // higher epoch is still recorded at the serving grain; if it is dropped the requestor
-            // never re-seeds above it and is permanently fenced out of its fetches.
+            // The recorded epochs are how a failed-over substream detects that a dead instance's
+            // higher epoch is still recorded at the peer; if either is dropped the requestor never
+            // re-seeds above it and is permanently fenced out of its fetches or its acks.
             Assert.Equal(42, roundTripped.RecordedFetchEpoch);
+            Assert.Equal(43, roundTripped.RecordedCheckpointEpoch);
             Assert.Equal(11, roundTripped.CheckpointEpoch);
         }
 

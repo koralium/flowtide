@@ -401,7 +401,7 @@ namespace FlowtideDotNet.Orleans.Grains
                 return new InitSubstreamResponse(true, false, request.RestorePoint, recordedFetchEpoch: request.FetchEpoch);
             }
             var response = await handler.TargetInitializeRequest(request.RestorePoint, request.CheckpointEpoch);
-            return new InitSubstreamResponse(false, response.Success, response.RestoreVersion, response.CheckpointEpoch, recordedFetchEpoch: request.FetchEpoch);
+            return new InitSubstreamResponse(false, response.Success, response.RestoreVersion, response.CheckpointEpoch, recordedFetchEpoch: request.FetchEpoch, recordedCheckpointEpoch: response.RecordedCheckpointEpoch);
         }
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)
