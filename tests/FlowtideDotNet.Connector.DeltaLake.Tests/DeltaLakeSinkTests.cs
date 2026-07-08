@@ -989,7 +989,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 {
                     Directory.Delete(tempPath, true);
                 }
-                catch { }
+                catch (DirectoryNotFoundException)
+                {
+                    // Directory was removed between Exists and Delete; safe to ignore.
+                }
+                catch (IOException) when (!Directory.Exists(tempPath))
+                {
+                    // Directory no longer exists after a transient IO race; safe to ignore.
+                }
+                catch (UnauthorizedAccessException) when (!Directory.Exists(tempPath))
+                {
+                    // Directory no longer exists after a transient access race; safe to ignore.
+                }
             }
 
             var storage = Stowage.Files.Of.LocalDisk(tempPath);
