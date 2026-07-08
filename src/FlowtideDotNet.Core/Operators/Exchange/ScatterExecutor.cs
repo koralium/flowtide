@@ -44,10 +44,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
 
         public ScatterExecutor(
-            ExchangeRelation exchangeRelation, 
-            SubstreamCommunicationPointFactory communicationPointFactory, 
+            ExchangeRelation exchangeRelation,
+            SubstreamCommunicationPointFactory communicationPointFactory,
             FunctionsRegister functionsRegister,
-            Action targetCallDependenciesDone)
+            Action<int> targetCallDependenciesDone)
         {
             if (!(exchangeRelation.ExchangeKind is ScatterExchangeKind scatterExchangeKind))
             {
@@ -90,11 +90,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     case ExchangeTargetType.Substream:
                         if (exchangeRelation.Targets[i] is SubstreamExchangeTarget substreamExchangeTarget)
                         {
+                            // The acknowledgement callback carries the target id so the operator
+                            // can attribute each checkpoint done to its peer; an acknowledgement
+                            // from one peer must not complete another peer's dependency.
+                            var exchangeTargetId = substreamExchangeTarget.ExchangeTargetId;
                             var pullTarget = new SubstreamTarget(
-                                substreamExchangeTarget.ExchangeTargetId, 
-                                exchangeRelation.OutputLength, 
+                                exchangeTargetId,
+                                exchangeRelation.OutputLength,
                                 communicationPointFactory.GetCommunicationPoint(substreamExchangeTarget.SubstreamName),
-                                targetCallDependenciesDone);
+                                () => targetCallDependenciesDone(exchangeTargetId));
                             _targets[i] = pullTarget;
                         }
                         else
