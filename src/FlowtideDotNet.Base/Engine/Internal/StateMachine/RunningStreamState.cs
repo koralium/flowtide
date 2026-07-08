@@ -94,6 +94,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return;
                 }
                 _compactionStarted = true;
+                // The compaction is claimed as an in-flight state manager write here, at the
+                // decision under the checkpoint lock, not when the thread pool runs the task:
+                // a failure teardown's write wait could otherwise read zero in the scheduling
+                // gap and dispose the state manager the queued compaction is about to write.
+                // DoCompaction releases the count.
+                System.Threading.Interlocked.Increment(ref _context._stateManagerWriteCount);
             }
 
             Task.Factory.StartNew(async (state) =>
@@ -123,6 +129,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Debug.Assert(_context != null, nameof(_context));
 
             _context._logger.StartCheckpointDoneTask(_context.streamName);
+            // The commit is claimed as an in-flight state manager write here, at the decision
+            // (the caller holds the checkpoint lock), not when the thread pool runs the task:
+            // a failure teardown's write wait could otherwise read zero in the scheduling gap
+            // and dispose the state manager the queued commit is about to write. The task body
+            // releases the count in its finally.
+            System.Threading.Interlocked.Increment(ref _context._stateManagerWriteCount);
             Task.Factory.StartNew(async (state) =>
             {
                 var run = (RunningStreamState)state!;
@@ -130,9 +142,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 Debug.Assert(run._currentCheckpoint != null, nameof(_context));
                 Debug.Assert(run.waitingForDependencies != null);
 
-                System.Threading.Interlocked.Increment(ref run._context._stateManagerWriteCount);
                 try
                 {
+                    // Holds the task in the window between being scheduled and starting its
+                    // work, the window a failure teardown races.
+                    var scheduledHook = StreamContext.CheckpointCommitScheduledHookForTests;
+                    if (scheduledHook != null)
+                    {
+                        await scheduledHook(run._context.streamName);
+                    }
+
                     var commitHook = StreamContext.CheckpointCommitHookForTests;
                     if (commitHook != null)
                     {
@@ -201,6 +220,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                              return;
                          }
                          _compactionStarted = true;
+                         // Claimed at the decision, see EgressDependenciesDone; DoCompaction
+                         // releases the count.
+                         System.Threading.Interlocked.Increment(ref _context._stateManagerWriteCount);
                      }
 
                      try
@@ -225,12 +247,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null);
 
-            // Compaction writes the state manager, so it counts as an in-flight write a
-            // teardown must wait for, the same as the checkpoint commit. This runs after the
-            // commit body in a separate continuation, so the count is taken again here.
-            System.Threading.Interlocked.Increment(ref _context._stateManagerWriteCount);
+            // The in-flight write count for this compaction was taken at the decision point
+            // that scheduled the task, not here: a failure teardown's write wait could
+            // otherwise read zero in the scheduling gap and dispose the state manager the
+            // queued compaction is about to write. This method releases the count.
             try
             {
+                // Holds the task in the window between being scheduled and starting its work,
+                // the window a failure teardown races.
+                var scheduledHook = StreamContext.CompactionScheduledHookForTests;
+                if (scheduledHook != null)
+                {
+                    await scheduledHook(_context.streamName);
+                }
+
                 var compactionHook = StreamContext.CompactionHookForTests;
                 if (compactionHook != null)
                 {

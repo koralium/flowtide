@@ -92,9 +92,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         // Test hooks, null in production. Each gets the stream name so a test can filter to its own
         // stream: CheckpointCommitHookForTests awaits inside the commit (so a test can hold a write in
-        // flight), BeforeFailureDisposeForTests fires as the failure teardown disposes blocks, and
-        // RestoreVersionForTests reports the rollback version.
+        // flight), CompactionScheduledHookForTests awaits at the entry of a scheduled compaction task
+        // (so a test can hold it in the gap between being scheduled and doing its work),
+        // CompactionHookForTests awaits inside the compaction write, BeforeFailureDisposeForTests
+        // fires as the failure teardown disposes blocks, and RestoreVersionForTests reports the
+        // rollback version.
         internal static Func<string, long, Task>? CheckpointCommitHookForTests;
+        internal static Func<string, Task>? CheckpointCommitScheduledHookForTests;
+        internal static Func<string, Task>? CompactionScheduledHookForTests;
         internal static Func<string, Task>? CompactionHookForTests;
         internal static Action<string>? BeforeFailureDisposeForTests;
         internal static Action<string, long>? RestoreVersionForTests;

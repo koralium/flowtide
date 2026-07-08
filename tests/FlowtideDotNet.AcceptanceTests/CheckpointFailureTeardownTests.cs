@@ -278,5 +278,183 @@ namespace FlowtideDotNet.AcceptanceTests
                 StreamContext.BeforeFailureDisposeForTests = null;
             }
         }
+
+        /// <summary>
+        /// A compaction is decided and scheduled under the checkpoint lock, but runs later as a
+        /// thread pool task. A failure that lands in that scheduling gap must still be waited
+        /// for by the teardown: if the teardown's write-wait only sees writes that already
+        /// started, it observes zero, disposes the blocks and the state manager, and the queued
+        /// compaction then runs against the torn-down state - the same corruption the write
+        /// wait exists to prevent, one scheduling hop earlier.
+        /// </summary>
+        [Fact]
+        public async Task FailureTeardownWaitsForScheduledButNotStartedCompaction()
+        {
+            int pendingInGap = 0;
+            bool disposedWhilePending = false;
+            var gapEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var disposeObserved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            try
+            {
+                GenerateData();
+                await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
+                await WaitForUpdate();
+
+                // Holds the scheduled compaction task in the gap before it starts its work,
+                // modelling a thread pool queueing delay.
+                StreamContext.CompactionScheduledHookForTests = async (streamName) =>
+                {
+                    if (!streamName.Contains(Token))
+                    {
+                        return;
+                    }
+                    Interlocked.Exchange(ref pendingInGap, 1);
+                    gapEntered.TrySetResult();
+                    await release.Task;
+                    Interlocked.Exchange(ref pendingInGap, 0);
+                };
+                StreamContext.BeforeFailureDisposeForTests = (streamName) =>
+                {
+                    if (!streamName.Contains(Token))
+                    {
+                        return;
+                    }
+                    if (Volatile.Read(ref pendingInGap) == 1)
+                    {
+                        disposedWhilePending = true;
+                    }
+                    disposeObserved.TrySetResult();
+                };
+
+                // Trigger a new checkpoint whose compaction gets scheduled and then parked in
+                // the gap.
+                AddOrUpdateUser(new User() { UserKey = 999996, FirstName = "gaptrigger" });
+
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (!gapEntered.Task.IsCompleted && DateTime.UtcNow < deadline)
+                {
+                    await SchedulerTick();
+                    await Task.Delay(10);
+                }
+                Assert.True(gapEntered.Task.IsCompleted, "No compaction task was held in the scheduling gap by the hook");
+
+                // Crash the stream while the compaction is scheduled but has not started.
+                await FireCrashTrigger();
+                var failDeadline = DateTime.UtcNow.AddSeconds(15);
+                while (State != StreamStateValue.Failure && State != StreamStateValue.NotStarted && DateTime.UtcNow < failDeadline)
+                {
+                    await SchedulerTick();
+                    await Task.Delay(10);
+                }
+
+                // Give the unfixed teardown a moment to reach the dispose point while the
+                // compaction is still parked in the gap.
+                await Task.Delay(500);
+
+                // Release the parked compaction, the teardown may now proceed safely.
+                release.TrySetResult();
+
+                var observed = await Task.WhenAny(disposeObserved.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+                Assert.True(observed == disposeObserved.Task, "The failure teardown never reached the dispose point");
+
+                Assert.False(disposedWhilePending, "The failure teardown disposed the blocks while a compaction was scheduled but had not yet started - the queued compaction would run against the disposed state manager");
+            }
+            finally
+            {
+                release.TrySetResult();
+                StreamContext.CompactionScheduledHookForTests = null;
+                StreamContext.BeforeFailureDisposeForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// The checkpoint commit has the same scheduling gap as the compaction: it is decided
+        /// under the checkpoint lock when the last egress acknowledges the barrier, but runs
+        /// later as a thread pool task. A failure landing in that gap must be waited for by
+        /// the teardown, otherwise the queued commit writes the state manager the teardown
+        /// disposed.
+        /// </summary>
+        [Fact]
+        public async Task FailureTeardownWaitsForScheduledButNotStartedCheckpointCommit()
+        {
+            int pendingInGap = 0;
+            bool disposedWhilePending = false;
+            var gapEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var disposeObserved = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            try
+            {
+                GenerateData();
+                await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
+                await WaitForUpdate();
+
+                // Holds the scheduled commit task in the gap before it starts its work,
+                // modelling a thread pool queueing delay.
+                StreamContext.CheckpointCommitScheduledHookForTests = async (streamName) =>
+                {
+                    if (!streamName.Contains(Token))
+                    {
+                        return;
+                    }
+                    Interlocked.Exchange(ref pendingInGap, 1);
+                    gapEntered.TrySetResult();
+                    await release.Task;
+                    Interlocked.Exchange(ref pendingInGap, 0);
+                };
+                StreamContext.BeforeFailureDisposeForTests = (streamName) =>
+                {
+                    if (!streamName.Contains(Token))
+                    {
+                        return;
+                    }
+                    if (Volatile.Read(ref pendingInGap) == 1)
+                    {
+                        disposedWhilePending = true;
+                    }
+                    disposeObserved.TrySetResult();
+                };
+
+                // Trigger a new checkpoint whose commit gets scheduled and then parked in the gap.
+                AddOrUpdateUser(new User() { UserKey = 999995, FirstName = "commitgaptrigger" });
+
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (!gapEntered.Task.IsCompleted && DateTime.UtcNow < deadline)
+                {
+                    await SchedulerTick();
+                    await Task.Delay(10);
+                }
+                Assert.True(gapEntered.Task.IsCompleted, "No checkpoint commit task was held in the scheduling gap by the hook");
+
+                // Crash the stream while the commit is scheduled but has not started.
+                await FireCrashTrigger();
+                var failDeadline = DateTime.UtcNow.AddSeconds(15);
+                while (State != StreamStateValue.Failure && State != StreamStateValue.NotStarted && DateTime.UtcNow < failDeadline)
+                {
+                    await SchedulerTick();
+                    await Task.Delay(10);
+                }
+
+                // Give the unfixed teardown a moment to reach the dispose point while the
+                // commit is still parked in the gap.
+                await Task.Delay(500);
+
+                // Release the parked commit, the teardown may now proceed safely.
+                release.TrySetResult();
+
+                var observed = await Task.WhenAny(disposeObserved.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+                Assert.True(observed == disposeObserved.Task, "The failure teardown never reached the dispose point");
+
+                Assert.False(disposedWhilePending, "The failure teardown disposed the blocks while a checkpoint commit was scheduled but had not yet started - the queued commit would write the disposed state manager");
+            }
+            finally
+            {
+                release.TrySetResult();
+                StreamContext.CheckpointCommitScheduledHookForTests = null;
+                StreamContext.BeforeFailureDisposeForTests = null;
+            }
+        }
     }
 }
