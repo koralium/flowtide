@@ -1034,7 +1034,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             using var conn = new DuckDB.NET.Data.DuckDBConnection("DataSource=:memory:");
             conn.Open();
 
-            var extensionsDir = Path.Combine(tempPath, "extensions").Replace("\\", "/");
+            var extensionsDir = Path.Join(tempPath, "extensions").Replace("\\", "/");
             Directory.CreateDirectory(extensionsDir);
 
             using (var cmd = conn.CreateCommand())
@@ -1045,7 +1045,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             using (var cmd = conn.CreateCommand())
             {
-                var tableFullPath = Path.GetFullPath(Path.Combine(tempPath, "test")).Replace("\\", "/");
+                var tableFullPath = Path.GetFullPath(Path.Join(tempPath, "test")).Replace("\\", "/");
                 cmd.CommandText = $"SELECT * FROM delta_scan('{tableFullPath}')";
 
                 using var reader = cmd.ExecuteReader();
