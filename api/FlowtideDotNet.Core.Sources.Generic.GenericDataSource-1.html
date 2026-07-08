@@ -89,7 +89,7 @@
 
 
   <h1 id="FlowtideDotNet_Core_Sources_Generic_GenericDataSource_1" data-uid="FlowtideDotNet.Core.Sources.Generic.GenericDataSource`1" class="text-break">
-Class GenericDataSource&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L82"><i class="bi bi-code-slash"></i></a>
+Class GenericDataSource&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L102"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -126,6 +126,12 @@ Class GenericDataSource&lt;T&gt;  <a class="header-action link-secondary" title=
   <dl class="typelist inheritedMembers">
     <dt>Inherited Members</dt>
     <dd>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Core.Sources.Generic.GenericDataSourceAsync-1.html#FlowtideDotNet_Core_Sources_Generic_GenericDataSourceAsync_1_RunDeltaLoad_FlowtideDotNet_Core_Sources_Generic_IDeltaLoadContext__0__System_Threading_CancellationToken_">GenericDataSourceAsync&lt;T&gt;.RunDeltaLoad(IDeltaLoadContext&lt;T&gt;, CancellationToken)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Core.Sources.Generic.GenericDataSourceAsync-1.html#FlowtideDotNet_Core_Sources_Generic_GenericDataSourceAsync_1_IsPushBased">GenericDataSourceAsync&lt;T&gt;.IsPushBased</a>
+    </div>
     <div>
       <a class="xref" href="FlowtideDotNet.Core.Sources.Generic.GenericDataSourceAsync-1.html#FlowtideDotNet_Core_Sources_Generic_GenericDataSourceAsync_1_GetCustomConverters">GenericDataSourceAsync&lt;T&gt;.GetCustomConverters()</a>
     </div>
@@ -180,7 +186,7 @@ Class GenericDataSource&lt;T&gt;  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Sources_Generic_GenericDataSource_1_DeltaLoad_System_Int64_" data-uid="FlowtideDotNet.Core.Sources.Generic.GenericDataSource`1.DeltaLoad(System.Int64)">
   DeltaLoad(long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L96"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L116"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -216,10 +222,11 @@ Class GenericDataSource&lt;T&gt;  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Sources_Generic_GenericDataSource_1_DeltaLoadAsync_System_Int64_" data-uid="FlowtideDotNet.Core.Sources.Generic.GenericDataSource`1.DeltaLoadAsync(System.Int64)">
   DeltaLoadAsync(long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L89"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L109"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Fetches all objects from the data source that have changed since the last delta load</p>
+  <div class="markdown level1 summary"><p>Fetches all objects from the data source that have changed since the last delta load.
+Must be overridden when <a class="xref" href="FlowtideDotNet.Core.Sources.Generic.GenericDataSourceAsync-1.html#FlowtideDotNet_Core_Sources_Generic_GenericDataSourceAsync_1_IsPushBased">IsPushBased</a> is <code>false</code> (the default).</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
@@ -253,7 +260,7 @@ Class GenericDataSource&lt;T&gt;  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Sources_Generic_GenericDataSource_1_FullLoad" data-uid="FlowtideDotNet.Core.Sources.Generic.GenericDataSource`1.FullLoad">
   FullLoad()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L94"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L114"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -284,7 +291,7 @@ Class GenericDataSource&lt;T&gt;  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Sources_Generic_GenericDataSource_1_FullLoadAsync" data-uid="FlowtideDotNet.Core.Sources.Generic.GenericDataSource`1.FullLoadAsync">
   FullLoadAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L84"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L104"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Fetches all objects from the data source</p>
@@ -316,7 +323,7 @@ Class GenericDataSource&lt;T&gt;  <a class="header-action link-secondary" title=
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L82" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Sources/Generic/GenericDataSource.cs/#L102" class="edit-link">Edit this page</a>
         </div>
 
 

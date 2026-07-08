@@ -154,6 +154,47 @@ temporarily stored on disk if the memory usage is too high.</p>
     (readRelation) =&gt; new ExampleDataSource(userRepository));
 </code></pre>
 <p>All rows must return an identifier that is used when calculating changes of the data. This key can be accessed when querying with the special name of <code>__key</code>.</p>
+<h3 id="push-based-delta-loading">Push-based delta loading</h3>
+<p>Instead of polling with <code>DeltaLoadAsync</code>, it is possible to use a push-based model where the source controls when data is submitted.
+This can be useful for sources such as message queues, webhooks or event streams.</p>
+<p>To use push-based loading, override <code>IsPushBased</code> to return <code>true</code> and implement <code>RunDeltaLoad</code>:</p>
+<pre><code class="lang-csharp">public class EventDrivenSource : GenericDataSourceAsync&lt;User&gt;
+{
+    private readonly Channel&lt;User&gt; _channel = Channel.CreateUnbounded&lt;User&gt;();
+
+    public override bool IsPushBased =&gt; true;
+
+    // Set to null to disable interval-based triggering
+    public override TimeSpan? DeltaLoadInterval =&gt; null;
+
+    public override async Task RunDeltaLoad(
+        IDeltaLoadContext&lt;User&gt; context,
+        CancellationToken cancellationToken)
+    {
+        while (await _channel.Reader.WaitToReadAsync(cancellationToken))
+        {
+            // Begin a transaction, this acquires the checkpoint lock
+            // ensuring all items in this batch are included in the same checkpoint.
+            await using var tx = await context.BeginTransactionAsync(cancellationToken);
+
+            while (_channel.Reader.TryRead(out var user))
+            {
+                var obj = new FlowtideGenericObject&lt;User&gt;(
+                    user.Id, user, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), false);
+                await tx.SubmitAsync(obj, cancellationToken);
+            }
+            // Disposing the transaction releases the checkpoint lock
+        }
+    }
+
+    public override IAsyncEnumerable&lt;FlowtideGenericObject&lt;User&gt;&gt; FullLoadAsync()
+    {
+        // Return initial data...
+    }
+}
+</code></pre>
+<p><code>RunDeltaLoad</code> is a long-running method that controls its own loop, instead of returning an enumerable per interval.
+Data is submitted through transactions which manage the checkpoint lock, ensuring all items in one transaction end up in the same checkpoint.</p>
 <h3 id="trigger-data-reloads-programatically">Trigger data reloads programatically</h3>
 <p>The generic data source also registers triggers that allows the user to notify the stream when a reload should happen.</p>
 <p>The following triggers are registered:</p>
@@ -204,6 +245,27 @@ This limits the stream to only send those specific columns, but it can be useful
 <p>Add the generic data sink to the <em>ConnectorManager</em>:</p>
 <pre><code class="lang-csharp">connectorManager.AddCustomSink(&quot;{tableName}&quot;, (rel) =&gt; new testDataSink());
 </code></pre>
+<h3 id="fetching-existing-data">Fetching existing data</h3>
+<p>On initial startup, fetching existing data from the destination is optional. If you do not override this method, Flowtide assumes the destination is empty and simply sends all current stream data to <code>OnChanges</code> as initial inserts.</p>
+<p>However, if you want Flowtide to calculate a delta based on the current state of the destination system (e.g., to only push changes, and to emit delete operations for any rows in the destination that are no longer in the incoming stream), you can override the <code>GetExistingData</code> method:</p>
+<pre><code class="lang-csharp">public override IAsyncEnumerable&lt;User&gt; GetExistingData()
+{
+    // Fetch all existing users from the destination
+    return _userRepository.GetAllUsersAsync();
+}
+</code></pre>
+<p>If you override this method:</p>
+<ul>
+<li>During initial load, Flowtide compares the existing destination data with the incoming stream data.</li>
+<li>It will automatically trigger insert/update operations for new or changed data, and delete operations for any rows in the destination that are no longer present in the incoming stream data.</li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>GetExistingData</code> is only executed when the stream starts up for the first time. Once the initial synchronization is complete and the first checkpoint has been committed, it will not be called again (even on subsequent stream restarts). From that point onward, the sink relies entirely on Flowtide's internally persisted state to calculate subsequent changes.</p>
+</div>
+<h3 id="custom-sink-sample">Custom sink sample</h3>
+<p>A runnable console application demonstrating a custom sink and source is available under <a href="https://github.com/koralium/flowtide/tree/main/samples/CustomSinkSample">samples/CustomSinkSample</a>.
+It shows how initial sink synchronization with <code>GetExistingData</code> works and how the sink handles data updates.</p>
 <h2 id="adding-custom-converters">Adding custom converters</h2>
 <p>It is possible to register custom converters to convert .NET objects into the column format, and back. This is done by overriding the <code>GetCustomConverters</code> method in both
 generic sources and sinks.</p>

@@ -5640,6 +5640,34 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Sources.Generic.IDeltaLoadContext-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Sources.Generic.IDeltaLoadContext-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Sources.Generic.IDeltaLoadContext<T>",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Sources.Generic.IDeltaLoadTransaction-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Sources.Generic.IDeltaLoadTransaction-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Sources.Generic.IDeltaLoadTransaction<T>",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Core.Sources.Generic.Internal.CustomSinkFactory-1.yml",
       "output": {
         ".html": {
