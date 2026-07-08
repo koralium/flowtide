@@ -185,18 +185,21 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                 var context = new DeltaLoadContext(channel);
 
                 // Run the background loop
+                using var deltaLoadCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
+
+                // Run the background loop
                 var runTask = Task.Run(async () =>
                 {
                     try
                     {
-                        await _genericDataSource.RunDeltaLoad(context, cancellationToken);
+                        await _genericDataSource.RunDeltaLoad(context, deltaLoadCts.Token);
                         channel.Writer.TryComplete();
                     }
                     catch (Exception ex)
                     {
                         channel.Writer.TryComplete(ex);
                     }
-                }, cancellationToken);
+                }, deltaLoadCts.Token);
 
                 IColumn[] columns = new Column[_readRelation.BaseSchema.Names.Count];
                 for (int i = 0; i < columns.Length; i++)
