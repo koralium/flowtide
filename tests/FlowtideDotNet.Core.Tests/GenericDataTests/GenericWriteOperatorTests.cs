@@ -228,11 +228,12 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
                 FROM users
             ");
 
-            while (true)
+            var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
+            while (sink.changeCounter == 0)
             {
-                if (sink.changeCounter > 0)
+                if (DateTimeOffset.UtcNow > deadline)
                 {
-                    break;
+                    throw new TimeoutException("Timed out waiting for sink changes.");
                 }
                 await Task.Delay(10);
                 await stream.SchedulerTick();
