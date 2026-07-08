@@ -113,7 +113,7 @@ public class EventDrivenSource : GenericDataSourceAsync<User>
             {
                 var obj = new FlowtideGenericObject<User>(
                     user.Id, user, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), false);
-                await tx.SubmitAsync(obj);
+                await tx.SubmitAsync(obj, cancellationToken);
             }
             // Disposing the transaction releases the checkpoint lock
         }
