@@ -107,7 +107,7 @@ public class EventDrivenSource : GenericDataSourceAsync<User>
         {
             // Begin a transaction, this acquires the checkpoint lock
             // ensuring all items in this batch are included in the same checkpoint.
-            await using var tx = await context.BeginTransactionAsync();
+            await using var tx = await context.BeginTransactionAsync(cancellationToken);
 
             while (_channel.Reader.TryRead(out var user))
             {
