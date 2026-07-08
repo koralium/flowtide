@@ -281,7 +281,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             // Add a delete change
             source.AddChange(new FlowtideGenericObject<EnumModel>("1", null, 2, true));
 
-            // This WaitForUpdate should throw if there is an exception when converting deleted row with enum
+            // This should throw if there is an exception when converting a deleted row that contains an enum column
             deadline = DateTimeOffset.UtcNow.AddSeconds(1000);
             while (sink.changeCounter == 1)
             {
