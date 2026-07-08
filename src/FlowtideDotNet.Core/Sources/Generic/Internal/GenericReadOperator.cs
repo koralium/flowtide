@@ -212,7 +212,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
                 try
                 {
-                    await foreach (var cmd in channel.Reader.ReadAllAsync(cancellationToken))
+                    await foreach (var cmd in channel.Reader.ReadAllAsync(deltaLoadCts.Token))
                     {
                         if (cmd.Type == DeltaLoadCommandType.BeginTransaction)
                         {
