@@ -982,7 +982,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task TestDuckDbScanWithDeletionVector()
         {
-            var tempPath = Path.Combine(Directory.GetCurrentDirectory(), "test_duckdb_delta");
+            var tempPath = Path.Join(Directory.GetCurrentDirectory(), "test_duckdb_delta");
             if (Directory.Exists(tempPath))
             {
                 try
