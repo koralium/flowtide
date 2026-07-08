@@ -15,6 +15,7 @@ using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Sources.Generic;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers;
+using FlowtideDotNet.Substrait.Sql;
 
 namespace FlowtideDotNet.Core.Tests.GenericDataTests
 {
