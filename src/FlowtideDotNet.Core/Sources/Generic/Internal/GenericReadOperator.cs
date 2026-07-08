@@ -217,14 +217,14 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                             {
                                 continue;
                             }
-await EnterCheckpointLock();
-checkpointLockHeld = true;
-if (!cmd.CompletionSource.TrySetResult())
-{
-    ExitCheckpointLock();
-    checkpointLockHeld = false;
-}
-}
+                            await EnterCheckpointLock();
+                            checkpointLockHeld = true;
+                            if (!cmd.CompletionSource.TrySetResult())
+                            {
+                                ExitCheckpointLock();
+                                checkpointLockHeld = false;
+                            }
+                        }
                         else if (cmd.Type == DeltaLoadCommandType.SubmitItem)
                         {
                             if (cmd.CompletionSource.Task.IsCanceled)
@@ -248,7 +248,7 @@ if (!cmd.CompletionSource.TrySetResult())
                                 iterations = new PrimitiveList<uint>(MemoryAllocator);
                                 _tempLookup.Clear();
                             }
-cmd.CompletionSource.TrySetResult();
+                            cmd.CompletionSource.TrySetResult();
                         }
                         else if (cmd.Type == DeltaLoadCommandType.DisposeTransaction)
                         {
@@ -276,6 +276,11 @@ cmd.CompletionSource.TrySetResult();
                     {
                         ExitCheckpointLock();
                     }
+
+                    // Complete the channel so any pending WriteAsync calls in RunDeltaLoad
+                    // throw ChannelClosedException and unblock, even if the user didn't
+                    // forward the cancellation token.
+                    channel.Writer.TryComplete();
 
                     weights.Dispose();
                     iterations.Dispose();
@@ -449,6 +454,7 @@ cmd.CompletionSource.TrySetResult();
         private class DeltaLoadContext : IDeltaLoadContext<T>
         {
             private readonly Channel<DeltaLoadCommand> _channel;
+            internal bool _transactionActive;
 
             public DeltaLoadContext(Channel<DeltaLoadCommand> channel)
             {
@@ -457,11 +463,16 @@ cmd.CompletionSource.TrySetResult();
 
             public async ValueTask<IDeltaLoadTransaction<T>> BeginTransactionAsync(CancellationToken cancellationToken = default)
             {
+                if (_transactionActive)
+                {
+                    throw new InvalidOperationException("A transaction is already active. Dispose the current transaction before beginning a new one.");
+                }
                 var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.BeginTransaction, null, tcs), cancellationToken);
                 using var registration = cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
                 await tcs.Task;
-                return new DeltaLoadTransaction(_channel, cancellationToken);
+                _transactionActive = true;
+                return new DeltaLoadTransaction(_channel, cancellationToken, this);
             }
 
             public async ValueTask SubmitBatchAsync(IEnumerable<FlowtideGenericObject<T>> batch, CancellationToken cancellationToken = default)
@@ -478,12 +489,14 @@ cmd.CompletionSource.TrySetResult();
         {
             private readonly Channel<DeltaLoadCommand> _channel;
             private readonly CancellationToken _cancellationToken;
+            private readonly DeltaLoadContext _context;
             private bool _disposed;
 
-            public DeltaLoadTransaction(Channel<DeltaLoadCommand> channel, CancellationToken cancellationToken)
+            public DeltaLoadTransaction(Channel<DeltaLoadCommand> channel, CancellationToken cancellationToken, DeltaLoadContext context)
             {
                 _channel = channel;
                 _cancellationToken = cancellationToken;
+                _context = context;
             }
 
             public async ValueTask SubmitAsync(FlowtideGenericObject<T> obj, CancellationToken cancellationToken = default)
@@ -517,6 +530,10 @@ cmd.CompletionSource.TrySetResult();
                     catch (ChannelClosedException)
                     {
                         // Channel already closed; reader's finally block handles lock cleanup.
+                    }
+                    finally
+                    {
+                        _context._transactionActive = false;
                     }
                 }
             }
