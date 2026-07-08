@@ -486,7 +486,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
 
                 for (; _index < localChanges.Count; _index++)
                 {
-                    await tx.SubmitAsync(localChanges[_index]);
+                    await tx.SubmitAsync(localChanges[_index], cancellationToken);
                 }
             }
         }
