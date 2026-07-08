@@ -217,10 +217,14 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                             {
                                 continue;
                             }
-                            await EnterCheckpointLock();
-                            checkpointLockHeld = true;
-                            cmd.CompletionSource!.SetResult();
-                        }
+await EnterCheckpointLock();
+checkpointLockHeld = true;
+if (!cmd.CompletionSource.TrySetResult())
+{
+    ExitCheckpointLock();
+    checkpointLockHeld = false;
+}
+}
                         else if (cmd.Type == DeltaLoadCommandType.SubmitItem)
                         {
                             if (cmd.CompletionSource.Task.IsCanceled)
