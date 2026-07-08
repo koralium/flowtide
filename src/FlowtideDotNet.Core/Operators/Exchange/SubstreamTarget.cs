@@ -45,10 +45,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private bool _ready;
 
         // Set once this streams stop barrier is stored (nothing is stored after it). The stream can
-        // only finish stopping after the other substream has fetched it, or events before it would
-        // be disposed before that substream received them.
+        // only finish stopping after the other substream has fetched it AND acknowledged a
+        // checkpoint afterwards, or events before it could be disposed before that substream
+        // received them. The fetch alone is not delivery: the dequeue removes the events from the
+        // queue, but the fetch response can still be lost after it (the wire serializer can throw,
+        // the cross-silo call can fail in transit), so the confirmation is the peer's checkpoint
+        // done acknowledgement arriving after the barrier was handed out - the peer only acks once
+        // it committed a cycle, and the cycle that paired with the stop barrier covers everything
+        // up to it.
         private volatile bool _stopBarrierStored;
         private volatile bool _stopBarrierFetched;
+        private volatile bool _stopBarrierFetchAcked;
 
         private PrimitiveList<int>? _weights;
         private PrimitiveList<uint>? _iterations;
@@ -171,16 +178,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _ready = true;
             _stopBarrierStored = false;
             _stopBarrierFetched = false;
+            _stopBarrierFetchAcked = false;
             _lockSemaphore.Release();
         }
 
         /// <summary>
-        /// True when the other substream has fetched the stop barrier, or no stop barrier has
-        /// been stored. The stream keeps running stop checkpoint cycles until the barrier has
-        /// been fetched so the events before it reach the other substream before this stream
-        /// disposes its queue.
+        /// True when the other substream has fetched the stop barrier and acknowledged a
+        /// checkpoint after the fetch, or no stop barrier has been stored. The stream keeps
+        /// running stop checkpoint cycles until then, so the events before the barrier have
+        /// verifiably reached the other substream before this stream disposes its queue; a
+        /// peer that never confirms is handled by the stop drain timeout.
         /// </summary>
-        public bool ReadyToStop => !_stopBarrierStored || _stopBarrierFetched;
+        public bool ReadyToStop => !_stopBarrierStored || (_stopBarrierFetched && _stopBarrierFetchAcked);
 
         public void NewBatch(EventBatchWeighted weightedBatch)
         {
@@ -284,8 +293,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     StreamEventRent.Rent(val);
                     if (val is StopStreamCheckpoint)
                     {
-                        // The other substream has now received everything up to and including
-                        // the stop barrier, this stream can finish stopping.
+                        // The stop barrier has been handed out, but the fetch response can
+                        // still be lost after the dequeue; the stop may only finish once the
+                        // other substream acknowledges a checkpoint after this point, see
+                        // TargetSubstreamCheckpointDone.
                         _stopBarrierFetched = true;
                     }
                     outputList.Add(new SubstreamEventData()
@@ -330,6 +341,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public Task TargetSubstreamCheckpointDone(long checkpointVersion)
         {
+            if (_stopBarrierFetched)
+            {
+                // The peer acknowledged a checkpoint after fetching the stop barrier: it only
+                // acks once a cycle committed, and the cycle that paired with the barrier
+                // covers everything up to it, so the drain is confirmed and the stop may
+                // finish. An ack from before the fetch cannot land here, the fetched flag was
+                // not set yet.
+                _stopBarrierFetchAcked = true;
+            }
             _targetCallDependenciesDone();
             return Task.CompletedTask;
         }
