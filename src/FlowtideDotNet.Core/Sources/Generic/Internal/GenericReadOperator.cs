@@ -244,7 +244,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                                 iterations = new PrimitiveList<uint>(MemoryAllocator);
                                 _tempLookup.Clear();
                             }
-                            cmd.CompletionSource!.SetResult();
+cmd.CompletionSource.TrySetResult();
                         }
                         else if (cmd.Type == DeltaLoadCommandType.DisposeTransaction)
                         {
