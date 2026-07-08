@@ -64,9 +64,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
             // Compute CRC-32 of bitmapData (magic number + serialized bitmap)
             var crc = new System.IO.Hashing.Crc32();
             crc.Append(magicBytes);
-            crc.Append(memoryStream.ToArray());
+            if (memoryStream.TryGetBuffer(out ArraySegment<byte> buffer))
+            {
+                crc.Append(buffer.AsSpan(0, (int)memoryStream.Length));
+            }
+            else
+            {
+                crc.Append(memoryStream.ToArray());
+            }
 
-            var checksumValue = BinaryPrimitives.ReadUInt32LittleEndian(crc.GetCurrentHash());
+            var checksumValue = crc.GetCurrentHashAsUInt32();
             var checksumBytes = new byte[4];
             BinaryPrimitives.WriteUInt32BigEndian(checksumBytes, checksumValue);
             writeStream.Write(checksumBytes);
