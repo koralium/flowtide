@@ -2404,33 +2404,62 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            // Buffered trace logs per substream, dumped when a phase fails. This is a rare
+            // recovery race (a lost-row count mismatch after the crash) that only shows up over
+            // many runs, so the logs are captured to disk on failure for a later investigation.
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                    b.AddProvider(provider);
+                });
+            }
+            void DumpLogBuffers(string phase)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_left_join_crash_{phase}_{buffer.Key}.log");
+                }
+            }   
 
             _stream = BuildHost("e2e_left_join_crash", leftJoinSql, latestData, failures,
-                crashConfig: substreamName => substreamName == "substream_0" ? (1, 1) : (0, 0));
+                crashConfig: substreamName => substreamName == "substream_0" ? (1, 1) : (0, 0),
+                loggerFactory: CreateBufferedLoggerFactory);
             await _stream.StartAsync();
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedLeftJoinResult(), allowFailures: true);
-
-            // New data triggers the checkpoint where the sink crashes
-            _generator.Generate(200);
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedLeftJoinResult(), allowFailures: true);
-            Assert.NotEmpty(failures);
-
-            // Delete every order of the first users, their rows must fall back to null
-            // padded rows through the recovered join state.
-            var usersToClear = _generator.Users.Take(20).Select(x => x.UserKey).ToHashSet();
-            foreach (var order in _generator.Orders.Where(o => usersToClear.Contains(o.UserKey)).ToList())
+            try
             {
-                _generator.DeleteOrder(order);
-            }
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedLeftJoinResult(), allowFailures: true);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedLeftJoinResult(), allowFailures: true);
 
-            // Deleting users entirely must remove their null padded rows as well
-            foreach (var user in _generator.Users.Take(10).ToList())
-            {
-                _generator.DeleteUser(user);
+                // New data triggers the checkpoint where the sink crashes
+                _generator.Generate(200);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedLeftJoinResult(), allowFailures: true);
+                Assert.NotEmpty(failures);
+
+                // Delete every order of the first users, their rows must fall back to null
+                // padded rows through the recovered join state.
+                var usersToClear = _generator.Users.Take(20).Select(x => x.UserKey).ToHashSet();
+                foreach (var order in _generator.Orders.Where(o => usersToClear.Contains(o.UserKey)).ToList())
+                {
+                    _generator.DeleteOrder(order);
+                }
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedLeftJoinResult(), allowFailures: true);
+
+                // Deleting users entirely must remove their null padded rows as well
+                foreach (var user in _generator.Users.Take(10).ToList())
+                {
+                    _generator.DeleteUser(user);
+                }
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedLeftJoinResult(), allowFailures: true);
             }
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedLeftJoinResult(), allowFailures: true);
+            catch
+            {
+                DumpLogBuffers("fail");
+                throw;
+            }
         }
 
         /// <summary>
