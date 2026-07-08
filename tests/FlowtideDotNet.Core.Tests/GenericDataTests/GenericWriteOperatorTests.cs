@@ -350,7 +350,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
 
     internal class EnumTestSink : GenericDataSink<EnumModel>
     {
-        public Dictionary<int, EnumModel> items = new Dictionary<int, EnumModel>();
+        public readonly Dictionary<int, EnumModel> items = new Dictionary<int, EnumModel>();
         public int changeCounter = 0;
 
         public override Task<List<string>> GetPrimaryKeyNames()
