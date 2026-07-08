@@ -264,7 +264,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
                 FROM users
             ");
 
-            var deadline = DateTimeOffset.UtcNow.AddSeconds(1000);
+            var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
             while (sink.changeCounter == 0)
             {
                 if (DateTimeOffset.UtcNow > deadline)
