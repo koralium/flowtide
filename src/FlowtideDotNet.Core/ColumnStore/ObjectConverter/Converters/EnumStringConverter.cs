@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 
         public object Deserialize<T>(T value) where T : IDataValue
         {
-            if (value.Type == ArrowTypeId.Null)
+            if (value.IsNull)
             {
                 return null!;
             }
