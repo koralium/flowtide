@@ -289,8 +289,11 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
         }
 
         /// <summary>
-        /// A recursive query reached only through a reference is still not split across substreams:
-        /// the iteration is hoisted to a global relation and built whole in every substream.
+        /// A recursive query reached only through a reference is still not split across
+        /// substreams: the hoisted iteration relation is pinned whole to one substream together
+        /// with everything that references it. It must not stay global - a global relation is
+        /// built in every substream, and a substream where nothing consumes the loop would run
+        /// it orphaned, with no egress to gate its checkpoints.
         /// </summary>
         [Theory]
         [InlineData(@"
@@ -329,12 +332,36 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 DistributedPlanOptions = new DistributedPlanOptions() { SubstreamCount = 2 }
             });
 
-            var iterationRoot = Assert.Single(plan.Relations.Where(ContainsRelation<IterationRelation>));
+            int iterationIndex = -1;
+            for (int i = 0; i < plan.Relations.Count; i++)
+            {
+                if (ContainsRelation<IterationRelation>(plan.Relations[i]))
+                {
+                    Assert.Equal(-1, iterationIndex);
+                    iterationIndex = i;
+                }
+            }
+            Assert.True(iterationIndex >= 0, "The plan must contain the hoisted recursive CTE");
 
-            // Global (no substream wrapper), so built whole in every substream, and the loop
-            // never crosses a substream boundary.
-            Assert.IsNotType<SubStreamRootRelation>(iterationRoot);
+            // Pinned to one substream (not global), and the loop itself never crosses a
+            // substream boundary.
+            var iterationRoot = Assert.IsType<SubStreamRootRelation>(plan.Relations[iterationIndex]);
             Assert.False(ContainsRelation<SubstreamExchangeReferenceRelation>(iterationRoot));
+
+            // Everything that references the loop lives in the same substream, so no substream
+            // builds it without consuming it.
+            for (int i = 0; i < plan.Relations.Count; i++)
+            {
+                if (i == iterationIndex)
+                {
+                    continue;
+                }
+                if (CollectPlainReferences(plan.Relations[i]).Any(r => r.RelationId == iterationIndex))
+                {
+                    var consumerRoot = Assert.IsType<SubStreamRootRelation>(plan.Relations[i]);
+                    Assert.Equal(iterationRoot.Name, consumerRoot.Name);
+                }
+            }
         }
 
         private static bool ContainsRelation<T>(Relation root) where T : Relation
@@ -458,6 +485,93 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             foreach (var relation in plan.Relations)
             {
                 Assert.Empty(CollectReferences(relation).OfType<SubstreamExchangeReferenceRelation>());
+            }
+        }
+
+        /// <summary>
+        /// A plan can mix partitionable sinks with a sink that reaches a recursive CTE through a
+        /// reference. The partitionable sink is distributed, so more than one substream exists -
+        /// and a hoisted iteration relation that stays global is then built in every one of them,
+        /// including substreams that never consume it. An orphaned loop has no egress in its
+        /// substream, commits state outside the checkpoint gating and crashes at the first
+        /// checkpoint. The hoisted loop must instead be pinned to the substream of the sink that
+        /// consumes it, while the other sink stays distributed.
+        /// </summary>
+        [Fact]
+        public void MultiSinkPlanPinsReferencedIterationToTheConsumingSubstream()
+        {
+            var plan = PlanOptimizer.Optimize(BuildPlan(@"
+                CREATE TABLE users (userkey any, managerkey any);
+                CREATE TABLE orders (orderkey any, userkey any);
+
+                INSERT INTO output1
+                SELECT o.orderkey FROM orders o INNER JOIN users u ON o.userkey = u.userkey;
+
+                INSERT INTO output2
+                WITH manager_cte AS (
+                    SELECT userkey, managerkey FROM users WHERE managerkey is null
+                    UNION ALL
+                    SELECT u.userkey, u.managerkey FROM users u INNER JOIN manager_cte c ON c.userkey = u.managerkey
+                )
+                SELECT m.userkey FROM manager_cte m INNER JOIN orders o ON m.userkey = o.userkey;
+            "), new PlanOptimizerSettings()
+            {
+                DistributedPlanOptions = new DistributedPlanOptions() { SubstreamCount = 2 }
+            });
+
+            // The plain join sink is still distributed, so more than one substream exists.
+            var substreamNames = plan.Relations
+                .OfType<SubStreamRootRelation>()
+                .Select(x => x.Name)
+                .Distinct()
+                .ToList();
+            Assert.True(substreamNames.Count > 1, "The partitionable sink must stay distributed across substreams");
+
+            // The hoisted loop must not be global: a global relation is built in every substream,
+            // and the substreams that never consume the loop would run it orphaned.
+            int iterationIndex = -1;
+            for (int i = 0; i < plan.Relations.Count; i++)
+            {
+                if (ContainsRelation<IterationRelation>(plan.Relations[i]))
+                {
+                    Assert.Equal(-1, iterationIndex);
+                    iterationIndex = i;
+                }
+            }
+            Assert.True(iterationIndex >= 0, "The plan must contain the hoisted recursive CTE");
+            var iterationRoot = Assert.IsType<SubStreamRootRelation>(plan.Relations[iterationIndex]);
+
+            // And it must live in the same substream as every relation that references it.
+            for (int i = 0; i < plan.Relations.Count; i++)
+            {
+                if (i == iterationIndex)
+                {
+                    continue;
+                }
+                var consumerReferences = CollectPlainReferences(plan.Relations[i]);
+                if (consumerReferences.Any(r => r.RelationId == iterationIndex))
+                {
+                    var consumerRoot = Assert.IsType<SubStreamRootRelation>(plan.Relations[i]);
+                    Assert.Equal(iterationRoot.Name, consumerRoot.Name);
+                }
+            }
+        }
+
+        private static List<ReferenceRelation> CollectPlainReferences(Relation relation)
+        {
+            var collector = new PlainReferenceCollectingVisitor();
+            collector.Visit(relation, null!);
+            return collector.References;
+        }
+
+        private sealed class PlainReferenceCollectingVisitor : OptimizerBaseVisitor
+        {
+            public List<ReferenceRelation> References { get; } = new List<ReferenceRelation>();
+
+            public override Relation VisitReferenceRelation(ReferenceRelation referenceRelation, object state)
+            {
+                References.Add(referenceRelation);
+                return referenceRelation;
             }
         }
 

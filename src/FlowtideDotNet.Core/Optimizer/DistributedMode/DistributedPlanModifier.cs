@@ -125,6 +125,41 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 ResolveSubstream(exchangeRelationId, substreamNames, exchangeConsumers, plainReferencedIds, new HashSet<int>());
             }
 
+            // A loop and everything that reaches it through plain references must live in ONE
+            // substream: a global (plain referenced) relation is built in EVERY substream, and a
+            // substream that builds a loop nothing there consumes runs it orphaned - the loop has
+            // no egress in that substream, commits state outside the checkpoint gating and
+            // crashes at the first checkpoint. Every top level relation that contains or reaches
+            // an iteration is therefore pinned to a single substream, together with the sinks and
+            // exchanges that reach it (their plain references then stay inside that substream).
+            // Grouping all of them into one substream is conservative when a plan has several
+            // independent loops, but loop-reaching sinks are never partitioned anyway, so only
+            // their placement is affected.
+            var iterationGroup = new List<int>();
+            for (int i = 0; i < plan.Relations.Count; i++)
+            {
+                if (plan.Relations[i] is SubStreamRootRelation)
+                {
+                    // Created by the operator distribution; loop-reaching sinks are never
+                    // partitioned, so the grown lane relations cannot contain iterations.
+                    continue;
+                }
+                if (ContainsIteration(plan.Relations[i], plan))
+                {
+                    iterationGroup.Add(i);
+                }
+            }
+            if (iterationGroup.Count > 0)
+            {
+                var groupName = iterationGroup
+                    .Select(i => substreamNames[i])
+                    .FirstOrDefault(name => name != null) ?? nameGenerator(0);
+                foreach (var i in iterationGroup)
+                {
+                    substreamNames[i] = groupName;
+                }
+            }
+
             // Find the highest existing exchange target id so new ids do not collide
             int nextExchangeTargetId = GetNextExchangeTargetId(plan);
 
