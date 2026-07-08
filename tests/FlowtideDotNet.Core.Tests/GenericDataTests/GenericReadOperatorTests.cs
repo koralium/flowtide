@@ -554,7 +554,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
         public override async Task RunDeltaLoad(IDeltaLoadContext<User> context, CancellationToken cancellationToken)
         {
             await _semaphore.WaitAsync(cancellationToken);
-            var tx1 = await context.BeginTransactionAsync(cancellationToken);
+            await context.BeginTransactionAsync(cancellationToken);
             // This second call should throw InvalidOperationException
             var tx2 = await context.BeginTransactionAsync(cancellationToken);
         }
