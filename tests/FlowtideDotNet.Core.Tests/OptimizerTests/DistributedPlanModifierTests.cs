@@ -418,6 +418,49 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             }
         }
 
+        /// <summary>
+        /// A recursive CTE reached through a reference and then joined with another table must not
+        /// be partitioned. The loop is hoisted into its own relation and reached only through a
+        /// plain reference, so the referencing join looks partitionable. Partitioning it scatters
+        /// the loop's reference and leaves the loop built globally in a substream that never
+        /// consumes it, an orphaned loop that commits state during checkpointing and crashes.
+        /// The whole query must stay in one substream.
+        /// </summary>
+        [Fact]
+        public void RecursiveCteReachedThroughReferenceAndJoinedIsNotPartitioned()
+        {
+            var plan = PlanOptimizer.Optimize(BuildPlan(@"
+                CREATE TABLE users (userkey any, managerkey any);
+                CREATE TABLE orders (orderkey any, userkey any);
+                INSERT INTO output
+                WITH manager_cte AS (
+                    SELECT userkey, managerkey FROM users WHERE managerkey is null
+                    UNION ALL
+                    SELECT u.userkey, u.managerkey FROM users u INNER JOIN manager_cte c ON c.userkey = u.managerkey
+                )
+                SELECT m.userkey FROM manager_cte m INNER JOIN orders o ON m.userkey = o.userkey;
+            "), new PlanOptimizerSettings()
+            {
+                DistributedPlanOptions = new DistributedPlanOptions() { SubstreamCount = 2 }
+            });
+
+            // Everything lands in one substream, so the loop is never built in a substream that
+            // does not consume it.
+            var substreamNames = plan.Relations
+                .OfType<SubStreamRootRelation>()
+                .Select(x => x.Name)
+                .Distinct()
+                .ToList();
+            Assert.Equal(new List<string>() { "substream_0" }, substreamNames);
+
+            // Exactly one loop, and nothing is scattered across substreams.
+            Assert.Single(plan.Relations.Where(ContainsRelation<IterationRelation>));
+            foreach (var relation in plan.Relations)
+            {
+                Assert.Empty(CollectReferences(relation).OfType<SubstreamExchangeReferenceRelation>());
+            }
+        }
+
         private static List<Relation> CollectReferences(Relation relation)
         {
             var collector = new ReferenceCollectingVisitor();

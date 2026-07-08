@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 var operatorsVisitor = new DistributeOperatorsVisitor(plan, options.SubstreamCount, nameGenerator, GetNextExchangeTargetId(plan));
                 for (int i = 0; i < sinkRoots.Count; i++)
                 {
-                    if (ContainsIteration(plan.Relations[sinkRoots[i]]))
+                    if (ContainsIteration(plan.Relations[sinkRoots[i]], plan))
                     {
                         // A loop must stay in one stream; its checkpoint prepares don't cross
                         // substreams. Keep the sink tree whole instead of partitioning it.
@@ -294,19 +294,30 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
             return null;
         }
 
-        private static bool ContainsIteration(Relation relation)
+        private static bool ContainsIteration(Relation relation, Plan plan)
         {
-            var visitor = new IterationDetector();
+            var visitor = new IterationDetector(plan);
             visitor.Visit(relation, null!);
             return visitor.FoundIteration;
         }
 
         /// <summary>
         /// Detects iteration relations inside a relation tree, they run loops that cannot be
-        /// split across substreams.
+        /// split across substreams. Follows plain reference relations into the referenced top
+        /// level relation, a recursive query is often hoisted into its own relation and reached
+        /// only through a reference, partitioning the referencing tree would leave the loop
+        /// built globally in every substream while only one of them consumes it.
         /// </summary>
         private sealed class IterationDetector : OptimizerBaseVisitor
         {
+            private readonly Plan _plan;
+            private readonly HashSet<int> _visited = new HashSet<int>();
+
+            public IterationDetector(Plan plan)
+            {
+                _plan = plan;
+            }
+
             public bool FoundIteration { get; private set; }
 
             public override Relation VisitIterationRelation(IterationRelation iterationRelation, object state)
@@ -319,6 +330,17 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
             {
                 FoundIteration = true;
                 return iterationReferenceReadRelation;
+            }
+
+            public override Relation VisitReferenceRelation(ReferenceRelation referenceRelation, object state)
+            {
+                if (referenceRelation.RelationId >= 0 &&
+                    referenceRelation.RelationId < _plan.Relations.Count &&
+                    _visited.Add(referenceRelation.RelationId))
+                {
+                    Visit(_plan.Relations[referenceRelation.RelationId], state);
+                }
+                return referenceRelation;
             }
         }
 
