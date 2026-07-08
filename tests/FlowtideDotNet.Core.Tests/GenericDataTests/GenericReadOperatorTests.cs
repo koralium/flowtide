@@ -412,6 +412,43 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             Assert.IsType<InvalidOperationException>(inner);
             Assert.Equal("Simulated error in RunDeltaLoad", inner.Message);
         }
+
+        [Fact]
+        public async Task TestGenericDataSourceDoubleTransactionThrows()
+        {
+            var source = new TestDataSourceWithDoubleTransaction();
+            var stream = new GenericDataTestStream<User>(source, "TestGenericDataSourceDoubleTransactionThrows");
+            stream.RegisterTableProviders(builder =>
+            {
+                builder.AddGenericDataTable<User>("users");
+            });
+
+            await stream.StartStream(@"
+                INSERT INTO output
+                SELECT 
+                    UserKey, 
+                    FirstName 
+                FROM users
+            ");
+            await stream.WaitForUpdate();
+
+            await stream.Trigger("delta_load");
+
+            source.Trigger();
+
+            var exception = await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                await stream.WaitForUpdate();
+            });
+
+            var inner = exception;
+            if (exception is AggregateException agg)
+            {
+                inner = agg.Flatten().InnerException!;
+            }
+            Assert.IsType<InvalidOperationException>(inner);
+            Assert.Equal("A transaction is already active. Dispose the current transaction before beginning a new one.", inner.Message);
+        }
     }
 
     internal class TestDataSourceWithCustomLocking : GenericDataSourceAsync<User>
@@ -497,6 +534,33 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
         public override IAsyncEnumerable<FlowtideGenericObject<User>> FullLoadAsync()
         {
             // Return a single user
+            return new List<User>() { new User() { UserKey = 1, FirstName = "Test" } }.Select(u => new FlowtideGenericObject<User>(u.UserKey.ToString(), u, 1, false)).ToAsyncEnumerable();
+        }
+    }
+
+    internal class TestDataSourceWithDoubleTransaction : GenericDataSourceAsync<User>
+    {
+        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(0);
+
+        public void Trigger()
+        {
+            _semaphore.Release();
+        }
+
+        public override bool IsPushBased => true;
+
+        public override TimeSpan? DeltaLoadInterval => default;
+
+        public override async Task RunDeltaLoad(IDeltaLoadContext<User> context, CancellationToken cancellationToken)
+        {
+            await _semaphore.WaitAsync(cancellationToken);
+            var tx1 = await context.BeginTransactionAsync(cancellationToken);
+            // This second call should throw InvalidOperationException
+            var tx2 = await context.BeginTransactionAsync(cancellationToken);
+        }
+
+        public override IAsyncEnumerable<FlowtideGenericObject<User>> FullLoadAsync()
+        {
             return new List<User>() { new User() { UserKey = 1, FirstName = "Test" } }.Select(u => new FlowtideGenericObject<User>(u.UserKey.ToString(), u, 1, false)).ToAsyncEnumerable();
         }
     }

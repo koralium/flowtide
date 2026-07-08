@@ -277,10 +277,16 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                         ExitCheckpointLock();
                     }
 
-                    // Complete the channel so any pending WriteAsync calls in RunDeltaLoad
-                    // throw ChannelClosedException and unblock, even if the user didn't
-                    // forward the cancellation token.
+                    // Complete the channel to prevent new writes, then drain any
+                    // unprocessed commands and cancel their TCSes. For an unbounded
+                    // channel, WriteAsync completes synchronously, so the writer is
+                    // stuck on 'await tcs.Task' — closing the channel alone won't
+                    // unblock it. We must explicitly cancel remaining TCSes.
                     channel.Writer.TryComplete();
+                    while (channel.Reader.TryRead(out var remainingCmd))
+                    {
+                        remainingCmd.CompletionSource.TrySetCanceled();
+                    }
 
                     weights.Dispose();
                     iterations.Dispose();
