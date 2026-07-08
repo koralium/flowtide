@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
             return (path, str);
         }
 
-        public static async Task<int> WriteDeletionVector(IFileStorage storage, IOPath table, string fileName, RoaringBitmapArray array)
+        public static async Task<(int fileSize, int dataSize)> WriteDeletionVector(IFileStorage storage, IOPath table, string fileName, RoaringBitmapArray array)
         {
             using var stream = await storage.OpenWrite(table.Combine(fileName));
 
@@ -45,24 +45,37 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
 
             array.Serialize(writer);
 
-            var bytes = new byte[4];
-            BinaryPrimitives.WriteInt32BigEndian(bytes, (int)memoryStream.Position);
+            // dataSize is magic number (4 bytes) + roaring bitmap size
+            var dataSize = 4 + (int)memoryStream.Position;
+            var sizeBytes = new byte[4];
+            BinaryPrimitives.WriteInt32BigEndian(sizeBytes, dataSize);
 
             writeStream.WriteByte(1);
             // Write data size
-            writeStream.Write(bytes);
+            writeStream.Write(sizeBytes);
 
-            BinaryPrimitives.WriteInt32LittleEndian(bytes, 1681511377);
-            writeStream.Write(bytes);
+            var magicBytes = new byte[4];
+            BinaryPrimitives.WriteInt32LittleEndian(magicBytes, 1681511377);
+            writeStream.Write(magicBytes);
 
             memoryStream.Position = 0;
             await memoryStream.CopyToAsync(writeStream);
+
+            // Compute CRC-32 of bitmapData (magic number + serialized bitmap)
+            var crc = new System.IO.Hashing.Crc32();
+            crc.Append(magicBytes);
+            crc.Append(memoryStream.ToArray());
+
+            var checksumValue = BinaryPrimitives.ReadUInt32LittleEndian(crc.GetCurrentHash());
+            var checksumBytes = new byte[4];
+            BinaryPrimitives.WriteUInt32BigEndian(checksumBytes, checksumValue);
+            writeStream.Write(checksumBytes);
 
             await writeStream.FlushAsync();
 
             int fileSize = (int)writeStream.Position;
 
-            return fileSize;
+            return (fileSize, dataSize);
         }
     }
 }

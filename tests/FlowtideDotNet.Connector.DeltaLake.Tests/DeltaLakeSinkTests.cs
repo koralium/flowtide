@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -959,6 +959,92 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
                 await stream.SchedulerTick();
                 await Task.Delay(100);
+            }
+        }
+
+        [Fact]
+        public void TestDeletionVectorCardinalityMatch()
+        {
+            var initialBitmap = FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmapArray.Create(new long[] { 5, 10 });
+            var modifiableVector = new FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.ModifiableDeleteVector(initialBitmap);
+            
+            modifiableVector.Add(10);
+            
+            var logCardinality = modifiableVector.Cardinality;
+            
+            var actualBitmap = modifiableVector.ToRoaringBitmapArray();
+            var actualCardinality = actualBitmap.Cardinality;
+            
+            Assert.Equal(actualCardinality, logCardinality);
+            Assert.Equal(2, logCardinality);
+        }
+
+        [Fact]
+        public async Task TestDuckDbScanWithDeletionVector()
+        {
+            var tempPath = Path.Combine(Directory.GetCurrentDirectory(), "test_duckdb_delta");
+            if (Directory.Exists(tempPath))
+            {
+                try
+                {
+                    Directory.Delete(tempPath, true);
+                }
+                catch { }
+            }
+
+            var storage = Stowage.Files.Of.LocalDisk(tempPath);
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestDuckDbScanWithDeletionVector), storage);
+
+            stream.Generate(100);
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    Name STRING,
+                    LastName STRING,
+                    NullableString STRING
+                );
+
+                INSERT INTO test
+                SELECT userKey, firstName as Name, lastName, NullableString FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            var firstUser = stream.Users[0];
+            stream.DeleteUser(firstUser);
+
+            stream.Generate(50);
+
+            await WaitForVersion(storage, "test", stream, 1);
+
+            await stream.DisposeAsync();
+
+            using var conn = new DuckDB.NET.Data.DuckDBConnection("DataSource=:memory:");
+            conn.Open();
+
+            var extensionsDir = Path.Combine(tempPath, "extensions").Replace("\\", "/");
+            Directory.CreateDirectory(extensionsDir);
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = $"SET extension_directory = '{extensionsDir}'; INSTALL delta; LOAD delta;";
+                cmd.ExecuteNonQuery();
+            }
+
+            using (var cmd = conn.CreateCommand())
+            {
+                var tableFullPath = Path.GetFullPath(Path.Combine(tempPath, "test")).Replace("\\", "/");
+                cmd.CommandText = $"SELECT * FROM delta_scan('{tableFullPath}')";
+
+                using var reader = cmd.ExecuteReader();
+                int rowCount = 0;
+                while (reader.Read())
+                {
+                    rowCount++;
+                }
+
+                Assert.Equal(149, rowCount);
             }
         }
     }

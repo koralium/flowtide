@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -445,7 +445,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     // Write delete vector here to file
                     var (deletePath, z85string) = DeletionVectorWriter.GenerateDestination();
 
-                    var fileSize = await DeletionVectorWriter.WriteDeletionVector(_options.StorageLocation, _tablePath, deletePath, roaringBitmap);
+                    var (fileSize, dataSize) = await DeletionVectorWriter.WriteDeletionVector(_options.StorageLocation, _tablePath, deletePath, roaringBitmap);
 
                     actions.Add(new DeltaAction()
                     {
@@ -459,11 +459,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             ModificationTime = currentTime,
                             DeletionVector = new DeletionVector()
                             {
-                                Cardinality = deleteFile.Value.Cardinality,
+                                Cardinality = roaringBitmap.Cardinality,
                                 Offset = 1,
                                 StorageType = "u",
                                 PathOrInlineDv = z85string,
-                                SizeInBytes = fileSize
+                                SizeInBytes = dataSize
                             }
                         }
                     });
