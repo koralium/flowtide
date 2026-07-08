@@ -150,6 +150,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 _context._scheduleCheckpointTask = null;
                 _context._triggerCheckpointTime = null;
+                // Dependency done signals stashed while a prior startup was still running belong
+                // to the aborted generation, the peer re-acks after the rollback. Keeping them
+                // would let the first checkpoint after the restart complete without a real
+                // acknowledgement from the other substream.
+                _context._earlyDependenciesDone.Clear();
             }
 
             StreamContext.BeforeFailureDisposeForTests?.Invoke(_context.streamName);

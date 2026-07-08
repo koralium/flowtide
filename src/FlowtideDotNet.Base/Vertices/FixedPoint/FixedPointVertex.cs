@@ -77,6 +77,12 @@ namespace FlowtideDotNet.Base.Vertices
         private bool _isHealthy = true;
         private bool _sentLockingEvent;
         private int _targetPrepareCount = 0;
+        // True if any prepare in the current round reported an input still outside the checkpoint.
+        // Every prepare from the round must be counted, not just the last: a loop vertex whose other
+        // input is fed asynchronously (an exchange in distributed mode) reports not-in-checkpoint on
+        // its copy of the prepare, and releasing on a later copy that reads ready would let that
+        // vertex commit its state after the checkpoint was already declared done.
+        private bool _anyOtherInputsNotInCheckpoint;
         private bool singleReadSource;
         private TaskCompletionSource? _pauseSource;
         private IMemoryAllocator? _memoryAllocator;
@@ -178,6 +184,7 @@ namespace FlowtideDotNet.Base.Vertices
             _waitingLockingEvent = ev;
             _messageCountSinceLockingEventPrepare = 0;
             _targetPrepareCount = 0;
+            _anyOtherInputsNotInCheckpoint = false;
             bool isInitEvent = ev is InitWatermarksEvent;
             var prepare = new LockingEventPrepare(ev, isInitEvent);
             _currentPrepareId = prepare.Id;
@@ -233,6 +240,7 @@ namespace FlowtideDotNet.Base.Vertices
             }
 
             _targetPrepareCount++;
+            _anyOtherInputsNotInCheckpoint |= lockingEventPrepare.OtherInputsNotInCheckpoint;
 
             // Wait until all messages have been recieved from the loop
             if (_targetPrepareCount < _loopSource.LinksCount)
@@ -241,8 +249,10 @@ namespace FlowtideDotNet.Base.Vertices
             }
 
             _targetPrepareCount = 0;
+            var anyOtherInputsNotInCheckpoint = _anyOtherInputsNotInCheckpoint;
+            _anyOtherInputsNotInCheckpoint = false;
             // Check that no other messages have been recieved, and that there is no vertex that does not have a depedent input that is not yet in checkpoint.
-            if (_messageCountSinceLockingEventPrepare == 0 && (!lockingEventPrepare.OtherInputsNotInCheckpoint || singleReadSource))
+            if (_messageCountSinceLockingEventPrepare == 0 && (!anyOtherInputsNotInCheckpoint || singleReadSource))
             {
                 if (!_sentLockingEvent)
                 {
