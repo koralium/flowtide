@@ -556,7 +556,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             await _semaphore.WaitAsync(cancellationToken);
             await context.BeginTransactionAsync(cancellationToken);
             // This second call should throw InvalidOperationException
-            var tx2 = await context.BeginTransactionAsync(cancellationToken);
+            await context.BeginTransactionAsync(cancellationToken);
         }
 
         public override IAsyncEnumerable<FlowtideGenericObject<User>> FullLoadAsync()
