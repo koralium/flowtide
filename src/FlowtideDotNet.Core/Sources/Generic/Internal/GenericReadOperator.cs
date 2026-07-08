@@ -213,12 +213,20 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                     {
                         if (cmd.Type == DeltaLoadCommandType.BeginTransaction)
                         {
+                            if (cmd.CompletionSource.Task.IsCanceled)
+                            {
+                                continue;
+                            }
                             await EnterCheckpointLock();
                             checkpointLockHeld = true;
                             cmd.CompletionSource!.SetResult();
                         }
                         else if (cmd.Type == DeltaLoadCommandType.SubmitItem)
                         {
+                            if (cmd.CompletionSource.Task.IsCanceled)
+                            {
+                                continue;
+                            }
                             var ev = cmd.Item!;
                             AppendToColumns(columns, weights, iterations, ev);
                             _tempLookup[ev.Key] = ev.Value;
@@ -254,7 +262,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                             }
                             ExitCheckpointLock();
                             checkpointLockHeld = false;
-                            cmd.CompletionSource!.SetResult();
+                            cmd.CompletionSource!.TrySetResult();
                         }
                     }
                 }
@@ -447,7 +455,8 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             {
                 var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.BeginTransaction, null, tcs), cancellationToken);
-                await tcs.Task.WaitAsync(cancellationToken);
+                using var registration = cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
+                await tcs.Task;
                 return new DeltaLoadTransaction(_channel, cancellationToken);
             }
 
@@ -481,7 +490,8 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                 }
                 var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.SubmitItem, obj, tcs), cancellationToken);
-                await tcs.Task.WaitAsync(cancellationToken);
+                using var registration = cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
+                await tcs.Task;
             }
 
             public async ValueTask DisposeAsync()
@@ -493,7 +503,8 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                     {
                         var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                         await _channel.Writer.WriteAsync(new DeltaLoadCommand(DeltaLoadCommandType.DisposeTransaction, null, tcs), _cancellationToken);
-                        await tcs.Task.WaitAsync(_cancellationToken);
+                        using var registration = _cancellationToken.Register(() => tcs.TrySetCanceled(_cancellationToken));
+                        await tcs.Task;
                     }
                     catch (OperationCanceledException)
                     {
