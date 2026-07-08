@@ -476,7 +476,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             {
                 await _semaphore.WaitAsync(cancellationToken);
 
-                await using var tx = await context.BeginTransactionAsync();
+                await using var tx = await context.BeginTransactionAsync(cancellationToken);
 
                 List<FlowtideGenericObject<User>> localChanges;
                 lock (_changes)
