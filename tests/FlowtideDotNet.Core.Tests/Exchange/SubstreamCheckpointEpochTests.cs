@@ -121,5 +121,96 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             await pointB.SendCheckpointDone(6);
             Assert.Equal(1, Volatile.Read(ref credited));
         }
+
+        /// <summary>
+        /// A handshake announcement from an aborted generation must not regress the peer epoch a
+        /// newer handshake already installed. The pre-failure SendInitializeRequest retry loop
+        /// captures the self epoch once before the loop and survives OnStreamFailure (nothing
+        /// cancels it, it retries with sleeps for up to ~55s), so a late retry re-announces the
+        /// aborted generation's epoch after the restarted generation already announced the
+        /// current one. Installing it regresses the peer's record: every ack the peer sends
+        /// afterwards is tagged with the aborted epoch and dropped by the receive fence, so no
+        /// checkpoint dependency completes again while data keeps flowing - the fetch loop stays
+        /// healthy, so no watchdog ever fires and the stall is permanent and silent.
+        /// </summary>
+        [Fact]
+        public async Task LateHandshakeFromAbortedGenerationDoesNotRegressThePeerEpoch()
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var handlerA = hub.CreateFactory("subA").GetCommunicationHandler("subB", "subA");
+            var handlerB = hub.CreateFactory("subB").GetCommunicationHandler("subA", "subB");
+
+            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA);
+            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB);
+
+            int credited = 0;
+            _ = new SubstreamTarget(1, 1, pointA, () => Interlocked.Increment(ref credited));
+
+            await pointA.InitializeOperator(0);
+            await pointB.InitializeOperator(0);
+
+            // A fails and restarts; the restarted generation re-handshakes, so B now holds A's
+            // current (bumped) epoch.
+            pointA.OnStreamFailure();
+            await pointA.InitializeOperator(0);
+
+            // The aborted generation's handshake retry captured its self epoch (the initial 0)
+            // before the failure and lands late, re-announcing it after the fresh handshake.
+            await handlerA.SendInitializeRequest(0, 0, default);
+
+            // B completes a checkpoint. Its ack must carry A's current epoch and be credited; a
+            // regressed record tags it with the aborted epoch and the fence drops it.
+            await pointB.SendCheckpointDone(5);
+            Assert.Equal(1, Volatile.Read(ref credited));
+        }
+
+        /// <summary>
+        /// The fence must also cover hard restarts - the cross-generation case is its whole
+        /// purpose. A hard crash (process kill, silo loss, grain reactivation) never runs
+        /// OnStreamFailure; the rebuilt stream constructs a brand new communication point whose
+        /// self epoch starts at the same initial value the dead generation announced. An ack
+        /// from the peer that was in flight across the crash carries the dead generation's
+        /// epoch, matches the fresh point's initial epoch, and is credited into the new
+        /// generation - completing a post-restart checkpoint dependency the peer never acked
+        /// for this generation, exactly what RecieveCheckpointDone's drop comment says must not
+        /// happen. The fetch epoch is seeded from the clock so fresh instances never collide;
+        /// the checkpoint epoch needs the same property (or an equivalent guard).
+        /// </summary>
+        [Fact]
+        public async Task AckInFlightAcrossAHardRestartIsNotCreditedToTheNewGeneration()
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var handlerA = hub.CreateFactory("subA").GetCommunicationHandler("subB", "subA");
+            var handlerB = hub.CreateFactory("subB").GetCommunicationHandler("subA", "subB");
+
+            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA);
+            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB);
+
+            // Real handshake: B learns the first generation's epoch, the value it tags acks with.
+            await pointA.InitializeOperator(0);
+            await pointB.InitializeOperator(0);
+
+            // A hard-crashes: no OnStreamFailure runs in a killed process. The host rebuilds the
+            // stream from scratch - a brand new point on the same substream name, as a grain
+            // reactivation does - and messages route to the new instance by name.
+            int credited = 0;
+            var handlerA2 = hub.CreateFactory("subA").GetCommunicationHandler("subB", "subA");
+            var pointA2 = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA2);
+            _ = new SubstreamTarget(1, 1, pointA2, () => Interlocked.Increment(ref credited));
+
+            // B has not learned of the crash; its in-flight ack carries the dead generation's
+            // epoch and is delivered to the new activation.
+            await pointB.SendCheckpointDone(5);
+
+            // The pre-crash ack belongs to a generation whose state was rolled back; crediting it
+            // completes the new generation's first checkpoint dependency without a real ack.
+            Assert.Equal(0, Volatile.Read(ref credited));
+
+            // After B re-handshakes with the new generation its acks must be credited again, the
+            // fence discriminates by generation rather than dropping everything.
+            await pointA2.InitializeOperator(0);
+            await pointB.SendCheckpointDone(6);
+            Assert.Equal(1, Volatile.Read(ref credited));
+        }
     }
 }

@@ -150,7 +150,30 @@ namespace FlowtideDotNet.Orleans.Internal
 
         public async Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
         {
-            var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, Interlocked.Read(ref _fetchEpoch), checkpointEpoch));
+            var announcedEpoch = Interlocked.Read(ref _fetchEpoch);
+            var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch));
+            if (response.RecordedFetchEpoch > announcedEpoch)
+            {
+                // The serving grain holds a higher epoch for this substream than was announced,
+                // recorded by an instance that no longer exists: after a silo failover this
+                // substream can run on a process whose clock-based seed started earlier than the
+                // dead instances, and the +1 drawn per failure never bridges a clock-scale gap.
+                // The refusal is answered as an already reconciled success, so without a
+                // re-announce every fetch would be refused as unknown and the stream would fail
+                // and recover forever. The shared seed is raised above the recorded epoch and the
+                // handshake re-run once with a fresh draw. A genuinely stale (zombie) instance can
+                // reach this path too, but only from its bounded startup retry loop; the live
+                // instance re-announces on every recovery and wins terminally.
+                long seed;
+                do
+                {
+                    seed = Interlocked.Read(ref _epochSeed);
+                } while (seed < response.RecordedFetchEpoch &&
+                         Interlocked.CompareExchange(ref _epochSeed, response.RecordedFetchEpoch, seed) != seed);
+                announcedEpoch = Interlocked.Increment(ref _epochSeed);
+                Interlocked.Exchange(ref _fetchEpoch, announcedEpoch);
+                response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch));
+            }
             return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch);
         }
 

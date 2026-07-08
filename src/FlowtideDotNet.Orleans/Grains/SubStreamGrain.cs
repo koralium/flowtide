@@ -366,25 +366,30 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request)
         {
-            // Fetch epochs come from a monotonically increasing seed, so a newer stream
-            // instance always announces a higher epoch than an abandoned one. A handshake
-            // carrying an older epoch than the one already recorded is therefore a stale
-            // instance, for example one still running on a silo the requestors grain has
-            // moved off of. Installing it would overwrite the live instances announcement and
-            // make every fetch from the live instance mismatch the recorded epoch, fencing
+            // Fetch epochs come from a monotonically increasing per-process seed, so within one
+            // process a newer stream instance always announces a higher epoch than an abandoned
+            // one. A handshake carrying an older epoch than the one already recorded is treated
+            // as a stale instance, for example one still running on a silo the requestors grain
+            // has moved off of. Installing it would overwrite the live instances announcement
+            // and make every fetch from the live instance mismatch the recorded epoch, fencing
             // the healthy consumer out of its own data. The announcement is kept and the
             // stale instance is answered as an already reconciled success: refusing or
             // reporting a version mismatch would drive the live serving stream into a needless
-            // fail over to the abandoned instances restore point. The stale instance stops
-            // once its grain deactivates, or recovers on its own refused fetches, and
-            // re-announces a newer epoch when it comes back.
+            // fail over to the abandoned instances restore point. The seeds are clock-based per
+            // process though, so after a silo failover a LIVE requestor can also land here: its
+            // grain reactivated on a process whose seed started earlier than the dead instances,
+            // and each failure only draws +1 from that seed, which never bridges a clock-scale
+            // gap. The response therefore carries the recorded epoch, so a live requestor can
+            // raise its seed above it and re-run the handshake; a genuinely stale instance dies
+            // with its bounded startup retry loop and cannot keep reclaiming the record, while
+            // the live instance re-announces on every recovery and wins terminally.
             if (_peerFetchEpochs.TryGetValue(request.Requestor, out var recordedEpoch) &&
                 request.FetchEpoch < recordedEpoch)
             {
                 _logger.LogWarning(
                     "Refusing stale initialize handshake from {requestor} with fetch epoch {requestEpoch}, a newer epoch {recordedEpoch} is already announced to this activation.",
                     request.Requestor, request.FetchEpoch, recordedEpoch);
-                return new InitSubstreamResponse(false, true, request.RestorePoint);
+                return new InitSubstreamResponse(false, true, request.RestorePoint, recordedFetchEpoch: recordedEpoch);
             }
 
             // Only fetches from the announced epoch are served, recorded even when the
@@ -393,10 +398,10 @@ namespace FlowtideDotNet.Orleans.Grains
             if (_orleansCommunicationFactory == null ||
                 !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
             {
-                return new InitSubstreamResponse(true, false, request.RestorePoint);
+                return new InitSubstreamResponse(true, false, request.RestorePoint, recordedFetchEpoch: request.FetchEpoch);
             }
             var response = await handler.TargetInitializeRequest(request.RestorePoint, request.CheckpointEpoch);
-            return new InitSubstreamResponse(false, response.Success, response.RestoreVersion, response.CheckpointEpoch);
+            return new InitSubstreamResponse(false, response.Success, response.RestoreVersion, response.CheckpointEpoch, recordedFetchEpoch: request.FetchEpoch);
         }
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)

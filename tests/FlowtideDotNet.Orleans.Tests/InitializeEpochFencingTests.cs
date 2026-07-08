@@ -61,6 +61,66 @@ namespace FlowtideDotNet.Orleans.Tests
             public IAddressable GetGrain(GrainId grainId, GrainInterfaceType interfaceType) => throw new NotImplementedException();
         }
 
+        // Forwards handshakes to the real grain while recording the fetch epoch each one
+        // announced, so a test can compare what a real handler announced against what the
+        // grain ended up recording.
+        private sealed class ForwardingRecordingGrain : ISubStreamGrain
+        {
+            private readonly SubStreamGrain _inner;
+
+            public ForwardingRecordingGrain(SubStreamGrain inner)
+            {
+                _inner = inner;
+            }
+
+            public List<long> AnnouncedFetchEpochs { get; } = new List<long>();
+
+            public Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request)
+            {
+                AnnouncedFetchEpochs.Add(request.FetchEpoch);
+                return _inner.InitializeSubstreamRequest(request);
+            }
+
+            public Task<FetchDataResponse> FetchDataAsync(FetchDataRequest request) => _inner.FetchDataAsync(request);
+            public Task StartStreamAsync(StartStreamMessage startStreamMessage) => _inner.StartStreamAsync(startStreamMessage);
+            public Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request) => _inner.GetEventsAsync(request);
+            public Task FailAndRecoverAsync(FailAndRecoverRequest request) => _inner.FailAndRecoverAsync(request);
+            public Task CheckpointDone(CheckpointDoneRequest request) => _inner.CheckpointDone(request);
+            public Task StopStreamAsync() => _inner.StopStreamAsync();
+            public Task DeleteStreamAsync() => _inner.DeleteStreamAsync();
+            public Task<SubstreamStatus> GetStatusAsync() => _inner.GetStatusAsync();
+        }
+
+        private sealed class SingleGrainFactory : IGrainFactory
+        {
+            private readonly ISubStreamGrain _grain;
+
+            public SingleGrainFactory(ISubStreamGrain grain)
+            {
+                _grain = grain;
+            }
+
+            public TGrainInterface GetGrain<TGrainInterface>(string primaryKey, string? grainClassNamePrefix = null) where TGrainInterface : IGrainWithStringKey
+            {
+                return (TGrainInterface)_grain;
+            }
+
+            public TGrainInterface GetGrain<TGrainInterface>(Guid primaryKey, string? grainClassNamePrefix = null) where TGrainInterface : IGrainWithGuidKey => throw new NotImplementedException();
+            public TGrainInterface GetGrain<TGrainInterface>(long primaryKey, string? grainClassNamePrefix = null) where TGrainInterface : IGrainWithIntegerKey => throw new NotImplementedException();
+            public TGrainInterface GetGrain<TGrainInterface>(Guid primaryKey, string keyExtension, string? grainClassNamePrefix = null) where TGrainInterface : IGrainWithGuidCompoundKey => throw new NotImplementedException();
+            public TGrainInterface GetGrain<TGrainInterface>(long primaryKey, string keyExtension, string? grainClassNamePrefix = null) where TGrainInterface : IGrainWithIntegerCompoundKey => throw new NotImplementedException();
+            public TGrainObserverInterface CreateObjectReference<TGrainObserverInterface>(IGrainObserver obj) where TGrainObserverInterface : IGrainObserver => throw new NotImplementedException();
+            public void DeleteObjectReference<TGrainObserverInterface>(IGrainObserver obj) where TGrainObserverInterface : IGrainObserver => throw new NotImplementedException();
+            public IGrain GetGrain(Type grainInterfaceType, Guid grainPrimaryKey) => throw new NotImplementedException();
+            public IGrain GetGrain(Type grainInterfaceType, long grainPrimaryKey) => throw new NotImplementedException();
+            public IGrain GetGrain(Type grainInterfaceType, string grainPrimaryKey) => throw new NotImplementedException();
+            public IGrain GetGrain(Type grainInterfaceType, Guid grainPrimaryKey, string keyExtension) => throw new NotImplementedException();
+            public IGrain GetGrain(Type grainInterfaceType, long grainPrimaryKey, string keyExtension) => throw new NotImplementedException();
+            public TGrainInterface GetGrain<TGrainInterface>(GrainId grainId) where TGrainInterface : IAddressable => throw new NotImplementedException();
+            public IAddressable GetGrain(GrainId grainId) => throw new NotImplementedException();
+            public IAddressable GetGrain(GrainId grainId, GrainInterfaceType interfaceType) => throw new NotImplementedException();
+        }
+
         // A bare grain instance is enough to drive the handshake handler: it only touches the
         // epoch table and the logger, the stream itself is never started so the other
         // dependencies stay unused.
@@ -155,6 +215,59 @@ namespace FlowtideDotNet.Orleans.Tests
             }
 
             Assert.False(grain.TryGetAnnouncedFetchEpoch(requestor, out _), "A stop must clear the recorded fetch epochs.");
+        }
+
+        /// <summary>
+        /// The guard's assumption "a newer stream instance always announces a higher epoch"
+        /// only holds within one process: the epoch seed is a per-process static initialized
+        /// from the clock. After a silo failover, the requestor's grain reactivates on
+        /// another, longer-running process whose seed started earlier, so the LIVE instance
+        /// announces a LOWER epoch than the dead instance recorded here - and is refused as
+        /// if it were stale, with a success-shaped answer it cannot distinguish from a real
+        /// handshake. Its fetches are then refused as RequestorUnknown, the stall limit fails
+        /// and recovers it, and the recovery draws the next epoch from the same low local
+        /// seed: +1 per failure never bridges a clock-scale gap (~600M ticks per minute of
+        /// process-start difference), while this serving grain keeps the recorded epoch alive
+        /// under its keep-alive reminder. The result is a deterministic, permanent
+        /// fail-and-recover loop for the only live instance.
+        ///
+        /// This pins the guard's own contract ("recovers on its own refused fetches, and
+        /// re-announces a newer epoch when it comes back"): after the live instance's
+        /// recovery handshake, the grain must end up serving the epoch it announced. Note the
+        /// deliberate tension with StaleInitializeDoesNotDisplaceTheLiveEpoch - a zombie's
+        /// announcement must still be refused - so the fix has to make the two cases
+        /// distinguishable rather than pick one.
+        /// </summary>
+        [Fact]
+        public async Task FailedOverInstanceFromAnEarlierSeededProcessIsNotPermanentlyFencedOut()
+        {
+            const string requestor = "peer";
+            var grain = CreateGrain();
+            var recorder = new ForwardingRecordingGrain(grain);
+            var handler = new OrleansCommunicationHandler("stream", "target", requestor, new SingleGrainFactory(recorder));
+
+            // The live instance handshakes once so the test learns its real, seed-drawn epoch.
+            await handler.SendInitializeRequest(0, 0, default);
+            long liveEpoch = recorder.AnnouncedFetchEpochs[0];
+
+            // The dead instance ran on a silo whose process started a day later, so its
+            // clock-seeded announcement is far above anything this process's seed produces.
+            // It is recorded here and survives in grain memory.
+            await grain.InitializeSubstreamRequest(new InitSubstreamRequest(requestor, 0, liveEpoch + TimeSpan.FromDays(1).Ticks));
+
+            // Failover: the live instance's fetches are refused as RequestorUnknown until the
+            // stall limit fails and recovers it. The recovery bumps its epoch off the LOCAL
+            // seed and the restart handshake re-announces it.
+            handler.OnStreamFailure();
+            await handler.SendInitializeRequest(0, 0, default);
+            long reAnnounced = recorder.AnnouncedFetchEpochs[^1];
+
+            Assert.True(grain.TryGetAnnouncedFetchEpoch(requestor, out var recorded));
+            Assert.True(
+                recorded == reAnnounced,
+                $"The grain still records the dead instance's epoch ({recorded}) instead of the live instance's re-announced {reAnnounced}. " +
+                "Every fetch from the only live instance is refused as RequestorUnknown, and each recovery draws +1 from its local process " +
+                "seed which never bridges a clock-seeded gap: the substream is permanently fenced out of its own data after a silo failover.");
         }
     }
 }

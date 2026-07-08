@@ -22,12 +22,13 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class InitSubstreamResponse
     {
-        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0)
+        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedFetchEpoch = 0)
         {
             NotStarted = notStarted;
             Success = success;
             RestoreVersion = restoreVersion;
             CheckpointEpoch = checkpointEpoch;
+            RecordedFetchEpoch = recordedFetchEpoch;
         }
 
         [Id(2)]
@@ -45,5 +46,18 @@ namespace FlowtideDotNet.Orleans.Messages
         /// </summary>
         [Id(3)]
         public long CheckpointEpoch { get; }
+
+        /// <summary>
+        /// The fetch epoch the responding grain has recorded for the requestor after handling this
+        /// handshake. Fetch epochs are drawn from a per-process clock-based seed, so after a silo
+        /// failover a live requestor can announce a lower epoch than its dead predecessor and be
+        /// refused as stale. The refusal is answered as an already reconciled success, so this value
+        /// is the requestor's only way to detect it: when it is higher than the announced epoch, the
+        /// requestor raises its seed above it and re-runs the handshake (see
+        /// OrleansCommunicationHandler.SendInitializeRequest), instead of being permanently fenced
+        /// out of its own data.
+        /// </summary>
+        [Id(4)]
+        public long RecordedFetchEpoch { get; }
     }
 }

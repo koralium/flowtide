@@ -46,11 +46,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private long _targetInitializeVersion = 0;
         private readonly object _initializeLock = new object();
 
-        // Checkpoint epoch, guarded by _initializeLock. Bumped on every failure; the point survives
-        // restarts so it is monotonic. The self epoch is announced through the handshake and recorded
-        // by the peer as its peer epoch. Checkpoint done acks are tagged with the peer epoch, so a
-        // stale ack from before a restart carries an old epoch and is dropped by RecieveCheckpointDone.
-        private long _selfCheckpointEpoch = 0;
+        // Checkpoint epoch, guarded by _initializeLock. Identifies this generation of the point:
+        // the seed starts at the clock so a rebuilt point (hard restart, grain reactivation) never
+        // reuses an epoch a previous generation announced, and every failure draws a fresh value.
+        // The self epoch is announced through the handshake and recorded by the peer as its peer
+        // epoch. Checkpoint done acks are tagged with the peer epoch, so an ack from before a
+        // restart - soft or hard - carries an old epoch and is dropped by RecieveCheckpointDone.
+        private static long _checkpointEpochSeed = DateTime.UtcNow.Ticks;
+        private long _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
         private long _peerCheckpointEpoch = 0;
 
         // Send checkpoint fields
@@ -161,6 +164,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 int tryCount = 0;
                 do
                 {
+                    lock (_initializeLock)
+                    {
+                        if (_selfCheckpointEpoch != selfEpoch)
+                        {
+                            // The stream failed while this handshake was pending, the loop belongs
+                            // to the aborted generation. It must stop announcing its stale epoch,
+                            // a late announcement would regress what the restarted generation's
+                            // own handshake already recorded at the peer, and every ack the peer
+                            // sends afterwards would be dropped as stale.
+                            return;
+                        }
+                    }
                     _logger.LogInformation("Sending initialize request to substream {substreamName} with restore point {restorePoint}, try {tryCount}", substreamName, restorePoint, tryCount);
                     response = await _substreamCommunicationHandler.SendInitializeRequest(restorePoint, selfEpoch, default);
                     tryCount++;
@@ -179,17 +194,31 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             catch
             {
                 // The handshake did not complete, allow it to be retried when the stream
-                // initializes again after the failure.
+                // initializes again after the failure. Only for the generation that started it:
+                // after a failure the handshake flags belong to the restarted generation.
                 lock (_initializeLock)
                 {
-                    _initializedSent = false;
+                    if (_selfCheckpointEpoch == selfEpoch)
+                    {
+                        _initializedSent = false;
+                    }
                 }
                 throw;
             }
 
             lock (_initializeLock)
             {
-                _peerCheckpointEpoch = response.CheckpointEpoch;
+                if (_selfCheckpointEpoch != selfEpoch)
+                {
+                    // The stream failed while the response was in flight, it belongs to the
+                    // aborted generation. Applying it could overwrite the peer epoch that the
+                    // restarted generation's own handshake already recorded.
+                    return;
+                }
+                // Highest wins: a response delayed across the peer's failure must not regress
+                // what a newer handshake already recorded. Peer generations draw from a clock
+                // seed, so the current generation's epoch is always the highest.
+                _peerCheckpointEpoch = Math.Max(_peerCheckpointEpoch, response.CheckpointEpoch);
             }
 
             if (!response.Success)
@@ -238,7 +267,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _initializedSent = false;
                 _initializeRecieved = false;
                 // New generation: acks tagged with the old epoch are now stale and get dropped.
-                _selfCheckpointEpoch++;
+                // Drawn from the shared seed so it never collides with any other generation.
+                _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
             }
             lock (_dataHandledLock)
             {
@@ -255,7 +285,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             long selfEpoch;
             lock (_initializeLock)
             {
-                _peerCheckpointEpoch = peerCheckpointEpoch;
+                // Highest wins: a handshake from an aborted generation can land after the current
+                // generation already announced (a request in flight across the peer's failure).
+                // Applying it would regress the record, and every ack sent afterwards would be
+                // tagged stale and dropped - stalling the peer's checkpoints while data still
+                // flows, so no watchdog would fire. Peer generations draw from a clock seed, so
+                // the current generation's epoch is always the highest.
+                // NOTE: a peer that hard-fails over onto a process whose clock is far behind could
+                // legitimately announce a lower epoch and stay fenced here; the fetch epoch has a
+                // re-seed escape for that case (OrleansCommunicationHandler.SendInitializeRequest),
+                // the checkpoint epoch needs the same escape if that setup ever materializes.
+                _peerCheckpointEpoch = Math.Max(_peerCheckpointEpoch, peerCheckpointEpoch);
                 selfEpoch = _selfCheckpointEpoch;
             }
             lock (_dataHandledLock)
