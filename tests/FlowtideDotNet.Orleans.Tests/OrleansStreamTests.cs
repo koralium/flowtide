@@ -10,8 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Optimizer;
+using FlowtideDotNet.Core.Optimizer.DistributedMode;
 using FlowtideDotNet.Orleans.Interfaces;
 using FlowtideDotNet.Orleans.Messages;
+using FlowtideDotNet.Substrait.Sql;
 
 namespace FlowtideDotNet.Orleans.Tests
 {
@@ -83,6 +86,74 @@ namespace FlowtideDotNet.Orleans.Tests
             var stopTask = streamGrain.StopStreamAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
             Assert.True(finished == stopTask, "Stopping the stream through the stream grain timed out");
+            await stopTask;
+        }
+
+        /// <summary>
+        /// A stream can be started from a user created plan instead of SQL text: the plan is
+        /// serialized into the start request, prepared centrally by the stream grain
+        /// (optimized and split into substreams), and the final distributed plan is sent to
+        /// the substream grains. Without this, plans built through code rather than SQL
+        /// cannot run on Orleans at all.
+        /// </summary>
+        [Fact]
+        public async Task UserCreatedPlanStreamProducesResultsAndStops()
+        {
+            // A user created plan: built through the plan builder API, never passed as SQL
+            // to the grains.
+            var sqlBuilder = new SqlPlanBuilder();
+            sqlBuilder.Sql(JoinSql("plan1"));
+            var plan = sqlBuilder.GetPlan();
+
+            TestTableStore.AddRows("plan1_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("plan1_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_plan_1");
+            await streamGrain.StartStreamAsync(StartStreamRequest.FromPlan(plan, substreamCount: 2));
+
+            var expected = Enumerable.Range(0, 50).Select(x => (long)x).ToList();
+            await WaitForResult("plan1_out", expected, TimeSpan.FromSeconds(60));
+
+            // Data added while the stream is running must flow through the substreams
+            TestTableStore.AddRows("plan1_right", Enumerable.Range(50, 25).Select(x => (long)x));
+            expected = Enumerable.Range(0, 75).Select(x => (long)x).ToList();
+            await WaitForResult("plan1_out", expected, TimeSpan.FromSeconds(60));
+
+            var stopTask = streamGrain.StopStreamAsync();
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping the stream started from a plan timed out");
+            await stopTask;
+        }
+
+        /// <summary>
+        /// A plan the user already optimized and distributed runs exactly as given when
+        /// optimization is turned off: the grains must not re-run the optimizer or the
+        /// distributor over it (the distributor throws on an already distributed plan).
+        /// </summary>
+        [Fact]
+        public async Task PreDistributedUserPlanRunsAsGiven()
+        {
+            var sqlBuilder = new SqlPlanBuilder();
+            sqlBuilder.Sql(JoinSql("plan2"));
+            var plan = PlanOptimizer.Optimize(sqlBuilder.GetPlan(), new PlanOptimizerSettings()
+            {
+                Parallelization = 1,
+                SimplifyProjection = true,
+                DistributedPlanOptions = new DistributedPlanOptions() { SubstreamCount = 2 }
+            });
+
+            TestTableStore.AddRows("plan2_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("plan2_right", Enumerable.Range(0, 30).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_plan_2");
+            await streamGrain.StartStreamAsync(StartStreamRequest.FromPlan(plan, optimizePlan: false));
+
+            var expected = Enumerable.Range(0, 30).Select(x => (long)x).ToList();
+            await WaitForResult("plan2_out", expected, TimeSpan.FromSeconds(60));
+
+            var stopTask = streamGrain.StopStreamAsync();
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "Stopping the pre-distributed plan stream timed out");
             await stopTask;
         }
 

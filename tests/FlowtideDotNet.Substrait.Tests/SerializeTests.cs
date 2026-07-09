@@ -779,6 +779,83 @@ namespace FlowtideDotNet.Substrait.Tests
             AssertPlanCanSerializeDeserialize(plan);
         }
 
+        /// <summary>
+        /// References can point at relations that appear LATER in the plan: the distributed
+        /// plan modifier appends hoisted exchange and lane relations after the sinks that
+        /// consume them. Deserialization must resolve the referenced relation's output length
+        /// even when the reference is visited before its target relation exists, for both
+        /// plain references and exchange output references.
+        /// </summary>
+        [Fact]
+        public void SerializeForwardReferences()
+        {
+            var read = new ReadRelation()
+            {
+                NamedTable = new NamedTable() { Names = new List<string>() { "users" } },
+                BaseSchema = new NamedStruct()
+                {
+                    Names = new List<string>() { "userkey" },
+                    Struct = new Struct()
+                    {
+                        Types = new List<SubstraitBaseType>() { new AnyType() { Nullable = true } }
+                    }
+                }
+            };
+
+            var exchange = new ExchangeRelation()
+            {
+                Input = read,
+                PartitionCount = 2,
+                ExchangeKind = new ScatterExchangeKind()
+                {
+                    Fields = new List<FieldReference>()
+                    {
+                        new DirectFieldReference()
+                        {
+                            ReferenceSegment = new StructReferenceSegment() { Field = 0 }
+                        }
+                    }
+                },
+                Targets = new List<ExchangeTarget>()
+                {
+                    new StandardOutputExchangeTarget() { PartitionIds = new List<int>() { 0 } },
+                    new StandardOutputExchangeTarget() { PartitionIds = new List<int>() { 1 } }
+                }
+            };
+
+            var plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    // Both consumers come FIRST and reference relations that only appear
+                    // later in the plan, the shape the distributed plan modifier produces.
+                    new SubStreamRootRelation()
+                    {
+                        Name = "sub1",
+                        Input = new StandardOutputExchangeReferenceRelation()
+                        {
+                            RelationId = 2,
+                            TargetId = 0,
+                            ReferenceOutputLength = 1
+                        }
+                    },
+                    new SubStreamRootRelation()
+                    {
+                        Name = "sub1",
+                        Input = new ReferenceRelation()
+                        {
+                            RelationId = 3,
+                            ReferenceOutputLength = 1
+                        }
+                    },
+                    new SubStreamRootRelation() { Name = "sub0", Input = exchange },
+                    read
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
         private void AssertPlanCanSerializeDeserialize(Plan plan)
         {
             var json = SubstraitSerializer.SerializeToJson(plan);

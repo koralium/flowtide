@@ -65,6 +65,40 @@ namespace FlowtideDotNet.Orleans.Tests
         }
 
         [Fact]
+        public void StartStreamRequestRoundTripsPlanFields()
+        {
+            var serializer = CreateSerializer();
+            var sqlBuilder = new FlowtideDotNet.Substrait.Sql.SqlPlanBuilder();
+            sqlBuilder.Sql("CREATE TABLE t (val any); INSERT INTO o SELECT val FROM t;");
+            var original = StartStreamRequest.FromPlan(sqlBuilder.GetPlan(), substreamCount: 2, optimizePlan: true);
+
+            var bytes = serializer.SerializeToArray(original);
+            var roundTripped = serializer.Deserialize<StartStreamRequest>(bytes);
+
+            // The plan json is the whole start request for user created plans; a dropped
+            // field would arrive as null and the grain could not start the stream.
+            Assert.Equal(original.PlanJson, roundTripped.PlanJson);
+            Assert.NotNull(roundTripped.PlanJson);
+            Assert.Null(roundTripped.SqlText);
+            Assert.Equal(2, roundTripped.SubstreamCount);
+            Assert.True(roundTripped.OptimizePlan, "StartStreamRequest.OptimizePlan did not survive serialization (missing [Id]).");
+        }
+
+        [Fact]
+        public void StartStreamMessageRoundTripsPlanJson()
+        {
+            var serializer = CreateSerializer();
+            var original = new StartStreamMessage("stream1", "{\"relations\":[]}", "substream_0");
+
+            var bytes = serializer.SerializeToArray(original);
+            var roundTripped = serializer.Deserialize<StartStreamMessage>(bytes);
+
+            Assert.Equal("stream1", roundTripped.StreamName);
+            Assert.Equal("{\"relations\":[]}", roundTripped.PlanJson);
+            Assert.Equal("substream_0", roundTripped.SubstreamName);
+        }
+
+        [Fact]
         public void GetEventsResponseRoundTripsNotStarted()
         {
             var serializer = CreateSerializer();

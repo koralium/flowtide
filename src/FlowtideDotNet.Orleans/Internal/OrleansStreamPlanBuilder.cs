@@ -19,14 +19,12 @@ using FlowtideDotNet.Substrait.Sql;
 namespace FlowtideDotNet.Orleans.Internal
 {
     /// <summary>
-    /// Builds the plan for a stream from its SQL text.
-    ///
-    /// The plan is built independently by the stream grain and by each substream grain
-    /// instead of being sent between grains. Since the SQL compiler, the distributed plan
-    /// modifier and the optimizer are deterministic, every grain computes an identical plan
-    /// as long as the same connectors are registered in every silo.
-    /// This avoids serializing plans between silos and avoids sharing one mutable plan
-    /// instance between substreams in the same silo.
+    /// Builds and optimizes the plan for a stream. The plan is prepared once, centrally, by
+    /// the stream grain - compiled from SQL text using the silo's connectors, or deserialized
+    /// from a user provided plan - and the final distributed plan is then sent serialized to
+    /// every substream grain. Sending the plan instead of SQL lets user created plans run on
+    /// Orleans, and deserialization gives every substream grain its own fresh plan instance,
+    /// which matters because building a stream mutates the plan in place.
     /// </summary>
     internal static class OrleansStreamPlanBuilder
     {
@@ -40,6 +38,11 @@ namespace FlowtideDotNet.Orleans.Internal
             sqlBuilder.Sql(sqlText);
             var plan = sqlBuilder.GetPlan();
 
+            return OptimizePlan(plan, substreamCount);
+        }
+
+        public static Plan OptimizePlan(Plan plan, int? substreamCount)
+        {
             var settings = new PlanOptimizerSettings()
             {
                 Parallelization = 1,

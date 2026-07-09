@@ -46,7 +46,7 @@ Two things must be registered on the silo:
 
 ## Starting and stopping streams
 
-Streams are started and stopped through the stream grain. The grain is keyed by the stream name and only carries the SQL text, every substream grain builds its own plan from it.
+Streams are started and stopped through the stream grain, keyed by the stream name. The plan is prepared once, centrally, by the stream grain — compiled from SQL text with the silo's connectors, or taken from a user created plan — and the final distributed plan is sent serialized to every substream grain.
 
 ```csharp
 var streamGrain = grainFactory.GetGrain<IStreamGrain>("my_stream");
@@ -60,7 +60,19 @@ await streamGrain.StopStreamAsync();
 
 Plans that use [SQL substream statements](sqlsubstreams.md) run one grain per declared substream instead, *substreamCount* can then be omitted.
 
-A started stream keeps running the plan it was started with. Starting the same stream again with the identical request does nothing, starting it with a different SQL text or substream count throws an exception. To deploy a new plan, stop the stream and start it with the new SQL.
+Streams can also be started from a plan built through code instead of SQL:
+
+```csharp
+// The plan is serialized into the request and prepared centrally by the stream grain,
+// by default it runs through the optimizer and is split into the given substream count.
+await streamGrain.StartStreamAsync(StartStreamRequest.FromPlan(plan, substreamCount: 4));
+
+// A plan that is already optimized (or already distributed into substream roots)
+// runs exactly as given.
+await streamGrain.StartStreamAsync(StartStreamRequest.FromPlan(plan, optimizePlan: false));
+```
+
+A started stream keeps running the plan it was started with. Starting the same stream again with the identical request does nothing, starting it with a different plan or substream count throws an exception. To deploy a new plan, stop the stream and start it with the new one.
 
 ## Status
 
@@ -99,7 +111,7 @@ services.AddFlowtideOrleans(connectors => { ... }, (streamName, substreamName, s
     });
 ```
 
-There is also an *AddFlowtideOrleans* overload where the connectors callback receives the stream name, which allows different streams to use different connectors. The callback must return the same connectors for the same stream name, every substream grain builds its plan from them.
+There is also an *AddFlowtideOrleans* overload where the connectors callback receives the stream name, which allows different streams to use different connectors. The callback must return the same connectors for the same stream name; the stream grain compiles SQL with them and every substream grain executes its operators through them.
 
 ## Silo failures
 

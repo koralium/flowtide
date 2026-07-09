@@ -14,6 +14,7 @@ using FlowtideDotNet.Core;
 using FlowtideDotNet.Orleans.Interfaces;
 using FlowtideDotNet.Orleans.Internal;
 using FlowtideDotNet.Orleans.Messages;
+using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
 using Orleans.Runtime;
 using System;
@@ -32,13 +33,23 @@ namespace FlowtideDotNet.Orleans.Grains
 
         /// <summary>
         /// The SQL text the stream was started with, used to reject a start with a changed
-        /// plan while the stream is running.
+        /// plan while the stream is running. Null when the stream was started from a plan.
         /// </summary>
         [Id(1)]
         public string? SqlText { get; set; }
 
         [Id(2)]
         public int? SubstreamCount { get; set; }
+
+        /// <summary>
+        /// The user provided plan the stream was started with, as serialized Substrait JSON.
+        /// Null when the stream was started from SQL text.
+        /// </summary>
+        [Id(3)]
+        public string? PlanJson { get; set; }
+
+        [Id(4)]
+        public bool OptimizePlan { get; set; }
     }
 
     internal class StreamGrain : Grain, IStreamGrain
@@ -56,26 +67,40 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task StartStreamAsync(StartStreamRequest request)
         {
+            if (request.SqlText == null && request.PlanJson == null)
+            {
+                throw new ArgumentException("Either SqlText or PlanJson must be set on the start request.", nameof(request));
+            }
+
             // A started stream keeps the plan it was started with, silently accepting a
             // changed plan would mix substreams running the old and the new plan.
             // Starting again with the identical request is a no-op retry.
-            if (_state.RecordExists && _state.State.SqlText != null)
+            if (_state.RecordExists && (_state.State.SqlText != null || _state.State.PlanJson != null))
             {
                 if (!string.Equals(_state.State.SqlText, request.SqlText, StringComparison.Ordinal) ||
-                    _state.State.SubstreamCount != request.SubstreamCount)
+                    !string.Equals(_state.State.PlanJson, request.PlanJson, StringComparison.Ordinal) ||
+                    _state.State.SubstreamCount != request.SubstreamCount ||
+                    _state.State.OptimizePlan != request.OptimizePlan)
                 {
                     throw new InvalidOperationException(
-                        $"Stream '{this.GetPrimaryKeyString()}' is already started with a different SQL text or substream count. Stop the stream before starting it with a new plan.");
+                        $"Stream '{this.GetPrimaryKeyString()}' is already started with a different plan or substream count. Stop the stream before starting it with a new plan.");
                 }
             }
 
-            var substreams = GetSubstreamNames(request.SqlText, request.SubstreamCount);
+            // The plan is prepared once, centrally: compiled from SQL with the silo's
+            // connectors, or deserialized from a user provided plan. The substream grains get
+            // the final distributed plan serialized, they never build plans themselves.
+            var plan = BuildPlan(request);
+            var planJson = SubstraitSerializer.SerializeToJson(plan);
+            var substreams = GetSubstreamNames(plan);
 
             // The started set is persisted before the substream grains start, a stop uses
             // only this set. A missed substream grain would keep running forever, restarted
             // by its keep alive reminder with no way left to stop it.
             _state.State.SqlText = request.SqlText;
+            _state.State.PlanJson = request.PlanJson;
             _state.State.SubstreamCount = request.SubstreamCount;
+            _state.State.OptimizePlan = request.OptimizePlan;
             foreach (var substream in substreams)
             {
                 if (!_state.State.StartedSubstreams.Contains(substream))
@@ -90,10 +115,27 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 var substreamKey = SubStreamGrainKey.Create(this.GetPrimaryKeyString(), substream);
                 var substreamGrain = GrainFactory.GetGrain<ISubStreamGrain>(substreamKey);
-                startTasks.Add(substreamGrain.StartStreamAsync(new StartStreamMessage(this.GetPrimaryKeyString(), request.SqlText, substream, request.SubstreamCount)));
+                startTasks.Add(substreamGrain.StartStreamAsync(new StartStreamMessage(this.GetPrimaryKeyString(), planJson, substream)));
             }
 
             await Task.WhenAll(startTasks);
+        }
+
+        private Plan BuildPlan(StartStreamRequest request)
+        {
+            if (request.PlanJson != null)
+            {
+                var plan = new SubstraitDeserializer().Deserialize(request.PlanJson);
+                if (request.OptimizePlan)
+                {
+                    return OrleansStreamPlanBuilder.OptimizePlan(plan, request.SubstreamCount);
+                }
+                // The user optimized (and possibly distributed) the plan themselves, it runs
+                // exactly as given. The distributor throws on an already distributed plan, so
+                // pre-distributed plans must come through this path.
+                return plan;
+            }
+            return OrleansStreamPlanBuilder.BuildPlan(connectorManagerFactory.Create(this.GetPrimaryKeyString()), request.SqlText!, request.SubstreamCount);
         }
 
         public async Task StopStreamAsync()
@@ -163,12 +205,8 @@ namespace FlowtideDotNet.Orleans.Grains
             return response;
         }
 
-        private HashSet<string> GetSubstreamNames(string sqlText, int? substreamCount)
+        private static HashSet<string> GetSubstreamNames(Plan plan)
         {
-            // The plan is only built here to find the substream names, each substream grain
-            // builds its own plan from the SQL text.
-            var plan = OrleansStreamPlanBuilder.BuildPlan(connectorManagerFactory.Create(this.GetPrimaryKeyString()), sqlText, substreamCount);
-
             HashSet<string> substreams = new HashSet<string>();
 
             // Find out the different substreams

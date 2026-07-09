@@ -22,7 +22,14 @@ using Protobuf = Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait
 {
-    internal class SubstraitSerializer
+    /// <summary>
+    /// Serializes a <see cref="Plan"/> into the Substrait protobuf format or its JSON
+    /// representation, the counterpart of <see cref="SubstraitDeserializer"/>. A serialized
+    /// plan is how plans travel between processes, for example to Orleans grains, and a
+    /// deserialization always produces a fresh plan instance, which matters because building
+    /// a stream mutates the plan in place.
+    /// </summary>
+    public class SubstraitSerializer
     {
         private sealed class SerializerVisitorState
         {

@@ -20,11 +20,14 @@ namespace FlowtideDotNet.Orleans.Messages
         public string StreamName { get; }
 
         /// <summary>
-        /// The SQL text of the stream. Each substream grain builds the plan from the SQL text
-        /// itself, plans are never sent between grains.
+        /// The final distributed plan as serialized Substrait JSON. The plan is prepared once,
+        /// centrally, by the stream grain - from SQL text or from a user provided plan - so
+        /// every substream grain runs the exact same plan. Each grain deserializes its own
+        /// instance, building a stream mutates the plan in place so an instance must never be
+        /// shared.
         /// </summary>
         [Id(2)]
-        public string SqlText { get; }
+        public string PlanJson { get; }
 
         /// <summary>
         /// Name of the substream to start
@@ -33,19 +36,14 @@ namespace FlowtideDotNet.Orleans.Messages
         [Id(3)]
         public string? SubstreamName { get; }
 
-        /// <summary>
-        /// If set, the plan is split automatically into this many substreams when the SQL text
-        /// does not contain substream statements.
-        /// </summary>
-        [Id(4)]
-        public int? SubstreamCount { get; }
+        // Id(4) retired: was the substream count, used when substream grains rebuilt the plan
+        // from SQL text themselves. The plan arrives already distributed now.
 
-        public StartStreamMessage(string streamName, string sqlText, string? substreamName, int? substreamCount = null)
+        public StartStreamMessage(string streamName, string planJson, string? substreamName)
         {
             StreamName = streamName;
-            SqlText = sqlText;
+            PlanJson = planJson;
             SubstreamName = substreamName;
-            SubstreamCount = substreamCount;
         }
     }
 }

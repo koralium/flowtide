@@ -677,6 +677,10 @@ namespace FlowtideDotNet.Substrait
                 _relations = new List<Relation>();
             }
 
+            // Reference output lengths that could not be resolved while deserializing because
+            // the referenced relation appears later in the plan, see SetReferenceOutputLength.
+            private readonly List<(int RelationId, Action<int> Apply)> _pendingReferenceOutputLengths = new List<(int, Action<int>)>();
+
             public Plan Convert()
             {
                 return VisitPlan(plan);
@@ -692,7 +696,36 @@ namespace FlowtideDotNet.Substrait
                 {
                     output.Relations.Add(VisitPlanRel(relation));
                 }
+                // Applied in reverse registration order so a chain of forward references
+                // resolves the deepest reference first, its consumer then reads an output
+                // length that is already patched.
+                for (int i = _pendingReferenceOutputLengths.Count - 1; i >= 0; i--)
+                {
+                    var (relationId, apply) = _pendingReferenceOutputLengths[i];
+                    if (relationId < 0 || relationId >= _relations.Count)
+                    {
+                        throw new InvalidOperationException($"A reference relation points at relation {relationId} which does not exist in the plan.");
+                    }
+                    apply(_relations[relationId].OutputLength);
+                }
                 return output;
+            }
+
+            /// <summary>
+            /// Resolves the output length of a referenced top level relation. A reference can
+            /// point at a relation that appears later in the plan - the distributed plan
+            /// modifier appends hoisted exchange and lane relations after the sinks that
+            /// consume them - so when the referenced relation has not been deserialized yet
+            /// the assignment is deferred until every relation exists.
+            /// </summary>
+            private void SetReferenceOutputLength(int relationId, Action<int> apply)
+            {
+                if (relationId >= 0 && relationId < _relations.Count)
+                {
+                    apply(_relations[relationId].OutputLength);
+                    return;
+                }
+                _pendingReferenceOutputLengths.Add((relationId, apply));
             }
 
             private Relation VisitPlanRel(Protobuf.PlanRel planRel)
@@ -1069,11 +1102,12 @@ namespace FlowtideDotNet.Substrait
 
             private Relation VisitReference(Protobuf.ReferenceRel referenceRel)
             {
-                return new ReferenceRelation()
+                var reference = new ReferenceRelation()
                 {
-                    RelationId = referenceRel.SubtreeOrdinal,
-                    ReferenceOutputLength = _relations[referenceRel.SubtreeOrdinal].OutputLength
+                    RelationId = referenceRel.SubtreeOrdinal
                 };
+                SetReferenceOutputLength(reference.RelationId, length => reference.ReferenceOutputLength = length);
+                return reference;
             }
 
             private Relation VisitExtensionMulti(Protobuf.ExtensionMultiRel extensionMulti)
@@ -1196,9 +1230,9 @@ namespace FlowtideDotNet.Substrait
                     var rel = new StandardOutputExchangeReferenceRelation()
                     {
                         RelationId = standardOutputRef.RelationId,
-                        TargetId = standardOutputRef.TargetId,
-                        ReferenceOutputLength = _relations[standardOutputRef.RelationId].OutputLength
+                        TargetId = standardOutputRef.TargetId
                     };
+                    SetReferenceOutputLength(rel.RelationId, length => rel.ReferenceOutputLength = length);
                     return rel;
                 }
                 else if (typeName == CustomProtobuf.SubstreamExchangeReferenceRelation.Descriptor.FullName)

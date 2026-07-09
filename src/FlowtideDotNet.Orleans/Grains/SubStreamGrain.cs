@@ -18,6 +18,7 @@ using FlowtideDotNet.DependencyInjection;
 using FlowtideDotNet.Orleans.Interfaces;
 using FlowtideDotNet.Orleans.Internal;
 using FlowtideDotNet.Orleans.Messages;
+using FlowtideDotNet.Substrait;
 using Microsoft.Extensions.Logging;
 using Orleans.Runtime;
 using FlowtideDotNet.DependencyInjection.Internal;
@@ -452,23 +453,21 @@ namespace FlowtideDotNet.Orleans.Grains
             }
             if (_state.RecordExists)
             {
-                // The stream grain already rejects a changed plan, but a direct start with
-                // different SQL must not be silently ignored either.
-                if (!string.Equals(_state.State.SqlText, startStreamMessage.SqlText, StringComparison.Ordinal) ||
-                    _state.State.SubstreamCount != startStreamMessage.SubstreamCount)
+                // The stream grain already rejects a changed plan, but a direct start with a
+                // different plan must not be silently ignored either.
+                if (!string.Equals(_state.State.PlanJson, startStreamMessage.PlanJson, StringComparison.Ordinal))
                 {
                     throw new InvalidOperationException(
-                        $"Substream '{this.GetPrimaryKeyString()}' is already started with a different SQL text or substream count. Stop the stream before starting it with a new plan.");
+                        $"Substream '{this.GetPrimaryKeyString()}' is already started with a different plan. Stop the stream before starting it with a new plan.");
                 }
                 // Same plan, make sure the stream is running
                 StartStream();
                 return;
             }
 
-            _state.State.SqlText = startStreamMessage.SqlText;
+            _state.State.PlanJson = startStreamMessage.PlanJson;
             _state.State.StreamName = startStreamMessage.StreamName;
             _state.State.SubstreamName = startStreamMessage.SubstreamName;
-            _state.State.SubstreamCount = startStreamMessage.SubstreamCount;
             await _state.WriteStateAsync();
 
             // One minute is the smallest period Orleans reminders allow
@@ -480,7 +479,7 @@ namespace FlowtideDotNet.Orleans.Grains
         private void StartStream()
         {
             if (_stream != null || _teardownTask != null ||
-                _state.State.StreamName == null || _state.State.SqlText == null || _state.State.SubstreamName == null)
+                _state.State.StreamName == null || _state.State.PlanJson == null || _state.State.SubstreamName == null)
             {
                 return;
             }
@@ -496,9 +495,12 @@ namespace FlowtideDotNet.Orleans.Grains
 
             var stateManagerOptions = storageBuild.Build(serviceCollection.BuildServiceProvider());
 
-            // The plan builder is deterministic so all substream grains compute an identical plan
+            // The plan was prepared centrally by the stream grain, every substream grain runs
+            // the exact same plan. Each build deserializes its own fresh instance: building a
+            // stream mutates the plan in place, so an instance must never be shared between
+            // substreams or reused across builds.
             var connectorManager = _connectorManagerFactory.Create(_state.State.StreamName);
-            var plan = OrleansStreamPlanBuilder.BuildPlan(connectorManager, _state.State.SqlText, _state.State.SubstreamCount);
+            var plan = new SubstraitDeserializer().Deserialize(_state.State.PlanJson);
 
             FlowtideBuilder flowtideBuilder = new FlowtideBuilder(this.GetPrimaryKeyString());
             flowtideBuilder.AddPlan(plan, false);

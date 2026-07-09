@@ -18,11 +18,8 @@ namespace FlowtideDotNet.Orleans.Grains
         [Id(1)]
         public string? StreamName { get; set; }
 
-        /// <summary>
-        /// The SQL text of the stream, the plan is rebuilt from the SQL text when the grain activates.
-        /// </summary>
-        [Id(2)]
-        public string? SqlText { get; set; }
+        // Id(2) retired: was the SQL text, from when substream grains rebuilt plans from SQL
+        // themselves. Id(4) retired: was the substream count used by that rebuild.
 
         /// <summary>
         /// Name of the substream to start
@@ -32,10 +29,12 @@ namespace FlowtideDotNet.Orleans.Grains
         public string? SubstreamName { get; set; }
 
         /// <summary>
-        /// If set, the plan is split automatically into this many substreams when the SQL text
-        /// does not contain substream statements.
+        /// The final distributed plan as serialized Substrait JSON, prepared centrally by the
+        /// stream grain. The plan is deserialized fresh whenever the stream is built - after
+        /// a grain activation or a keep alive restart - since building a stream mutates the
+        /// plan instance in place.
         /// </summary>
-        [Id(4)]
-        public int? SubstreamCount { get; set; }
+        [Id(5)]
+        public string? PlanJson { get; set; }
     }
 }
