@@ -174,7 +174,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             Debug.Assert(_state != null);
             await _state.Commit();
-            _peerStopConsumedCommitted = _peerStopConsumed;
+            // Under _lock so this read-and-set is atomic against the resets in
+            // InitializeOrRestore and ResumeAfterPeerReconnect: a returning peer's reconnect
+            // resets these on a grain turn while this runs on the fetch loop, and a lost
+            // reset would leave a stale committed flag that stamps an outgoing ack as covering
+            // a stop barrier this stream has not actually consumed.
+            lock (_lock)
+            {
+                _peerStopConsumedCommitted = _peerStopConsumed;
+            }
         }
 
         protected override Task SendInitial(IngressOutput<StreamEventBatch> output)

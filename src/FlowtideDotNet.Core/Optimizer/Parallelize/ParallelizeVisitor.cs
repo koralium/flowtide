@@ -129,7 +129,11 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
         public override Relation VisitAggregateRelation(AggregateRelation aggregateRelation, object state)
         {
             Debug.Assert(_plan != null);
-            if (parallelCount < 2 || (aggregateRelation.Groupings == null || aggregateRelation.Groupings.Count < 1))
+            // Only a single grouping set is parallelized. Multiple sets (GROUPING SETS,
+            // ROLLUP, CUBE) have no single column set that co-locates every group -
+            // scattering on the union of all sets splits an individual set's groups across
+            // partitions and gives wrong aggregates - so they run unparallelized.
+            if (parallelCount < 2 || aggregateRelation.Groupings == null || aggregateRelation.Groupings.Count != 1)
             {
                 aggregateRelation.Input = Visit(aggregateRelation.Input, state);
                 return aggregateRelation;

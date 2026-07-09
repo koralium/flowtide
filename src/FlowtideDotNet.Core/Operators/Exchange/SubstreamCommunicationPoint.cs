@@ -724,7 +724,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             // used by a stopping peer to confirm its drain. Every read operator's OnCheckpoint
             // ran before any CheckpointDone fires, so the flags are final for this version.
             // Vacuously true without read operators: the peer only checks the flag on targets,
-            // and its targets always pair with read operators here.
+            // and a target here is always paired with a read operator on the peer.
             bool coversPeerStopBarrier;
             lock (_readOperators)
             {
