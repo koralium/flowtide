@@ -68,10 +68,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         /// <param name="restoreVersion">The version this substream restored to.</param>
         /// <param name="checkpointEpoch">This substreams current checkpoint epoch.</param>
-        /// <param name="cleanHandoff">True when this substream resumes from a clean handoff stop
-        /// (a planned migration): everything it consumed was committed and its queues were frozen
-        /// at the final barrier, so the other substream can accept the reconnect without rolling
-        /// back.</param>
+        /// <param name="cleanHandoff">This substream resumes from a clean handoff stop (a planned
+        /// migration), so the other substream can accept the reconnect without rolling back.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken);
 

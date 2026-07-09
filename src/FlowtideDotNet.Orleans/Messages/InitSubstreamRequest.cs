@@ -53,9 +53,8 @@ namespace FlowtideDotNet.Orleans.Messages
         public long CheckpointEpoch { get; }
 
         /// <summary>
-        /// True when the requestor resumes from a clean handoff stop, for example a planned
-        /// grain migration: everything it consumed was committed and its queues were frozen at
-        /// the final barrier. The receiver can then accept the reconnect without rolling back.
+        /// The requestor resumes from a clean handoff stop (e.g. a planned grain migration),
+        /// so the receiver can accept the reconnect without rolling back.
         /// </summary>
         [Id(4)]
         public bool CleanHandoff { get; }

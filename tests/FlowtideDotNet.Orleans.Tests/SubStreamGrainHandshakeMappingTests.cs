@@ -22,12 +22,10 @@ namespace FlowtideDotNet.Orleans.Tests
 {
     /// <summary>
     /// The substream grain wraps the communication point's handshake response into the wire
-    /// message. Every field must survive that mapping - the local in-process hub passes the
-    /// response object through by reference, so a field dropped here is invisible to all
-    /// non-Orleans tests and only shows up as rare cross-grain misbehavior. NotStarted in
-    /// particular drives the requestor's retry-with-backoff: mapped to a plain failure it
-    /// makes the requestor fail and recover instead, which turned a clean migration handoff
-    /// into a rollback of both substreams before this was pinned.
+    /// message. Every field must survive that mapping - the local hub passes the response by
+    /// reference, so a dropped field only shows up as rare cross-grain misbehavior. NotStarted
+    /// mapped to a plain failure makes the requestor fail over instead of retrying, rolling
+    /// back both substreams during what should be a clean handoff.
     /// </summary>
     public class SubStreamGrainHandshakeMappingTests
     {

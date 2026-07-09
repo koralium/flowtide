@@ -30,23 +30,18 @@ using System.Diagnostics;
 namespace FlowtideDotNet.AcceptanceTests.Distributed
 {
     /// <summary>
-    /// Protocol tests for the clean handoff a planned migration uses: one substream stops
-    /// through the handoff drain and a new instance restores its final checkpoint and
-    /// reconnects announcing the handoff. Runs the real streams over the local hub, so the
-    /// whole handshake, drain and resume path is exercised without an Orleans cluster. The
-    /// substream is rebuilt as a fresh stream instance over the same hub and storage, which
-    /// is exactly what a grain activation moving to another silo does.
+    /// Protocol tests for the clean handoff a planned migration uses. Runs the real streams
+    /// over the local hub without an Orleans cluster; rebuilding a substream over the same hub
+    /// and storage is what a grain activation moving to another silo does.
     /// </summary>
     public class DistributedCleanHandoffTests : IAsyncLifetime
     {
         private record UserKeyRow(long UserKey);
 
         /// <summary>
-        /// A memory file provider whose contents survive the owning storage being disposed.
-        /// The reservoir storage disposes its file provider with the stream, and the base
-        /// provider clears everything on dispose - durable storage (local disk, blob) keeps
-        /// its files, which is what the handoff's restart relies on. Relisting the interface
-        /// remaps its Dispose to the no-op here.
+        /// A memory file provider whose contents survive the owning storage being disposed,
+        /// so a rebuilt substream restores what its predecessor persisted, like durable
+        /// storage. Relisting the interface remaps its Dispose to the no-op here.
         /// </summary>
         private sealed class KeepAliveMemoryFileProvider : MemoryFileProvider, Storage.Persistence.Reservoir.IReservoirStorageProvider
         {
@@ -201,11 +196,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         /// <summary>
         /// A handoff that begins while checkpoints are in flight must neither wedge the stop
-        /// nor roll anything back: once the drain unsubscribes the readers no peer event will
-        /// ever arrive to pair a stored local checkpoint with, so it must be self-forwarded
-        /// like a stop checkpoint - left waiting it defers the stop until its watchdog fails
-        /// the stream. Checkpoints are triggered on both substreams right before each drain
-        /// and the handoff runs several rounds to widen the race window.
+        /// nor roll anything back: a checkpoint stored when the drain unsubscribes the readers
+        /// has no peer event left to pair with and must be self-forwarded, else it defers the
+        /// stop until the watchdog fails the stream. Runs several rounds to widen the window.
         /// </summary>
         [Fact]
         public async Task HandoffWithCheckpointsInFlightResumesWithoutAnyRollback()
@@ -261,11 +254,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// The safety fence of the clean handoff: a reconnect that announces the handoff but
-        /// restored OLDER (here: no) state must be refused, the peer consumed data that state
-        /// does not cover. The stream falls back to the normal coordinated recovery and the
-        /// data is regenerated, so the result stays complete. This case cannot be reached
-        /// with durable storage in the Orleans tests, only a unit-level state loss shows it.
+        /// The safety fence: a reconnect that announces the handoff but restored older (here:
+        /// no) state must be refused and fall back to coordinated recovery, so the result
+        /// stays complete. Only reachable with state loss, not with the durable Orleans tests.
         /// </summary>
         [Fact]
         public async Task CleanHandoffAnnouncedWithLostStateFallsBackToRecovery()

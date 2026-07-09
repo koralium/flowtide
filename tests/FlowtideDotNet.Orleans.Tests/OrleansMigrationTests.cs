@@ -17,12 +17,9 @@ using FlowtideDotNet.Orleans.Messages;
 namespace FlowtideDotNet.Orleans.Tests
 {
     /// <summary>
-    /// A substream grain can be asked to migrate to another silo, which is what the runtime's
-    /// activation rebalancing does to spread load. A migration is a planned, cooperative event
-    /// while every silo is healthy - unlike a crash - so the stream must react to it without
-    /// going through the crash recovery path: no substream should be failed and rolled back
-    /// because a peer moved. Uses the durable storage fixture: the moved activation restores
-    /// the state its predecessor persisted, without it a handoff has nothing to resume from.
+    /// A substream grain can migrate to another silo (activation rebalancing). Being planned
+    /// and cooperative, unlike a crash, no substream may be failed and rolled back because a
+    /// peer moved. Uses the durable storage fixture so the moved activation has state to resume.
     /// </summary>
     public class OrleansMigrationTests : IClassFixture<OrleansTwoSiloDurableStorageClusterFixture>
     {
@@ -191,10 +188,9 @@ namespace FlowtideDotNet.Orleans.Tests
         }
 
         /// <summary>
-        /// With three substreams the migrating grain hands off against TWO peers at once:
-        /// both must consume its stop barrier before it stops, and both must independently
-        /// verify and accept the clean reconnect. Also exercises the per-peer ack bookkeeping
-        /// (acks are credited per target) together with the handoff.
+        /// With three substreams the migrating grain hands off against two peers at once: both
+        /// must consume its stop barrier and both independently verify and accept the reconnect,
+        /// exercising the per-target ack bookkeeping alongside the handoff.
         /// </summary>
         [Fact]
         public async Task MigratingASubstreamGrainWithThreeSubstreamsDoesNotFailTheStream()

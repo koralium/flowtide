@@ -71,10 +71,9 @@ namespace FlowtideDotNet.Orleans.Tests
         }
 
         /// <summary>
-        /// Stream state storage that survives grain deactivation, like the durable storage a
-        /// production deployment uses. In memory and shared across the silos of the in
-        /// process test cluster, so an activation moved to another silo restores the state
-        /// its predecessor persisted, which is what a planned migration handoff relies on.
+        /// Stream state storage that survives grain deactivation, like a production deployment.
+        /// In memory but shared across the cluster's silos, so an activation moved to another
+        /// silo restores its predecessor's state, which a planned migration handoff relies on.
         /// </summary>
         private sealed class DurableStorageSiloConfigurator : ISiloConfigurator
         {
@@ -90,22 +89,17 @@ namespace FlowtideDotNet.Orleans.Tests
                         FileProvider = provider
                     }));
                     storage.ZstdPageCompression();
-                    // The production default: the tests on this fixture stop coordinated (a
-                    // migration handoff drains against a live peer, the final stop drains
-                    // both substreams together), so the drain completes on its own. A short
-                    // timeout would instead fail a stop that is merely slow under the
-                    // parallel test load, turning a clean handoff into a rollback.
+                    // The production default: tests here stop coordinated so the drain
+                    // completes on its own. A short timeout would fail a merely-slow stop under
+                    // parallel load and turn a clean handoff into a rollback.
                 }, stopDrainTimeout: TimeSpan.FromSeconds(30));
             }
         }
 
         /// <summary>
-        /// A memory file provider whose contents survive the owning storage being disposed.
-        /// The reservoir storage disposes its file provider when the stream is disposed, and
-        /// the base provider clears everything on dispose - a durable provider (local disk,
-        /// blob) keeps its files, which is the behavior a handoff between grain activations
-        /// needs. Relisting the interface remaps its Dispose to the no-op here, the reservoir
-        /// storage only calls it through the interface.
+        /// A memory file provider whose contents survive the owning storage being disposed, so
+        /// a migrated activation restores what its predecessor persisted, like durable storage.
+        /// Relisting the interface remaps its Dispose (called only through it) to the no-op here.
         /// </summary>
         private sealed class KeepAliveMemoryFileProvider : MemoryFileProvider, IReservoirStorageProvider
         {
@@ -187,10 +181,9 @@ namespace FlowtideDotNet.Orleans.Tests
     }
 
     /// <summary>
-    /// Two silo cluster whose stream state storage survives grain deactivation, like the
-    /// durable storage of a production deployment. Used by tests that move activations
-    /// between silos and rely on the new activation restoring the persisted state, which
-    /// the throwaway temporary storage of the other fixtures never provides.
+    /// Two silo cluster whose stream state storage survives grain deactivation. Used by tests
+    /// that move activations between silos and rely on the new activation restoring the state,
+    /// which the throwaway storage of the other fixtures never provides.
     /// </summary>
     public sealed class OrleansTwoSiloDurableStorageClusterFixture : OrleansClusterFixtureBase
     {

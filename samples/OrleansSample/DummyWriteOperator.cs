@@ -69,10 +69,6 @@ namespace SqlSampleWithUI
 
         protected override Task OnRecieve(StreamEventBatch msg, long time)
         {
-            //if (StreamName == "stream2")
-            //{
-            //    throw new InvalidOperationException();
-            //}
             return Task.CompletedTask;
         }
     }

@@ -762,17 +762,16 @@ namespace FlowtideDotNet.Base.Vertices
         public virtual bool ReadyToStop => true;
 
         /// <summary>
-        /// First phase of preparing a planned handoff stop: stop taking in new external
-        /// input while the stream keeps running. Overridden by ingress vertices that read
-        /// from other substreams. Default no-op.
+        /// First phase of a planned handoff stop: stop taking in new external input while the
+        /// stream keeps running. Overridden by substream read vertices. Default no-op.
         /// </summary>
         public virtual void BeginHandoffDrain()
         {
         }
 
         /// <summary>
-        /// Second phase of preparing a planned handoff stop: completes when input taken in
-        /// before <see cref="BeginHandoffDrain"/> has drained into the pipeline. Default no-op.
+        /// Second phase of a planned handoff stop: completes when input taken before
+        /// <see cref="BeginHandoffDrain"/> has drained into the pipeline. Default no-op.
         /// </summary>
         public virtual Task CompleteHandoffDrainAsync()
         {

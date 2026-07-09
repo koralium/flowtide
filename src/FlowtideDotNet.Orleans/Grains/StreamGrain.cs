@@ -180,18 +180,14 @@ namespace FlowtideDotNet.Orleans.Grains
         }
 
         /// <summary>
-        /// A stop or delete can legitimately execute longer than one grain response timeout,
-        /// for example while a slow teardown drains under load. Both calls are idempotent on
-        /// the substream grain - a repeated call joins the teardown already in progress - so
-        /// the coordination retries a timed out call instead of failing the whole operation
-        /// while the substream is still working on it.
+        /// Retries a substream stop or delete that timed out. Both are idempotent (a repeated
+        /// call joins the teardown already in progress), so a teardown running slightly past
+        /// one response timeout is retried rather than failing the whole operation.
         /// </summary>
         private async Task CallWithTimeoutRetry(Func<Task> call, string operation, string substream)
         {
-            // Bounded low: this grain is not reentrant, so time spent retrying here keeps the
-            // callers own retry queued behind it. The retries only need to cover a substream
-            // teardown that runs slightly past one response timeout, a caller with a larger
-            // budget retries the whole idempotent call.
+            // Bounded low: this grain is not reentrant, so retrying here queues the caller's
+            // own retry behind it; a caller with a larger budget retries the idempotent call.
             const int maxAttempts = 3;
             for (int attempt = 1; ; attempt++)
             {

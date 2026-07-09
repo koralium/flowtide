@@ -546,10 +546,8 @@ namespace FlowtideDotNet.Orleans.Tests
                 await Task.Delay(100);
             }
 
-            // A stream whose substreams never started must still stop cleanly. The stop can
-            // exceed a single grain response timeout while a failing start's teardown drains
-            // under parallel test load; the call is idempotent, so it is retried within the
-            // deadline instead of failing on the first timed out call.
+            // A stream whose substreams never started must still stop cleanly. The stop is
+            // idempotent, so retry a timeout (a slow teardown under parallel load) within the deadline.
             var stopDeadline = DateTime.UtcNow.AddSeconds(60);
             while (true)
             {

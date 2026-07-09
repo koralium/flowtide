@@ -26,11 +26,9 @@ namespace FlowtideDotNet.Core.Engine
         public string SubstreamName { get; }
 
         /// <summary>
-        /// True when this substream resumes from a clean handoff stop, for example after a
-        /// planned grain migration: the previous instance committed everything it consumed and
-        /// froze its queues at a final barrier before stopping. The initialize handshake then
-        /// announces the clean handoff so the other substreams accept the reconnect without
-        /// rolling back. One-shot, applies to the next start only.
+        /// This substream resumes from a clean handoff stop (e.g. a grain migration): the
+        /// initialize handshake announces it so the other substreams accept the reconnect
+        /// without rolling back. One-shot, applies to the next start only.
         /// </summary>
         public bool AnnounceCleanHandoff { get; set; }
 

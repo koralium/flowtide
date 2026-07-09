@@ -56,10 +56,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public long RecordedCheckpointEpoch { get; }
 
         /// <summary>
-        /// True when the responder accepted the requestors clean handoff reconnect: it kept
-        /// running, did not roll back, and resumed serving and consuming where the handoff
-        /// stopped. The requestor then completes its own startup from restored state instead
-        /// of waiting for the responder to restart.
+        /// The responder accepted the requestors clean handoff reconnect and kept running. The
+        /// requestor then completes startup from restored state instead of waiting for a restart.
         /// </summary>
         public bool CleanReconnect { get; }
     }

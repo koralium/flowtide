@@ -60,12 +60,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private long _lastSentCheckpointVersion;
         private readonly object _sendCheckpointLock = new object();
 
-        // Highest committed checkpoint version the peer has acked, in the peer's own version
-        // numbering, -1 while none. Baselined to the peer's restore point at every accepted
-        // handshake (a rollback rewinds the peer's numbering) and raised by every ack that
-        // passes the epoch fence. A clean handoff reconnect is verified against it: the
-        // returning peer must announce a restore point at or past its last acked commit,
-        // proving it restored the final state its stop drain persisted.
+        // Highest checkpoint version the peer has acked (its own numbering), -1 while none.
+        // A clean handoff reconnect must announce a restore point at or past it. Reset on rollback.
         private long _peerLastCommittedVersion = -1;
 
         private class TargetInfo
@@ -83,15 +79,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         internal ILogger Logger => _logger;
 
-        // True when this substream resumes from a clean handoff stop and announces it in the
-        // handshake, one-shot: cleared once a handshake response arrives. A later handshake
-        // (after an internal failure and rollback) is not a clean resume anymore, its state
-        // no longer matches where the handoff stopped.
+        // Announces a clean handoff resume in the next handshake. One-shot: cleared once a
+        // response arrives, a later handshake (after a rollback) is no longer a clean resume.
         private bool _announceCleanHandoff;
 
-        // True when the peer accepted this substreams clean handoff reconnect: it kept running
-        // and did not roll back. Read operators then complete their startup from restored state
-        // instead of waiting for an init watermarks event from a peer restart that never comes.
+        // The peer accepted this substreams clean handoff reconnect and kept running. Read
+        // operators then start from restored state instead of waiting for its init watermarks.
         private volatile bool _cleanReconnect;
 
         internal bool CleanReconnect => _cleanReconnect;
@@ -213,16 +206,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     }
                     if (response.NotStarted)
                     {
-                        // The backoff runs inside the stream start and cannot observe a stop,
-                        // so each wait is kept short: a stop requested while the start sits in
-                        // this delay is held for at most one slice, not a ten second wait.
+                        // Kept short: this backoff runs inside the stream start and cannot
+                        // observe a stop, so a stop is held for at most one slice.
                         var delay = Math.Min(500 * tryCount, 2000);
                         _logger.LogInformation("Substream {substreamName} not started yet, retrying in {delay} ms", substreamName, delay);
                         await Task.Delay(delay);
                     }
                 } while (response.NotStarted);
-                // The peer has seen the announcement and decided, it must not be repeated by
-                // a later generation whose state no longer matches where the handoff stopped.
+                // The peer has decided on the announcement, a later generation must not repeat it.
                 _announceCleanHandoff = false;
             }
             catch
@@ -351,8 +342,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _dataHandled = false;
             }
-            // The peer rolls back with this stream, its committed versions start over from
-            // the reconciled restore point, re-baselined at the next handshake.
+            // The peer rolls back with this stream, its committed versions restart; re-baselined at the next handshake.
             Interlocked.Exchange(ref _peerLastCommittedVersion, -1);
             // Lets the handler change its fetch epoch so in flight fetches from before the
             // failure are refused by the other substream instead of consuming events that the
@@ -395,16 +385,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 if (handoffResult == CleanHandoffResult.RetryLater)
                 {
-                    // The stop drain guarantees the stop barrier was fetched, but it can still
-                    // sit in a read channel behind buffered events when the peer's new
-                    // activation reconnects. Answering not started makes the peer retry the
-                    // handshake with backoff instead of degrading into a fail over; its retry
-                    // budget bounds this, a handshake that keeps failing falls back to the
-                    // normal recovery.
+                    // The stop barrier is fetched but not consumed here yet. Not started makes
+                    // the peer retry with backoff rather than fail over; the retry budget bounds it.
                     return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint, selfEpoch, recordedPeerEpoch));
                 }
-                // Rejected: the claim is not trusted, the normal handshake below reconciles
-                // (failing over when data was exchanged).
+                // Rejected: the normal handshake below reconciles (failing over if data was exchanged).
             }
             lock (_dataHandledLock)
             {
@@ -447,8 +432,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _initializeRecieved = true;
                 _targetInitializeVersion = restorePoint;
             }
-            // The peer (re)starts from this version, its committed versions count up from
-            // here; a record from before a rollback would fence a legitimate later handoff.
+            // The peer (re)starts here, its committed versions count up from this point.
             Interlocked.Exchange(ref _peerLastCommittedVersion, restorePoint);
             return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch));
         }
@@ -461,23 +445,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// Accepts a clean handoff reconnect when it is verifiably safe: the peer stopped
-        /// through a planned handoff (everything it consumed was committed and its queues were
-        /// frozen at the stop barrier), so this stream did not consume anything the restored
-        /// peer no longer knows about and no rollback is needed on either side. The read
-        /// operators must have consumed the peer's stop barrier (their consumption commit may
-        /// still be in flight - that cycle can only complete with the returning peer's acks,
-        /// so waiting for it here would deadlock the handoff), and the peer must announce a
-        /// restore point at or past its last acked commit, proving it restored the final
-        /// state its stop drain persisted rather than an older (or empty) one. A version
-        /// mismatch is permanent and rejects the claim, the normal fail over runs. A not yet
-        /// consumed stop barrier is transient - the drain guarantees it was fetched, it is in
-        /// the read channel behind buffered events - and answers retry later. When no data
-        /// was exchanged since the last handshake there is nothing a clean handoff needs to
-        /// protect and nothing to resume; the claim is rejected and the normal handshake path
-        /// accepts the reconnect without a rollback and reconciles the versions. On
-        /// acceptance the read operators resubscribe and the exchange starts a fresh data
-        /// epoch.
+        /// Decides a clean handoff reconnect. Accepted when the peer announces a restore point
+        /// at or past its last acked commit and every reader has consumed its stop barrier, so
+        /// no rollback is needed on either side; the readers then resubscribe on a fresh data
+        /// epoch. A restore point below the last acked commit is rejected (fail over). A stop
+        /// barrier not consumed here yet is transient and answers RetryLater - the consumption
+        /// commit can only complete with this peer's acks, so waiting for it would deadlock.
+        /// Rejected too when no data was exchanged, the normal handshake reconciles instead.
         /// </summary>
         private CleanHandoffResult TryAcceptCleanHandoff(long restorePoint)
         {
@@ -520,8 +494,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 substreamName, restorePoint);
             lock (_dataHandledLock)
             {
-                // A fresh exchange data epoch begins, a later real restart of the peer must
-                // fail over again based on what is exchanged from here on.
+                // Fresh data epoch: a later real restart of the peer fails over on what flows from here.
                 _dataHandled = false;
             }
             foreach (var readOperator in readOperators)
@@ -532,9 +505,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// Completes when the fetch loop is not running, used by the handoff drain: after all
-        /// read operators unsubscribed the loop exits once its in-flight fetch is delivered,
-        /// after which no more events are taken from the other substream.
+        /// Completes when the fetch loop is idle. Used by the handoff drain: once all readers
+        /// unsubscribed the loop exits after its in-flight fetch, taking no more peer events.
         /// </summary>
         internal async Task WaitForFetchLoopIdleAsync(TimeSpan timeout)
         {
@@ -677,8 +649,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 return Task.CompletedTask;
             }
             _logger.LogDebug("Recieved checkpoint done from substream {substreamName} to {selfSubstreamName} with version {checkpointVersion}, notifying targets and read operators.", substreamName, _selfSubstreamName, checkpointVersion);
-            // Monotonic within the peer's generation, the epoch fence above already dropped
-            // acks from earlier generations whose numbering could differ.
+            // Track the highest acked version; monotonic within a generation (the fence above drops older ones).
             long recordedCommitted;
             do
             {

@@ -83,11 +83,10 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
-        /// Prepares the stream for a planned handoff stop, for example before a grain
-        /// migration: ingress vertices that consume external input stop taking in new input
-        /// and drain what they already took in through the still-running pipeline, so a
-        /// <see cref="StopAsync"/> started afterwards covers everything consumed and the
-        /// stream can be resumed elsewhere from that checkpoint without any peer rolling back.
+        /// Prepares the stream for a planned handoff stop (e.g. a grain migration): ingress
+        /// vertices stop taking in new input and drain what they have, so a following
+        /// <see cref="StopAsync"/> covers everything consumed and the stream can resume
+        /// elsewhere from that checkpoint without any peer rolling back.
         /// </summary>
         internal async Task PrepareHandoffAsync()
         {

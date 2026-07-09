@@ -73,10 +73,8 @@ namespace FlowtideDotNet.Orleans.Messages
         public long RecordedCheckpointEpoch { get; }
 
         /// <summary>
-        /// True when the responder accepted the requestors clean handoff reconnect: it kept
-        /// running without a rollback and resumed serving and consuming where the handoff
-        /// stopped. The requestor then completes its startup from restored state instead of
-        /// waiting for an init watermarks event from a responder restart that never comes.
+        /// The responder accepted the requestors clean handoff reconnect and kept running. The
+        /// requestor then completes startup from restored state instead of waiting for a restart.
         /// </summary>
         [Id(6)]
         public bool CleanReconnect { get; }
