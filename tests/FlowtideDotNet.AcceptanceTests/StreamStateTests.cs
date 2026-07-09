@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Engine;
+using System.Diagnostics;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -19,6 +20,40 @@ namespace FlowtideDotNet.AcceptanceTests
     {
         public StreamStateTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
         {
+        }
+
+        /// <summary>
+        /// The minimum time between checkpoints throttles regular running checkpoints so a
+        /// chatty source cannot trigger a checkpoint storm. It must not apply to the stop
+        /// drain: a stop schedules its drain checkpoint cycles on a tight cadence, and
+        /// clamping those up to the minimum interval delays every stop by that interval, and
+        /// when the interval is at or above the stop drain timeout a distributed stop that
+        /// needs another drain cycle force-faults instead of draining gracefully. The stop
+        /// must complete promptly regardless of the minimum interval.
+        /// </summary>
+        [Fact]
+        public async Task StopIsNotDelayedByTheMinimumCheckpointInterval()
+        {
+            // Well above the time the stop itself needs, so a stop clamped to this interval
+            // is clearly distinguishable from a prompt one.
+            MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(20);
+
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+
+            // Runs a checkpoint so the minimum-interval throttle is armed for what follows.
+            await WaitForUpdate();
+
+            var stopwatch = Stopwatch.StartNew();
+            await StopStream();
+            stopwatch.Stop();
+
+            Assert.Equal(StreamStateValue.NotStarted, State);
+            Assert.True(
+                stopwatch.Elapsed < TimeSpan.FromSeconds(10),
+                $"The stop took {stopwatch.Elapsed.TotalSeconds:F1}s, it was delayed by the minimum checkpoint interval instead of draining on its own cadence.");
         }
 
         [Fact]

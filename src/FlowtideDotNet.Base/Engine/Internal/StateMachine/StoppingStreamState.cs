@@ -202,8 +202,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                          // yet, either an ingress has not consumed the other substreams stop
                          // barrier or another substream has not fetched this streams stop
                          // barrier. Another stop checkpoint cycle runs so the exchanged events
-                         // are part of the final state on both sides.
-                         _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(25), default);
+                         // are part of the final state on both sides. The drain cadence must
+                         // not be clamped to the minimum checkpoint interval, that would delay
+                         // the stop and, when the interval is at or above the drain timeout,
+                         // force the drain to time out and fault instead of finishing.
+                         _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(25), default, bypassMinimumInterval: true);
                      }
                  }, this)
                  .Unwrap();
@@ -345,7 +348,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Monotonic clock, a wall clock step during the drain would extend or cut the
             // drain timeout by the step size.
             _stoppingStartedTimestamp = Stopwatch.GetTimestamp();
-            _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(1), default);
+            // Bypasses the minimum checkpoint interval, see the reschedule in
+            // StartCheckpointDoneTask, so the stop is not delayed by that interval.
+            _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(1), default, bypassMinimumInterval: true);
             return Task.CompletedTask;
         }
 

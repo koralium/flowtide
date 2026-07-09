@@ -97,6 +97,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// </summary>
         public TimeSpan? InitialDataDelay { get; set; }
 
+        /// <summary>
+        /// Sets the minimum time between checkpoint triggers. Set before starting the stream.
+        /// </summary>
+        public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
+
         public int BPlusTreePageSizeBytes { get; set; } = 32 * 1024;
 
         public Watermark? LastWatermark => _lastWatermark;
@@ -358,6 +363,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (WaitForCheckpointAfterInitialData)
             {
                 flowtideBuilder.WaitForCheckpointAfterInitialData(true);
+            }
+
+            if (MinimumTimeBetweenCheckpoints.HasValue)
+            {
+                flowtideBuilder.SetMinimumTimeBetweenCheckpoint(MinimumTimeBetweenCheckpoints.Value);
             }
 
             var stream = flowtideBuilder.Build();

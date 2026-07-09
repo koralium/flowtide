@@ -501,20 +501,32 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return completionTasks;
         }
 
+        // Kept as a distinct two argument method (not an optional parameter) so it stays usable
+        // as an Action<TimeSpan, long?> method group, the vertex handler schedules through it.
         internal void TryScheduleCheckpointIn(TimeSpan timeSpan, long? checkpointVersion)
+        {
+            TryScheduleCheckpointIn(timeSpan, checkpointVersion, bypassMinimumInterval: false);
+        }
+
+        internal void TryScheduleCheckpointIn(TimeSpan timeSpan, long? checkpointVersion, bool bypassMinimumInterval)
         {
             lock (_checkpointLock)
             {
-                TryScheduleCheckpointIn_NoLock(timeSpan, checkpointVersion);
+                TryScheduleCheckpointIn_NoLock(timeSpan, checkpointVersion, bypassMinimumInterval);
             }
         }
 
-        internal bool TryScheduleCheckpointIn_NoLock(TimeSpan timeSpan, long? checkpointVersion)
+        internal bool TryScheduleCheckpointIn_NoLock(TimeSpan timeSpan, long? checkpointVersion, bool bypassMinimumInterval = false)
         {
             Debug.Assert(Monitor.IsEntered(_checkpointLock));
 
-            // Check if minimum time has been set, if so default it to the minimum time.
-            if (_dataflowStreamOptions.MinimumTimeBetweenCheckpoints != null &&
+            // Check if minimum time has been set, if so default it to the minimum time. The
+            // minimum throttles regular running checkpoints so a chatty source cannot trigger
+            // a checkpoint storm; a stop drain schedules its cycles on a tight cadence and
+            // bypasses it, clamping those would delay every stop by the interval and force a
+            // distributed drain to time out when the interval is at or above the drain timeout.
+            if (!bypassMinimumInterval &&
+                _dataflowStreamOptions.MinimumTimeBetweenCheckpoints != null &&
                 _initialCheckpointTaken &&
                 _dataflowStreamOptions.MinimumTimeBetweenCheckpoints.Value.CompareTo(timeSpan) > 0)
             {

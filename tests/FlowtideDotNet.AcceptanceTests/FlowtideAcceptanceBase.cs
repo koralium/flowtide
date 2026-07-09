@@ -96,6 +96,11 @@ namespace FlowtideDotNet.AcceptanceTests
         /// </summary>
         protected TimeSpan? InitialDataDelay { set => flowtideTestStream.InitialDataDelay = value; }
 
+        /// <summary>
+        /// Sets the minimum time between checkpoint triggers, set before StartStream.
+        /// </summary>
+        protected TimeSpan? MinimumTimeBetweenCheckpoints { set => flowtideTestStream.MinimumTimeBetweenCheckpoints = value; }
+
         public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)
