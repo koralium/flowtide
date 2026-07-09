@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Base.Vertices
         private IMeter? _metrics;
         private ILogger? _logger;
 
-        private TaskCompletionSource? _pauseSource;
+        private readonly PauseGate _pauseGate = new PauseGate();
 
         private StreamVersionInformation? _streamVersion;
 
@@ -463,9 +463,10 @@ namespace FlowtideDotNet.Base.Vertices
         /// </returns>
         protected ValueTask CheckForPause()
         {
-            if (_pauseSource != null)
+            var pauseTask = _pauseGate.PauseTask;
+            if (pauseTask != null)
             {
-                return new ValueTask(_pauseSource.Task);
+                return new ValueTask(pauseTask);
             }
             return ValueTask.CompletedTask;
         }
@@ -475,10 +476,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Pause()
         {
-            if (_pauseSource == null)
-            {
-                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            }
+            _pauseGate.Pause();
         }
 
         /// <summary>
@@ -486,11 +484,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Resume()
         {
-            if (_pauseSource != null)
-            {
-                _pauseSource.SetResult();
-                _pauseSource = null;
-            }
+            _pauseGate.Resume();
         }
 
         /// <summary>

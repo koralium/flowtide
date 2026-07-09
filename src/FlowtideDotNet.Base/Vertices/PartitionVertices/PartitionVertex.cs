@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Base.Vertices
         private bool _isHealthy = true;
         private IVertexHandler? _vertexHandler;
         private IMemoryAllocator? _memoryAllocator;
-        private TaskCompletionSource? _pauseSource;
+        private readonly PauseGate _pauseGate = new PauseGate();
         private StreamVersionInformation? _streamVersion;
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace FlowtideDotNet.Base.Vertices
                 {
                     var enumerator = PartitionData(message.Data, message.Time);
 
-                    if (_pauseSource != null)
+                    if (_pauseGate.IsPaused)
                     {
                         enumerator = WaitForPause(enumerator);
                     }
@@ -239,7 +239,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> WaitForPause(IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> input)
         {
-            var task = _pauseSource?.Task;
+            var task = _pauseGate.PauseTask;
             if (task != null)
             {
                 await task;
@@ -446,10 +446,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Pause()
         {
-            if (_pauseSource == null)
-            {
-                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            }
+            _pauseGate.Pause();
         }
 
         /// <summary>
@@ -457,11 +454,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Resume()
         {
-            if (_pauseSource != null)
-            {
-                _pauseSource.SetResult();
-                _pauseSource = null;
-            }
+            _pauseGate.Resume();
         }
 
         /// <summary>

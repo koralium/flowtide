@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Base.Vertices
         // vertex commit its state after the checkpoint was already declared done.
         private bool _anyOtherInputsNotInCheckpoint;
         private bool singleReadSource;
-        private TaskCompletionSource? _pauseSource;
+        private readonly PauseGate _pauseGate = new PauseGate();
         private IMemoryAllocator? _memoryAllocator;
         private bool _receivedInitialLoadDoneEvent;
 
@@ -328,7 +328,7 @@ namespace FlowtideDotNet.Base.Vertices
                     if (r.Key == 0)
                     {
                         var enumerator = OnIngressRecieve(streamMessage.Data, streamMessage.Time);
-                        if (_pauseSource != null)
+                        if (_pauseGate.IsPaused)
                         {
                             enumerator = WaitForPause(enumerator);
                         }
@@ -374,7 +374,7 @@ namespace FlowtideDotNet.Base.Vertices
                     {
                         _messageCountSinceLockingEventPrepare++;
                         var enumerator = OnFeedbackRecieve(streamMessage.Data, streamMessage.Time);
-                        if (_pauseSource != null)
+                        if (_pauseGate.IsPaused)
                         {
                             enumerator = WaitForPause(enumerator);
                         }
@@ -490,7 +490,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> WaitForPause(IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> input)
         {
-            var task = _pauseSource?.Task;
+            var task = _pauseGate.PauseTask;
             if (task != null)
             {
                 await task;
@@ -675,10 +675,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Pause()
         {
-            if (_pauseSource == null)
-            {
-                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            }
+            _pauseGate.Pause();
         }
 
         /// <summary>
@@ -686,11 +683,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Resume()
         {
-            if (_pauseSource != null)
-            {
-                _pauseSource.SetResult();
-                _pauseSource = null;
-            }
+            _pauseGate.Resume();
         }
 
         /// <summary>
