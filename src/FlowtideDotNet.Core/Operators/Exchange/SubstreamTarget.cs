@@ -326,13 +326,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _substreamCommunication.NotifyFailAndRecover(recoveryPoint);
         }
 
+        /// <summary>
+        /// True once initialize wired the rollback. A registered but not yet initialized
+        /// target silently no-ops a rollback, routing must skip it.
+        /// </summary>
+        public bool CanFailAndRecover => _failAndRecoverFunc != null;
+
         public Task FailAndRecover(long recoveryPoint)
         {
             if (_failAndRecoverFunc == null)
             {
-                // The stream has not initialized this target yet, there is no committed work
-                // past the recovery point to roll back. The initialize handshake reconciles
-                // the checkpoint versions when the stream starts.
                 return Task.CompletedTask;
             }
             return _failAndRecoverFunc(recoveryPoint);

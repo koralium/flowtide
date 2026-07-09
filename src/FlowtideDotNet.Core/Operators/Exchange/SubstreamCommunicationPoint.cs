@@ -579,28 +579,32 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private async Task DoFailAndRecover(long recoveryPoint)
         {
-            var firstTarget = _targetInfos.FirstOrDefault();
-            if (firstTarget.Value != null)
+            // One rollback fails the whole stream over, any single wired operator carries
+            // it. Targets register at construction but wire the rollback first at their
+            // initialize, so unwired targets must be skipped - an arbitrary pick could land
+            // on one and silently skip a required rollback. Read operators are always wired.
+            foreach (var targetInfo in _targetInfos.Values)
             {
-                await firstTarget.Value.Target.FailAndRecover(recoveryPoint);
+                if (targetInfo.Target.CanFailAndRecover)
+                {
+                    await targetInfo.Target.FailAndRecover(recoveryPoint);
+                    return;
+                }
+            }
+            SubstreamReadOperator? readOperator;
+            lock (_readOperators)
+            {
+                readOperator = _readOperators.FirstOrDefault();
+            }
+            if (readOperator != null)
+            {
+                await readOperator.FailAndRecover(recoveryPoint);
             }
             else
             {
-                SubstreamReadOperator? readOperator;
-                lock (_readOperators)
-                {
-                    readOperator = _readOperators.FirstOrDefault();
-                }
-                if (readOperator != null)
-                {
-                    await readOperator.FailAndRecover(recoveryPoint);
-                }
-                else
-                {
-                    // Nothing is registered yet, the stream is still being built, so there is
-                    // nothing to recover. The initialize handshake reconciles versions at start.
-                    _logger.LogInformation("Received fail and recover to {recoveryPoint} before any exchange operators are registered, nothing to recover.", recoveryPoint);
-                }
+                // Nothing wired yet, the stream is still being built, so there is nothing
+                // to recover. The initialize handshake reconciles versions at start.
+                _logger.LogInformation("Received fail and recover to {recoveryPoint} before any exchange operator is initialized, nothing to recover.", recoveryPoint);
             }
         }
 
