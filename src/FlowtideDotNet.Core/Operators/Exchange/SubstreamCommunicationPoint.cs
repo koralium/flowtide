@@ -60,6 +60,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private long _lastSentCheckpointVersion;
         private readonly object _sendCheckpointLock = new object();
 
+        /// <summary>
+        /// Holds the deferred checkpoint done crediting dispatch, keyed by the self substream
+        /// name, so tests can interleave a failure between the arrival fence and the dispatch.
+        /// </summary>
+        internal static Func<string, Task>? ReceiveCheckpointDoneDispatchHookForTests;
+
         // Highest checkpoint version the peer has acked (its own numbering), -1 while none.
         // A clean handoff reconnect must announce a restore point at or past it. Reset on rollback.
         private long _peerLastCommittedVersion = -1;
@@ -354,13 +360,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // New generation: acks tagged with the old epoch are now stale and get dropped.
                 // Drawn from the shared seed so it never collides with any other generation.
                 _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
+                // The peer rolls back with this stream, its committed versions restart;
+                // re-baselined at the next handshake. Reset with the epoch bump so an ack
+                // that passed the fence in the old epoch cannot advance it afterwards.
+                Interlocked.Exchange(ref _peerLastCommittedVersion, -1);
             }
             lock (_dataHandledLock)
             {
                 _dataHandled = false;
             }
-            // The peer rolls back with this stream, its committed versions restart; re-baselined at the next handshake.
-            Interlocked.Exchange(ref _peerLastCommittedVersion, -1);
             // Lets the handler change its fetch epoch so in flight fetches from before the
             // failure are refused by the other substream instead of consuming events that the
             // restarted stream needs.
@@ -656,32 +664,50 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private Task RecieveCheckpointDone(long checkpointVersion, long checkpointEpoch, bool coversPeerStopBarrier)
         {
-            long selfEpoch;
             lock (_initializeLock)
             {
-                selfEpoch = _selfCheckpointEpoch;
-            }
-            if (checkpointEpoch != selfEpoch)
-            {
-                // Stale ack from a previous epoch, for example one in flight across a restart.
-                // Crediting it would complete the current cycle without the peer acking it, so
-                // it is dropped. The next handshake re-announces the current epoch.
-                _logger.LogWarning("Dropping stale checkpoint done from substream {substreamName}: epoch {ackEpoch} does not match current {selfEpoch}.", substreamName, checkpointEpoch, selfEpoch);
-                return Task.CompletedTask;
+                if (checkpointEpoch != _selfCheckpointEpoch)
+                {
+                    // Stale ack from a previous epoch, for example one in flight across a restart.
+                    // Crediting it would complete the current cycle without the peer acking it, so
+                    // it is dropped. The next handshake re-announces the current epoch.
+                    _logger.LogWarning("Dropping stale checkpoint done from substream {substreamName}: epoch {ackEpoch} does not match current {selfEpoch}.", substreamName, checkpointEpoch, _selfCheckpointEpoch);
+                    return Task.CompletedTask;
+                }
+                // Track the highest acked version. Advanced under the same lock as the fence
+                // and the failure reset, a stale advance can then never overwrite the -1 a
+                // failure just wrote. Still a CAS loop, the handshake re-baselines outside
+                // this lock.
+                long recordedCommitted;
+                do
+                {
+                    recordedCommitted = Interlocked.Read(ref _peerLastCommittedVersion);
+                } while (checkpointVersion > recordedCommitted &&
+                         Interlocked.CompareExchange(ref _peerLastCommittedVersion, checkpointVersion, recordedCommitted) != recordedCommitted);
             }
             _logger.LogDebug("Recieved checkpoint done from substream {substreamName} to {selfSubstreamName} with version {checkpointVersion}, notifying targets and read operators.", substreamName, _selfSubstreamName, checkpointVersion);
-            // Track the highest acked version; monotonic within a generation (the fence above drops older ones).
-            long recordedCommitted;
-            do
-            {
-                recordedCommitted = Interlocked.Read(ref _peerLastCommittedVersion);
-            } while (checkpointVersion > recordedCommitted &&
-                     Interlocked.CompareExchange(ref _peerLastCommittedVersion, checkpointVersion, recordedCommitted) != recordedCommitted);
             // Tell all targets and read operators the connected substream completed the checkpoint.
             // Task.Run to use the thread pool, this can be called from a grain turn where the grain
             // activation scheduler would otherwise be captured.
             return Task.Run(async () =>
             {
+                var dispatchHook = ReceiveCheckpointDoneDispatchHookForTests;
+                if (dispatchHook != null)
+                {
+                    await dispatchHook(_selfSubstreamName);
+                }
+                lock (_initializeLock)
+                {
+                    if (checkpointEpoch != _selfCheckpointEpoch)
+                    {
+                        // A failure landed between the arrival fence and this dispatch: the
+                        // ledgers were reset for the new generation and this ack belongs to
+                        // the aborted one. A credit would let a later cycle complete without
+                        // a real acknowledgement.
+                        _logger.LogWarning("Dropping checkpoint done from substream {substreamName}: a failure superseded epoch {ackEpoch} before the crediting ran.", substreamName, checkpointEpoch);
+                        return;
+                    }
+                }
                 try
                 {
                     foreach (var target in _targetInfos)

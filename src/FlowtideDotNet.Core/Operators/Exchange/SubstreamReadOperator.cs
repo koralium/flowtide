@@ -547,7 +547,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 // The dependencies done callback is not wired yet. Each checkpoint cycle
                 // consumes exactly one signal, so it must be buffered instead of lost.
-                // Deliberately uncapped: these are all real acks and stale ones reset on restore.
+                // Deliberately uncapped: a stopping peer commits several versions without
+                // consuming acks and each buffered ack pairs one to one with a queued barrier
+                // this stream has yet to forward. The state machine stashes at most one early
+                // credit per operator, so the buffer meters them out one per forwarded
+                // barrier; a cap drops acks the peer never resends and starves the paired
+                // cycles (a previous cap hung recovery under load). Stale acks cannot get
+                // here, they are epoch fenced at the communication point, and the counter
+                // resets on restore.
                 lock (_lock)
                 {
                     _pendingCheckpointDoneSignals++;
