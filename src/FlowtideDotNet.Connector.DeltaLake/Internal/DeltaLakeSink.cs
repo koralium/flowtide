@@ -387,6 +387,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             await DeltaTransactionWriter.WriteCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
 
+            if (_options.CheckpointInterval > 0 && nextVersion > 0 && (nextVersion % _options.CheckpointInterval == 0))
+            {
+                var currentTableState = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tablePath);
+                if (currentTableState != null)
+                {
+                    await DeltaCheckpointWriter.WriteCheckpoint(_options.StorageLocation, _tablePath, currentTableState);
+                }
+            }
+
             // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
             await _temporaryTree.Clear();
             // Set that the first insert is done, this is used to determine if we need to write delete files for overwrite writes

@@ -1058,5 +1058,155 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 Assert.Equal(149, rowCount);
             }
         }
+
+        [Fact]
+        public async Task TestSinkCheckpointing()
+        {
+            var storage = Files.Of.InternalMemory("./test_checkpointing");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestSinkCheckpointing), storage, options =>
+            {
+                options.CheckpointInterval = 2; // Checkpoint every 2 commits
+            });
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    Name STRING,
+                    LastName STRING,
+                    NullableString STRING
+                );
+
+                INSERT INTO test
+                SELECT userKey, firstName as Name, lastName, NullableString FROM users
+            ");
+
+            // Version 0: Create Table (and insert some data if it runs immediately)
+            // Wait for version 0
+            await WaitForVersion(storage, "test", stream, 0);
+
+            // Trigger some commits to get versions 1, 2, etc.
+            var firstUser = stream.Users[0];
+            stream.DeleteUser(firstUser);
+            stream.Generate(5);
+            await WaitForVersion(storage, "test", stream, 1);
+
+            // Commit 2: this should trigger checkpointing!
+            firstUser = stream.Users.Last();
+            stream.DeleteUser(firstUser);
+            await WaitForVersion(storage, "test", stream, 2);
+
+            // Verify that checkpoint file exists in storage!
+            var checkpointExists = await storage.Exists("/test/_delta_log/00000000000000000002.checkpoint.parquet");
+            Assert.True(checkpointExists, "Checkpoint parquet file should exist");
+
+            var lastCheckpointExists = await storage.Exists("/test/_delta_log/_last_checkpoint");
+            Assert.True(lastCheckpointExists, "_last_checkpoint file should exist");
+
+            // Read the _last_checkpoint file and verify content
+            using var lastCheckpointStream = await storage.OpenRead("/test/_delta_log/_last_checkpoint");
+            using var lastCheckpointReader = new StreamReader(lastCheckpointStream!);
+            var lastCheckpointContent = await lastCheckpointReader.ReadToEndAsync();
+            var lastCheckpointInfo = JsonSerializer.Deserialize<LastCheckpointInfo>(lastCheckpointContent);
+            Assert.NotNull(lastCheckpointInfo);
+            Assert.Equal(2, lastCheckpointInfo.Version);
+            Assert.True(lastCheckpointInfo.Size > 0);
+
+            // Read the table using DeltaTransactionReader.ReadTable to verify it can read checkpointed table
+            var table = await DeltaTransactionReader.ReadTable(storage, "test");
+            Assert.NotNull(table);
+            Assert.Equal(2, table.Version);
+
+            // Clean up stream
+            await stream.DisposeAsync();
+        }
+
+        [Fact]
+        public async Task TestDuckDbScanWithCheckpoint()
+        {
+            var tempPath = Path.Join(Directory.GetCurrentDirectory(), "test_duckdb_checkpoint_" + Guid.NewGuid().ToString("N"));
+            if (Directory.Exists(tempPath))
+            {
+                try
+                {
+                    Directory.Delete(tempPath, true);
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            var storage = Stowage.Files.Of.LocalDisk(tempPath);
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestDuckDbScanWithCheckpoint), storage, options =>
+            {
+                options.CheckpointInterval = 2; // Checkpoint every 2 commits
+            });
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    Name STRING,
+                    LastName STRING,
+                    NullableString STRING
+                );
+
+                INSERT INTO test
+                SELECT userKey, firstName as Name, lastName, NullableString FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            var firstUser = stream.Users[0];
+            stream.DeleteUser(firstUser);
+            stream.Generate(5);
+            await WaitForVersion(storage, "test", stream, 1);
+
+            firstUser = stream.Users.Last();
+            stream.DeleteUser(firstUser);
+            await WaitForVersion(storage, "test", stream, 2);
+
+            await stream.DisposeAsync();
+
+            using var conn = new DuckDB.NET.Data.DuckDBConnection("DataSource=:memory:");
+            conn.Open();
+
+            var extensionsDir = Path.Join(Directory.GetCurrentDirectory(), "duckdb_extensions").Replace("\\", "/");
+            Directory.CreateDirectory(extensionsDir);
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = $"SET extension_directory = '{extensionsDir}'; INSTALL delta; LOAD delta;";
+                cmd.ExecuteNonQuery();
+            }
+
+            using (var cmd = conn.CreateCommand())
+            {
+                var tableFullPath = Path.GetFullPath(Path.Join(tempPath, "test")).Replace("\\", "/");
+                cmd.CommandText = $"SELECT * FROM delta_scan('{tableFullPath}')";
+
+                using var reader = cmd.ExecuteReader();
+                int rowCount = 0;
+                while (reader.Read())
+                {
+                    rowCount++;
+                }
+
+                Assert.Equal(13, rowCount);
+            }
+
+            if (Directory.Exists(tempPath))
+            {
+                try
+                {
+                    Directory.Delete(tempPath, true);
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
     }
 }
