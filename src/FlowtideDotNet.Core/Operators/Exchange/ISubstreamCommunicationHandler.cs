@@ -40,12 +40,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         /// <param name="getDataFunction">Returns events for the given exchange targets.</param>
         /// <param name="callFailAndRecover">Fails and recovers this substream to the given version.</param>
-        /// <param name="initializeFromTarget">Handles an initialize request from the other substream.</param>
+        /// <param name="initializeFromTarget">Handles an initialize request from the other substream:
+        /// the restore point, the requestors checkpoint epoch, and whether the requestor resumes
+        /// from a clean handoff stop.</param>
         /// <param name="callRecieveCheckpointDone">Handles a checkpoint done message with the completed checkpoint version and the epoch it was sent under.</param>
         void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
-            Func<long, long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
             Func<long, long, Task> callRecieveCheckpointDone);
 
         /// <summary>
@@ -61,7 +63,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         Task SendFailAndRecover(long restoreVersion);
 
-        Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken);
+        /// <summary>
+        /// Runs the initialize handshake against the other substream.
+        /// </summary>
+        /// <param name="restoreVersion">The version this substream restored to.</param>
+        /// <param name="checkpointEpoch">This substreams current checkpoint epoch.</param>
+        /// <param name="cleanHandoff">True when this substream resumes from a clean handoff stop
+        /// (a planned migration): everything it consumed was committed and its queues were frozen
+        /// at the final barrier, so the other substream can accept the reconnect without rolling
+        /// back.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken);
 
         /// <summary>
         /// Notifies the other substream that a checkpoint has completed in this substream.

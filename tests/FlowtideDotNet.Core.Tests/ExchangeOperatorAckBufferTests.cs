@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Core.Tests
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
                 Func<long, Task> callFailAndRecover,
-                Func<long, long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, Task> callRecieveCheckpointDone)
             {
             }
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Tests
                 return Task.CompletedTask;
             }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
             {
                 return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
             }
@@ -75,13 +75,13 @@ namespace FlowtideDotNet.Core.Tests
         /// </summary>
         private class RecordingHandler : ISubstreamCommunicationHandler
         {
-            private Func<long, long, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
+            private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
             private Func<long, long, Task>? _callRecieveCheckpointDone;
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
                 Func<long, Task> callFailAndRecover,
-                Func<long, long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, Task> callRecieveCheckpointDone)
             {
                 _initializeFromTarget = initializeFromTarget;
@@ -97,7 +97,7 @@ namespace FlowtideDotNet.Core.Tests
 
             public Task SendFailAndRecover(long restoreVersion) => Task.CompletedTask;
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
             {
                 return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
             }
@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Core.Tests
                 {
                     throw new InvalidOperationException("The handler was not initialized by a communication point.");
                 }
-                var response = await _initializeFromTarget(0, 0);
+                var response = await _initializeFromTarget(0, 0, false);
                 await _callRecieveCheckpointDone(checkpointVersion, response.CheckpointEpoch);
             }
         }

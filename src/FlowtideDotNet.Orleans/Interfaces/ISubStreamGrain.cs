@@ -57,5 +57,12 @@ namespace FlowtideDotNet.Orleans.Interfaces
         /// stream grain, or a substream whose peers keep running would be recovered against missing state.
         /// </summary>
         Task DeleteStreamAsync();
+
+        /// <summary>
+        /// Requests the substream grain activation to migrate to another silo, for example to
+        /// rebalance load. The activation deactivates once its current calls complete and is
+        /// placed again by the runtime; the substream resumes on the new activation.
+        /// </summary>
+        Task MigrateAsync();
     }
 }

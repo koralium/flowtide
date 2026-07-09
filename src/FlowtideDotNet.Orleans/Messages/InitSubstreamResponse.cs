@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class InitSubstreamResponse
     {
-        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedFetchEpoch = 0, long recordedCheckpointEpoch = 0)
+        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedFetchEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false)
         {
             NotStarted = notStarted;
             Success = success;
@@ -30,6 +30,7 @@ namespace FlowtideDotNet.Orleans.Messages
             CheckpointEpoch = checkpointEpoch;
             RecordedFetchEpoch = recordedFetchEpoch;
             RecordedCheckpointEpoch = recordedCheckpointEpoch;
+            CleanReconnect = cleanReconnect;
         }
 
         [Id(2)]
@@ -70,5 +71,14 @@ namespace FlowtideDotNet.Orleans.Messages
         /// </summary>
         [Id(5)]
         public long RecordedCheckpointEpoch { get; }
+
+        /// <summary>
+        /// True when the responder accepted the requestors clean handoff reconnect: it kept
+        /// running without a rollback and resumed serving and consuming where the handoff
+        /// stopped. The requestor then completes its startup from restored state instead of
+        /// waiting for an init watermarks event from a responder restart that never comes.
+        /// </summary>
+        [Id(6)]
+        public bool CleanReconnect { get; }
     }
 }

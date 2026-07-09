@@ -65,9 +65,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // first finish stopping when the consumption is part of a committed checkpoint.
         private volatile bool _peerStopConsumed;
         private volatile bool _peerStopConsumedCommitted;
+        // Set when a returning peer was accepted through a clean handoff: its restarted
+        // pipeline sends one init watermarks event that must be consumed without forwarding,
+        // forwarding a second init downstream would skew every barrier alignment by one event.
+        private volatile bool _swallowNextInitWatermarks;
         // True after the first local checkpoint barrier since the last restore, before it an
         // unpairable barrier means the stream is still starting up, not an epoch mismatch.
         private volatile bool _localCheckpointSeen;
+        // True from the start of a handoff drain: no more peer events will arrive to pair
+        // local checkpoints with, so they are self-forwarded like a stop checkpoint.
+        private volatile bool _handoffDraining;
 
         public SubstreamReadOperator(SubstreamCommunicationPoint communicationPoint, SubstreamExchangeReferenceRelation referenceRelation, DataflowBlockOptions options) : base(options)
         {
@@ -131,7 +138,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _initWatermarksHandled = false;
                 _peerStopConsumed = false;
                 _peerStopConsumedCommitted = false;
+                _swallowNextInitWatermarks = false;
                 _localCheckpointSeen = false;
+                _handoffDraining = false;
                 // Signals from before the restore belong to the aborted epoch, replaying
                 // them would complete a new cycle too early.
                 _pendingCheckpointDoneSignals = 0;
@@ -185,6 +194,21 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 await channel.Writer.WriteAsync(ev);
             });
+
+            if (_communicationPoint.CleanReconnect && !_initWatermarksHandled && _state.Value.WatermarkNames != null)
+            {
+                // The other substream accepted this streams clean handoff reconnect: it kept
+                // running and will not restart, so no init watermarks event will arrive from
+                // it. The watermark names were persisted with the final handoff checkpoint,
+                // startup completes from them instead.
+                lock (_lock)
+                {
+                    _initWatermarksHandled = true;
+                }
+                Logger.LogInformation("Substream read {name} resumes from a clean handoff, initializing watermarks from restored state.", Name);
+                await output.SendLockingEvent(new InitWatermarksEvent(_state.Value.WatermarkNames));
+                SetDependenciesDone();
+            }
 
             while (!output.CancellationToken.IsCancellationRequested)
             {
@@ -343,6 +367,22 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 else if (ev is InitWatermarksEvent initWatermarksEvent)
                 {
+                    bool swallow;
+                    lock (_lock)
+                    {
+                        swallow = _swallowNextInitWatermarks;
+                        _swallowNextInitWatermarks = false;
+                    }
+                    if (swallow)
+                    {
+                        // The init watermarks event of a peer that returned through a clean
+                        // handoff. This streams pipeline is already initialized; forwarding a
+                        // second init downstream would skew every barrier alignment by one
+                        // event, so it is consumed here. The plan is unchanged across the
+                        // handoff, so the names match what already flowed at startup.
+                        Logger.LogDebug("Substream read {name} consumed the returning substreams init watermarks event", Name);
+                        continue;
+                    }
                     bool alreadyHandled;
                     lock (_lock)
                     {
@@ -409,6 +449,97 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             // Send checkpoint done to the communication point so the other substream can set dependencies done.
             return _communicationPoint.SendCheckpointDone(checkpointVersion);
+        }
+
+        /// <summary>
+        /// True when the other substream stopped through a clean handoff barrier and this
+        /// operator consumed it: everything the peer sent up to its queue freeze has passed
+        /// through this pipeline, nothing more will be fetched from the departed instance.
+        /// The consumption does not have to be committed yet - the checkpoint cycle covering
+        /// it can only complete with the returning peer's acks, so requiring the commit
+        /// before accepting the reconnect would deadlock the handoff; a failure before that
+        /// commit falls back to the normal coordinated recovery like any other failure. The
+        /// version verification is done by the communication point against the peer's own
+        /// acked commit versions.
+        /// </summary>
+        internal bool HasCleanPeerStop => _peerStopConsumed;
+
+        /// <summary>
+        /// Resumes consumption from a peer that returned through a clean handoff: the stop
+        /// tracking is reset, the subscription that was removed when the stop barrier was
+        /// consumed is re-added (the fetch loop keeps feeding the same channel), and the
+        /// returning peer's single init watermarks event is marked to be consumed without
+        /// forwarding.
+        /// </summary>
+        internal void ResumeAfterPeerReconnect()
+        {
+            lock (_lock)
+            {
+                _peerStopConsumed = false;
+                _peerStopConsumedCommitted = false;
+                _swallowNextInitWatermarks = true;
+            }
+            var channel = _channel;
+            if (channel != null)
+            {
+                _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, async (ev) =>
+                {
+                    await channel.Writer.WriteAsync(ev);
+                });
+            }
+        }
+
+        /// <summary>
+        /// First handoff drain phase: stop taking in new events from the other substream.
+        /// Everything already fetched stays in the channel and drains through the running
+        /// pipeline, the stop checkpoint that follows then covers all of it. From here on no
+        /// peer event will arrive to pair local checkpoints with, so they are self-forwarded
+        /// like a stop checkpoint - a checkpoint left waiting for a pair would never
+        /// complete, deferring the stop until its watchdog fails the stream.
+        /// </summary>
+        public override void BeginHandoffDrain()
+        {
+            _handoffDraining = true;
+            _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
+            // A checkpoint stored before the drain began is still waiting for a peer event;
+            // nudge the loop to forward it behind the already buffered events.
+            bool pendingCheckpoint;
+            lock (_lock)
+            {
+                pendingCheckpoint = _currentCheckpoint != null;
+            }
+            var channel = _channel;
+            if (pendingCheckpoint && channel != null)
+            {
+                _ = channel.Writer.WriteAsync(s_localStopCheckpointMarker).AsTask();
+            }
+        }
+
+        /// <summary>
+        /// Second handoff drain phase: waits until the fetch loop went idle (its in-flight
+        /// fetch delivered) and the channel drained into the pipeline, then marks the peer
+        /// consumption as finished so the following stop completes after one committed cycle,
+        /// exactly like a consumed peer stop barrier would.
+        /// </summary>
+        public override async Task CompleteHandoffDrainAsync()
+        {
+            await _communicationPoint.WaitForFetchLoopIdleAsync(TimeSpan.FromSeconds(10));
+
+            var channel = _channel;
+            if (channel != null)
+            {
+                var deadline = Environment.TickCount64 + (long)TimeSpan.FromSeconds(10).TotalMilliseconds;
+                while (channel.Reader.Count > 0)
+                {
+                    if (Environment.TickCount64 >= deadline)
+                    {
+                        throw new TimeoutException($"The read channel of {Name} did not drain within 10 seconds during the handoff drain.");
+                    }
+                    await Task.Delay(10);
+                }
+            }
+
+            _peerStopConsumed = true;
         }
 
         public void RecieveCheckpointDone(long checkpointVersion)
@@ -486,13 +617,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // Set task completion source outside of lock to hinder any deadlocks
                     taskSource.TrySetResult();
                 }
-                if (checkpointEvent is StopStreamCheckpoint)
+                if (checkpointEvent is StopStreamCheckpoint || _handoffDraining)
                 {
                     // The stop checkpoint must complete without a checkpoint event from the
                     // other substream, it may already have stopped and produces no more events.
                     // The marker makes the fetch loop forward the stop barrier after the events
                     // that are already buffered. If a checkpoint event from the other substream
                     // arrives before the marker it pairs with the stop checkpoint as usual.
+                    // During a handoff drain every checkpoint is in the same situation, the
+                    // subscription is gone so no pairing event will ever arrive.
                     var channel = _channel;
                     if (channel != null)
                     {

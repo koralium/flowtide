@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Orleans.Internal
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
         private ISubStreamGrain _streamGrain;
         private Func<long, Task>? _callFailAndRecover;
-        private Func<long, long, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
+        private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
         private Func<long, long, Task>? _callRecieveCheckpointDone;
         private Func<int, IMemoryAllocator>? _receiveAllocatorResolver;
         private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Orleans.Internal
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
-            Func<long, long, Task<SubstreamInitializeResponse>> targetInitializeRequest,
+            Func<long, long, bool, Task<SubstreamInitializeResponse>> targetInitializeRequest,
             Func<long, long, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
@@ -148,10 +148,10 @@ namespace FlowtideDotNet.Orleans.Internal
             return _callFailAndRecover(restorePoint);
         }
 
-        public async Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
+        public async Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
         {
             var announcedEpoch = Interlocked.Read(ref _fetchEpoch);
-            var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch));
+            var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch, cleanHandoff));
             if (response.RecordedFetchEpoch > announcedEpoch)
             {
                 // The serving grain holds a higher epoch for this substream than was announced,
@@ -172,18 +172,18 @@ namespace FlowtideDotNet.Orleans.Internal
                          Interlocked.CompareExchange(ref _epochSeed, response.RecordedFetchEpoch, seed) != seed);
                 announcedEpoch = Interlocked.Increment(ref _epochSeed);
                 Interlocked.Exchange(ref _fetchEpoch, announcedEpoch);
-                response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch));
+                response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch, cleanHandoff));
             }
-            return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, response.RecordedCheckpointEpoch);
+            return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, response.RecordedCheckpointEpoch, response.CleanReconnect);
         }
 
-        public Task<SubstreamInitializeResponse> TargetInitializeRequest(long restoreVersion, long peerCheckpointEpoch)
+        public Task<SubstreamInitializeResponse> TargetInitializeRequest(long restoreVersion, long peerCheckpointEpoch, bool cleanHandoff)
         {
             if (_targetInitializeRequest == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _targetInitializeRequest(restoreVersion, peerCheckpointEpoch);
+            return _targetInitializeRequest(restoreVersion, peerCheckpointEpoch, cleanHandoff);
         }
 
         public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)

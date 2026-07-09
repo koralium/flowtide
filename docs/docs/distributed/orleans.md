@@ -117,6 +117,20 @@ There is also an *AddFlowtideOrleans* overload where the connectors callback rec
 
 Substream grains on a lost silo are reactivated on the surviving silos by their reminders. They roll back together with the substreams they exchange data with and catch up by replaying from the sources. Fetches from abandoned stream instances are refused so they can not steal data from the recovered streams.
 
+## Migration and rebalancing
+
+A substream grain can be moved to another silo without going through the recovery path, for example to rebalance load:
+
+```csharp
+var substreamGrain = grainFactory.GetGrain<ISubStreamGrain>(
+    SubStreamGrainKey.Create("my_stream", "substream_0"));
+await substreamGrain.MigrateAsync();
+```
+
+The grain drains the data exchanged with the other substreams, stops its stream at a final checkpoint the peers acknowledge, and migrates. The new activation restores that checkpoint and reconnects; the other substreams accept the reconnect and keep running — nothing rolls back and no data is replayed. This requires the substream's state storage to be durable (reachable from every silo); with silo-local storage the reconnect is refused and the stream falls back to the normal recovery instead.
+
+A migration that cannot complete cleanly, for example when a peer is unreachable, degrades into the same recovery a silo failure uses. The runtime may also skip a requested migration entirely (for example when placement lands on the same silo); the keep alive reminder then restarts the stream in place.
+
 ## Metrics
 
 *app.StartFlowtideMetrics("/stream")* exposes the Flowtide metrics endpoints without the UI, which fits silo hosts. The monitoring described under [Monitoring](../monitoring/generalmetrics.md) applies per substream.

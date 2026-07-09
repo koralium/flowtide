@@ -57,6 +57,13 @@ namespace FlowtideDotNet.Orleans.Messages
         /// </summary>
         [Id(5)]
         public string? Error { get; set; }
+
+        /// <summary>
+        /// Identifier of the grain activation that served this status. Changes when the grain
+        /// is reactivated, for example after a silo failure or an activation migration.
+        /// </summary>
+        [Id(6)]
+        public string? ActivationId { get; set; }
     }
 
     /// <summary>

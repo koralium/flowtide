@@ -22,12 +22,13 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class InitSubstreamRequest
     {
-        public InitSubstreamRequest(string requestor, long restorePoint, long fetchEpoch, long checkpointEpoch = 0)
+        public InitSubstreamRequest(string requestor, long restorePoint, long fetchEpoch, long checkpointEpoch = 0, bool cleanHandoff = false)
         {
             Requestor = requestor;
             RestorePoint = restorePoint;
             FetchEpoch = fetchEpoch;
             CheckpointEpoch = checkpointEpoch;
+            CleanHandoff = cleanHandoff;
         }
 
         [Id(0)]
@@ -50,5 +51,13 @@ namespace FlowtideDotNet.Orleans.Messages
         /// </summary>
         [Id(3)]
         public long CheckpointEpoch { get; }
+
+        /// <summary>
+        /// True when the requestor resumes from a clean handoff stop, for example a planned
+        /// grain migration: everything it consumed was committed and its queues were frozen at
+        /// the final barrier. The receiver can then accept the reconnect without rolling back.
+        /// </summary>
+        [Id(4)]
+        public bool CleanHandoff { get; }
     }
 }

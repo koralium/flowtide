@@ -21,7 +21,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         private readonly Func<long, long, Task<SubstreamInitializeResponse>> _sendInitializeRequest;
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunc;
         private Func<long, Task>? _callFailAndRecover;
-        private Func<long, long, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
+        private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
         private Func<long, long, Task>? _callRecieveCheckpointDone;
 
         public TestSubstreamComHandler(
@@ -53,7 +53,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
-            Func<long, long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
             Func<long, long, Task> callRecieveCheckpointDone)
         {
             _getDataFunc = getDataFunction;
@@ -72,7 +72,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             return _sendFailAndRecover(restoreVersion);
         }
 
-        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
+        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
         {
             return _sendInitializeRequest(restoreVersion, checkpointEpoch);
         }

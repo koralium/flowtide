@@ -52,5 +52,26 @@ namespace FlowtideDotNet.Base.Vertices
         /// additional stop checkpoint cycles until all vertices are ready.
         /// </summary>
         bool ReadyToStop => true;
+
+        /// <summary>
+        /// First phase of preparing a planned handoff stop, for example before a grain
+        /// migration: the vertex stops taking in new external input. Runs while the stream is
+        /// still fully running, so input already taken in can drain through the pipeline and
+        /// be covered by the stop checkpoint that follows. Default no-op.
+        /// </summary>
+        void BeginHandoffDrain()
+        {
+        }
+
+        /// <summary>
+        /// Second phase of preparing a planned handoff stop: completes once input taken in
+        /// before <see cref="BeginHandoffDrain"/> has drained into the pipeline, so a stop
+        /// started afterwards covers everything this vertex consumed. Bounded by the
+        /// implementation. Default no-op.
+        /// </summary>
+        Task CompleteHandoffDrainAsync()
+        {
+            return Task.CompletedTask;
+        }
     }
 }

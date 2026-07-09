@@ -16,6 +16,7 @@ using FlowtideDotNet.Orleans.Internal;
 using FlowtideDotNet.Orleans.Messages;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using Orleans.Runtime;
 using System;
 using System.Collections.Generic;
@@ -56,13 +57,16 @@ namespace FlowtideDotNet.Orleans.Grains
     {
         private readonly ConnectorManagerFactory connectorManagerFactory;
         private readonly IPersistentState<StreamGrainStorage> _state;
+        private readonly ILogger<StreamGrain> _logger;
 
         public StreamGrain(
             ConnectorManagerFactory connectorManagerFactory,
-            [PersistentState("stream", "stream_metadata")] IPersistentState<StreamGrainStorage> state)
+            [PersistentState("stream", "stream_metadata")] IPersistentState<StreamGrainStorage> state,
+            ILogger<StreamGrain> logger)
         {
             this.connectorManagerFactory = connectorManagerFactory;
             _state = state;
+            _logger = logger;
         }
 
         public async Task StartStreamAsync(StartStreamRequest request)
@@ -148,7 +152,7 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 var substreamKey = SubStreamGrainKey.Create(this.GetPrimaryKeyString(), substream);
                 var substreamGrain = GrainFactory.GetGrain<ISubStreamGrain>(substreamKey);
-                stopTasks.Add(substreamGrain.StopStreamAsync());
+                stopTasks.Add(CallWithTimeoutRetry(() => substreamGrain.StopStreamAsync(), "stop", substream));
             }
 
             await Task.WhenAll(stopTasks);
@@ -166,13 +170,43 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 var substreamKey = SubStreamGrainKey.Create(this.GetPrimaryKeyString(), substream);
                 var substreamGrain = GrainFactory.GetGrain<ISubStreamGrain>(substreamKey);
-                deleteTasks.Add(substreamGrain.DeleteStreamAsync());
+                deleteTasks.Add(CallWithTimeoutRetry(() => substreamGrain.DeleteStreamAsync(), "delete", substream));
             }
 
             await Task.WhenAll(deleteTasks);
 
             _state.State.StartedSubstreams.Clear();
             await _state.ClearStateAsync();
+        }
+
+        /// <summary>
+        /// A stop or delete can legitimately execute longer than one grain response timeout,
+        /// for example while a slow teardown drains under load. Both calls are idempotent on
+        /// the substream grain - a repeated call joins the teardown already in progress - so
+        /// the coordination retries a timed out call instead of failing the whole operation
+        /// while the substream is still working on it.
+        /// </summary>
+        private async Task CallWithTimeoutRetry(Func<Task> call, string operation, string substream)
+        {
+            // Bounded low: this grain is not reentrant, so time spent retrying here keeps the
+            // callers own retry queued behind it. The retries only need to cover a substream
+            // teardown that runs slightly past one response timeout, a caller with a larger
+            // budget retries the whole idempotent call.
+            const int maxAttempts = 3;
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    await call();
+                    return;
+                }
+                catch (TimeoutException) when (attempt < maxAttempts)
+                {
+                    _logger.LogWarning(
+                        "The {operation} call to substream {substream} timed out, the teardown may still be in progress, retrying (attempt {attempt}).",
+                        operation, substream, attempt);
+                }
+            }
         }
 
         public async Task<StreamStatusResponse> GetStatusAsync()

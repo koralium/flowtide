@@ -65,6 +65,61 @@ namespace FlowtideDotNet.Orleans.Tests
         }
 
         [Fact]
+        public void InitSubstreamRequestRoundTripsCleanHandoff()
+        {
+            var serializer = CreateSerializer();
+            var original = new InitSubstreamRequest("substream_0", restorePoint: 4, fetchEpoch: 17, checkpointEpoch: 23, cleanHandoff: true);
+
+            var bytes = serializer.SerializeToArray(original);
+            var roundTripped = serializer.Deserialize<InitSubstreamRequest>(bytes);
+
+            // CleanHandoff is how a migrated substream reconnects without rolling back its
+            // peer; if it is dropped every planned migration degrades into a fail over.
+            Assert.True(roundTripped.CleanHandoff, "InitSubstreamRequest.CleanHandoff did not survive serialization (missing [Id]).");
+            Assert.Equal("substream_0", roundTripped.Requestor);
+            Assert.Equal(4, roundTripped.RestorePoint);
+            Assert.Equal(17, roundTripped.FetchEpoch);
+            Assert.Equal(23, roundTripped.CheckpointEpoch);
+        }
+
+        [Fact]
+        public void InitSubstreamResponseRoundTripsCleanReconnect()
+        {
+            var serializer = CreateSerializer();
+            var original = new InitSubstreamResponse(notStarted: false, success: true, restoreVersion: 4, cleanReconnect: true);
+
+            var bytes = serializer.SerializeToArray(original);
+            var roundTripped = serializer.Deserialize<InitSubstreamResponse>(bytes);
+
+            // CleanReconnect tells the returning substream its peer kept running, so its read
+            // operators must initialize from restored state; if it is dropped they wait for an
+            // init watermarks event from a peer restart that never comes and the stream hangs.
+            Assert.True(roundTripped.CleanReconnect, "InitSubstreamResponse.CleanReconnect did not survive serialization (missing [Id]).");
+        }
+
+        [Fact]
+        public void SubstreamStatusRoundTripsActivationId()
+        {
+            var serializer = CreateSerializer();
+            var original = new SubstreamStatus
+            {
+                SubstreamName = "substream_0",
+                IsStarted = true,
+                ActivationId = "activation-1",
+            };
+
+            var bytes = serializer.SerializeToArray(original);
+            var roundTripped = serializer.Deserialize<SubstreamStatus>(bytes);
+
+            // The activation id is how a caller observes that a grain migration actually
+            // moved the activation; if it is dropped a migration is indistinguishable from
+            // a no-op.
+            Assert.Equal("activation-1", roundTripped.ActivationId);
+            Assert.Equal("substream_0", roundTripped.SubstreamName);
+            Assert.True(roundTripped.IsStarted);
+        }
+
+        [Fact]
         public void StartStreamRequestRoundTripsPlanFields()
         {
             var serializer = CreateSerializer();

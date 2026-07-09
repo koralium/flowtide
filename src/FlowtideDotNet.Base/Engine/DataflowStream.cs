@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Vertices;
 
 namespace FlowtideDotNet.Base.Engine
 {
@@ -79,6 +80,33 @@ namespace FlowtideDotNet.Base.Engine
         internal void InjectEgressCheckpointDoneForTests(string operatorName, ILockingEvent? lockingEvent)
         {
             streamContext.EgressCheckpointDone(operatorName, lockingEvent);
+        }
+
+        /// <summary>
+        /// Prepares the stream for a planned handoff stop, for example before a grain
+        /// migration: ingress vertices that consume external input stop taking in new input
+        /// and drain what they already took in through the still-running pipeline, so a
+        /// <see cref="StopAsync"/> started afterwards covers everything consumed and the
+        /// stream can be resumed elsewhere from that checkpoint without any peer rolling back.
+        /// </summary>
+        internal async Task PrepareHandoffAsync()
+        {
+            await streamContext.ForEachIngressBlockAsync((key, block) =>
+            {
+                if (block is IStreamIngressVertex ingress)
+                {
+                    ingress.BeginHandoffDrain();
+                }
+                return Task.CompletedTask;
+            });
+            await streamContext.ForEachIngressBlockAsync((key, block) =>
+            {
+                if (block is IStreamIngressVertex ingress)
+                {
+                    return ingress.CompleteHandoffDrainAsync();
+                }
+                return Task.CompletedTask;
+            });
         }
 
         /// <summary>

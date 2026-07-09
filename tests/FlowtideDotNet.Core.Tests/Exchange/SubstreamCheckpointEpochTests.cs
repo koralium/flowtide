@@ -32,12 +32,12 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
                 Func<long, Task> callFailAndRecover,
-                Func<long, long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, Task> callRecieveCheckpointDone)
             {
             }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
             {
                 AnnouncedCheckpointEpochs.Add(checkpointEpoch);
                 return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             // The aborted generation's handshake retry captured its self epoch (the initial 0)
             // before the failure and lands late, re-announcing it after the fresh handshake.
-            await handlerA.SendInitializeRequest(0, 0, default);
+            await handlerA.SendInitializeRequest(0, 0, false, default);
 
             // B completes a checkpoint. Its ack must carry A's current epoch and be credited; a
             // regressed record tags it with the aborted epoch and the fence drops it.
@@ -235,7 +235,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             // The dead generation of A ran on a process whose clock seeded its epochs a day
             // ahead; its announcement is what B has recorded when A fails over.
-            await handlerA.SendInitializeRequest(0, DateTime.UtcNow.Ticks + TimeSpan.FromDays(1).Ticks, default);
+            await handlerA.SendInitializeRequest(0, DateTime.UtcNow.Ticks + TimeSpan.FromDays(1).Ticks, false, default);
 
             // The failed-over live A: a fresh point whose clock-seeded epoch is far below
             // the dead generation's announcement.

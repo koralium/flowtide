@@ -27,8 +27,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly ILoggerFactory loggerFactory;
         private readonly string? selfSubstreamName;
         private readonly ISubstreamCommunicationHandlerFactory? _communicationHandlerFactory;
+        private readonly bool _announceCleanHandoff;
 
-        public SubstreamCommunicationPointFactory(ILoggerFactory? loggerFactory = null, string? selfSubstreamName = null, ISubstreamCommunicationHandlerFactory? communicationHandlerFactory = null)
+        public SubstreamCommunicationPointFactory(ILoggerFactory? loggerFactory = null, string? selfSubstreamName = null, ISubstreamCommunicationHandlerFactory? communicationHandlerFactory = null, bool announceCleanHandoff = false)
         {
             _existing = new Dictionary<string, SubstreamCommunicationPoint>();
             if (loggerFactory != null)
@@ -41,6 +42,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             this.selfSubstreamName = selfSubstreamName;
             this._communicationHandlerFactory = communicationHandlerFactory;
+            _announceCleanHandoff = announceCleanHandoff;
         }
 
         public SubstreamCommunicationPoint GetCommunicationPoint(string targetSubstreamName)
@@ -59,7 +61,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     return existing;
                 }
-                existing = new SubstreamCommunicationPoint(loggerFactory.CreateLogger($"FlowtideDotNet.substream_com_{selfSubstreamName}_{targetSubstreamName}"), selfSubstreamName, targetSubstreamName, _communicationHandlerFactory.GetCommunicationHandler(targetSubstreamName, selfSubstreamName));
+                existing = new SubstreamCommunicationPoint(loggerFactory.CreateLogger($"FlowtideDotNet.substream_com_{selfSubstreamName}_{targetSubstreamName}"), selfSubstreamName, targetSubstreamName, _communicationHandlerFactory.GetCommunicationHandler(targetSubstreamName, selfSubstreamName), _announceCleanHandoff);
                 _existing.Add(targetSubstreamName, existing);
                 return existing;
             }

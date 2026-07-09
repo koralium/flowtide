@@ -150,7 +150,7 @@ namespace FlowtideDotNet.Core.Engine
             _doneRelations = new Dictionary<int, RelationTree>();
             if (distributedOptions != null && distributedOptions.CommunicationHandlerFactory != null)
             {
-                _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory, distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory);
+                _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory, distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory, distributedOptions.AnnounceCleanHandoff);
             }
             else
             {

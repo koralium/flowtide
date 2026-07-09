@@ -20,13 +20,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     public class SubstreamInitializeResponse
     {
-        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedCheckpointEpoch = 0)
+        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false)
         {
             NotStarted = notStarted;
             Success = success;
             RestoreVersion = restoreVersion;
             CheckpointEpoch = checkpointEpoch;
             RecordedCheckpointEpoch = recordedCheckpointEpoch;
+            CleanReconnect = cleanReconnect;
         }
 
         public bool NotStarted { get; }
@@ -53,5 +54,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// permanently fenced out of its acks.
         /// </summary>
         public long RecordedCheckpointEpoch { get; }
+
+        /// <summary>
+        /// True when the responder accepted the requestors clean handoff reconnect: it kept
+        /// running, did not roll back, and resumed serving and consuming where the handoff
+        /// stopped. The requestor then completes its own startup from restored state instead
+        /// of waiting for the responder to restart.
+        /// </summary>
+        public bool CleanReconnect { get; }
     }
 }

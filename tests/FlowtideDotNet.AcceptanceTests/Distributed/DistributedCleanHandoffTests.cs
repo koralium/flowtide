@@ -1,0 +1,459 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
+using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Engine.Distributed;
+using FlowtideDotNet.Core.Optimizer;
+using FlowtideDotNet.Core.Optimizer.DistributedMode;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
+using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Substrait.Sql;
+using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+
+namespace FlowtideDotNet.AcceptanceTests.Distributed
+{
+    /// <summary>
+    /// Protocol tests for the clean handoff a planned migration uses: one substream stops
+    /// through the handoff drain and a new instance restores its final checkpoint and
+    /// reconnects announcing the handoff. Runs the real streams over the local hub, so the
+    /// whole handshake, drain and resume path is exercised without an Orleans cluster. The
+    /// substream is rebuilt as a fresh stream instance over the same hub and storage, which
+    /// is exactly what a grain activation moving to another silo does.
+    /// </summary>
+    public class DistributedCleanHandoffTests : IAsyncLifetime
+    {
+        private record UserKeyRow(long UserKey);
+
+        /// <summary>
+        /// A memory file provider whose contents survive the owning storage being disposed.
+        /// The reservoir storage disposes its file provider with the stream, and the base
+        /// provider clears everything on dispose - durable storage (local disk, blob) keeps
+        /// its files, which is what the handoff's restart relies on. Relisting the interface
+        /// remaps its Dispose to the no-op here.
+        /// </summary>
+        private sealed class KeepAliveMemoryFileProvider : MemoryFileProvider, Storage.Persistence.Reservoir.IReservoirStorageProvider
+        {
+            public new void Dispose()
+            {
+            }
+        }
+
+        private const string JoinSql = @"
+            INSERT INTO output
+            SELECT u.userkey FROM users u
+            INNER JOIN orders o ON u.userkey = o.userkey;
+            ";
+
+        private readonly MockDatabase _db;
+        private readonly DatasetGenerator _generator;
+        private readonly List<Base.Engine.DataflowStream> _streams = new List<Base.Engine.DataflowStream>();
+        private readonly CancellationTokenSource _tickCancellation = new CancellationTokenSource();
+        private Task? _tickLoop;
+
+        public DistributedCleanHandoffTests()
+        {
+            _db = new MockDatabase();
+            _generator = new DatasetGenerator(_db);
+        }
+
+        public Task InitializeAsync()
+        {
+            // Drives the substream schedulers so the sources poll for new data, the same loop
+            // the distributed host and the Orleans grains run; StartAsync does not tick them.
+            _tickLoop = Task.Run(async () =>
+            {
+                using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
+                var inflightTicks = new Dictionary<Base.Engine.DataflowStream, Task>();
+                try
+                {
+                    while (await timer.WaitForNextTickAsync(_tickCancellation.Token))
+                    {
+                        List<Base.Engine.DataflowStream> snapshot;
+                        lock (_streams)
+                        {
+                            snapshot = new List<Base.Engine.DataflowStream>(_streams);
+                        }
+                        foreach (var stream in snapshot)
+                        {
+                            if (stream.Scheduler is not Base.Engine.DefaultStreamScheduler scheduler)
+                            {
+                                continue;
+                            }
+                            // One dispatch in flight per stream, a parked dispatch into a
+                            // stopping stream must not stall the others.
+                            if (inflightTicks.TryGetValue(stream, out var previous) && !previous.IsCompleted)
+                            {
+                                continue;
+                            }
+                            inflightTicks[stream] = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await scheduler.Tick();
+                                }
+                                catch
+                                {
+                                    // A stream mid stop or dispose may reject the tick, the
+                                    // next tick reaches it again if it is still running.
+                                }
+                            });
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                }
+            });
+            return Task.CompletedTask;
+        }
+
+        public async Task DisposeAsync()
+        {
+            _tickCancellation.Cancel();
+            if (_tickLoop != null)
+            {
+                await _tickLoop;
+            }
+            _tickCancellation.Dispose();
+            List<Base.Engine.DataflowStream> streams;
+            lock (_streams)
+            {
+                streams = new List<Base.Engine.DataflowStream>(_streams);
+            }
+            foreach (var stream in streams)
+            {
+                await stream.DisposeAsync();
+            }
+        }
+
+        /// <summary>
+        /// A substream restarted through a clean handoff resumes against its running peer
+        /// without any substream being failed or rolled back, and data keeps flowing.
+        /// </summary>
+        [Fact]
+        public async Task SubstreamRestartedThroughACleanHandoffResumesWithoutAnyRollback()
+        {
+            var testName = "e2e_clean_handoff";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+
+            var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            await substream0.StartAsync();
+            await substream1.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // The handoff a migrating grain runs: drain consumption from the peer, stop at a
+            // final checkpoint the peer acknowledges, dispose. The peer keeps running.
+            await substream1.PrepareHandoffAsync();
+            await AwaitBounded(substream1.StopAsync(), "handoff stop");
+            await substream1.DisposeAsync();
+            lock (_streams)
+            {
+                _streams.Remove(substream1);
+            }
+
+            // The "new activation": a fresh stream instance restores the final checkpoint
+            // from the same storage and announces the clean handoff at its reconnect.
+            substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+            await substream1.StartAsync();
+
+            // Data added after the handoff must flow through both substreams again.
+            _generator.Generate(250);
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+            catch
+            {
+                DumpLogBuffers("resume");
+                throw;
+            }
+
+            // The clean handoff must not have failed or rolled back anything - a coordinated
+            // rollback reports a null exception, so the whole bag must stay empty.
+            Assert.Empty(failures);
+
+            await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+        }
+
+        /// <summary>
+        /// A handoff that begins while checkpoints are in flight must neither wedge the stop
+        /// nor roll anything back: once the drain unsubscribes the readers no peer event will
+        /// ever arrive to pair a stored local checkpoint with, so it must be self-forwarded
+        /// like a stop checkpoint - left waiting it defers the stop until its watchdog fails
+        /// the stream. Checkpoints are triggered on both substreams right before each drain
+        /// and the handoff runs several rounds to widen the race window.
+        /// </summary>
+        [Fact]
+        public async Task HandoffWithCheckpointsInFlightResumesWithoutAnyRollback()
+        {
+            var testName = "e2e_handoff_ckpt_inflight";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+
+            var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            await substream0.StartAsync();
+            await substream1.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            for (int round = 0; round < 3; round++)
+            {
+                // Checkpoints racing the drain on both sides: the triggers are not awaited so
+                // the barriers are in flight when the drain begins.
+                _ = substream0.TriggerCheckpoint();
+                _ = substream1.TriggerCheckpoint();
+
+                await substream1.PrepareHandoffAsync();
+                await AwaitBounded(substream1.StopAsync(), $"handoff stop (round {round})");
+                await substream1.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream1);
+                }
+
+                substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+                await substream1.StartAsync();
+
+                _generator.Generate(100);
+                try
+                {
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                }
+                catch
+                {
+                    DumpLogBuffers($"ckpt_inflight_round{round}");
+                    throw;
+                }
+            }
+
+            Assert.Empty(failures);
+
+            await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+        }
+
+        /// <summary>
+        /// The safety fence of the clean handoff: a reconnect that announces the handoff but
+        /// restored OLDER (here: no) state must be refused, the peer consumed data that state
+        /// does not cover. The stream falls back to the normal coordinated recovery and the
+        /// data is regenerated, so the result stays complete. This case cannot be reached
+        /// with durable storage in the Orleans tests, only a unit-level state loss shows it.
+        /// </summary>
+        [Fact]
+        public async Task CleanHandoffAnnouncedWithLostStateFallsBackToRecovery()
+        {
+            var testName = "e2e_handoff_lost_state";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+
+            var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            await substream0.StartAsync();
+            await substream1.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            await substream1.PrepareHandoffAsync();
+            await AwaitBounded(substream1.StopAsync(), "handoff stop");
+            await substream1.DisposeAsync();
+            lock (_streams)
+            {
+                _streams.Remove(substream1);
+            }
+
+            // The restarted instance lost its state: an empty provider replaces the one the
+            // handoff persisted into, so it restores nothing and announces the clean handoff
+            // at a restore point below the commits the peer already acknowledged.
+            fileProviders["substream_1"] = new KeepAliveMemoryFileProvider();
+            substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+            await substream1.StartAsync();
+
+            _generator.Generate(250);
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+            // The peer must have refused the clean claim and gone through the coordinated
+            // recovery instead of resuming over data the returned substream cannot know.
+            Assert.NotEmpty(failures);
+
+            await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+        }
+
+        private readonly ConcurrentDictionary<string, RingBufferLoggerProvider> _logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+        private void DumpLogBuffers(string phase)
+        {
+            foreach (var buffer in _logBuffers)
+            {
+                buffer.Value.WriteToFile($"./debugwrite/clean_handoff_{phase}_{buffer.Key}.log");
+            }
+        }
+
+        private Base.Engine.DataflowStream BuildSubstream(
+            string testName,
+            string substreamName,
+            LocalSubstreamCommunicationHub hub,
+            ConcurrentDictionary<string, KeepAliveMemoryFileProvider> fileProviders,
+            ConcurrentDictionary<string, EventBatchData> latestData,
+            ConcurrentBag<(string Substream, Exception? Exception)> failures,
+            bool announceCleanHandoff)
+        {
+            var connectorManager = new ConnectorManager();
+            connectorManager.AddSource(new MockSourceFactory("*", _db, false));
+            connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }));
+
+            var logProvider = _logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+            var builder = new FlowtideBuilder($"{testName.Length}_{testName}_{substreamName}")
+                .AddPlan(CreateDistributedPlan(), false)
+                .WithStateOptions(CreateStateOptions(testName, substreamName, fileProviders))
+                .AddConnectorManager(connectorManager);
+            builder.WithLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+            {
+                b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                b.AddProvider(logProvider);
+            }));
+            builder.WithFailureListener(e => failures.Add((substreamName, e)));
+            builder.SetDistributedOptions(new DistributedOptions(
+                substreamName,
+                default,
+                hub.CreateFactory(substreamName))
+            {
+                AnnounceCleanHandoff = announceCleanHandoff
+            });
+
+            var stream = builder.Build();
+            lock (_streams)
+            {
+                _streams.Add(stream);
+            }
+            return stream;
+        }
+
+        /// <summary>
+        /// Builds the distributed plan the same way for every substream instance; building a
+        /// stream mutates the plan in place, so each build needs its own identical instance.
+        /// </summary>
+        private Plan CreateDistributedPlan()
+        {
+            var sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+            sqlPlanBuilder.Sql(JoinSql);
+            return PlanOptimizer.Optimize(sqlPlanBuilder.GetPlan(), new PlanOptimizerSettings()
+            {
+                DistributedPlanOptions = new DistributedPlanOptions()
+                {
+                    SubstreamCount = 2
+                }
+            });
+        }
+
+        private static Storage.StateManager.StateManagerOptions CreateStateOptions(
+            string testName,
+            string substreamName,
+            ConcurrentDictionary<string, KeepAliveMemoryFileProvider> fileProviders)
+        {
+            return new Storage.StateManager.StateManagerOptions()
+            {
+                CachePageCount = 100_000,
+                PersistentStorage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                {
+                    // Shared between the instances of a substream so a rebuilt instance
+                    // restores the state its predecessor persisted, like durable storage.
+                    FileProvider = fileProviders.GetOrAdd(substreamName, _ => new KeepAliveMemoryFileProvider())
+                }),
+                DefaultBPlusTreePageSize = 1024,
+                DefaultBPlusTreePageSizeBytes = 32 * 1024,
+                TemporaryStorageOptions = new Storage.FileCacheOptions()
+                {
+                    DirectoryPath = $"./data/tempFiles/{testName}/{substreamName}/tmp/{Guid.NewGuid():N}"
+                }
+            };
+        }
+
+        private List<UserKeyRow> GetExpectedJoinResult()
+        {
+            return _generator.Orders
+                .Join(_generator.Users, o => o.UserKey, u => u.UserKey, (o, u) => new UserKeyRow(u.UserKey))
+                .ToList();
+        }
+
+        private static async Task AwaitBounded(Task task, string operation)
+        {
+            var finished = await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == task, $"The {operation} timed out");
+            await task;
+        }
+
+        private static async Task WaitForSinkData<T>(
+            ConcurrentDictionary<string, EventBatchData> latestData,
+            ConcurrentBag<(string Substream, Exception? Exception)> failures,
+            string substreamName,
+            List<T> expected,
+            bool allowFailures = false)
+        {
+            var expectedBatch = BatchConverter.ConvertToBatchSorted(expected, GlobalMemoryManager.Instance);
+
+            var stopwatch = Stopwatch.StartNew();
+            while (true)
+            {
+                if (!allowFailures)
+                {
+                    var failure = failures.FirstOrDefault(x => x.Exception != null);
+                    if (failure.Exception != null)
+                    {
+                        throw new Exception($"Substream {failure.Substream} failed", failure.Exception);
+                    }
+                }
+
+                if (latestData.TryGetValue(substreamName, out var actual))
+                {
+                    try
+                    {
+                        EventBatchAssertion.Equal(expectedBatch, actual);
+                        return;
+                    }
+                    catch when (stopwatch.Elapsed < TimeSpan.FromSeconds(60))
+                    {
+                        // Not the expected data yet, retry until the deadline.
+                    }
+                }
+                if (stopwatch.Elapsed >= TimeSpan.FromSeconds(60))
+                {
+                    Assert.Fail($"Substream {substreamName} did not produce the expected data within the deadline.");
+                }
+                await Task.Delay(100);
+            }
+        }
+    }
+}

@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Engine.Distributed
 
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
         private Func<long, Task>? _callFailAndRecover;
-        private Func<long, long, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
+        private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
         private Func<long, long, Task>? _callRecieveCheckpointDone;
 
         public LocalSubstreamCommunicationHandler(LocalSubstreamCommunicationHub hub, string selfSubstreamName, string targetSubstreamName)
@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
-            Func<long, long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
             Func<long, long, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
@@ -66,12 +66,12 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             return Task.FromResult<IReadOnlyList<SubstreamEventData>>(new List<SubstreamEventData>());
         }
 
-        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, CancellationToken cancellationToken)
+        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
         {
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._initializeFromTarget != null)
             {
-                return peer._initializeFromTarget(restoreVersion, checkpointEpoch);
+                return peer._initializeFromTarget(restoreVersion, checkpointEpoch, cleanHandoff);
             }
             return Task.FromResult(new SubstreamInitializeResponse(true, false, restoreVersion));
         }

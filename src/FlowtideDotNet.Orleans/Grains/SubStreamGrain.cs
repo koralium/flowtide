@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Orleans.Grains
     // and delegate to the stream which does its own synchronization.
     [Reentrant]
     [KeepAlive]
-    internal class SubStreamGrain : Grain, ISubStreamGrain, IRemindable
+    internal class SubStreamGrain : Grain, ISubStreamGrain, IRemindable, IGrainMigrationParticipant
     {
         // Keeps the substream running across silo failures. KeepAlive only protects a live
         // activation, if all substream grains were on a lost silo no call ever reactivates
@@ -54,6 +54,16 @@ namespace FlowtideDotNet.Orleans.Grains
         private OrleansCommunicationFactory? _orleansCommunicationFactory;
         private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
         private CancellationTokenSource? _tickCancellation;
+        // True while a requested migration is pending on this activation: the stream was
+        // handed off (or is being handed off) and must not be restarted here, the migrated
+        // activation resumes it. Cleared by the keep alive reminder if the runtime skipped
+        // the migration, the stream then restarts locally instead of staying down.
+        private bool _migrating;
+        // True when the stream stopped through a completed handoff drain: everything it
+        // consumed was committed and its queues were frozen at the final barrier. Carried to
+        // the next activation through the migration context, the restart then announces a
+        // clean handoff so the other substreams accept the reconnect without rolling back.
+        private bool _handoffCompletedCleanly;
 
         public SubStreamGrain(
             [PersistentState("substream", "stream_metadata")] IPersistentState<SubStreamGrainStorage> state,
@@ -291,6 +301,10 @@ namespace FlowtideDotNet.Orleans.Grains
         // Failures do not propagate out of StartAsync, the stream retries them in the
         // background, so they are captured through the failure listener.
         private volatile string? _lastFailure;
+        // Counts stream failures on this activation. A migration handoff compares it across
+        // the drain: a stop that was completed by the failure path still ends not started,
+        // but it is not a clean handoff and must not be announced as one.
+        private int _failureCount;
 
         public Task<SubstreamStatus> GetStatusAsync()
         {
@@ -301,7 +315,8 @@ namespace FlowtideDotNet.Orleans.Grains
                 IsStarted = _state.RecordExists,
                 State = stream?.State,
                 Health = stream?.Health,
-                LastFailure = _lastFailure
+                LastFailure = _lastFailure,
+                ActivationId = ((IGrainBase)this).GrainContext.ActivationId.ToString()
             });
         }
 
@@ -327,6 +342,15 @@ namespace FlowtideDotNet.Orleans.Grains
             var stream = _stream;
             if (stream == null)
             {
+                if (_migrating)
+                {
+                    // A migration was requested but the runtime never moved the activation,
+                    // for example because placement selected the same silo and the migration
+                    // was skipped. The stream must not stay down, it restarts locally and
+                    // still announces the clean handoff it completed.
+                    _logger.LogWarning("Substream {substream} requested a migration that never happened, resuming the stream locally.", this.GetPrimaryKeyString());
+                    _migrating = false;
+                }
                 StartStream();
                 return Task.CompletedTask;
             }
@@ -365,6 +389,91 @@ namespace FlowtideDotNet.Orleans.Grains
             await base.OnDeactivateAsync(reason, cancellationToken);
         }
 
+        public async Task MigrateAsync()
+        {
+            // The handoff must run here, inside a normal reentrant grain call, and not in
+            // OnDeactivateAsync: once deactivation starts, incoming calls are queued for the
+            // next activation, so the other substreams could no longer fetch this streams
+            // stop barrier or acknowledge it and the drain would never complete.
+            var stream = _stream;
+            if (stream != null && _teardownTask == null && !_migrating)
+            {
+                _migrating = true;
+                try
+                {
+                    // Drain consumption from the other substreams while the stream still runs,
+                    // then stop: the first stop cycle's barrier freezes the outgoing queues and
+                    // covers everything consumed, the peers fetch and acknowledge it, and the
+                    // stream ends at a checkpoint the peers exactly match - the restart on the
+                    // new activation can then reconnect without anyone rolling back. A failure
+                    // during the drain (for example a stop watchdog breaking a slow checkpoint)
+                    // can also end at not started, but through a rollback: that is not a clean
+                    // handoff and must not be announced as one.
+                    var failuresBeforeHandoff = Volatile.Read(ref _failureCount);
+                    var handoff = RunHandoff(stream);
+                    var finished = await Task.WhenAny(handoff, Task.Delay(TimeSpan.FromSeconds(30)));
+                    if (finished == handoff && !handoff.IsFaulted && stream.State == Base.Engine.StreamStateValue.NotStarted &&
+                        Volatile.Read(ref _failureCount) == failuresBeforeHandoff)
+                    {
+                        _handoffCompletedCleanly = true;
+                        _stream = null;
+                        _tickCancellation?.Cancel();
+                        _tickCancellation = null;
+                        await stream.DisposeAsync();
+                        _logger.LogInformation("Substream {substream} completed its handoff drain and migrates cleanly.", this.GetPrimaryKeyString());
+                    }
+                    else
+                    {
+                        // The drain did not finish, for example a peer never fetched the stop
+                        // barrier. The migration proceeds as an unplanned restart: the stream
+                        // is torn down by the deactivation and the initialize handshake
+                        // reconciles the substreams through the normal recovery.
+                        _logger.LogWarning("Substream {substream} could not complete its handoff drain, migrating through the recovery path instead.", this.GetPrimaryKeyString());
+                        _migrating = false;
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning(e, "Substream {substream} handoff drain failed, migrating through the recovery path instead.", this.GetPrimaryKeyString());
+                    _migrating = false;
+                }
+            }
+            // Marks the activation for migration once its current calls complete; the runtime
+            // rehydrates it through normal placement and OnActivateAsync resumes the stream.
+            this.MigrateOnIdle();
+        }
+
+        private static async Task RunHandoff(Base.Engine.DataflowStream stream)
+        {
+            await stream.PrepareHandoffAsync();
+            await stream.StopAsync();
+        }
+
+        void IGrainMigrationParticipant.OnDehydrate(IDehydrationContext dehydrationContext)
+        {
+            // The fetch epochs announced by the other substreams must survive the migration:
+            // after a clean handoff nothing rolls back, so the peers keep fetching with the
+            // epochs they already announced, and an activation without the table would refuse
+            // them as unknown until a needless recovery re-announces them.
+            dehydrationContext.TryAddValue("flowtide.peerFetchEpochs", _peerFetchEpochs);
+            dehydrationContext.TryAddValue("flowtide.cleanHandoff", _handoffCompletedCleanly);
+        }
+
+        void IGrainMigrationParticipant.OnRehydrate(IRehydrationContext rehydrationContext)
+        {
+            if (rehydrationContext.TryGetValue<Dictionary<string, long>>("flowtide.peerFetchEpochs", out var epochs) && epochs != null)
+            {
+                foreach (var kvp in epochs)
+                {
+                    _peerFetchEpochs[kvp.Key] = kvp.Value;
+                }
+            }
+            if (rehydrationContext.TryGetValue<bool>("flowtide.cleanHandoff", out var cleanHandoff))
+            {
+                _handoffCompletedCleanly = cleanHandoff;
+            }
+        }
+
         public async Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request)
         {
             // Fetch epochs come from a monotonically increasing per-process seed, so within one
@@ -401,8 +510,22 @@ namespace FlowtideDotNet.Orleans.Grains
             {
                 return new InitSubstreamResponse(true, false, request.RestorePoint, recordedFetchEpoch: request.FetchEpoch);
             }
-            var response = await handler.TargetInitializeRequest(request.RestorePoint, request.CheckpointEpoch);
-            return new InitSubstreamResponse(false, response.Success, response.RestoreVersion, response.CheckpointEpoch, recordedFetchEpoch: request.FetchEpoch, recordedCheckpointEpoch: response.RecordedCheckpointEpoch);
+            var response = await handler.TargetInitializeRequest(request.RestorePoint, request.CheckpointEpoch, request.CleanHandoff);
+            // NotStarted must survive the wire: the communication point answers it for
+            // transient states (a fail over in progress, a handoff commit still in flight)
+            // where the requestor must retry the handshake with backoff. Mapping it to a
+            // plain failure makes the requestor fail and recover instead - for a clean
+            // handoff reconnect that needlessly rolls back both substreams.
+            return new InitSubstreamResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, recordedFetchEpoch: request.FetchEpoch, recordedCheckpointEpoch: response.RecordedCheckpointEpoch, cleanReconnect: response.CleanReconnect);
+        }
+
+        /// <summary>
+        /// Installs the communication factory without starting a stream, so a test can drive
+        /// the handshake mapping through a wired handler.
+        /// </summary>
+        internal void SetCommunicationFactoryForTests(OrleansCommunicationFactory factory)
+        {
+            _orleansCommunicationFactory = factory;
         }
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)
@@ -478,11 +601,15 @@ namespace FlowtideDotNet.Orleans.Grains
 
         private void StartStream()
         {
-            if (_stream != null || _teardownTask != null ||
+            if (_stream != null || _teardownTask != null || _migrating ||
                 _state.State.StreamName == null || _state.State.PlanJson == null || _state.State.SubstreamName == null)
             {
                 return;
             }
+            // One-shot: the clean handoff only describes the state the previous activation
+            // left behind, the next start after this one is an ordinary restart again.
+            var announceCleanHandoff = _handoffCompletedCleanly;
+            _handoffCompletedCleanly = false;
             ServiceCollection serviceCollection = new ServiceCollection();
             serviceCollection.AddKeyedSingleton(_state.State.StreamName, new FileCacheOptions()
             {
@@ -516,14 +643,32 @@ namespace FlowtideDotNet.Orleans.Grains
             flowtideBuilder.WithLoggerFactory(_loggerFactory);
             // Failures inside the stream are retried in the background and never propagate
             // to a grain call, the listener captures them so GetStatusAsync can report why
-            // a stream does not become healthy.
-            flowtideBuilder.WithFailureListener(e => _lastFailure = e.ToString());
+            // a stream does not become healthy. The exception is null for coordinated
+            // rollbacks, for example a recovery requested by another substream; those must
+            // still be recorded (a thrown ToString here would be swallowed by the notifier
+            // and the rollback would be invisible in the status).
+            flowtideBuilder.WithFailureListener(e =>
+            {
+                Interlocked.Increment(ref _failureCount);
+                if (e != null || _lastFailure == null)
+                {
+                    // A coordinated rollback carries no exception. It must be recorded when
+                    // it is the only failure (an otherwise healthy stream rolled back by a
+                    // peer would be invisible in the status), but it must not overwrite an
+                    // informative failure: the rollback is how the stream recovers FROM that
+                    // failure, and the cause is the useful part of the status.
+                    _lastFailure = e?.ToString() ?? "The stream was rolled back by a coordinated recovery.";
+                }
+            });
             if (_state.State.SubstreamName != null)
             {
                 flowtideBuilder.SetDistributedOptions(new DistributedOptions(
                     _state.State.SubstreamName,
                     new PullExchangeReadFactory(_state.State.StreamName, _grainFactory),
-                    _orleansCommunicationFactory));
+                    _orleansCommunicationFactory)
+                {
+                    AnnounceCleanHandoff = announceCleanHandoff
+                });
             }
 
             // Applied last so user configuration can override the defaults set above.
