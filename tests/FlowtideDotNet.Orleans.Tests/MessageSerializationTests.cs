@@ -98,6 +98,23 @@ namespace FlowtideDotNet.Orleans.Tests
         }
 
         [Fact]
+        public void CheckpointDoneRequestRoundTripsCoversPeerStopBarrier()
+        {
+            var serializer = CreateSerializer();
+            var original = new CheckpointDoneRequest("substream_0", checkpointVersion: 5, checkpointEpoch: 11, coversPeerStopBarrier: true);
+
+            var bytes = serializer.SerializeToArray(original);
+            var roundTripped = serializer.Deserialize<CheckpointDoneRequest>(bytes);
+
+            // The stamp is how a stopping substream confirms its drain; if it is dropped the
+            // stop waits out its full drain timeout on every cross-silo stop.
+            Assert.True(roundTripped.CoversPeerStopBarrier, "CheckpointDoneRequest.CoversPeerStopBarrier did not survive serialization (missing [Id]).");
+            Assert.Equal("substream_0", roundTripped.Requestor);
+            Assert.Equal(5, roundTripped.CheckpointVersion);
+            Assert.Equal(11, roundTripped.CheckpointEpoch);
+        }
+
+        [Fact]
         public void SubstreamStatusRoundTripsActivationId()
         {
             var serializer = CreateSerializer();

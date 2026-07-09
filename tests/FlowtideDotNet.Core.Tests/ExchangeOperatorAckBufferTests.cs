@@ -40,11 +40,11 @@ namespace FlowtideDotNet.Core.Tests
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
                 Func<long, Task> callFailAndRecover,
                 Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
-                Func<long, long, Task> callRecieveCheckpointDone)
+                Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
             }
 
-            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)
+            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
             {
                 return Task.CompletedTask;
             }
@@ -76,13 +76,13 @@ namespace FlowtideDotNet.Core.Tests
         private class RecordingHandler : ISubstreamCommunicationHandler
         {
             private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
-            private Func<long, long, Task>? _callRecieveCheckpointDone;
+            private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
                 Func<long, Task> callFailAndRecover,
                 Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
-                Func<long, long, Task> callRecieveCheckpointDone)
+                Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
                 _initializeFromTarget = initializeFromTarget;
                 _callRecieveCheckpointDone = callRecieveCheckpointDone;
@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Core.Tests
                 return Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>());
             }
 
-            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch) => Task.CompletedTask;
+            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier) => Task.CompletedTask;
 
             public Task SendFailAndRecover(long restoreVersion) => Task.CompletedTask;
 
@@ -114,7 +114,7 @@ namespace FlowtideDotNet.Core.Tests
                     throw new InvalidOperationException("The handler was not initialized by a communication point.");
                 }
                 var response = await _initializeFromTarget(0, 0, false);
-                await _callRecieveCheckpointDone(checkpointVersion, response.CheckpointEpoch);
+                await _callRecieveCheckpointDone(checkpointVersion, response.CheckpointEpoch, false);
             }
         }
 

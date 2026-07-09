@@ -46,13 +46,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         // Set once this streams stop barrier is stored (nothing is stored after it). The stream can
         // only finish stopping after the other substream has fetched it AND acknowledged a
-        // checkpoint afterwards, or events before it could be disposed before that substream
-        // received them. The fetch alone is not delivery: the dequeue removes the events from the
-        // queue, but the fetch response can still be lost after it (the wire serializer can throw,
-        // the cross-silo call can fail in transit), so the confirmation is the peer's checkpoint
-        // done acknowledgement arriving after the barrier was handed out - the peer only acks once
-        // it committed a cycle, and the cycle that paired with the stop barrier covers everything
-        // up to it.
+        // checkpoint that covers consuming it, or events before it could be disposed before that
+        // substream durably received them. The fetch alone is not delivery: the dequeue removes
+        // the events from the queue, but the fetch response can still be lost after it (the wire
+        // serializer can throw, the cross-silo call can fail in transit). The confirmation is a
+        // checkpoint done acknowledgement stamped by the peer as covering its consumed stop
+        // barriers, see TargetSubstreamCheckpointDone.
         private volatile bool _stopBarrierStored;
         private volatile bool _stopBarrierFetched;
         private volatile bool _stopBarrierFetchAcked;
@@ -339,15 +338,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _failAndRecoverFunc(recoveryPoint);
         }
 
-        public Task TargetSubstreamCheckpointDone(long checkpointVersion)
+        public Task TargetSubstreamCheckpointDone(long checkpointVersion, bool coversPeerStopBarrier)
         {
-            if (_stopBarrierFetched)
+            if (_stopBarrierFetched && coversPeerStopBarrier)
             {
-                // The peer acknowledged a checkpoint after fetching the stop barrier: it only
-                // acks once a cycle committed, and the cycle that paired with the barrier
-                // covers everything up to it, so the drain is confirmed and the stop may
-                // finish. An ack from before the fetch cannot land here, the fetched flag was
-                // not set yet.
+                // The peer attests that this ack's committed cycle covers consuming the stop
+                // barrier, so the drain is confirmed and the stop may finish. The fetch alone
+                // is not enough (the response can be lost after the destructive dequeue), and
+                // an unstamped ack proves nothing: it can be for a cycle committed before the
+                // barrier was consumed, delivered after the fetch raced it.
                 _stopBarrierFetchAcked = true;
             }
             _targetCallDependenciesDone();

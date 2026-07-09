@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
-        private Func<long, long, Task>? _callRecieveCheckpointDone;
+        private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
 
         public LocalSubstreamCommunicationHandler(LocalSubstreamCommunicationHub hub, string selfSubstreamName, string targetSubstreamName)
         {
@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
             Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
-            Func<long, long, Task> callRecieveCheckpointDone)
+            Func<long, long, bool, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
             _callFailAndRecover = callFailAndRecover;
@@ -87,12 +87,12 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             return Task.CompletedTask;
         }
 
-        public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)
+        public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
         {
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._callRecieveCheckpointDone != null)
             {
-                return peer._callRecieveCheckpointDone(checkpointVersion, targetCheckpointEpoch);
+                return peer._callRecieveCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
             }
             // The other substream has not started yet, there is no pending checkpoint
             // that waits for this notification.

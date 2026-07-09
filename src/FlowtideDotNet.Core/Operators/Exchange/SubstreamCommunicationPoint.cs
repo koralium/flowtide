@@ -650,7 +650,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             });
         }
 
-        private Task RecieveCheckpointDone(long checkpointVersion, long checkpointEpoch)
+        private Task RecieveCheckpointDone(long checkpointVersion, long checkpointEpoch, bool coversPeerStopBarrier)
         {
             long selfEpoch;
             lock (_initializeLock)
@@ -682,7 +682,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     foreach (var target in _targetInfos)
                     {
-                        await target.Value.Target.TargetSubstreamCheckpointDone(checkpointVersion);
+                        await target.Value.Target.TargetSubstreamCheckpointDone(checkpointVersion, coversPeerStopBarrier);
                     }
                     List<SubstreamReadOperator> readOperators;
                     lock (_readOperators)
@@ -720,8 +720,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 targetEpoch = _peerCheckpointEpoch;
             }
+            // Whether this committed checkpoint covers consuming the peer's stop barriers,
+            // used by a stopping peer to confirm its drain. Every read operator's OnCheckpoint
+            // ran before any CheckpointDone fires, so the flags are final for this version.
+            // Vacuously true without read operators: the peer only checks the flag on targets,
+            // and its targets always pair with read operators here.
+            bool coversPeerStopBarrier;
+            lock (_readOperators)
+            {
+                coversPeerStopBarrier = _readOperators.All(r => r.PeerStopConsumedCommitted);
+            }
             _logger.LogDebug("Sending checkpoint done to target: {substreamName} from {selfSubstreamName}", substreamName, _selfSubstreamName);
-            return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion, targetEpoch);
+            return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion, targetEpoch, coversPeerStopBarrier);
         }
 
         /// <summary>

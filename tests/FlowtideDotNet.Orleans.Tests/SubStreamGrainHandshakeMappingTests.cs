@@ -106,7 +106,7 @@ namespace FlowtideDotNet.Orleans.Tests
                     onTargetInitialize?.Invoke(restoreVersion, checkpointEpoch, cleanHandoff);
                     return Task.FromResult(pointResponse);
                 },
-                (_, _) => Task.CompletedTask);
+                (_, _, _) => Task.CompletedTask);
             grain.SetCommunicationFactoryForTests(factory);
             return grain;
         }

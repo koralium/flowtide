@@ -22,11 +22,12 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class CheckpointDoneRequest
     {
-        public CheckpointDoneRequest(string requestor, long checkpointVersion, long checkpointEpoch)
+        public CheckpointDoneRequest(string requestor, long checkpointVersion, long checkpointEpoch, bool coversPeerStopBarrier = false)
         {
             Requestor = requestor;
             CheckpointVersion = checkpointVersion;
             CheckpointEpoch = checkpointEpoch;
+            CoversPeerStopBarrier = coversPeerStopBarrier;
         }
 
         [Id(0)]
@@ -41,5 +42,13 @@ namespace FlowtideDotNet.Orleans.Messages
         /// </summary>
         [Id(2)]
         public long CheckpointEpoch { get; }
+
+        /// <summary>
+        /// True when the committed cycle covers consuming the receiving substreams stop
+        /// barriers. A stopping receiver only confirms its drain on a stamped ack; an
+        /// unstamped one can be for a cycle committed before the barrier was consumed.
+        /// </summary>
+        [Id(3)]
+        public bool CoversPeerStopBarrier { get; }
     }
 }

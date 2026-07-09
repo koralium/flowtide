@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Orleans.Internal
         private ISubStreamGrain _streamGrain;
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
-        private Func<long, long, Task>? _callRecieveCheckpointDone;
+        private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
         private Func<int, IMemoryAllocator>? _receiveAllocatorResolver;
         private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
         // Every handler instance gets a unique epoch, the seed starts at the clock so
@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Orleans.Internal
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
             Func<long, long, bool, Task<SubstreamInitializeResponse>> targetInitializeRequest,
-            Func<long, long, Task> callRecieveCheckpointDone)
+            Func<long, long, bool, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
             _callFailAndRecover = callFailAndRecover;
@@ -186,18 +186,18 @@ namespace FlowtideDotNet.Orleans.Internal
             return _targetInitializeRequest(restoreVersion, peerCheckpointEpoch, cleanHandoff);
         }
 
-        public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)
+        public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
         {
-            return _streamGrain.CheckpointDone(new Messages.CheckpointDoneRequest(selfName, checkpointVersion, targetCheckpointEpoch));
+            return _streamGrain.CheckpointDone(new Messages.CheckpointDoneRequest(selfName, checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier));
         }
 
-        public Task TargetCheckpointDone(long checkpointVersion, long checkpointEpoch)
+        public Task TargetCheckpointDone(long checkpointVersion, long checkpointEpoch, bool coversPeerStopBarrier)
         {
             if (_callRecieveCheckpointDone == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _callRecieveCheckpointDone(checkpointVersion, checkpointEpoch);
+            return _callRecieveCheckpointDone(checkpointVersion, checkpointEpoch, coversPeerStopBarrier);
         }
     }
 }

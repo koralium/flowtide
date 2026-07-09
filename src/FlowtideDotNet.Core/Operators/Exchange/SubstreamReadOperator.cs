@@ -455,6 +455,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         internal bool HasCleanPeerStop => _peerStopConsumed;
 
         /// <summary>
+        /// True when a committed checkpoint covers the consumed stop barrier. Stamped onto
+        /// outgoing checkpoint done acks so the stopping peer only confirms its drain on an
+        /// ack that attests the barrier consumption, not on one that merely raced in after
+        /// the barrier was fetched.
+        /// </summary>
+        internal bool PeerStopConsumedCommitted => _peerStopConsumedCommitted;
+
+        /// <summary>
         /// Resumes consumption from a peer that returned through a clean handoff: resets the
         /// stop tracking, re-subscribes on the same channel, and arms the swallow of the
         /// returning peer's init watermarks event.

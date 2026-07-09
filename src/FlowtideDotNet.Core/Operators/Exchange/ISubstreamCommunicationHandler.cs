@@ -43,12 +43,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <param name="initializeFromTarget">Handles an initialize request from the other substream:
         /// the restore point, the requestors checkpoint epoch, and whether the requestor resumes
         /// from a clean handoff stop.</param>
-        /// <param name="callRecieveCheckpointDone">Handles a checkpoint done message with the completed checkpoint version and the epoch it was sent under.</param>
+        /// <param name="callRecieveCheckpointDone">Handles a checkpoint done message with the completed
+        /// checkpoint version, the epoch it was sent under, and whether the committed cycle covers
+        /// consuming this substreams stop barriers.</param>
         void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
             Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
-            Func<long, long, Task> callRecieveCheckpointDone);
+            Func<long, long, bool, Task> callRecieveCheckpointDone);
 
         /// <summary>
         /// Fetches events from the other substream.
@@ -78,6 +80,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         /// <param name="checkpointVersion">The completed checkpoint version.</param>
         /// <param name="targetCheckpointEpoch">The receiving substream's checkpoint epoch as last learned through the handshake, so it can drop the ack if it is stale.</param>
-        Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch);
+        /// <param name="coversPeerStopBarrier">True when the committed cycle covers consuming the
+        /// receiving substreams stop barriers, confirming a stop drain.</param>
+        Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier);
     }
 }

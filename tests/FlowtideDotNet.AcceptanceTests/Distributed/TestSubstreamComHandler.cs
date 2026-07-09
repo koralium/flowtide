@@ -22,7 +22,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunc;
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
-        private Func<long, long, Task>? _callRecieveCheckpointDone;
+        private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
 
         public TestSubstreamComHandler(
             Func<long, long, Task> sendCheckpointDone,
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
             Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
-            Func<long, long, Task> callRecieveCheckpointDone)
+            Func<long, long, bool, Task> callRecieveCheckpointDone)
         {
             _getDataFunc = getDataFunction;
             _callFailAndRecover = callFailAndRecover;
@@ -62,7 +62,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             _callRecieveCheckpointDone = callRecieveCheckpointDone;
         }
 
-        public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)
+        public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
         {
             return _sendCheckpointDone(checkpointVersion, targetCheckpointEpoch);
         }
@@ -81,13 +81,13 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         /// Simulates the other substream reporting that it has completed a checkpoint, tagged with
         /// the checkpoint epoch it believes this stream is on.
         /// </summary>
-        public Task CallRecieveCheckpointDone(long checkpointVersion, long checkpointEpoch)
+        public Task CallRecieveCheckpointDone(long checkpointVersion, long checkpointEpoch, bool coversPeerStopBarrier = false)
         {
             if (_callRecieveCheckpointDone == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _callRecieveCheckpointDone(checkpointVersion, checkpointEpoch);
+            return _callRecieveCheckpointDone(checkpointVersion, checkpointEpoch, coversPeerStopBarrier);
         }
 
         /// <summary>

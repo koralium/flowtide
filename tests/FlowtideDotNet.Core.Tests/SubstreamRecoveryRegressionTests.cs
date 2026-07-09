@@ -43,12 +43,12 @@ namespace FlowtideDotNet.Core.Tests
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
                 Func<long, Task> callFailAndRecover,
                 Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
-                Func<long, long, Task> callRecieveCheckpointDone)
+                Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
                 CallFailAndRecover = callFailAndRecover;
             }
 
-            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)
+            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
             {
                 return Task.CompletedTask;
             }
@@ -152,11 +152,11 @@ namespace FlowtideDotNet.Core.Tests
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
                 Func<long, Task> callFailAndRecover,
                 Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
-                Func<long, long, Task> callRecieveCheckpointDone)
+                Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
             }
 
-            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch)
+            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
             {
                 return Task.CompletedTask;
             }

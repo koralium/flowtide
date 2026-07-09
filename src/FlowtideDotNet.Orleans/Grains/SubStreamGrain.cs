@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Orleans.Grains
                 // The stream has not started yet, nothing waits for this notification
                 return;
             }
-            await handler.TargetCheckpointDone(request.CheckpointVersion, request.CheckpointEpoch);
+            await handler.TargetCheckpointDone(request.CheckpointVersion, request.CheckpointEpoch, request.CoversPeerStopBarrier);
         }
 
         public Task FailAndRecoverAsync(FailAndRecoverRequest request)
