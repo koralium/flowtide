@@ -23,6 +23,10 @@ namespace FlowtideDotNet.Core.Tests
     /// which froze whole clusters before: a fail and recover request from another substream
     /// arriving before this substreams exchange had initialized used to throw.
     /// </summary>
+    // Serialized with FetchLoopStallWatchdogTests, both mutate the process-global
+    // SubstreamCommunicationPoint.StallLimit/StallCheckInterval statics (see the collection
+    // note there); running them concurrently leaks a non-default value across tests.
+    [Collection("SubstreamStallStatics")]
     public class SubstreamRecoveryRegressionTests
     {
         private class RecordingHandler : ISubstreamCommunicationHandler
@@ -111,11 +115,21 @@ namespace FlowtideDotNet.Core.Tests
                 communicationPoint.NotifyFailAndRecover(7);
             }
 
-            // The notification runs on the thread pool, give it a moment to finish.
+            // The notifications run fire-and-forget on the thread pool. Wait until the send
+            // count stops changing before asserting: sampling right after the first send would
+            // let a non-collapsing implementation (which schedules all ten) pass, since its
+            // later sends have not reached the handler yet.
             var deadline = DateTime.UtcNow.AddSeconds(5);
-            while (handler.SendFailAndRecoverCalls == 0 && DateTime.UtcNow < deadline)
+            int lastCount = -1;
+            while (DateTime.UtcNow < deadline)
             {
-                await Task.Delay(10);
+                await Task.Delay(100);
+                int current = handler.SendFailAndRecoverCalls;
+                if (current > 0 && current == lastCount)
+                {
+                    break;
+                }
+                lastCount = current;
             }
             Assert.True(handler.SendFailAndRecoverCalls >= 1, "The fail and recover notification was never sent");
             Assert.True(handler.SendFailAndRecoverCalls < 10, $"Expected the concurrent notifications to collapse, got {handler.SendFailAndRecoverCalls} sends");

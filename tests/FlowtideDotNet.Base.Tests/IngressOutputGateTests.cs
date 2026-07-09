@@ -11,7 +11,12 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager;
+using Microsoft.Extensions.Logging;
+using System.Collections.Immutable;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Tests
@@ -24,6 +29,21 @@ namespace FlowtideDotNet.Base.Tests
     /// </summary>
     public class IngressOutputGateTests
     {
+        // The watermark send path reads the operator id off the vertex handler before it
+        // reaches the gate; only OperatorId is exercised, the rest is never called here.
+        private sealed class StubVertexHandler : IVertexHandler
+        {
+            public string OperatorId => "op";
+            public string StreamName => throw new NotImplementedException();
+            public IMeter Metrics => throw new NotImplementedException();
+            public IStateManagerClient StateClient => throw new NotImplementedException();
+            public ILoggerFactory LoggerFactory => throw new NotImplementedException();
+            public IOperatorMemoryManager MemoryManager => throw new NotImplementedException();
+            public void ScheduleCheckpoint(TimeSpan time, long? checkpointVersion) => throw new NotImplementedException();
+            public Task RegisterTrigger(string name, TimeSpan? scheduledInterval = null) => throw new NotImplementedException();
+            public Task FailAndRollback(Exception? exception, long? restoreVersion = default) => throw new NotImplementedException();
+        }
+
         private static IngressState<string> CreateState()
         {
             return new IngressState<string>
@@ -78,30 +98,30 @@ namespace FlowtideDotNet.Base.Tests
         public async Task StopGateSetWhileWaitingForCheckpointLockParksTheWatermark()
         {
             var state = CreateState();
+            state._vertexHandler = new StubVertexHandler();
             var received = new BufferBlock<IStreamEvent>();
             var output = new IngressOutput<string>(state, received);
-            state._vertexHandler = null;
 
             await output.EnterCheckpointLock();
             output.ExitCheckpointLock();
 
+            // The stop cycle holds the checkpoint lock while it injects the stop barrier.
             await state._checkpointLock!.WaitAsync();
-            var sendTask = output.SendAsync("data");
+            var watermark = new Watermark(ImmutableDictionary<string, AbstractWatermarkValue>.Empty);
+            var sendTask = output.SendWatermark(watermark);
             Assert.False(sendTask.IsCompleted);
 
-            output.Pause();
+            output.Stop();
             state._checkpointLock.Release();
 
+            // The watermark must stay parked behind the stop gate instead of delivering.
             var finished = await Task.WhenAny(sendTask, Task.Delay(500));
             Assert.NotEqual(sendTask, finished);
-            Assert.False(received.TryReceive(out _), "Data was delivered after the pause gate was set");
+            Assert.False(received.TryReceive(out _), "A watermark was delivered after the stop barrier");
 
-            // A resume must release the parked sender and deliver the data.
-            output.Resume();
-            var finishedAfterResume = await Task.WhenAny(sendTask, Task.Delay(2000));
-            Assert.Equal(sendTask, finishedAfterResume);
-            await sendTask;
-            Assert.True(received.TryReceive(out _));
+            // Release the parked sender like a teardown would.
+            state._tokenSource!.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sendTask);
         }
     }
 }

@@ -320,29 +320,43 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
         /// Gets the columns in the join output that carry the partition key values, or null
         /// when they cannot be determined. Only equality compared key columns carry the
         /// values the data was partitioned on, inequality keys differ between the two sides
-        /// of a match.
+        /// of a match. Which side is safe depends on the join type: a null-padded row has
+        /// null on the outer side's key, so the left key is only reliable for inner/left
+        /// joins, the right key only for right joins, and a full outer join has no single
+        /// column that is non-null (and carries the partition value) for every output row.
         /// </summary>
         private static List<int>? GetJoinPartitionKeyColumns(MergeJoinRelation mergeJoinRelation, List<int> equalityKeyIndices)
         {
-            var equalityLeftKeys = equalityKeyIndices.Select(i => mergeJoinRelation.LeftKeys[i]).ToList();
-            var leftKeyColumns = LanePushdownVisitor.MapColumnsThroughEmit(
-                LanePushdownVisitor.GetDirectFieldColumns(equalityLeftKeys),
+            List<int>? MapKeys(IReadOnlyList<FieldReference> keys) => LanePushdownVisitor.MapColumnsThroughEmit(
+                LanePushdownVisitor.GetDirectFieldColumns(equalityKeyIndices.Select(i => keys[i]).ToList()),
                 mergeJoinRelation.Emit);
-            if (leftKeyColumns != null)
+
+            switch (mergeJoinRelation.Type)
             {
-                return leftKeyColumns;
+                case JoinType.Inner:
+                    // Both keys are non-null and equal on every row, either carries the value.
+                    return MapKeys(mergeJoinRelation.LeftKeys) ?? MapKeys(mergeJoinRelation.RightKeys);
+                case JoinType.Left:
+                case JoinType.LeftMark:
+                    // Only the left key is non-null on every row (unmatched right is null-padded).
+                    return MapKeys(mergeJoinRelation.LeftKeys);
+                case JoinType.Right:
+                    // Only the right key is non-null on every row (unmatched left is null-padded).
+                    return MapKeys(mergeJoinRelation.RightKeys);
+                default:
+                    // Full outer (and unspecified): neither key carries the value for every row.
+                    return null;
             }
-            // The right keys are in join output coordinates and carry the same values
-            var equalityRightKeys = equalityKeyIndices.Select(i => mergeJoinRelation.RightKeys[i]).ToList();
-            return LanePushdownVisitor.MapColumnsThroughEmit(
-                LanePushdownVisitor.GetDirectFieldColumns(equalityRightKeys),
-                mergeJoinRelation.Emit);
         }
 
         public override Relation VisitAggregateRelation(AggregateRelation aggregateRelation, object state)
         {
             Debug.Assert(_plan != null);
-            if (_substreamCount < 2 || (aggregateRelation.Groupings == null || aggregateRelation.Groupings.Count < 1))
+            // Only a single grouping set is distributed. Multiple sets (GROUPING SETS, ROLLUP,
+            // CUBE) have no single column set that co-locates every group - scattering on the
+            // union of all sets splits an individual set's groups across substreams, and the
+            // grand-total set () makes the safe intersection empty - so they run undistributed.
+            if (_substreamCount < 2 || aggregateRelation.Groupings == null || aggregateRelation.Groupings.Count != 1)
             {
                 aggregateRelation.Input = Visit(aggregateRelation.Input, state);
                 return aggregateRelation;

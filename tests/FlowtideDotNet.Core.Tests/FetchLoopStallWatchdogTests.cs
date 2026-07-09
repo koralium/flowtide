@@ -23,6 +23,12 @@ namespace FlowtideDotNet.Core.Tests
     /// per second when healthy. The watchdog must detect a loop that is stuck delivering an
     /// event and start a recovery.
     /// </summary>
+    // Serialized with the other class that mutates the process-global
+    // SubstreamCommunicationPoint.StallLimit/StallCheckInterval statics; running them
+    // concurrently lets one capture the other's already-shortened value as its "original"
+    // and permanently leak a non-default value, and exposes the shortened limit to any
+    // SubstreamCommunicationPoint a concurrent test constructs.
+    [Collection("SubstreamStallStatics")]
     public class FetchLoopStallWatchdogTests
     {
         private class RecordingLogger : ILogger
