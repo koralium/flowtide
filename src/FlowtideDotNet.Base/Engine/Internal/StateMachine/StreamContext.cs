@@ -103,6 +103,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal static Func<string, Task>? CompactionHookForTests;
         internal static Action<string>? BeforeFailureDisposeForTests;
         internal static Action<string, long>? RestoreVersionForTests;
+        // Awaited during startup after the blocks are initialized but before the init tracking
+        // sets are created and the init watermarks event is injected, so a test can hold the
+        // stream in the Starting phase and deliver a spurious egress checkpoint done into that
+        // window.
+        internal static Func<string, Task>? StartupBeforeInitTrackingHookForTests;
 
         private StreamStatus _streamStatus;
 

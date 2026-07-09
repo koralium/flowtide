@@ -55,10 +55,30 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
         {
             Debug.Assert(_context != null, nameof(_context));
+
+            if (lockingEvent is not InitWatermarksEvent)
+            {
+                // During startup the only checkpoint done this state tracks is the init
+                // watermarks event it injects. A checkpoint event here is stale: a checkpoint
+                // that was in flight when the aborted generation failed can have its
+                // acknowledgement delivered late, after the stream restarted into this state
+                // (a parallel egress fires it from an unconditional continuation). Counting it
+                // would drop an egress from the init tracking before its real init watermarks
+                // event was handled, firing InitEventsDone and transitioning to running before
+                // watermark initialization completed.
+                return;
+            }
+
             lock (_context._checkpointLock)
             {
-                Debug.Assert(nonInitEgresses != null, nameof(nonInitEgresses));
-                Debug.Assert(waitingForDependencies != null, nameof(waitingForDependencies));
+                if (nonInitEgresses == null || waitingForDependencies == null)
+                {
+                    // The init tracking sets are created near the end of startup, just before
+                    // the init watermarks event is injected. An acknowledgement arriving before
+                    // that cannot be one this state is waiting for, so it is ignored (dropping
+                    // the removal below that would otherwise dereference a null set).
+                    return;
+                }
                 nonInitEgresses.Remove(name);
 
                 // Check if all egresses has done their checkpoint
@@ -334,6 +354,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Watermark initialization must go through this flow so all blocks know what watermarks will pass through it.
             // Since a source can be joined with itself some blocks will get the same watermark from multiple inputs.
             _context._logger.InitializingWatermarkSystem(_context.streamName);
+            var startupHook = StreamContext.StartupBeforeInitTrackingHookForTests;
+            if (startupHook != null)
+            {
+                await startupHook(_context.streamName);
+            }
             nonInitEgresses = _context.egressBlocks.Keys.ToHashSet();
             waitingForDependencies = _context.egressBlocks.Keys.Union(_context.ingressBlocks.Keys).ToHashSet();
             foreach (var ingress in _context.ingressBlocks)

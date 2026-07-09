@@ -623,6 +623,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return _stream!.InjectFailureForTests(exception);
         }
 
+        /// <summary>
+        /// Delivers an egress checkpoint done into the stream as if an egress vertex fired it,
+        /// so a test can reproduce a spurious or stale acknowledgement arriving at a precise
+        /// moment.
+        /// </summary>
+        public void InjectEgressCheckpointDone(string operatorName, ILockingEvent? lockingEvent)
+        {
+            _stream!.InjectEgressCheckpointDoneForTests(operatorName, lockingEvent);
+        }
+
         public Task StartStream()
         {
             return _stream!.StartAsync();

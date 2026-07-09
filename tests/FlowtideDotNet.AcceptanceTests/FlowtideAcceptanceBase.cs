@@ -66,6 +66,8 @@ namespace FlowtideDotNet.AcceptanceTests
 
         protected Task InjectFailure(Exception exception) => flowtideTestStream.InjectFailure(exception);
 
+        protected void InjectEgressCheckpointDone(string operatorName, FlowtideDotNet.Base.ILockingEvent? lockingEvent) => flowtideTestStream.InjectEgressCheckpointDone(operatorName, lockingEvent);
+
         protected void Pause() => flowtideTestStream.Pause();
 
         protected void Resume() => flowtideTestStream.Resume();

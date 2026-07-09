@@ -72,6 +72,16 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
+        /// Test seam: delivers an egress checkpoint done into the current state as if an egress
+        /// vertex fired it, so tests can reproduce a spurious or stale acknowledgement arriving
+        /// at a precise moment, such as a late parallel egress checkpoint landing during startup.
+        /// </summary>
+        internal void InjectEgressCheckpointDoneForTests(string operatorName, ILockingEvent? lockingEvent)
+        {
+            streamContext.EgressCheckpointDone(operatorName, lockingEvent);
+        }
+
+        /// <summary>
         /// Gets the current high-level state machine value of the stream.
         /// </summary>
         /// <remarks>
