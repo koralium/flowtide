@@ -399,14 +399,20 @@ namespace FlowtideDotNet.Orleans.Grains
                     // via a rollback, so the failure count is checked before claiming clean.
                     var failuresBeforeHandoff = Volatile.Read(ref _failureCount);
                     var handoff = RunHandoff(stream);
-                    var finished = await Task.WhenAny(handoff, Task.Delay(TimeSpan.FromSeconds(30)));
+                    // The handoff is internally bounded (drain and stop drain timeouts), the
+                    // outer bound is a last resort against a genuine hang and is set above the
+                    // default stop drain timeout so the handoff normally settles on its own.
+                    var finished = await Task.WhenAny(handoff, Task.Delay(TimeSpan.FromSeconds(60)));
+                    // Take ownership of the stream teardown either way: null it so a following
+                    // OnDeactivateAsync does not dispose it concurrently with the handoff's own
+                    // stop, which would race a checkpoint write against the dispose.
+                    _stream = null;
+                    _tickCancellation?.Cancel();
+                    _tickCancellation = null;
                     if (finished == handoff && !handoff.IsFaulted && stream.State == Base.Engine.StreamStateValue.NotStarted &&
                         Volatile.Read(ref _failureCount) == failuresBeforeHandoff)
                     {
                         _handoffCompletedCleanly = true;
-                        _stream = null;
-                        _tickCancellation?.Cancel();
-                        _tickCancellation = null;
                         await stream.DisposeAsync();
                         _logger.LogInformation("Substream {substream} completed its handoff drain and migrates cleanly.", this.GetPrimaryKeyString());
                     }
@@ -414,8 +420,11 @@ namespace FlowtideDotNet.Orleans.Grains
                     {
                         // Drain did not finish (e.g. a peer never fetched the stop barrier).
                         // Migrate as an unplanned restart, the handshake reconciles on recovery.
+                        // Dispose once the handoff settles rather than abandoning it, so its
+                        // stop never runs concurrently with the dispose.
                         _logger.LogWarning("Substream {substream} could not complete its handoff drain, migrating through the recovery path instead.", this.GetPrimaryKeyString());
                         _migrating = false;
+                        _ = DisposeAfterHandoff(handoff, stream);
                     }
                 }
                 catch (Exception e)
@@ -432,6 +441,29 @@ namespace FlowtideDotNet.Orleans.Grains
         {
             await stream.PrepareHandoffAsync();
             await stream.StopAsync();
+        }
+
+        // Disposes a handed-off stream once its (possibly still running) handoff has settled,
+        // so the stop and the dispose never run against the stream at the same time. Only used
+        // when the outer bound elapsed and the stream was detached from the grain.
+        private async Task DisposeAfterHandoff(Task handoff, Base.Engine.DataflowStream stream)
+        {
+            try
+            {
+                await handoff;
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "Substream {substream} handoff drain faulted after the migration proceeded.", this.GetPrimaryKeyString());
+            }
+            try
+            {
+                await stream.DisposeAsync();
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "Substream {substream} failed to dispose a handed-off stream.", this.GetPrimaryKeyString());
+            }
         }
 
         void IGrainMigrationParticipant.OnDehydrate(IDehydrationContext dehydrationContext)

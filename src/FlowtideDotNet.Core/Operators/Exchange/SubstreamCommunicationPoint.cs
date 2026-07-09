@@ -159,6 +159,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 _initializedSent = true;
                 _selfInitializeVersion = restorePoint;
+                // Each fresh handshake starts with no clean reconnect; the response re-sets it
+                // only if the peer accepts one. A stale true left from an earlier migration
+                // would make the read operators synthesize a second init after an ordinary
+                // recovery, colliding with the peer's real init watermarks and fail-looping.
+                _cleanReconnect = false;
             }
 
             return SendInitializeRequest(restorePoint);
@@ -200,7 +205,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     response = await _substreamCommunicationHandler.SendInitializeRequest(restorePoint, selfEpoch, _announceCleanHandoff, default);
                     tryCount++;
 
-                    if (tryCount > 20)
+                    // Bounded above the total budget a slow peer start needs (~60s at the 2s
+                    // cap). The slices stay short, only the try count grows, so a stop held in
+                    // the delay still waits at most one slice.
+                    if (tryCount > 32)
                     {
                         throw new InvalidOperationException($"Failed to initialize substream {substreamName} after {tryCount} tries.");
                     }
@@ -229,6 +237,23 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     }
                 }
                 throw;
+            }
+
+            if (response.CleanReconnect)
+            {
+                // The peer kept running and accepted the clean handoff reconnect, so no init
+                // watermarks event from a peer restart will come. Read operators complete
+                // their startup from restored state instead, see SubstreamReadOperator.
+                // Applied before any epoch reseed re-run below: that re-run announces
+                // cleanHandoff=false and returns, so it would never re-report CleanReconnect,
+                // and the resumed peer never restarts - losing it here hangs startup.
+                lock (_initializeLock)
+                {
+                    if (_selfCheckpointEpoch == selfEpoch)
+                    {
+                        _cleanReconnect = true;
+                    }
+                }
             }
 
             if (allowEpochReseed && response.RecordedCheckpointEpoch > selfEpoch)
@@ -279,14 +304,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // what a newer handshake already recorded. Peer generations draw from a clock
                 // seed, so the current generation's epoch is always the highest.
                 _peerCheckpointEpoch = Math.Max(_peerCheckpointEpoch, response.CheckpointEpoch);
-            }
-
-            if (response.CleanReconnect)
-            {
-                // The peer kept running and accepted the clean handoff reconnect, so no init
-                // watermarks event from a peer restart will come. Read operators complete
-                // their startup from restored state instead, see SubstreamReadOperator.
-                _cleanReconnect = true;
             }
 
             if (!response.Success)

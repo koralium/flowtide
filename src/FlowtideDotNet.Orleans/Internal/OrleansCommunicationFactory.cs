@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.Operators.Exchange;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -24,7 +25,9 @@ namespace FlowtideDotNet.Orleans.Internal
         private readonly string _streamName;
         private readonly IGrainFactory _grainFactory;
 
-        public Dictionary<string, OrleansCommunicationHandler> handlers = new Dictionary<string, OrleansCommunicationHandler>();
+        // Populated during stream startup on a thread-pool thread while the reentrant grain
+        // may read it from a peer call, so it must be concurrency-safe.
+        public ConcurrentDictionary<string, OrleansCommunicationHandler> handlers = new ConcurrentDictionary<string, OrleansCommunicationHandler>();
 
         public OrleansCommunicationFactory(string streamName, IGrainFactory grainFactory)
         {
