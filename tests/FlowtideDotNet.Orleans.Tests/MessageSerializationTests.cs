@@ -65,6 +65,22 @@ namespace FlowtideDotNet.Orleans.Tests
         }
 
         [Fact]
+        public void FailAndRecoverRequestRoundTripsFetchEpoch()
+        {
+            var serializer = CreateSerializer();
+            var original = new FailAndRecoverRequest("substream_1", recoveryPoint: 7, fetchEpoch: 42);
+
+            var bytes = serializer.SerializeToArray(original);
+            var roundTripped = serializer.Deserialize<FailAndRecoverRequest>(bytes);
+
+            // A dropped epoch arrives as 0, below every clock-seeded announcement, so every
+            // cross-silo recovery notification would be refused as stale.
+            Assert.Equal(42, roundTripped.FetchEpoch);
+            Assert.Equal("substream_1", roundTripped.Requestor);
+            Assert.Equal(7, roundTripped.RecoveryPoint);
+        }
+
+        [Fact]
         public void InitSubstreamRequestRoundTripsCleanHandoff()
         {
             var serializer = CreateSerializer();

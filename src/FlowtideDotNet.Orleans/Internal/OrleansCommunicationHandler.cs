@@ -136,7 +136,7 @@ namespace FlowtideDotNet.Orleans.Internal
 
         public Task SendFailAndRecover(long restoreVersion)
         {
-            return _streamGrain.FailAndRecoverAsync(new Messages.FailAndRecoverRequest(selfName, restoreVersion));
+            return _streamGrain.FailAndRecoverAsync(new Messages.FailAndRecoverRequest(selfName, restoreVersion, Interlocked.Read(ref _fetchEpoch)));
         }
 
         public Task FailAndRecover(long restorePoint)

@@ -97,6 +97,23 @@ namespace FlowtideDotNet.Orleans.Grains
                 // The stream has not started yet, there is nothing to recover.
                 return Task.CompletedTask;
             }
+            if (!_peerFetchEpochs.TryGetValue(request.Requestor, out var announcedEpoch))
+            {
+                // Without an announcement the requestor cannot be told apart from a zombie.
+                // Refused; a live requestor re-runs the handshake on its restart, which
+                // reconciles the versions.
+                _logger.LogDebug("Refusing fail and recover to {recoveryPoint} from {requestor}, no fetch epoch has been announced to this activation.", request.RecoveryPoint, request.Requestor);
+                return Task.CompletedTask;
+            }
+            if (request.FetchEpoch < announcedEpoch)
+            {
+                // A rollback request from an abandoned instance: applying it would drag the
+                // live stream back to the zombie's restore point, discarding committed
+                // progress on both substreams. A live requestor bumps its epoch on failure
+                // before notifying, so a legitimate request is never below the announcement.
+                _logger.LogDebug("Refusing fail and recover to {recoveryPoint} from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.RecoveryPoint, request.Requestor, request.FetchEpoch, announcedEpoch);
+                return Task.CompletedTask;
+            }
             // Acknowledge immediately, awaiting the recovery would time the caller out
             _ = Task.Run(async () =>
             {

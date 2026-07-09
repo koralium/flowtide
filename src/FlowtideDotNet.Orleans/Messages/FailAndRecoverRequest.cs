@@ -22,10 +22,11 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class FailAndRecoverRequest
     {
-        public FailAndRecoverRequest(string requestor, long recoveryPoint)
+        public FailAndRecoverRequest(string requestor, long recoveryPoint, long fetchEpoch)
         {
             Requestor = requestor;
             RecoveryPoint = recoveryPoint;
+            FetchEpoch = fetchEpoch;
         }
 
         [Id(0)]
@@ -33,5 +34,13 @@ namespace FlowtideDotNet.Orleans.Messages
 
         [Id(1)]
         public long RecoveryPoint { get; }
+
+        /// <summary>
+        /// The requestor's fetch epoch. A request below the epoch the requestor announced at
+        /// its handshake comes from an abandoned instance and is refused, a live requestor
+        /// bumps its epoch on failure before notifying so it is never below the announcement.
+        /// </summary>
+        [Id(2)]
+        public long FetchEpoch { get; }
     }
 }
