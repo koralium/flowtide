@@ -296,6 +296,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper, bool usePersistentStorage = false)
         {
+            FastEngineTimings.Apply();
             var baseType = this.GetType();
             var testName = GetTestClassName(testOutputHelper);
             if (usePersistentStorage)

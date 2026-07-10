@@ -19,3 +19,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("FlowtideDotNet.Core")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Orleans")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.AcceptanceTests")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Orleans.Tests")]

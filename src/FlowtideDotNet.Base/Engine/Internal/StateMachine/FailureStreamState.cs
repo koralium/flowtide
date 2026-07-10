@@ -221,11 +221,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _context._logger.LogDebug("Failure handling stop and dispose finished on stream {stream}", _context.streamName);
         }
 
+        // Internal so tests can shorten it, every recovery hop in a test otherwise pays the
+        // full settle delay.
+        internal static TimeSpan RecoveryRestartDelay = TimeSpan.FromMilliseconds(500);
+
         private async Task Transition()
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            await Task.Delay(TimeSpan.FromMilliseconds(500));
+            await Task.Delay(RecoveryRestartDelay);
 
             // A pending delete takes precedence over a pending stop: the wish holds only the
             // last requested value, but a created delete task means a caller awaits a delete,

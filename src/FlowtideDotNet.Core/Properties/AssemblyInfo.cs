@@ -24,4 +24,5 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("FlowtideDotNet.StateDiagnostics")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.ComputeTests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.AcceptanceTests")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Orleans.Tests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.TestFramework")]

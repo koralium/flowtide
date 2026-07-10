@@ -66,6 +66,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         internal static Func<string, Task>? ReceiveCheckpointDoneDispatchHookForTests;
 
+        // Internal so tests can shorten it, nearly every distributed test start pays at
+        // least one slice for the substream that loses the startup race.
+        internal static int NotStartedRetrySliceMs = 500;
+
         // Highest checkpoint version the peer has acked (its own numbering), -1 while none.
         // A clean handoff reconnect must announce a restore point at or past it. Reset on rollback.
         private long _peerLastCommittedVersion = -1;
@@ -222,7 +226,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     {
                         // Kept short: this backoff runs inside the stream start and cannot
                         // observe a stop, so a stop is held for at most one slice.
-                        var delay = Math.Min(500 * tryCount, 2000);
+                        var delay = Math.Min(NotStartedRetrySliceMs * tryCount, NotStartedRetrySliceMs * 4);
                         _logger.LogInformation("Substream {substreamName} not started yet, retrying in {delay} ms", substreamName, delay);
                         await Task.Delay(delay);
                     }

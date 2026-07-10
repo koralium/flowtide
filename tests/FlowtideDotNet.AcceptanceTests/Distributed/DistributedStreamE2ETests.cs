@@ -43,6 +43,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         public DistributedStreamE2ETests()
         {
+            FastEngineTimings.Apply();
             _db = new MockDatabase();
             _generator = new DatasetGenerator(_db);
         }
@@ -379,13 +380,15 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
             // Let the waves from the initial data settle, then measure with nothing changing.
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            // A non-converging loop cycles continuously, a couple of seconds is plenty to
+            // tell dozens of cycles from none.
+            await Task.Delay(TimeSpan.FromMilliseconds(1500));
             int baseline = Volatile.Read(ref checkpoints);
-            await Task.Delay(TimeSpan.FromSeconds(5));
+            await Task.Delay(TimeSpan.FromMilliseconds(2500));
             int delta = Volatile.Read(ref checkpoints) - baseline;
 
             Assert.True(delta <= 4,
-                $"The substreams completed {delta} checkpoints in five seconds with no new data; the checkpoint waves do not converge, every barrier or data batch schedules another cycle.");
+                $"The substreams completed {delta} checkpoints in 2.5 seconds with no new data; the checkpoint waves do not converge, every barrier or data batch schedules another cycle.");
 
             var stopTask = _stream.StopAsync();
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
@@ -421,6 +424,68 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         private record CountRow(long Count);
+
+        /// <summary>
+        /// 100k rows per table through the distributed join with a small page cache and a
+        /// PAUSED consuming substream: the producer keeps joining and queueing rows for the
+        /// paused peer, the exchange queues grow past the cache and must spill pages to
+        /// temporary storage and reload them on resume. This is the queue's spill
+        /// serialization path, which the small-data tests never reach because a keeping-up
+        /// consumer holds the queues at a page or two. The test asserts the spill actually
+        /// happened and that the result is still exact afterwards.
+        /// </summary>
+        [Fact]
+        public async Task LargeJoinWithSmallCacheSpillsAndStaysCorrect()
+        {
+            _generator.Generate(1_000);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var tempRoot = $"./data/tempFiles/e2e_large_join_spill/{Guid.NewGuid():N}";
+
+            _stream = BuildHost("e2e_large_join_spill", NormalJoinSql, latestData, failures,
+                stateOptions: substreamName => new Storage.StateManager.StateManagerOptions()
+                {
+                    // Small enough that the backlogged exchange queues cannot stay cached.
+                    CachePageCount = 100,
+                    PersistentStorage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                    {
+                        FileProvider = new MemoryFileProvider()
+                    }),
+                    DefaultBPlusTreePageSize = 1024,
+                    DefaultBPlusTreePageSizeBytes = 32 * 1024,
+                    TemporaryStorageOptions = new Storage.FileCacheOptions()
+                    {
+                        DirectoryPath = $"{tempRoot}/{substreamName}/tmp"
+                    }
+                });
+
+            await _stream.StartAsync();
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // The consumer stops draining, the producer keeps queueing for it.
+            _stream.Substreams["substream_0"].Pause();
+            _generator.Generate(100_000);
+
+            // The backlog must actually spill; without it this test proves nothing.
+            var spillDeadline = Stopwatch.StartNew();
+            int spillFiles = 0;
+            while (spillDeadline.Elapsed < TimeSpan.FromSeconds(60))
+            {
+                spillFiles = Directory.Exists(tempRoot)
+                    ? Directory.GetFiles(tempRoot, "*", SearchOption.AllDirectories).Length
+                    : 0;
+                if (spillFiles > 0)
+                {
+                    break;
+                }
+                await Task.Delay(100);
+            }
+            Assert.True(spillFiles > 0, "The backlogged exchange queues never spilled to temporary storage, the spill serialization path was not exercised.");
+
+            _stream.Substreams["substream_0"].Resume();
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            Assert.Empty(failures);
+        }
 
         /// <summary>
         /// Storage that cannot be initialized, so the substream it is given to fails its

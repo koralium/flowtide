@@ -29,6 +29,13 @@ namespace FlowtideDotNet.Orleans.Tests
 
         protected OrleansClusterFixtureBase(short siloCount, bool durableStreamState = false)
         {
+            // Real delays, only shorter: every recovery hop pays the restart settle delay
+            // and every stream start pays a handshake retry slice for the substream that
+            // loses the startup race. The test cluster silos run in process, the statics
+            // reach the grains.
+            FlowtideDotNet.Base.Engine.Internal.StateMachine.FailureStreamState.RecoveryRestartDelay = TimeSpan.FromMilliseconds(50);
+            FlowtideDotNet.Core.Operators.Exchange.SubstreamCommunicationPoint.NotStartedRetrySliceMs = 50;
+
             var builder = new TestClusterBuilder(siloCount);
             if (durableStreamState)
             {

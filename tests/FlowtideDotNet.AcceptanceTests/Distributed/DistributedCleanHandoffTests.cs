@@ -65,6 +65,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         public DistributedCleanHandoffTests()
         {
+            FastEngineTimings.Apply();
             _db = new MockDatabase();
             _generator = new DatasetGenerator(_db);
         }

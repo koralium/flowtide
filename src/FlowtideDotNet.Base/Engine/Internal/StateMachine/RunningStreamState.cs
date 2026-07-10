@@ -684,6 +684,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         /// or the wish transition already chosen) is likewise left alone, only the wait
         /// for another substream's acknowledgements can hang.
         /// </summary>
+        // Internal so tests can shorten it, holding a checkpoint across several watchdog
+        // polls otherwise takes seconds per test.
+        internal static TimeSpan DeferredWishWatchdogPollInterval = TimeSpan.FromSeconds(1);
+
         private static void ArmDeferredWishWatchdog(StreamContext context, RunningStreamState run, TaskCompletionSource? observedTask, bool forDelete)
         {
             var operation = forDelete ? "delete" : "stop";
@@ -694,7 +698,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     if (System.Threading.Volatile.Read(ref context._stateManagerWriteCount) > 0)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(1));
+                        await Task.Delay(DeferredWishWatchdogPollInterval);
                         continue;
                     }
                     context._logger.LogWarning("The {operation} timed out waiting for the in-progress checkpoint on stream {stream}, failing the stream to complete it.", operation, context.streamName);

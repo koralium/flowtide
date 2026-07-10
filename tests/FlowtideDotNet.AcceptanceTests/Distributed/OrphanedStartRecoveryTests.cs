@@ -40,6 +40,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         private readonly MockDatabase _db = new MockDatabase();
         private DistributedFlowtideStream? _stream;
 
+        public OrphanedStartRecoveryTests()
+        {
+            FastEngineTimings.Apply();
+        }
+
         public Task InitializeAsync() => Task.CompletedTask;
 
         public async Task DisposeAsync()

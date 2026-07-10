@@ -96,7 +96,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
                 // The watchdog passes its initial delay and polls while the commit still
                 // writes; it must defer on the in-flight write.
-                await Task.Delay(1500);
+                await Task.Delay(600);
                 Assert.False(failureObserved, "The watchdog failed the stream while the checkpoint commit was still writing");
 
                 // The commit finishes right at the timeout boundary, and the completion is
@@ -109,7 +109,8 @@ namespace FlowtideDotNet.AcceptanceTests
                     await Task.Delay(10);
                 }
                 Assert.True(gapHeld.Task.IsCompleted, "The checkpoint completion never reached the post-commit gap");
-                await Task.Delay(2500);
+                // Several watchdog polls land in the held gap.
+                await Task.Delay(500);
                 releaseGap.TrySetResult();
 
                 var stopDeadline = DateTime.UtcNow.AddSeconds(60);
