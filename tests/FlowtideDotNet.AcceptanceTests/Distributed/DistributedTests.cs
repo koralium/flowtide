@@ -72,7 +72,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             await WaitForUpdate();
 
-            var act = GetActualRows();
+            GetActualRows();
 
             var expected = Users.Select(x => {
                 byte[] bytes = new byte[8];
