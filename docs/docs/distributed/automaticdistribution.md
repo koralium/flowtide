@@ -15,9 +15,9 @@ SELECT u.userkey FROM users u
 INNER JOIN orders o ON u.userkey = o.userkey;
 ```
 
-Run with a substream count of two, the join above runs with one partition copy in each substream. Users and orders rows are scattered between the substreams by hashing on *userkey*, each substream joins its share, and the results are gathered back to the substream that runs the sink.
+Run with a substream count of two, the join above runs in both substreams. Users and orders rows are scattered between the substreams by hashing on *userkey*, each substream joins its own share, and the results are gathered back to the substream that runs the sink.
 
-The plan is split when it is optimized. With the [in-process host](inprocess.md) and the Orleans *substreamCount* option this happens automatically. It can also be applied manually through the plan optimizer:
+The split happens when the plan is optimized. The [in-process host](inprocess.md) and the Orleans *substreamCount* option do this automatically. It can also be done manually through the plan optimizer:
 
 ```csharp
 var distributedPlan = PlanOptimizer.Optimize(plan, new PlanOptimizerSettings
@@ -31,21 +31,21 @@ var distributedPlan = PlanOptimizer.Optimize(plan, new PlanOptimizerSettings
 
 ## What is distributed
 
-* **Joins** are partitioned by hashing the join keys that are compared with equality. A join that mixes equality and inequality conditions, for example `ON a.id = b.id AND a.start < b.ts`, is partitioned on the equality keys only.
-* **Aggregates** with groupings are partitioned on the grouping columns.
+* **Joins** are partitioned by hashing on the join keys that are compared with equality. A join that mixes equality and other conditions, for example `ON a.id = b.id AND a.start < b.ts`, is partitioned on the equality keys only.
+* **Aggregates** with group by are partitioned on the grouping columns.
 * **Window functions** are partitioned on their partition columns.
 
-## Lane pushdown
+## Pushdown
 
-Operators above a distributed operator are pushed down into the partition lanes when they can run per partition:
+Operators above a distributed operator are pushed down into the partitions when they can run per partition:
 
-* Filters and projections are always pushed down, they operate row by row.
-* Aggregates and window functions are pushed down when their grouping or partition columns cover the columns the lane is already partitioned on. A *GROUP BY* on the join key over a join runs the whole join and aggregate pipeline inside every substream, only the aggregated results cross to the sink substream.
+* Filters and projections are always pushed down, they work row by row.
+* Aggregates and window functions are pushed down when they group on columns the data is already partitioned on. For instance a *GROUP BY* on the join key runs both the join and the aggregate inside every substream, only the aggregated results cross to the sink substream.
 
-Filters that are pushed down run before data is shuffled between substreams, which reduces the amount of data crossing the exchange.
+Filters that are pushed down run before the data is shuffled between substreams, which reduces how much data crosses the exchange.
 
 ## What stays in one substream
 
-* Recursive queries, the whole pipeline containing one stays together.
-* Joins where no key is compared with equality, they can not be co-partitioned.
+* Recursive queries, the whole pipeline that contains one stays together.
+* Joins without any equality condition, they can not be co-partitioned.
 * Aggregates using the surrogate key function.

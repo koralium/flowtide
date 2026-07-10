@@ -7,7 +7,7 @@ sidebar_position: 4
 > [!WARNING]
 > Distributed mode is still experimental.
 
-The in-process host runs every substream inside one process. It behaves the same as a real distributed deployment, including coordinated checkpoints, stop drain and failure recovery. This makes it useful for testing plans and connectors before deploying them, and for verifying how a plan distributes.
+The in-process host runs every substream inside one process. It works the same as a real distributed deployment, with coordinated checkpoints, stop drain and failure recovery. This makes it useful for testing plans and connectors, and to verify how a plan distributes before deploying it.
 
 To create a distributed stream, use the *DistributedStreamBuilder*:
 
@@ -46,7 +46,7 @@ await stream.StopAsync();
 await stream.DisposeAsync();
 ```
 
-*AddPlan* takes a plan **factory** and not a plan instance. Building a stream modifies the plan in place, so every substream must build from its own fresh plan.
+*AddPlan* takes a plan **factory** and not a plan instance. Building a stream changes the plan in place, so every substream must build from its own fresh plan.
 
 *DistributeAutomatically* applies [automatic distribution](automaticdistribution.md). Plans that already use [SQL substream statements](sqlsubstreams.md) are built as written instead.
 
@@ -54,11 +54,11 @@ await stream.DisposeAsync();
 
 *StartAsync* starts all substreams and also drives their recurring connector triggers, there is no need to call *RunAsync* on the individual substreams.
 
-Failures inside a substream, for example a connector that can not initialize, do not fail the start call. The substream retries them in the background. Failures can be observed with *WithFailureListener* on the substream builders and through the *Health* property.
+Failures inside a substream, for example a connector that can not initialize, do not fail the start call, the substream retries in the background. Failures can be seen with *WithFailureListener* on the substream builders and through the *Health* property.
 
 ## Stopping
 
-*StopAsync* performs the coordinated stop. The substreams run stop checkpoint cycles until the data they exchanged has been drained on both sides. The drain is bounded by the stop drain timeout, default 30 seconds, which can be changed with *SetStopDrainTimeout* on the substream builders.
+*StopAsync* does the coordinated stop. The substreams run stop checkpoints until the data they exchanged has been drained on both sides. The drain is bounded by the stop drain timeout, default 30 seconds, which can be changed with *SetStopDrainTimeout* on the substream builders.
 
 *DeleteAsync* deletes the state of every substream and completes when the deletion has finished.
 
