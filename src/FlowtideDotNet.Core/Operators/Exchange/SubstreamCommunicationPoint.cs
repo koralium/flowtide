@@ -592,9 +592,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private async Task DoFailAndRecover(long recoveryPoint)
         {
             // One rollback fails the whole stream over, any single wired operator carries
-            // it. Targets register at construction but wire the rollback first at their
-            // initialize, so unwired targets must be skipped - an arbitrary pick could land
-            // on one and silently skip a required rollback. Read operators are always wired.
+            // it. Both targets and read operators register at construction but wire the
+            // rollback first at their initialize, so unwired ones must be skipped - an
+            // arbitrary pick could land on one, and for a read operator the dispatch throws
+            // into a fire and forget caller and the rollback is silently lost, wedging the
+            // stream against the peer.
             foreach (var targetInfo in _targetInfos.Values)
             {
                 if (targetInfo.Target.CanFailAndRecover)
@@ -606,7 +608,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             SubstreamReadOperator? readOperator;
             lock (_readOperators)
             {
-                readOperator = _readOperators.FirstOrDefault();
+                readOperator = _readOperators.FirstOrDefault(r => r.CanFailAndRecover);
             }
             if (readOperator != null)
             {
@@ -614,8 +616,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             else
             {
-                // Nothing wired yet, the stream is still being built, so there is nothing
-                // to recover. The initialize handshake reconciles versions at start.
+                // Nothing wired yet, the stream is still starting or restarting, so there is
+                // nothing to recover. The initialize handshake reconciles versions at start.
                 _logger.LogInformation("Received fail and recover to {recoveryPoint} before any exchange operator is initialized, nothing to recover.", recoveryPoint);
             }
         }
@@ -874,7 +876,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 SubstreamReadOperator? readOperator;
                 lock (_readOperators)
                 {
-                    readOperator = _readOperators.FirstOrDefault();
+                    // Only a wired operator can carry the recovery; an unwired one means the
+                    // stream is restarting, which is itself the recovery the stall needs.
+                    readOperator = _readOperators.FirstOrDefault(r => r.CanFailAndRecover);
                 }
                 if (readOperator != null)
                 {
@@ -904,7 +908,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             SubstreamReadOperator? readOperator;
             lock (_readOperators)
             {
-                readOperator = _readOperators.FirstOrDefault();
+                // Only a wired operator can carry the recovery; an unwired one means the
+                // stream is restarting, which is itself the recovery the failed loop needs.
+                readOperator = _readOperators.FirstOrDefault(r => r.CanFailAndRecover);
             }
             if (readOperator != null)
             {

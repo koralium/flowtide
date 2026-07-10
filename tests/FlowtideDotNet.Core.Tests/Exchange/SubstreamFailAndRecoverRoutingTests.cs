@@ -73,6 +73,38 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             Assert.Equal(new[] { 5L }, recovered);
         }
 
+        /// <summary>
+        /// Read operators also register at construction but wire the stream failure path
+        /// first at their initialize. A fail and recover that arrives in that window - for
+        /// example a peer failing over while this substream is still starting or restarting -
+        /// must take the nothing-wired path and let the initialize handshake reconcile the
+        /// versions. Dispatching into the unwired operator threw, the fire and forget caller
+        /// swallowed the exception, and the stream kept running without the rollback, wedged
+        /// against the peer forever.
+        /// </summary>
+        [Fact]
+        public async Task RollbackWithOnlyUnwiredReadOperatorsTakesTheGracefulPath()
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var handlerA = hub.CreateFactory("subA").GetCommunicationHandler("subB", "subA");
+            var handlerB = hub.CreateFactory("subB").GetCommunicationHandler("subA", "subB");
+
+            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA);
+            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB);
+
+            // Registered by its constructor but never initialized: the state of every read
+            // operator while the substream is still starting or restarting.
+            _ = new SubstreamReadOperator(pointA, new Substrait.Relations.SubstreamExchangeReferenceRelation()
+            {
+                SubStreamName = "subB",
+                ExchangeTargetId = 1
+            }, new System.Threading.Tasks.Dataflow.DataflowBlockOptions());
+
+            // Must complete without dispatching into the unwired operator, the initialize
+            // handshake reconciles the versions once the operator initializes.
+            await pointB.SendFailAndRecover(5);
+        }
+
         [Fact]
         public async Task RollbackIsDispatchedOnce()
         {

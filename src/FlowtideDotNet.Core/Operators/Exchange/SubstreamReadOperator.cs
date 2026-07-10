@@ -93,6 +93,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public int ExchangeTargetId => _exchangeReferenceRelation.ExchangeTargetId;
 
         /// <summary>
+        /// True when this operator can carry a fail and recover into the stream. The operator
+        /// registers with the communication point at construction, but the stream failure
+        /// path is wired first at its initialize; dispatching before that throws into a fire
+        /// and forget caller and the rollback is silently lost.
+        /// </summary>
+        public bool CanFailAndRecover => CanFailAndRollback;
+
+        /// <summary>
         /// Allocator that received events are deserialized with, so fetched data is accounted on the
         /// operator that consumes it. Only valid after initialization (events are only fetched for
         /// subscribed targets).

@@ -759,6 +759,14 @@ namespace FlowtideDotNet.Base.Vertices
         }
 
         /// <summary>
+        /// True when the vertex is wired to dispatch a fail and rollback: initialize has set
+        /// the vertex handler for the current block. A vertex that was constructed, or whose
+        /// block was recreated by a restart, has no handler until its initialize runs and
+        /// <see cref="FailAndRollback"/> would throw.
+        /// </summary>
+        internal bool CanFailAndRollback => _ingressState?._vertexHandler != null;
+
+        /// <summary>
         /// Triggers a rollback sequence on the data pipeline flow, optionally specifying the version and error.
         /// </summary>
         /// <param name="exception">The exception that triggered the rollback.</param>
