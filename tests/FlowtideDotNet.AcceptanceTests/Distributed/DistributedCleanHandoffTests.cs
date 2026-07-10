@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Engine.Distributed;
+using FlowtideDotNet.Core.Operators.Exchange;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Core.Optimizer.DistributedMode;
 using FlowtideDotNet.Storage.Memory;
@@ -309,6 +310,52 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 DumpLogBuffers("lost_state");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// A clean reconnect resumes startup from the restored watermark names, the running
+        /// peer never resends its init watermarks event. When the restored state holds no
+        /// watermark names there is nothing to resume from and no init will ever arrive; the
+        /// stream must fail over loudly so the recovery reconciles the substreams, not wait
+        /// forever. The accept fence makes this state unreachable through honest paths (a
+        /// clean reconnect needs an acked commit, and every commit follows the init), so the
+        /// peer here is hand driven and answers the handshake with a dishonest clean
+        /// reconnect accept.
+        /// </summary>
+        [Fact]
+        public async Task CleanReconnectWithoutRestoredWatermarksFailsOverInsteadOfHanging()
+        {
+            var testName = "e2e_reconnect_no_watermarks";
+            _generator.Generate(100);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+
+            // The hand driven peer: serves no events and accepts every handshake as a clean
+            // reconnect, the state a zombie accept or corrupted restore would produce.
+            var peerHandler = hub.CreateFactory("substream_0").GetCommunicationHandler("substream_1", "substream_0");
+            peerHandler.Initialize(
+                (targets, count, ct) => Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>()),
+                _ => Task.CompletedTask,
+                (restoreVersion, checkpointEpoch, cleanHandoff) => Task.FromResult(
+                    new SubstreamInitializeResponse(notStarted: false, success: true, restoreVersion: restoreVersion, checkpointEpoch: 1, recordedCheckpointEpoch: 0, cleanReconnect: true)),
+                (_, _, _) => Task.CompletedTask);
+
+            // A fresh substream: nothing restored, so its read operators hold no watermark
+            // names to resume the dishonestly accepted reconnect from.
+            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            await substream1.StartAsync();
+
+            var deadline = Stopwatch.StartNew();
+            while (failures.IsEmpty && deadline.Elapsed < TimeSpan.FromSeconds(20))
+            {
+                await Task.Delay(50);
+            }
+
+            Assert.False(failures.IsEmpty,
+                "The clean reconnect had no restored watermark names to resume from and no failure was reported: the substream is hanging in startup waiting for an init watermarks event that never comes.");
         }
 
         private readonly ConcurrentDictionary<string, RingBufferLoggerProvider> _logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();

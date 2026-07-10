@@ -202,8 +202,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 await channel.Writer.WriteAsync(ev);
             });
 
-            if (_communicationPoint.CleanReconnect && !_initWatermarksHandled && _state.Value.WatermarkNames != null)
+            if (_communicationPoint.CleanReconnect && !_initWatermarksHandled)
             {
+                if (_state.Value.WatermarkNames == null)
+                {
+                    // The peer accepted the reconnect and never resends its init watermarks,
+                    // but the restored state holds none to resume from - startup would wait
+                    // forever. Unreachable while the peer's accept fence holds (a clean
+                    // reconnect needs an acked commit, every commit follows the init), so
+                    // fail over loudly and let the recovery reconcile the substreams.
+                    Logger.LogWarning("Substream read {name} resumed from a clean handoff without restored watermark names, failing over to reconcile the substreams.", Name);
+                    DispatchFailAndRollback();
+                    return;
+                }
                 // The peer accepted the reconnect and will not restart, so no init watermarks
                 // event comes from it; complete startup from the restored watermark names.
                 lock (_lock)
