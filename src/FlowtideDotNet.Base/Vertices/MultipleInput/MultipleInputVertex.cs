@@ -143,7 +143,7 @@ namespace FlowtideDotNet.Base.Vertices
                     allInput?.WriteLine($"Received locking event {ev.GetType().Name} from target {r.Key}");
                     allInput?.Flush();
 #endif
-                    Logger.LogTrace("Operator {operatorId} received locking event {eventType} on target {targetId}", Name, ev.GetType().Name, r.Key);
+                    Logger.ReceivedLockingEventOnTarget(Name, ev.GetType().Name, r.Key);
                     if (TargetInCheckpoint(r.Key, ev, out var checkpoints))
                     {
                         _lastSeenCheckpointEvents = checkpoints;

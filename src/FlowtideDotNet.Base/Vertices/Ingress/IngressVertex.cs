@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.dataflow;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -301,9 +302,15 @@ namespace FlowtideDotNet.Base.Vertices
             Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
 
             var lockingEvent = (ILockingEvent)state!;
-            _logger?.LogDebug("Ingress {name} waiting for checkpoint lock for locking event {eventType}", Name, lockingEvent.GetType().Name);
+            if (_logger != null)
+            {
+                _logger.IngressWaitingForCheckpointLock(Name, lockingEvent.GetType().Name);
+            }
             await _ingressState._checkpointLock.WaitAsync(_ingressState._output.CancellationToken);
-            _logger?.LogDebug("Ingress {name} acquired checkpoint lock for locking event {eventType}", Name, lockingEvent.GetType().Name);
+            if (_logger != null)
+            {
+                _logger.IngressAcquiredCheckpointLock(Name, lockingEvent.GetType().Name);
+            }
             _ingressState._inCheckpointLock = true;
             if (lockingEvent is ICheckpointEvent checkpoint)
             {
@@ -331,7 +338,10 @@ namespace FlowtideDotNet.Base.Vertices
 
             _ingressState._inCheckpointLock = false;
             _ingressState._checkpointLock.Release();
-            _logger?.LogDebug("Ingress {name} finished locking event {eventType}", Name, lockingEvent.GetType().Name);
+            if (_logger != null)
+            {
+                _logger.IngressFinishedLockingEvent(Name, lockingEvent.GetType().Name);
+            }
         }
 
         /// <summary>
