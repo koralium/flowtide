@@ -39,6 +39,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _lines.Enqueue(line);
             while (_lines.Count > MaxLines && _lines.TryDequeue(out _))
             {
+                // Intentionally empty: trimming is performed by TryDequeue in the loop condition.
             }
         }
 

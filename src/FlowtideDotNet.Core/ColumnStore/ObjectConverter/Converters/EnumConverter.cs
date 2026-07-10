@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -26,6 +26,10 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 
         public object Deserialize<T>(T value) where T : IDataValue
         {
+            if (value.IsNull)
+            {
+                return null!;
+            }
             if (value.Type == ArrowTypeId.Int64)
             {
                 return Enum.ToObject(enumType, value.AsLong);

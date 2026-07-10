@@ -745,7 +745,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             // Exit the checkpoint lock
             output.ExitCheckpointLock();
 
-            if (sentData)
+            if (sentData || !_initialSent.Value)
             {
                 // Schedule a checkpoint
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
