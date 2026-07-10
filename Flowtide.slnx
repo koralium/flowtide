@@ -2,6 +2,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/AspireSamples/AspireSamples.csproj" />
     <Project Path="samples/AspireTestSample/AspireTestSample.csproj" />
+    <Project Path="samples/CustomSinkSample/CustomSinkSample.csproj" />
     <Project Path="samples/DeltaLakeSourceUsage/DeltaLakeSourceUsage.csproj" />
     <Project Path="samples/MongoDbToConsoleSample/MongoDbToConsoleSample.csproj" />
     <Project Path="samples/MonitoringAzureMonitor/MonitoringAzureMonitor.csproj" />

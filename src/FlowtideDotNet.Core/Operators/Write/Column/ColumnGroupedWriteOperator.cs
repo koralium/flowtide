@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -20,6 +20,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -45,6 +46,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         private IReadOnlyList<int>? m_primaryKeyColumns;
         private readonly IColumn[] _deleteBatchColumns;
         private readonly EventBatchData _deleteEventBatch;
+        private bool m_hasExistingData;
 
         public ColumnGroupedWriteOperator(ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -135,6 +137,10 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             Debug.Assert(m_existingData != null);
             await foreach (var batch in GetExistingData())
             {
+                if (batch.Count > 0)
+                {
+                    m_hasExistingData = true;
+                }
                 for (int i = 0; i < batch.Count; i++)
                 {
                     await m_existingData.Upsert(new ColumnRowReference() { referenceBatch = batch, RowIndex = i }, 1);
@@ -147,7 +153,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         {
             Debug.Assert(m_hasSentInitialData != null);
             m_latestWatermark = watermark;
-            if (m_executionMode == ExecutionMode.OnWatermark ||
+            bool shouldWait = !m_hasSentInitialData.Value && FetchExistingData && m_hasExistingData;
+            if ((m_executionMode == ExecutionMode.OnWatermark && !shouldWait) ||
                 (m_executionMode == ExecutionMode.Hybrid && m_hasSentInitialData.Value))
             {
                 return SendData();
@@ -159,14 +166,9 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         {
             Debug.Assert(m_hasSentInitialData != null);
             Debug.Assert(m_tree != null);
-            if (m_executionMode == ExecutionMode.OnCheckpoint || (m_executionMode == ExecutionMode.Hybrid && !m_hasSentInitialData.Value))
+            if (m_executionMode == ExecutionMode.OnCheckpoint || (!m_hasSentInitialData.Value))
             {
                 await SendData();
-            }
-            if (!m_hasSentInitialData.Value)
-            {
-                await OnInitialDataSent();
-                m_hasSentInitialData.Value = true;
             }
             Checkpoint(checkpointTime);
             await m_hasSentInitialData.Commit();
@@ -383,14 +385,28 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         private async Task SendData()
         {
             Debug.Assert(m_modified != null);
-            Debug.Assert(m_latestWatermark != null);
             Debug.Assert(m_hasSentInitialData != null);
-            if (m_hasModified)
+            if (m_hasModified || !m_hasSentInitialData.Value)
             {
+                var watermark = m_latestWatermark;
+
+                // If no watermark has been received yet, we create a default watermark to use for the upload.
+                // This is important for the initial data upload, where we may not have received any watermarks yet.
+                // This is required since GetExistingData might have fetched data, but current dataset has no rows, so no watermark
+                if (watermark == null)
+                {
+                    watermark = new Watermark(ImmutableDictionary<string, AbstractWatermarkValue>.Empty);
+                }
+
                 var changedRows = GetChangedRows();
-                await UploadChanges(changedRows, m_latestWatermark, !m_hasSentInitialData.Value, CancellationToken);
+                await UploadChanges(changedRows, watermark, !m_hasSentInitialData.Value, CancellationToken);
                 await m_modified.Clear();
                 m_hasModified = false;
+            }
+            if (!m_hasSentInitialData.Value)
+            {
+                await OnInitialDataSent();
+                m_hasSentInitialData.Value = true;
             }
         }
 

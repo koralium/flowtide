@@ -82,6 +82,53 @@ connectorManager.AddCustomSource(
 
 All rows must return an identifier that is used when calculating changes of the data. This key can be accessed when querying with the special name of `__key`.
 
+### Push-based delta loading
+
+Instead of polling with `DeltaLoadAsync`, it is possible to use a push-based model where the source controls when data is submitted.
+This can be useful for sources such as message queues, webhooks or event streams.
+
+To use push-based loading, override `IsPushBased` to return `true` and implement `RunDeltaLoad`:
+
+```csharp
+public class EventDrivenSource : GenericDataSourceAsync<User>
+{
+    private readonly Channel<User> _channel = Channel.CreateUnbounded<User>();
+
+    public override bool IsPushBased => true;
+
+    // Set to null to disable interval-based triggering
+    public override TimeSpan? DeltaLoadInterval => null;
+
+    public override async Task RunDeltaLoad(
+        IDeltaLoadContext<User> context,
+        CancellationToken cancellationToken)
+    {
+        while (await _channel.Reader.WaitToReadAsync(cancellationToken))
+        {
+            // Begin a transaction, this acquires the checkpoint lock
+            // ensuring all items in this batch are included in the same checkpoint.
+            await using var tx = await context.BeginTransactionAsync(cancellationToken);
+
+            while (_channel.Reader.TryRead(out var user))
+            {
+                var obj = new FlowtideGenericObject<User>(
+                    user.Id, user, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), false);
+                await tx.SubmitAsync(obj, cancellationToken);
+            }
+            // Disposing the transaction releases the checkpoint lock
+        }
+    }
+
+    public override IAsyncEnumerable<FlowtideGenericObject<User>> FullLoadAsync()
+    {
+        // Return initial data...
+    }
+}
+```
+
+`RunDeltaLoad` is a long-running method that controls its own loop, instead of returning an enumerable per interval.
+Data is submitted through transactions which manage the checkpoint lock, ensuring all items in one transaction end up in the same checkpoint.
+
 ### Trigger data reloads programatically
 
 The generic data source also registers triggers that allows the user to notify the stream when a reload should happen.
@@ -147,11 +194,39 @@ internal class TestDataSink : GenericDataSink<User>
 }
 ```
 
+
 Add the generic data sink to the *ConnectorManager*:
 
 ```csharp
 connectorManager.AddCustomSink("{tableName}", (rel) => new testDataSink());
 ```
+
+### Fetching existing data
+
+On initial startup, fetching existing data from the destination is optional. If you do not override this method, Flowtide assumes the destination is empty and simply sends all current stream data to `OnChanges` as initial inserts.
+
+However, if you want Flowtide to calculate a delta based on the current state of the destination system (e.g., to only push changes, and to emit delete operations for any rows in the destination that are no longer in the incoming stream), you can override the `GetExistingData` method:
+
+```csharp
+public override IAsyncEnumerable<User> GetExistingData()
+{
+    // Fetch all existing users from the destination
+    return _userRepository.GetAllUsersAsync();
+}
+```
+
+If you override this method:
+* During initial load, Flowtide compares the existing destination data with the incoming stream data.
+* It will automatically trigger insert/update operations for new or changed data, and delete operations for any rows in the destination that are no longer present in the incoming stream data.
+
+
+> [!NOTE]
+> `GetExistingData` is only executed when the stream starts up for the first time. Once the initial synchronization is complete and the first checkpoint has been committed, it will not be called again (even on subsequent stream restarts). From that point onward, the sink relies entirely on Flowtide's internally persisted state to calculate subsequent changes.
+
+### Custom sink sample
+
+A runnable console application demonstrating a custom sink and source is available under [samples/CustomSinkSample](https://github.com/koralium/flowtide/tree/main/samples/CustomSinkSample).
+It shows how initial sink synchronization with `GetExistingData` works and how the sink handles data updates.
 
 ## Adding custom converters
 

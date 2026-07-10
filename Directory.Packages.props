@@ -6,7 +6,9 @@
   <ItemGroup>
     <!-- Microsoft basic packages -->
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.0" />
+    <PackageVersion Include="DuckDB.NET.Data.Full" Version="1.5.3" />
     <PackageVersion Include="FastExpressionCompiler" Version="5.4.1" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
     <PackageVersion Include="System.Linq.AsyncEnumerable" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.8" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
