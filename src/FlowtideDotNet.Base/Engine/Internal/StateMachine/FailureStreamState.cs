@@ -182,12 +182,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             StreamContext.BeforeFailureDisposeForTests?.Invoke(_context.streamName);
 
-            if (!_context._blocksCreated)
+            if (System.Threading.Interlocked.Exchange(ref _context._blocksCreated, 0) == 0)
             {
                 // The failure happened before the start created the blocks (for example at
                 // storage initialization), there is nothing to fault or dispose. Faulting,
                 // completing or disposing never-created blocks throws, which would retry
-                // this teardown forever.
+                // this teardown forever. A superseded start that created blocks after this
+                // read cleans them up itself when it observes its abort.
                 _context._logger.LogDebug("Failure handling skipping block teardown on stream {stream}, the blocks were never created.", _context.streamName);
                 return;
             }
@@ -217,7 +218,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context._logger.LogDebug("Failure handling disposing block {block} on stream {stream}", key, _context.streamName);
                 await block.DisposeAsync();
             });
-            _context._blocksCreated = false;
             _context._logger.LogDebug("Failure handling stop and dispose finished on stream {stream}", _context.streamName);
         }
 
@@ -246,7 +246,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     block.Setup(_context.streamName, key);
                     block.CreateBlock();
                 });
-                _context._blocksCreated = true;
+                System.Threading.Volatile.Write(ref _context._blocksCreated, 1);
                 await TransitionTo(StreamStateValue.Deleting);
                 return;
             }

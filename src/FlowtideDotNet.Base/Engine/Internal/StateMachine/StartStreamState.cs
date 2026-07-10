@@ -10,7 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Exceptions;
 using FlowtideDotNet.Base.Utils;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
@@ -21,6 +23,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private Task? _runningTask;
         private HashSet<string>? nonInitEgresses;
         private HashSet<string>? waitingForDependencies;
+        // Cancelled when a failure supersedes this start. The start task itself keeps
+        // running after the state machine transitions away; unobserved it would continue
+        // initializing and start source and fetch tasks that nothing ever faults or awaits,
+        // and every following restart then dies on the running tasks it left behind.
+        private readonly CancellationTokenSource _startAbort = new CancellationTokenSource();
 
         public override Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
         {
@@ -168,6 +175,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task OnFailure()
         {
+            // Cancelled before the transition so the in-flight start observes it before the
+            // failure teardown reads what the start has created.
+            _startAbort.Cancel();
             // On failures, transition to the failure state
             return TransitionTo(StreamStateValue.Failure);
         }
@@ -210,10 +220,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             // This start creates the blocks below; a failure before that must not run the
             // block teardown.
-            _context._blocksCreated = false;
+            System.Threading.Volatile.Write(ref _context._blocksCreated, 0);
+
+            if (StartAborted())
+            {
+                return;
+            }
 
             // Initialize state
             await _context._stateManager.InitializeAsync(_context._streamVersionInformation, restoreVersion);
+
+            if (StartAborted())
+            {
+                return;
+            }
             _context._lastState = _context._stateManager.Metadata;
             _context._startCheckpointVersion = _context._stateManager.CurrentVersion;
             if (_context._lastState == null)
@@ -245,6 +265,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // max guards against a wall clock that moved backwards.
             _context.producingTime = Math.Max(_context._lastState.Time + 1, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
+            if (StartAborted())
+            {
+                return;
+            }
+
             // Create the blocks
             _context._logger.SettingUpBlocks(_context.streamName);
             _context.ForEachBlock((key, block) =>
@@ -252,7 +277,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 block.Setup(_context.streamName, key);
                 block.CreateBlock();
             });
-            _context._blocksCreated = true;
+            System.Threading.Volatile.Write(ref _context._blocksCreated, 1);
             // Link the blocks
             _context._logger.LinkingBlocks(_context.streamName);
             _context.ForEachBlock((key, block) =>
@@ -337,6 +362,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 return;
             }
 
+            if (StartAborted())
+            {
+                await AbandonStartedBlocks();
+                return;
+            }
+
             var completionTasks = _context.GetCompletionTasks();
 
             _context._onFailureTask = Task.WhenAny(completionTasks).ContinueWith((task) =>
@@ -364,12 +395,55 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 await startupHook(_context.streamName);
             }
+            if (StartAborted())
+            {
+                await AbandonStartedBlocks();
+                return;
+            }
             nonInitEgresses = _context.egressBlocks.Keys.ToHashSet();
             waitingForDependencies = _context.egressBlocks.Keys.Union(_context.ingressBlocks.Keys).ToHashSet();
             foreach (var ingress in _context.ingressBlocks)
             {
                 ingress.Value.DoLockingEvent(new InitWatermarksEvent());
             }
+        }
+
+        /// <summary>
+        /// True when a failure superseded this start. The start abandons itself at the next
+        /// phase boundary instead of continuing to initialize a stream the state machine has
+        /// already moved away from.
+        /// </summary>
+        private bool StartAborted()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            if (!_startAbort.IsCancellationRequested)
+            {
+                return false;
+            }
+            _context._logger.LogInformation("The start of stream {stream} was superseded by a failure, abandoning it.", _context.streamName);
+            return true;
+        }
+
+        /// <summary>
+        /// Tears down the blocks this abandoned start created, unless the failure teardown
+        /// already claimed them; exactly one party cleans, a dispose must not run twice.
+        /// </summary>
+        private async Task AbandonStartedBlocks()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            if (System.Threading.Interlocked.Exchange(ref _context._blocksCreated, 0) == 0)
+            {
+                return;
+            }
+            _context.ForEachBlock((key, block) =>
+            {
+                block.Fault(new BlockStopException("The start was superseded by a failure."));
+            });
+            await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
+            await _context.ForEachBlockAsync(async (key, block) =>
+            {
+                await block.DisposeAsync();
+            });
         }
 
         public override Task StopAsync()

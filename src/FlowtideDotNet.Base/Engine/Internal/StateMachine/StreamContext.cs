@@ -90,11 +90,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // flag, so overlapping spans across a failure epoch don't let one finishing clear the guard.
         internal int _stateManagerWriteCount;
 
-        // True while the vertices' dataflow blocks exist, set after every CreateBlock pass
-        // and cleared when a start begins or the failure teardown disposed them. A failure
-        // before the blocks were created (for example storage initialization) must skip the
-        // block teardown, the operations assume created blocks.
-        internal bool _blocksCreated;
+        // One while the vertices' dataflow blocks exist, set after every CreateBlock pass and
+        // zeroed when a start begins. A failure before the blocks were created (for example
+        // storage initialization) must skip the block teardown, the operations assume created
+        // blocks. Torn down by exactly one party: a superseded start and the failure teardown
+        // can race to clean the same blocks, so the cleaner CLAIMS the flag with an atomic
+        // exchange and a dispose is never run twice.
+        internal int _blocksCreated;
 
         // Test hooks, null in production. Each gets the stream name so a test can filter to its own
         // stream: CheckpointCommitHookForTests awaits inside the commit (so a test can hold a write in
@@ -843,7 +845,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
             }
 
-            if (_blocksCreated)
+            if (System.Threading.Interlocked.Exchange(ref _blocksCreated, 0) == 1)
             {
                 // Completing or disposing never-created blocks throws; a stream whose start
                 // failed before creating them (or whose failure teardown already disposed
@@ -857,7 +859,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     await block.DisposeAsync();
                 });
-                _blocksCreated = false;
             }
 
             _stateManager.Dispose();
