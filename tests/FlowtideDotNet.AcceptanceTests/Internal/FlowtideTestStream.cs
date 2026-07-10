@@ -102,6 +102,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// </summary>
         public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
 
+        /// <summary>
+        /// Sets the stop drain timeout, which also bounds a stop deferred behind an
+        /// in-progress checkpoint. Set before starting the stream.
+        /// </summary>
+        public TimeSpan? StopDrainTimeout { get; set; }
+
         public int BPlusTreePageSizeBytes { get; set; } = 32 * 1024;
 
         public Watermark? LastWatermark => _lastWatermark;
@@ -368,6 +374,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (MinimumTimeBetweenCheckpoints.HasValue)
             {
                 flowtideBuilder.SetMinimumTimeBetweenCheckpoint(MinimumTimeBetweenCheckpoints.Value);
+            }
+
+            if (StopDrainTimeout.HasValue)
+            {
+                flowtideBuilder.SetStopDrainTimeout(StopDrainTimeout.Value);
             }
 
             var stream = flowtideBuilder.Build();

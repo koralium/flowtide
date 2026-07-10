@@ -99,6 +99,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // rollback version.
         internal static Func<string, long, Task>? CheckpointCommitHookForTests;
         internal static Func<string, Task>? CheckpointCommitScheduledHookForTests;
+        // Awaited in the commit task's continuation before the compaction decision, so a test
+        // can hold the cycle in the scheduling gap between the commit and its completion.
+        internal static Func<string, Task>? CheckpointPostCommitGapHookForTests;
         internal static Func<string, Task>? CompactionScheduledHookForTests;
         internal static Func<string, Task>? CompactionHookForTests;
         internal static Action<string>? BeforeFailureDisposeForTests;

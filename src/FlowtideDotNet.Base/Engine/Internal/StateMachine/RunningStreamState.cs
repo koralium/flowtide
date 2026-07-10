@@ -132,8 +132,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // The commit is claimed as an in-flight state manager write here, at the decision
             // (the caller holds the checkpoint lock), not when the thread pool runs the task:
             // a failure teardown's write wait could otherwise read zero in the scheduling gap
-            // and dispose the state manager the queued commit is about to write. The task body
-            // releases the count in its finally.
+            // and dispose the state manager the queued commit is about to write. On a fault
+            // the task body releases the claim; on success it carries into the continuation,
+            // which either releases it when the cycle returns to waiting for acknowledgements
+            // or hands it over as the compaction claim. The deferred-stop watchdog would
+            // otherwise read zero in the continuation's scheduling gap and fail a checkpoint
+            // that is completing cleanly.
             System.Threading.Interlocked.Increment(ref _context._stateManagerWriteCount);
             Task.Factory.StartNew(async (state) =>
             {
@@ -193,9 +197,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         return block.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
                     });
                 }
-                finally
+                catch
                 {
+                    // Released here only on a fault, the continuation's IsFaulted branch must
+                    // not release again. On success the claim carries into the continuation.
                     System.Threading.Interlocked.Decrement(ref run._context._stateManagerWriteCount);
+                    throw;
                 }
             }, this)
                 .Unwrap()
@@ -209,6 +216,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                          return;
                      }
 
+                     var gapHook = StreamContext.CheckpointPostCommitGapHookForTests;
+                     if (gapHook != null)
+                     {
+                         await gapHook(_context.streamName);
+                     }
+
                      lock (_context._checkpointLock)
                      {
                          _initialCheckpointTaken = true;
@@ -217,12 +230,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                          // state, it would write the state manager the teardown disposes.
                          if (@this.waitingForDependencies.Count > 0 || _compactionStarted || _context.currentState != StreamStateValue.Running)
                          {
+                             // Releases the commit claim carried from the task body, the cycle
+                             // now waits for acknowledgements (or a teardown owns the stream)
+                             // and holds no in-flight write.
+                             System.Threading.Interlocked.Decrement(ref _context._stateManagerWriteCount);
                              return;
                          }
                          _compactionStarted = true;
-                         // Claimed at the decision, see EgressDependenciesDone; DoCompaction
-                         // releases the count.
-                         System.Threading.Interlocked.Increment(ref _context._stateManagerWriteCount);
+                         // The commit claim carried from the task body becomes the compaction
+                         // claim, with no released gap in between that a deferred-stop
+                         // watchdog could misread as an idle hang. DoCompaction releases it.
                      }
 
                      try
@@ -638,7 +655,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     // the checkpoint completes, with the same bounded watchdog as a
                     // deferred stop.
                     _context._logger.LogDebug("Delete requested while a checkpoint is in progress, the delete runs when the checkpoint completes");
-                    ArmDeferredWishWatchdog(_context, ObservedTask(_context, forDelete: true), forDelete: true);
+                    ArmDeferredWishWatchdog(_context, this, ObservedTask(_context, forDelete: true), forDelete: true);
                     return Task.CompletedTask;
                 }
             }
@@ -663,15 +680,17 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         /// again in the meantime. A checkpoint inside its local commit work is never
         /// interrupted, it is progressing and the wish is honored at its completion,
         /// failing there would run the failure teardown concurrently with the state
-        /// manager checkpoint.
+        /// manager checkpoint. A cycle that has decided to complete (compaction claimed,
+        /// or the wish transition already chosen) is likewise left alone, only the wait
+        /// for another substream's acknowledgements can hang.
         /// </summary>
-        private static void ArmDeferredWishWatchdog(StreamContext context, TaskCompletionSource? observedTask, bool forDelete)
+        private static void ArmDeferredWishWatchdog(StreamContext context, RunningStreamState run, TaskCompletionSource? observedTask, bool forDelete)
         {
             var operation = forDelete ? "delete" : "stop";
             _ = Task.Run(async () =>
             {
                 await Task.Delay(context._dataflowStreamOptions.StopDrainTimeout);
-                while (WatchdogStillWaiting(context, observedTask, forDelete) && context.currentState == StreamStateValue.Running)
+                while (WatchdogStillWaiting(context, run, observedTask, forDelete) && context.currentState == StreamStateValue.Running)
                 {
                     if (System.Threading.Volatile.Read(ref context._stateManagerWriteCount) > 0)
                     {
@@ -691,12 +710,21 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         /// a second the fields are read without it, a stale read only risks a spurious
         /// recovery, never a lost stop or delete.
         /// </summary>
-        private static bool WatchdogStillWaiting(StreamContext context, TaskCompletionSource? observedTask, bool forDelete)
+        private static bool WatchdogStillWaiting(StreamContext context, RunningStreamState run, TaskCompletionSource? observedTask, bool forDelete)
         {
             bool lockTaken = false;
             try
             {
                 Monitor.TryEnter(context._checkpointLock, TimeSpan.FromSeconds(1), ref lockTaken);
+                if (!run._doingCheckpoint || run._compactionStarted)
+                {
+                    // The cycle has decided to complete: the wish transition was chosen when
+                    // the checkpoint flag cleared, or compaction was claimed and completion
+                    // follows it locally. The wish is honored at that completion, firing now
+                    // would fail a cleanly completing checkpoint. New cycles cannot start
+                    // while the wish is set, so neither flag can revert.
+                    return false;
+                }
                 var wantedState = forDelete ? StreamStateValue.Deleting : StreamStateValue.NotStarted;
                 var task = forDelete ? context._deleteTask : context._stopTask;
                 return context._wantedState == wantedState && task != null && ReferenceEquals(task, observedTask);
@@ -719,7 +747,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (_doingCheckpoint)
                 {
                     _context._logger.LogDebug("Stop requested while a checkpoint is in progress, the stop runs when the checkpoint completes");
-                    ArmDeferredWishWatchdog(_context, ObservedTask(_context, forDelete: false), forDelete: false);
+                    ArmDeferredWishWatchdog(_context, this, ObservedTask(_context, forDelete: false), forDelete: false);
                     return Task.CompletedTask;
                 }
             }

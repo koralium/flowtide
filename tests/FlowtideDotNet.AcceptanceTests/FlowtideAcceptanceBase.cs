@@ -101,6 +101,12 @@ namespace FlowtideDotNet.AcceptanceTests
         /// </summary>
         protected TimeSpan? MinimumTimeBetweenCheckpoints { set => flowtideTestStream.MinimumTimeBetweenCheckpoints = value; }
 
+        /// <summary>
+        /// Sets the stop drain timeout, which also bounds a stop deferred behind an
+        /// in-progress checkpoint. Set before StartStream.
+        /// </summary>
+        protected TimeSpan? StopDrainTimeout { set => flowtideTestStream.StopDrainTimeout = value; }
+
         public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)

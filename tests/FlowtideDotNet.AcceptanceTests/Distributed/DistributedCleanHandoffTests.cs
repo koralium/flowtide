@@ -291,14 +291,24 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
             await substream1.StartAsync();
 
-            _generator.Generate(250);
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+            try
+            {
+                _generator.Generate(250);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
 
-            // The peer must have refused the clean claim and gone through the coordinated
-            // recovery instead of resuming over data the returned substream cannot know.
-            Assert.NotEmpty(failures);
+                // The peer must have refused the clean claim and gone through the coordinated
+                // recovery instead of resuming over data the returned substream cannot know.
+                Assert.NotEmpty(failures);
 
-            await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+            }
+            catch
+            {
+                // This has flaked under full-suite load (net10, recovery cascade missing the
+                // wait deadline); the buffers hold both generations of substream_1.
+                DumpLogBuffers("lost_state");
+                throw;
+            }
         }
 
         private readonly ConcurrentDictionary<string, RingBufferLoggerProvider> _logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
