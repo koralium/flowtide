@@ -935,6 +935,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             long currentVersion = 0;
             Dictionary<int, Func<IStreamEvent, Task>> currentSubscribedTargets = new Dictionary<int, Func<IStreamEvent, Task>>();
             HashSet<int> targetIds = new HashSet<int>();
+            // Consecutive empty fetches double the poll delay up to the cap, any data resets
+            // it. In Orleans every poll is a grain call, an idle stream with many substream
+            // pairs would otherwise generate thousands of calls per second doing nothing. The
+            // cap stays low enough that a stop drain's barriers still propagate well within
+            // the drain timeout.
+            const int emptyPollDelayMs = 10;
+            const int emptyPollDelayCapMs = 200;
+            int pollDelayMs = emptyPollDelayMs;
             while (true)
             {
 
@@ -980,6 +988,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
                 if (data.Count > 0)
                 {
+                    pollDelayMs = emptyPollDelayMs;
                     lock (_dataHandledLock)
                     {
                         _dataHandled = true;
@@ -1019,8 +1028,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 else
                 {
-                    // No data available, wait a short while before polling again
-                    await Task.Delay(10);
+                    await Task.Delay(pollDelayMs);
+                    pollDelayMs = Math.Min(pollDelayMs * 2, emptyPollDelayCapMs);
                 }
             }
         }
