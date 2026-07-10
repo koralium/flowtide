@@ -10,28 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Orleans.Serialization.Buffers;
-
 namespace FlowtideDotNet.Orleans.Messages
 {
     [GenerateSerializer]
     [Immutable]
     public class FetchDataResponse
     {
-        public FetchDataResponse(PooledBuffer events)
+        public FetchDataResponse(SubstreamEventsPayload? events)
         {
             Events = events;
         }
 
         /// <summary>
-        /// The fetched events in the substream event wire format, an opaque <see cref="PooledBuffer"/>
-        /// so they cross silo boundaries without Orleans knowing the event types and without allocating
-        /// byte arrays. Ownership: the response consumer disposes it (cross-silo the codec consumes it
-        /// and the receiver gets its own pooled copy, same-silo the receiver gets this instance); the
-        /// producing grain must not touch it after returning.
+        /// The fetched events. Same silo the payload passes by reference and the receiver
+        /// consumes the live events with zero copies; only when the response crosses a silo
+        /// boundary does the payload codec serialize them in the substream wire format, see
+        /// <see cref="SubstreamEventsPayload"/>. Ownership moves with the response, the
+        /// producing grain must not touch the events after returning.
         /// </summary>
         [Id(0)]
-        public PooledBuffer Events { get; set; }
+        public SubstreamEventsPayload? Events { get; set; }
 
         /// <summary>
         /// True when the requestors fetch epoch is not the one announced to the serving grain (the

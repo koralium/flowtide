@@ -25,8 +25,6 @@ using FlowtideDotNet.DependencyInjection.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using FlowtideDotNet.Storage;
 using Orleans.Concurrency;
-using Orleans.Serialization.Buffers;
-using System.Buffers;
 
 namespace FlowtideDotNet.Orleans.Grains
 {
@@ -52,7 +50,6 @@ namespace FlowtideDotNet.Orleans.Grains
         private readonly FlowtideOrleansOptions _options;
         private Base.Engine.DataflowStream? _stream;
         private OrleansCommunicationFactory? _orleansCommunicationFactory;
-        private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
         private CancellationTokenSource? _tickCancellation;
         // A migration is pending: the stream was handed off and must not restart here, the
         // migrated activation resumes it. Cleared by the reminder if the runtime skipped it.
@@ -156,25 +153,10 @@ namespace FlowtideDotNet.Orleans.Grains
                 return new FetchDataResponse(default) { RequestorUnknown = true };
             }
             var data = await handler.GetData(request.TargetIds, request.NumberOfEvents, default);
-            // Serialized into pooled segments, no byte arrays are allocated. PooledBuffer is
-            // a mutable struct so all writes go through one boxed IBufferWriter reference.
-            // The response consumer owns the buffer, see FetchDataResponse.Events.
-            var buffer = new PooledBuffer();
-            IBufferWriter<byte> bufferWriter = buffer;
-            try
-            {
-                _wireSerializer.Serialize(data, bufferWriter);
-            }
-            catch
-            {
-                ((PooledBuffer)bufferWriter).Dispose();
-                throw;
-            }
-            finally
-            {
-                SubstreamEventWireSerializer.ReturnEvents(data);
-            }
-            return new FetchDataResponse((PooledBuffer)bufferWriter);
+            // Handed over live: nothing is serialized here. A same-silo requestor consumes
+            // these events with zero copies; only when the response actually crosses a silo
+            // boundary does the payload codec write the wire format.
+            return new FetchDataResponse(SubstreamEventsPayload.FromLive(data));
         }
 
         public async Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request)

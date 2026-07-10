@@ -87,29 +87,37 @@ namespace FlowtideDotNet.Orleans.Internal
                 return Array.Empty<SubstreamEventData>();
             }
             _requestorUnknownSince = 0;
-            // This side consumes and owns the pooled payload buffer: cross-silo it holds segments the
-            // codec rented, same-silo it is the serving grain's instance. Nothing deserialized
-            // references it, so it is safe to release once deserialization is done.
             var payload = response.Events;
+            if (payload == null)
+            {
+                return Array.Empty<SubstreamEventData>();
+            }
+            if (payload.TryTakeLive(out var liveEvents))
+            {
+                // The serving grain runs on this silo: the live events pass through by
+                // reference with zero copies, carrying the receiver claim like a local fetch.
+                return liveEvents;
+            }
+            // The response crossed a silo boundary, the payload holds the wire format. The
+            // deserialized events carry a receiver claim like a local fetch hands out; batch
+            // memory is allocated from the read operators that consume the targets, so the
+            // received data is accounted on them.
+            if (_receiveAllocatorResolver == null)
+            {
+                throw new InvalidOperationException("Not initialized");
+            }
+            var buffer = payload.TakeSerialized();
             try
             {
-                if (payload.Length == 0)
+                if (buffer.Length == 0)
                 {
                     return Array.Empty<SubstreamEventData>();
                 }
-                if (_receiveAllocatorResolver == null)
-                {
-                    throw new InvalidOperationException("Not initialized");
-                }
-                // The events arrive as an opaque buffer that can cross silo boundaries, the
-                // deserialized events carry a receiver claim like a local fetch hands out.
-                // Batch memory is allocated from the read operators that consume the
-                // targets, so the received data is accounted on them.
-                return _wireSerializer.Deserialize(payload.AsReadOnlySequence(), _receiveAllocatorResolver);
+                return _wireSerializer.Deserialize(buffer.AsReadOnlySequence(), _receiveAllocatorResolver);
             }
             finally
             {
-                payload.Dispose();
+                buffer.Dispose();
             }
         }
 
