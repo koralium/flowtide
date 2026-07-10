@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
@@ -104,6 +105,7 @@ namespace OrleansSample
                 output.ExitCheckpointLock();
 
             }
+            await output.SendWatermark(new FlowtideDotNet.Base.Watermark("dummy", LongWatermarkValue.Create(1)));
             ScheduleCheckpoint(TimeSpan.FromSeconds(1));
         }
     }

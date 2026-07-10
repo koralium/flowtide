@@ -4,18 +4,9 @@ using OrleansSample;
 using FlowtideDotNet.AspNetCore.Extensions;
 using SqlSampleWithUI;
 using FlowtideDotNet.DependencyInjection;
+using FlowtideDotNet.Core.Sinks;
 
 var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddOpenTelemetry()
-    .WithMetrics(builder =>
-    {
-        builder.AddPrometheusExporter(o =>
-        {
-
-        });
-        builder.AddMeter("flowtide.*");
-    });
 
 builder.Services.AddOrleans(b =>
 {
@@ -42,8 +33,6 @@ app.StartFlowtideMetrics("/stream");
 
 var grainFactory = app.Services.GetRequiredService<IGrainFactory>();
 var streamGrain = grainFactory.GetGrain<IStreamGrain>("stream");
-
-app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 await app.StartAsync();
 
