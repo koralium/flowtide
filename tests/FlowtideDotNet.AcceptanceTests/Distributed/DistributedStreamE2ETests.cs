@@ -336,6 +336,63 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             // which the IsTickLoopRunning assertions cover.
         }
 
+        private sealed class CountingCheckpointListener : Base.Engine.ICheckpointListener
+        {
+            private readonly Action _onCheckpoint;
+
+            public CountingCheckpointListener(Action onCheckpoint)
+            {
+                _onCheckpoint = onCheckpoint;
+            }
+
+            public void OnCheckpointComplete(Base.Engine.StreamCheckpointNotification notification)
+            {
+                _onCheckpoint();
+            }
+        }
+
+        /// <summary>
+        /// Substreams pair every checkpoint barrier they receive with a local checkpoint, so
+        /// one checkpoint anywhere ripples through all substreams as a wave. The wave must
+        /// CONVERGE: a barrier that pairs with an already running local cycle needs no new
+        /// cycle, and data forwarded after a barrier needs exactly one covering cycle. If
+        /// every received barrier or data batch schedules another cycle instead, the
+        /// substreams checkpoint continuously at full speed forever with no new data.
+        /// </summary>
+        [Fact]
+        public async Task CheckpointsQuiesceWhenNoNewDataArrives()
+        {
+            _generator.Generate(200);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            int checkpoints = 0;
+
+            // No minimum checkpoint interval: quiescence must come from the wave converging,
+            // a throttle would only slow a non-converging loop down, not end it.
+            _stream = BuildHost("e2e_ckpt_quiesce", NormalJoinSql, latestData, failures,
+                configureSubstream: (substreamName, substreamBuilder) =>
+                {
+                    substreamBuilder.WithCheckpointListener(new CountingCheckpointListener(() => Interlocked.Increment(ref checkpoints)));
+                });
+
+            await _stream.StartAsync();
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // Let the waves from the initial data settle, then measure with nothing changing.
+            await Task.Delay(TimeSpan.FromSeconds(3));
+            int baseline = Volatile.Read(ref checkpoints);
+            await Task.Delay(TimeSpan.FromSeconds(5));
+            int delta = Volatile.Read(ref checkpoints) - baseline;
+
+            Assert.True(delta <= 4,
+                $"The substreams completed {delta} checkpoints in five seconds with no new data; the checkpoint waves do not converge, every barrier or data batch schedules another cycle.");
+
+            var stopTask = _stream.StopAsync();
+            var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(finished == stopTask, "The stop timed out");
+            await stopTask;
+        }
+
         /// <summary>
         /// Storage that cannot be initialized, so the substream it is given to fails its
         /// start cleanly at storage initialization.
@@ -1369,7 +1426,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             bool debugLog = false,
             Func<string, Microsoft.Extensions.Logging.ILoggerFactory>? loggerFactory = null,
             TimeSpan? stopDrainTimeout = null,
-            Action<string, Watermark>? onWatermark = null)
+            Action<string, Watermark>? onWatermark = null,
+            Action<string, Core.Engine.FlowtideBuilder>? configureSubstream = null)
         {
             return new DistributedStreamBuilder(testName)
                 .AddPlan(() =>
@@ -1404,6 +1462,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                             .CreateLogger();
                         substreamBuilder.WithLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(b => b.AddSerilog(serilogLogger)));
                     }
+                    configureSubstream?.Invoke(substreamName, substreamBuilder);
                 })
                 .DistributeAutomatically(substreamCount)
                 .Build();

@@ -74,6 +74,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // During a handoff drain no peer events arrive to pair local checkpoints with, so
         // they are self-forwarded like a stop checkpoint.
         private volatile bool _handoffDraining;
+        // True while events forwarded after the last checkpoint barrier await a covering
+        // cycle. Only touched from the single threaded fetch loop. The first uncovered event
+        // schedules exactly one cycle; scheduling on every event would make the substreams
+        // checkpoint forever, each cycle's barriers re-trigger cycles at the peers.
+        private bool _uncoveredForwards;
 
         public SubstreamReadOperator(SubstreamCommunicationPoint communicationPoint, SubstreamExchangeReferenceRelation referenceRelation, DataflowBlockOptions options) : base(options)
         {
@@ -140,6 +145,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _swallowNextInitWatermarks = false;
                 _localCheckpointSeen = false;
                 _handoffDraining = false;
+                _uncoveredForwards = false;
                 // Signals from before the restore belong to the aborted epoch, replaying
                 // them would complete a new cycle too early.
                 _pendingCheckpointDoneSignals = 0;
@@ -248,6 +254,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     Logger.LogDebug("Substream read {name} forwards the stop checkpoint", Name);
                     await OnCheckpoint(stopCheckpoint.CheckpointTime);
                     await output.SendLockingEvent(stopCheckpoint);
+                    // Everything forwarded before this barrier is covered by it.
+                    _uncoveredForwards = false;
                     bool replayStopSignal = false;
                     lock (_lock)
                     {
@@ -304,13 +312,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // we also provide the checkpoint time to make sure that the same checkpoint from the target is scheduled twice.
                         ScheduleCheckpoint(TimeSpan.FromMilliseconds(1), checkpointEvent.CheckpointTime);
                     }
-                    else
-                    {
-                        // Pairs with a checkpoint already running. Data sent before the other
-                        // substreams barrier can land after this streams barrier, a follow up cycle
-                        // covers it. Versionless, or the dedup swallows it with the cycle's siblings.
-                        ScheduleCheckpoint(TimeSpan.FromMilliseconds(100));
-                    }
+                    // A barrier that pairs with the already running local cycle schedules
+                    // nothing: that is the checkpoint wave converging. Data landing after the
+                    // local barrier latches one covering cycle when it is forwarded.
 
                     if (inStreamCheckpoint == null)
                     {
@@ -364,6 +368,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // Forward this streams own checkpoint event, the other substreams
                     // event carries that streams times.
                     await output.SendLockingEvent(inStreamCheckpoint);
+                    // Everything forwarded before this barrier is covered by it.
+                    _uncoveredForwards = false;
                     Logger.LogDebug("Substream read {name} forwarded checkpoint with time {time} downstream", Name, inStreamCheckpoint.CheckpointTime);
                     bool replaySignal = false;
                     lock (_lock)
@@ -424,13 +430,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     await output.SendAsync(streamMessage.Data);
                     // SendAsync rents for the pipeline, the read claim is returned after
                     streamMessage.Data.Return();
-                    // Data from another substream must eventually be covered by a checkpoint
-                    // in this stream, even when no local source change triggers one.
-                    ScheduleCheckpoint(TimeSpan.FromMilliseconds(100));
+                    EnsureCoveringCheckpoint();
                 }
                 else if (ev is Watermark watermark)
                 {
                     await output.SendWatermark(watermark);
+                    EnsureCoveringCheckpoint();
                 }
                 else
                 {
@@ -550,6 +555,22 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
 
             _peerStopConsumed = true;
+        }
+
+        /// <summary>
+        /// Events from another substream must eventually be covered by a checkpoint in this
+        /// stream, even when no local source change triggers one - uncovered, they would wait
+        /// forever once the substreams paired their cycles. Latched to one covering cycle per
+        /// barrier: scheduling on every event would make the substreams checkpoint forever,
+        /// each cycle's barriers re-trigger cycles at the peers.
+        /// </summary>
+        private void EnsureCoveringCheckpoint()
+        {
+            if (!_uncoveredForwards)
+            {
+                _uncoveredForwards = true;
+                ScheduleCheckpoint(TimeSpan.FromMilliseconds(100));
+            }
         }
 
         public void RecieveCheckpointDone(long checkpointVersion)

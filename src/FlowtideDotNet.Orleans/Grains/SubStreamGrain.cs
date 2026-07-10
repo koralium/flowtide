@@ -693,7 +693,6 @@ namespace FlowtideDotNet.Orleans.Grains
                     AnnounceCleanHandoff = announceCleanHandoff
                 });
             }
-
             // Applied last so user configuration can override the defaults set above.
             _options.ConfigureBuilder?.Invoke(_state.State.StreamName, _state.State.SubstreamName!, flowtideBuilder);
 
