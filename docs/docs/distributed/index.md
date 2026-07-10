@@ -43,4 +43,4 @@ When substreams restart, an initialize handshake compares their restored checkpo
 * Joins where no key is compared with equality can not be partitioned and stay inside one substream.
 * Aggregates that use the surrogate key function are not distributed.
 * A distributed view consumed from another substream must declare *SCATTER_BY*, broadcasting across substreams is not supported.
-* Running the substreams on one machine is normally slower than running the same plan as a single stream, the exchange adds serialization and queueing. Distributed mode pays off when the stream needs more resources than one machine has.
+* Running the substreams on one machine is normally slower than running the same plan as a single stream, the exchange adds partitioning and queueing. Data between substreams in the same process or on the same silo is passed by reference, serialization only happens when the data crosses to another machine. Distributed mode pays off when the stream needs more resources than one machine has.

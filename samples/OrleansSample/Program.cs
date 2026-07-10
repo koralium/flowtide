@@ -1,4 +1,4 @@
-using FlowtideDotNet.Orleans.Interfaces;
+using FlowtideDotNet.Cluster.Orleans.Interfaces;
 using OpenTelemetry.Metrics;
 using OrleansSample;
 using FlowtideDotNet.AspNetCore.Extensions;
@@ -51,7 +51,7 @@ app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 await app.StartAsync();
 
-//await streamGrain.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamRequest(@"
+//await streamGrain.StartStreamAsync(new FlowtideDotNet.Cluster.Orleans.Messages.StartStreamRequest(@"
 //CREATE TABLE table1 (val any);
 //CREATE TABLE table2 (val any);
 
@@ -88,7 +88,7 @@ await app.StartAsync();
 // 8 substreams, the join runs with one partition in every substream.
 // Substreams can also be assigned explicitly with SUBSTREAM statements together with
 // distributed views, see the commented example above.
-await streamGrain.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamRequest(@"
+await streamGrain.StartStreamAsync(new FlowtideDotNet.Cluster.Orleans.Messages.StartStreamRequest(@"
 CREATE TABLE table1 (val any);
 CREATE TABLE table2 (val any);
 

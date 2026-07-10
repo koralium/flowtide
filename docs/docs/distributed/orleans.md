@@ -7,7 +7,9 @@ sidebar_position: 5
 > [!WARNING]
 > Distributed mode is still experimental.
 
-The Orleans host runs every substream as a grain. The substreams of a stream spread across the silo cluster, Orleans handles the placement, and streams recover automatically when a silo fails.
+The Orleans host runs every substream as a grain. The substreams of a stream spread across the silo cluster, Orleans handles the placement, and streams recover automatically when a silo fails. Substreams on the same silo pass data between each other by reference, serialization only happens when the data crosses to another silo.
+
+The Orleans host is in the *FlowtideDotNet.Cluster.Orleans* package.
 
 ## Setup
 

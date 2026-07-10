@@ -19,7 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FlowtideDotNet.AspNetCore\FlowtideDotNet.AspNetCore.csproj" />
-    <ProjectReference Include="..\..\src\FlowtideDotNet.Orleans\FlowtideDotNet.Orleans.csproj" />
+    <ProjectReference Include="..\..\src\FlowtideDotNet.Cluster.Orleans\FlowtideDotNet.Cluster.Orleans.csproj" />
   </ItemGroup>
 
 </Project>
