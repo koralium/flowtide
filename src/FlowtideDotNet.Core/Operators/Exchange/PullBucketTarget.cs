@@ -170,6 +170,20 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
+        public async Task OnInitialDataDone()
+        {
+            Debug.Assert(_events != null);
+            await _lockSemaphore.WaitAsync();
+            try
+            {
+                await _events.Upsert(_eventCounter++, new InitialDataDoneEvent());
+            }
+            finally
+            {
+                _lockSemaphore.Release();
+            }
+        }
+
         public async Task FetchData(ExchangeFetchDataMessage message)
         {
             Debug.Assert(_events != null);

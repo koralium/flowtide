@@ -110,6 +110,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
+        public async Task OnInitialDataDone()
+        {
+            if (_events != null)
+            {
+                await _events.Upsert(_eventCounter++, new InitialDataDoneEvent());
+            }
+        }
+
         public Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState)
         {
             exchangeOperatorState.EventCounter = _eventCounter;

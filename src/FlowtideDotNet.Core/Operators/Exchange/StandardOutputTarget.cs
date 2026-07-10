@@ -130,6 +130,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return Task.CompletedTask;
         }
 
+        public Task OnInitialDataDone()
+        {
+            // The initial data done event for standard output is broadcast automatically
+            return Task.CompletedTask;
+        }
+
         public void NewBatch(EventBatchWeighted weightedBatch)
         {
             _currentBatch = weightedBatch;

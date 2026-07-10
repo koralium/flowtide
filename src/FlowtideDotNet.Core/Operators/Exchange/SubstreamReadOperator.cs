@@ -68,6 +68,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // A returning peer's restarted pipeline sends one init watermarks event that must be
         // consumed without forwarding, a second init downstream would skew barrier alignment.
         private volatile bool _swallowNextInitWatermarks;
+        private bool _restoredWithWatermarkNames;
         // True after the first local checkpoint barrier since the last restore, before it an
         // unpairable barrier means the stream is still starting up, not an epoch mismatch.
         private volatile bool _localCheckpointSeen;
@@ -174,6 +175,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _state.Value = new SubstreamReadState();
             }
+            // Captured here: the peer's init watermarks event arrives during startup and
+            // populates the state before InitializationCompleted runs, only a restore has
+            // the names at this point.
+            _restoredWithWatermarkNames = _state.Value.WatermarkNames != null;
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
@@ -190,6 +195,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _peerStopConsumedCommitted = _peerStopConsumed;
             }
         }
+
+        /// <summary>
+        /// On a fresh start this operator's initial data is the other substream's initial
+        /// data, which arrives asynchronously through the fetch loop; the marker is forwarded
+        /// from there once the peer sends it after everything before it. Reporting done at
+        /// startup would release downstream watermark alignment before the peer's data has
+        /// arrived, flushing partial results. After a restore the initial data is already part
+        /// of the restored downstream state, and a clean reconnect peer never resends its
+        /// marker, so done is reported immediately.
+        /// </summary>
+        protected override bool SendInitialDataDoneAfterInitial => _restoredWithWatermarkNames;
 
         protected override Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
@@ -436,6 +452,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     await output.SendWatermark(watermark);
                     EnsureCoveringCheckpoint();
+                }
+                else if (ev is InitialDataDoneEvent initialDataDone)
+                {
+                    // The other substream's initial data is complete and everything before
+                    // the marker has been forwarded, downstream alignment may now release.
+                    await output.SendEvent(initialDataDone);
                 }
                 else
                 {

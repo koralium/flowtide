@@ -178,7 +178,7 @@ namespace FlowtideDotNet.Base.Vertices
                 }
                 if (x is InitialDataDoneEvent initialDataDoneEvent)
                 {
-                    return Broadcast(initialDataDoneEvent);
+                    return HandleInitialDataDone(initialDataDoneEvent);
                 }
                 throw new NotSupportedException();
             }, _executionDataflowBlockOptions);
@@ -258,6 +258,26 @@ namespace FlowtideDotNet.Base.Vertices
             {
                 yield return new KeyValuePair<int, IStreamEvent>(i, watermark);
             }
+        }
+
+        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> HandleInitialDataDone(InitialDataDoneEvent initialDataDoneEvent)
+        {
+            await OnInitialDataDone();
+            for (int i = 0; i < targetNumber; i++)
+            {
+                yield return new KeyValuePair<int, IStreamEvent>(i, initialDataDoneEvent);
+            }
+        }
+
+        /// <summary>
+        /// Called when the initial data done event passes through, before it is broadcast to
+        /// the local outputs. Lets the exchange forward the marker to the other substreams in
+        /// stream order, so their downstream watermark alignment releases only after all of
+        /// this substream's initial data has been received.
+        /// </summary>
+        protected virtual Task OnInitialDataDone()
+        {
+            return Task.CompletedTask;
         }
 
         /// <summary>

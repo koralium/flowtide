@@ -455,6 +455,15 @@ namespace FlowtideDotNet.Base.Vertices
         }
 
         /// <summary>
+        /// Whether <see cref="InitializationCompleted"/> reports the initial data as done right
+        /// after <see cref="SendInitial"/> returns. A vertex whose initial data is produced by
+        /// another substream and arrives asynchronously overrides this with false and forwards
+        /// the real completion signal instead: reporting done here would release downstream
+        /// watermark alignment before the data has arrived, flushing partial results.
+        /// </summary>
+        protected virtual bool SendInitialDataDoneAfterInitial => true;
+
+        /// <summary>
         /// Called when the internal initialization sequence has completed successfully.
         /// </summary>
         /// <returns>A task that handles post-initialization tasks, such as triggering initial data emission.</returns>
@@ -463,8 +472,11 @@ namespace FlowtideDotNet.Base.Vertices
             return RunTask(async (output, state) =>
             {
                 await SendInitial(output);
-                // Send event here that initial is completed
-                await output.SendEvent(new InitialDataDoneEvent());
+                if (SendInitialDataDoneAfterInitial)
+                {
+                    // Send event here that initial is completed
+                    await output.SendEvent(new InitialDataDoneEvent());
+                }
             }, taskCreationOptions: TaskCreationOptions.LongRunning);
         }
 

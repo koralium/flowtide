@@ -94,9 +94,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // zeroed when a start begins. A failure before the blocks were created (for example
         // storage initialization) must skip the block teardown, the operations assume created
         // blocks. Torn down by exactly one party: a superseded start and the failure teardown
-        // can race to clean the same blocks, so the cleaner CLAIMS the flag with an atomic
-        // exchange and a dispose is never run twice.
+        // can race to clean the same blocks, so the cleaner CLAIMS the flag under the claim
+        // lock and a dispose is never run twice. The generation counts CreateBlock passes: a
+        // superseded start may only claim while the generation still matches the one it
+        // created, otherwise the flag describes a successor start's blocks - claiming those
+        // faulted the successor mid start and wedged the stream. All flag and generation
+        // transitions happen under _blockClaimLock; they are cold control-plane paths.
         internal int _blocksCreated;
+        internal int _blockGeneration;
+        internal readonly object _blockClaimLock = new object();
 
         // Test hooks, null in production. Each gets the stream name so a test can filter to its own
         // stream: CheckpointCommitHookForTests awaits inside the commit (so a test can hold a write in
@@ -845,7 +851,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
             }
 
-            if (System.Threading.Interlocked.Exchange(ref _blocksCreated, 0) == 1)
+            bool blocksClaimed;
+            lock (_blockClaimLock)
+            {
+                blocksClaimed = _blocksCreated == 1;
+                _blocksCreated = 0;
+            }
+            if (blocksClaimed)
             {
                 // Completing or disposing never-created blocks throws; a stream whose start
                 // failed before creating them (or whose failure teardown already disposed

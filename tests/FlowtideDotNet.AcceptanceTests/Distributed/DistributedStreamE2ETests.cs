@@ -426,6 +426,69 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         private record CountRow(long Count);
 
         /// <summary>
+        /// The gather union in front of the aggregation must hold its watermark until every
+        /// substream's initial data has arrived: its inputs share the same watermark names, so
+        /// one input's watermark alone releases nothing. The substream read operator used to
+        /// declare its initial data done the moment it started, before anything from the peer
+        /// had crossed the exchange, which released the union on the local input's watermark
+        /// alone and flushed a partial count that was later retracted and corrected. One
+        /// substream is held paused from the start so its share of the rows cannot arrive:
+        /// nothing may reach the sink until it resumes.
+        /// </summary>
+        [Fact]
+        public async Task CountOverDistributedJoinDoesNotFlushBeforePeerInitialData()
+        {
+            _generator.Generate(200);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var sinkWatermarks = new ConcurrentQueue<(string Substream, Watermark Watermark)>();
+
+            var expectedCount = (long)_generator.Orders
+                .Join(_generator.Users, o => o.UserKey, u => u.UserKey, (o, u) => u.UserKey)
+                .Count();
+
+            _stream = BuildHost("e2e_count_no_partial", @"
+            INSERT INTO output
+            SELECT count(*) FROM users u
+            INNER JOIN orders o ON u.userkey = o.userkey;
+            ", latestData, failures,
+                onWatermark: (substream, watermark) => sinkWatermarks.Enqueue((substream, watermark)));
+
+            // Paused before start: the pause marker is applied to the vertices when the
+            // substream enters running, so its sources never deliver their initial data.
+            _stream.Substreams["substream_1"].Pause();
+            await _stream.StartAsync();
+
+            // With the peer's rows missing, no watermark may reach the sink: the operators
+            // between the sources and the sink share the peer's watermark names and must
+            // hold their watermarks until the peer's initial data has arrived. A watermark
+            // here means an input's completion was fabricated instead of waited for, which
+            // downstream releases partial results.
+            var leakWindow = Stopwatch.StartNew();
+            while (leakWindow.Elapsed < TimeSpan.FromSeconds(3))
+            {
+                var failure = failures.FirstOrDefault(x => x.Exception != null);
+                if (failure.Exception != null)
+                {
+                    throw new Exception($"Substream {failure.Substream} failed", failure.Exception);
+                }
+                if (!sinkWatermarks.IsEmpty)
+                {
+                    sinkWatermarks.TryPeek(out var leaked);
+                    Assert.Fail($"A watermark reached the sink while the peer substream was still paused before delivering any of its initial data: {string.Join(", ", leaked.Watermark.Watermarks.Select(x => $"{x.Key}={x.Value?.ToString() ?? "null"}"))}. The gather must wait for every substream's initial data before releasing a watermark.");
+                }
+                if (latestData.TryGetValue("substream_0", out var flushed) && flushed.Count > 0)
+                {
+                    Assert.Fail($"The count flushed {flushed.Columns[0].GetValueAt(0, default)} while the peer substream was still paused before delivering any initial data; expected no flush before all inputs' initial data, full count {expectedCount}.");
+                }
+                await Task.Delay(50);
+            }
+
+            _stream.Substreams["substream_1"].Resume();
+            await WaitForSinkData(latestData, failures, "substream_0", new List<CountRow>() { new CountRow(expectedCount) });
+        }
+
+        /// <summary>
         /// 100k rows per table through the distributed join with a small page cache and a
         /// PAUSED consuming substream: the producer keeps joining and queueing rows for the
         /// paused peer, the exchange queues grow past the cache and must spill pages to
@@ -441,6 +504,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
             var tempRoot = $"./data/tempFiles/e2e_large_join_spill/{Guid.NewGuid():N}";
+            int checkpoints = 0;
 
             _stream = BuildHost("e2e_large_join_spill", NormalJoinSql, latestData, failures,
                 stateOptions: substreamName => new Storage.StateManager.StateManagerOptions()
@@ -457,14 +521,44 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     {
                         DirectoryPath = $"{tempRoot}/{substreamName}/tmp"
                     }
+                },
+                configureSubstream: (substreamName, substreamBuilder) =>
+                {
+                    substreamBuilder.WithCheckpointListener(new CountingCheckpointListener(() => Interlocked.Increment(ref checkpoints)));
                 });
 
             await _stream.StartAsync();
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
-            // The consumer stops draining, the producer keeps queueing for it.
+            // Pause only once no checkpoint wave is in flight: a wave caught by the pause can
+            // never complete against the paused peer, and the producer's sources then park on
+            // the ingress checkpoint lock instead of fetching the bulk rows - the backlog
+            // this test needs never forms. Completions land in milliseconds on a healthy
+            // stream, so a quiet window means nothing is in flight.
+            var quiesceDeadline = Stopwatch.StartNew();
+            int lastSeen = Volatile.Read(ref checkpoints);
+            var stableSince = Stopwatch.StartNew();
+            while (stableSince.Elapsed < TimeSpan.FromMilliseconds(1500))
+            {
+                Assert.True(quiesceDeadline.Elapsed < TimeSpan.FromSeconds(30), "The checkpoint waves from the initial data never went quiet.");
+                await Task.Delay(100);
+                int current = Volatile.Read(ref checkpoints);
+                if (current != lastSeen)
+                {
+                    lastSeen = current;
+                    stableSince.Restart();
+                }
+            }
+
+            // The consumer stops draining, the producer keeps queueing for it. The volume
+            // must exceed what the paused consumer's fetch loop can absorb without its read
+            // operator consuming anything: the fetch keeps draining the queue into the read
+            // operator's bounded channel (1024 events of ~100-row batches, roughly 100k
+            // rows), so anything at or below that can leave the queue empty when the
+            // producer trickles under load. Well past it, the overflow must sit in the
+            // queue and overflow the small page cache regardless of relative speeds.
             _stream.Substreams["substream_0"].Pause();
-            _generator.Generate(100_000);
+            _generator.Generate(300_000);
 
             // The backlog must actually spill; without it this test proves nothing.
             var spillDeadline = Stopwatch.StartNew();

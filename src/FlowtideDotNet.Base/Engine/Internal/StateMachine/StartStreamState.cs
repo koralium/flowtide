@@ -29,6 +29,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // and every following restart then dies on the running tasks it left behind.
         private readonly CancellationTokenSource _startAbort = new CancellationTokenSource();
 
+        // The block generation this start created; the abandon may only claim the created
+        // flag while the context still holds this generation, later it describes a
+        // successor start's blocks.
+        private int _myBlockGeneration;
+
         public override Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
         {
             Debug.Assert(_context != null, nameof(_context));
@@ -220,7 +225,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             // This start creates the blocks below; a failure before that must not run the
             // block teardown.
-            System.Threading.Volatile.Write(ref _context._blocksCreated, 0);
+            lock (_context._blockClaimLock)
+            {
+                _context._blocksCreated = 0;
+            }
 
             if (StartAborted())
             {
@@ -277,7 +285,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 block.Setup(_context.streamName, key);
                 block.CreateBlock();
             });
-            System.Threading.Volatile.Write(ref _context._blocksCreated, 1);
+            lock (_context._blockClaimLock)
+            {
+                _context._blockGeneration++;
+                _myBlockGeneration = _context._blockGeneration;
+                _context._blocksCreated = 1;
+            }
             // Link the blocks
             _context._logger.LinkingBlocks(_context.streamName);
             _context.ForEachBlock((key, block) =>
@@ -427,13 +440,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         /// <summary>
         /// Tears down the blocks this abandoned start created, unless the failure teardown
         /// already claimed them; exactly one party cleans, a dispose must not run twice.
+        /// Only the blocks THIS start created may be claimed: when the abandon runs late the
+        /// teardown has already cleaned them and a successor start's blocks own the flag -
+        /// touching those faults the successor mid start and wedges the stream.
         /// </summary>
         private async Task AbandonStartedBlocks()
         {
             Debug.Assert(_context != null, nameof(_context));
-            if (System.Threading.Interlocked.Exchange(ref _context._blocksCreated, 0) == 0)
+            lock (_context._blockClaimLock)
             {
-                return;
+                if (_context._blockGeneration != _myBlockGeneration || _context._blocksCreated == 0)
+                {
+                    return;
+                }
+                _context._blocksCreated = 0;
             }
             _context.ForEachBlock((key, block) =>
             {

@@ -70,63 +70,83 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private async Task FetchChanges(IngressOutput<StreamEventBatch> output, object? state)
         {
-            mockDatabase.RwLock.Wait();
             Debug.Assert(_state?.Value != null);
+            // The checkpoint lock is entered before the database lock, and the database lock
+            // is not held while sending. Both waits can park indefinitely: the checkpoint
+            // lock while a checkpoint is in flight, a send on the pause gate while the
+            // stream is paused. Holding a database slot across either wait starves the data
+            // generator (and, with the synchronous wait that used to sit here, a thread pool
+            // thread per fired trigger), deadlocking a test that pauses a stream and then
+            // generates data.
             await output.EnterCheckpointLock();
-            var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
-            Logger.LogDebug("Mock source {table} fetch changes from offset {offset} to offset {fetchedOffset}", readRelation.NamedTable.DotSeperated, _state.Value.LatestOffset, fetchedOffset);
-            bool sentData = false;
+            await mockDatabase.RwLock.WaitAsync();
 
-
-            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
-            Column[] columns = new Column[readRelation.OutputLength];
-
-            for (int i = 0; i < readRelation.OutputLength; i++)
+            List<StreamEventBatch> pendingBatches = new List<StreamEventBatch>();
+            int fetchedOffset;
+            try
             {
-                columns[i] = new Column(MemoryAllocator);
-            }
+                var (operations, offset) = _table.GetOperations(_state.Value.LatestOffset);
+                fetchedOffset = offset;
+                Logger.LogDebug("Mock source {table} fetch changes from offset {offset} to offset {fetchedOffset}", readRelation.NamedTable.DotSeperated, _state.Value.LatestOffset, fetchedOffset);
 
-            foreach (var operation in operations)
-            {
-                _batchConverter.AppendToColumns(operation.Object, columns);
+                PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+                PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+                Column[] columns = new Column[readRelation.OutputLength];
 
-                iterations.Add(1);
-                if (operation.IsDelete)
+                for (int i = 0; i < readRelation.OutputLength; i++)
                 {
-                    weights.Add(-1);
+                    columns[i] = new Column(MemoryAllocator);
+                }
+
+                foreach (var operation in operations)
+                {
+                    _batchConverter.AppendToColumns(operation.Object, columns);
+
+                    iterations.Add(1);
+                    if (operation.IsDelete)
+                    {
+                        weights.Add(-1);
+                    }
+                    else
+                    {
+                        weights.Add(1);
+                    }
+
+                    if (weights.Count > 100)
+                    {
+                        pendingBatches.Add(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+
+                        columns = new Column[readRelation.OutputLength];
+                        for (int i = 0; i < readRelation.OutputLength; i++)
+                        {
+                            columns[i] = new Column(MemoryAllocator);
+                        }
+                        weights = new PrimitiveList<int>(MemoryAllocator);
+                        iterations = new PrimitiveList<uint>(MemoryAllocator);
+                    }
+                }
+
+                if (weights.Count > 0)
+                {
+                    pendingBatches.Add(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 }
                 else
                 {
-                    weights.Add(1);
-                }
-
-                if (weights.Count > 100)
-                {
-                    var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
-#if DEBUG_WRITE
-                    foreach (var o in outputBatch.Events)
+                    weights.Dispose();
+                    iterations.Dispose();
+                    foreach (var column in columns)
                     {
-                        allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
+                        column.Dispose();
                     }
-                    await allOutput!.FlushAsync();
-#endif
-                    sentData = true;
-                    await output.SendAsync(outputBatch);
-
-                    columns = new Column[readRelation.OutputLength];
-                    for (int i = 0; i < readRelation.OutputLength; i++)
-                    {
-                        columns[i] = new Column(MemoryAllocator);
-                    }
-                    weights = new PrimitiveList<int>(MemoryAllocator);
-                    iterations = new PrimitiveList<uint>(MemoryAllocator);
                 }
             }
-
-            if (weights.Count > 0)
+            finally
             {
-                var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+                mockDatabase.RwLock.Release();
+            }
+
+            foreach (var outputBatch in pendingBatches)
+            {
 #if DEBUG_WRITE
                 foreach (var o in outputBatch.Events)
                 {
@@ -134,21 +154,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 }
                 await allOutput!.FlushAsync();
 #endif
-                sentData = true;
                 await output.SendAsync(outputBatch);
             }
-            else
-            {
-                weights.Dispose();
-                iterations.Dispose();
-                foreach (var column in columns)
-                {
-                    column.Dispose();
-                }
-            }
+
             _state.Value.LatestOffset = fetchedOffset;
 
-            if (sentData)
+            if (pendingBatches.Count > 0)
             {
                 await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
                 this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
@@ -159,14 +170,24 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
 
             output.ExitCheckpointLock();
-            mockDatabase.RwLock.Release();
         }
 
         private async Task SendEmptyBatch(IngressOutput<StreamEventBatch> output, object? state)
         {
-            await mockDatabase.RwLock.WaitAsync();
             Debug.Assert(_state?.Value != null);
+            // Same lock discipline as FetchChanges: checkpoint lock first, no database slot
+            // held across a send that can park on the pause gate.
             await output.EnterCheckpointLock();
+            await mockDatabase.RwLock.WaitAsync();
+            int fetchedOffset;
+            try
+            {
+                fetchedOffset = _state.Value.LatestOffset;
+            }
+            finally
+            {
+                mockDatabase.RwLock.Release();
+            }
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
@@ -180,12 +201,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
             await output.SendAsync(outputBatch);
 
-            var fetchedOffset = _state.Value.LatestOffset;
             await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
             this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
 
             output.ExitCheckpointLock();
-            mockDatabase.RwLock.Release();
         }
 
         public override Task OnTrigger(string triggerName, object? state)

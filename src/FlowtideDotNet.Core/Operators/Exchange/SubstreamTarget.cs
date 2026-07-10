@@ -319,6 +319,25 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             await _substreamCommunication.TargetHasData(_exchangeTargetId);
         }
 
+        public async Task OnInitialDataDone()
+        {
+            Debug.Assert(_queue != null);
+            await _lockSemaphore.WaitAsync();
+            try
+            {
+                if (_stopBarrierStored)
+                {
+                    return;
+                }
+                await _queue.Enqueue(new InitialDataDoneEvent());
+            }
+            finally
+            {
+                _lockSemaphore.Release();
+            }
+            await _substreamCommunication.TargetHasData(_exchangeTargetId);
+        }
+
         /// <summary>
         /// Dequeues events for the other substream. The events are removed from the queue,
         /// they are always ahead of the latest complete checkpoint since a checkpoint only

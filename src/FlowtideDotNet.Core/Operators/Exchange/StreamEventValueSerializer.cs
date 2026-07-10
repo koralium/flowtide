@@ -33,6 +33,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // Stop checkpoints keep their own type so the receiving substream can recognize the
         // other substreams stop barrier after serialization.
         private const byte StopCheckpointType = 5;
+        // Marker without payload: everything before it in the queue is the sending
+        // substream's initial data.
+        private const byte InitialDataDoneEventType = 6;
 
         private readonly IMemoryAllocator memoryAllocator;
         private readonly EventBatchBPlusTreeSerializer _eventBatchBPlusTreeSerializer;
@@ -281,6 +284,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     return DeserializeCheckpoint(ref reader, isStopCheckpoint: true);
                 case InitWatermarksEventType:
                     return DeserializeInitWatermark(ref reader);
+                case InitialDataDoneEventType:
+                    return new InitialDataDoneEvent();
                 default:
                     throw new NotSupportedException($"Unknown stream event type id '{type}'.");
             }
@@ -440,6 +445,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             else if (val is ILockingEvent lockingEvent)
             {
                 SerializeLockingEvent(writer, lockingEvent);
+            }
+            else if (val is InitialDataDoneEvent)
+            {
+                var destinationSpan = writer.GetSpan(1);
+                destinationSpan[0] = InitialDataDoneEventType;
+                writer.Advance(1);
             }
             else
             {

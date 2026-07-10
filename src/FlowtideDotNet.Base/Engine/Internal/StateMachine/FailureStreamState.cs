@@ -182,7 +182,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             StreamContext.BeforeFailureDisposeForTests?.Invoke(_context.streamName);
 
-            if (System.Threading.Interlocked.Exchange(ref _context._blocksCreated, 0) == 0)
+            bool blocksClaimed;
+            lock (_context._blockClaimLock)
+            {
+                blocksClaimed = _context._blocksCreated == 1;
+                _context._blocksCreated = 0;
+            }
+            if (!blocksClaimed)
             {
                 // The failure happened before the start created the blocks (for example at
                 // storage initialization), there is nothing to fault or dispose. Faulting,
@@ -250,7 +256,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     block.Setup(_context.streamName, key);
                     block.CreateBlock();
                 });
-                System.Threading.Volatile.Write(ref _context._blocksCreated, 1);
+                lock (_context._blockClaimLock)
+                {
+                    _context._blockGeneration++;
+                    _context._blocksCreated = 1;
+                }
                 await TransitionTo(StreamStateValue.Deleting);
                 return;
             }

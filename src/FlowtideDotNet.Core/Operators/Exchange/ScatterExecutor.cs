@@ -197,6 +197,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
+        public async Task OnInitialDataDone()
+        {
+            for (int i = 0; i < _targets.Length; i++)
+            {
+                await _targets[i].OnInitialDataDone();
+            }
+        }
+
         public async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
         {
             Debug.Assert(_hashFunction != null || _partitionCount == 1);

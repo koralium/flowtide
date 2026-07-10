@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Engine;
@@ -28,6 +29,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.AcceptanceTests.Distributed
 {
+    // Assigns the process-wide StreamContext startup hook, must not run in parallel with
+    // other classes assigning the same statics.
+    [Collection("StreamContext test hooks")]
     public class OrphanedStartRecoveryTests : IAsyncLifetime
     {
         private const string TestName = "e2e_orphaned_start";
@@ -160,6 +164,106 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             // "Initialize while there are running tasks" and the data never returns.
             generator.Generate(100);
             await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
+        }
+
+        /// <summary>
+        /// An abandoned start may only tear down blocks it created itself. When the abandon
+        /// runs late - here parked in the startup hook - the failure teardown has already
+        /// cleaned that start's blocks and the recovery has begun a successor start whose
+        /// blocks now own the shared created flag. Claiming that flag faulted the successor's
+        /// blocks mid start: when nothing had observed the fault yet the successor's
+        /// initialization events were dropped on the faulted blocks and the stream wedged
+        /// silently forever; at best a spurious extra recovery ran. Captured live from the
+        /// clean handoff lost-state test under full-suite load.
+        /// </summary>
+        [Fact]
+        public async Task AbandonedStartDoesNotTearDownTheSuccessorsBlocks()
+        {
+            var generator = new DatasetGenerator(_db);
+            generator.Generate(200);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            int substream0Starts = 0;
+            var firstRestartHeld = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseFirstRestart = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var successorHeld = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseSuccessor = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            StreamContext.StartupBeforeInitTrackingHookForTests = async (streamName) =>
+            {
+                if (!streamName.Contains(TestName) || !streamName.Contains("substream_0"))
+                {
+                    return;
+                }
+                int call = Interlocked.Increment(ref substream0Starts);
+                if (call == 2)
+                {
+                    // The restart after the first failure: parked here, past its block
+                    // creation, until the successor exists.
+                    firstRestartHeld.TrySetResult();
+                    await releaseFirstRestart.Task;
+                }
+                else if (call == 3)
+                {
+                    // The successor: parked past its own block creation so the abandoned
+                    // start's late cleanup runs while these blocks own the created flag.
+                    successorHeld.TrySetResult();
+                    await releaseSuccessor.Task;
+                }
+            };
+
+            try
+            {
+                _stream = new DistributedStreamBuilder(TestName)
+                    .AddPlan(BuildPlan)
+                    .WithStateOptionsFactory((_, substreamName) => CreateStateOptions(substreamName, null))
+                    .ConfigureSubstream((substreamName, substreamBuilder) =>
+                    {
+                        var connectorManager = new ConnectorManager();
+                        connectorManager.AddSource(new MockSourceFactory("*", _db, true));
+                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }));
+                        substreamBuilder.AddConnectorManager(connectorManager);
+                        substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    })
+                    .DistributeAutomatically(2)
+                    .Build();
+                await _stream.StartAsync();
+                await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
+
+                var substream0 = _stream.Substreams["substream_0"];
+
+                // First failure: the recovery restart parks in the startup hook, after it
+                // created its blocks.
+                await substream0.InjectFailureForTests(new Exception("Forces the first recovery restart"));
+                var held = await Task.WhenAny(firstRestartHeld.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+                Assert.True(held == firstRestartHeld.Task, "The recovery restart never reached the startup hook");
+
+                // Second failure supersedes the parked start; its teardown cleans that
+                // start's blocks and the recovery begins the successor.
+                await substream0.InjectFailureForTests(new Exception("Supersedes the parked restart"));
+                held = await Task.WhenAny(successorHeld.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+                Assert.True(held == successorHeld.Task, "The successor restart never reached the startup hook");
+
+                // The superseded start wakes with the successor's blocks owning the created
+                // flag; its abandon must leave them alone.
+                releaseFirstRestart.TrySetResult();
+                await Task.Delay(200);
+                releaseSuccessor.TrySetResult();
+
+                generator.Generate(100);
+                await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
+
+                var supersededFault = failures.FirstOrDefault(f => f.Exception?.ToString().Contains("The start was superseded by a failure.") == true);
+                Assert.True(supersededFault.Exception == null,
+                    $"The abandoned start tore down its successor's blocks: a block fault from the abandon surfaced as a stream failure on {supersededFault.Substream}: {supersededFault.Exception}");
+            }
+            finally
+            {
+                StreamContext.StartupBeforeInitTrackingHookForTests = null;
+                releaseFirstRestart.TrySetResult();
+                releaseSuccessor.TrySetResult();
+            }
         }
 
         private int ExpectedCount(DatasetGenerator generator)

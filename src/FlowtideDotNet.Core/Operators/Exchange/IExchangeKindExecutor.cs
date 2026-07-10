@@ -40,6 +40,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         Task OnWatermark(Watermark watermark);
 
+        /// <summary>
+        /// Forwards the initial data done marker to the targets in stream order, after all
+        /// initial data batches, so the receiving substreams release their watermark
+        /// alignment only once everything before the marker has arrived.
+        /// </summary>
+        Task OnInitialDataDone();
+
         Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState);
 
         Task GetPullBucketData(int exchangeTargetId, ExchangeFetchDataMessage fetchDataRequest);

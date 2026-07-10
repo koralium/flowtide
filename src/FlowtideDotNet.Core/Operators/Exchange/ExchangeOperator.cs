@@ -272,6 +272,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _executor.OnWatermark(watermark);
         }
 
+        protected override Task OnInitialDataDone()
+        {
+            return _executor.OnInitialDataDone();
+        }
+
         protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
         {
             Logger.ExchangePartitionInput(Name, data.Data.Weights.Count);
