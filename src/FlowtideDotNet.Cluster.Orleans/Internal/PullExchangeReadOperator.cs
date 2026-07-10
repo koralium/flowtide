@@ -106,7 +106,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
                 {
                     var e = events.Events[i];
 
-                    if (e is ICheckpointEvent checkpointEvent)
+                    if (e is ICheckpointEvent)
                     {
                         ICheckpointEvent? inStreamCheckpoint = default;
                         lock (_lock)
