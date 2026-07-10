@@ -394,6 +394,35 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// A global aggregate over a distributed join: the gather exchange between the join
+        /// partitions and the single aggregation has one partition, and count(*) prunes every
+        /// column from the join output (the count only needs the row weights). The exchange
+        /// must not keep a hash field referencing a pruned column.
+        /// </summary>
+        [Fact]
+        public async Task CountOverDistributedJoinGathersWithoutColumns()
+        {
+            _generator.Generate(200);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            var expectedCount = (long)_generator.Orders
+                .Join(_generator.Users, o => o.UserKey, u => u.UserKey, (o, u) => u.UserKey)
+                .Count();
+
+            _stream = BuildHost("e2e_count_join", @"
+            INSERT INTO output
+            SELECT count(*) FROM users u
+            INNER JOIN orders o ON u.userkey = o.userkey;
+            ", latestData, failures);
+
+            await _stream.StartAsync();
+            await WaitForSinkData(latestData, failures, "substream_0", new List<CountRow>() { new CountRow(expectedCount) });
+        }
+
+        private record CountRow(long Count);
+
+        /// <summary>
         /// Storage that cannot be initialized, so the substream it is given to fails its
         /// start cleanly at storage initialization.
         /// </summary>

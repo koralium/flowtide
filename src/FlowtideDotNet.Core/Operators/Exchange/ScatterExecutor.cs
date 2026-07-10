@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal class ScatterExecutor : IExchangeKindExecutor
     {
-        private readonly Func<EventBatchData, int, uint> _hashFunction;
+        private readonly Func<EventBatchData, int, uint>? _hashFunction;
         private readonly int _partitionCount;
         private readonly int[][] _partitionsToTargets;
         private readonly IExchangeTarget[] _targets;
@@ -114,8 +114,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             // Generate a lookup from partition id to a list of target ids
             _partitionsToTargets = CreatePartitionToTargets(exchangeRelation);
 
-            // Create the hash function based on the fields
-            _hashFunction = ColumnHashCompiler.CompileGetHashCode(new List<Substrait.Expressions.Expression>(scatterExchangeKind.Fields), functionsRegister);
+            // Create the hash function based on the fields. With a single partition every
+            // row lands in partition zero, no hash is compiled or evaluated: a gather
+            // exchange carries no hash fields (a global aggregate can prune every column
+            // from the input, a compiled field reference would then read a missing column).
+            if (_partitionCount > 1)
+            {
+                _hashFunction = ColumnHashCompiler.CompileGetHashCode(new List<Substrait.Expressions.Expression>(scatterExchangeKind.Fields), functionsRegister);
+            }
             this._communicationPointFactory = communicationPointFactory;
         }
 
@@ -193,15 +199,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
         {
-            Debug.Assert(_hashFunction != null);
+            Debug.Assert(_hashFunction != null || _partitionCount == 1);
             foreach(var target in _targets)
             {
                 target.NewBatch(data.Data);
             }
             for (int i = 0; i < data.Data.Count; i++)
             {
-                var hash = _hashFunction(data.Data.EventBatchData, i);
-                int partitionId = (int)(hash % _partitionCount);
+                int partitionId = 0;
+                if (_hashFunction != null)
+                {
+                    var hash = _hashFunction(data.Data.EventBatchData, i);
+                    partitionId = (int)(hash % _partitionCount);
+                }
 
                 foreach (var target in _partitionsToTargets[partitionId])
                 {

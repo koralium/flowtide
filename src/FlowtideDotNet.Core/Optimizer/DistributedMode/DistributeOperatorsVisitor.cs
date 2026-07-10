@@ -176,16 +176,10 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 {
                     ExchangeKind = new ScatterExchangeKind()
                     {
+                        // No hash fields: with a single partition every row goes to the same
+                        // target. A field reference here can also dangle - a global aggregate
+                        // like count(*) prunes every column from the input below.
                         Fields = new List<FieldReference>()
-                        {
-                            new DirectFieldReference()
-                            {
-                                ReferenceSegment = new StructReferenceSegment()
-                                {
-                                    Field = 0
-                                }
-                            }
-                        }
                     },
                     Input = copies[i],
                     PartitionCount = 1,
