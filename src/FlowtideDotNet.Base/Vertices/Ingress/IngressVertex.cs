@@ -227,8 +227,12 @@ namespace FlowtideDotNet.Base.Vertices
         /// <param name="exception">The <see cref="Exception"/> that caused the faulting.</param>
         public void Fault(Exception exception)
         {
-            Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
-            Debug.Assert(_ingressState?._tokenSource != null, nameof(_ingressState._tokenSource));
+            if (_ingressState?._block == null || _ingressState._tokenSource == null)
+            {
+                // The block is created first at start, a failure before that (for example
+                // storage initialization) has nothing to fault.
+                return;
+            }
             lock (_stateLock)
             {
                 _ingressState._taskEnabled = false;

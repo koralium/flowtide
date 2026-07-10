@@ -32,31 +32,37 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // recovery, so it stays blocking for now.
             _context.CheckForPause();
 
-            try
+            while (true)
             {
-                lock (_lock)
+                try
                 {
-                    if (_isFailing)
+                    lock (_lock)
                     {
-                        return;
+                        if (_isFailing)
+                        {
+                            return;
+                        }
+                        _isFailing = true;
                     }
-                    _isFailing = true;
-                }
 
-                // Run stop and dispose linearly to make sure that the caller does
-                // not return before any dependencies have been stopped and disposed
-                // This is useful in distributed mode to make sure all other streams are stopped
-                // and have recieved correct restore checkpoint version before going to starting.
-                await StopAndDispose();
+                    // Run stop and dispose linearly to make sure that the caller does
+                    // not return before any dependencies have been stopped and disposed
+                    // This is useful in distributed mode to make sure all other streams are stopped
+                    // and have recieved correct restore checkpoint version before going to starting.
+                    await StopAndDispose();
+                    break;
+                }
+                catch (Exception e)
+                {
+                    _context._logger.FailedStopAndDispose(e, _context.streamName);
+                    _isFailing = false;
+                    // Paced retry, never recursion: a teardown that keeps failing, for
+                    // example on storage that is down, would otherwise grow the stack
+                    // without bound and kill the process with a stack overflow.
+                    await Task.Delay(TimeSpan.FromSeconds(1));
+                }
             }
-            catch(Exception e)
-            {
-                _context._logger.FailedStopAndDispose(e, _context.streamName);
-                _isFailing = false;
-                await Initialize(previousState);
-                return;
-            }
-            
+
 
             lock (_lock)
             {
@@ -176,6 +182,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             StreamContext.BeforeFailureDisposeForTests?.Invoke(_context.streamName);
 
+            if (!_context._blocksCreated)
+            {
+                // The failure happened before the start created the blocks (for example at
+                // storage initialization), there is nothing to fault or dispose. Faulting,
+                // completing or disposing never-created blocks throws, which would retry
+                // this teardown forever.
+                _context._logger.LogDebug("Failure handling skipping block teardown on stream {stream}, the blocks were never created.", _context.streamName);
+                return;
+            }
+
             _context.ForEachBlock((key, block) =>
             {
                 _context._logger.LogDebug("Failure handling faulting block {block} on stream {stream}", key, _context.streamName);
@@ -201,6 +217,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context._logger.LogDebug("Failure handling disposing block {block} on stream {stream}", key, _context.streamName);
                 await block.DisposeAsync();
             });
+            _context._blocksCreated = false;
             _context._logger.LogDebug("Failure handling stop and dispose finished on stream {stream}", _context.streamName);
         }
 
@@ -229,6 +246,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     block.Setup(_context.streamName, key);
                     block.CreateBlock();
                 });
+                _context._blocksCreated = true;
                 await TransitionTo(StreamStateValue.Deleting);
                 return;
             }

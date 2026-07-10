@@ -22,6 +22,7 @@ using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -336,6 +337,18 @@ namespace FlowtideDotNet.Core.Engine
             {
                 var planModifier = new ConnectorPlanModifyVisitor(_connectorManager);
                 planModifier.VisitPlan(_plan);
+            }
+
+            if (_distributedOptions != null)
+            {
+                var substreamNames = _plan.Relations.OfType<SubStreamRootRelation>().Select(x => x.Name).Distinct().ToList();
+                if (substreamNames.Count > 0 && !substreamNames.Contains(_distributedOptions.SubstreamName))
+                {
+                    // Every substream root would be skipped, silently building an empty
+                    // stream that produces nothing while the other substreams wait for it.
+                    throw new InvalidOperationException(
+                        $"The substream name '{_distributedOptions.SubstreamName}' does not exist in the plan, it contains the substreams: {string.Join(", ", substreamNames)}.");
+                }
             }
 
             SubstraitVisitor visitor = new SubstraitVisitor(

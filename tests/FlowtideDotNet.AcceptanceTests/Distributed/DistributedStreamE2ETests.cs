@@ -337,6 +337,52 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// Storage that cannot be initialized, so the substream it is given to fails its
+        /// start cleanly at storage initialization.
+        /// </summary>
+        private sealed class UninitializableStorage : Storage.Persistence.IPersistentStorage
+        {
+            public long CurrentVersion => 0;
+            public Task InitializeAsync(Storage.Persistence.StorageInitializationMetadata metadata) => throw new InvalidOperationException("Injected storage initialization failure");
+            public Storage.Persistence.IPersistentStorageSession CreateSession() => throw new NotImplementedException();
+            public ValueTask CheckpointAsync(byte[] metadata, bool includeIndex) => throw new NotImplementedException();
+            public ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount) => throw new NotImplementedException();
+            public ValueTask ResetAsync() => throw new NotImplementedException();
+            public ValueTask RecoverAsync(long checkpointVersion) => throw new NotImplementedException();
+            public bool TryGetValue(long key, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out ReadOnlyMemory<byte>? value) => throw new NotImplementedException();
+            public ValueTask Write(long key, byte[] value) => throw new NotImplementedException();
+            public void ClearForRestore() { }
+            public void Dispose() { }
+        }
+
+        /// <summary>
+        /// A start that throws leaves no substream running, so the tick loop must be torn
+        /// down with them. Left armed it keeps ticking the stopped substreams and running a
+        /// blocking full GC every ten seconds until a retried start or dispose stops it.
+        /// </summary>
+        [Fact]
+        public async Task TickLoopStopsWhenStartFails()
+        {
+            _generator.Generate(200);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            // One substream cannot initialize its storage, the coordinated start throws
+            // after the tick loop is armed. The short drain timeout bounds the healthy
+            // substream's stop, its peer never started so the drain can only time out.
+            _stream = BuildHost("e2e_tickloop_failed_start", NormalJoinSql, latestData, failures,
+                stateOptions: substreamName => substreamName == "substream_1"
+                    ? new Storage.StateManager.StateManagerOptions() { PersistentStorage = new UninitializableStorage() }
+                    : CreateStateOptions("e2e_tickloop_failed_start", substreamName),
+                stopDrainTimeout: TimeSpan.FromSeconds(2));
+
+            await Assert.ThrowsAnyAsync<Exception>(() => _stream.StartAsync());
+
+            Assert.False(_stream.IsTickLoopRunning,
+                "The tick loop kept running after the start failed, ticking stopped substreams and running a blocking GC every ten seconds.");
+        }
+
+        /// <summary>
         /// Stopping a paused stream must complete. Pausing gates the data output of the
         /// sources but locking events still flow, so the coordinated stop can drain the
         /// substreams while the data itself stays frozen.

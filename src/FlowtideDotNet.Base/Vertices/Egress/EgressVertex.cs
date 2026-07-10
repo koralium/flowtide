@@ -280,7 +280,12 @@ namespace FlowtideDotNet.Base.Vertices
         public void Fault(Exception exception)
         {
             _cancellationTokenSource?.Cancel();
-            Debug.Assert(_targetBlock != null, "CreateBlocks must be called before faulting");
+            if (_targetBlock == null)
+            {
+                // The block is created first at start, a failure before that (for example
+                // storage initialization) has nothing to fault.
+                return;
+            }
             _targetBlock.Fault(exception);
         }
 

@@ -208,6 +208,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 restoreVersion = _context._restoreCheckpointVersion;
             }
 
+            // This start creates the blocks below; a failure before that must not run the
+            // block teardown.
+            _context._blocksCreated = false;
+
             // Initialize state
             await _context._stateManager.InitializeAsync(_context._streamVersionInformation, restoreVersion);
             _context._lastState = _context._stateManager.Metadata;
@@ -248,6 +252,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 block.Setup(_context.streamName, key);
                 block.CreateBlock();
             });
+            _context._blocksCreated = true;
             // Link the blocks
             _context._logger.LinkingBlocks(_context.streamName);
             _context.ForEachBlock((key, block) =>

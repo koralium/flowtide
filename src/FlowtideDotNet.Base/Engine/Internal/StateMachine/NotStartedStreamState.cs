@@ -41,6 +41,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 block.Setup(_context.streamName, key);
                 block.CreateBlock();
             });
+            _context._blocksCreated = true;
             return TransitionTo(StreamStateValue.Deleting);
         }
 

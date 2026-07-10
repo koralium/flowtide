@@ -87,6 +87,10 @@ namespace FlowtideDotNet.Core.Engine.Distributed
                 catch
                 {
                 }
+                // No substream runs after a failed start, the loop would keep ticking the
+                // stopped substreams and running a blocking GC every ten seconds. A retried
+                // start re-arms it.
+                await CancelTickLoopAsync();
                 throw;
             }
         }

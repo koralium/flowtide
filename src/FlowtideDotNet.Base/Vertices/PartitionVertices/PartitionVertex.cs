@@ -290,7 +290,12 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Fault(Exception exception)
         {
-            Debug.Assert(_inputTargetBlock != null);
+            if (_inputTargetBlock == null)
+            {
+                // The block is created first at start, a failure before that (for example
+                // storage initialization) has nothing to fault.
+                return;
+            }
             _inputTargetBlock.Fault(exception);
         }
 

@@ -525,7 +525,12 @@ namespace FlowtideDotNet.Base.Vertices
         /// <param name="exception">The exception that caused the fault.</param>
         public void Fault(Exception exception)
         {
-            Debug.Assert(_transformBlock != null);
+            if (_transformBlock == null)
+            {
+                // The block is created first at start, a failure before that (for example
+                // storage initialization) has nothing to fault.
+                return;
+            }
             (_transformBlock as IDataflowBlock).Fault(exception);
         }
 

@@ -90,6 +90,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // flag, so overlapping spans across a failure epoch don't let one finishing clear the guard.
         internal int _stateManagerWriteCount;
 
+        // True while the vertices' dataflow blocks exist, set after every CreateBlock pass
+        // and cleared when a start begins or the failure teardown disposed them. A failure
+        // before the blocks were created (for example storage initialization) must skip the
+        // block teardown, the operations assume created blocks.
+        internal bool _blocksCreated;
+
         // Test hooks, null in production. Each gets the stream name so a test can filter to its own
         // stream: CheckpointCommitHookForTests awaits inside the commit (so a test can hold a write in
         // flight), CompactionScheduledHookForTests awaits at the entry of a scheduled compaction task
@@ -837,15 +843,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
             }
 
-            ForEachBlock((key, block) =>
+            if (_blocksCreated)
             {
-                block.Complete();
-            });
+                // Completing or disposing never-created blocks throws; a stream whose start
+                // failed before creating them (or whose failure teardown already disposed
+                // them) has nothing left to complete.
+                ForEachBlock((key, block) =>
+                {
+                    block.Complete();
+                });
 
-            await ForEachBlockAsync(async (key, block) =>
-            {
-                await block.DisposeAsync();
-            });
+                await ForEachBlockAsync(async (key, block) =>
+                {
+                    await block.DisposeAsync();
+                });
+                _blocksCreated = false;
+            }
 
             _stateManager.Dispose();
 
