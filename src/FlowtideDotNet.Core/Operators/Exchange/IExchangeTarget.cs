@@ -25,7 +25,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     internal interface IExchangeTarget
     {
         void NewBatch(EventBatchWeighted weightedBatch);
-        ValueTask AddEvent(EventBatchWeighted weightedBatch, int index);
+
+        /// <summary>
+        /// Adds one row of the current batch to this target. Called per row on the hottest
+        /// path in the exchange, implementations must only append primitives (row index,
+        /// weight, iteration); any column work belongs in <see cref="BatchComplete"/> as
+        /// batch level operations.
+        /// </summary>
+        void AddEvent(EventBatchWeighted weightedBatch, int index);
 
         Task Initialize(
             long restoreVersion,

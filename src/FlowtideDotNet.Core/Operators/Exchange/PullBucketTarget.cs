@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             exchangeOperatorState.TargetsEventCounter[_targetId] = _eventCounter;
         }
 
-        public ValueTask AddEvent(EventBatchWeighted weightedBatch, int index)
+        public void AddEvent(EventBatchWeighted weightedBatch, int index)
         {
             Debug.Assert(_columns != null);
             Debug.Assert(_weights != null);
@@ -65,7 +65,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 weightedBatch.EventBatchData.Columns[i].GetValueAt(index, _dataValueContainer, default);
                 _columns[i].Add(_dataValueContainer);
             }
-            return ValueTask.CompletedTask;
         }
 
         public async ValueTask BatchComplete(long time)

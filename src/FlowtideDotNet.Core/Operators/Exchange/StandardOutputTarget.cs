@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return Task.CompletedTask;
         }
 
-        public ValueTask AddEvent(EventBatchWeighted weightedBatch, int index)
+        public void AddEvent(EventBatchWeighted weightedBatch, int index)
         {
             Debug.Assert(_offsets != null);
             Debug.Assert(_weights != null);
@@ -50,8 +50,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _weights.Add(weightedBatch.Weights[index]);
             _iterations.Add(weightedBatch.Iterations[index]);
             _offsets.Add(index);
-
-            return ValueTask.CompletedTask;
         }
 
         public ValueTask BatchComplete(long time)

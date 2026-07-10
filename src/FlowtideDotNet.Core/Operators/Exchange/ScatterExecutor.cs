@@ -205,7 +205,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
                 foreach (var target in _partitionsToTargets[partitionId])
                 {
-                    await _targets[target].AddEvent(data.Data, i);
+                    _targets[target].AddEvent(data.Data, i);
                 }
             }
             foreach(var target in _targets)
