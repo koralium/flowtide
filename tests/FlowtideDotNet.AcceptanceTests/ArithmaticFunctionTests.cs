@@ -228,13 +228,20 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task SelectWithMultiplyIntFloatUnaffectedByGlobalBogusState()
         {
-            Bogus.Faker.GlobalUniqueIndex = 6_000_000;
-            GenerateData();
-            Assert.True(Users.Max(x => x.UserKey) < 100_000, "Generated keys must not come from the process-wide Bogus counter");
-            await StartStream("INSERT INTO output SELECT userkey * CAST(3 as float) as UserKey FROM users");
-            await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey * (float)3 }));
-        }
+            var previousUniqueIndex = Bogus.Faker.GlobalUniqueIndex;
+            try
+            {
+                Bogus.Faker.GlobalUniqueIndex = 6_000_000;
+                GenerateData();
+                Assert.True(Users.Max(x => x.UserKey) < 100_000, "Generated keys must not come from the process-wide Bogus counter");
+                await StartStream("INSERT INTO output SELECT userkey * CAST(3 as float) as UserKey FROM users");
+                await WaitForUpdate();
+                AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey * (float)3 }));
+            }
+            finally
+            {
+                Bogus.Faker.GlobalUniqueIndex = previousUniqueIndex;
+            }
 
         [Fact]
         public async Task SelectWithMultiplyIntDecimal()
