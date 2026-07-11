@@ -219,6 +219,23 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey * (float)3 }));
         }
 
+        /// <summary>
+        /// Generated keys must not depend on Bogus' process-wide static unique index. When
+        /// they did, full suite runs inflated the counter past 2^24/3 and this float
+        /// multiplication flaked: the expected value rounds in float while the engine
+        /// computes in double, so large keys produce off-by-one products.
+        /// </summary>
+        [Fact]
+        public async Task SelectWithMultiplyIntFloatUnaffectedByGlobalBogusState()
+        {
+            Bogus.Faker.GlobalUniqueIndex = 6_000_000;
+            GenerateData();
+            Assert.True(Users.Max(x => x.UserKey) < 100_000, "Generated keys must not come from the process-wide Bogus counter");
+            await StartStream("INSERT INTO output SELECT userkey * CAST(3 as float) as UserKey FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey * (float)3 }));
+        }
+
         [Fact]
         public async Task SelectWithMultiplyIntDecimal()
         {
@@ -1359,8 +1376,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT sum(userkey) FROM users");
             await WaitForUpdate();
-            // Summed as long: the generated keys come from a process-wide unique counter that
-            // other tests' data volumes inflate, an int accumulation overflows.
+            // Summed as long to match the engine's int64 sum result.
             AssertCurrentDataEqual(new[] { new { Sum = Users.Sum(x => (long)x.UserKey) } });
         }
 
@@ -1398,7 +1414,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT sum0(userkey) FROM users");
             await WaitForUpdate();
-            // Summed as long, see SelectSum.
+            // Summed as long to match the engine's int64 sum result.
             AssertCurrentDataEqual(new[] { new { Sum = Users.Sum(x => (long)x.UserKey) } });
         }
 
