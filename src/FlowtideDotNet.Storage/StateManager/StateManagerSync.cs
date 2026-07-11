@@ -458,6 +458,15 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 if (disposing)
                 {
+                    // The cache table must be disposed first: it owns the background cleanup
+                    // task, and disposing it cancels and joins that task. Torn down in any
+                    // other order, an in-flight eviction can write through a state client's
+                    // already-disposed file cache and serializer.
+                    if (m_cacheTable != null)
+                    {
+                        m_cacheTable.Dispose();
+                    }
+
                     if (m_persistentStorage != null)
                     {
                         m_persistentStorage.Dispose();
@@ -468,11 +477,6 @@ namespace FlowtideDotNet.Storage.StateManager
                         stateClient.Value.Dispose();
                     }
                     _stateClients.Clear();
-
-                    if (m_cacheTable != null)
-                    {
-                        m_cacheTable.Dispose();
-                    }
                 }
 
                 disposedValue = true;
