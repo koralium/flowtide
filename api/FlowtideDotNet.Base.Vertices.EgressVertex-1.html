@@ -598,7 +598,7 @@ otherwise a <code>NonParallelEgressVertex</code> is used.</p>
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_BeforeSaveCheckpoint" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.BeforeSaveCheckpoint">
   BeforeSaveCheckpoint()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L501"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L500"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Called before the checkpoint state is persisted. Allows the vertex to flush any pending state
@@ -632,7 +632,7 @@ before the checkpoint is written.</p>
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_CheckForPause" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.CheckForPause">
   CheckForPause()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L464"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L469"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Awaits any active pause before allowing the caller to continue processing.
@@ -662,11 +662,50 @@ Returns immediately if the vertex is not currently paused.</p>
 
 
 
+  <a id="FlowtideDotNet_Base_Vertices_EgressVertex_1_CheckpointDone_" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.CheckpointDone*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_CheckpointDone_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.CheckpointDone(System.Int64)">
+  CheckpointDone(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L533"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Invoked when a checkpoint has successfully completed and its state is durable.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task CheckpointDone(long checkpointVersion)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>checkpointVersion</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The state manager version of the completed checkpoint, the same domain as the
+restore version the vertex receives at initialization.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Base_Vertices_EgressVertex_1_Compact_" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.Compact*"></a>
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_Compact" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.Compact">
   Compact()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L385"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L390"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Requests the operator to compact its persistent storage.</p>
@@ -726,7 +765,7 @@ Returns immediately if the vertex is not currently paused.</p>
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_CreateBlock" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.CreateBlock">
   CreateBlock()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L424"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L429"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Instantiates the internal TPL Dataflow processing block. Must be called before messages can be offered
@@ -754,7 +793,7 @@ or before <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_DeleteAsync" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.DeleteAsync">
   DeleteAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L434"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L439"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Initiates the deletion process, allowing derived classes to permanently clean up any persistent state
@@ -788,7 +827,7 @@ associated with this vertex.</p>
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_DisposeAsync" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.DisposeAsync">
   DisposeAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L401"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L406"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Releases internal resources held by this vertex asynchronously.</p>
@@ -820,7 +859,7 @@ associated with this vertex.</p>
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_FailAndRollback_System_Exception_System_Nullable_System_Int64__" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.FailAndRollback(System.Exception,System.Nullable{System.Int64})">
   FailAndRollback(Exception?, long?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L512"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L511"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Requests the stream engine to fail and initiate a rollback to a previous safe state.</p>
@@ -895,7 +934,7 @@ associated with this vertex.</p>
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_GetLinks" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.GetLinks">
   GetLinks()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L452"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L457"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Returns all downstream <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock&lt;TInput&gt;</a> linked from this vertex.
@@ -929,7 +968,7 @@ Egress vertices have no downstream links and always return an empty enumerable.<
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_Initialize_System_String_System_Int64_System_Int64_FlowtideDotNet_Base_IVertexHandler_FlowtideDotNet_Storage_StreamVersionInformation_" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.Initialize(System.String,System.Int64,System.Int64,FlowtideDotNet.Base.IVertexHandler,FlowtideDotNet.Storage.StreamVersionInformation)">
   Initialize(string, long, long, IVertexHandler, StreamVersionInformation?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L296"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L301"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Asynchronously initializes the vertex, wiring up metrics, memory, logging, and persistent state retrieval.</p>
@@ -980,7 +1019,7 @@ Egress vertices have no downstream links and always return an empty enumerable.<
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_InitializeOrRestore_System_Int64_FlowtideDotNet_Storage_StateManager_IStateManagerClient_" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.InitializeOrRestore(System.Int64,FlowtideDotNet.Storage.StateManager.IStateManagerClient)">
   InitializeOrRestore(long, IStateManagerClient)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L353"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L358"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Restores or initializes the operator's persistent state from the provided state manager client.</p>
@@ -1022,7 +1061,7 @@ Egress vertices have no downstream links and always return an empty enumerable.<
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_Link" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.Link">
   Link()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L416"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L421"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Creates the actual links between the configured inputs of this vertex and its upstream sources.
@@ -1050,7 +1089,7 @@ This is a no-op for egress vertices as they have no downstream outputs to link.<
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_OfferMessage_System_Threading_Tasks_Dataflow_DataflowMessageHeader_FlowtideDotNet_Base_IStreamEvent_System_Threading_Tasks_Dataflow_ISourceBlock_FlowtideDotNet_Base_IStreamEvent__System_Boolean_" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.OfferMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader,FlowtideDotNet.Base.IStreamEvent,System.Threading.Tasks.Dataflow.ISourceBlock{FlowtideDotNet.Base.IStreamEvent},System.Boolean)">
   OfferMessage(DataflowMessageHeader, IStreamEvent, ISourceBlock&lt;IStreamEvent&gt;?, bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L369"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L374"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Offers a message to this dataflow block, giving it the opportunity to accept or postpone the message.
@@ -1139,7 +1178,7 @@ Generally called automatically by preceding linked source blocks in the pipeline
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_OnFailure_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.OnFailure(System.Int64)">
   OnFailure(long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L528"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L527"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Called when the stream encounters a failure, allowing the vertex to roll back to a safe state.</p>
@@ -1303,7 +1342,7 @@ react to watermark advancement, for example to flush buffered output per time bo
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_Pause" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.Pause">
   Pause()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L476"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L482"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Suspends message processing, causing the vertex to hold output until <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Resume">Resume()</a> is called.</p>
@@ -1330,7 +1369,7 @@ react to watermark advancement, for example to flush buffered output per time bo
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_QueueTrigger_FlowtideDotNet_Base_TriggerEvent_" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.QueueTrigger(FlowtideDotNet.Base.TriggerEvent)">
   QueueTrigger(TriggerEvent)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L392"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L397"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Enqueues an execution trigger to be processed by the vertex.</p>
@@ -1369,7 +1408,7 @@ react to watermark advancement, for example to flush buffered output per time bo
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_Resume" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.Resume">
   Resume()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L487"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L490"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Resumes message processing after a prior call to <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Pause">Pause()</a>.</p>
@@ -1396,7 +1435,7 @@ react to watermark advancement, for example to flush buffered output per time bo
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_SetHealth_System_Boolean_" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.SetHealth(System.Boolean)">
   SetHealth(bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L342"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L347"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Sets the health status of this vertex, affecting the <code>health</code> metric gauge reported to the stream.</p>
@@ -1429,7 +1468,7 @@ react to watermark advancement, for example to flush buffered output per time bo
 
   <h3 id="FlowtideDotNet_Base_Vertices_EgressVertex_1_Setup_System_String_System_String_" data-uid="FlowtideDotNet.Base.Vertices.EgressVertex`1.Setup(System.String,System.String)">
   Setup(string, string)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L441"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/EgressVertex.cs/#L446"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Performs initial naming configuration for the vertex before it is fully initialized.</p>

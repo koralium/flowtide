@@ -145,6 +145,15 @@ Classes
       <dt><a class="xref" href="FlowtideDotNet.Substrait.SubstraitDeserializer.html">SubstraitDeserializer</a></dt>
       <dd></dd>
     </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="FlowtideDotNet.Substrait.SubstraitSerializer.html">SubstraitSerializer</a></dt>
+      <dd><p>Serializes a <a class="xref" href="FlowtideDotNet.Substrait.Plan.html">Plan</a> into the Substrait protobuf format or its JSON
+representation, the counterpart of <a class="xref" href="FlowtideDotNet.Substrait.SubstraitDeserializer.html">SubstraitDeserializer</a>. A serialized
+plan is how plans travel between processes, for example to Orleans grains, and a
+deserialization always produces a fresh plan instance, which matters because building
+a stream mutates the plan in place.</p>
+</dd>
+    </dl>
 
 
 </article>

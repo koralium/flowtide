@@ -175,6 +175,88 @@ Interface IStreamEgressVertex  <a class="header-action link-secondary" title="Vi
 
 
 
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IStreamEgressVertex_ReadyToStop_" data-uid="FlowtideDotNet.Base.Vertices.IStreamEgressVertex.ReadyToStop*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IStreamEgressVertex_ReadyToStop" data-uid="FlowtideDotNet.Base.Vertices.IStreamEgressVertex.ReadyToStop">
+  ReadyToStop
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/IStreamEgressVertex.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>True when the vertex has everything it needs for the stream to finish stopping.
+Exchanges that send to other substreams return false until the other substream
+has fetched the stop barrier, so the stream does not dispose the exchanged events
+before the other substream has received them.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool ReadyToStop { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IStreamEgressVertex_CheckpointDone_" data-uid="FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CheckpointDone*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IStreamEgressVertex_CheckpointDone_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CheckpointDone(System.Int64)">
+  CheckpointDone(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/IStreamEgressVertex.cs/#L29"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Invoked when a checkpoint has successfully completed and its state is durable.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">Task CheckpointDone(long checkpointVersion)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>checkpointVersion</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The state manager version of the completed checkpoint, the same domain as the
+restore version the vertex receives at initialization.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
 
 </article>
 

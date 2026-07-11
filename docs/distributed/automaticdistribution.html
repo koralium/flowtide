@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Automatic Distribution | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Automatic Distribution | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../../images/favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/blob/main/docs/docs/distributed/automaticdistribution.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="automatic-distribution">Automatic Distribution</h1>
+
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Distributed mode is still experimental.</p>
+</div>
+<p>Automatic distribution takes a completely normal plan, without any distribution hints, and splits it into a chosen number of substreams. This is the recommended way to use distributed mode.</p>
+<pre><code class="lang-sql">INSERT INTO output
+SELECT u.userkey FROM users u
+INNER JOIN orders o ON u.userkey = o.userkey;
+</code></pre>
+<p>Run with a substream count of two, the join above runs in both substreams. Users and orders rows are scattered between the substreams by hashing on <em>userkey</em>, each substream joins its own share, and the results are gathered back to the substream that runs the sink.</p>
+<p>The split happens when the plan is optimized. The <a href="inprocess.html">in-process host</a> and the Orleans <em>substreamCount</em> option do this automatically. It can also be done manually through the plan optimizer:</p>
+<pre><code class="lang-csharp">var distributedPlan = PlanOptimizer.Optimize(plan, new PlanOptimizerSettings
+{
+    DistributedPlanOptions = new DistributedPlanOptions
+    {
+        SubstreamCount = 2
+    }
+});
+</code></pre>
+<h2 id="what-is-distributed">What is distributed</h2>
+<ul>
+<li><strong>Joins</strong> are partitioned by hashing on the join keys that are compared with equality. A join that mixes equality and other conditions, for example <code>ON a.id = b.id AND a.start &lt; b.ts</code>, is partitioned on the equality keys only.</li>
+<li><strong>Aggregates</strong> with group by are partitioned on the grouping columns.</li>
+<li><strong>Window functions</strong> are partitioned on their partition columns.</li>
+</ul>
+<h2 id="pushdown">Pushdown</h2>
+<p>Operators above a distributed operator are pushed down into the partitions when they can run per partition:</p>
+<ul>
+<li>Filters and projections are always pushed down, they work row by row.</li>
+<li>Aggregates and window functions are pushed down when they group on columns the data is already partitioned on. For instance a <em>GROUP BY</em> on the join key runs both the join and the aggregate inside every substream, only the aggregated results cross to the sink substream.</li>
+</ul>
+<p>Filters that are pushed down run before the data is shuffled between substreams, which reduces how much data crosses the exchange.</p>
+<h2 id="what-stays-in-one-substream">What stays in one substream</h2>
+<ul>
+<li>Recursive queries, the whole pipeline that contains one stays together.</li>
+<li>Joins without any equality condition, they can not be co-partitioned.</li>
+<li>Aggregates using the surrogate key function.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/docs/docs/distributed/automaticdistribution.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -460,7 +460,7 @@ Class MergeJoinRelation  <a class="header-action link-secondary" title="View sou
 
   <h3 id="FlowtideDotNet_Substrait_Relations_MergeJoinRelation_Equals_FlowtideDotNet_Substrait_Relations_MergeJoinRelation_" data-uid="FlowtideDotNet.Substrait.Relations.MergeJoinRelation.Equals(FlowtideDotNet.Substrait.Relations.MergeJoinRelation)">
   Equals(MergeJoinRelation?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/MergeJoinRelation.cs/#L69"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/MergeJoinRelation.cs/#L83"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Indicates whether the current object is equal to another object of the same type.</p>
@@ -534,11 +534,50 @@ Class MergeJoinRelation  <a class="header-action link-secondary" title="View sou
 
 
 
+  <a id="FlowtideDotNet_Substrait_Relations_MergeJoinRelation_GetComparisonType_" data-uid="FlowtideDotNet.Substrait.Relations.MergeJoinRelation.GetComparisonType*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Relations_MergeJoinRelation_GetComparisonType_System_Int32_" data-uid="FlowtideDotNet.Substrait.Relations.MergeJoinRelation.GetComparisonType(System.Int32)">
+  GetComparisonType(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/MergeJoinRelation.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The comparison type for a key. A null or missing comparison type means an equality
+comparison, so a null list and a list of all equal comparisons describe the same
+join. This matches how the comparison types are serialized.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public JoinComparisonType GetComparisonType(int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Substrait.Relations.JoinComparisonType.html">JoinComparisonType</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Substrait_Relations_MergeJoinRelation_GetHashCode_" data-uid="FlowtideDotNet.Substrait.Relations.MergeJoinRelation.GetHashCode*"></a>
 
   <h3 id="FlowtideDotNet_Substrait_Relations_MergeJoinRelation_GetHashCode" data-uid="FlowtideDotNet.Substrait.Relations.MergeJoinRelation.GetHashCode">
   GetHashCode()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/MergeJoinRelation.cs/#L82"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/MergeJoinRelation.cs/#L108"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Serves as the default hash function.</p>
@@ -575,7 +614,7 @@ Class MergeJoinRelation  <a class="header-action link-secondary" title="View sou
 
   <h3 id="FlowtideDotNet_Substrait_Relations_MergeJoinRelation_op_Equality_FlowtideDotNet_Substrait_Relations_MergeJoinRelation_FlowtideDotNet_Substrait_Relations_MergeJoinRelation_" data-uid="FlowtideDotNet.Substrait.Relations.MergeJoinRelation.op_Equality(FlowtideDotNet.Substrait.Relations.MergeJoinRelation,FlowtideDotNet.Substrait.Relations.MergeJoinRelation)">
   operator ==(MergeJoinRelation?, MergeJoinRelation?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/MergeJoinRelation.cs/#L111"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/MergeJoinRelation.cs/#L136"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -613,7 +652,7 @@ Class MergeJoinRelation  <a class="header-action link-secondary" title="View sou
 
   <h3 id="FlowtideDotNet_Substrait_Relations_MergeJoinRelation_op_Inequality_FlowtideDotNet_Substrait_Relations_MergeJoinRelation_FlowtideDotNet_Substrait_Relations_MergeJoinRelation_" data-uid="FlowtideDotNet.Substrait.Relations.MergeJoinRelation.op_Inequality(FlowtideDotNet.Substrait.Relations.MergeJoinRelation,FlowtideDotNet.Substrait.Relations.MergeJoinRelation)">
   operator !=(MergeJoinRelation?, MergeJoinRelation?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/MergeJoinRelation.cs/#L116"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/MergeJoinRelation.cs/#L141"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>

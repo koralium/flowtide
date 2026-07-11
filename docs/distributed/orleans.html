@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Orleans Hosting | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Orleans Hosting | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../../images/favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/blob/main/docs/docs/distributed/orleans.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="orleans-hosting">Orleans Hosting</h1>
+
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Distributed mode is still experimental.</p>
+</div>
+<p>The Orleans host runs every substream as a grain. The substreams spread out across the silo cluster, Orleans decides the placement, and streams recover automatically when a silo fails. Substreams on the same silo pass data to each other by reference, serialization only happens when the data crosses to another silo.</p>
+<p>The Orleans host is in the <em>FlowtideDotNet.Cluster.Orleans</em> package.</p>
+<h2 id="setup">Setup</h2>
+<p>Add Flowtide to the silo with <em>AddFlowtideOrleans</em>:</p>
+<pre><code class="lang-csharp">builder.Services.AddOrleans(b =&gt;
+{
+    b.UseLocalhostClustering();
+    // Grain state for the stream and substream bookkeeping, use a persistent
+    // provider in production
+    b.AddMemoryGrainStorage(&quot;stream_metadata&quot;);
+    // Reminders keep the streams alive across silo failures, use a persistent
+    // reminder service in production
+    b.UseInMemoryReminderService();
+
+    b.Services.AddFlowtideOrleans(connectors =&gt;
+    {
+        connectors.AddSource(...);
+        connectors.AddSink(...);
+    }, (streamName, substreamName, storage) =&gt;
+    {
+        // Called once per substream, every substream needs its own storage
+        storage.AddTemporaryDevelopmentStorage(o =&gt;
+        {
+            o.DirectoryPath = $&quot;./temp/{streamName}/{substreamName}&quot;;
+        });
+    });
+});
+</code></pre>
+<p>Two things must be registered on the silo:</p>
+<ul>
+<li>Grain storage with the name <strong>stream_metadata</strong>. The stream grain stores which substreams it has started there, so a stop always reaches all of them.</li>
+<li><strong>Reminders</strong>. Every running substream registers a keep alive reminder that restarts the stream if its grain was lost with a silo. With in-memory reminders the streams survive silo failures, with persistent reminders they also survive a full cluster restart.</li>
+</ul>
+<h2 id="starting-and-stopping-streams">Starting and stopping streams</h2>
+<p>Streams are started and stopped through the stream grain, keyed by the stream name. The stream grain prepares the plan once and sends it to every substream grain.</p>
+<pre><code class="lang-csharp">var streamGrain = grainFactory.GetGrain&lt;IStreamGrain&gt;(&quot;my_stream&quot;);
+
+// substreamCount applies automatic distribution to a normal plan
+await streamGrain.StartStreamAsync(new StartStreamRequest(sqlText, substreamCount: 4));
+
+// The coordinated stop drains the data exchanged between the substreams
+await streamGrain.StopStreamAsync();
+</code></pre>
+<p>Plans that use <a href="sqlsubstreams.html">SQL substream statements</a> run one grain per declared substream, <em>substreamCount</em> can then be left out.</p>
+<p>A stream can also be started from a plan built in code:</p>
+<pre><code class="lang-csharp">// The plan is serialized into the request and prepared by the stream grain,
+// by default it runs through the optimizer and is split into the given substream count.
+await streamGrain.StartStreamAsync(StartStreamRequest.FromPlan(plan, substreamCount: 4));
+
+// A plan that is already optimized (or already distributed into substream roots)
+// runs exactly as given.
+await streamGrain.StartStreamAsync(StartStreamRequest.FromPlan(plan, optimizePlan: false));
+</code></pre>
+<p>A started stream keeps running the plan it was started with. Starting the same stream again with the same request does nothing, starting it with a different plan or substream count throws an exception. To deploy a new plan, stop the stream and start it again with the new one.</p>
+<h2 id="status">Status</h2>
+<p>The start call returns before the streams have started, they start in the background. Use <em>GetStatusAsync</em> to see the substreams become healthy:</p>
+<pre><code class="lang-csharp">var status = await streamGrain.GetStatusAsync();
+foreach (var substream in status.Substreams)
+{
+    Console.WriteLine($&quot;{substream.SubstreamName}: {substream.State} {substream.Health} {substream.LastFailure}&quot;);
+}
+</code></pre>
+<p>A stream that can not start, for example when a connector can not initialize, retries in the background and reports the reason in <em>LastFailure</em>.</p>
+<h2 id="deleting-a-stream">Deleting a stream</h2>
+<p><em>DeleteStreamAsync</em> stops all substreams and deletes their state, and completes when the deletion has finished. Only substreams that are recorded as started are reached, so to delete the state of a stopped stream, start it again first and then delete it.</p>
+<pre><code class="lang-csharp">await streamGrain.DeleteStreamAsync();
+</code></pre>
+<h2 id="options">Options</h2>
+<p>The stop drain timeout (default 30 seconds) and other stream settings can be changed per substream:</p>
+<pre><code class="lang-csharp">services.AddFlowtideOrleans(connectors =&gt; { ... }, (streamName, substreamName, storage) =&gt; { ... },
+    options =&gt;
+    {
+        options.ConfigureBuilder = (streamName, substreamName, flowtideBuilder) =&gt;
+        {
+            flowtideBuilder.SetStopDrainTimeout(TimeSpan.FromSeconds(10));
+        };
+    });
+</code></pre>
+<p>There is also an <em>AddFlowtideOrleans</em> overload where the connectors callback gets the stream name, so different streams can use different connectors. The callback must return the same connectors for the same stream name.</p>
+<h2 id="silo-failures">Silo failures</h2>
+<p>Substream grains on a lost silo are restarted on the surviving silos by their reminders. They roll back together with the substreams they exchange data with and catch up by replaying from the sources.</p>
+<h2 id="migration-and-rebalancing">Migration and rebalancing</h2>
+<p>A substream grain can be moved to another silo without a recovery, for example to rebalance load:</p>
+<pre><code class="lang-csharp">var substreamGrain = grainFactory.GetGrain&lt;ISubStreamGrain&gt;(
+    SubStreamGrainKey.Create(&quot;my_stream&quot;, &quot;substream_0&quot;));
+await substreamGrain.MigrateAsync();
+</code></pre>
+<p>The grain drains the data exchanged with the other substreams, stops at a final checkpoint and migrates. The new activation restores that checkpoint and reconnects, the other substreams keep running and nothing is replayed. This requires state storage that is reachable from every silo. With silo-local storage the reconnect is refused and the stream falls back to normal recovery instead.</p>
+<p>A migration that can not complete cleanly, for example when a peer is unreachable, falls back to the same recovery as a silo failure. Orleans can also decide to skip a requested migration, the keep alive reminder then restarts the stream in place.</p>
+<h2 id="metrics">Metrics</h2>
+<p><em>app.StartFlowtideMetrics(&quot;/stream&quot;)</em> exposes the Flowtide metrics endpoints without the UI, which fits silo hosts. The monitoring described under <a href="../monitoring/generalmetrics.html">Monitoring</a> applies per substream.</p>
+<p>A runnable example is available in the repository under <em>samples/OrleansSample</em>.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/docs/docs/distributed/orleans.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

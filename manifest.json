@@ -1160,6 +1160,356 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.yml\" sourcestartlinenumber=\"1\">Options for streams hosted in Orleans.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Grains.StreamGrainStorage.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Grains.StreamGrainStorage.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Grains.StreamGrainStorage",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Grains.SubStreamGrainStorage.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Grains.SubStreamGrainStorage.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Grains.SubStreamGrainStorage",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Grains.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Grains.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Grains",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Interfaces.IStreamGrain.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Interfaces.IStreamGrain.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Interfaces.IStreamGrain",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.yml\" sourcestartlinenumber=\"1\">Grain running one substream. Most methods are the internal protocol between substream grains;\ndon't call them from application code or manage a single substream directly, use\n<xref href=\"FlowtideDotNet.Cluster.Orleans.Interfaces.IStreamGrain\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Interfaces.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Interfaces.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Interfaces",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Internal.SubstreamEventsPayloadCodec.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Internal.SubstreamEventsPayloadCodec.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Internal.SubstreamEventsPayloadCodec",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Cluster.Orleans.Internal.SubstreamEventsPayloadCodec.yml\" sourcestartlinenumber=\"1\">Serializes <xref href=\"FlowtideDotNet.Cluster.Orleans.Messages.SubstreamEventsPayload\" data-throw-if-not-resolved=\"false\"></xref> only when a message actually crosses\na silo boundary: Orleans invokes codecs at transport time, so grains on the same silo\nnever pay for serialization. Writes the substream wire format (columnar, batch level)\ndirectly into the message and releases the events' receiver claims on the sending\nside; reading captures the raw payload into pooled segments without materializing the\nevents, the communication handler deserializes lazily with the consuming operator's\nallocator.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Internal.SubstreamEventsPayloadCopier.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Internal.SubstreamEventsPayloadCopier.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Internal.SubstreamEventsPayloadCopier",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Cluster.Orleans.Internal.SubstreamEventsPayloadCopier.yml\" sourcestartlinenumber=\"1\">The payload transfers ownership of the events with the reference; grains on the same\nsilo hand the live events over uncopied. A deep copy would double the receiver claims.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Internal.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Internal.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Internal",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.CheckpointDoneRequest.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.CheckpointDoneRequest.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.CheckpointDoneRequest",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.FetchDataRequest.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.FetchDataRequest.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.FetchDataRequest",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.FetchDataResponse.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.FetchDataResponse.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.FetchDataResponse",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.GetEventsRequest.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.GetEventsRequest.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.GetEventsRequest",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.GetEventsResponse.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.GetEventsResponse.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.GetEventsResponse",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.StartStreamMessage.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.StartStreamMessage.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.StartStreamMessage",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.StartStreamRequest.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.StartStreamRequest.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.StartStreamRequest",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.StreamStatusResponse.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.StreamStatusResponse.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.StreamStatusResponse",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Cluster.Orleans.Messages.StreamStatusResponse.yml\" sourcestartlinenumber=\"1\">Status of a stream and all substreams it started.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.SubstreamEventsPayload.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.SubstreamEventsPayload.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.SubstreamEventsPayload",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Cluster.Orleans.Messages.SubstreamEventsPayload.yml\" sourcestartlinenumber=\"1\">Fetched substream events, serialized only when they actually cross a silo boundary.</p>\n<p sourcefile=\"api/FlowtideDotNet.Cluster.Orleans.Messages.SubstreamEventsPayload.yml\" sourcestartlinenumber=\"3\">The serving grain hands the live events over by reference; between grains on the same\nsilo the payload instance passes through Orleans uncopied (identity copier) and the\nreceiver consumes the live events with zero copies, taking over the receiver claim\nexactly like a local fetch. Only when Orleans serializes the message does the codec\nwrite the events in the substream wire format, releasing the claims on the sending\nside; the receiving silo captures the raw payload without materializing it, and the\ncommunication handler deserializes lazily with the consuming operator's allocator.</p>\n<p sourcefile=\"api/FlowtideDotNet.Cluster.Orleans.Messages.SubstreamEventsPayload.yml\" sourcestartlinenumber=\"11\">Ownership is one-shot: exactly one consumer takes the live events (the same-silo\nreceiver or the serializing codec). A payload is bound to one response.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.SubstreamStatus.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.SubstreamStatus.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.SubstreamStatus",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Cluster.Orleans.Messages.SubstreamStatus.yml\" sourcestartlinenumber=\"1\">Status of one substream, reported by its substream grain.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Connector.CosmosDB.FlowtideCosmosOptions.yml",
       "output": {
         ".html": {
@@ -4492,6 +4842,76 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Engine.Distributed.DistributedFlowtideStream.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Engine.Distributed.DistributedFlowtideStream.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Engine.Distributed.DistributedFlowtideStream",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.Engine.Distributed.DistributedFlowtideStream.yml\" sourcestartlinenumber=\"1\">A distributed stream where all substreams run in the same process.\nBuilt with <xref href=\"FlowtideDotNet.Core.Engine.Distributed.DistributedStreamBuilder\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Engine.Distributed.DistributedStreamBuilder.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Engine.Distributed.DistributedStreamBuilder.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Engine.Distributed.DistributedStreamBuilder",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.Engine.Distributed.DistributedStreamBuilder.yml\" sourcestartlinenumber=\"1\">Builds a distributed stream where all substreams run in the same process. The plan may\nalready contain substreams (e.g. from SQL SUBSTREAM) or be split with\n<xref href=\"FlowtideDotNet.Core.Engine.Distributed.DistributedStreamBuilder.DistributeAutomatically(System.Int32%2cSystem.Func%7bSystem.Int32%2cSystem.String%7d)\" data-throw-if-not-resolved=\"false\"></xref>; each substream runs as its own stream with its own\nstorage and they communicate through a <xref href=\"FlowtideDotNet.Core.Engine.Distributed.LocalSubstreamCommunicationHub\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Engine.Distributed.LocalSubstreamCommunicationHub.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Engine.Distributed.LocalSubstreamCommunicationHub.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Engine.Distributed.LocalSubstreamCommunicationHub",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.Engine.Distributed.LocalSubstreamCommunicationHub.yml\" sourcestartlinenumber=\"1\">Connects substreams that run in the same process. Each gets its own\n<xref href=\"FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandlerFactory\" data-throw-if-not-resolved=\"false\"></xref> from <xref href=\"FlowtideDotNet.Core.Engine.Distributed.LocalSubstreamCommunicationHub.CreateFactory(System.String)\" data-throw-if-not-resolved=\"false\"></xref>; messages\nare dispatched directly to the callbacks the other substream registered.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Engine.Distributed.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Engine.Distributed.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Engine.Distributed",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Engine.DistributedOptions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Engine.DistributedOptions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Engine.DistributedOptions",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Core.Engine.FlowtideBuilder.yml",
       "output": {
         ".html": {
@@ -4908,6 +5328,104 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "FlowtideDotNet.Core.OpenFGAConnectorManagerExtensions",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.IPullBucketExchangeReadFactory.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.IPullBucketExchangeReadFactory.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Operators.Exchange.IPullBucketExchangeReadFactory",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandlerFactory.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandlerFactory.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandlerFactory",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.yml\" sourcestartlinenumber=\"1\">Wire format for events fetched between substreams on different nodes. The payload is a single\nopaque byte stream, so any transport (Orleans grain calls, an actor framework) can move it,\nusing the same columnar encoding the exchange queues spill with (no per-row work).</p>\n<p sourcefile=\"api/FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.yml\" sourcestartlinenumber=\"5\">Serialize writes into an <xref href=\"System.Buffers.IBufferWriter%601\" data-throw-if-not-resolved=\"false\"></xref> and Deserialize reads from a\n<xref href=\"System.Buffers.ReadOnlySequence%601\" data-throw-if-not-resolved=\"false\"></xref>, so pooled segmented buffers (e.g. Orleans PooledBuffer)\nmove events without intermediate byte arrays. Serialize never allocates batch memory;\nDeserialize allocates from the target's resolved allocator and references nothing in the\npayload, so the transport may release it once Deserialize returns.</p>\n<p sourcefile=\"api/FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.yml\" sourcestartlinenumber=\"11\">Rent ownership: the receiver claim from the dequeue is released by <xref href=\"FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.ReturnEvents(System.Collections.Generic.IReadOnlyList%7bFlowtideDotNet.Core.Operators.Exchange.SubstreamEventData%7d)\" data-throw-if-not-resolved=\"false\"></xref>\non the sending side after serializing, and deserialized events carry a fresh claim, so the\nfetching side sees the same contract as a local fetch.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Operators.Exchange",
       "Summary": null
     },
     {
@@ -5398,6 +5916,48 @@
       "Uid": null,
       "IsMRef": true,
       "Title": null,
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Optimizer.DistributedMode.DistributedPlanModifier.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Optimizer.DistributedMode.DistributedPlanModifier.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Optimizer.DistributedMode.DistributedPlanModifier",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.Optimizer.DistributedMode.DistributedPlanModifier.yml\" sourcestartlinenumber=\"1\">Splits a not-yet-distributed plan into substreams. Sink roots are assigned round robin, and\npartitionable operators (merge joins, aggregates, window functions) are split into one copy\nper substream by <xref href=\"FlowtideDotNet.Core.Optimizer.DistributedMode.DistributeOperatorsVisitor\" data-throw-if-not-resolved=\"false\"></xref>. Existing exchange relations (e.g.\nfrom distributed views) are placed in one consumer's substream; consumers in other substreams\nget cross-substream targets and references.</p>\n<p sourcefile=\"api/FlowtideDotNet.Core.Optimizer.DistributedMode.DistributedPlanModifier.yml\" sourcestartlinenumber=\"7\">Requires an optimized plan (only merge joins can be partitioned) and runs as the last optimizer\nstep when <xref href=\"FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.DistributedPlanOptions\" data-throw-if-not-resolved=\"false\"></xref> is set. Deterministic, so\neach substream host can compute the plan independently.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Optimizer.DistributedMode.DistributedPlanOptions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Optimizer.DistributedMode.DistributedPlanOptions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Optimizer.DistributedMode.DistributedPlanOptions",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.Optimizer.DistributedMode.DistributedPlanOptions.yml\" sourcestartlinenumber=\"1\">Options for <xref href=\"FlowtideDotNet.Core.Optimizer.DistributedMode.DistributedPlanModifier\" data-throw-if-not-resolved=\"false\"></xref> that controls how a plan\nis split into substreams.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Optimizer.DistributedMode.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Optimizer.DistributedMode.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Optimizer.DistributedMode",
       "Summary": null
     },
     {
@@ -8300,6 +8860,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.PullBucketExchangeTarget.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.PullBucketExchangeTarget.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.CustomProtobuf.PullBucketExchangeTarget",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Substrait.CustomProtobuf.PullBucketExchangeTarget.yml\" sourcestartlinenumber=\"1\">Packed into the extended field of an exchange target when the target stores its data in a\nbucket that is pulled by the target.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.PullExchangeReferenceRelation.yml",
       "output": {
         ".html": {
@@ -8339,6 +8913,34 @@
       "IsMRef": true,
       "Title": "FlowtideDotNet.Substrait.CustomProtobuf.SubStreamRootRelation",
       "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.SubstreamExchangeReferenceRelation.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.SubstreamExchangeReferenceRelation.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.CustomProtobuf.SubstreamExchangeReferenceRelation",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.SubstreamExchangeTarget.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.SubstreamExchangeTarget.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.CustomProtobuf.SubstreamExchangeTarget",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Substrait.CustomProtobuf.SubstreamExchangeTarget.yml\" sourcestartlinenumber=\"1\">Packed into the extended field of an exchange target when the target sends its data to\nanother substream.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -9896,6 +10498,34 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.Relations.SubstreamExchangeReferenceRelation.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.Relations.SubstreamExchangeReferenceRelation.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.Relations.SubstreamExchangeReferenceRelation",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.Relations.SubstreamExchangeTarget.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.Relations.SubstreamExchangeTarget.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.Relations.SubstreamExchangeTarget",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Substrait.Relations.TableFunctionRelation.yml",
       "output": {
         ".html": {
@@ -10285,6 +10915,20 @@
       "IsMRef": true,
       "Title": "FlowtideDotNet.Substrait.SubstraitDeserializer",
       "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.SubstraitSerializer.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.SubstraitSerializer.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.SubstraitSerializer",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Substrait.SubstraitSerializer.yml\" sourcestartlinenumber=\"1\">Serializes a <xref href=\"FlowtideDotNet.Substrait.Plan\" data-throw-if-not-resolved=\"false\"></xref> into the Substrait protobuf format or its JSON\nrepresentation, the counterpart of <xref href=\"FlowtideDotNet.Substrait.SubstraitDeserializer\" data-throw-if-not-resolved=\"false\"></xref>. A serialized\nplan is how plans travel between processes, for example to Orleans grains, and a\ndeserialization always produces a fresh plan instance, which matters because building\na stream mutates the plan in place.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -11212,6 +11856,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/Microsoft.Extensions.DependencyInjection.FlowtideOrleansExtensions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/Microsoft.Extensions.DependencyInjection.FlowtideOrleansExtensions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "Microsoft.Extensions.DependencyInjection.FlowtideOrleansExtensions",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/Microsoft.Extensions.DependencyInjection.yml",
       "output": {
         ".html": {
@@ -11413,6 +12071,56 @@
       "output": {
         ".html": {
           "relative_path": "docs/deployment/pauseresume.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/distributed/automaticdistribution.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/distributed/automaticdistribution.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/distributed/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/distributed/index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/distributed/inprocess.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/distributed/inprocess.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/distributed/orleans.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/distributed/orleans.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/distributed/sqlsubstreams.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/distributed/sqlsubstreams.html"
         }
       },
       "version": ""

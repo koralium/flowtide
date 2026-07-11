@@ -214,7 +214,7 @@ throughout the lifetime of the stream.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckFailureListener_FlowtideDotNet_Base_Engine_ICheckFailureListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckFailureListener(FlowtideDotNet.Base.Engine.ICheckFailureListener)">
   AddCheckFailureListener(ICheckFailureListener)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L303"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L316"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Subscribes an <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckFailureListener.html">ICheckFailureListener</a> to receive a notification each time
@@ -258,7 +258,7 @@ ensure they cannot disrupt the stream.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckpointListener_FlowtideDotNet_Base_Engine_ICheckpointListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckpointListener(FlowtideDotNet.Base.Engine.ICheckpointListener)">
   AddCheckpointListener(ICheckpointListener)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L255"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L268"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Subscribes an <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckpointListener.html">ICheckpointListener</a> to receive a notification each time
@@ -348,7 +348,7 @@ and writing results to external systems. <a class="xref" href="FlowtideDotNet.Ba
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddFailureListener_FlowtideDotNet_Base_Engine_IFailureListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddFailureListener(FlowtideDotNet.Base.Engine.IFailureListener)">
   AddFailureListener(IFailureListener)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L287"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L300"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Subscribes an <a class="xref" href="FlowtideDotNet.Base.Engine.IFailureListener.html">IFailureListener</a> to receive a notification each time
@@ -486,7 +486,7 @@ immediately so it is ready for linking.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddStateChangeListener_FlowtideDotNet_Base_Engine_IStreamStateChangeListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddStateChangeListener(FlowtideDotNet.Base.Engine.IStreamStateChangeListener)">
   AddStateChangeListener(IStreamStateChangeListener)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L271"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L284"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Subscribes an <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamStateChangeListener.html">IStreamStateChangeListener</a> to receive a notification each time
@@ -530,7 +530,7 @@ ensure they cannot disrupt the stream.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_Build" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.Build">
   Build()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L363"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L376"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Validates the configuration, applies defaults for any unset optional components, and constructs
@@ -656,11 +656,52 @@ preventing excessive checkpointing under high-throughput conditions.</p>
 
 
 
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetStopDrainTimeout_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetStopDrainTimeout*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetStopDrainTimeout_System_TimeSpan_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetStopDrainTimeout(System.TimeSpan)">
+  SetStopDrainTimeout(TimeSpan)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L252"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets how long a stopping stream waits for vertices that exchange data with other
+substreams to drain before it finishes stopping anyway. Protects the stop from
+waiting forever when another substream has crashed or never started.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder SetStopDrainTimeout(TimeSpan timeSpan)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>timeSpan</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd><p>The maximum time to wait for the drain.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetVersion_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetVersion*"></a>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetVersion_System_String_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetVersion(System.String)">
   SetVersion(string)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L338"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L351"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Sets the semantic version string for this stream configuration.</p>
@@ -842,7 +883,7 @@ internal stream components.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithPauseMonitor_Microsoft_Extensions_Options_IOptionsMonitor_FlowtideDotNet_Base_FlowtidePauseOptions__" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithPauseMonitor(Microsoft.Extensions.Options.IOptionsMonitor{FlowtideDotNet.Base.FlowtidePauseOptions})">
   WithPauseMonitor(IOptionsMonitor&lt;FlowtidePauseOptions&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L320"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L333"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Wires up an <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.options.ioptionsmonitor-1">IOptionsMonitor&lt;TOptions&gt;</a> so that the stream can be

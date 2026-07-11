@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class SubstreamEventWireSerializer | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class SubstreamEventWireSerializer | Flowtide.NET ">
+      
+      <meta name="description" content="Wire format for events fetched between substreams on different nodes. The payload is a single opaque byte stream, so any transport (Orleans grain calls, an actor framework) can move it, using the same columnar encoding the exchange queues spill with (no per-row work). Serialize writes into an  and Deserialize reads from a , so pooled segmented buffers (e.g. Orleans PooledBuffer) move events without intermediate byte arrays. Serialize never allocates batch memory; Deserialize allocates from the target&#39;s resolved allocator and references nothing in the payload, so the transport may release it once Deserialize returns. Rent ownership: the receiver claim from the dequeue is released by  on the sending side after serializing, and deserialized events carry a fresh claim, so the fetching side sees the same contract as a local fetch.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Core_Operators_Exchange_SubstreamEventWireSerializer.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer">
+
+
+
+  <h1 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamEventWireSerializer" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer" class="text-break">
+Class SubstreamEventWireSerializer  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamEventWireSerializer.cs/#L36"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Core.html">Core</a>.<a class="xref" href="FlowtideDotNet.Core.Operators.html">Operators</a>.<a class="xref" href="FlowtideDotNet.Core.Operators.Exchange.html">Exchange</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Wire format for events fetched between substreams on different nodes. The payload is a single
+opaque byte stream, so any transport (Orleans grain calls, an actor framework) can move it,
+using the same columnar encoding the exchange queues spill with (no per-row work).</p>
+<p>Serialize writes into an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.ibufferwriter-1">IBufferWriter&lt;T&gt;</a> and Deserialize reads from a
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.readonlysequence-1">ReadOnlySequence&lt;T&gt;</a>, so pooled segmented buffers (e.g. Orleans PooledBuffer)
+move events without intermediate byte arrays. Serialize never allocates batch memory;
+Deserialize allocates from the target's resolved allocator and references nothing in the
+payload, so the transport may release it once Deserialize returns.</p>
+<p>Rent ownership: the receiver claim from the dequeue is released by <a class="xref" href="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamEventWireSerializer_ReturnEvents_System_Collections_Generic_IReadOnlyList_FlowtideDotNet_Core_Operators_Exchange_SubstreamEventData__">ReturnEvents(IReadOnlyList&lt;SubstreamEventData&gt;)</a>
+on the sending side after serializing, and deserialized events carry a fresh claim, so the
+fetching side sees the same contract as a local fetch.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class SubstreamEventWireSerializer</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">SubstreamEventWireSerializer</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Operators_Exchange_SubstreamEventWireSerializer_Deserialize_" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.Deserialize*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamEventWireSerializer_Deserialize_System_Buffers_ReadOnlySequence_System_Byte___System_Func_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator__" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.Deserialize(System.Buffers.ReadOnlySequence{System.Byte}@,System.Func{System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator})">
+  Deserialize(in ReadOnlySequence&lt;byte&gt;, Func&lt;int, IMemoryAllocator&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamEventWireSerializer.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Deserializes a payload created by <a class="xref" href="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamEventWireSerializer_Serialize_System_Collections_Generic_IReadOnlyList_FlowtideDotNet_Core_Operators_Exchange_SubstreamEventData__System_Buffers_IBufferWriter_System_Byte__">Serialize(IReadOnlyList&lt;SubstreamEventData&gt;, IBufferWriter&lt;byte&gt;)</a>. Batch memory is
+allocated from the allocator the resolver returns for the events exchange target
+id. Each rentable event is rented once, the receiver claim, matching what a local
+fetch hands out, the reader returns it after the event has been sent into the
+stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public List&lt;SubstreamEventData&gt; Deserialize(in ReadOnlySequence&lt;byte&gt; payload, Func&lt;int, IMemoryAllocator&gt; allocatorResolver)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>payload</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.readonlysequence-1">ReadOnlySequence</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>allocatorResolver</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData.html">SubstreamEventData</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Exchange_SubstreamEventWireSerializer_ReturnEvents_" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.ReturnEvents*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamEventWireSerializer_ReturnEvents_System_Collections_Generic_IReadOnlyList_FlowtideDotNet_Core_Operators_Exchange_SubstreamEventData__" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.ReturnEvents(System.Collections.Generic.IReadOnlyList{FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData})">
+  ReturnEvents(IReadOnlyList&lt;SubstreamEventData&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamEventWireSerializer.cs/#L66"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Releases the receiver claims on events after they have been serialized, the local
+copies end their journey on the sending side, the receiving side works with the
+deserialized copies.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void ReturnEvents(IReadOnlyList&lt;SubstreamEventData&gt; events)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>events</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData.html">SubstreamEventData</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Exchange_SubstreamEventWireSerializer_Serialize_" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.Serialize*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamEventWireSerializer_Serialize_System_Collections_Generic_IReadOnlyList_FlowtideDotNet_Core_Operators_Exchange_SubstreamEventData__System_Buffers_IBufferWriter_System_Byte__" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventWireSerializer.Serialize(System.Collections.Generic.IReadOnlyList{FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData},System.Buffers.IBufferWriter{System.Byte})">
+  Serialize(IReadOnlyList&lt;SubstreamEventData&gt;, IBufferWriter&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamEventWireSerializer.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Serializes fetched events into the buffer writer.
+Format: [int count] then per event [int exchangeTargetId][event].</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Serialize(IReadOnlyList&lt;SubstreamEventData&gt; events, IBufferWriter&lt;byte&gt; writer)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>events</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData.html">SubstreamEventData</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>writer</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.ibufferwriter-1">IBufferWriter</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamEventWireSerializer.cs/#L36" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

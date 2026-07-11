@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>In-Process Hosting | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="In-Process Hosting | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../../images/favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/blob/main/docs/docs/distributed/inprocess.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="in-process-hosting">In-Process Hosting</h1>
+
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Distributed mode is still experimental.</p>
+</div>
+<p>The in-process host runs every substream inside one process. It works the same as a real distributed deployment, with coordinated checkpoints, stop drain and failure recovery. This makes it useful for testing plans and connectors, and to verify how a plan distributes before deploying it.</p>
+<p>To create a distributed stream, use the <em>DistributedStreamBuilder</em>:</p>
+<pre><code class="lang-csharp">var stream = new DistributedStreamBuilder(&quot;my_stream&quot;)
+    .AddPlan(() =&gt;
+    {
+        var sqlPlanBuilder = new SqlPlanBuilder();
+        sqlPlanBuilder.Sql(@&quot;
+        INSERT INTO output
+        SELECT u.userkey FROM users u
+        INNER JOIN orders o ON u.userkey = o.userkey;
+        &quot;);
+        return sqlPlanBuilder.GetPlan();
+    })
+    .WithStateOptionsFactory((streamName, substreamName) =&gt; new StateManagerOptions
+    {
+        // Every substream needs its own state storage, key it on both names so
+        // substreams of different streams never share a location
+        PersistentStorage = CreateStorageFor(streamName, substreamName)
+    })
+    .AddConnectorManager((streamName, substreamName) =&gt;
+    {
+        // Called once per substream, each substream gets its own connector manager
+        var connectorManager = new ConnectorManager();
+        connectorManager.AddSource(...);
+        connectorManager.AddSink(...);
+        return connectorManager;
+    })
+    .DistributeAutomatically(substreamCount: 2)
+    .Build();
+
+await stream.StartAsync();
+// ...
+await stream.StopAsync();
+await stream.DisposeAsync();
+</code></pre>
+<p><em>AddPlan</em> takes a plan <strong>factory</strong> and not a plan instance. Building a stream changes the plan in place, so every substream must build from its own fresh plan.</p>
+<p><em>DistributeAutomatically</em> applies <a href="automaticdistribution.html">automatic distribution</a>. Plans that already use <a href="sqlsubstreams.html">SQL substream statements</a> are built as written instead.</p>
+<h2 id="starting">Starting</h2>
+<p><em>StartAsync</em> starts all substreams and also drives their recurring connector triggers, there is no need to call <em>RunAsync</em> on the individual substreams.</p>
+<p>Failures inside a substream, for example a connector that can not initialize, do not fail the start call, the substream retries in the background. Failures can be seen with <em>WithFailureListener</em> on the substream builders and through the <em>Health</em> property.</p>
+<h2 id="stopping">Stopping</h2>
+<p><em>StopAsync</em> does the coordinated stop. The substreams run stop checkpoints until the data they exchanged has been drained on both sides. The drain is bounded by the stop drain timeout, default 30 seconds, which can be changed with <em>SetStopDrainTimeout</em> on the substream builders.</p>
+<p><em>DeleteAsync</em> deletes the state of every substream and completes when the deletion has finished.</p>
+<h2 id="other-members">Other members</h2>
+<ul>
+<li><em>Health</em> reports the worst health across the substreams.</li>
+<li><em>Pause</em> and <em>Resume</em> pause and resume all substreams together.</li>
+<li><em>ConfigureSubstream</em> is a hook for any other per substream settings on the underlying <em>FlowtideBuilder</em>, for example failure listeners.</li>
+<li><em>Substreams</em> exposes the individual substreams, keyed by substream name.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/docs/docs/distributed/inprocess.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
