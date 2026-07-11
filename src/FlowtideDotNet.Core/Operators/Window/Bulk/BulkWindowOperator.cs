@@ -335,6 +335,10 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 await _temporaryBulkInserter.ApplyBatch(_keyScratch, _tempValueScratch, dataCount, sortedIndices, _duplicateTagScratch, new BulkTemporaryMutator(), batchSize);
             }
 
+            // The retractions emitted by the mutator reference the extended batch, copy them out before
+            // the extra partition columns are disposed.
+            _emitter.FlushPending();
+
             for (int i = 0; i < extraPartitionColumns.Length; i++)
             {
                 extraPartitionColumns[i].Dispose();
@@ -607,6 +611,10 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     }
                 }
 
+                // The emitter's pending block copies reference this page's batch, copy them out before the
+                // page is released.
+                _emitter.FlushPending();
+
                 if (pageDirty)
                 {
                     await page.SavePage(false);
@@ -667,7 +675,10 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 for (int f = 0; f < _functions.Length; f++)
                 {
                     context.AuxChanged = false;
-                    await _functions[f].ComputeRow(context, _resultContainers[f]);
+                    if (!_functions[f].TryComputeRow(context, _resultContainers[f]))
+                    {
+                        await _functions[f].ComputeRow(context, _resultContainers[f]);
+                    }
                     if (context.AuxChanged)
                     {
                         _rowValueStable[f] = false;
@@ -796,6 +807,10 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
                     index = endIndex + 1;
                 }
+
+                // The emitter's pending block copies reference this page's batch, copy them out before the
+                // page is released.
+                _emitter.FlushPending();
 
                 if (pageDirty)
                 {

@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             _nextRowNumber = previous.AsLong + 1;
         }
 
-        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
             if (_nextRowNumber > _maxRowNumber)
             {
@@ -111,6 +111,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 result._int64Value = new Int64Value(_nextRowNumber);
                 _nextRowNumber++;
             }
+            return true;
+        }
+
+        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        {
+            TryComputeRow(context, result);
             return ValueTask.CompletedTask;
         }
 

@@ -188,10 +188,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             }
         }
 
-        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
             Feed(_fetchValueFunction(context.Batch, context.RowIndex));
             BulkSumUtils.CopySumValue(_sumState, result);
+            return true;
+        }
+
+        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        {
+            TryComputeRow(context, result);
             return ValueTask.CompletedTask;
         }
 
@@ -275,7 +281,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             }
         }
 
-        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
             Debug.Assert(_pending != null);
 
@@ -286,6 +292,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 SumWindowUtils.DoSum(enteringSum, _sumState, 1);
             }
             BulkSumUtils.CopySumValue(_sumState, result);
+            return true;
+        }
+
+        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        {
+            TryComputeRow(context, result);
             return ValueTask.CompletedTask;
         }
 
@@ -345,9 +357,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             }
         }
 
-        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
             BulkSumUtils.CopySumValue(_sumState, result);
+            return true;
+        }
+
+        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        {
+            TryComputeRow(context, result);
             return ValueTask.CompletedTask;
         }
 

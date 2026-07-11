@@ -167,6 +167,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         ValueTask StartScan(ColumnRowReference partitionValues, BulkWindowSeedReader seedReader, bool fromPartitionStart);
 
         /// <summary>
+        /// Computes the function value for the current logical row into <paramref name="result"/> when it
+        /// can be done synchronously, which is the common case. Returns false when asynchronous work such
+        /// as a storage read is needed, in which case <see cref="ComputeRow"/> must be awaited instead and
+        /// this call must not have modified any state.
+        /// </summary>
+        bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result);
+
+        /// <summary>
         /// Computes the function value for the current logical row into <paramref name="result"/>.
         /// </summary>
         ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result);

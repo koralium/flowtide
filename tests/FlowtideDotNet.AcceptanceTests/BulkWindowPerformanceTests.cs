@@ -68,6 +68,76 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task RowNumberTopOneFilterTopInsert()
+        {
+            // A single 500k row partition. The filter keeps the sink at one row, so the measured time is
+            // dominated by the window operator work plus the fixed pipeline cost.
+            GenerateData(500_000);
+
+            var stopwatch = Stopwatch.StartNew();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey
+            FROM users
+            WHERE ROW_NUMBER() OVER (ORDER BY UserKey) = 1
+            ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+            stopwatch.Stop();
+            _output.WriteLine($"Initial load 500000 rows: {stopwatch.ElapsedMilliseconds} ms");
+
+            // Each iteration inserts a new smallest key, shifting every row number in the partition. With
+            // the max_row_number hint only the top rows are recomputed.
+            for (int i = 0; i < 5; i++)
+            {
+                AddOrUpdateUser(new Entities.User()
+                {
+                    UserKey = -1 - i,
+                    CompanyId = "1",
+                    DoubleValue = i
+                });
+                stopwatch.Restart();
+                await WaitForUpdate();
+                stopwatch.Stop();
+                _output.WriteLine($"Top insert {i + 1} (1 row into 500k partition): {stopwatch.ElapsedMilliseconds} ms");
+            }
+        }
+
+        [Fact]
+        public async Task RunningSumAppendSmallSinkControl()
+        {
+            // Same window workload as RunningSumInitialLoadAndAppend, but the output is filtered to a
+            // small set of rows after the window. This isolates the window operator's append cost from the
+            // test sink, which copies its whole table on every checkpoint.
+            GenerateData(500_000);
+
+            var stopwatch = Stopwatch.StartNew();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT companyid, userkey, value FROM (
+                SELECT
+                    CompanyId as companyid,
+                    UserKey as userkey,
+                    CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS INT) as value
+                FROM users) t
+            WHERE t.userkey % 1000 = 0
+            ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+            stopwatch.Stop();
+            _output.WriteLine($"Initial load 500000 rows (small sink): {stopwatch.ElapsedMilliseconds} ms");
+
+            for (int i = 0; i < 5; i++)
+            {
+                GenerateData(100);
+                stopwatch.Restart();
+                await WaitForUpdate();
+                stopwatch.Stop();
+                _output.WriteLine($"Append batch {i + 1} (100 rows, small sink): {stopwatch.ElapsedMilliseconds} ms");
+            }
+        }
+
+        [Fact]
         public async Task RunningSumInitialLoadAndAppend()
         {
             GenerateData(500_000);

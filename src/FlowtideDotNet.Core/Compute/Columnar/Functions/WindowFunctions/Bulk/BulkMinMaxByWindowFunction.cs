@@ -187,31 +187,51 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             return _isMin ? compareResult <= 0 : compareResult >= 0;
         }
 
+        public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        {
+            if (_hasBest && _bestOffsetBack + 1 > -_from)
+            {
+                // The best value falls out of the frame at this row, a backwards frame rescan is needed
+                // which may load pages.
+                return false;
+            }
+            FastPathStep(context);
+            WriteResult(context, result);
+            return true;
+        }
+
         public async ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
-            Debug.Assert(_bestValueColumn != null);
-
-            if (_hasBest)
-            {
-                _bestOffsetBack++;
-            }
-
-            if (_hasBest && _bestOffsetBack > -_from)
+            if (_hasBest && _bestOffsetBack + 1 > -_from)
             {
                 // The best value fell out of the frame, rescan the frame backwards from the current row.
                 await Rescan(context);
             }
             else
             {
-                var compareValue = _fetchCompareValueFunction(context.Batch, context.RowIndex);
-                if (!compareValue.IsNull && (!_hasBest || IsBetterStrict(compareValue)))
-                {
-                    _hasBest = true;
-                    _bestOffsetBack = 0;
-                    SetBest(compareValue, _fetchValueFunction(context.Batch, context.RowIndex));
-                }
+                FastPathStep(context);
             }
+            WriteResult(context, result);
+        }
 
+        private void FastPathStep(BulkWindowRowContext context)
+        {
+            if (_hasBest)
+            {
+                _bestOffsetBack++;
+            }
+            var compareValue = _fetchCompareValueFunction(context.Batch, context.RowIndex);
+            if (!compareValue.IsNull && (!_hasBest || IsBetterStrict(compareValue)))
+            {
+                _hasBest = true;
+                _bestOffsetBack = 0;
+                SetBest(compareValue, _fetchValueFunction(context.Batch, context.RowIndex));
+            }
+        }
+
+        private void WriteResult(BulkWindowRowContext context, DataValueContainer result)
+        {
+            Debug.Assert(_bestValueColumn != null);
             if (_hasBest)
             {
                 _bestValueColumn.GetValueAt(0, result, default);
@@ -348,7 +368,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             }
         }
 
-        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
             Debug.Assert(_bestCompareColumn != null);
             Debug.Assert(_bestValueColumn != null);
@@ -380,6 +400,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 result._type = ArrowTypeId.Null;
                 context.SetAuxValue(_auxStartIndex, NullValue.Instance);
             }
+            return true;
+        }
+
+        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        {
+            TryComputeRow(context, result);
             return ValueTask.CompletedTask;
         }
 
@@ -469,7 +495,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             }
         }
 
-        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
             Debug.Assert(_bestValueColumn != null);
             if (_hasBest)
@@ -480,6 +506,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 result._type = ArrowTypeId.Null;
             }
+            return true;
+        }
+
+        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        {
+            TryComputeRow(context, result);
             return ValueTask.CompletedTask;
         }
 
