@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
+using System.Runtime.ExceptionServices;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -552,16 +553,48 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
 
             List<Task> evictTasks = new List<Task>();
+            List<List<(S3FifoCacheEntry, long)>> evictTaskGroups = new List<List<(S3FifoCacheEntry, long)>>();
             foreach (var group in groupedValues)
             {
+                evictTaskGroups.Add(group.Value);
                 evictTasks.Add(Task.Factory.StartNew(() =>
                 {
                     group.Key.Evict(group.Value, isCleanup);
                 }));
             }
 
-            await Task.WhenAll(evictTasks);
+            Exception? evictException = null;
+            try
+            {
+                await Task.WhenAll(evictTasks);
+            }
+            catch (Exception e)
+            {
+                evictException = e;
+            }
 
+            HashSet<S3FifoCacheEntry>? failedVictims = null;
+            if (evictException != null)
+            {
+                // A failed evict handler did not serialize its victims, so they must not be
+                // removed from memory. The victims were already dequeued at selection, so
+                // without a requeue they would be stranded outside every queue: still cached
+                // and counted, but unreachable by any future eviction. Collect them here so
+                // they go back into their queues and are retried by a later cleanup.
+                failedVictims = new HashSet<S3FifoCacheEntry>();
+                for (int i = 0; i < evictTasks.Count; i++)
+                {
+                    if (!evictTasks[i].IsCompletedSuccessfully)
+                    {
+                        foreach (var value in evictTaskGroups[i])
+                        {
+                            failedVictims.Add(value.Item1);
+                        }
+                    }
+                }
+            }
+
+            List<S3FifoCacheEntry>? requeueToSmall = null;
             List<S3FifoCacheEntry>? requeueToMain = null;
             List<long>? ghostInserts = null;
             foreach (var candidate in victims)
@@ -569,6 +602,28 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var entry = candidate.Entry;
                 lock (entry)
                 {
+                    if (entry.Removed)
+                    {
+                        // Deleted while eviction was in progress: the delete already removed
+                        // it from the dictionary and returned the cache's reference, and the
+                        // slot was dropped at selection. Requeuing it (even on a version
+                        // mismatch) would resurrect a dead, uncounted stale slot.
+                        continue;
+                    }
+                    if (failedVictims != null && failedVictims.Contains(entry))
+                    {
+                        // Not serialized because its evict handler failed: keep it cached and
+                        // put it back where it came from so a later cleanup retries it.
+                        if (candidate.FromSmallQueue)
+                        {
+                            (requeueToSmall ??= new List<S3FifoCacheEntry>()).Add(entry);
+                        }
+                        else
+                        {
+                            (requeueToMain ??= new List<S3FifoCacheEntry>()).Add(entry);
+                        }
+                        continue;
+                    }
                     if (candidate.Version != entry.Version)
                     {
                         // Modified while it was being serialized: the serialized copy is stale,
@@ -577,35 +632,40 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         (requeueToMain ??= new List<S3FifoCacheEntry>()).Add(entry);
                         continue;
                     }
-                    if (!entry.Removed)
+                    // Volatile and ordered before Return: lock-free readers rely on Removed
+                    // being observable once a rent can fail (see S3FifoCacheEntry.TryRentValue).
+                    Volatile.Write(ref entry.Removed, true);
+                    // RemovedFromCache must be set before the dictionary removal. A concurrent
+                    // re-add of the same object can only succeed its TryAdd after this TryRemove
+                    // (same dictionary bucket lock), and that ordering is what guarantees the
+                    // re-adder observes the flag and takes a new cache-owned rent. Written the
+                    // other way around, the re-adder can miss the flag and the cache's reference
+                    // count goes one short, disposing the object while it is still cached.
+                    entry.Value.RemovedFromCache = true;
+                    if (m_cache.TryRemove(entry.Key, out _))
                     {
-                        // Volatile and ordered before Return: lock-free readers rely on Removed
-                        // being observable once a rent can fail (see S3FifoCacheEntry.TryRentValue).
-                        Volatile.Write(ref entry.Removed, true);
-                        // RemovedFromCache must be set before the dictionary removal. A concurrent
-                        // re-add of the same object can only succeed its TryAdd after this TryRemove
-                        // (same dictionary bucket lock), and that ordering is what guarantees the
-                        // re-adder observes the flag and takes a new cache-owned rent. Written the
-                        // other way around, the re-adder can miss the flag and the cache's reference
-                        // count goes one short, disposing the object while it is still cached.
-                        entry.Value.RemovedFromCache = true;
-                        if (m_cache.TryRemove(entry.Key, out _))
+                        entry.Value.Return();
+                        Interlocked.Decrement(ref m_count);
+                        if (candidate.FromSmallQueue)
                         {
-                            entry.Value.Return();
-                            Interlocked.Decrement(ref m_count);
-                            if (candidate.FromSmallQueue)
-                            {
-                                (ghostInserts ??= new List<long>()).Add(entry.Key);
-                            }
+                            (ghostInserts ??= new List<long>()).Add(entry.Key);
                         }
                     }
                 }
             }
 
-            if (requeueToMain != null || ghostInserts != null)
+            if (requeueToSmall != null || requeueToMain != null || ghostInserts != null)
             {
                 lock (m_queueLock)
                 {
+                    if (requeueToSmall != null)
+                    {
+                        foreach (var entry in requeueToSmall)
+                        {
+                            entry.Location = S3FifoQueueLocation.Small;
+                            m_smallQueue.Enqueue(entry);
+                        }
+                    }
                     if (requeueToMain != null)
                     {
                         foreach (var entry in requeueToMain)
@@ -622,6 +682,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         }
                     }
                 }
+            }
+
+            if (evictException != null)
+            {
+                // Rethrow after the victims have been rehomed so the failure is still logged
+                // and the cleanup task restarts, matching the previous implementation where
+                // an evict failure propagated but left the victims evictable.
+                ExceptionDispatchInfo.Capture(evictException).Throw();
             }
 
             if (isCleanup)

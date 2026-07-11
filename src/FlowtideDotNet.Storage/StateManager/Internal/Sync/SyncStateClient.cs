@@ -338,11 +338,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 throw new FlowtidePersistentStorageException($"Error reading persistent data in client '{name}' with key '{key}'", e);
             }
 
-            stateManager.AddOrUpdate(key, value, this);
+            // Rent for the caller BEFORE publishing to the cache, like GetValue_FromCache:
+            // after AddOrUpdate the cache owns the object's only reference and a concurrent
+            // eviction could dispose it before the caller's rent lands.
             if (!value.TryRent())
             {
                 throw new InvalidOperationException("Could not rent value when fetched from storage.");
             }
+            stateManager.AddOrUpdate(key, value, this);
             if (m_persistenceReadMsHistogram != null)
             {
                 m_persistenceReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);

@@ -71,5 +71,64 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.True(val.found);
             Assert.Equal(2, val.value);
         }
+
+        /// <summary>
+        /// Regression net for the GetValue_Persistent rent ordering: pages loaded from
+        /// persistent storage must survive continuous eviction pressure racing the read.
+        /// With CachePageCount = 0 every cleanup evicts everything, so each read round
+        /// re-loads pages from storage while the evictor concurrently tears them out.
+        /// </summary>
+        [Fact]
+        public async Task PersistentReadsSurviveContinuousEviction()
+        {
+            var persist = new FileCachePersistentStorage(new FileCacheOptions()
+            {
+                DirectoryPath = "./persistentReadsSurviveContinuousEviction"
+            });
+            var a = new StateManagerOptions()
+            {
+                PersistentStorage = persist,
+                CachePageCount = 0,
+                MinCachePageCount = 0
+            };
+            var manager = new StateManagerSync<StateManagerMetadata>(a, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmp2"), "test", GlobalMemoryManager.Instance);
+            await manager.InitializeAsync();
+            await manager.CacheTable.StopCleanupTask();
+
+            var client = manager.GetOrCreateClient("client");
+            var tree = await client.GetOrCreateTree("tree",
+                new BPlusTreeOptions<long, int, ListKeyContainer<long>, ListValueContainer<int>>()
+                {
+                    Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                    KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    MemoryAllocator = GlobalMemoryManager.Instance
+                });
+            for (long i = 0; i < 200; i++)
+            {
+                await tree.Upsert(i, (int)i);
+            }
+            await tree.Commit();
+
+            using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(1.5));
+            var evictor = Task.Run(async () =>
+            {
+                while (!stop.IsCancellationRequested)
+                {
+                    await manager.CacheTable.ForceCleanup();
+                }
+            });
+
+            while (!stop.IsCancellationRequested)
+            {
+                for (long i = 0; i < 200; i++)
+                {
+                    var val = await tree.GetValue(i);
+                    Assert.True(val.found);
+                    Assert.Equal((int)i, val.value);
+                }
+            }
+            await evictor;
+        }
     }
 }

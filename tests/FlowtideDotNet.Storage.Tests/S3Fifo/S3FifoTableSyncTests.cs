@@ -236,6 +236,81 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         [Fact]
+        public async Task EvictHandlerFailureKeepsVictimsCachedAndEvictable()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10, minSize: 0);
+            var handler = new TestEvictHandler();
+            var objects = new TestCacheObject[10];
+            for (var i = 0; i < 10; i++)
+            {
+                objects[i] = new TestCacheObject(i);
+                table.Add(i, objects[i], handler);
+            }
+
+            // Temporary storage failure while serializing the victims: the cleanup pass
+            // must fail loudly, but the victims must stay cached and remain evictable.
+            handler.OnEvict = (_, _) => throw new IOException("temporary storage failure");
+            await Assert.ThrowsAsync<IOException>(() => table.ForceCleanup());
+
+            Assert.Equal(10, table.Count);
+            Assert.True(table.TryGetValue(0, out var stillCached));
+            stillCached!.Return();
+
+            // Handler recovers: every entry, including the previously failed victims,
+            // must be evictable all the way down to an empty table via the deep clean.
+            handler.OnEvict = null;
+            for (var i = 0; i < 2001 && table.Count > 0; i++)
+            {
+                await table.ForceCleanup();
+            }
+
+            Assert.Equal(0, table.Count);
+            foreach (var obj in objects)
+            {
+                Assert.Equal(0, obj.RentCount);
+                Assert.Equal(1, obj.DisposeCount);
+            }
+        }
+
+        [Fact]
+        public async Task VictimModifiedAndDeletedDuringEvictionIsNotResurrected()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(4);
+            var handler = new TestEvictHandler();
+            var objects = new TestCacheObject[4];
+            handler.OnEvict = (values, _) =>
+            {
+                foreach (var value in values)
+                {
+                    if (value.Item1.Key == 0)
+                    {
+                        // The page is modified and then deleted while it is being
+                        // serialized: the version bump alone would requeue it, but the
+                        // delete must win and the entry must not be resurrected.
+                        table.Add(0, value.Item1.Value, handler);
+                        table.Delete(0);
+                    }
+                }
+            };
+            for (var i = 0; i < 4; i++)
+            {
+                objects[i] = new TestCacheObject(i);
+                table.Add(i, objects[i], handler);
+            }
+
+            await table.ForceCleanup();
+
+            Assert.Equal(3, table.Count);
+            Assert.False(table.TryGetValue(0, out _));
+            Assert.Equal(0, objects[0].RentCount);
+            Assert.Equal(1, objects[0].DisposeCount);
+            // The deleted victim must not occupy any queue slot.
+            var counts = table.GetQueueCountsForTests();
+            Assert.Equal(0, counts.MainCount);
+            Assert.Equal(0, counts.MainStale);
+        }
+
+        [Fact]
         public async Task StaleEntryReferenceReadsAsMissAfterRemoval()
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
