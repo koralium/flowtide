@@ -19,9 +19,9 @@ namespace FlowtideDotNet.Base.Vertices.Internal
     {
         private readonly object _checkpointLock = new object();
         private readonly Func<ILockingEvent, Task> _onCheckpoint;
-        private readonly Action _checkpointDone;
+        private readonly Action<ILockingEvent> _checkpointDone;
 
-        public ParallelEgressSource(Func<ILockingEvent, Task> onCheckpoint, Action checkpointDone)
+        public ParallelEgressSource(Func<ILockingEvent, Task> onCheckpoint, Action<ILockingEvent> checkpointDone)
         {
             _onCheckpoint = onCheckpoint;
             _checkpointDone = checkpointDone;
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Base.Vertices.Internal
                 .ContinueWith((task, state) =>
                 {
                     var thisBlock = (ParallelEgressSource<T>)state!;
-                    thisBlock._checkpointDone();
+                    thisBlock._checkpointDone((ILockingEvent)checkpointEvent!);
                 }, this);
         }
 

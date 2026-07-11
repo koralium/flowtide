@@ -638,6 +638,26 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             {
                 await _checkpointHandler.DisposeAsync();
             }
+
+            // The reset starts version numbering from 1 again. Files from a previous timeline
+            // must be removed, an old checkpoint bundle with a higher version would otherwise
+            // be picked up as the newest registry on a later restart and reference files this
+            // timeline overwrites with different content, permanently failing recovery on
+            // checksum mismatches.
+            if (_fileProvider.SupportsFileListing)
+            {
+                var staleCheckpointIds = await _fileProvider.ListCheckpointFilesAsync(default);
+                foreach (var staleCheckpointId in staleCheckpointIds)
+                {
+                    await _fileProvider.DeleteCheckpointFileAsync(staleCheckpointId, default);
+                }
+                var staleDataFileIds = await _fileProvider.GetStoredDataFileIdsAsync(default);
+                foreach (var staleDataFileId in staleDataFileIds)
+                {
+                    await _fileProvider.DeleteDataFileAsync(staleDataFileId, default);
+                }
+            }
+
             var checkpointHandlerLogger = _loggerFactory.CreateLogger("ReservoirCheckpointHandler");
             _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger, CacheProvider);
             _temporaryPageLocations.Clear();

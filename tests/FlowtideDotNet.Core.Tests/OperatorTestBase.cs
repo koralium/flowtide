@@ -47,19 +47,57 @@ namespace FlowtideDotNet.Core.Tests
 
         public async Task InitializeOperator(IStreamVertex @operator)
         {
+            await InitializeOperatorCore(@operator, wireEgressFunctions: true);
+        }
+
+        /// <summary>
+        /// Initializes the operator but leaves the egress checkpoint done callbacks
+        /// unwired, the state a starting stream is in when messages from a running peer
+        /// arrive before the stream finished starting.
+        /// </summary>
+        public async Task InitializeOperatorWithoutWiring(IStreamVertex @operator)
+        {
+            await InitializeOperatorCore(@operator, wireEgressFunctions: false);
+        }
+
+        private async Task InitializeOperatorCore(IStreamVertex @operator, bool wireEgressFunctions)
+        {
             @operator.Setup("stream", "1");
             @operator.CreateBlock();
             @operator.Link();
-            
+
             var statemanagermeter = new Meter("statemanager");
             _stateManager = new StateManagerSync<StreamState>(new StateManagerOptions()
             {
             }, NullLoggerFactory.Instance, statemanagermeter, "stream", GlobalMemoryManager.Instance);
             await _stateManager.InitializeAsync();
-            await ReinitializeOperator(@operator);
+            if (wireEgressFunctions)
+            {
+                await ReinitializeOperator(@operator);
+            }
+            else
+            {
+                await InitializeVertex(@operator);
+            }
         }
 
         public async Task ReinitializeOperator(IStreamVertex @operator)
+        {
+            await InitializeVertex(@operator);
+
+            if (@operator is IStreamEgressVertex egressVertex)
+            {
+                egressVertex.SetCheckpointDoneFunction((name, lockingEvent) =>
+                {
+                    if (_taskCompletion != null)
+                    {
+                        _taskCompletion.SetResult();
+                    }
+                }, (name, lockingEvent) => { });
+            }
+        }
+
+        private async Task InitializeVertex(IStreamVertex @operator)
         {
             if (_stateManager == null)
             {
@@ -70,7 +108,7 @@ namespace FlowtideDotNet.Core.Tests
             var vertexHandler = new VertexHandler(
                 "stream",
                 "1",
-                (time) =>
+                (time, version) =>
                 {
 
                 },
@@ -81,17 +119,6 @@ namespace FlowtideDotNet.Core.Tests
                 new OperatorMemoryManager("stream", "op", _operatorMemoryMeter ??= new Meter("stream"), new StreamMemoryManager("stream")),
                 (exception, version) => Task.CompletedTask);
             await @operator.Initialize("1", 0, 0, vertexHandler, null);
-
-            if (@operator is IStreamEgressVertex egressVertex)
-            {
-                egressVertex.SetCheckpointDoneFunction((name) =>
-                {
-                    if (_taskCompletion != null)
-                    {
-                        _taskCompletion.SetResult();
-                    }
-                }, (name) => { });
-            }
         }
 
         public void ClearCache()

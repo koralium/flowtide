@@ -46,7 +46,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return exchangeRelation.Targets.Any(x => x.Type == ExchangeTargetType.PullBucket);
         }
 
-        public async Task Initialize(ExchangeRelation exchangeRelation, IStateManagerClient stateManagerClient, ExchangeOperatorState exchangeOperatorState, IMemoryAllocator memoryAllocator)
+        public async Task Initialize(
+            long restoreVersion,
+            ExchangeRelation exchangeRelation, 
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState exchangeOperatorState, 
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc)
         {
             _eventCounter = exchangeOperatorState.EventCounter;
 
@@ -104,6 +110,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
+        public async Task OnInitialDataDone()
+        {
+            if (_events != null)
+            {
+                await _events.Upsert(_eventCounter++, new InitialDataDoneEvent());
+            }
+        }
+
         public Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState)
         {
             exchangeOperatorState.EventCounter = _eventCounter;
@@ -132,6 +146,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
             }
             fetchDataRequest.OutEvents = outputData;
+        }
+
+        public Task OnFailure(long recoveryPoint)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task CheckpointDone(long checkpointVersion)
+        {
+            return Task.CompletedTask;
         }
     }
 }

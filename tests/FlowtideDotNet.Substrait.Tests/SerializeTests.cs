@@ -684,6 +684,178 @@ namespace FlowtideDotNet.Substrait.Tests
             AssertPlanCanSerializeDeserialize(plan);
         }
 
+        /// <summary>
+        /// A pre declared distributed view plan (exchange relation with standard output targets
+        /// and standard output exchange references) round trips.
+        /// </summary>
+        [Fact]
+        public void SerializeDistributedViewPlan()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                CREATE TABLE users (userkey any);
+
+                CREATE VIEW read_users WITH (DISTRIBUTED = true, SCATTER_BY = userkey, PARTITION_COUNT = 2) AS
+                SELECT userkey FROM users;
+
+                INSERT INTO output SELECT userkey FROM read_users WITH (PARTITION_ID = 0);
+                INSERT INTO output SELECT userkey FROM read_users WITH (PARTITION_ID = 1);
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        /// <summary>
+        /// The substream distribution relations, substream roots, exchange relations with
+        /// substream and pull bucket targets and substream and pull exchange references, round
+        /// trip. These are produced by the distributed plan modifier when a plan is split into
+        /// substreams and must serialize for the plan version hash.
+        /// </summary>
+        [Fact]
+        public void SerializeSubstreamDistributionRelations()
+        {
+            var read = new ReadRelation()
+            {
+                NamedTable = new NamedTable() { Names = new List<string>() { "users" } },
+                BaseSchema = new NamedStruct()
+                {
+                    Names = new List<string>() { "userkey" },
+                    Struct = new Struct()
+                    {
+                        Types = new List<SubstraitBaseType>() { new AnyType() { Nullable = true } }
+                    }
+                }
+            };
+
+            var scatterField = new DirectFieldReference()
+            {
+                ReferenceSegment = new StructReferenceSegment() { Field = 0 }
+            };
+
+            var exchange = new ExchangeRelation()
+            {
+                Input = read,
+                PartitionCount = 2,
+                ExchangeKind = new ScatterExchangeKind()
+                {
+                    Fields = new List<FieldReference>() { scatterField }
+                },
+                Targets = new List<ExchangeTarget>()
+                {
+                    new StandardOutputExchangeTarget() { PartitionIds = new List<int>() { 0 } },
+                    new SubstreamExchangeTarget() { PartitionIds = new List<int>() { 1 }, SubstreamName = "sub1", ExchangeTargetId = 5 },
+                    new PullBucketExchangeTarget() { PartitionIds = new List<int>(), ExchangeTargetId = 7 }
+                }
+            };
+
+            var plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new SubStreamRootRelation() { Name = "sub0", Input = exchange },
+                    new SubStreamRootRelation()
+                    {
+                        Name = "sub1",
+                        Input = new SubstreamExchangeReferenceRelation()
+                        {
+                            SubStreamName = "sub0",
+                            ExchangeTargetId = 5,
+                            ReferenceOutputLength = 1
+                        }
+                    },
+                    new SubStreamRootRelation()
+                    {
+                        Name = "sub2",
+                        Input = new PullExchangeReferenceRelation()
+                        {
+                            SubStreamName = "sub0",
+                            ExchangeTargetId = 7,
+                            ReferenceOutputLength = 1
+                        }
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        /// <summary>
+        /// References can point at relations that appear LATER in the plan: the distributed
+        /// plan modifier appends hoisted exchange and lane relations after the sinks that
+        /// consume them. Deserialization must resolve the referenced relation's output length
+        /// even when the reference is visited before its target relation exists, for both
+        /// plain references and exchange output references.
+        /// </summary>
+        [Fact]
+        public void SerializeForwardReferences()
+        {
+            var read = new ReadRelation()
+            {
+                NamedTable = new NamedTable() { Names = new List<string>() { "users" } },
+                BaseSchema = new NamedStruct()
+                {
+                    Names = new List<string>() { "userkey" },
+                    Struct = new Struct()
+                    {
+                        Types = new List<SubstraitBaseType>() { new AnyType() { Nullable = true } }
+                    }
+                }
+            };
+
+            var exchange = new ExchangeRelation()
+            {
+                Input = read,
+                PartitionCount = 2,
+                ExchangeKind = new ScatterExchangeKind()
+                {
+                    Fields = new List<FieldReference>()
+                    {
+                        new DirectFieldReference()
+                        {
+                            ReferenceSegment = new StructReferenceSegment() { Field = 0 }
+                        }
+                    }
+                },
+                Targets = new List<ExchangeTarget>()
+                {
+                    new StandardOutputExchangeTarget() { PartitionIds = new List<int>() { 0 } },
+                    new StandardOutputExchangeTarget() { PartitionIds = new List<int>() { 1 } }
+                }
+            };
+
+            var plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    // Both consumers come FIRST and reference relations that only appear
+                    // later in the plan, the shape the distributed plan modifier produces.
+                    new SubStreamRootRelation()
+                    {
+                        Name = "sub1",
+                        Input = new StandardOutputExchangeReferenceRelation()
+                        {
+                            RelationId = 2,
+                            TargetId = 0,
+                            ReferenceOutputLength = 1
+                        }
+                    },
+                    new SubStreamRootRelation()
+                    {
+                        Name = "sub1",
+                        Input = new ReferenceRelation()
+                        {
+                            RelationId = 3,
+                            ReferenceOutputLength = 1
+                        }
+                    },
+                    new SubStreamRootRelation() { Name = "sub0", Input = exchange },
+                    read
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
         private void AssertPlanCanSerializeDeserialize(Plan plan)
         {
             var json = SubstraitSerializer.SerializeToJson(plan);

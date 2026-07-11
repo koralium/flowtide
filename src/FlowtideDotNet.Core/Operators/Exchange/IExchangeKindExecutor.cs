@@ -24,7 +24,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal interface IExchangeKindExecutor
     {
-        Task Initialize(ExchangeRelation exchangeRelation, IStateManagerClient stateManagerClient, ExchangeOperatorState exchangeOperatorState, IMemoryAllocator memoryAllocator);
+        Task Initialize(
+            long restoreVersion,
+            ExchangeRelation exchangeRelation, 
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState exchangeOperatorState, 
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc);
 
         IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time);
 
@@ -34,8 +40,24 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         Task OnWatermark(Watermark watermark);
 
+        /// <summary>
+        /// Forwards the initial data done marker to the targets in stream order, after all
+        /// initial data batches, so the receiving substreams release their watermark
+        /// alignment only once everything before the marker has arrived.
+        /// </summary>
+        Task OnInitialDataDone();
+
         Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState);
 
         Task GetPullBucketData(int exchangeTargetId, ExchangeFetchDataMessage fetchDataRequest);
+
+        Task OnFailure(long recoveryPoint);
+
+        Task CheckpointDone(long checkpointVersion);
+
+        /// <summary>
+        /// True when all targets have everything they need for the stream to finish stopping.
+        /// </summary>
+        bool ReadyToStop => true;
     }
 }

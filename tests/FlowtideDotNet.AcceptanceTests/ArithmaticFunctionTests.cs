@@ -1359,7 +1359,9 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT sum(userkey) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Sum = (long)Users.Sum(x => x.UserKey) } });
+            // Summed as long: the generated keys come from a process-wide unique counter that
+            // other tests' data volumes inflate, an int accumulation overflows.
+            AssertCurrentDataEqual(new[] { new { Sum = Users.Sum(x => (long)x.UserKey) } });
         }
 
         [Fact]
@@ -1396,7 +1398,8 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT sum0(userkey) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Sum = (long)Users.Sum(x => x.UserKey) } });
+            // Summed as long, see SelectSum.
+            AssertCurrentDataEqual(new[] { new { Sum = Users.Sum(x => (long)x.UserKey) } });
         }
 
         [Fact]

@@ -56,29 +56,46 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void AddOrUpdate<T>(IEnumerable<T> rows)
         {
-            foreach (var row in rows)
+            // Writes must take the same lock as GetOperations, an unlocked Add races the
+            // sources GetRange and Count reads, which silently skips events.
+            lock (_lock)
             {
-                if (row == null)
+                foreach (var row in rows)
                 {
-                    throw new InvalidOperationException("Cannot add null row");
+                    if (row == null)
+                    {
+                        throw new InvalidOperationException("Cannot add null row");
+                    }
+                    _changes.Add(new RowOperation(row, false));
                 }
-                _changes.Add(new RowOperation(row, false));
             }
         }
 
         public void Delete<T>(IEnumerable<T> rows)
         {
-            foreach (var row in rows)
+            lock (_lock)
             {
-                if (row == null)
+                foreach (var row in rows)
                 {
-                    throw new InvalidOperationException("Cannot delete null row");
+                    if (row == null)
+                    {
+                        throw new InvalidOperationException("Cannot delete null row");
+                    }
+                    _changes.Add(new RowOperation(row, true));
                 }
-                _changes.Add(new RowOperation(row, true));
             }
         }
 
-        public int CurrentOffset => _changes.Count;
+        public int CurrentOffset
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _changes.Count;
+                }
+            }
+        }
 
         public static SubstraitBaseType GetSubstraitType(Type type)
         {
@@ -293,7 +310,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             lock (_lock)
             {
-                return (_changes.GetRange(fromOffset, _changes.Count - fromOffset), _changes.Count);
+                // Count is read once, two reads could return fewer changes than the offset
+                // reports when a write lands in between, permanently skipping the gap.
+                var count = _changes.Count;
+                return (_changes.GetRange(fromOffset, count - fromOffset), count);
             }
         }
     }

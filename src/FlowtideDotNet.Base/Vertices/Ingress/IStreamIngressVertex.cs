@@ -32,12 +32,43 @@ namespace FlowtideDotNet.Base.Vertices
         internal void DoLockingEvent(ILockingEvent lockingEvent);
 
         /// <summary>
-        /// Invoked when a checkpoint has successfully completed.
+        /// Invoked when a checkpoint has successfully completed and its state is durable.
         /// </summary>
-        /// <param name="checkpointVersion">The completed checkpoint version.</param>
+        /// <param name="checkpointVersion">
+        /// The state manager version of the completed checkpoint, the same domain as the
+        /// restore version the vertex receives at initialization. Earlier releases passed
+        /// the checkpoints timestamp here, persisted values from those releases must not be
+        /// compared against these versions.
+        /// </param>
         /// <returns>A task representing the completion callback operation.</returns>
         Task CheckpointDone(long checkpointVersion);
 
         internal void SetDependenciesDoneFunction(Action<string> dependenciesDone);
+
+        /// <summary>
+        /// True when the vertex has everything it needs for the stream to finish stopping.
+        /// Ingress vertices that read from other substreams return false until they have
+        /// consumed the other substreams stop barrier, the stopping stream then runs
+        /// additional stop checkpoint cycles until all vertices are ready.
+        /// </summary>
+        bool ReadyToStop => true;
+
+        /// <summary>
+        /// First phase of a planned handoff stop (e.g. before a grain migration): stop taking
+        /// in new external input while the stream still runs, so input already taken can drain
+        /// and be covered by the following stop checkpoint. Default no-op.
+        /// </summary>
+        void BeginHandoffDrain()
+        {
+        }
+
+        /// <summary>
+        /// Second phase of a planned handoff stop: completes once input taken before
+        /// <see cref="BeginHandoffDrain"/> has drained into the pipeline. Default no-op.
+        /// </summary>
+        Task CompleteHandoffDrainAsync()
+        {
+            return Task.CompletedTask;
+        }
     }
 }

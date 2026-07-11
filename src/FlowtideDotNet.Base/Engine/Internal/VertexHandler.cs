@@ -20,14 +20,14 @@ namespace FlowtideDotNet.Base.Engine.Internal
     internal class VertexHandler : IVertexHandler
     {
         private readonly string operatorName;
-        private readonly Action<TimeSpan> checkpointFunc;
+        private readonly Action<TimeSpan, long?> checkpointFunc;
         private readonly Func<string, string, TimeSpan?, Task> registerTrigger;
         private readonly Func<Exception?, long?, Task> failRollbackFunc;
 
         public VertexHandler(
             string streamName,
             string operatorName,
-            Action<TimeSpan> checkpointFunc,
+            Action<TimeSpan, long?> checkpointFunc,
             Func<string, string, TimeSpan?, Task> registerTrigger,
             IMeter metrics,
             IStateManagerClient stateClient,
@@ -68,9 +68,9 @@ namespace FlowtideDotNet.Base.Engine.Internal
             return registerTrigger(operatorName, name, scheduledInterval);
         }
 
-        public void ScheduleCheckpoint(TimeSpan time)
+        public void ScheduleCheckpoint(TimeSpan time, long? checkpointVersion)
         {
-            checkpointFunc(time);
+            checkpointFunc(time, checkpointVersion);
         }
     }
 }

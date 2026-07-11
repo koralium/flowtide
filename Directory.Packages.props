@@ -53,6 +53,13 @@
     <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="9.3.2" />
     <PackageVersion Include="PromQL.Parser" Version="3.2.0" />
     <PackageVersion Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+	<!-- Orleans -->
+	<PackageVersion Include="Microsoft.Orleans.Core" Version="8.1.0" />
+	<PackageVersion Include="Microsoft.Orleans.Reminders" Version="8.1.0" />
+	<PackageVersion Include="Microsoft.Orleans.Runtime" Version="8.1.0" />
+	<PackageVersion Include="Microsoft.Orleans.Sdk" Version="8.1.0" />
+	<PackageVersion Include="Microsoft.Orleans.Server" Version="8.1.0" />
+	<PackageVersion Include="Microsoft.Orleans.TestingHost" Version="8.1.0" />
     <!-- Deprecated only for .net 8 -->
     <PackageVersion Include="System.Linq.Async" Version="6.0.1" />
     <!-- Test packages -->

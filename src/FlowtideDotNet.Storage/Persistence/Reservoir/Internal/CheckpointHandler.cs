@@ -239,6 +239,15 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _checkpointRegistryFile.Clear();
             _checkpointRegistryFile.AddCheckpointVersions(checkpointVersions);
 
+            var lastVersion = checkpointVersions[checkpointVersions.Count - 1];
+
+            // Files above the recovered version can exist here as well: when the newest
+            // checkpoint file is torn, for example from a crash mid upload, the registry
+            // recovery skips it and falls back to an older one. The torn file must be
+            // deleted, new checkpoints reuse its version number with different content and
+            // it would otherwise be picked up as the newest registry on a later restart.
+            await DeleteFilesAboveVersion(lastVersion.Version, cancellationToken);
+
             // Clear all in-memory state before replaying checkpoints
             _pageFileLocations.Clear();
             _fileInformations.Clear();
@@ -247,7 +256,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             lock (_modifiedFileIdsLock) { _modifiedFileIds.Clear(); _deletedFileIds.Clear(); }
 
             await ReadCheckpointFiles(checkpointVersions);
-            var lastVersion = checkpointVersions[checkpointVersions.Count - 1];
 
             _currentCheckpointVersion = lastVersion.Version;
             _checkpointVersion = lastVersion.Version + 1;
@@ -286,6 +294,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 throw new InvalidOperationException($"Checkpoint file with version {version} not found for recovery.");
             }
 
+            await DeleteFilesAboveVersion(version, cancellationToken);
+
             // Clear all in-memory state before replaying checkpoints
             _pageFileLocations.Clear();
             _fileInformations.Clear();
@@ -297,6 +307,44 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _currentCheckpointVersion = version;
             _checkpointVersion = version + 1;
             Volatile.Write(ref _modifiedSinceLastCheckpoint, false);
+        }
+
+        /// <summary>
+        /// Deletes checkpoint files and bundled checkpoint data files above the given version.
+        /// Checkpoints written after a recovery reuse those version numbers with different
+        /// content. A file left behind from the abandoned timeline would be picked up as the
+        /// newest registry on a later restart and reference overwritten files whose checksums
+        /// no longer match, which permanently prevents the stream from restoring.
+        /// </summary>
+        private async Task DeleteFilesAboveVersion(long version, CancellationToken cancellationToken)
+        {
+            if (!_fileProvider.SupportsFileListing)
+            {
+                // Without file listing the registry is stored in a dedicated file that is
+                // rewritten on the next checkpoint, stale checkpoint files are never read.
+                return;
+            }
+
+            var storedCheckpointIds = await _fileProvider.ListCheckpointFilesAsync(cancellationToken);
+            foreach (var storedCheckpointId in storedCheckpointIds)
+            {
+                if (storedCheckpointId.Version > (ulong)version)
+                {
+                    _logger.LogInformation("Deleting stale checkpoint file with version {Version} above recovered version {RecoveredVersion}", storedCheckpointId.Version, version);
+                    await _fileProvider.DeleteCheckpointFileAsync(storedCheckpointId, cancellationToken);
+                }
+            }
+
+            var bundleFileIdAtVersion = (1UL << 63) | (ulong)version;
+            var staleBundleFileIds = await _fileProvider.ListDataFilesAboveVersionAsync(bundleFileIdAtVersion, cancellationToken);
+            foreach (var staleBundleFileId in staleBundleFileIds)
+            {
+                if (staleBundleFileId > bundleFileIdAtVersion)
+                {
+                    _logger.LogInformation("Deleting stale bundled checkpoint data file {FileId} above recovered version {RecoveredVersion}", staleBundleFileId, version);
+                    await _fileProvider.DeleteDataFileAsync(staleBundleFileId, cancellationToken);
+                }
+            }
         }
 
         private async Task ReadCheckpointFiles(List<CheckpointVersion> checkpointFiles)

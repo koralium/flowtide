@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal class ScatterExecutor : IExchangeKindExecutor
     {
-        private readonly Func<EventBatchData, int, uint> _hashFunction;
+        private readonly Func<EventBatchData, int, uint>? _hashFunction;
         private readonly int _partitionCount;
         private readonly int[][] _partitionsToTargets;
         private readonly IExchangeTarget[] _targets;
@@ -41,8 +41,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// List that contains all standard outputs to make it simple to iterate when giving out the results.
         /// </summary>
         private readonly List<StandardOutputTarget> standardOutputTargetList;
+        private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
 
-        public ScatterExecutor(ExchangeRelation exchangeRelation, FunctionsRegister functionsRegister)
+        public ScatterExecutor(
+            ExchangeRelation exchangeRelation,
+            SubstreamCommunicationPointFactory communicationPointFactory,
+            FunctionsRegister functionsRegister,
+            Action<int> targetCallDependenciesDone)
         {
             if (!(exchangeRelation.ExchangeKind is ScatterExchangeKind scatterExchangeKind))
             {
@@ -82,6 +87,25 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             throw new NotSupportedException("Pull bucket type must implement PullBucketExchangeTarget");
                         }
                         break;
+                    case ExchangeTargetType.Substream:
+                        if (exchangeRelation.Targets[i] is SubstreamExchangeTarget substreamExchangeTarget)
+                        {
+                            // The acknowledgement callback carries the target id so the operator
+                            // can attribute each checkpoint done to its peer; an acknowledgement
+                            // from one peer must not complete another peer's dependency.
+                            var exchangeTargetId = substreamExchangeTarget.ExchangeTargetId;
+                            var pullTarget = new SubstreamTarget(
+                                exchangeTargetId,
+                                exchangeRelation.OutputLength,
+                                communicationPointFactory.GetCommunicationPoint(substreamExchangeTarget.SubstreamName),
+                                () => targetCallDependenciesDone(exchangeTargetId));
+                            _targets[i] = pullTarget;
+                        }
+                        else
+                        {
+                            throw new NotSupportedException("Substream type must implement SubstreamExchangeTarget");
+                        }
+                        break;
                     default:
                         throw new NotSupportedException($"{exchangeRelation.Targets[i].Type} is not yet supported");
                 }
@@ -90,8 +114,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             // Generate a lookup from partition id to a list of target ids
             _partitionsToTargets = CreatePartitionToTargets(exchangeRelation);
 
-            // Create the hash function based on the fields
-            _hashFunction = ColumnHashCompiler.CompileGetHashCode(new List<Substrait.Expressions.Expression>(scatterExchangeKind.Fields), functionsRegister);
+            // Create the hash function based on the fields. With a single partition every
+            // row lands in partition zero, no hash is compiled or evaluated: a gather
+            // exchange carries no hash fields (a global aggregate can prune every column
+            // from the input, a compiled field reference would then read a missing column).
+            if (_partitionCount > 1)
+            {
+                _hashFunction = ColumnHashCompiler.CompileGetHashCode(new List<Substrait.Expressions.Expression>(scatterExchangeKind.Fields), functionsRegister);
+            }
+            this._communicationPointFactory = communicationPointFactory;
         }
 
         private int[][] CreatePartitionToTargets(ExchangeRelation exchangeRelation)
@@ -129,14 +160,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         public async Task Initialize(
+            long restoreVersion,
             ExchangeRelation exchangeRelation, 
             IStateManagerClient stateManagerClient, 
             ExchangeOperatorState exchangeOperatorState,
-            IMemoryAllocator memoryAllocator)
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc)
         {
             for (int i = 0; i < _targets.Length; i++)
             {
-                await _targets[i].Initialize(i, stateManagerClient, exchangeOperatorState, memoryAllocator);
+                await _targets[i].Initialize(restoreVersion, i, stateManagerClient, exchangeOperatorState, memoryAllocator, failAndRecoverFunc);
             }
         }
 
@@ -164,21 +197,33 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
+        public async Task OnInitialDataDone()
+        {
+            for (int i = 0; i < _targets.Length; i++)
+            {
+                await _targets[i].OnInitialDataDone();
+            }
+        }
+
         public async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
         {
-            Debug.Assert(_hashFunction != null);
+            Debug.Assert(_hashFunction != null || _partitionCount == 1);
             foreach(var target in _targets)
             {
                 target.NewBatch(data.Data);
             }
             for (int i = 0; i < data.Data.Count; i++)
             {
-                var hash = _hashFunction(data.Data.EventBatchData, i);
-                int partitionId = (int)(hash % _partitionCount);
+                int partitionId = 0;
+                if (_hashFunction != null)
+                {
+                    var hash = _hashFunction(data.Data.EventBatchData, i);
+                    partitionId = (int)(hash % _partitionCount);
+                }
 
                 foreach (var target in _partitionsToTargets[partitionId])
                 {
-                    await _targets[target].AddEvent(data.Data, i);
+                    _targets[target].AddEvent(data.Data, i);
                 }
             }
             foreach(var target in _targets)
@@ -216,6 +261,41 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             else
             {
                 throw new InvalidOperationException($"{exchangeTargetId} does not exist");
+            }
+        }
+
+        public Task OnFailure(long recoveryPoint)
+        {
+            List<Task> tasks = new List<Task>();
+            foreach (var target in _targets)
+            {
+                tasks.Add(target.OnFailure(recoveryPoint));
+            }
+            return Task.WhenAll(tasks);
+        }
+
+        public Task CheckpointDone(long checkpointVersion)
+        {
+            List<Task> tasks = new List<Task>();
+            foreach (var target in _targets)
+            {
+                tasks.Add(target.CheckpointDone(checkpointVersion));
+            }
+            return Task.WhenAll(tasks);
+        }
+
+        public bool ReadyToStop
+        {
+            get
+            {
+                foreach (var target in _targets)
+                {
+                    if (!target.ReadyToStop)
+                    {
+                        return false;
+                    }
+                }
+                return true;
             }
         }
     }

@@ -26,7 +26,13 @@ namespace FlowtideDotNet.AspNetCore.Extensions
 {
     public static class UIApplicationBuilderExtensions
     {
-        private static void StartMetrics(this IApplicationBuilder app, string path)
+        /// <summary>
+        /// Start only the metrics part of Flowtide.
+        /// This should not be called if UseFlowtideUI is called.
+        /// </summary>
+        /// <param name="app"></param>
+        /// <param name="path"></param>
+        public static void StartFlowtideMetrics(this IApplicationBuilder app, string path)
         {
             var options = new MetricOptions()
             {
@@ -45,7 +51,7 @@ namespace FlowtideDotNet.AspNetCore.Extensions
 
         public static IApplicationBuilder UseFlowtideUI(this IApplicationBuilder app, string path = "/ui/stream")
         {
-            app.StartMetrics(path);
+            app.StartFlowtideMetrics(path);
             var stream = app.ApplicationServices.GetRequiredService<FlowtideDotNet.Base.Engine.DataflowStream>();
             return app.UseFlowtideUI(stream, path);
         }

@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Vertices;
 
 namespace FlowtideDotNet.Base.Engine
 {
@@ -59,6 +60,52 @@ namespace FlowtideDotNet.Base.Engine
         internal DataflowStream(StreamContext streamContext)
         {
             this.streamContext = streamContext;
+        }
+
+        /// <summary>
+        /// Test seam: injects a failure as if a block had faulted, so tests can drive the
+        /// state machine's failure paths at a precise moment, for example while a state
+        /// manager write is held in flight by another test hook.
+        /// </summary>
+        internal Task InjectFailureForTests(Exception exception)
+        {
+            return streamContext.OnFailure(exception);
+        }
+
+        /// <summary>
+        /// Test seam: delivers an egress checkpoint done into the current state as if an egress
+        /// vertex fired it, so tests can reproduce a spurious or stale acknowledgement arriving
+        /// at a precise moment, such as a late parallel egress checkpoint landing during startup.
+        /// </summary>
+        internal void InjectEgressCheckpointDoneForTests(string operatorName, ILockingEvent? lockingEvent)
+        {
+            streamContext.EgressCheckpointDone(operatorName, lockingEvent);
+        }
+
+        /// <summary>
+        /// Prepares the stream for a planned handoff stop (e.g. a grain migration): ingress
+        /// vertices stop taking in new input and drain what they have, so a following
+        /// <see cref="StopAsync"/> covers everything consumed and the stream can resume
+        /// elsewhere from that checkpoint without any peer rolling back.
+        /// </summary>
+        internal async Task PrepareHandoffAsync()
+        {
+            await streamContext.ForEachIngressBlockAsync((key, block) =>
+            {
+                if (block is IStreamIngressVertex ingress)
+                {
+                    ingress.BeginHandoffDrain();
+                }
+                return Task.CompletedTask;
+            });
+            await streamContext.ForEachIngressBlockAsync((key, block) =>
+            {
+                if (block is IStreamIngressVertex ingress)
+                {
+                    return ingress.CompleteHandoffDrainAsync();
+                }
+                return Task.CompletedTask;
+            });
         }
 
         /// <summary>
@@ -190,7 +237,7 @@ namespace FlowtideDotNet.Base.Engine
         /// <param name="timeSpan">The delay after which the checkpoint should be triggered.</param>
         public void TryScheduleCheckpoint(TimeSpan timeSpan)
         {
-            streamContext.TryScheduleCheckpointIn(timeSpan);
+            streamContext.TryScheduleCheckpointIn(timeSpan, default);
         }
 
         /// <summary>
@@ -256,6 +303,8 @@ namespace FlowtideDotNet.Base.Engine
         /// <returns>A task that completes when the stream has fully stopped.</returns>
         public Task StopAsync()
         {
+            // Stopping supersedes a pause, the paused data flows during the stop and
+            // becomes part of the final state, see StreamContext.StopAsync.
             return streamContext.StopAsync();
         }
 

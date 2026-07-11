@@ -43,8 +43,8 @@ namespace FlowtideDotNet.Base.Vertices
     /// </remarks>
     public abstract class EgressVertex<T> : ITargetBlock<IStreamEvent>, IStreamEgressVertex 
     {
-        private Action<string>? _checkpointDone;
-        private Action<string>? _dependenciesDone;
+        private Action<string, ILockingEvent?>? _checkpointDone;
+        private Action<string, ILockingEvent?>? _dependenciesDone;
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
         private IEgressImplementation? _targetBlock;
         private bool _isHealthy = true;
@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Base.Vertices
         private IMeter? _metrics;
         private ILogger? _logger;
 
-        private TaskCompletionSource? _pauseSource;
+        private readonly PauseGate _pauseGate = new PauseGate();
 
         private StreamVersionInformation? _streamVersion;
 
@@ -179,18 +179,18 @@ namespace FlowtideDotNet.Base.Vertices
             return Task.CompletedTask;
         }
 
-        private void HandleCheckpointDone()
+        private void HandleCheckpointDone(ILockingEvent lockingEvent)
         {
             if (_checkpointDone != null && Name != null)
             {
                 Logger.CallingCheckpointDone(StreamName, Name);
-                _checkpointDone(Name);
+                _checkpointDone(Name, lockingEvent);
             }
             else
             {
                 Logger.CheckpointDoneFunctionNotSet(StreamName, Name ?? "");
             }
-            DependenciesDone();
+            DependenciesDone(lockingEvent);
         }
 
         private Task HandleLockingEvent(ILockingEvent lockingEvent)
@@ -219,11 +219,11 @@ namespace FlowtideDotNet.Base.Vertices
             return Task.CompletedTask;
         }
 
-        private void DependenciesDone()
+        private void DependenciesDone(ILockingEvent? lockingEvent)
         {
             if (_dependenciesDone != null && Name != null)
             {
-                _dependenciesDone(Name);
+                _dependenciesDone(Name, lockingEvent);
             }
             else
             {
@@ -280,7 +280,12 @@ namespace FlowtideDotNet.Base.Vertices
         public void Fault(Exception exception)
         {
             _cancellationTokenSource?.Cancel();
-            Debug.Assert(_targetBlock != null, "CreateBlocks must be called before faulting");
+            if (_targetBlock == null)
+            {
+                // The block is created first at start, a failure before that (for example
+                // storage initialization) has nothing to fault.
+                return;
+            }
             _targetBlock.Fault(exception);
         }
 
@@ -372,7 +377,7 @@ namespace FlowtideDotNet.Base.Vertices
             return _targetBlock.OfferMessage(messageHeader, messageValue, source, consumeToAccept);
         }
 
-        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string> checkpointDone, Action<string> dependenciesDone)
+        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string, ILockingEvent?> checkpointDone, Action<string, ILockingEvent?> dependenciesDone)
         {
             _checkpointDone = checkpointDone;
             _dependenciesDone = dependenciesDone;
@@ -463,9 +468,10 @@ namespace FlowtideDotNet.Base.Vertices
         /// </returns>
         protected ValueTask CheckForPause()
         {
-            if (_pauseSource != null)
+            var pauseTask = _pauseGate.PauseTask;
+            if (pauseTask != null)
             {
-                return new ValueTask(_pauseSource.Task);
+                return new ValueTask(pauseTask);
             }
             return ValueTask.CompletedTask;
         }
@@ -475,10 +481,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Pause()
         {
-            if (_pauseSource == null)
-            {
-                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            }
+            _pauseGate.Pause();
         }
 
         /// <summary>
@@ -486,11 +489,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Resume()
         {
-            if (_pauseSource != null)
-            {
-                _pauseSource.SetResult();
-                _pauseSource = null;
-            }
+            _pauseGate.Resume();
         }
 
         /// <summary>
@@ -526,6 +525,12 @@ namespace FlowtideDotNet.Base.Vertices
         /// <param name="rollbackVersion">The version to roll back to.</param>
         /// <returns>A task representing the rollback operation.</returns>
         public Task OnFailure(long rollbackVersion)
+        {
+            return Task.CompletedTask;
+        }
+
+        /// <inheritdoc cref="IStreamEgressVertex.CheckpointDone"/>
+        public virtual Task CheckpointDone(long checkpointVersion)
         {
             return Task.CompletedTask;
         }

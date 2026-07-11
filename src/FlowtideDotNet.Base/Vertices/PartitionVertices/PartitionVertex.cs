@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Base.Vertices
         private bool _isHealthy = true;
         private IVertexHandler? _vertexHandler;
         private IMemoryAllocator? _memoryAllocator;
-        private TaskCompletionSource? _pauseSource;
+        private readonly PauseGate _pauseGate = new PauseGate();
         private StreamVersionInformation? _streamVersion;
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace FlowtideDotNet.Base.Vertices
                 {
                     var enumerator = PartitionData(message.Data, message.Time);
 
-                    if (_pauseSource != null)
+                    if (_pauseGate.IsPaused)
                     {
                         enumerator = WaitForPause(enumerator);
                     }
@@ -178,7 +178,7 @@ namespace FlowtideDotNet.Base.Vertices
                 }
                 if (x is InitialDataDoneEvent initialDataDoneEvent)
                 {
-                    return Broadcast(initialDataDoneEvent);
+                    return HandleInitialDataDone(initialDataDoneEvent);
                 }
                 throw new NotSupportedException();
             }, _executionDataflowBlockOptions);
@@ -239,7 +239,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> WaitForPause(IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> input)
         {
-            var task = _pauseSource?.Task;
+            var task = _pauseGate.PauseTask;
             if (task != null)
             {
                 await task;
@@ -258,6 +258,26 @@ namespace FlowtideDotNet.Base.Vertices
             {
                 yield return new KeyValuePair<int, IStreamEvent>(i, watermark);
             }
+        }
+
+        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> HandleInitialDataDone(InitialDataDoneEvent initialDataDoneEvent)
+        {
+            await OnInitialDataDone();
+            for (int i = 0; i < targetNumber; i++)
+            {
+                yield return new KeyValuePair<int, IStreamEvent>(i, initialDataDoneEvent);
+            }
+        }
+
+        /// <summary>
+        /// Called when the initial data done event passes through, before it is broadcast to
+        /// the local outputs. Lets the exchange forward the marker to the other substreams in
+        /// stream order, so their downstream watermark alignment releases only after all of
+        /// this substream's initial data has been received.
+        /// </summary>
+        protected virtual Task OnInitialDataDone()
+        {
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -290,7 +310,12 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Fault(Exception exception)
         {
-            Debug.Assert(_inputTargetBlock != null);
+            if (_inputTargetBlock == null)
+            {
+                // The block is created first at start, a failure before that (for example
+                // storage initialization) has nothing to fault.
+                return;
+            }
             _inputTargetBlock.Fault(exception);
         }
 
@@ -384,10 +409,10 @@ namespace FlowtideDotNet.Base.Vertices
                 return measurements;
             });
 
-            return InitializeOrRestore(vertexHandler.StateClient);
+            return InitializeOrRestore(restoreTime, vertexHandler.StateClient);
         }
 
-        protected abstract Task InitializeOrRestore(IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore(long restoreVersion, IStateManagerClient stateManagerClient);
 
         /// <summary>
         /// Links internal mapping routines dynamically to downstream destinations configured on sources representation.
@@ -419,13 +444,13 @@ namespace FlowtideDotNet.Base.Vertices
             throw new NotSupportedException("Triggers are not supported in partition vertices");
         }
 
-        protected void ScheduleCheckpoint(TimeSpan inTime)
+        protected void ScheduleCheckpoint(TimeSpan inTime, long? checkpointVersion = default)
         {
             if (_vertexHandler == null)
             {
                 throw new NotSupportedException("Cannot schedule checkpoint before initialize");
             }
-            _vertexHandler.ScheduleCheckpoint(inTime);
+            _vertexHandler.ScheduleCheckpoint(inTime, checkpointVersion);
         }
 
         /// <summary>
@@ -446,10 +471,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Pause()
         {
-            if (_pauseSource == null)
-            {
-                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            }
+            _pauseGate.Pause();
         }
 
         /// <summary>
@@ -457,11 +479,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Resume()
         {
-            if (_pauseSource != null)
-            {
-                _pauseSource.SetResult();
-                _pauseSource = null;
-            }
+            _pauseGate.Resume();
         }
 
         /// <summary>

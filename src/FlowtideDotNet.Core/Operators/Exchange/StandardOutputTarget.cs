@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return Task.CompletedTask;
         }
 
-        public ValueTask AddEvent(EventBatchWeighted weightedBatch, int index)
+        public void AddEvent(EventBatchWeighted weightedBatch, int index)
         {
             Debug.Assert(_offsets != null);
             Debug.Assert(_weights != null);
@@ -50,8 +50,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _weights.Add(weightedBatch.Weights[index]);
             _iterations.Add(weightedBatch.Iterations[index]);
             _offsets.Add(index);
-
-            return ValueTask.CompletedTask;
         }
 
         public ValueTask BatchComplete(long time)
@@ -100,7 +98,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _iterations = new PrimitiveList<uint>(_memoryAllocator);
         }
 
-        public Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state, IMemoryAllocator memoryAllocator)
+        public Task Initialize(
+            long restoreVersion,
+            int targetId, 
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState state, 
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc)
         {
             _memoryAllocator = memoryAllocator;
             //_offsets = new PrimitiveList<int>(memoryAllocator);
@@ -126,9 +130,25 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return Task.CompletedTask;
         }
 
+        public Task OnInitialDataDone()
+        {
+            // The initial data done event for standard output is broadcast automatically
+            return Task.CompletedTask;
+        }
+
         public void NewBatch(EventBatchWeighted weightedBatch)
         {
             _currentBatch = weightedBatch;
+        }
+
+        public Task OnFailure(long recoveryPoint)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task CheckpointDone(long checkpointVersion)
+        {
+            return Task.CompletedTask;
         }
     }
 }

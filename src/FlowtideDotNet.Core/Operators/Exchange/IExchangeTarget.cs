@@ -25,9 +25,22 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     internal interface IExchangeTarget
     {
         void NewBatch(EventBatchWeighted weightedBatch);
-        ValueTask AddEvent(EventBatchWeighted weightedBatch, int index);
 
-        Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state, IMemoryAllocator memoryAllocator);
+        /// <summary>
+        /// Adds one row of the current batch to this target. Called per row on the hottest
+        /// path in the exchange, implementations must only append primitives (row index,
+        /// weight, iteration); any column work belongs in <see cref="BatchComplete"/> as
+        /// batch level operations.
+        /// </summary>
+        void AddEvent(EventBatchWeighted weightedBatch, int index);
+
+        Task Initialize(
+            long restoreVersion,
+            int targetId, 
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState state, 
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc);
 
         /// <summary>
         /// Called when a event batch has been partitioned.
@@ -41,6 +54,24 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         Task OnWatermark(Watermark watermark);
 
+        /// <summary>
+        /// Forwards the initial data done marker in stream order after the initial data, so
+        /// the receiving substream releases its watermark alignment only once everything
+        /// before the marker has been received.
+        /// </summary>
+        Task OnInitialDataDone();
+
         Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState);
+
+        Task OnFailure(long recoveryPoint);
+
+        Task CheckpointDone(long checkpointVersion);
+
+        /// <summary>
+        /// True when the target has everything it needs for the stream to finish stopping.
+        /// Substream targets are ready first when the other substream has fetched the stop
+        /// barrier, so the events before it are not disposed before they have been received.
+        /// </summary>
+        bool ReadyToStop => true;
     }
 }

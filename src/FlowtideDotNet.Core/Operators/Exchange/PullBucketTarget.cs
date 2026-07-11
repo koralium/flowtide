@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             exchangeOperatorState.TargetsEventCounter[_targetId] = _eventCounter;
         }
 
-        public ValueTask AddEvent(EventBatchWeighted weightedBatch, int index)
+        public void AddEvent(EventBatchWeighted weightedBatch, int index)
         {
             Debug.Assert(_columns != null);
             Debug.Assert(_weights != null);
@@ -65,7 +65,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 weightedBatch.EventBatchData.Columns[i].GetValueAt(index, _dataValueContainer, default);
                 _columns[i].Add(_dataValueContainer);
             }
-            return ValueTask.CompletedTask;
         }
 
         public async ValueTask BatchComplete(long time)
@@ -104,7 +103,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _iterations = new PrimitiveList<uint>(_memoryAllocator);
         }
 
-        public async Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state, IMemoryAllocator memoryAllocator)
+        public async Task Initialize(
+            long restoreVersion,
+            int targetId,
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState state, 
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc)
         {
             _memoryAllocator = memoryAllocator;
             _targetId = targetId;
@@ -165,6 +170,20 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
+        public async Task OnInitialDataDone()
+        {
+            Debug.Assert(_events != null);
+            await _lockSemaphore.WaitAsync();
+            try
+            {
+                await _events.Upsert(_eventCounter++, new InitialDataDoneEvent());
+            }
+            finally
+            {
+                _lockSemaphore.Release();
+            }
+        }
+
         public async Task FetchData(ExchangeFetchDataMessage message)
         {
             Debug.Assert(_events != null);
@@ -200,6 +219,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public void NewBatch(EventBatchWeighted weightedBatch)
         {
+        }
+
+        public Task OnFailure(long recoveryPoint)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task CheckpointDone(long checkpointVersion)
+        {
+            return Task.CompletedTask;
         }
     }
 }

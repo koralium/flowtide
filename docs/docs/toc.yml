@@ -4,6 +4,17 @@
   href: statepersistence.md
 - name: Parallelism
   href: parallelism.md
+- name: Distributed Mode
+  href: distributed/index.md
+  items:
+    - name: Automatic Distribution
+      href: distributed/automaticdistribution.md
+    - name: SQL Substream Statements
+      href: distributed/sqlsubstreams.md
+    - name: In-Process Hosting
+      href: distributed/inprocess.md
+    - name: Orleans Hosting
+      href: distributed/orleans.md
 - name: Connectors
   items:
     - name: Catalogs

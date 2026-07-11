@@ -243,6 +243,19 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
+        /// Sets how long a stopping stream waits for vertices that exchange data with other
+        /// substreams to drain before it finishes stopping anyway. Protects the stop from
+        /// waiting forever when another substream has crashed or never started.
+        /// </summary>
+        /// <param name="timeSpan">The maximum time to wait for the drain.</param>
+        /// <returns>This builder instance for method chaining.</returns>
+        public DataflowStreamBuilder SetStopDrainTimeout(TimeSpan timeSpan)
+        {
+            _dataflowStreamOptions.StopDrainTimeout = timeSpan;
+            return this;
+        }
+
+        /// <summary>
         /// Subscribes an <see cref="ICheckpointListener"/> to receive a notification each time
         /// the stream completes a checkpoint boundary.
         /// </summary>
