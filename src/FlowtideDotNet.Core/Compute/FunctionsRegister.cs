@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -35,6 +36,7 @@ namespace FlowtideDotNet.Core.Compute
         private readonly Dictionary<string, WindowFunctionDefinition> _windowFunctions;
         private readonly FunctionServices _functionServices;
         private readonly Dictionary<string, IBulkAggregationDefinition> _bulkAggregationFunctions;
+        private readonly Dictionary<string, BulkWindowFunctionDefinition> _bulkWindowFunctions;
 
         public IFunctionServices FunctionServices => _functionServices;
 
@@ -52,6 +54,7 @@ namespace FlowtideDotNet.Core.Compute
             _functionServices = new FunctionServices();
 
             _bulkAggregationFunctions = new Dictionary<string, IBulkAggregationDefinition>(StringComparer.OrdinalIgnoreCase);
+            _bulkWindowFunctions = new Dictionary<string, BulkWindowFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 
         public bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition)
@@ -256,6 +259,26 @@ namespace FlowtideDotNet.Core.Compute
         public bool TryGetBulkAggregationFunction(string uri, string name, [NotNullWhen(true)] out IBulkAggregationDefinition? bulkAggregationDefinition)
         {
             return _bulkAggregationFunctions.TryGetValue($"{uri}:{name}", out bulkAggregationDefinition);
+        }
+
+        public void RegisterBulkWindowFunction(string uri, string name, BulkWindowFunctionDefinition bulkWindowFunctionDefinition)
+        {
+            _bulkWindowFunctions.Add($"{uri}:{name}", bulkWindowFunctionDefinition);
+        }
+
+        /// <summary>
+        /// Tries to create a bulk window function for the given window function expression. Returns false
+        /// when no bulk implementation is registered or the concrete configuration, such as the frame
+        /// bounds, is not supported in bulk mode.
+        /// </summary>
+        public bool TryCreateBulkWindowFunction(WindowFunction windowFunction, [NotNullWhen(true)] out IBulkWindowFunction? bulkWindowFunction)
+        {
+            if (_bulkWindowFunctions.TryGetValue($"{windowFunction.ExtensionUri}:{windowFunction.ExtensionName}", out var definition))
+            {
+                return definition.TryCreate(windowFunction, this, out bulkWindowFunction);
+            }
+            bulkWindowFunction = default;
+            return false;
         }
     }
 }

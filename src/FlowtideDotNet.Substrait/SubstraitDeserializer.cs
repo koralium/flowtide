@@ -459,8 +459,12 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
-            public WindowBound? GetWindowBound(Protobuf.Expression.Types.WindowFunction.Types.Bound bound)
+            public WindowBound? GetWindowBound(Protobuf.Expression.Types.WindowFunction.Types.Bound? bound)
             {
+                if (bound == null)
+                {
+                    return null;
+                }
                 switch (bound.KindCase)
                 {
                     case Protobuf.Expression.Types.WindowFunction.Types.Bound.KindOneofCase.CurrentRow:
@@ -504,6 +508,14 @@ namespace FlowtideDotNet.Substrait
                 foreach(var arg in windowRelFunction.Arguments)
                 {
                     result.Arguments.Add(VisitExpression(arg.Value));
+                }
+                if (windowRelFunction.Options.Count > 0)
+                {
+                    result.Options = new SortedList<string, string>();
+                    foreach (var option in windowRelFunction.Options)
+                    {
+                        result.Options[option.Name] = option.Preference.Count > 0 ? option.Preference[0] : string.Empty;
+                    }
                 }
                 return result;
             }

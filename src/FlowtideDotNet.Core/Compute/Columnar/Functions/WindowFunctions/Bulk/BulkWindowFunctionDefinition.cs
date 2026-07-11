@@ -1,0 +1,30 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Substrait.Expressions;
+using System.Diagnostics.CodeAnalysis;
+
+namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
+{
+    /// <summary>
+    /// Creates bulk window function instances. TryCreate may return false when the concrete window function
+    /// configuration is not supported in bulk mode, for example an unsupported frame bound, in which case
+    /// the window relation falls back to the non bulk window operator.
+    /// </summary>
+    internal abstract class BulkWindowFunctionDefinition
+    {
+        public abstract bool TryCreate(
+            WindowFunction windowFunction,
+            IFunctionsRegister functionsRegister,
+            [NotNullWhen(true)] out IBulkWindowFunction? bulkWindowFunction);
+    }
+}

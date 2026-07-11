@@ -922,7 +922,20 @@ namespace FlowtideDotNet.Substrait
 
                 output.FunctionReference = state.GetFunctionExtensionAnchor(windowFunction.ExtensionUri, windowFunction.ExtensionName);
                 output.Invocation = Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified;
-                
+
+                if (windowFunction.Options != null)
+                {
+                    foreach (var option in windowFunction.Options)
+                    {
+                        var functionOption = new Protobuf.FunctionOption()
+                        {
+                            Name = option.Key
+                        };
+                        functionOption.Preference.Add(option.Value);
+                        output.Options.Add(functionOption);
+                    }
+                }
+
                 if (windowFunction.LowerBound != null)
                 {
                     output.LowerBound = GetWindowBound(windowFunction.LowerBound);
