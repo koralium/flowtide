@@ -242,6 +242,7 @@ namespace FlowtideDotNet.AcceptanceTests
             {
                 Bogus.Faker.GlobalUniqueIndex = previousUniqueIndex;
             }
+        }
 
         [Fact]
         public async Task SelectWithMultiplyIntDecimal()
