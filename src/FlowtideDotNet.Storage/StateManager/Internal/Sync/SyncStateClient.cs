@@ -36,10 +36,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly int m_bplusTreePageSize;
         private readonly int m_bplusTreePageSizeBytes;
         private readonly IMemoryAllocator memoryAllocator;
-        private readonly Dictionary<long, int> m_modified;
+        private readonly Dictionary<long, long> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.IFileCache m_fileCache;
-        private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
+        private readonly ConcurrentDictionary<long, long> m_fileCacheVersion;
+
+        /// <summary>
+        /// Monotonic write-generation counter, guarded by m_lock and NEVER reset.
+        /// m_modified records the generation of each page's latest write and the eviction
+        /// dedup compares it against the generation stored in m_fileCacheVersion. An
+        /// eviction that straddles a commit can re-insert its version entry after the
+        /// commit cleared it; if generations restarted per commit interval, that stale
+        /// entry could equal a later write's generation, making the dedup skip serializing
+        /// modified content that is then dropped from memory (lost write). Monotonic
+        /// generations can never collide across intervals.
+        /// </summary>
+        private long m_writeSequence;
         private readonly Histogram<float>? m_persistenceReadMsHistogram;
         private readonly Histogram<float>? m_temporaryReadMsHistogram;
         private readonly Histogram<float>? m_temporaryWriteMsHistogram;
@@ -88,8 +100,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.m_bplusTreePageSizeBytes = bplusTreePageSizeBytes;
             this.memoryAllocator = memoryAllocator;
             m_fileCache = fileCacheFactory.Create(name, memoryAllocator);
-            m_modified = new Dictionary<long, int>();
-            m_fileCacheVersion = new ConcurrentDictionary<long, int>();
+            m_modified = new Dictionary<long, long>();
+            m_fileCacheVersion = new ConcurrentDictionary<long, long>();
             if (!string.IsNullOrEmpty(name))
             {
                 m_persistenceReadMsHistogram = meter.CreateHistogram<float>("flowtide_persistence_read_ms");
@@ -122,14 +134,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_lock)
             {
-                if (m_modified.TryGetValue(key, out var old))
-                {
-                    m_modified[key] = old + 1;
-                }
-                else
-                {
-                    m_modified[key] = 0;
-                }
+                m_modified[key] = ++m_writeSequence;
 
                 var modLookup = key % _lookupTable.Length;
                 var entry = _lookupTable[modLookup];
@@ -413,7 +418,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var entry = value.Item1;
                 var modLookup = entry.Key % _lookupTable.Length;
                 bool isModified;
-                int val;
+                long val;
                 lock (m_lock)
                 {
                     isModified = m_modified.TryGetValue(entry.Key, out val);
