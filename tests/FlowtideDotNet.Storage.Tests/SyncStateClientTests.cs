@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Storage.Tests
             };
             var manager = new StateManagerSync<StateManagerMetadata>(a, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmp"), "test", GlobalMemoryManager.Instance);
             await manager.InitializeAsync();
-            await manager.LruTable.StopCleanupTask();
+            await manager.CacheTable.StopCleanupTask();
 
             var client = manager.GetOrCreateClient("client");
             var tree = await client.GetOrCreateTree("tree",
@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Storage.Tests
             //Version 0
             await tree.Upsert(1, 1);
 
-            await manager.LruTable.ForceCleanup();
+            await manager.CacheTable.ForceCleanup();
 
             //Version 1
             await tree.Upsert(2, 2);
@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Storage.Tests
             await tree.Upsert(3, 3);
             //Version 1
             await tree.Upsert(4, 4);
-            await manager.LruTable.ForceCleanup();
+            await manager.CacheTable.ForceCleanup();
             var val = await tree.GetValue(2);
             Assert.True(val.found);
             Assert.Equal(2, val.value);

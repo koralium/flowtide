@@ -18,11 +18,10 @@ using FlowtideDotNet.Storage.Utils;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
-    internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler, IStateSerializerInitializeReader, IStateSerializerCheckpointWriter
+    internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ICacheEvictHandler, IStateSerializerInitializeReader, IStateSerializerCheckpointWriter
         where V : ICacheObject
         where TMetadata : class, IStorageMetadata
     {
@@ -129,12 +128,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var modLookup = key % _lookupTable.Length;
                 if (_lookupTable[modLookup].Key == key)
                 {
-                    var node = _lookupTable[modLookup].Value!;
-                    lock (node)
+                    var entry = _lookupTable[modLookup].Value!;
+                    lock (entry)
                     {
-                        node.ValueRef.version = node.ValueRef.version + 1;
+                        entry.Version = entry.Version + 1;
                         // If it is not removed, we can return directly, otherwise it needs to be readded
-                        if (!node.ValueRef.removed)
+                        if (!entry.Removed)
                         {
                             return false;
                         }
@@ -276,17 +275,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                 if (_lookupTable[modLookup].Key == key)
                 {
-                    var node = _lookupTable[modLookup].Value!;
-                    lock (node)
+                    var entry = _lookupTable[modLookup].Value!;
+                    lock (entry)
                     {
-                        if (!node.ValueRef.removed)
+                        if (!entry.Removed)
                         {
-                            if (!node.ValueRef.value.TryRent())
+                            if (!entry.Value.TryRent())
                             {
                                 throw new InvalidOperationException("Could not rent value from cache");
                             }
-                            node.ValueRef.useCount = Math.Min(node.ValueRef.useCount + 1, 5);
-                            return ValueTask.FromResult<V?>((V)_lookupTable[modLookup].Value!.ValueRef.value);
+                            entry.Frequency = Math.Min(entry.Frequency + 1, S3FifoCacheEntry.MaxFrequency);
+                            return ValueTask.FromResult<V?>((V)entry.Value);
                         }
                     }
                 }
@@ -294,7 +293,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (stateManager.TryGetCacheValueFromCache(key, out var cacheVal))
                 {
                     _lookupTable[modLookup] = new CacheValue { Key = key, Value = cacheVal };
-                    return ValueTask.FromResult<V?>((V)cacheVal.ValueRef.value);
+                    return ValueTask.FromResult<V?>((V)cacheVal.Value);
                 }
                 Interlocked.Increment(ref cacheMisses);
                 // Read from temporary file storage
@@ -405,18 +404,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        public void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict, bool isCleanup)
+        public void Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
         {
             Debug.Assert(options.ValueSerializer != null);
             foreach (var value in valuesToEvict)
             {
-                var modLookup = value.Item1.ValueRef.key % _lookupTable.Length;
+                var entry = value.Item1;
+                var modLookup = entry.Key % _lookupTable.Length;
                 bool isModified;
                 int val;
                 lock (m_lock)
                 {
-                    isModified = m_modified.TryGetValue(value.Item1.ValueRef.key, out val);
-                    if (_lookupTable[modLookup].Key == value.Item1.ValueRef.key)
+                    isModified = m_modified.TryGetValue(entry.Key, out val);
+                    if (_lookupTable[modLookup].Key == entry.Key)
                     {
                         _lookupTable[modLookup] = new CacheValue { Key = -1, Value = null };
                     }
@@ -445,34 +445,34 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                 }
 
-                if (m_fileCacheVersion.TryGetValue(value.Item1.ValueRef.key, out var storedVersion) && storedVersion == val)
+                if (m_fileCacheVersion.TryGetValue(entry.Key, out var storedVersion) && storedVersion == val)
                 {
                     continue;
                 }
-                value.Item1.ValueRef.value.EnterWriteLock();
+                entry.Value.EnterWriteLock();
                 var sw = ValueStopwatch.StartNew();
                 try
                 {
-                    // Must lock the linked list value here since it can be deleted and disposed
+                    // Must lock the cache entry here since it can be deleted and disposed
                     // So we check if it is already removed from the cache, then we skip serialization
-                    lock (value.Item1)
+                    lock (entry)
                     {
-                        if (!value.Item1.ValueRef.removed)
+                        if (!entry.Removed)
                         {
-                            m_fileCache.Write(value.Item1.ValueRef.key, new SerializableObject(value.Item1.ValueRef.value, options.ValueSerializer));
+                            m_fileCache.Write(entry.Key, new SerializableObject(entry.Value, options.ValueSerializer));
                         }
                     }
                 }
                 finally
                 {
-                    value.Item1.ValueRef.value.ExitWriteLock();
+                    entry.Value.ExitWriteLock();
                 }
                 if (m_temporaryWriteMsHistogram != null)
                 {
                     m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                 }
 
-                m_fileCacheVersion[value.Item1.ValueRef.key] = val;
+                m_fileCacheVersion[entry.Key] = val;
             }
             m_fileCache.Flush();
 
@@ -516,7 +516,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private struct CacheValue
         {
             public long Key;
-            public LinkedListNode<LinkedListValue>? Value;
+            public S3FifoCacheEntry? Value;
         }
     }
 }

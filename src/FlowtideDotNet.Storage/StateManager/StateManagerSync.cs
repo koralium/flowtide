@@ -22,7 +22,6 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
-using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
 
 namespace FlowtideDotNet.Storage.StateManager
 {
@@ -61,7 +60,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
     public abstract class StateManagerSync : IStateManager, IDisposable
     {
-        private LruTableSync? m_lruTable;
+        private S3FifoTableSync? m_cacheTable;
         //private readonly FasterKV<long, SpanByte> m_persistentStorage;
         private readonly IStateSerializer<StateManagerMetadata> m_metadataSerializer;
         private readonly StateManagerOptions options;
@@ -85,7 +84,7 @@ namespace FlowtideDotNet.Storage.StateManager
         /// <summary>
         /// Used for unit testing only
         /// </summary>
-        internal LruTableSync LruTable => m_lruTable ?? throw new InvalidOperationException("Manager must be initialized before getting LRU table");
+        internal S3FifoTableSync CacheTable => m_cacheTable ?? throw new InvalidOperationException("Manager must be initialized before getting cache table");
 
         public bool Initialized { get; private set; }
 
@@ -124,9 +123,9 @@ namespace FlowtideDotNet.Storage.StateManager
 
         private void Setup()
         {
-            if (m_lruTable == null)
+            if (m_cacheTable == null)
             {
-                m_lruTable = new LruTableSync(new LruTableOptions(streamName, logger, meter, new MemoryStatsWithGC(_streamMemoryManager))
+                m_cacheTable = new S3FifoTableSync(new CacheTableOptions(streamName, logger, meter, new MemoryStatsWithGC(_streamMemoryManager))
                 {
                     MaxSize = options.CachePageCount,
                     MaxMemoryUsageInBytes = options.MaxProcessMemory,
@@ -174,42 +173,42 @@ namespace FlowtideDotNet.Storage.StateManager
             return id;
         }
 
-        internal bool AddOrUpdate<V>(in long key, in V value, in ILruEvictHandler evictHandler)
+        internal bool AddOrUpdate<V>(in long key, in V value, in ICacheEvictHandler evictHandler)
             where V : ICacheObject
         {
-            Debug.Assert(m_lruTable != null);
-            return m_lruTable.Add(key, value, evictHandler);
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.Add(key, value, evictHandler);
         }
 
         internal Task WaitForNotFullAsync()
         {
-            Debug.Assert(m_lruTable != null);
-            return m_lruTable.Wait();
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.Wait();
         }
 
         internal void DeleteFromCache(in long key)
         {
-            Debug.Assert(m_lruTable != null);
-            m_lruTable.Delete(key);
+            Debug.Assert(m_cacheTable != null);
+            m_cacheTable.Delete(key);
         }
 
         internal void ClearCache()
         {
-            Debug.Assert(m_lruTable != null);
-            m_lruTable.Clear();
+            Debug.Assert(m_cacheTable != null);
+            m_cacheTable.Clear();
         }
 
-        internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out LinkedListNode<LinkedListValue>? value)
+        internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? value)
         {
-            Debug.Assert(m_lruTable != null);
-            return m_lruTable.TryGetCacheValue(key, out value);
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.TryGetCacheValue(key, out value);
         }
 
         internal bool TryGetValueFromCache<T>(in long key, [NotNullWhen(true)] out T? value)
             where T : ICacheObject
         {
-            Debug.Assert(m_lruTable != null);
-            if (m_lruTable.TryGetValue(key, out var obj))
+            Debug.Assert(m_cacheTable != null);
+            if (m_cacheTable.TryGetValue(key, out var obj))
             {
                 value = (T)obj!;
                 return true;
@@ -409,10 +408,10 @@ namespace FlowtideDotNet.Storage.StateManager
         {
             bool newMetadata = false;
             Setup();
-            Debug.Assert(m_lruTable != null);
+            Debug.Assert(m_cacheTable != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
-            m_lruTable.Clear();
+            m_cacheTable.Clear();
             await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
 
             // Check that metadata exist, also that the checkpoint version is larger than 0
@@ -470,9 +469,9 @@ namespace FlowtideDotNet.Storage.StateManager
                     }
                     _stateClients.Clear();
 
-                    if (m_lruTable != null)
+                    if (m_cacheTable != null)
                     {
-                        m_lruTable.Dispose();
+                        m_cacheTable.Dispose();
                     }
                 }
 

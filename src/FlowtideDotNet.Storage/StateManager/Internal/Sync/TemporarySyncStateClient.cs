@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
-    internal class TemporarySyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler
+    internal class TemporarySyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ICacheEvictHandler
         where V : ICacheObject
         where TMetadata : class, IStorageMetadata
     {
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return baseClient.WaitForNotFullAsync();
         }
 
-        public void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict, bool isCleanup)
+        public void Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
         {
             baseClient.Evict(valuesToEvict, isCleanup);
         }
