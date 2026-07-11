@@ -466,8 +466,10 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         /// <summary>
         /// Deterministic two-thread interleaving storm on the removed-check + rent handoff:
         /// one thread continuously evicts a single key through cleanup while another reads
-        /// it and re-adds it on miss. Runs a large number of iterations so the tight window
-        /// between the removed check and TryRent is crossed many times.
+        /// it and re-adds it on miss, crossing the tight window between the removed check
+        /// and TryRent many times. The reader loop is adaptive: it runs until enough
+        /// evict/re-add cycles have actually been observed (a fixed iteration count can
+        /// finish before the thread pool ever schedules the evictor).
         /// </summary>
         [Fact]
         public async Task SingleKeyEvictReadStorm()
@@ -477,7 +479,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var allObjects = new ConcurrentQueue<TestCacheObject>();
             var failures = new ConcurrentQueue<Exception>();
             const long key = 42;
-            const int iterations = 20_000;
+            const int targetEvictReAddCycles = 200;
             var stop = false;
 
             // maxSize 0 makes cleanupStart 0, so every cleanup evicts everything present.
@@ -491,7 +493,9 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             Func<Task> OwnerReader() => () =>
             {
-                for (var i = 0; i < iterations; i++)
+                var stopwatch = Stopwatch.StartNew();
+                var iteration = 0L;
+                while (true)
                 {
                     if (table.TryGetValue(key, out var cacheObject))
                     {
@@ -506,6 +510,12 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                         var obj = new TestCacheObject(key);
                         allObjects.Enqueue(obj);
                         table.Add(key, obj, handler);
+                    }
+                    iteration++;
+                    if ((iteration & 1023) == 0 &&
+                        (allObjects.Count > targetEvictReAddCycles || stopwatch.Elapsed > TimeSpan.FromSeconds(15)))
+                    {
+                        break;
                     }
                 }
                 Volatile.Write(ref stop, true);

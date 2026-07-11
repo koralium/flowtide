@@ -45,7 +45,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly Histogram<float>? m_temporaryWriteMsHistogram;
         private readonly TagList tagList;
 
-        private CacheValue[] _lookupTable;
+        /// <summary>
+        /// Direct-mapped (key % length) cache of entry references, in front of the shared
+        /// cache table. Slots are single references so they can be read atomically without
+        /// any lock; the key is validated on the entry itself. All writes happen under
+        /// m_lock, reads on the GetValue fast path are lock-free volatile reads.
+        /// </summary>
+        private S3FifoCacheEntry?[] _lookupTable;
 
         /// <summary>
         /// Value of how many pages have changed since last commit.
@@ -93,7 +99,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             tagList = options.TagList;
             tagList.Add("state_client", name);
 
-            _lookupTable = new CacheValue[1009];
+            _lookupTable = new S3FifoCacheEntry?[1009];
         }
 
         public TMetadata? Metadata
@@ -126,9 +132,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
 
                 var modLookup = key % _lookupTable.Length;
-                if (_lookupTable[modLookup].Key == key)
+                var entry = _lookupTable[modLookup];
+                if (entry != null && entry.Key == key)
                 {
-                    var entry = _lookupTable[modLookup].Value!;
                     lock (entry)
                     {
                         entry.Version = entry.Version + 1;
@@ -269,30 +275,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public ValueTask<V?> GetValue(in long key)
         {
+            var modLookup = key % _lookupTable.Length;
+
+            // Lock-free fast path: a slot is a single reference (atomic to read), the key is
+            // validated on the entry, and TryRentValue makes the removed-check + rent handoff
+            // safe against concurrent eviction. A stale or mid-eviction slot simply falls
+            // through to the locked path, which repopulates it.
+            var entry = Volatile.Read(ref _lookupTable[modLookup]);
+            if (entry != null && entry.Key == key && entry.TryRentValue())
+            {
+                return ValueTask.FromResult<V?>((V)entry.Value);
+            }
+
             lock (m_lock)
             {
-                var modLookup = key % _lookupTable.Length;
-
-                if (_lookupTable[modLookup].Key == key)
-                {
-                    var entry = _lookupTable[modLookup].Value!;
-                    lock (entry)
-                    {
-                        if (!entry.Removed)
-                        {
-                            if (!entry.Value.TryRent())
-                            {
-                                throw new InvalidOperationException("Could not rent value from cache");
-                            }
-                            entry.Frequency = Math.Min(entry.Frequency + 1, S3FifoCacheEntry.MaxFrequency);
-                            return ValueTask.FromResult<V?>((V)entry.Value);
-                        }
-                    }
-                }
-
                 if (stateManager.TryGetCacheValueFromCache(key, out var cacheVal))
                 {
-                    _lookupTable[modLookup] = new CacheValue { Key = key, Value = cacheVal };
+                    Volatile.Write(ref _lookupTable[modLookup], cacheVal);
                     return ValueTask.FromResult<V?>((V)cacheVal.Value);
                 }
                 Interlocked.Increment(ref cacheMisses);
@@ -386,8 +385,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 for (int i = 0; i < _lookupTable.Length; i++)
                 {
-                    _lookupTable[i].Value = default;
-                    _lookupTable[i].Key = 0;
+                    Volatile.Write(ref _lookupTable[i], null);
                 }
                 m_fileCache.FreeAll(m_modified.Keys);
                 m_modified.Clear();
@@ -416,9 +414,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 lock (m_lock)
                 {
                     isModified = m_modified.TryGetValue(entry.Key, out val);
-                    if (_lookupTable[modLookup].Key == entry.Key)
+                    if (ReferenceEquals(_lookupTable[modLookup], entry))
                     {
-                        _lookupTable[modLookup] = new CacheValue { Key = -1, Value = null };
+                        Volatile.Write(ref _lookupTable[modLookup], null);
                     }
                 }
                 if (!useReadCache)
@@ -513,10 +511,5 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return session.Delete(pageId);
         }
 
-        private struct CacheValue
-        {
-            public long Key;
-            public S3FifoCacheEntry? Value;
-        }
     }
 }

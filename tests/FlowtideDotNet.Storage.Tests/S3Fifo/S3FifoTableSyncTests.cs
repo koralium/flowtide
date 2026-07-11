@@ -236,6 +236,33 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         [Fact]
+        public async Task StaleEntryReferenceReadsAsMissAfterRemoval()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
+            var handler = new TestEvictHandler();
+            var obj = new TestCacheObject(0);
+            table.Add(0, obj, handler);
+            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+
+            table.Delete(0);
+
+            // A reader holding a stale entry reference (like a state client lookup slot)
+            // must observe a miss on the lock-free read path, not a throw, and must not rent.
+            Assert.False(entry!.TryRentValue());
+            Assert.Equal(0, obj.RentCount);
+
+            // Same when the object survives removal because another holder still rents it.
+            var held = new TestCacheObject(1);
+            Assert.True(held.TryRent());
+            table.Add(1, held, handler);
+            Assert.True(table.TryPeekEntryForTests(1, out var heldEntry));
+            table.Delete(1);
+            Assert.False(heldEntry!.TryRentValue());
+            Assert.Equal(1, held.RentCount);
+            held.Return();
+        }
+
+        [Fact]
         public async Task DeleteReturnsCacheReferenceAndLeavesSkippableStaleSlot()
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(10);

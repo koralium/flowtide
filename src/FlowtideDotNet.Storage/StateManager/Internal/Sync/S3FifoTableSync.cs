@@ -252,7 +252,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         return;
                     }
-                    entry.Removed = true;
+                    // Volatile and ordered before Return: lock-free readers rely on Removed
+                    // being observable once a rent can fail (see S3FifoCacheEntry.TryRentValue).
+                    Volatile.Write(ref entry.Removed, true);
                     if (m_cache.TryRemove(key, out _))
                     {
                         entry.Value.Return();
@@ -334,22 +336,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public bool TryGetCacheValue(long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
-            if (m_cache.TryGetValue(key, out entry))
+            // Lock-free read: the rent handoff and frequency bump live in TryRentValue.
+            // A rent failure means the entry is being evicted right now and is treated
+            // as a miss; the caller reloads from temporary or persistent storage.
+            if (m_cache.TryGetValue(key, out entry) && entry.TryRentValue())
             {
-                lock (entry)
-                {
-                    if (entry.Removed)
-                    {
-                        return false;
-                    }
-                    if (!entry.Value.TryRent())
-                    {
-                        throw new InvalidOperationException("Could not rent value from cache");
-                    }
-                    entry.Frequency = Math.Min(entry.Frequency + 1, S3FifoCacheEntry.MaxFrequency);
-                    Interlocked.Increment(ref m_cacheHits);
-                    return true;
-                }
+                Interlocked.Increment(ref m_cacheHits);
+                return true;
             }
             return false;
         }
@@ -358,22 +351,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             if (m_cache.TryGetValue(key, out var entry))
             {
-                lock (entry)
+                if (entry.TryRentValue())
                 {
-                    if (entry.Removed)
-                    {
-                        cacheObject = default;
-                        return false;
-                    }
-                    if (!entry.Value.TryRent())
-                    {
-                        throw new InvalidOperationException("Could not rent value from cache");
-                    }
-                    entry.Frequency = Math.Min(entry.Frequency + 1, S3FifoCacheEntry.MaxFrequency);
                     cacheObject = entry.Value;
                     Interlocked.Increment(ref m_cacheHits);
                     return true;
                 }
+                cacheObject = default;
+                return false;
             }
             Interlocked.Increment(ref m_cacheMisses);
             cacheObject = default;
@@ -594,7 +579,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     if (!entry.Removed)
                     {
-                        entry.Removed = true;
+                        // Volatile and ordered before Return: lock-free readers rely on Removed
+                        // being observable once a rent can fail (see S3FifoCacheEntry.TryRentValue).
+                        Volatile.Write(ref entry.Removed, true);
                         // RemovedFromCache must be set before the dictionary removal. A concurrent
                         // re-add of the same object can only succeed its TryAdd after this TryRemove
                         // (same dictionary bucket lock), and that ordering is what guarantees the
@@ -695,7 +682,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         }
                         continue;
                     }
-                    if (entry.Frequency > 1)
+                    if (Volatile.Read(ref entry.Frequency) > 1)
                     {
                         // Accessed more than once while in the small queue: promote to main.
                         entry.Location = S3FifoQueueLocation.Main;
@@ -728,10 +715,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         }
                         continue;
                     }
-                    if (entry.Frequency > 0)
+                    if (Volatile.Read(ref entry.Frequency) > 0)
                     {
                         // Second chance: reinsert at the tail with a decremented frequency.
-                        entry.Frequency = entry.Frequency - 1;
+                        // Cannot underflow: only one scan holds a dequeued entry at a time and
+                        // concurrent lock-free readers only increment.
+                        Interlocked.Decrement(ref entry.Frequency);
                         m_mainQueue.Enqueue(entry);
                         continue;
                     }
@@ -860,7 +849,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     entry.Location = S3FifoQueueLocation.None;
                     if (!entry.Removed)
                     {
-                        entry.Removed = true;
+                        Volatile.Write(ref entry.Removed, true);
                         m_cache.TryRemove(entry.Key, out _);
                         entry.Value.Return();
                         Interlocked.Decrement(ref m_count);

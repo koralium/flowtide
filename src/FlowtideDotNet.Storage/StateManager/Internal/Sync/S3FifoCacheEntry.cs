@@ -32,11 +32,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     /// State clients cache references to these entries in their local lookup tables,
     /// so the same instance must represent a key for the entire time it is cached.
     ///
-    /// Locking rules:
-    /// * <see cref="Version"/>, <see cref="Frequency"/> and <see cref="Removed"/> are guarded
-    ///   by locking the entry itself (lock(entry)). Checking <see cref="Removed"/> and calling
-    ///   <see cref="ICacheObject.TryRent"/> must happen inside the same lock scope so that a
-    ///   rent can never succeed after eviction has returned the cache's reference.
+    /// Concurrency rules:
+    /// * Reads are lock-free: <see cref="TryRentValue"/> is the only correct way to rent
+    ///   through an entry. It relies on <see cref="ICacheObject.TryRent"/> failing once the
+    ///   count reaches zero, and on every code path that returns the cache's reference
+    ///   setting <see cref="Removed"/> (volatile) before calling Return, so a failed rent
+    ///   on a non-removed entry can only mean reference-count corruption.
+    /// * <see cref="Frequency"/> is accessed with Volatile/Interlocked only.
+    /// * <see cref="Version"/> is guarded by lock(entry); only mutators and eviction touch it.
+    /// * <see cref="Removed"/> is written under lock(entry) with a volatile write, and may be
+    ///   read either under the lock or with a volatile read.
     /// * <see cref="Location"/> is guarded by the table's queue lock.
     /// * An entry lock may be taken while holding the queue lock, never the reverse.
     /// </summary>
@@ -72,14 +77,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// Saturating access counter in [0, <see cref="MaxFrequency"/>].
         /// Incremented on every cache hit, consumed by the eviction scan
         /// (promotion out of the small queue, reinsertion in the main queue).
-        /// Guarded by lock(entry).
+        /// Accessed with Volatile/Interlocked only; readers bump it without any lock.
         /// </summary>
         public int Frequency;
 
         /// <summary>
-        /// Set to true, under lock(entry), before the cache's reference is returned.
-        /// Readers must check this flag inside lock(entry) before renting.
-        /// Once true it never becomes false again; a re-add of the key creates a new entry.
+        /// Set to true before the cache's reference is returned, with a volatile write under
+        /// lock(entry). Once true it never becomes false again; a re-add of the key creates
+        /// a new entry.
         /// </summary>
         public bool Removed;
 
@@ -87,5 +92,52 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// The queue this entry currently sits in. Guarded by the table's queue lock.
         /// </summary>
         public S3FifoQueueLocation Location;
+
+        /// <summary>
+        /// Lock-free read handoff: rents the value and records the access. Returns false when
+        /// the entry is being or has been evicted, which callers treat as a cache miss.
+        ///
+        /// Safety: every path that returns the cache's reference (eviction removal, delete,
+        /// dispose) sets <see cref="Removed"/> before calling Return. A failed TryRent means
+        /// the count reached zero, which is only possible after such a Return, so Removed must
+        /// be observable by then (the failed CAS is a full fence). A failed rent on a
+        /// non-removed entry therefore indicates reference-count corruption and throws
+        /// instead of being silently treated as a miss.
+        /// </summary>
+        public bool TryRentValue()
+        {
+            if (Volatile.Read(ref Removed))
+            {
+                return false;
+            }
+            if (!Value.TryRent())
+            {
+                if (!Volatile.Read(ref Removed))
+                {
+                    throw new InvalidOperationException("Could not rent value from cache");
+                }
+                return false;
+            }
+            RecordAccess();
+            return true;
+        }
+
+        /// <summary>
+        /// Saturating lock-free frequency bump. On a hot entry the counter stays at the cap,
+        /// so the steady-state cost is a single volatile read.
+        /// </summary>
+        public void RecordAccess()
+        {
+            var current = Volatile.Read(ref Frequency);
+            while (current < MaxFrequency)
+            {
+                var observed = Interlocked.CompareExchange(ref Frequency, current + 1, current);
+                if (observed == current)
+                {
+                    break;
+                }
+                current = observed;
+            }
+        }
     }
 }
