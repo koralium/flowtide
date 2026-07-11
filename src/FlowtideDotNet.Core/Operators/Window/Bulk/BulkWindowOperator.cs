@@ -96,6 +96,11 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private ColumnStore.Column[]? _partitionScratchColumns;
         private EventBatchData? _partitionScratchBatch;
 
+        // Scratch row holding the key of the row a scan starts at when functions need rows before the
+        // first change recomputed, found by walking backwards from the first marker.
+        private ColumnStore.Column[]? _scanStartColumns;
+        private EventBatchData? _scanStartBatch;
+
         private ColumnRowReference[] _keyScratch = Array.Empty<ColumnRowReference>();
         private BulkWindowValue[] _valueScratch = Array.Empty<BulkWindowValue>();
         private int[] _tempValueScratch = Array.Empty<int>();
@@ -489,7 +494,46 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 RowIndex = 0
             };
 
-            bool fromPartitionStart = _maxAffectedRowsBefore > 0;
+            // The scan must start early enough that every row a change can affect is recomputed. Functions
+            // whose frames reach ahead of the current row report how many rows before a change they need,
+            // and the scan start is walked backwards that many logical rows from the first changed row.
+            var scanAnchor = firstMarker;
+            bool fromPartitionStart = _maxAffectedRowsBefore == long.MaxValue;
+            if (!fromPartitionStart && _maxAffectedRowsBefore > 0)
+            {
+                Debug.Assert(_backwardReader != null);
+                Debug.Assert(_scanStartColumns != null);
+                Debug.Assert(_scanStartBatch != null);
+
+                await _backwardReader.Reset(firstMarker);
+                long walked = 0;
+                bool anchorFound = false;
+                while (walked < _maxAffectedRowsBefore && await _backwardReader.MoveNextRow())
+                {
+                    walked += _backwardReader.Weight;
+                    anchorFound = true;
+                }
+                if (anchorFound)
+                {
+                    for (int c = 0; c < _totalKeyColumns; c++)
+                    {
+                        _scanStartColumns[c].UpdateAt(0, _backwardReader.Batch.Columns[c].GetValueAt(_backwardReader.RowIndex, default));
+                    }
+                    scanAnchor = new ColumnRowReference()
+                    {
+                        referenceBatch = _scanStartBatch,
+                        RowIndex = 0
+                    };
+                    if (walked < _maxAffectedRowsBefore)
+                    {
+                        // The partition start was reached before the full walk, the anchor is the
+                        // partition's first row.
+                        fromPartitionStart = true;
+                    }
+                }
+                // With no rows before the first marker the scan starts at the marker itself.
+            }
+
             if (fromPartitionStart)
             {
                 await _scanIterator.Seek(firstMarker, _partitionSeekComparer);
@@ -497,8 +541,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
             else
             {
-                await _scanIterator.Seek(firstMarker);
-                await _seedReader.Reset(firstMarker);
+                await _scanIterator.Seek(scanAnchor);
+                await _seedReader.Reset(scanAnchor);
             }
 
             for (int f = 0; f < _functions.Length; f++)
@@ -538,7 +582,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
                 if (firstPage && !fromPartitionStart)
                 {
-                    var bounds = _markerComparer.FindBoundries(in firstMarker, page.Keys, startIndex, endIndex);
+                    var bounds = _markerComparer.FindBoundries(in scanAnchor, page.Keys, startIndex, endIndex);
                     var lower = bounds.lowerBounds;
                     if (lower < 0)
                     {
@@ -1004,14 +1048,18 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
             _markerColumns = new ColumnStore.Column[_totalKeyColumns];
             _partitionScratchColumns = new ColumnStore.Column[_totalKeyColumns];
+            _scanStartColumns = new ColumnStore.Column[_totalKeyColumns];
             for (int c = 0; c < _totalKeyColumns; c++)
             {
                 _markerColumns[c] = new ColumnStore.Column(MemoryAllocator);
                 _partitionScratchColumns[c] = new ColumnStore.Column(MemoryAllocator);
                 _partitionScratchColumns[c].Add(NullValue.Instance);
+                _scanStartColumns[c] = new ColumnStore.Column(MemoryAllocator);
+                _scanStartColumns[c].Add(NullValue.Instance);
             }
             _markerBatch = new EventBatchData(_markerColumns);
             _partitionScratchBatch = new EventBatchData(_partitionScratchColumns);
+            _scanStartBatch = new EventBatchData(_scanStartColumns);
             _markerCount = 0;
 
             for (int f = 0; f < _functions.Length; f++)

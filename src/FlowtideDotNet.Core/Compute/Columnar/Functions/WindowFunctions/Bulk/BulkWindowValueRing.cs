@@ -18,23 +18,31 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 {
     /// <summary>
-    /// A fixed capacity ring of data values backed by a column, used by bounded frame window functions to
-    /// keep the values currently inside the frame. Pushing copies the value into the ring's own memory, so
-    /// pushed values stay valid when the source page is released.
+    /// A ring of data values backed by a column, used by bounded frame window functions to keep the values
+    /// currently inside the frame. Pushing copies the value into the ring's own memory, so pushed values
+    /// stay valid when the source page is released. Storage starts small and grows on demand up to the
+    /// declared capacity, so a frame declared much larger than the partitions it runs over only allocates
+    /// what is actually used.
     /// </summary>
     internal sealed class BulkWindowValueRing : IDisposable
     {
-        private readonly Column _storage;
-        private readonly int _capacity;
+        private const int InitialAllocation = 16;
+
+        private readonly IMemoryAllocator _memoryAllocator;
+        private readonly long _capacity;
+        private Column _storage;
+        private int _allocated;
         private int _head;
         private int _count;
 
-        public BulkWindowValueRing(int capacity, IMemoryAllocator memoryAllocator)
+        public BulkWindowValueRing(long capacity, IMemoryAllocator memoryAllocator)
         {
             Debug.Assert(capacity > 0);
             _capacity = capacity;
+            _memoryAllocator = memoryAllocator;
+            _allocated = (int)Math.Min(capacity, InitialAllocation);
             _storage = Column.Create(memoryAllocator);
-            for (int i = 0; i < capacity; i++)
+            for (int i = 0; i < _allocated; i++)
             {
                 _storage.Add(NullValue.Instance);
             }
@@ -45,9 +53,31 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public void Push(IDataValue value)
         {
             Debug.Assert(_count < _capacity, "Ring is full");
-            var slot = (_head + _count) % _capacity;
+            if (_count == _allocated)
+            {
+                Grow();
+            }
+            var slot = (_head + _count) % _allocated;
             _storage.UpdateAt(slot, value);
             _count++;
+        }
+
+        private void Grow()
+        {
+            var newAllocated = (int)Math.Min(Math.Max((long)_allocated * 2, InitialAllocation), Math.Min(_capacity, int.MaxValue));
+            var newStorage = Column.Create(_memoryAllocator);
+            for (int i = 0; i < _count; i++)
+            {
+                newStorage.Add(_storage.GetValueAt((_head + i) % _allocated, default));
+            }
+            for (int i = _count; i < newAllocated; i++)
+            {
+                newStorage.Add(NullValue.Instance);
+            }
+            _storage.Dispose();
+            _storage = newStorage;
+            _allocated = newAllocated;
+            _head = 0;
         }
 
         /// <summary>
@@ -58,9 +88,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             Debug.Assert(_count > 0, "Ring is empty");
             var value = _storage.GetValueAt(_head, default);
-            _head = (_head + 1) % _capacity;
+            _head = (_head + 1) % _allocated;
             _count--;
             return value;
+        }
+
+        /// <summary>
+        /// Returns the value at the given index, where 0 is the oldest entry. The returned value
+        /// references the ring's storage and is only valid until the slot is overwritten.
+        /// </summary>
+        public IDataValue GetAt(int index)
+        {
+            Debug.Assert(index >= 0 && index < _count);
+            return _storage.GetValueAt((_head + index) % _allocated, default);
         }
 
         public void Clear()

@@ -691,9 +691,15 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
             UnaryVertex<StreamEventBatch> op;
-            if (_useColumnStore &&
-                Operators.Window.Bulk.BulkWindowOperator.TryCreate(consistentPartitionWindowRelation, functionsRegister, DefaultBlockOptions, out var bulkWindowOperator))
+            if (_useColumnStore)
             {
+                if (!Operators.Window.Bulk.BulkWindowOperator.TryCreate(consistentPartitionWindowRelation, functionsRegister, DefaultBlockOptions, out var bulkWindowOperator))
+                {
+                    throw new NotSupportedException(
+                        "The window relation contains a window function without a bulk window implementation " +
+                        $"(functions: {string.Join(", ", consistentPartitionWindowRelation.WindowFunctions.Select(x => x.ExtensionName))}). " +
+                        "Custom window functions must be registered with RegisterBulkWindowFunction.");
+                }
                 op = bulkWindowOperator;
             }
             else

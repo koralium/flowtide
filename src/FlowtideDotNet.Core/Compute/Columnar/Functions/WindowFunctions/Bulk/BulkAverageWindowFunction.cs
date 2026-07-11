@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.MinMax;
 using FlowtideDotNet.Core.Operators.Window.Bulk;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -21,7 +20,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 {
-    internal class BulkSumWindowFunctionDefinition : BulkWindowFunctionDefinition
+    internal class BulkAverageWindowFunctionDefinition : BulkWindowFunctionDefinition
     {
         public override bool TryCreate(WindowFunction windowFunction, IFunctionsRegister functionsRegister, [NotNullWhen(true)] out IBulkWindowFunction? bulkWindowFunction)
         {
@@ -33,16 +32,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             var compiledValue = ColumnProjectCompiler.CompileToValue(windowFunction.Arguments[0], functionsRegister);
             var bounds = BulkWindowFrameBounds.Parse(windowFunction);
 
-            // The variant selection matches SumWindowFunctionDefinition so results stay identical with the
-            // non bulk operator.
             switch (bounds.Kind)
             {
                 case BulkWindowFrameKind.BoundedRows:
                     if (bounds.To == long.MaxValue)
                     {
                         bulkWindowFunction = bounds.From > 0
-                            ? new BulkSumWindowFunctionSuffixFollowing(compiledValue, bounds.From)
-                            : new BulkSumWindowFunctionSuffix(compiledValue, bounds.From);
+                            ? new BulkAverageWindowFunctionSuffixFollowing(compiledValue, bounds.From)
+                            : new BulkAverageWindowFunctionSuffix(compiledValue, bounds.From);
                         return true;
                     }
                     if (bounds.From > bounds.To)
@@ -52,61 +49,65 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                     }
                     if (bounds.To > 0)
                     {
-                        bulkWindowFunction = new BulkSumWindowFunctionBoundedFollowing(compiledValue, bounds.From, bounds.To);
+                        bulkWindowFunction = new BulkAverageWindowFunctionBoundedFollowing(compiledValue, bounds.From, bounds.To);
                         return true;
                     }
-                    bulkWindowFunction = new BulkSumWindowFunctionBounded(compiledValue, bounds.From, bounds.To);
+                    bulkWindowFunction = new BulkAverageWindowFunctionBounded(compiledValue, bounds.From, bounds.To);
                     return true;
                 case BulkWindowFrameKind.UnboundedPreceding:
                     if (bounds.To > 0)
                     {
-                        bulkWindowFunction = new BulkSumWindowFunctionUnboundedFromFollowing(compiledValue, bounds.To);
+                        bulkWindowFunction = new BulkAverageWindowFunctionUnboundedFromFollowing(compiledValue, bounds.To);
                         return true;
                     }
-                    bulkWindowFunction = new BulkSumWindowFunctionUnboundedFrom(compiledValue, bounds.To);
+                    bulkWindowFunction = new BulkAverageWindowFunctionUnboundedFrom(compiledValue, bounds.To);
                     return true;
                 default:
-                    bulkWindowFunction = new BulkSumWindowFunctionUnbounded(compiledValue);
+                    bulkWindowFunction = new BulkAverageWindowFunctionUnbounded(compiledValue);
                     return true;
             }
         }
     }
 
-    internal static class BulkSumUtils
+    internal static class BulkAverageUtils
     {
         /// <summary>
-        /// Copies a sum state (int64, double, decimal or null) into a container.
+        /// Writes sum divided by count into the result container using the same typing rules as
+        /// <see cref="AverageWindowUtils.DivideWithCount{T}"/>.
         /// </summary>
-        public static void CopySumValue(IDataValue source, DataValueContainer target)
+        public static void DivideToContainer(DataValueContainer sum, long count, DataValueContainer result)
         {
-            switch (source.Type)
+            if (count == 0)
+            {
+                result._type = ArrowTypeId.Null;
+                return;
+            }
+            switch (sum.Type)
             {
                 case ArrowTypeId.Int64:
-                    target._type = ArrowTypeId.Int64;
-                    target._int64Value = new Int64Value(source.AsLong);
+                    result._type = ArrowTypeId.Double;
+                    result._doubleValue = new DoubleValue((double)sum.AsLong / count);
                     break;
                 case ArrowTypeId.Double:
-                    target._type = ArrowTypeId.Double;
-                    target._doubleValue = new DoubleValue(source.AsDouble);
+                    result._type = ArrowTypeId.Double;
+                    result._doubleValue = new DoubleValue(sum.AsDouble / count);
                     break;
                 case ArrowTypeId.Decimal128:
-                    target._type = ArrowTypeId.Decimal128;
-                    target._decimalValue = new DecimalValue(source.AsDecimal);
+                    result._type = ArrowTypeId.Decimal128;
+                    result._decimalValue = new DecimalValue(sum.AsDecimal / count);
                     break;
                 default:
-                    target._type = ArrowTypeId.Null;
+                    result._type = ArrowTypeId.Null;
                     break;
             }
         }
     }
 
     /// <summary>
-    /// Sum over a bounded rows frame that does not reach ahead of the current row,
-    /// for example ROWS BETWEEN 4 PRECEDING AND 1 PRECEDING. The frame contents are kept in an in memory
-    /// ring during the scan, seeded from the rows before the scan start, so a change only recomputes the
-    /// rows whose frame can contain the change.
+    /// Average over a bounded rows frame that does not reach ahead of the current row. Mirrors
+    /// <see cref="BulkSumWindowFunctionBounded"/> with a count of numeric values for the division.
     /// </summary>
-    internal class BulkSumWindowFunctionBounded : IBulkWindowFunction
+    internal class BulkAverageWindowFunctionBounded : IBulkWindowFunction
     {
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
         private readonly long _from;
@@ -116,8 +117,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private BulkWindowValueRing? _pending;
         private BulkWindowValueRing? _frame;
         private readonly DataValueContainer _sumState = new DataValueContainer();
+        private long _count;
 
-        public BulkSumWindowFunctionBounded(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from, long to)
+        public BulkAverageWindowFunctionBounded(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from, long to)
         {
             Debug.Assert(from <= to && to <= 0);
             _fetchValueFunction = fetchValueFunction;
@@ -156,6 +158,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             _pending.Clear();
             _frame.Clear();
             _sumState._type = ArrowTypeId.Null;
+            _count = 0;
 
             if (fromPartitionStart)
             {
@@ -182,11 +185,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 var enteringFrame = _pending.PopOldest();
                 SumWindowUtils.DoSum(enteringFrame, _sumState, 1);
+                AverageWindowUtils.ModifyCount(ref _count, 1, enteringFrame.Type);
                 _frame.Push(enteringFrame);
                 while (_frame.Count > _frameSize)
                 {
                     var leavingFrame = _frame.PopOldest();
                     SumWindowUtils.DoSum(leavingFrame, _sumState, -1);
+                    AverageWindowUtils.ModifyCount(ref _count, -1, leavingFrame.Type);
                 }
             }
         }
@@ -194,7 +199,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
             Feed(_fetchValueFunction(context.Batch, context.RowIndex));
-            BulkSumUtils.CopySumValue(_sumState, result);
+            BulkAverageUtils.DivideToContainer(_sumState, _count, result);
             return true;
         }
 
@@ -211,111 +216,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum from the partition start up to the current row or a preceding offset, for example a running sum.
-    /// The sum is seeded from the stored value of the row before the scan start, so appended rows only add
-    /// to the previous sum instead of rescanning the partition. The function is stable once a recomputed
-    /// row keeps its stored sum.
+    /// Average over a bounded rows frame that reaches ahead of the current row, using a lookahead reader.
+    /// Mirrors <see cref="BulkSumWindowFunctionBoundedFollowing"/>.
     /// </summary>
-    internal class BulkSumWindowFunctionUnboundedFrom : IBulkWindowFunction
-    {
-        private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
-        private readonly long _to;
-        private int _functionIndex;
-
-        private BulkWindowValueRing? _pending;
-        private readonly DataValueContainer _sumState = new DataValueContainer();
-
-        public BulkSumWindowFunctionUnboundedFrom(Func<EventBatchData, int, IDataValue> fetchValueFunction, long to)
-        {
-            Debug.Assert(to <= 0);
-            _fetchValueFunction = fetchValueFunction;
-            _to = to;
-        }
-
-        public long AffectedRowsBefore => 0;
-
-        public long AffectedRowsAfter => long.MaxValue;
-
-        public bool StableByValueEquality => true;
-
-        public long EqualityStableAfterRows => -_to;
-
-        public int AuxiliaryStateColumnCount => 0;
-
-        public Task Initialize(BulkWindowFunctionContext context)
-        {
-            _functionIndex = context.FunctionIndex;
-            _pending = new BulkWindowValueRing(-_to + 1, context.MemoryAllocator);
-            return Task.CompletedTask;
-        }
-
-        public ValueTask Commit()
-        {
-            return ValueTask.CompletedTask;
-        }
-
-        public async ValueTask StartScan(ColumnRowReference partitionValues, BulkWindowSeedReader seedReader, bool fromPartitionStart)
-        {
-            Debug.Assert(_pending != null);
-
-            _pending.Clear();
-            _sumState._type = ArrowTypeId.Null;
-
-            if (fromPartitionStart)
-            {
-                return;
-            }
-
-            var lookback = (int)Math.Min(Math.Max(1, -_to), int.MaxValue);
-            await seedReader.EnsureRows(lookback);
-            if (seedReader.MaterializedRows == 0)
-            {
-                return;
-            }
-
-            // The previous row's stored output is the sum up to its own frame end, feed the rows after that
-            // frame end into the pending ring so they enter the sum at the right rows.
-            BulkSumUtils.CopySumValue(seedReader.GetState(1, _functionIndex), _sumState);
-            var pendingRows = (int)Math.Min(-_to, seedReader.MaterializedRows);
-            for (int back = pendingRows; back >= 1; back--)
-            {
-                var row = seedReader.GetRow(back);
-                _pending.Push(_fetchValueFunction(row.referenceBatch, row.RowIndex));
-            }
-        }
-
-        public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
-        {
-            Debug.Assert(_pending != null);
-
-            _pending.Push(_fetchValueFunction(context.Batch, context.RowIndex));
-            if (_pending.Count > -_to)
-            {
-                var enteringSum = _pending.PopOldest();
-                SumWindowUtils.DoSum(enteringSum, _sumState, 1);
-            }
-            BulkSumUtils.CopySumValue(_sumState, result);
-            return true;
-        }
-
-        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
-        {
-            TryComputeRow(context, result);
-            return ValueTask.CompletedTask;
-        }
-
-        public ValueTask EndScan()
-        {
-            return ValueTask.CompletedTask;
-        }
-    }
-
-    /// <summary>
-    /// Sum over a bounded rows frame that reaches ahead of the current row, for example
-    /// ROWS BETWEEN 2 PRECEDING AND 4 FOLLOWING. Rows ahead of the scan position are read through a
-    /// lookahead reader, so computation is always asynchronous.
-    /// </summary>
-    internal class BulkSumWindowFunctionBoundedFollowing : IBulkWindowFunction
+    internal class BulkAverageWindowFunctionBoundedFollowing : IBulkWindowFunction
     {
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
         private readonly long _from;
@@ -326,6 +230,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private BulkWindowValueRing? _frame;
         private IMemoryAllocator? _memoryAllocator;
         private readonly DataValueContainer _sumState = new DataValueContainer();
+        private long _count;
 
         private long _currentPosition;
         private long _nextFeedPosition;
@@ -334,7 +239,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private bool _lookaheadStarted;
         private bool _lookaheadDone;
 
-        public BulkSumWindowFunctionBoundedFollowing(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from, long to)
+        public BulkAverageWindowFunctionBoundedFollowing(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from, long to)
         {
             Debug.Assert(from <= to && to > 0);
             _fetchValueFunction = fetchValueFunction;
@@ -372,6 +277,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             _frame.Clear();
             _sumState._type = ArrowTypeId.Null;
+            _count = 0;
             _currentPosition = -1;
             _lookaheadStarted = false;
             _lookaheadDone = false;
@@ -399,13 +305,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 _oldestFramePosition = _nextFeedPosition;
             }
             SumWindowUtils.DoSum(value, _sumState, 1);
+            AverageWindowUtils.ModifyCount(ref _count, 1, value.Type);
             _frame.Push(value);
             _nextFeedPosition++;
         }
 
         public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
-            // Feeding the lookahead may load pages, so computation is always asynchronous.
             return false;
         }
 
@@ -421,8 +327,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 _lookaheadStarted = true;
                 await _lookahead.ResetAtRow(new ColumnRowReference() { referenceBatch = context.Batch, RowIndex = context.RowIndex }, _memoryAllocator);
-                // The first logical row the lookahead yields is the first duplicate of the current
-                // physical row.
                 _lookaheadPosition = _currentPosition - context.DupIndex - 1;
             }
 
@@ -445,10 +349,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 var leavingFrame = _frame.PopOldest();
                 SumWindowUtils.DoSum(leavingFrame, _sumState, -1);
+                AverageWindowUtils.ModifyCount(ref _count, -1, leavingFrame.Type);
                 _oldestFramePosition++;
             }
 
-            BulkSumUtils.CopySumValue(_sumState, result);
+            BulkAverageUtils.DivideToContainer(_sumState, _count, result);
         }
 
         public ValueTask EndScan()
@@ -458,20 +363,129 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum from the partition start to an offset ahead of the current row, for example
-    /// ROWS BETWEEN UNBOUNDED PRECEDING AND 2 FOLLOWING. The sum is seeded from the previous row's stored
-    /// output, which already covers everything up to its own frame end, so only the rows entering the
-    /// frame are read through the lookahead.
+    /// Running average from the partition start, seeded from the previous row's stored auxiliary sum and
+    /// count since the average itself cannot be continued from.
     /// </summary>
-    internal class BulkSumWindowFunctionUnboundedFromFollowing : IBulkWindowFunction
+    internal class BulkAverageWindowFunctionUnboundedFrom : IBulkWindowFunction
     {
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
         private readonly long _to;
-        private int _functionIndex;
+        private int _auxStartIndex;
+
+        private BulkWindowValueRing? _pending;
+        private readonly DataValueContainer _sumState = new DataValueContainer();
+        private long _count;
+        private readonly DataValueContainer _auxCountContainer = new DataValueContainer();
+
+        public BulkAverageWindowFunctionUnboundedFrom(Func<EventBatchData, int, IDataValue> fetchValueFunction, long to)
+        {
+            Debug.Assert(to <= 0);
+            _fetchValueFunction = fetchValueFunction;
+            _to = to;
+        }
+
+        public long AffectedRowsBefore => 0;
+
+        public long AffectedRowsAfter => long.MaxValue;
+
+        public bool StableByValueEquality => true;
+
+        public long EqualityStableAfterRows => -_to;
+
+        public int AuxiliaryStateColumnCount => 2;
+
+        public Task Initialize(BulkWindowFunctionContext context)
+        {
+            _auxStartIndex = context.AuxiliaryColumnStartIndex;
+            _pending = new BulkWindowValueRing(-_to + 1, context.MemoryAllocator);
+            return Task.CompletedTask;
+        }
+
+        public ValueTask Commit()
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        public async ValueTask StartScan(ColumnRowReference partitionValues, BulkWindowSeedReader seedReader, bool fromPartitionStart)
+        {
+            Debug.Assert(_pending != null);
+
+            _pending.Clear();
+            _sumState._type = ArrowTypeId.Null;
+            _count = 0;
+
+            if (fromPartitionStart)
+            {
+                return;
+            }
+
+            var lookback = (int)Math.Min(Math.Max(1, -_to), int.MaxValue);
+            await seedReader.EnsureRows(lookback);
+            if (seedReader.MaterializedRows == 0)
+            {
+                return;
+            }
+
+            BulkSumUtils.CopySumValue(seedReader.GetState(1, _auxStartIndex), _sumState);
+            var countState = seedReader.GetState(1, _auxStartIndex + 1);
+            _count = countState.IsNull ? 0 : countState.AsLong;
+
+            var pendingRows = (int)Math.Min(-_to, seedReader.MaterializedRows);
+            for (int back = pendingRows; back >= 1; back--)
+            {
+                var row = seedReader.GetRow(back);
+                _pending.Push(_fetchValueFunction(row.referenceBatch, row.RowIndex));
+            }
+        }
+
+        public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        {
+            Debug.Assert(_pending != null);
+
+            _pending.Push(_fetchValueFunction(context.Batch, context.RowIndex));
+            if (_pending.Count > -_to)
+            {
+                var enteringSum = _pending.PopOldest();
+                SumWindowUtils.DoSum(enteringSum, _sumState, 1);
+                AverageWindowUtils.ModifyCount(ref _count, 1, enteringSum.Type);
+            }
+
+            _auxCountContainer._type = ArrowTypeId.Int64;
+            _auxCountContainer._int64Value = new Int64Value(_count);
+            context.SetAuxValue(_auxStartIndex, _sumState);
+            context.SetAuxValue(_auxStartIndex + 1, _auxCountContainer);
+
+            BulkAverageUtils.DivideToContainer(_sumState, _count, result);
+            return true;
+        }
+
+        public ValueTask ComputeRow(BulkWindowRowContext context, DataValueContainer result)
+        {
+            TryComputeRow(context, result);
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask EndScan()
+        {
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Average from the partition start to an offset ahead of the current row, seeded from the previous
+    /// row's stored auxiliary sum and count with a lookahead for the rows entering the frame.
+    /// </summary>
+    internal class BulkAverageWindowFunctionUnboundedFromFollowing : IBulkWindowFunction
+    {
+        private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
+        private readonly long _to;
+        private int _auxStartIndex;
 
         private BulkWindowForwardPartitionReader? _lookahead;
         private IMemoryAllocator? _memoryAllocator;
         private readonly DataValueContainer _sumState = new DataValueContainer();
+        private long _count;
+        private readonly DataValueContainer _auxCountContainer = new DataValueContainer();
 
         private long _currentPosition;
         private long _nextFeedPosition;
@@ -479,7 +493,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private bool _lookaheadStarted;
         private bool _lookaheadDone;
 
-        public BulkSumWindowFunctionUnboundedFromFollowing(Func<EventBatchData, int, IDataValue> fetchValueFunction, long to)
+        public BulkAverageWindowFunctionUnboundedFromFollowing(Func<EventBatchData, int, IDataValue> fetchValueFunction, long to)
         {
             Debug.Assert(to > 0);
             _fetchValueFunction = fetchValueFunction;
@@ -494,11 +508,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
         public long EqualityStableAfterRows => 0;
 
-        public int AuxiliaryStateColumnCount => 0;
+        public int AuxiliaryStateColumnCount => 2;
 
         public Task Initialize(BulkWindowFunctionContext context)
         {
-            _functionIndex = context.FunctionIndex;
+            _auxStartIndex = context.AuxiliaryColumnStartIndex;
             _memoryAllocator = context.MemoryAllocator;
             _lookahead = new BulkWindowForwardPartitionReader(context.PersistentTree, context.PartitionColumns, context.CreateInsertComparer());
             return Task.CompletedTask;
@@ -512,6 +526,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public async ValueTask StartScan(ColumnRowReference partitionValues, BulkWindowSeedReader seedReader, bool fromPartitionStart)
         {
             _sumState._type = ArrowTypeId.Null;
+            _count = 0;
             _currentPosition = -1;
             _lookaheadStarted = false;
             _lookaheadDone = false;
@@ -519,9 +534,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             if (!fromPartitionStart && await seedReader.EnsureRows(1))
             {
-                // The previous row's stored sum covers everything through its own frame end, which is
-                // to - 1 rows ahead of the scan start.
-                BulkSumUtils.CopySumValue(seedReader.GetState(1, _functionIndex), _sumState);
+                BulkSumUtils.CopySumValue(seedReader.GetState(1, _auxStartIndex), _sumState);
+                var countState = seedReader.GetState(1, _auxStartIndex + 1);
+                _count = countState.IsNull ? 0 : countState.AsLong;
                 _nextFeedPosition = _to;
             }
         }
@@ -557,11 +572,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 {
                     continue;
                 }
-                SumWindowUtils.DoSum(_fetchValueFunction(_lookahead.Batch, _lookahead.RowIndex), _sumState, 1);
+                var value = _fetchValueFunction(_lookahead.Batch, _lookahead.RowIndex);
+                SumWindowUtils.DoSum(value, _sumState, 1);
+                AverageWindowUtils.ModifyCount(ref _count, 1, value.Type);
                 _nextFeedPosition++;
             }
 
-            BulkSumUtils.CopySumValue(_sumState, result);
+            _auxCountContainer._type = ArrowTypeId.Int64;
+            _auxCountContainer._int64Value = new Int64Value(_count);
+            context.SetAuxValue(_auxStartIndex, _sumState);
+            context.SetAuxValue(_auxStartIndex + 1, _auxCountContainer);
+
+            BulkAverageUtils.DivideToContainer(_sumState, _count, result);
         }
 
         public ValueTask EndScan()
@@ -571,12 +593,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum from an offset at or before the current row to the partition end, for example
-    /// ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING. A change affects every earlier row, so scans
-    /// always start at the partition start; the partition total is computed with a pre-scan and each row's
-    /// value is the total minus the prefix that lies before its frame.
+    /// Average from an offset at or before the current row to the partition end, computed as the partition
+    /// total minus the prefix before the frame. Mirrors <see cref="BulkSumWindowFunctionSuffix"/>.
     /// </summary>
-    internal class BulkSumWindowFunctionSuffix : IBulkWindowFunction
+    internal class BulkAverageWindowFunctionSuffix : IBulkWindowFunction
     {
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
         private readonly long _from;
@@ -585,11 +605,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private BulkWindowValueRing? _recentValues;
         private readonly DataValueContainer _totalState = new DataValueContainer();
         private readonly DataValueContainer _prefixState = new DataValueContainer();
+        private readonly DataValueContainer _resultSumState = new DataValueContainer();
+        private long _totalCount;
+        private long _prefixCount;
 
         private long _currentPosition;
         private long _nextExcludePosition;
 
-        public BulkSumWindowFunctionSuffix(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from)
+        public BulkAverageWindowFunctionSuffix(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from)
         {
             Debug.Assert(from <= 0);
             _fetchValueFunction = fetchValueFunction;
@@ -625,6 +648,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             _totalState._type = ArrowTypeId.Null;
             _prefixState._type = ArrowTypeId.Null;
+            _totalCount = 0;
+            _prefixCount = 0;
             _recentValues.Clear();
             _currentPosition = -1;
             _nextExcludePosition = 0;
@@ -634,6 +659,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 var value = _fetchValueFunction(_reader.Batch, _reader.RowIndex);
                 SumWindowUtils.DoSum(value, _totalState, _reader.Weight);
+                if (value.Type == ArrowTypeId.Int64 || value.Type == ArrowTypeId.Double || value.Type == ArrowTypeId.Decimal128)
+                {
+                    _totalCount += _reader.Weight;
+                }
             }
         }
 
@@ -647,11 +676,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 var excluded = _recentValues.PopOldest();
                 SumWindowUtils.DoSum(excluded, _prefixState, 1);
+                AverageWindowUtils.ModifyCount(ref _prefixCount, 1, excluded.Type);
                 _nextExcludePosition++;
             }
 
-            BulkSumUtils.CopySumValue(_totalState, result);
-            SumWindowUtils.DoSum(_prefixState, result, -1);
+            BulkSumUtils.CopySumValue(_totalState, _resultSumState);
+            SumWindowUtils.DoSum(_prefixState, _resultSumState, -1);
+            BulkAverageUtils.DivideToContainer(_resultSumState, _totalCount - _prefixCount, result);
             return true;
         }
 
@@ -668,12 +699,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum from an offset after the current row to the partition end, for example
-    /// ROWS BETWEEN 2 FOLLOWING AND UNBOUNDED FOLLOWING. The partition total is computed with a pre-scan
-    /// and each row's value is the total minus the prefix before its frame, fed through a lookahead
-    /// reader. An empty frame at the partition end produces null.
+    /// Average from an offset after the current row to the partition end. Mirrors
+    /// <see cref="BulkSumWindowFunctionSuffixFollowing"/> with a count for the division; an empty frame at
+    /// the partition end produces null through the zero count.
     /// </summary>
-    internal class BulkSumWindowFunctionSuffixFollowing : IBulkWindowFunction
+    internal class BulkAverageWindowFunctionSuffixFollowing : IBulkWindowFunction
     {
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
         private readonly long _from;
@@ -683,15 +713,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private IMemoryAllocator? _memoryAllocator;
         private readonly DataValueContainer _totalState = new DataValueContainer();
         private readonly DataValueContainer _prefixState = new DataValueContainer();
+        private readonly DataValueContainer _resultSumState = new DataValueContainer();
+        private long _totalCount;
+        private long _prefixCount;
 
-        private long _partitionRowCount;
         private long _currentPosition;
         private long _nextPrefixPosition;
         private long _lookaheadPosition;
         private bool _lookaheadStarted;
         private bool _lookaheadDone;
 
-        public BulkSumWindowFunctionSuffixFollowing(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from)
+        public BulkAverageWindowFunctionSuffixFollowing(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from)
         {
             Debug.Assert(from > 0);
             _fetchValueFunction = fetchValueFunction;
@@ -727,7 +759,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             _totalState._type = ArrowTypeId.Null;
             _prefixState._type = ArrowTypeId.Null;
-            _partitionRowCount = 0;
+            _totalCount = 0;
+            _prefixCount = 0;
             _currentPosition = -1;
             _nextPrefixPosition = 0;
             _lookaheadStarted = false;
@@ -738,7 +771,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 var value = _fetchValueFunction(_reader.Batch, _reader.RowIndex);
                 SumWindowUtils.DoSum(value, _totalState, _reader.Weight);
-                _partitionRowCount += _reader.Weight;
+                if (value.Type == ArrowTypeId.Int64 || value.Type == ArrowTypeId.Double || value.Type == ArrowTypeId.Decimal128)
+                {
+                    _totalCount += _reader.Weight;
+                }
             }
         }
 
@@ -754,17 +790,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             _currentPosition++;
 
-            if (_currentPosition + _from > _partitionRowCount - 1)
-            {
-                // The frame starts past the partition end and is empty.
-                result._type = ArrowTypeId.Null;
-                return;
-            }
-
             if (!_lookaheadStarted)
             {
-                // Scans always start at the partition start, so the lookahead covers the prefix rows that
-                // lie before each row's frame.
                 _lookaheadStarted = true;
                 await _lookahead.ResetAtRow(new ColumnRowReference() { referenceBatch = context.Batch, RowIndex = context.RowIndex }, _memoryAllocator);
                 _lookaheadPosition = _currentPosition - context.DupIndex - 1;
@@ -782,12 +809,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 {
                     continue;
                 }
-                SumWindowUtils.DoSum(_fetchValueFunction(_lookahead.Batch, _lookahead.RowIndex), _prefixState, 1);
+                var value = _fetchValueFunction(_lookahead.Batch, _lookahead.RowIndex);
+                SumWindowUtils.DoSum(value, _prefixState, 1);
+                AverageWindowUtils.ModifyCount(ref _prefixCount, 1, value.Type);
                 _nextPrefixPosition++;
             }
 
-            BulkSumUtils.CopySumValue(_totalState, result);
-            SumWindowUtils.DoSum(_prefixState, result, -1);
+            BulkSumUtils.CopySumValue(_totalState, _resultSumState);
+            SumWindowUtils.DoSum(_prefixState, _resultSumState, -1);
+            BulkAverageUtils.DivideToContainer(_resultSumState, _totalCount - _prefixCount, result);
         }
 
         public ValueTask EndScan()
@@ -797,17 +827,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum over the whole partition. Any change requires re-emitting every row of the partition, so the
-    /// partition total is computed with a single pre-scan; when the total is unchanged the scan stops after
-    /// the first recomputed row.
+    /// Average over the whole partition, computed with a single pre-scan.
     /// </summary>
-    internal class BulkSumWindowFunctionUnbounded : IBulkWindowFunction
+    internal class BulkAverageWindowFunctionUnbounded : IBulkWindowFunction
     {
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
         private BulkWindowForwardPartitionReader? _reader;
         private readonly DataValueContainer _sumState = new DataValueContainer();
+        private long _count;
 
-        public BulkSumWindowFunctionUnbounded(Func<EventBatchData, int, IDataValue> fetchValueFunction)
+        public BulkAverageWindowFunctionUnbounded(Func<EventBatchData, int, IDataValue> fetchValueFunction)
         {
             _fetchValueFunction = fetchValueFunction;
         }
@@ -838,17 +867,22 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             Debug.Assert(_reader != null);
 
             _sumState._type = ArrowTypeId.Null;
+            _count = 0;
             await _reader.Reset(partitionValues);
             while (await _reader.MoveNextRow())
             {
                 var value = _fetchValueFunction(_reader.Batch, _reader.RowIndex);
                 SumWindowUtils.DoSum(value, _sumState, _reader.Weight);
+                if (value.Type == ArrowTypeId.Int64 || value.Type == ArrowTypeId.Double || value.Type == ArrowTypeId.Decimal128)
+                {
+                    _count += _reader.Weight;
+                }
             }
         }
 
         public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
-            BulkSumUtils.CopySumValue(_sumState, result);
+            BulkAverageUtils.DivideToContainer(_sumState, _count, result);
             return true;
         }
 

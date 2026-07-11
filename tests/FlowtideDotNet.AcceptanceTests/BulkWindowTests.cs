@@ -609,5 +609,1050 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedRunningSum());
         }
+
+        private void AddUserVisits(string companyId, int userKey, int? visits)
+        {
+            AddOrUpdateUser(new User()
+            {
+                UserKey = userKey,
+                CompanyId = companyId,
+                Visits = visits
+            });
+        }
+
+        public record LeadLagResult(string? companyId, int userkey, long? value);
+        public record LastValueResult(string? companyId, int userkey, long? value);
+        public record AvgResult(string? companyId, int userkey, double? value);
+        public record SurrogateKeyResult(string? companyId, int userkey, long key);
+
+        private List<LeadLagResult> ExpectedLead(int offset)
+        {
+            return Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var ordered = g.OrderBy(x => x.UserKey).ToList();
+                    var output = new List<LeadLagResult>();
+                    for (int i = 0; i < ordered.Count; i++)
+                    {
+                        long? val = i + offset < ordered.Count ? ordered[i + offset].UserKey : null;
+                        output.Add(new LeadLagResult(ordered[i].CompanyId, ordered[i].UserKey, val));
+                    }
+                    return output;
+                }).ToList();
+        }
+
+        private List<LeadLagResult> ExpectedLag(int offset, long? defaultValue)
+        {
+            return Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var ordered = g.OrderBy(x => x.UserKey).ToList();
+                    var output = new List<LeadLagResult>();
+                    for (int i = 0; i < ordered.Count; i++)
+                    {
+                        long? val = i - offset >= 0 ? ordered[i - offset].UserKey : defaultValue;
+                        output.Add(new LeadLagResult(ordered[i].CompanyId, ordered[i].UserKey, val));
+                    }
+                    return output;
+                }).ToList();
+        }
+
+        [Fact]
+        public async Task LeadIncremental()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i * 10, i);
+                AddUser("2", 100 + i * 10, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LEAD(UserKey, 2) OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLead(2));
+
+            // Append at the end, the previous two rows get new lead values.
+            AddUser("1", 200, 0);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLead(2));
+
+            // Insert in the middle, the two rows before the insert change.
+            AddUser("1", 45, 0);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLead(2));
+
+            // Delete in the middle.
+            DeleteUser(Users.First(x => x.UserKey == 30));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLead(2));
+        }
+
+        [Fact]
+        public async Task LagWithDefaultIncremental()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", 100 + i * 10, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LAG(UserKey, 2, 0) OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLag(2, 0));
+
+            // Insert at the top of the partition, the following two rows change.
+            AddUser("1", 1, 0);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLag(2, 0));
+
+            // Delete in the middle, the two rows after the deleted position change.
+            DeleteUser(Users.First(x => x.UserKey == 140));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLag(2, 0));
+
+            // Append at the end only computes the new row.
+            AddUser("1", 300, 0);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLag(2, 0));
+        }
+
+        private List<AvgResult> ExpectedRunningAverage()
+        {
+            return Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var ordered = g.OrderBy(x => x.UserKey).ToList();
+                    var output = new List<AvgResult>();
+                    double sum = 0;
+                    for (int i = 0; i < ordered.Count; i++)
+                    {
+                        sum += ordered[i].DoubleValue;
+                        output.Add(new AvgResult(ordered[i].CompanyId, ordered[i].UserKey, sum / (i + 1)));
+                    }
+                    return output;
+                }).ToList();
+        }
+
+        private List<AvgResult> ExpectedBoundedAverage(int preceding, int following)
+        {
+            return Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var ordered = g.OrderBy(x => x.UserKey).ToList();
+                    var output = new List<AvgResult>();
+                    for (int i = 0; i < ordered.Count; i++)
+                    {
+                        double sum = 0;
+                        int count = 0;
+                        for (int k = Math.Max(0, i - preceding); k <= Math.Min(ordered.Count - 1, i + following); k++)
+                        {
+                            sum += ordered[k].DoubleValue;
+                            count++;
+                        }
+                        output.Add(new AvgResult(ordered[i].CompanyId, ordered[i].UserKey, count == 0 ? null : sum / count));
+                    }
+                    return output;
+                }).ToList();
+        }
+
+        [Fact]
+        public async Task RunningAverageIncremental()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i, i + 1);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                AVG(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as value
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedRunningAverage());
+
+            // Append at the end seeds the sum and count from the previous row's stored state.
+            AddUser("1", 20, 100);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedRunningAverage());
+
+            // Insert in the middle recomputes all rows after the insert position.
+            AddUser("1", 5, 50);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedRunningAverage());
+
+            // Update an existing value.
+            AddUser("1", 3, 7);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedRunningAverage());
+        }
+
+        [Fact]
+        public async Task BoundedFollowingAverageIncremental()
+        {
+            for (int i = 0; i < 12; i++)
+            {
+                AddUser("1", i * 10, i + 1);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                AVG(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedBoundedAverage(2, 2));
+
+            // Append at the end, the two previous rows gain a frame member.
+            AddUser("1", 200, 60);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedBoundedAverage(2, 2));
+
+            // Insert in the middle affects two rows on each side.
+            AddUser("1", 45, 1000);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedBoundedAverage(2, 2));
+
+            // Delete in the middle.
+            DeleteUser(Users.First(x => x.UserKey == 60));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedBoundedAverage(2, 2));
+        }
+
+        private List<LastValueResult> ExpectedLastValueIgnoreNulls(int from, int to)
+        {
+            return Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var ordered = g.OrderBy(x => x.UserKey).ToList();
+                    var output = new List<LastValueResult>();
+                    for (int i = 0; i < ordered.Count; i++)
+                    {
+                        long? val = null;
+                        for (int k = Math.Max(0, i + from); k <= Math.Min(ordered.Count - 1, i + to); k++)
+                        {
+                            if (ordered[k].Visits != null)
+                            {
+                                val = ordered[k].Visits;
+                            }
+                        }
+                        output.Add(new LastValueResult(ordered[i].CompanyId, ordered[i].UserKey, val));
+                    }
+                    return output;
+                }).ToList();
+        }
+
+        [Fact]
+        public async Task LastValueIgnoreNullsBoundedIncremental()
+        {
+            for (int i = 0; i < 12; i++)
+            {
+                // Every third row has a value, the rest are null.
+                AddUserVisits("1", i * 10, i % 3 == 0 ? i : null);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) IGNORE NULLS OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) as value
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLastValueIgnoreNulls(-4, 0));
+
+            // Turn a null into a value, the following rows pick it up as their new last value.
+            AddUserVisits("1", 40, 100);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLastValueIgnoreNulls(-4, 0));
+
+            // Turn a value into a null, the following rows fall back to an earlier candidate.
+            AddUserVisits("1", 60, null);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLastValueIgnoreNulls(-4, 0));
+
+            // Delete a candidate row.
+            DeleteUser(Users.First(x => x.UserKey == 90));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLastValueIgnoreNulls(-4, 0));
+        }
+
+        [Fact]
+        public async Task LastValueIgnoreNullsFollowingIncremental()
+        {
+            for (int i = 0; i < 12; i++)
+            {
+                AddUserVisits("1", i * 10, i % 3 == 0 ? i : null);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) IGNORE NULLS OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 PRECEDING AND 2 FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLastValueIgnoreNulls(-4, 2));
+
+            // Append a non null value at the end, the two previous rows see it through the lookahead.
+            AddUserVisits("1", 200, 500);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLastValueIgnoreNulls(-4, 2));
+
+            // Insert a null in the middle shifts frames without adding a candidate.
+            AddUserVisits("1", 45, null);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLastValueIgnoreNulls(-4, 2));
+
+            // Delete a candidate that rows before it were seeing through the lookahead.
+            DeleteUser(Users.First(x => x.UserKey == 60));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLastValueIgnoreNulls(-4, 2));
+        }
+
+        [Fact]
+        public async Task LastValueRespectNullsPrecedingIncremental()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUserVisits("1", i * 10, i % 2 == 0 ? i : null);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 PRECEDING AND 1 PRECEDING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            List<LastValueResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<LastValueResult>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            // With respect nulls the result is the value of the row at the frame end.
+                            long? val = i - 1 >= 0 ? ordered[i - 1].Visits : null;
+                            output.Add(new LastValueResult(ordered[i].CompanyId, ordered[i].UserKey, val));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // Insert in the middle, the following row's frame end changes.
+            AddUserVisits("1", 45, 999);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            // Delete in the middle.
+            DeleteUser(Users.First(x => x.UserKey == 70));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            // Append at the end.
+            AddUserVisits("1", 200, 7);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
+        public async Task SurrogateKeyIncrementalAndPartitionCleanup()
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                AddUser("1", i, i);
+                AddUser("2", 100 + i, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                surrogate_key_int64() OVER (PARTITION BY CompanyId) as key
+            FROM users");
+            await WaitForUpdate();
+
+            // Keys are assigned per partition in scan order, so partition 1 gets 0 and partition 2 gets 1.
+            List<SurrogateKeyResult> Expected(Dictionary<string, long> keys)
+            {
+                return Users.Select(x => new SurrogateKeyResult(x.CompanyId, x.UserKey, keys[x.CompanyId!])).ToList();
+            }
+
+            var expectedKeys = new Dictionary<string, long> { { "1", 0 }, { "2", 1 } };
+            AssertCurrentDataEqual(Expected(expectedKeys));
+
+            // Adding rows to an existing partition keeps its key.
+            AddUser("1", 50, 0);
+            AddUser("2", 150, 0);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected(expectedKeys));
+
+            // A new partition gets the next key from the durable counter.
+            AddUser("3", 200, 0);
+            expectedKeys["3"] = 2;
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected(expectedKeys));
+
+            // Deleting every row in a partition removes its stored key entry.
+            foreach (var user in Users.Where(x => x.CompanyId == "3").ToList())
+            {
+                DeleteUser(user);
+            }
+            expectedKeys.Remove("3");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected(expectedKeys));
+
+            // Recreating the partition allocates a fresh key, the counter never reuses values.
+            AddUser("3", 201, 0);
+            expectedKeys["3"] = 3;
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected(expectedKeys));
+
+            // The counter and key entries survive a crash.
+            await Crash();
+            AddUser("4", 300, 0);
+            expectedKeys["4"] = 4;
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected(expectedKeys));
+        }
+
+        private List<MinByResult> ExpectedMinMaxBy(long from, long to, bool isMin)
+        {
+            return Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var ordered = g.OrderBy(x => x.UserKey).ToList();
+                    var output = new List<MinByResult>();
+                    for (int i = 0; i < ordered.Count; i++)
+                    {
+                        double? best = default;
+                        long start = from == long.MinValue ? 0 : Math.Max(0, i + from);
+                        long end = Math.Min(ordered.Count - 1, i + to);
+                        for (long k = start; k <= end; k++)
+                        {
+                            var value = ordered[(int)k].DoubleValue;
+                            if (best == null || (isMin ? value < best : value > best))
+                            {
+                                best = value;
+                            }
+                        }
+                        output.Add(new MinByResult(ordered[i].CompanyId, ordered[i].UserKey, best));
+                    }
+                    return output;
+                }).ToList();
+        }
+
+        [Fact]
+        public async Task MinByPrecedingToPrecedingIncremental()
+        {
+            // Values with a distinct minimum that moves around.
+            double[] values = { 50, 40, 60, 10, 70, 80, 90, 30, 20, 100, 55, 65 };
+            for (int i = 0; i < values.Length; i++)
+            {
+                AddUser("1", i * 10, values[i]);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                min_by(DoubleValue, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 5 PRECEDING AND 2 PRECEDING) as value
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-5, -2, isMin: true));
+
+            // Append at the end.
+            AddUser("1", 200, 5);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-5, -2, isMin: true));
+
+            // Delete the minimum inside several frames, forcing a ring rescan.
+            DeleteUser(Users.First(x => x.UserKey == 30));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-5, -2, isMin: true));
+
+            // Insert in the middle.
+            AddUser("1", 45, 1);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-5, -2, isMin: true));
+
+            // Update the value of an existing row.
+            AddUser("1", 80, 2);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-5, -2, isMin: true));
+        }
+
+        [Fact]
+        public async Task MinByPrecedingToFollowingIncremental()
+        {
+            double[] values = { 50, 40, 60, 10, 70, 80, 90, 30, 20, 100, 55, 65 };
+            for (int i = 0; i < values.Length; i++)
+            {
+                AddUser("1", i * 10, values[i]);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                min_by(DoubleValue, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 PRECEDING AND 3 FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-2, 3, isMin: true));
+
+            // Append a new minimum at the end, rows before it see it through the lookahead.
+            AddUser("1", 200, 1);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-2, 3, isMin: true));
+
+            // Delete a minimum in the middle.
+            DeleteUser(Users.First(x => x.UserKey == 30));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-2, 3, isMin: true));
+
+            // Insert in the middle.
+            AddUser("1", 45, 3);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-2, 3, isMin: true));
+        }
+
+        [Fact]
+        public async Task MaxByUnboundedToPrecedingIncremental()
+        {
+            double[] values = { 50, 40, 60, 10, 70, 80, 90, 30, 20, 100 };
+            for (int i = 0; i < values.Length; i++)
+            {
+                AddUser("1", i * 10, values[i]);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                max_by(DoubleValue, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN UNBOUNDED PRECEDING AND 2 PRECEDING) as value
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(long.MinValue, -2, isMin: false));
+
+            // Append at the end seeds the running best from the previous row's stored state.
+            AddUser("1", 200, 5);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(long.MinValue, -2, isMin: false));
+
+            // Append a new maximum, it only enters frames two rows later.
+            AddUser("1", 210, 500);
+            AddUser("1", 220, 6);
+            AddUser("1", 230, 7);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(long.MinValue, -2, isMin: false));
+
+            // Delete the maximum, all rows after its position recompute.
+            DeleteUser(Users.First(x => x.UserKey == 210));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(long.MinValue, -2, isMin: false));
+        }
+
+        [Fact]
+        public async Task LagDynamicOffsetIncremental()
+        {
+            // Visits is used as a per-row offset: null falls back to 1 and a negative offset reaches
+            // forward, matching the non bulk implementation.
+            int?[] offsets = { 2, null, 1, -1, 3, 0, 5, -2, 1, 2 };
+            for (int i = 0; i < offsets.Length; i++)
+            {
+                AddUserVisits("1", i * 10, offsets[i]);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LAG(UserKey, Visits) OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users");
+            await WaitForUpdate();
+
+            List<LeadLagResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<LeadLagResult>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            long offset = ordered[i].Visits ?? 1;
+                            long target = i - offset;
+                            long? val = target >= 0 && target < ordered.Count ? ordered[(int)target].UserKey : null;
+                            output.Add(new LeadLagResult(ordered[i].CompanyId, ordered[i].UserKey, val));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // Change an offset value, the whole partition recomputes.
+            AddUserVisits("1", 40, 1);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            // Insert a row in the middle shifts every target.
+            AddUserVisits("1", 45, 2);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            // Delete a row.
+            DeleteUser(Users.First(x => x.UserKey == 20));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
+        public async Task LeadDynamicOffsetWithDefaultIncremental()
+        {
+            int?[] offsets = { 1, 3, null, 2, -1, 0, 4, 1, 2, 1 };
+            for (int i = 0; i < offsets.Length; i++)
+            {
+                AddUserVisits("1", i * 10, offsets[i]);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LEAD(UserKey, Visits, 0) OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users");
+            await WaitForUpdate();
+
+            List<LeadLagResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<LeadLagResult>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            long offset = ordered[i].Visits ?? 1;
+                            long target = i + offset;
+                            long? val = target >= 0 && target < ordered.Count ? ordered[(int)target].UserKey : 0;
+                            output.Add(new LeadLagResult(ordered[i].CompanyId, ordered[i].UserKey, val));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // Append at the end changes which rows fall off the partition.
+            AddUserVisits("1", 200, 1);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            // Delete in the middle.
+            DeleteUser(Users.First(x => x.UserKey == 30));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
+        public async Task SumSuffixFollowingIncremental()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i * 10, i + 1);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 FOLLOWING AND UNBOUNDED FOLLOWING) AS INT) as value
+            FROM users");
+            await WaitForUpdate();
+
+            List<SumResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<SumResult>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            double? sum = default;
+                            for (int k = i + 2; k < ordered.Count; k++)
+                            {
+                                sum = (sum ?? 0) + ordered[k].DoubleValue;
+                            }
+                            output.Add(new SumResult(ordered[i].CompanyId, ordered[i].UserKey, sum == null ? null : (long)sum));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // Append at the end changes every row before it.
+            AddUser("1", 200, 50);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            // Delete in the middle.
+            DeleteUser(Users.First(x => x.UserKey == 40));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
+        public async Task AverageSuffixFollowingIncremental()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i * 10, i + 1);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                AVG(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 FOLLOWING AND UNBOUNDED FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            List<AvgResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<AvgResult>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            double sum = 0;
+                            int count = 0;
+                            for (int k = i + 2; k < ordered.Count; k++)
+                            {
+                                sum += ordered[k].DoubleValue;
+                                count++;
+                            }
+                            output.Add(new AvgResult(ordered[i].CompanyId, ordered[i].UserKey, count == 0 ? null : sum / count));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            AddUser("1", 200, 42);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            DeleteUser(Users.First(x => x.UserKey == 50));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
+        public async Task MinBySuffixIncremental()
+        {
+            double[] values = { 50, 40, 60, 10, 70, 80, 90, 30, 20, 100 };
+            for (int i = 0; i < values.Length; i++)
+            {
+                AddUser("1", i * 10, values[i]);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                min_by(DoubleValue, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-2, int.MaxValue, isMin: true));
+
+            // Delete the global minimum, the suffix change points rebuild.
+            DeleteUser(Users.First(x => x.UserKey == 30));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-2, int.MaxValue, isMin: true));
+
+            // Append a new global minimum at the end, every row sees it.
+            AddUser("1", 200, 1);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-2, int.MaxValue, isMin: true));
+
+            // Insert in the middle.
+            AddUser("1", 45, 5);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(-2, int.MaxValue, isMin: true));
+        }
+
+        [Fact]
+        public async Task MaxByFollowingSuffixEmptyFrameAtEnd()
+        {
+            double[] values = { 50, 40, 60, 10, 70, 80 };
+            for (int i = 0; i < values.Length; i++)
+            {
+                AddUser("1", i * 10, values[i]);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                max_by(DoubleValue, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            List<MinByResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<MinByResult>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            double? best = default;
+                            for (int k = i + 1; k < ordered.Count; k++)
+                            {
+                                if (best == null || ordered[k].DoubleValue > best)
+                                {
+                                    best = ordered[k].DoubleValue;
+                                }
+                            }
+                            output.Add(new MinByResult(ordered[i].CompanyId, ordered[i].UserKey, best));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // Delete the maximum at the end, the last row's frame is empty and stays null.
+            DeleteUser(Users.First(x => x.UserKey == 50));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
+        public async Task LastValueSuffixIncremental()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                // The last non null value sits away from the partition end so late rows can miss it.
+                AddUserVisits("1", i * 10, i is 0 or 3 or 5 ? i : null);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) IGNORE NULLS OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            List<LastValueResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        int lastNonNull = -1;
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            if (ordered[i].Visits != null)
+                            {
+                                lastNonNull = i;
+                            }
+                        }
+                        var output = new List<LastValueResult>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            long? val = lastNonNull >= i - 2 && lastNonNull >= 0 ? ordered[lastNonNull].Visits : null;
+                            output.Add(new LastValueResult(ordered[i].CompanyId, ordered[i].UserKey, val));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // Turn the last candidate into a null, the last non null position moves backwards.
+            AddUserVisits("1", 50, null);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            // Append a non null at the end.
+            AddUserVisits("1", 200, 42);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
+        public async Task LastValueRespectNullsSuffixGivesPartitionLastValue()
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                AddUserVisits("1", i * 10, i % 2 == 0 ? i : null);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            List<LastValueResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        long? last = ordered[ordered.Count - 1].Visits;
+                        return ordered.Select(x => new LastValueResult(x.CompanyId, x.UserKey, last));
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // Append a null at the end, every row's value becomes null with respect nulls.
+            AddUserVisits("1", 200, null);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            AddUserVisits("1", 210, 99);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
+        public async Task EmptyFrameFromGreaterThanToIsNull()
+        {
+            for (int i = 0; i < 6; i++)
+            {
+                AddUser("1", i, i + 1);
+            }
+
+            // The frame start lies after the frame end, so the frame is always empty.
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 PRECEDING AND 3 PRECEDING) AS INT) as sumValue,
+                min_by(DoubleValue, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 PRECEDING AND 3 PRECEDING) as minValue
+            FROM users");
+            await WaitForUpdate();
+
+            List<EmptyFrameResult> Expected()
+            {
+                return Users.Select(x => new EmptyFrameResult(x.CompanyId, x.UserKey, null, null)).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            AddUser("1", 10, 7);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        public record EmptyFrameResult(string? companyId, int userkey, long? sumValue, double? minValue);
+
+        [Fact]
+        public async Task HugeFrameOnSmallPartition()
+        {
+            for (int i = 0; i < 20; i++)
+            {
+                AddUser("1", i, i + 1);
+            }
+
+            // A frame much larger than the partition must behave like a running sum without
+            // preallocating the declared frame size.
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 5000000 PRECEDING AND CURRENT ROW) AS INT) as value
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedRunningSum());
+
+            AddUser("1", 100, 42);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedRunningSum());
+        }
+
+        [Fact]
+        public async Task MinByUnboundedToFollowingIncremental()
+        {
+            double[] values = { 50, 40, 60, 10, 70, 80, 90, 30, 20, 100 };
+            for (int i = 0; i < values.Length; i++)
+            {
+                AddUser("1", i * 10, values[i]);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                min_by(DoubleValue, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN UNBOUNDED PRECEDING AND 2 FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(long.MinValue, 2, isMin: true));
+
+            // Append a row that is not a new minimum, only the last rows recompute.
+            AddUser("1", 200, 500);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(long.MinValue, 2, isMin: true));
+
+            // Append a new global minimum, the two rows before it pick it up through the lookahead.
+            AddUser("1", 210, 1);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(long.MinValue, 2, isMin: true));
+
+            // Delete the global minimum.
+            DeleteUser(Users.First(x => x.UserKey == 210));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedMinMaxBy(long.MinValue, 2, isMin: true));
+        }
     }
 }
