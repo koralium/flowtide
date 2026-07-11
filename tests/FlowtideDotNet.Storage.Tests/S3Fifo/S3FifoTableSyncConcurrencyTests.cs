@@ -464,6 +464,68 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
+        /// Writers race large chunked victim selections: owners continuously add fresh keys
+        /// to a table whose eviction batches exceed the selection operation budget, so
+        /// Add/Delete interleave with selection at chunk boundaries. Verifies chunked
+        /// selection keeps exact rent accounting under concurrent mutation.
+        /// </summary>
+        [Fact]
+        public async Task LargeEvictionBatchesRaceWriters()
+        {
+            const int ownerCount = 3;
+
+            // cleanupStart = 1400, so each cleanup under pressure selects hundreds of
+            // victims, spanning multiple 256-operation selection chunks.
+            using var table = S3FifoTestHelpers.CreateRunningTable(maxSize: 2000);
+            var handler = new TestEvictHandler();
+            var allObjects = new ConcurrentQueue<TestCacheObject>();
+            var failures = new ConcurrentQueue<Exception>();
+            var stop = new CancellationTokenSource(StormDuration);
+
+            Func<Task> Owner(int ownerIndex) => () =>
+            {
+                // Each owner adds an endless stream of fresh keys in its own key space.
+                var key = (long)ownerIndex * 1_000_000_000;
+                while (!stop.IsCancellationRequested)
+                {
+                    var obj = new TestCacheObject(key);
+                    allObjects.Enqueue(obj);
+                    table.Add(key, obj, handler);
+                    key++;
+                    // Delete a fraction shortly after adding to mix stale slots into the
+                    // queues that selection must skip over.
+                    if ((key & 7) == 0)
+                    {
+                        table.Delete(key - 1);
+                    }
+                }
+                return Task.CompletedTask;
+            };
+
+            Func<Task> CleanupHammer() => async () =>
+            {
+                while (!stop.IsCancellationRequested)
+                {
+                    await table.ForceCleanup();
+                }
+            };
+
+            var bodies = new List<Func<Task>>();
+            for (var i = 0; i < ownerCount; i++)
+            {
+                bodies.Add(Owner(i));
+            }
+            bodies.Add(CleanupHammer());
+
+            await RunAll(failures, bodies.ToArray());
+
+            Assert.True(table.SelectionLockAcquisitionsForTests > 1, "Storm never exercised chunked selection");
+            table.Dispose();
+            Assert.True(allObjects.Count > 1000);
+            AssertCleanAccounting(allObjects);
+        }
+
+        /// <summary>
         /// Deterministic two-thread interleaving storm on the removed-check + rent handoff:
         /// one thread continuously evicts a single key through cleanup while another reads
         /// it and re-adds it on miss, crossing the tight window between the removed check

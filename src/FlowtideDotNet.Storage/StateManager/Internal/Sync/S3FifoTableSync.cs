@@ -530,10 +530,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 return;
             }
 
+            // Large batches are selected in budget-bounded chunks, releasing the queue lock
+            // between chunks so concurrent Add/Delete calls are never stalled behind the
+            // whole batch. Victims already selected are dequeued and exclusively owned by
+            // this cleanup, so leaving the queues mid-batch is safe.
             var victims = new List<EvictionCandidate>();
-            lock (m_queueLock)
+            while (true)
             {
-                SelectVictims(victims, toBeRemovedCount);
+                bool finished;
+                lock (m_queueLock)
+                {
+                    m_selectionLockAcquisitions++;
+                    finished = TrySelectVictims(victims, toBeRemovedCount, SelectionOperationBudget);
+                }
+                if (finished)
+                {
+                    break;
+                }
             }
 
             if (victims.Count == 0)
@@ -699,45 +712,73 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Runs the S3-FIFO eviction scans until enough victims have been collected or no
-        /// evictable entry remains. Must be called under the queue lock.
+        /// Maximum number of queue operations (dequeues) performed under a single queue-lock
+        /// acquisition during victim selection. Bounds how long one lock hold can stall
+        /// concurrent Add/Delete calls; larger batches span multiple acquisitions.
+        /// </summary>
+        private const int SelectionOperationBudget = 256;
+
+        /// <summary>
+        /// Number of queue-lock acquisitions spent on victim selection, used by unit tests
+        /// to verify that large batches are actually chunked.
+        /// </summary>
+        private long m_selectionLockAcquisitions;
+
+        internal long SelectionLockAcquisitionsForTests => Volatile.Read(ref m_selectionLockAcquisitions);
+
+        /// <summary>
+        /// Runs the S3-FIFO eviction scans until enough victims have been collected, no
+        /// evictable entry remains, or the operation budget is spent. Must be called under
+        /// the queue lock.
         ///
         /// Victims are only dequeued here, not removed from the cache: they stay readable
         /// until the removal phase after their content has been serialized by the evict
         /// handlers, mirroring the previous implementation.
         /// </summary>
-        private void SelectVictims(List<EvictionCandidate> victims, int toBeRemovedCount)
+        /// <returns>
+        /// True when selection is complete (target reached or nothing evictable remains),
+        /// false when the budget ran out and the caller should reacquire the lock for
+        /// another chunk.
+        /// </returns>
+        private bool TrySelectVictims(List<EvictionCandidate> victims, int toBeRemovedCount, int operationBudget)
         {
             var smallTarget = SmallQueueTargetSize();
             while (victims.Count < toBeRemovedCount)
             {
+                if (operationBudget <= 0)
+                {
+                    return false;
+                }
                 var liveSmall = m_smallQueue.Count - m_smallStaleCount;
                 var liveMain = m_mainQueue.Count - m_mainStaleCount;
                 if (liveSmall <= 0 && liveMain <= 0)
                 {
-                    break;
+                    return true;
                 }
+                bool foundVictim;
                 if (liveSmall > smallTarget || liveMain <= 0)
                 {
-                    if (!TryEvictOneFromSmall(victims) && !TryEvictOneFromMain(victims))
-                    {
-                        break;
-                    }
+                    foundVictim = TryEvictOneFromSmall(victims, ref operationBudget) || TryEvictOneFromMain(victims, ref operationBudget);
                 }
                 else
                 {
-                    if (!TryEvictOneFromMain(victims) && !TryEvictOneFromSmall(victims))
-                    {
-                        break;
-                    }
+                    foundVictim = TryEvictOneFromMain(victims, ref operationBudget) || TryEvictOneFromSmall(victims, ref operationBudget);
+                }
+                if (!foundVictim && operationBudget > 0)
+                {
+                    // Both queues were scanned to exhaustion without finding an evictable
+                    // entry (only stale slots or in-flight victims remain).
+                    return true;
                 }
             }
+            return true;
         }
 
-        private bool TryEvictOneFromSmall(List<EvictionCandidate> victims)
+        private bool TryEvictOneFromSmall(List<EvictionCandidate> victims, ref int operationBudget)
         {
-            while (m_smallQueue.Count > 0)
+            while (m_smallQueue.Count > 0 && operationBudget > 0)
             {
+                operationBudget--;
                 var entry = m_smallQueue.Dequeue();
                 lock (entry)
                 {
@@ -765,12 +806,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return false;
         }
 
-        private bool TryEvictOneFromMain(List<EvictionCandidate> victims)
+        private bool TryEvictOneFromMain(List<EvictionCandidate> victims, ref int operationBudget)
         {
-            // Terminates: every pass either evicts, drops a stale slot, or decrements a
-            // frequency, and the total frequency in the queue is finite.
-            while (m_mainQueue.Count > 0)
+            // Without concurrent readers this terminates because every pass either evicts,
+            // drops a stale slot, or decrements a frequency. Readers can pump frequencies
+            // back up concurrently, so the operation budget is what bounds a single
+            // queue-lock hold; the caller resumes with a fresh budget after releasing it.
+            while (m_mainQueue.Count > 0 && operationBudget > 0)
             {
+                operationBudget--;
                 var entry = m_mainQueue.Dequeue();
                 lock (entry)
                 {

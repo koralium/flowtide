@@ -236,6 +236,45 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         [Fact]
+        public async Task LargeEvictionBatchIsSelectedInChunks()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
+            var handler = new TestEvictHandler();
+            const int total = 5000;
+            var objects = new TestCacheObject[total];
+            for (var i = 0; i < total; i++)
+            {
+                objects[i] = new TestCacheObject(i);
+                table.Add(i, objects[i], handler);
+            }
+
+            // 5000 entries with a cleanup threshold of 7: a single cleanup selects 4993
+            // victims, which must span many budget-bounded queue-lock acquisitions while
+            // preserving FIFO eviction order and exact accounting.
+            var acquisitionsBefore = table.SelectionLockAcquisitionsForTests;
+            await table.ForceCleanup();
+            var acquisitions = table.SelectionLockAcquisitionsForTests - acquisitionsBefore;
+
+            Assert.True(acquisitions > 1, $"Selection used {acquisitions} lock acquisition(s); large batches must be chunked");
+            Assert.Equal(7, table.Count);
+            Assert.Equal(total - 7, handler.Evictions.Count);
+            // FIFO order preserved across chunk boundaries: the oldest entries were evicted
+            // and the newest survived.
+            Assert.Equal(0, handler.EvictedKeys.First());
+            Assert.Equal(total - 8, handler.EvictedKeys.Last());
+            for (var i = total - 7; i < total; i++)
+            {
+                Assert.True(table.TryGetValue(i, out var cached));
+                cached!.Return();
+            }
+            for (var i = 0; i < total - 7; i++)
+            {
+                Assert.Equal(0, objects[i].RentCount);
+                Assert.Equal(1, objects[i].DisposeCount);
+            }
+        }
+
+        [Fact]
         public async Task EvictHandlerFailureKeepsVictimsCachedAndEvictable()
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(10, minSize: 0);
