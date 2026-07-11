@@ -35,6 +35,13 @@ namespace FlowtideDotNet.Storage.StateManager
 
         ValueTask<IObjectState<T>> GetOrCreateObjectStateAsync<T>(string name);
 
+        /// <summary>
+        /// Checks whether state with the given name has already been registered for this client, without
+        /// creating it. Allows an operator to detect state written by a previous, incompatible
+        /// implementation and fail loudly on restore instead of silently starting from empty state.
+        /// </summary>
+        /// <param name="name">The state name, scoped the same way as the GetOrCreate methods.</param>
+        bool StateExists(string name);
 
         IStateManagerClient GetChildManager(string name);
     }

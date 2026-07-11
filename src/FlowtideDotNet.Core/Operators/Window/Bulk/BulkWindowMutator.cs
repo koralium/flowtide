@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Operators.Window.Bulk
 {
@@ -85,6 +86,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 ? container._functionStates[0].GetListLength(index)
                 : 0;
             var newOutputCount = Math.Max(0, newWeight);
+            AssertStateListsAligned(container, index, storedOutputs);
 
             if (storedOutputs > newOutputCount && container._previousValueSent.Get(index))
             {
@@ -119,6 +121,22 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
 
             return GenericWriteOperation.Upsert;
+        }
+
+        /// <summary>
+        /// The excess entry removal below indexes duplicate positions derived from the first function's
+        /// list length into every state column, so all output and auxiliary lists of a row must stay the
+        /// same length. A misaligned removal would silently corrupt neighboring rows' list boundaries.
+        /// </summary>
+        [Conditional("DEBUG")]
+        private void AssertStateListsAligned(BulkWindowValueContainer container, int index, int storedOutputs)
+        {
+            for (int s = 1; s < _totalStateColumns; s++)
+            {
+                Debug.Assert(
+                    container._functionStates[s].GetListLength(index) == storedOutputs,
+                    "State list lengths are out of sync between state columns for the same row");
+            }
         }
     }
 }

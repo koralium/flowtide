@@ -325,6 +325,18 @@ namespace FlowtideDotNet.Storage.StateManager
             }
         }
 
+        /// <summary>
+        /// Checks whether a state client with the given name has been registered, without creating it.
+        /// </summary>
+        internal bool StateExists(string client)
+        {
+            Debug.Assert(m_metadata != null);
+            lock (m_lock)
+            {
+                return _stateClients.ContainsKey(client) || m_metadata.ClientMetadataLocations.ContainsKey(client);
+            }
+        }
+
         internal ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options, IMemoryAllocator memoryAllocator)
             where TValue : ICacheObject
             where TMetadata : class, IStorageMetadata

@@ -146,6 +146,11 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     }
                     else
                     {
+                        // Rows before a scan start must always have one state entry per duplicate, since
+                        // any row with incomplete state carries a change marker and scans start at or
+                        // before the first marker. Padding with null here would silently seed wrong
+                        // function state, so it should never be reached.
+                        Debug.Assert(false, "Seed row is missing stored state for a duplicate, function state would seed incorrectly");
                         _stateColumns[s].Add(NullValue.Instance);
                     }
                 }

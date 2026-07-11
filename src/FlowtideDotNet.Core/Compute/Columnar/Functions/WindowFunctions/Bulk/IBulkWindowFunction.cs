@@ -55,34 +55,39 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
         internal BulkWindowValueContainer Values = null!;
 
-        /// <summary>
-        /// Set when a function stored a different auxiliary value for the current logical row, used by the
-        /// operator for stability tracking. Reset by the operator before each function call.
-        /// </summary>
-        internal bool AuxChanged;
+        // Auxiliary values written by functions are buffered here and applied to the page by the operator
+        // while it holds the leaf's write lock, so functions never mutate pages themselves. The values are
+        // applied directly after the function's compute call, so they only need to stay valid until then.
+        internal readonly IDataValue?[] _pendingAuxValues;
+        internal readonly int[] _pendingAuxSlots;
+        internal int _pendingAuxCount;
+
+        public BulkWindowRowContext(int totalStateColumns)
+        {
+            _pendingAuxValues = new IDataValue?[totalStateColumns];
+            _pendingAuxSlots = new int[totalStateColumns];
+        }
 
         /// <summary>
-        /// Stores an auxiliary state value for the current logical row.
+        /// Stores an auxiliary state value for the current logical row. The value is applied by the
+        /// operator right after the compute call returns, so it must stay valid until then.
         /// </summary>
         public void SetAuxValue(int auxColumnIndex, IDataValue value)
         {
-            var list = Values._functionStates[auxColumnIndex];
-            var listLength = list.GetListLength(RowIndex);
-            if (DupIndex < listLength)
+            if (_pendingAuxValues[auxColumnIndex] == null)
             {
-                var existing = list.GetListElementValue(RowIndex, DupIndex);
-                if (DataValueComparer.Instance.Compare(existing, value) != 0)
-                {
-                    list.UpdateListElement(RowIndex, DupIndex, value);
-                    AuxChanged = true;
-                }
+                _pendingAuxSlots[_pendingAuxCount++] = auxColumnIndex;
             }
-            else
+            _pendingAuxValues[auxColumnIndex] = value;
+        }
+
+        internal void ResetPendingAux()
+        {
+            for (int i = 0; i < _pendingAuxCount; i++)
             {
-                Debug.Assert(DupIndex == listLength, "Auxiliary state must be appended in duplicate order");
-                list.AppendToList(RowIndex, value);
-                AuxChanged = true;
+                _pendingAuxValues[_pendingAuxSlots[i]] = null;
             }
+            _pendingAuxCount = 0;
         }
     }
 

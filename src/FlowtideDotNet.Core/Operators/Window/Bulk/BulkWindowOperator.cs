@@ -44,6 +44,12 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
     {
         private const int OutputBatchSize = 100;
 
+        /// <summary>
+        /// Incoming batches are applied to the trees in chunks of this many rows, with an output flush
+        /// between chunks, bounding how many retraction rows can accumulate in memory for one batch.
+        /// </summary>
+        private const int ReceiveChunkSize = 2048;
+
         private readonly ConsistentPartitionWindowRelation _relation;
         private readonly IBulkWindowFunction[] _functions;
         private readonly List<int> _emitList;
@@ -275,73 +281,91 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
             var extendedBatch = new EventBatchData(columns);
 
-            for (int k = 0; k < _partitionCalculateExpressions.Count; k++)
+            try
             {
-                var expression = _partitionCalculateExpressions[k];
-                var targetColumn = extraPartitionColumns[k];
-                for (int i = 0; i < dataCount; i++)
+                for (int k = 0; k < _partitionCalculateExpressions.Count; k++)
                 {
-                    expression(msg.Data.EventBatchData, i, targetColumn);
-                }
-            }
-
-            if (_keyScratch.Length < dataCount)
-            {
-                _keyScratch = new ColumnRowReference[dataCount];
-                _valueScratch = new BulkWindowValue[dataCount];
-                _tempValueScratch = new int[dataCount];
-                _duplicateTagScratch = new int[dataCount];
-            }
-
-            for (int i = 0; i < dataCount; i++)
-            {
-                _keyScratch[i] = new ColumnRowReference()
-                {
-                    referenceBatch = extendedBatch,
-                    RowIndex = i
-                };
-                _valueScratch[i] = new BulkWindowValue()
-                {
-                    weight = msg.Data.Weights[i]
-                };
-                _tempValueScratch[i] = 1;
-            }
-
-            var sortedIndices = _persistentBulkInserter.SortAndGetIndices(_keyScratch, dataCount);
-
-            Debug.Assert(_markerComparer != null);
-            if (dataCount > 0)
-            {
-                int currentTag = 0;
-                _duplicateTagScratch[0] = 0;
-                for (int i = 1; i < dataCount; i++)
-                {
-                    var previous = _keyScratch[sortedIndices[i - 1]];
-                    var current = _keyScratch[sortedIndices[i]];
-                    if (_markerComparer.CompareTo(in previous, in current) != 0)
+                    var expression = _partitionCalculateExpressions[k];
+                    var targetColumn = extraPartitionColumns[k];
+                    for (int i = 0; i < dataCount; i++)
                     {
-                        currentTag++;
+                        expression(msg.Data.EventBatchData, i, targetColumn);
                     }
-                    _duplicateTagScratch[i] = currentTag;
+                }
+
+                var scratchSize = Math.Min(dataCount, ReceiveChunkSize);
+                if (_keyScratch.Length < scratchSize)
+                {
+                    _keyScratch = new ColumnRowReference[scratchSize];
+                    _valueScratch = new BulkWindowValue[scratchSize];
+                    _tempValueScratch = new int[scratchSize];
+                    _duplicateTagScratch = new int[scratchSize];
+                }
+
+                Debug.Assert(_markerComparer != null);
+                var totalByteSize = extendedBatch.GetByteSize();
+                var mutator = new BulkWindowMutator(_emitter, _functions.Length, _totalStateColumns, _mutatorScratch);
+
+                // The batch is applied in chunks with an output flush between them, so the retractions a
+                // large delete batch produces do not all accumulate in memory before the first emission.
+                for (int chunkStart = 0; chunkStart < dataCount; chunkStart += ReceiveChunkSize)
+                {
+                    var chunkLength = Math.Min(ReceiveChunkSize, dataCount - chunkStart);
+                    for (int i = 0; i < chunkLength; i++)
+                    {
+                        _keyScratch[i] = new ColumnRowReference()
+                        {
+                            referenceBatch = extendedBatch,
+                            RowIndex = chunkStart + i
+                        };
+                        _valueScratch[i] = new BulkWindowValue()
+                        {
+                            weight = msg.Data.Weights[chunkStart + i]
+                        };
+                        _tempValueScratch[i] = 1;
+                    }
+
+                    var sortedIndices = _persistentBulkInserter.SortAndGetIndices(_keyScratch, chunkLength);
+
+                    int currentTag = 0;
+                    _duplicateTagScratch[0] = 0;
+                    for (int i = 1; i < chunkLength; i++)
+                    {
+                        var previous = _keyScratch[sortedIndices[i - 1]];
+                        var current = _keyScratch[sortedIndices[i]];
+                        if (_markerComparer.CompareTo(in previous, in current) != 0)
+                        {
+                            currentTag++;
+                        }
+                        _duplicateTagScratch[i] = currentTag;
+                    }
+
+                    var chunkByteSize = (int)((long)totalByteSize * chunkLength / dataCount) + (chunkLength * 8);
+                    await _persistentBulkInserter.ApplyBatch(_keyScratch, _valueScratch, chunkLength, sortedIndices, _duplicateTagScratch, mutator, chunkByteSize);
+
+                    if (_hasSentInitialData.Value)
+                    {
+                        await _temporaryBulkInserter.ApplyBatch(_keyScratch, _tempValueScratch, chunkLength, sortedIndices, _duplicateTagScratch, new BulkTemporaryMutator(), chunkByteSize);
+                    }
+
+                    // The retractions emitted by the mutator reference the extended batch, copy them out
+                    // before the extra partition columns can be disposed.
+                    _emitter.FlushPending();
+
+                    if (_emitter.Count >= OutputBatchSize)
+                    {
+                        var chunkBatch = _emitter.GetCurrentBatch();
+                        _eventsOutCounter.Add(chunkBatch.Weights.Count);
+                        yield return new StreamEventBatch(chunkBatch);
+                    }
                 }
             }
-
-            var batchSize = extendedBatch.GetByteSize() + (dataCount * 8);
-            var mutator = new BulkWindowMutator(_emitter, _functions.Length, _totalStateColumns, _mutatorScratch);
-            await _persistentBulkInserter.ApplyBatch(_keyScratch, _valueScratch, dataCount, sortedIndices, _duplicateTagScratch, mutator, batchSize);
-
-            if (_hasSentInitialData.Value)
+            finally
             {
-                await _temporaryBulkInserter.ApplyBatch(_keyScratch, _tempValueScratch, dataCount, sortedIndices, _duplicateTagScratch, new BulkTemporaryMutator(), batchSize);
-            }
-
-            // The retractions emitted by the mutator reference the extended batch, copy them out before
-            // the extra partition columns are disposed.
-            _emitter.FlushPending();
-
-            for (int i = 0; i < extraPartitionColumns.Length; i++)
-            {
-                extraPartitionColumns[i].Dispose();
+                for (int i = 0; i < extraPartitionColumns.Length; i++)
+                {
+                    extraPartitionColumns[i].Dispose();
+                }
             }
 
             if (_emitter.Count > 0)
@@ -575,7 +599,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     }
 
                     var rowDistance = nextRowDistance;
-                    var rowChanged = await ProcessLogicalRows(keyBatch, values, i, weight, rowDistance);
+                    var rowChanged = await ProcessLogicalRows(page, keyBatch, values, i, weight, rowDistance);
                     pageDirty |= rowChanged;
 
                     // A changed row can hide a weight change, so the next logical row is treated as
@@ -641,8 +665,12 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         /// <summary>
         /// Computes all functions for every logical duplicate of a physical row, emits changes and updates
         /// the stored state lists. Returns true when the page was modified.
+        /// The leaf's write lock is held while the stored state is mutated so a concurrent page
+        /// serialization from cache eviction cannot observe a half written page. Functions never mutate
+        /// the page themselves, their auxiliary values are buffered in the row context and applied here.
         /// </summary>
         private async ValueTask<bool> ProcessLogicalRows(
+            ILockableObject pageLock,
             EventBatchData keyBatch,
             BulkWindowValueContainer values,
             int rowIndex,
@@ -666,6 +694,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 _rowValueStable[f] = true;
             }
 
+            pageLock.EnterWriteLock();
             for (int dup = 0; dup < weight; dup++)
             {
                 context.DupIndex = dup;
@@ -674,12 +703,15 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 bool anyChanged = false;
                 for (int f = 0; f < _functions.Length; f++)
                 {
-                    context.AuxChanged = false;
+                    context.ResetPendingAux();
                     if (!_functions[f].TryComputeRow(context, _resultContainers[f]))
                     {
+                        // The asynchronous path may load pages, the lock cannot be held across it.
+                        pageLock.ExitWriteLock();
                         await _functions[f].ComputeRow(context, _resultContainers[f]);
+                        pageLock.EnterWriteLock();
                     }
-                    if (context.AuxChanged)
+                    if (context._pendingAuxCount > 0 && ApplyPendingAux(values, rowIndex, dup))
                     {
                         _rowValueStable[f] = false;
                         pageDirty = true;
@@ -726,8 +758,43 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     pageDirty = true;
                 }
             }
+            pageLock.ExitWriteLock();
 
             return pageDirty;
+        }
+
+        /// <summary>
+        /// Applies the auxiliary values a function buffered for the current logical row. Must be called
+        /// while the leaf's write lock is held. Returns true when any stored auxiliary value changed.
+        /// </summary>
+        private bool ApplyPendingAux(BulkWindowValueContainer values, int rowIndex, int dupIndex)
+        {
+            Debug.Assert(_rowContext != null);
+            var context = _rowContext;
+            bool changed = false;
+            for (int i = 0; i < context._pendingAuxCount; i++)
+            {
+                var slot = context._pendingAuxSlots[i];
+                var value = context._pendingAuxValues[slot]!;
+                var list = values._functionStates[slot];
+                var listLength = list.GetListLength(rowIndex);
+                if (dupIndex < listLength)
+                {
+                    var existing = list.GetListElementValue(rowIndex, dupIndex);
+                    if (DataValueComparer.Instance.Compare(existing, value) != 0)
+                    {
+                        list.UpdateListElement(rowIndex, dupIndex, value);
+                        changed = true;
+                    }
+                }
+                else
+                {
+                    Debug.Assert(dupIndex == listLength, "Auxiliary state must be appended in duplicate order");
+                    list.AppendToList(rowIndex, value);
+                    changed = true;
+                }
+            }
+            return changed;
         }
 
         /// <summary>
@@ -801,7 +868,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                         {
                             continue;
                         }
-                        var rowChanged = await ProcessLogicalRows(keyBatch, values, i, weight, long.MaxValue / 2);
+                        var rowChanged = await ProcessLogicalRows(page, keyBatch, values, i, weight, long.MaxValue / 2);
                         pageDirty |= rowChanged;
                     }
 
@@ -876,6 +943,17 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 _eventsInCounter = Metrics.CreateCounter<long>("events_processed");
             }
 
+            // The non bulk WindowOperator stored its state under "persistent"/"temporary" with an
+            // incompatible layout. Restoring such state silently as an empty bulk tree would produce
+            // permanently wrong output, so fail loudly instead.
+            if (stateManagerClient.StateExists("persistent"))
+            {
+                throw new InvalidOperationException(
+                    "Found existing window operator state written by the previous non bulk window operator. " +
+                    "The bulk window operator stores its state differently and cannot restore it. " +
+                    "Reset the stream state, or run a version that uses the previous window operator.");
+            }
+
             _hasSentInitialData = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initialDataSent");
 
             _persistentTree = await stateManagerClient.GetOrCreateTree("persistent_v1",
@@ -911,7 +989,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 new BulkWindowInsertComparer(_orderCompareFunction, _partitionColumns, _otherColumns),
                 _partitionColumns);
             _seedReader = new BulkWindowSeedReader(_backwardReader, _totalKeyColumns, _totalStateColumns, MemoryAllocator);
-            _rowContext = new BulkWindowRowContext();
+            _rowContext = new BulkWindowRowContext(_totalStateColumns);
 
             _resultContainers = new DataValueContainer[_functions.Length];
             _resultValues = new IDataValue[_functions.Length];
