@@ -34,7 +34,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         public SerieType SerieType => SerieType.Matrix;
 
-        public ValueTask SetValue(long timestamp, double value)
+        public async ValueTask SetValue(long timestamp, double value)
         {
             // The append tree requires strictly increasing keys. Multiple instruments can map to
             // the same serie (same name and tags, for instance the same untagged instrument
@@ -42,10 +42,11 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             // than once per gather pass. First value wins, later duplicates are skipped.
             if (timestamp <= _lastTimestamp)
             {
-                return ValueTask.CompletedTask;
+                return;
             }
+
+            await tree.Append(timestamp, value);
             _lastTimestamp = timestamp;
-            return tree.Append(timestamp, value);
         }
 
         public ValueTask Prune(long timestamp)
