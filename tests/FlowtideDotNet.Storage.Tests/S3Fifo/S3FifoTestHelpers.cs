@@ -92,6 +92,16 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
         }
 
+        public bool TryReclaimForEviction()
+        {
+            if (Interlocked.CompareExchange(ref _rentCount, 0, 1) == 1)
+            {
+                Interlocked.Increment(ref _disposeCount);
+                return true;
+            }
+            return false;
+        }
+
         public void EnterWriteLock()
         {
             Monitor.Enter(this);

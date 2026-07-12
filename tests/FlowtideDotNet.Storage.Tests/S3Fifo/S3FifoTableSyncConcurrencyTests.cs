@@ -175,13 +175,14 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Owners keep their own rented reference to every object and re-add the same object
-        /// after it is evicted, exercising the RemovedFromCache re-rent handshake under
-        /// reader and eviction races. Also verifies a reader can never receive a different
-        /// object than the one the key's owner installed.
+        /// Owners keep their own rented reference to every object across continuous eviction
+        /// pressure. Held pages must never leave the cache (eviction only removes pages
+        /// nothing else references), so every read must return the exact object the owner
+        /// installed — a miss or a foreign object means the identity contract broke and a
+        /// reload could have created a divergent second copy of the page.
         /// </summary>
         [Fact]
-        public async Task EvictedObjectsAreReAddedWhileStillRented()
+        public async Task HeldPagesKeepTheirIdentityUnderEvictionPressure()
         {
             const int keyCount = 128;
             const int ownerCount = 2;
@@ -206,30 +207,25 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(key, obj, handler);
             }
 
-            Func<Task> Owner(int ownerIndex) => async () =>
+            Func<Task> Owner(int ownerIndex) => () =>
             {
                 while (!stop.IsCancellationRequested)
                 {
                     for (var key = ownerIndex; key < keyCount; key += ownerCount)
                     {
-                        if (table.TryGetValue(key, out var cacheObject))
+                        if (!table.TryGetValue(key, out var cacheObject))
                         {
-                            if (!ReferenceEquals(cacheObject, objectsByKey[key]))
-                            {
-                                throw new InvalidOperationException($"Key {key} returned a foreign object");
-                            }
-                            cacheObject!.Return();
+                            // A held page must never be evicted out of the cache.
+                            throw new InvalidOperationException($"Held page {key} disappeared from the cache");
                         }
-                        else
+                        if (!ReferenceEquals(cacheObject, objectsByKey[key]))
                         {
-                            // Evicted while we still hold a reference: re-add the same object.
-                            if (table.Add(key, objectsByKey[key], handler))
-                            {
-                                await table.Wait();
-                            }
+                            throw new InvalidOperationException($"Key {key} returned a foreign object");
                         }
+                        cacheObject!.Return();
                     }
                 }
+                return Task.CompletedTask;
             };
 
             Func<Task> Reader() => () =>

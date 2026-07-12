@@ -68,7 +68,6 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             for (var i = 0; i < 3; i++)
             {
                 Assert.False(table.TryGetValue(i, out _));
-                Assert.True(objects[i].RemovedFromCache);
                 // The cache's reference was the only one, so the object is disposed.
                 Assert.Equal(0, objects[i].RentCount);
                 Assert.Equal(1, objects[i].DisposeCount);
@@ -420,8 +419,17 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(table.Add(3, new TestCacheObject(3), handler));
         }
 
+        /// <summary>
+        /// A page that anything still references must never be removed from the cache:
+        /// removing it lets an independent traversal reload a SECOND object for the same
+        /// key, and the two copies then diverge — writers hit "Cannot add a new value to
+        /// the cache with the same key" (or worse, updates are silently split across the
+        /// copies). Seen in production shape as a B+ tree iterator holding a leaf while
+        /// eviction pressure reloads it underneath (WindowFunctionTests under
+        /// CachePageCount = 0).
+        /// </summary>
         [Fact]
-        public async Task EvictedObjectStillRentedCanBeReAdded()
+        public async Task HeldPagesAreNotEvictedSoTheirIdentityIsStable()
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(4);
             var handler = new TestEvictHandler();
@@ -432,28 +440,34 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, objects[i], handler);
             }
 
-            // Hold a reference to key 0 across its eviction, like a B+ tree traversal would.
+            // Hold a reference to key 0 across a cleanup, like a B+ tree iterator would.
             Assert.True(table.TryGetValue(0, out var rented));
             Assert.Same(objects[0], rented);
 
             await table.ForceCleanup();
 
+            // The held page was selected and serialized, but must stay cached: a later
+            // read must return the SAME object, not a reloaded copy.
             Assert.Contains(0, handler.EvictedKeys);
-            Assert.True(objects[0].RemovedFromCache);
-            Assert.False(objects[0].Disposed);
-            Assert.Equal(1, objects[0].RentCount);
-            Assert.False(table.TryGetValue(0, out _));
-
-            // Re-adding the same object takes a fresh cache-owned rent and clears the flag.
-            table.Add(0, objects[0], handler);
-            Assert.False(objects[0].RemovedFromCache);
-            Assert.Equal(2, objects[0].RentCount);
-
             Assert.True(table.TryGetValue(0, out var again));
-            Assert.Same(objects[0], again);
+            Assert.Same(rented, again);
             again!.Return();
+            Assert.False(objects[0].RemovedFromCache);
+            Assert.False(objects[0].Disposed);
+            Assert.Equal(4, table.Count);
+            // It was requeued into the main queue for a later retry.
+            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.Equal(S3FifoQueueLocation.Main, entry!.Location);
+
+            // Accounting is unharmed by the skipped eviction: cache share + our rent.
+            Assert.Equal(2, objects[0].RentCount);
             rented!.Return();
             Assert.Equal(1, objects[0].RentCount);
+
+            // A second cleanup finds an unreferenced victim instead.
+            await table.ForceCleanup();
+            Assert.Equal(3, table.Count);
+            Assert.Equal(1, objects[1].DisposeCount);
         }
 
         [Fact]

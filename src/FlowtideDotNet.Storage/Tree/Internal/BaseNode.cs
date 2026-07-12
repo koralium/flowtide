@@ -80,6 +80,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
         }
 
+        public bool TryReclaimForEviction()
+        {
+            // Claim the cache's reference only if it is the last one. A concurrent reader
+            // renting turns the count to 2, so the CAS fails and the page stays cached.
+            if (Interlocked.CompareExchange(ref _rentCount, 0, 1) == 1)
+            {
+                Dispose();
+                return true;
+            }
+            return false;
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)

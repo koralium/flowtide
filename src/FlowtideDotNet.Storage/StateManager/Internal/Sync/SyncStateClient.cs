@@ -190,8 +190,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         // Remove it from file cache version and file cache
                         // This is required since the data can have been modified since it was written to the cache.
-                        m_fileCacheVersion.Remove(kv.Key, out _);
+                        // Free before removing the version entry: evictions record their version
+                        // before their write, and this pairing keeps "version entry exists"
+                        // implying "spill data exists" under any interleaving (see Evict).
                         m_fileCache.Free(kv.Key);
+                        m_fileCacheVersion.Remove(kv.Key, out _);
                     }
                     val.Return();
                     continue;
@@ -265,8 +268,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             lock (m_lock)
             {
                 m_modified[key] = -1;
-                m_fileCacheVersion.Remove(key, out _);
+                // Free before removing the version entry, mirroring Commit (see Evict).
                 m_fileCache.Free(key);
+                m_fileCacheVersion.Remove(key, out _);
                 stateManager.DeleteFromCache(key);
             }
         }
@@ -465,7 +469,25 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         if (!entry.Removed)
                         {
-                            m_fileCache.Write(entry.Key, new SerializableObject(entry.Value, options.ValueSerializer));
+                            // The version entry must be recorded BEFORE the spill write. Commit
+                            // concurrently frees spill data and then clears/removes version
+                            // entries; if the write landed before the free but the version entry
+                            // landed after the clear, the entry would point at freed data and the
+                            // next read would throw "Segment not found". With record-before-write
+                            // a version entry that survives the clear implies its write also
+                            // happened after the free, so the data it points at is live.
+                            m_fileCacheVersion[entry.Key] = val;
+                            try
+                            {
+                                m_fileCache.Write(entry.Key, new SerializableObject(entry.Value, options.ValueSerializer));
+                            }
+                            catch
+                            {
+                                // A failed spill write must not leave a version entry behind that
+                                // claims the data exists.
+                                m_fileCacheVersion.TryRemove(new KeyValuePair<long, long>(entry.Key, val));
+                                throw;
+                            }
                         }
                     }
                 }
@@ -477,8 +499,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                 }
-
-                m_fileCacheVersion[entry.Key] = val;
             }
             m_fileCache.Flush();
 

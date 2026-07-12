@@ -410,9 +410,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     if (value.RemovedFromCache)
                     {
-                        // Re-add of an object that was evicted while a caller still held a
-                        // reference: take a new cache-owned rent. The caller holds its own
-                        // rent (documented invariant), so the object cannot die concurrently.
+                        // Defensive: eviction only removes pages nothing else references, so
+                        // the cache itself no longer produces live objects with this flag set.
+                        // Kept for callers that hand back an object flagged elsewhere: take a
+                        // new cache-owned rent. The caller holds its own rent (documented
+                        // invariant), so the object cannot die concurrently.
                         if (!value.TryRent())
                         {
                             throw new InvalidOperationException("Already disposed");
@@ -650,19 +652,26 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         (requeueToMain ??= new List<S3FifoCacheEntry>()).Add(entry);
                         continue;
                     }
-                    // Volatile and ordered before Return: lock-free readers rely on Removed
-                    // being observable once a rent can fail (see S3FifoCacheEntry.TryRentValue).
+                    // Only evict pages that nothing else references. Atomically claim the
+                    // cache's reference if it is the sole one; if any other holder (a B+ tree
+                    // iterator mid-traversal) still references the page, the claim fails and
+                    // the page stays cached. Evicting a held page would let an independent
+                    // reload create a SECOND object for the same key, and the two copies then
+                    // diverge (writers hit "Cannot add a new value to the cache with the same
+                    // key", or updates are silently split across the copies). The claim
+                    // disposes the object on success, so the count is zero before we publish
+                    // the removal; a racing reader fails its rent and reloads as the new sole
+                    // owner (safe — nothing else holds the page), and a racing re-add blocks
+                    // on this same lock(entry) and observes Removed once we release.
+                    if (!entry.Value.TryReclaimForEviction())
+                    {
+                        (requeueToMain ??= new List<S3FifoCacheEntry>()).Add(entry);
+                        continue;
+                    }
                     Volatile.Write(ref entry.Removed, true);
-                    // RemovedFromCache must be set before the dictionary removal. A concurrent
-                    // re-add of the same object can only succeed its TryAdd after this TryRemove
-                    // (same dictionary bucket lock), and that ordering is what guarantees the
-                    // re-adder observes the flag and takes a new cache-owned rent. Written the
-                    // other way around, the re-adder can miss the flag and the cache's reference
-                    // count goes one short, disposing the object while it is still cached.
                     entry.Value.RemovedFromCache = true;
                     if (m_cache.TryRemove(entry.Key, out _))
                     {
-                        entry.Value.Return();
                         Interlocked.Decrement(ref m_count);
                         if (candidate.FromSmallQueue)
                         {

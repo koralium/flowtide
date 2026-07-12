@@ -95,14 +95,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         /// <summary>
         /// Lock-free read handoff: rents the value and records the access. Returns false when
-        /// the entry is being or has been evicted, which callers treat as a cache miss.
+        /// the value cannot be rented, which callers treat as a cache miss.
         ///
-        /// Safety: every path that returns the cache's reference (eviction removal, delete,
-        /// dispose) sets <see cref="Removed"/> before calling Return. A failed TryRent means
-        /// the count reached zero, which is only possible after such a Return, so Removed must
-        /// be observable by then (the failed CAS is a full fence). A failed rent on a
-        /// non-removed entry therefore indicates reference-count corruption and throws
-        /// instead of being silently treated as a miss.
+        /// A rent only fails once the value's count has reached zero, which happens exclusively
+        /// when eviction claims the sole (cache) reference via
+        /// <see cref="ICacheObject.TryRent"/>'s counterpart in the removal phase, or on
+        /// delete/dispose. In every such case no other holder exists, so a caller that misses
+        /// here and reloads from storage becomes the new sole owner — it cannot create a
+        /// second live copy of a page that something else is holding, because a held page
+        /// (count &gt; the cache's one share) is never evictable. Reference-count corruption is
+        /// caught in the <c>Add</c> path instead, which inspects the entry under its lock.
         /// </summary>
         public bool TryRentValue()
         {
@@ -112,10 +114,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             if (!Value.TryRent())
             {
-                if (!Volatile.Read(ref Removed))
-                {
-                    throw new InvalidOperationException("Could not rent value from cache");
-                }
                 return false;
             }
             RecordAccess();

@@ -48,6 +48,11 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         {
             return true;
         }
+
+        public bool TryReclaimForEviction()
+        {
+            return false;
+        }
     }
 
     internal class LocalCacheTestSerializer : IStateSerializer<ByteCacheObject>

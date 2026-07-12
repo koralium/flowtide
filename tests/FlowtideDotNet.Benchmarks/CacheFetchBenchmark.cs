@@ -68,6 +68,11 @@ namespace FlowtideDotNet.Benchmarks
                 Interlocked.Decrement(ref _rentCount);
             }
 
+            public bool TryReclaimForEviction()
+            {
+                return Interlocked.CompareExchange(ref _rentCount, 0, 1) == 1;
+            }
+
             public void EnterWriteLock() => Monitor.Enter(this);
 
             public void ExitWriteLock() => Monitor.Exit(this);

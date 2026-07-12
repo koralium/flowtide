@@ -69,6 +69,11 @@ namespace FlowtideDotNet.Storage.Tests
                 Interlocked.Decrement(ref _rentCount);
             }
 
+            public bool TryReclaimForEviction()
+            {
+                return Interlocked.CompareExchange(ref _rentCount, 0, 1) == 1;
+            }
+
             public void EnterWriteLock() => Monitor.Enter(this);
 
             public void ExitWriteLock() => Monitor.Exit(this);
@@ -128,6 +133,7 @@ namespace FlowtideDotNet.Storage.Tests
             private readonly IFileCache _inner;
             private readonly SemaphoreSlim _writerBlocked = new SemaphoreSlim(0);
             private ManualResetEventSlim? _gate;
+            private ManualResetEventSlim? _gateAfterWrite;
 
             public GatedFileCache(IFileCache inner)
             {
@@ -137,6 +143,15 @@ namespace FlowtideDotNet.Storage.Tests
             public void ArmGate(ManualResetEventSlim gate)
             {
                 Volatile.Write(ref _gate, gate);
+            }
+
+            /// <summary>
+            /// Blocks the writer AFTER the inner write has completed, freezing an eviction
+            /// between writing its spill data and whatever bookkeeping follows the write.
+            /// </summary>
+            public void ArmGateAfterWrite(ManualResetEventSlim gate)
+            {
+                Volatile.Write(ref _gateAfterWrite, gate);
             }
 
             public Task WaitForBlockedWriterAsync()
@@ -153,6 +168,12 @@ namespace FlowtideDotNet.Storage.Tests
                     gate.Wait();
                 }
                 _inner.Write(id, serializableObject);
+                var afterGate = Interlocked.Exchange(ref _gateAfterWrite, null);
+                if (afterGate != null)
+                {
+                    _writerBlocked.Release();
+                    afterGate.Wait();
+                }
             }
 
             public ValueTask<ReadOnlyMemory<byte>> Read(long pageKey) => _inner.Read(pageKey);
@@ -191,6 +212,64 @@ namespace FlowtideDotNet.Storage.Tests
                 }
                 return cache;
             }
+        }
+
+        /// <summary>
+        /// Reproduces the "Segment not found" flake seen with CachePageCount = 0: an eviction
+        /// writes its spill data BEFORE the commit's file-cache frees run, but records its
+        /// m_fileCacheVersion entry AFTER the commit cleared the version map. The leftover
+        /// version entry then points at freed file-cache storage, and the next read of the
+        /// page throws instead of falling back to persistent storage.
+        /// </summary>
+        [Fact]
+        public async Task EvictionStraddlingCommitMustNotLeaveVersionEntryForFreedData()
+        {
+            var persist = new FileCachePersistentStorage(new FileCacheOptions()
+            {
+                DirectoryPath = "./commitEvictSegmentNotFound"
+            });
+            var factory = new GatedFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions()
+            {
+                DirectoryPath = "./commitEvictSegmentNotFoundTmp"
+            }));
+            var options = new StateManagerOptions()
+            {
+                PersistentStorage = persist,
+                CachePageCount = 0,
+                MinCachePageCount = 0,
+                FileCacheFactory = factory
+            };
+            var manager = new StateManagerSync<StateManagerMetadata>(options, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmp5"), "test", GlobalMemoryManager.Instance);
+            await manager.InitializeAsync();
+            await manager.CacheTable.StopCleanupTask();
+
+            var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
+                "client",
+                new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
+                GlobalMemoryManager.Instance);
+
+            var key = client.GetNewPageId();
+            client.AddOrUpdate(key, new TestPage(1));
+
+            // Freeze the eviction between writing its spill data and recording the version
+            // entry, run a full commit through the window (freeing the spill and clearing
+            // the version map), then let the eviction finish its bookkeeping.
+            var gate = new ManualResetEventSlim(false);
+            var fileCache = factory.Created.Single();
+            fileCache.ArmGateAfterWrite(gate);
+            var cleanup = Task.Run(() => manager.CacheTable.ForceCleanup());
+            await fileCache.WaitForBlockedWriterAsync();
+            await client.Commit();
+            gate.Set();
+            await cleanup;
+
+            // The page must be readable: either from a live spill or from persistent
+            // storage. A version entry pointing at freed data throws "Segment not found".
+            var after = await client.GetValue(key);
+            Assert.NotNull(after);
+            Assert.Equal(1, after!.Value);
+            after.Return();
+            manager.Dispose();
         }
 
         [Fact]

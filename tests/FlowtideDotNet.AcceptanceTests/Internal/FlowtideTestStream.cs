@@ -82,7 +82,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public SqlPlanBuilder SqlPlanBuilder => sqlPlanBuilder;
 
-        public int CachePageCount { get; set; } = 100_000;
+        public int CachePageCount { get; set; } = 0;
 
         /// <summary>
         /// Enables the stream option that takes a checkpoint right after initial data, which
