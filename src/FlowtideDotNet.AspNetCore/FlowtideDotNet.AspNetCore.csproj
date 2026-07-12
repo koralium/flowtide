@@ -28,6 +28,10 @@
 		<PackageReference Include="PromQL.Parser" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="FlowtideDotNet.AspNetCore.Tests" />
+	</ItemGroup>
+
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
