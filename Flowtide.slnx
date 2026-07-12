@@ -43,6 +43,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj" />
+    <Project Path="tests/FlowtideDotNet.AspNetCore.Tests/FlowtideDotNet.AspNetCore.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.AspNetCore.WebTest/FlowtideDotNet.AspNetCore.WebTest.csproj" />
     <Project Path="tests/FlowtideDotNet.Base.Tests/FlowtideDotNet.Base.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Benchmarks/FlowtideDotNet.Benchmarks.csproj" />

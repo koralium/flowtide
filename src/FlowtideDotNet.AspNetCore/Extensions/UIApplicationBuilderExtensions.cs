@@ -45,7 +45,9 @@ namespace FlowtideDotNet.AspNetCore.Extensions
             var metricSeries = new MetricSeries(options);
             metricSeries.Initialize().Wait();
 
-            var metricGatherer = new MetricGatherer(options, metricSeries);
+            var logger = app.ApplicationServices.GetService<Microsoft.Extensions.Logging.ILoggerFactory>()
+                ?.CreateLogger("FlowtideDotNet.AspNetCore.Metrics");
+            var metricGatherer = new MetricGatherer(options, metricSeries, logger);
             app.UseMiddleware<MetricMiddleware>(metricGatherer, metricSeries, path);
         }
 
