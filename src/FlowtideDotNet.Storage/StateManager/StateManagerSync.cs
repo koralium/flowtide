@@ -198,6 +198,23 @@ namespace FlowtideDotNet.Storage.StateManager
             m_cacheTable.Clear();
         }
 
+        /// <summary>
+        /// Pauses the shared cache's background eviction task so a checkpoint commit or recovery
+        /// does not run concurrently with an eviction (see <see cref="S3FifoTableSync.PauseEvictionAsync"/>).
+        /// Must be paired with <see cref="ResumeEviction"/> in a finally block.
+        /// </summary>
+        internal Task PauseEvictionAsync()
+        {
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.PauseEvictionAsync();
+        }
+
+        internal void ResumeEviction()
+        {
+            Debug.Assert(m_cacheTable != null);
+            m_cacheTable.ResumeEviction();
+        }
+
         internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? value)
         {
             Debug.Assert(m_cacheTable != null);
@@ -411,40 +428,53 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_cacheTable != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
-            m_cacheTable.Clear();
-            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
 
-            // Check that metadata exist, also that the checkpoint version is larger than 0
-            // If zero we revert back to an empty state
-            if (m_persistentStorage.TryGetValue(1, out var metadataBytes) && (!checkpointVersion.HasValue || (checkpointVersion.HasValue && checkpointVersion.Value > 0)))
+            // Pause the background eviction task for the whole reset: it clears the cache and
+            // reverts persistent storage, and an in-flight eviction running concurrently would
+            // write a stale pre-recovery page through the state client after its state was reset,
+            // re-populating file-cache version entries that route later reads to stale data.
+            await PauseEvictionAsync();
+            try
             {
-                lock (m_lock)
+                m_cacheTable.Clear();
+                await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
+
+                // Check that metadata exist, also that the checkpoint version is larger than 0
+                // If zero we revert back to an empty state
+                if (m_persistentStorage.TryGetValue(1, out var metadataBytes) && (!checkpointVersion.HasValue || (checkpointVersion.HasValue && checkpointVersion.Value > 0)))
                 {
-                    m_metadata = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(metadataBytes.Value), metadataBytes.Value.Length);
-                }
-                await m_persistentStorage.RecoverAsync(!checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value).ConfigureAwait(false);
-                LastCompletedCheckpointVersion = !checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value;
-            }
-            else
-            {
-                lock (m_lock)
-                {
-                    m_metadata = NewMetadata();
-                    // Increase the page counter to avoid using the same page id as the metadata page.
-                    if (_stateClients.Count > 0)
+                    lock (m_lock)
                     {
-                        m_metadata.PageCounter = _stateClients.Max(x => x.Value.MetadataId) + 1;
+                        m_metadata = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(metadataBytes.Value), metadataBytes.Value.Length);
                     }
-                    newMetadata = true;
+                    await m_persistentStorage.RecoverAsync(!checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value).ConfigureAwait(false);
+                    LastCompletedCheckpointVersion = !checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value;
                 }
-                await m_persistentStorage.ResetAsync();
-                LastCompletedCheckpointVersion = 0;
-            }
+                else
+                {
+                    lock (m_lock)
+                    {
+                        m_metadata = NewMetadata();
+                        // Increase the page counter to avoid using the same page id as the metadata page.
+                        if (_stateClients.Count > 0)
+                        {
+                            m_metadata.PageCounter = _stateClients.Max(x => x.Value.MetadataId) + 1;
+                        }
+                        newMetadata = true;
+                    }
+                    await m_persistentStorage.ResetAsync();
+                    LastCompletedCheckpointVersion = 0;
+                }
 
-            // Reset cached values in the state clients
-            foreach (var stateClient in _stateClients)
+                // Reset cached values in the state clients
+                foreach (var stateClient in _stateClients)
+                {
+                    await stateClient.Value.Reset(newMetadata);
+                }
+            }
+            finally
             {
-                await stateClient.Value.Reset(newMetadata);
+                ResumeEviction();
             }
 
             logger.LogDebug("State manager initialized, requested version: {requestedVersion}, recovered version: {recoveredVersion}, new metadata: {newMetadata}, reset {stateClientCount} state clients", checkpointVersion, LastCompletedCheckpointVersion, newMetadata, _stateClients.Count);

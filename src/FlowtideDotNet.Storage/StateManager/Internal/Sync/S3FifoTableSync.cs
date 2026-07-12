@@ -379,6 +379,29 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             logger.LruTableNoLongerFull(m_streamName);
         }
 
+        /// <summary>
+        /// Blocks the background eviction/cleanup task until <see cref="ResumeEviction"/> is called.
+        /// A checkpoint commit and stream recovery must both be mutually exclusive with eviction:
+        /// * both a commit and an eviction serialize pages through the SAME state client value
+        ///   serializer instance, which is not thread-safe (uncompressed serializers write directly,
+        ///   and even the compressed one shares a single zstd context); a concurrent serialize
+        ///   corrupts the bytes a commit persists, and the corruption stays hidden behind the intact
+        ///   in-memory copy until a crash drops the cache and reverts to the corrupted checkpoint.
+        /// * recovery clears the cache and reverts storage that an in-flight eviction would otherwise
+        ///   write through after the reset.
+        /// Uses the same lock the cleanup task holds for the whole of <see cref="Cleanup"/>, so
+        /// acquiring it waits for any in-flight eviction (including its spill writes) to finish.
+        /// </summary>
+        internal Task PauseEvictionAsync()
+        {
+            return _fullLock.WaitAsync();
+        }
+
+        internal void ResumeEviction()
+        {
+            _fullLock.Release();
+        }
+
         public bool Add(long key, ICacheObject value, ICacheEvictHandler evictHandler)
         {
             bool full = Volatile.Read(ref m_count) > Volatile.Read(ref maxSize);

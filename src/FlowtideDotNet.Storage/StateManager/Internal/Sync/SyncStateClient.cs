@@ -164,6 +164,27 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             Debug.Assert(options.ValueSerializer != null);
 
+            // Eviction serializes pages through the same (non-thread-safe) value serializer and
+            // touches m_modified/m_fileCacheVersion that this commit reads and clears. Pause the
+            // background eviction task for the duration of the commit so a concurrent eviction can
+            // never corrupt the bytes written to persistent storage. The corruption is otherwise
+            // hidden by the intact in-memory page and only surfaces after a crash reverts to the
+            // corrupted checkpoint.
+            await stateManager.PauseEvictionAsync();
+            try
+            {
+                await CommitInternal();
+            }
+            finally
+            {
+                stateManager.ResumeEviction();
+            }
+        }
+
+        private async ValueTask CommitInternal()
+        {
+            Debug.Assert(options.ValueSerializer != null);
+
             foreach (var kv in m_modified)
             {
                 if (kv.Value == -1)

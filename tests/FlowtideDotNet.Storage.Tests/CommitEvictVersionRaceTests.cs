@@ -119,6 +119,62 @@ namespace FlowtideDotNet.Storage.Tests
             }
         }
 
+        /// <summary>
+        /// Flags whenever two threads are inside <see cref="Serialize(in IBufferWriter{byte}, in TestPage)"/>
+        /// at once. A commit and a background eviction both serialize pages through the state client's
+        /// single (non-thread-safe) value serializer, so a concurrent serialize corrupts a page's bytes.
+        /// The short spin widens the window so a real overlap is observed rather than missed.
+        /// </summary>
+        private class ConcurrencyTrackingSerializer : IStateSerializer<TestPage>
+        {
+            private int _active;
+
+            public volatile bool ConcurrencyDetected;
+
+            public void Serialize(in IBufferWriter<byte> bufferWriter, in TestPage value)
+            {
+                if (Interlocked.Increment(ref _active) > 1)
+                {
+                    ConcurrencyDetected = true;
+                }
+                Thread.SpinWait(2000);
+                var span = bufferWriter.GetSpan(4);
+                BinaryPrimitives.WriteInt32LittleEndian(span, value.Value);
+                bufferWriter.Advance(4);
+                Interlocked.Decrement(ref _active);
+            }
+
+            public TestPage Deserialize(ReadOnlySequence<byte> bytes, int length)
+            {
+                var reader = new SequenceReader<byte>(bytes);
+                if (!reader.TryReadLittleEndian(out int value))
+                {
+                    throw new InvalidOperationException("Corrupt test page");
+                }
+                return new TestPage(value);
+            }
+
+            public void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value)
+                => Serialize(bufferWriter, (TestPage)value);
+
+            public ICacheObject DeserializeCacheObject(ReadOnlySequence<byte> bytes, int length)
+                => Deserialize(bytes, length);
+
+            public Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)
+                where TMetadata : IStorageMetadata => Task.CompletedTask;
+
+            public Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata)
+                where TMetadata : IStorageMetadata => Task.CompletedTask;
+
+            public void ClearTemporaryAllocations()
+            {
+            }
+
+            public void Dispose()
+            {
+            }
+        }
+
         private class TestMetadata : IStorageMetadata
         {
             public bool Updated { get; set; }
@@ -331,6 +387,75 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.NotNull(after);
             Assert.Equal(2, after!.Value);
             after.Return();
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// A checkpoint commit and a background eviction both serialize pages through the same
+        /// (non-thread-safe) state client value serializer. Under CachePageCount = 0 the background
+        /// eviction task runs constantly, so without making the commit mutually exclusive with
+        /// eviction the two serialize a page at the same time and corrupt the bytes the commit
+        /// persists — a corruption that stays hidden behind the intact in-memory copy until a crash
+        /// reverts to the corrupted checkpoint (observed as scrambled leaves in the acceptance suite).
+        /// The commit must pause the background eviction task so the serializer is never used
+        /// concurrently.
+        /// </summary>
+        [Fact]
+        public async Task CommitAndBackgroundEvictionNeverSerializeConcurrently()
+        {
+            var persist = new FileCachePersistentStorage(new FileCacheOptions()
+            {
+                DirectoryPath = "./commitEvictSerializerConcurrency"
+            });
+            var options = new StateManagerOptions()
+            {
+                PersistentStorage = persist,
+                CachePageCount = 0,
+                MinCachePageCount = 0
+            };
+            var serializer = new ConcurrencyTrackingSerializer();
+            var manager = new StateManagerSync<StateManagerMetadata>(options, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmpConcur"), "test", GlobalMemoryManager.Instance);
+            await manager.InitializeAsync();
+            // Leave the background cleanup task running so it evicts (and serializes) concurrently.
+
+            var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
+                "client",
+                new StateClientOptions<TestPage>() { ValueSerializer = serializer },
+                GlobalMemoryManager.Instance);
+
+            // Held pages keep an extra rent so they stay in the cache and every commit serializes
+            // them, while the steady stream of throwaway pages keeps the background eviction task
+            // serializing victims. Without the commit/eviction pause the two overlap.
+            var held = new List<(long key, TestPage page)>();
+            for (int i = 0; i < 16; i++)
+            {
+                var k = client.GetNewPageId();
+                client.AddOrUpdate(k, new TestPage(i));
+                var v = await client.GetValue(k);
+                held.Add((k, v!));
+            }
+
+            for (int round = 0; round < 300 && !serializer.ConcurrencyDetected; round++)
+            {
+                foreach (var (k, page) in held)
+                {
+                    page.Value += 1;
+                    client.AddOrUpdate(k, page);
+                }
+                for (int j = 0; j < 32; j++)
+                {
+                    var tk = client.GetNewPageId();
+                    client.AddOrUpdate(tk, new TestPage(round * 1000 + j));
+                }
+                await client.Commit();
+            }
+
+            Assert.False(serializer.ConcurrencyDetected, "commit serialized a page concurrently with a background eviction");
+
+            foreach (var (_, page) in held)
+            {
+                page.Return();
+            }
             manager.Dispose();
         }
     }
