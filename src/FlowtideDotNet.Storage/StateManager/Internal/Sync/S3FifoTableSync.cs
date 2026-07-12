@@ -41,6 +41,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     /// short entry lock. All queue maintenance happens on insert and inside the
     /// background cleanup task.
     ///
+    /// Correlation window (2Q-style, see <see cref="S3FifoCorrelationClock"/>): hits during
+    /// an entry's residence in the YOUNG half of the small queue do not count toward its
+    /// frequency. B+ tree operations touch a freshly inserted page several times within the
+    /// same logical operation, which would otherwise promote nearly every page to the main
+    /// queue and defeat the small queue's one-hit-wonder filtering. The window is half the
+    /// small queue's target size, measured in small-queue enqueues; for MaxSize &lt; 20 the
+    /// window is 0 and the filter is disabled (plain S3-FIFO counting).
+    ///
     /// Locking protocol (required to avoid deadlocks):
     /// * lock(entry) guards Removed/Frequency/Version and makes the removed-check plus
     ///   TryRent handoff atomic against eviction.
@@ -105,6 +113,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly Queue<S3FifoCacheEntry> m_mainQueue;
         private readonly Queue<GhostRecord> m_ghostQueue;
         private readonly Dictionary<long, long> m_ghostKeys;
+        private readonly S3FifoCorrelationClock m_correlationClock = new S3FifoCorrelationClock();
         private long m_ghostSequence;
         private int m_smallStaleCount;
         private int m_mainStaleCount;
@@ -120,6 +129,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private int m_count;
         private long m_cacheHits;
         private long m_cacheMisses;
+        // Written only on the single cleanup thread (under _fullLock); read lock-free by the
+        // metric callbacks. Counts small-queue-head outcomes: promoted to main vs evicted to
+        // ghost (the "not sent to main" objects).
+        private long m_smallQueuePromotions;
+        private long m_smallQueueEvictions;
         private long m_lastSeenCacheHits;
         private int m_sameCacheHitsCount;
 
@@ -146,6 +160,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.maxMemoryUsageInBytes = tableOptions.MaxMemoryUsageInBytes;
             _memoryAllocationStats = tableOptions.MemoryAllocationStats;
             cleanupStart = (int)Math.Ceiling(maxSize * 0.7);
+            m_correlationClock.SetWindowSize(CorrelationWindowSize());
             _fullLock = new SemaphoreSlim(1);
             m_cleanupTokenSource = new CancellationTokenSource();
             StartCleanupTask();
@@ -177,6 +192,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 meter.CreateObservableGauge("flowtide_s3fifo_ghost_size", () =>
                 {
                     return new Measurement<int>(m_ghostQueue.Count, new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                // Small-queue-head outcomes. promotions + evictions ≈ objects that reached the
+                // small-queue head; evictions are the ones NOT sent to main. correlated_hits is
+                // how many accesses the 2Q-style correlation window filtered out (see
+                // S3FifoCorrelationClock) — the direct measure of the window doing work.
+                meter.CreateObservableCounter("flowtide_s3fifo_small_queue_promotions", () =>
+                {
+                    return new Measurement<long>(Volatile.Read(ref m_smallQueuePromotions), new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                meter.CreateObservableCounter("flowtide_s3fifo_small_queue_evictions", () =>
+                {
+                    return new Measurement<long>(Volatile.Read(ref m_smallQueueEvictions), new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                meter.CreateObservableCounter("flowtide_s3fifo_correlated_hits_suppressed", () =>
+                {
+                    return new Measurement<long>(m_correlationClock.CorrelatedHitsSuppressed, new KeyValuePair<string, object?>("stream", m_streamName));
                 });
                 meter.CreateObservableGauge("flowtide_lru_table_cache_hits_percentage", () =>
                 {
@@ -428,7 +459,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     continue;
                 }
 
-                var entry = new S3FifoCacheEntry(key, value, evictHandler);
+                var entry = new S3FifoCacheEntry(key, value, evictHandler, m_correlationClock);
                 if (m_cache.TryAdd(key, entry))
                 {
                     if (value.RemovedFromCache)
@@ -450,11 +481,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         if (m_ghostKeys.Remove(key))
                         {
                             // Recently evicted from the small queue: admit directly to main.
+                            // Never stamped, so every hit counts.
                             entry.Location = S3FifoQueueLocation.Main;
                             m_mainQueue.Enqueue(entry);
                         }
                         else
                         {
+                            // Note: the entry is already reachable through the dictionary, so a
+                            // hit can land before this stamp and count despite being correlated.
+                            // The gap is nanoseconds (no awaits between TryAdd and here) and the
+                            // filter is a heuristic, so the stray count is accepted.
+                            entry.SetSmallQueueStamp(m_correlationClock.NextSequence());
                             entry.Location = S3FifoQueueLocation.Small;
                             m_smallQueue.Enqueue(entry);
                         }
@@ -479,6 +516,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             // The small queue gets ~10% of the cache capacity, as in the S3-FIFO paper.
             return Math.Max(1, Volatile.Read(ref maxSize) / 10);
+        }
+
+        /// <summary>
+        /// Correlation window width in small-queue enqueues: half the small queue's target
+        /// size. The target is used instead of the live queue length because the length
+        /// races and counts stale slots, and the eviction scan steers the queue toward the
+        /// target under pressure anyway. Integer division makes the window 0 (filter
+        /// disabled) for MaxSize &lt; 20, which keeps small caches — including the
+        /// CachePageCount = 0 torture configuration — on plain S3-FIFO behavior.
+        /// </summary>
+        private int CorrelationWindowSize()
+        {
+            return SmallQueueTargetSize() / 2;
         }
 
         private int GhostCapacity()
@@ -540,6 +590,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (Math.Abs(maxSize - idealMaxSize) > tolerance)
                     {
                         Volatile.Write(ref maxSize, idealMaxSize);
+                        // The small queue target follows maxSize, so the correlation window
+                        // must follow it too.
+                        m_correlationClock.SetWindowSize(CorrelationWindowSize());
 
                         var rawCleanupSize = (int)Math.Ceiling(idealMaxSize * 0.70);
 
@@ -699,6 +752,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         if (candidate.FromSmallQueue)
                         {
                             (ghostInserts ??= new List<long>()).Add(entry.Key);
+                            m_smallQueueEvictions++;
                         }
                     }
                 }
@@ -712,6 +766,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         foreach (var entry in requeueToSmall)
                         {
+                            // Re-enters the small queue at the tail, so the correlation
+                            // window restarts with a fresh stamp.
+                            entry.SetSmallQueueStamp(m_correlationClock.NextSequence());
                             entry.Location = S3FifoQueueLocation.Small;
                             m_smallQueue.Enqueue(entry);
                         }
@@ -831,10 +888,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (Volatile.Read(ref entry.Frequency) > 1)
                     {
                         // Accessed more than once while in the small queue: promote to main.
+                        // With the correlation window only aged hits count, so this means two
+                        // hits after the entry reached the older half of the small queue —
+                        // the promotion threshold is the tunable to evaluate against traces.
+                        entry.ClearSmallQueueStamp();
                         entry.Location = S3FifoQueueLocation.Main;
                         m_mainQueue.Enqueue(entry);
+                        m_smallQueuePromotions++;
                         continue;
                     }
+                    // Leaving the small queue as a victim: in-flight hits while the eviction
+                    // is being serialized should count (the entry is past the window anyway).
+                    entry.ClearSmallQueueStamp();
                     entry.Location = S3FifoQueueLocation.None;
                     victims.Add(new EvictionCandidate(entry, entry.Version, fromSmallQueue: true));
                     return true;
@@ -972,6 +1037,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 return m_ghostKeys.ContainsKey(key);
             }
         }
+
+        internal int CorrelationWindowSizeForTests => m_correlationClock.WindowSizeForTests;
+
+        internal long CorrelatedHitsSuppressedForTests => m_correlationClock.CorrelatedHitsSuppressed;
+
+        internal long SmallQueuePromotionsForTests => Volatile.Read(ref m_smallQueuePromotions);
+
+        internal long SmallQueueEvictionsForTests => Volatile.Read(ref m_smallQueueEvictions);
 
         #endregion
 

@@ -52,11 +52,29 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         public const int MaxFrequency = 3;
 
-        public S3FifoCacheEntry(long key, ICacheObject value, ICacheEvictHandler evictHandler)
+        /// <summary>
+        /// Sentinel for <see cref="_smallQueueStamp"/> when the entry is not resident in the
+        /// small queue, so every hit counts toward its frequency.
+        /// </summary>
+        private const long NotInSmallQueue = -1;
+
+        private readonly S3FifoCorrelationClock _correlationClock;
+
+        /// <summary>
+        /// The small-queue enqueue sequence this entry was stamped with, or
+        /// <see cref="NotInSmallQueue"/> when it is not in the small queue. Written under the
+        /// table's queue lock at every queue transition (stamped on small-queue enqueue,
+        /// cleared on promotion, victim selection and direct main admission); read lock-free
+        /// on the hit path, where a stale value near a transition is benign.
+        /// </summary>
+        private long _smallQueueStamp = NotInSmallQueue;
+
+        public S3FifoCacheEntry(long key, ICacheObject value, ICacheEvictHandler evictHandler, S3FifoCorrelationClock correlationClock)
         {
             Key = key;
             Value = value;
             EvictHandler = evictHandler;
+            _correlationClock = correlationClock;
         }
 
         public long Key { get; }
@@ -121,12 +139,50 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
+        /// Stamps the entry with its small-queue enqueue sequence. Called under the table's
+        /// queue lock whenever the entry is enqueued into the small queue: the initial insert
+        /// and the failed-evict requeue path (which restarts the window, since the entry
+        /// re-enters at the tail).
+        /// </summary>
+        public void SetSmallQueueStamp(long sequence)
+        {
+            Volatile.Write(ref _smallQueueStamp, sequence);
+        }
+
+        /// <summary>
+        /// Clears the stamp when the entry leaves the small queue (promotion to main or
+        /// selection as an eviction victim). From then on every hit counts toward frequency.
+        /// Entries admitted directly to the main queue are never stamped.
+        /// </summary>
+        public void ClearSmallQueueStamp()
+        {
+            Volatile.Write(ref _smallQueueStamp, NotInSmallQueue);
+        }
+
+        /// <summary>
         /// Saturating lock-free frequency bump. On a hot entry the counter stays at the cap,
         /// so the steady-state cost is a single volatile read.
+        ///
+        /// Correlation window (2Q-style, see <see cref="S3FifoCorrelationClock"/>): hits while
+        /// the entry is still in the young half of the small queue are correlated references —
+        /// touches belonging to the same logical operation as the insert — and are not counted,
+        /// so an insertion burst cannot earn promotion to the main queue. The stamp read races
+        /// queue transitions on purpose; a stale value only means one hit is counted or skipped
+        /// right at a transition boundary, which the heuristic tolerates. Saturated (hot)
+        /// entries return before the stamp read, keeping their cost unchanged.
         /// </summary>
         public void RecordAccess()
         {
             var current = Volatile.Read(ref Frequency);
+            if (current >= MaxFrequency)
+            {
+                return;
+            }
+            var stamp = Volatile.Read(ref _smallQueueStamp);
+            if (stamp != NotInSmallQueue && _correlationClock.IsCorrelated(stamp))
+            {
+                return;
+            }
             while (current < MaxFrequency)
             {
                 var observed = Interlocked.CompareExchange(ref Frequency, current + 1, current);
