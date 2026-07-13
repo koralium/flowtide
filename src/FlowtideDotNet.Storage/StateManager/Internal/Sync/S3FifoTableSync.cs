@@ -130,10 +130,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_cacheHits;
         private long m_cacheMisses;
         // Written only on the single cleanup thread (under _fullLock); read lock-free by the
-        // metric callbacks. Counts small-queue-head outcomes: promoted to main vs evicted to
-        // ghost (the "not sent to main" objects).
+        // metric callbacks. Small-queue-head outcomes (promoted to main vs evicted to ghost),
+        // plus one-hit-wonders: objects that were evicted to ghost and then aged out of the
+        // ghost queue without ever being promoted or re-admitted — pages the cache saw exactly
+        // once and got no reuse from.
         private long m_smallQueuePromotions;
         private long m_smallQueueEvictions;
+        private long m_oneHitWonders;
         private long m_lastSeenCacheHits;
         private int m_sameCacheHitsCount;
 
@@ -193,10 +196,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     return new Measurement<int>(m_ghostQueue.Count, new KeyValuePair<string, object?>("stream", m_streamName));
                 });
-                // Small-queue-head outcomes. promotions + evictions ≈ objects that reached the
-                // small-queue head; evictions are the ones NOT sent to main. correlated_hits is
-                // how many accesses the 2Q-style correlation window filtered out (see
-                // S3FifoCorrelationClock) — the direct measure of the window doing work.
+                // Small-queue-head outcomes: promotions (sent to main) vs evictions (small-queue
+                // one-hit-wonders sent to ghost). one_hit_wonders counts objects that then aged
+                // all the way out of the ghost queue without ever being promoted or re-admitted
+                // — added once, never went to main, gone: the pages the cache got no reuse from.
                 meter.CreateObservableCounter("flowtide_s3fifo_small_queue_promotions", () =>
                 {
                     return new Measurement<long>(Volatile.Read(ref m_smallQueuePromotions), new KeyValuePair<string, object?>("stream", m_streamName));
@@ -205,9 +208,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     return new Measurement<long>(Volatile.Read(ref m_smallQueueEvictions), new KeyValuePair<string, object?>("stream", m_streamName));
                 });
-                meter.CreateObservableCounter("flowtide_s3fifo_correlated_hits_suppressed", () =>
+                meter.CreateObservableCounter("flowtide_s3fifo_one_hit_wonders", () =>
                 {
-                    return new Measurement<long>(m_correlationClock.CorrelatedHitsSuppressed, new KeyValuePair<string, object?>("stream", m_streamName));
+                    return new Measurement<long>(Volatile.Read(ref m_oneHitWonders), new KeyValuePair<string, object?>("stream", m_streamName));
                 });
                 meter.CreateObservableGauge("flowtide_lru_table_cache_hits_percentage", () =>
                 {
@@ -960,7 +963,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var oldest = m_ghostQueue.Dequeue();
                 if (m_ghostKeys.TryGetValue(oldest.Key, out var storedSequence) && storedSequence == oldest.Sequence)
                 {
+                    // A live ghost membership ages out: this key was evicted from the small
+                    // queue and never re-admitted (a re-add removes it from m_ghostKeys), so it
+                    // was added once, never promoted to main, and is now gone entirely — a
+                    // one-hit-wonder that passed all the way through the cache.
                     m_ghostKeys.Remove(oldest.Key);
+                    m_oneHitWonders++;
                 }
             }
         }
@@ -1040,7 +1048,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         internal int CorrelationWindowSizeForTests => m_correlationClock.WindowSizeForTests;
 
-        internal long CorrelatedHitsSuppressedForTests => m_correlationClock.CorrelatedHitsSuppressed;
+        internal long OneHitWondersForTests => Volatile.Read(ref m_oneHitWonders);
 
         internal long SmallQueuePromotionsForTests => Volatile.Read(ref m_smallQueuePromotions);
 

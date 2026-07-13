@@ -43,7 +43,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     {
         private long m_sequence;
         private int m_windowSize;
-        private long m_correlatedHitsSuppressed;
 
         /// <summary>
         /// Advances the clock for a new small-queue enqueue and returns the stamp for the entry.
@@ -69,24 +68,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public bool IsCorrelated(long smallQueueStamp)
         {
             var window = Volatile.Read(ref m_windowSize);
-            if (window > 0 && Volatile.Read(ref m_sequence) - smallQueueStamp < window)
-            {
-                // Best-effort approximate counter: a plain non-atomic increment, so it can
-                // lose a few counts under the cross-operator races the shared table permits
-                // (different operators share one cache table). That is fine for an
-                // observability metric and keeps the scan hot path a plain add, no lock.
-                m_correlatedHitsSuppressed++;
-                return true;
-            }
-            return false;
+            return window > 0 && Volatile.Read(ref m_sequence) - smallQueueStamp < window;
         }
-
-        /// <summary>
-        /// Cumulative count of hits filtered out by the correlation window: approximately how
-        /// many accesses did NOT count toward promoting their page to the main queue because
-        /// the page was still a correlated (young-in-small) reference.
-        /// </summary>
-        public long CorrelatedHitsSuppressed => Volatile.Read(ref m_correlatedHitsSuppressed);
 
         internal int WindowSizeForTests => Volatile.Read(ref m_windowSize);
     }

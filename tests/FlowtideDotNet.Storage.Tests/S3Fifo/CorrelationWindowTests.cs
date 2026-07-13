@@ -208,12 +208,12 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The observability counters: a correlated scan suppresses hits (they never count
-        /// toward promotion) and the objects that reach the small-queue head are evicted to
-        /// ghost rather than promoted to main.
+        /// Small-queue-head outcome counters: a correlated scan earns no promotions (the window
+        /// stops its touches from counting), so the objects that reach the small-queue head are
+        /// evicted to ghost rather than promoted to main.
         /// </summary>
         [Fact]
-        public async Task CountersReportSuppressedHitsAndSmallQueueOutcomes()
+        public async Task CountersReportSmallQueueOutcomes()
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
             var handler = new TestEvictHandler();
@@ -224,8 +224,6 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 Touch(table, i, 2); // both touches are inside the window (age 0)
             }
 
-            // Every scan touch was correlated, so it was suppressed instead of counted.
-            Assert.Equal(200, table.CorrelatedHitsSuppressedForTests);
             Assert.Equal(0, table.SmallQueuePromotionsForTests);
             Assert.Equal(0, table.SmallQueueEvictionsForTests);
 
@@ -234,6 +232,35 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             // Nothing earned promotion; the small-queue-head objects went to ghost.
             Assert.Equal(0, table.SmallQueuePromotionsForTests);
             Assert.True(table.SmallQueueEvictionsForTests > 0);
+        }
+
+        /// <summary>
+        /// The one-hit-wonder counter: objects that were added once, never promoted to main,
+        /// and then aged all the way out of the ghost queue without a re-admission — pages the
+        /// cache saw exactly once and got no reuse from.
+        /// </summary>
+        [Fact]
+        public async Task OneHitWonderCounterCountsObjectsThatAgeOutOfGhostUnused()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
+            var handler = new TestEvictHandler();
+
+            // Ghost capacity is 9. Churn distinct never-touched keys: each cleanup fills to the
+            // threshold and evicts the oldest small-queue entries to ghost. Once more than 9
+            // have been ghosted, the earliest age out — never promoted, never re-admitted.
+            long key = 0;
+            for (var round = 0; round < 10; round++)
+            {
+                while (table.Count < 10)
+                {
+                    table.Add(key, new TestCacheObject(key), handler);
+                    key++;
+                }
+                await table.ForceCleanup();
+            }
+
+            Assert.Equal(0, table.SmallQueuePromotionsForTests);
+            Assert.True(table.OneHitWondersForTests > 0, $"expected one-hit-wonders, got {table.OneHitWondersForTests}");
         }
 
         /// <summary>
