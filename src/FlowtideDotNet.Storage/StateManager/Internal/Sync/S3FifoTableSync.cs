@@ -1087,10 +1087,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (disposing)
                 {
                     m_cleanupTokenSource.Cancel();
-                    if (m_cleanupTask != null)
+                    var cleanupTask = m_cleanupTask;
+                    while (cleanupTask != null)
                     {
-                        m_cleanupTask.Wait();
-                        m_cleanupTask.Dispose();
+                        try
+                        {
+                            cleanupTask.Wait();
+                        }
+                        catch
+                        {
+                            // A faulted or cancelled cleanup task rethrows on Wait; disposal swallows it.
+                        }
+                        var successor = m_cleanupTask;
+                        if (ReferenceEquals(successor, cleanupTask))
+                        {
+                            break;
+                        }
+                        cleanupTask = successor;
                     }
                     DisposeEntries();
                     m_cleanupTokenSource.Dispose();
