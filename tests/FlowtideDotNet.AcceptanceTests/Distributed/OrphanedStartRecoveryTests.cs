@@ -566,7 +566,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 return false;
             }
 
-            var batchCount = batch?.Count;
+            var batchCount = batch.Count;
             if (!batchCount.HasValue)
             {
                 return false;
