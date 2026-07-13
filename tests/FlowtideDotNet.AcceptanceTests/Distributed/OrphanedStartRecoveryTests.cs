@@ -139,7 +139,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         {
             var generator = new DatasetGenerator(_db);
             generator.Generate(200);
-            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var latestData = new ConcurrentDictionary<string, int>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
 
             // Held on the second initialization: the first is the initial start, the second
@@ -158,7 +158,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 {
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, true));
-                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }));
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
                 })
@@ -193,7 +193,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         {
             var generator = new DatasetGenerator(_db);
             generator.Generate(200);
-            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var latestData = new ConcurrentDictionary<string, int>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
 
             var holdingStorage = new HoldingStorage(
@@ -210,7 +210,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 {
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, true));
-                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }));
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
                 })
@@ -244,7 +244,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         {
             var generator = new DatasetGenerator(_db);
             generator.Generate(200);
-            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var latestData = new ConcurrentDictionary<string, int>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
 
             // Storage only counts inits; parking is via the hook.
@@ -282,7 +282,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     {
                         var connectorManager = new ConnectorManager();
                         connectorManager.AddSource(new MockSourceFactory("*", _db, true));
-                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }));
+                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
                     })
@@ -324,7 +324,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         {
             var generator = new DatasetGenerator(_db);
             generator.Generate(200);
-            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var latestData = new ConcurrentDictionary<string, int>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
 
             int substream0Starts = 0;
@@ -354,7 +354,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     {
                         var connectorManager = new ConnectorManager();
                         connectorManager.AddSource(new MockSourceFactory("*", _db, true));
-                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }));
+                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
                     })
@@ -406,7 +406,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         {
             var generator = new DatasetGenerator(_db);
             generator.Generate(200);
-            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var latestData = new ConcurrentDictionary<string, int>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
 
             int substream0Starts = 0;
@@ -447,7 +447,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     {
                         var connectorManager = new ConnectorManager();
                         connectorManager.AddSource(new MockSourceFactory("*", _db, true));
-                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }));
+                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
                     })
@@ -533,7 +533,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         private static async Task WaitForCount(
-            ConcurrentDictionary<string, EventBatchData> latestData,
+            ConcurrentDictionary<string, int> latestData,
             string key,
             int expectedCount,
             ConcurrentBag<(string Substream, Exception? Exception)> failures)
@@ -541,39 +541,20 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var stopwatch = Stopwatch.StartNew();
             while (true)
             {
-                if (TryReadCount(latestData, key, out var count) && count == expectedCount)
+                if (latestData.TryGetValue(key, out var count) && count == expectedCount)
                 {
                     return;
                 }
                 if (stopwatch.Elapsed > TimeSpan.FromSeconds(60))
                 {
                     var runningTasks = failures.Count(f => f.Exception?.ToString().Contains("Initialize while there are running tasks") == true);
-                    TryReadCount(latestData, key, out var last);
+                    latestData.TryGetValue(key, out var last);
                     throw new TimeoutException(
                         $"The result did not reach {expectedCount} rows, last {last}. " +
                         $"Failures containing 'Initialize while there are running tasks': {runningTasks} - the failure during the restart orphaned the running start.");
                 }
                 await Task.Delay(20);
             }
-        }
-
-        // Reads the row count, tolerating a mid-dispose batch.
-        private static bool TryReadCount(ConcurrentDictionary<string, EventBatchData> latestData, string key, out int count)
-        {
-            count = 0;
-            if (!latestData.TryGetValue(key, out var batch) || batch is null)
-            {
-                return false;
-            }
-
-            var batchCount = batch.Count;
-            if (!batchCount.HasValue)
-            {
-                return false;
-            }
-
-            count = batchCount.Value;
-            return true;
         }
     }
 }
