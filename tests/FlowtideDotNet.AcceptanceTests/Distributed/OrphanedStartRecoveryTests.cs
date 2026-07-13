@@ -561,19 +561,19 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         private static bool TryReadCount(ConcurrentDictionary<string, EventBatchData> latestData, string key, out int count)
         {
             count = 0;
-            if (!latestData.TryGetValue(key, out var batch))
+            if (!latestData.TryGetValue(key, out var batch) || batch is null)
             {
                 return false;
             }
-            try
-            {
-                count = batch.Count;
-                return true;
-            }
-            catch (NullReferenceException)
+
+            var batchCount = batch?.Count;
+            if (!batchCount.HasValue)
             {
                 return false;
             }
+
+            count = batchCount.Value;
+            return true;
         }
     }
 }
