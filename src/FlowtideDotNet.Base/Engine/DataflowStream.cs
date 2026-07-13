@@ -72,6 +72,9 @@ namespace FlowtideDotNet.Base.Engine
             return streamContext.OnFailure(exception);
         }
 
+        // Test seam: current block-created flag.
+        internal int BlocksCreatedForTests => streamContext._blocksCreated;
+
         /// <summary>
         /// Test seam: delivers an egress checkpoint done into the current state as if an egress
         /// vertex fired it, so tests can reproduce a spurious or stale acknowledgement arriving
