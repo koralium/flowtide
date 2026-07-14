@@ -27,12 +27,10 @@ using Xunit;
 namespace FlowtideDotNet.Core.Tests
 {
     /// <summary>
-    /// Crash-consistency stress for the list_union_distinct_agg tree structure: a composite
-    /// EventBatchData-backed key (groupingKey + value) with byte-based page sizes, driven
-    /// through the actual ListAgg serializer/comparer under maximal eviction while a crash
-    /// (InitializeAsync) reverts to the last checkpoint. The recovered tree must exactly
-    /// match the last checkpoint. Reproduces the value-scrambling seen at the stream level
-    /// (list values leaking across groups after a crash under CachePageCount = 0).
+    /// Crash-consistency stress for the list_union_distinct_agg tree structure.
+    /// A composite EventBatchData key with byte-based pages, driven through the real ListAgg
+    /// serializer and comparer under maximal eviction while a crash reverts to the checkpoint.
+    /// The recovered tree must exactly match the last checkpoint.
     /// </summary>
     public class CompositeKeyCrashConsistencyTests
     {
@@ -193,7 +191,7 @@ namespace FlowtideDotNet.Core.Tests
             var live = new Dictionary<(string, string), int>();
             var committed = new Dictionary<(string, string), int>();
             // The events applied since the last checkpoint. On crash the tree reverts to the
-            // checkpoint and the stream replays exactly these; the harness does the same.
+            // checkpoint and the stream replays exactly these, the harness does the same.
             var sinceCheckpoint = new List<(string group, string item, int weight)>();
             string Group(int g) => "co_" + g.ToString("D4");
             string Item(int p) => "p" + p.ToString("D2");

@@ -69,8 +69,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 
         public bool TryReclaimForEviction()
         {
-            // Metadata is never disposed or evicted (TryRent always succeeds), so it is
-            // never reclaimable.
+            // Metadata is never disposed or evicted, so it is never reclaimable.
             return false;
         }
 

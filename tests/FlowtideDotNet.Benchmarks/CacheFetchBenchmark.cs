@@ -20,18 +20,10 @@ using System.Diagnostics.Metrics;
 namespace FlowtideDotNet.Benchmarks
 {
     /// <summary>
-    /// Measures the cost of a cache hit on the S3-FIFO table. The production read paths
-    /// are lock-free (entry.TryRentValue plus single-reference lookup slots); the *Model
-    /// benchmarks preserve the earlier designs for comparison. All benchmarks are
-    /// single-threaded (uncontended), which matches the engine today: every operator runs
-    /// with MaxDegreeOfParallelism = 1, so nothing contends the client lock or the entry
-    /// locks on the read path.
-    ///
-    /// Pairs to compare:
-    /// * LockEnterExit vs InterlockedIncrement: the primitive costs.
-    /// * TableHit_Production vs TableHit_ManualLockFreeModel: shared-table hit (dictionary path).
-    /// * FastPath_Production vs FastPath_LegacyLockedModel: the SyncStateClient lookup-table
-    ///   hit, lock-free single-reference slots vs the previous two-lock key+reference design.
+    /// Measures the cost of a cache hit on the S3-FIFO table.
+    /// The production read paths are lock-free, the Model benchmarks keep the old designs.
+    /// All benchmarks are single-threaded, which matches the engine today.
+    /// Compare LockEnterExit vs InterlockedIncrement, the two TableHit paths and the two FastPaths.
     /// </summary>
     [InProcess]
     [MemoryDiagnoser]
@@ -127,8 +119,8 @@ namespace FlowtideDotNet.Benchmarks
             _pairSlots = new PairSlot[1009];
             _pairSlots[Key % 1009] = new PairSlot { Key = Key, Value = _entry };
 
-            // Single-reference slot design: atomically readable without any lock,
-            // the key is validated on the entry object itself.
+            // Single-reference slot design, atomically readable without any lock.
+            // The key is validated on the entry object itself.
             _refSlots = new S3FifoCacheEntry?[1024];
             _refSlots[Key & (_refSlots.Length - 1)] = _entry;
         }
@@ -234,8 +226,8 @@ namespace FlowtideDotNet.Benchmarks
 
         private static void BumpFrequency(S3FifoCacheEntry entry)
         {
-            // Capped CAS loop; on a hot entry the frequency saturates, so the steady-state
-            // cost is a single volatile read.
+            // Capped CAS loop. On a hot entry the frequency saturates, so the cost is one
+            // volatile read.
             var current = Volatile.Read(ref entry.Frequency);
             while (current < S3FifoCacheEntry.MaxFrequency)
             {

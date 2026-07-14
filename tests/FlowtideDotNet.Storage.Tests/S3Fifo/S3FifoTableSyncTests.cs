@@ -16,13 +16,9 @@ using Xunit;
 namespace FlowtideDotNet.Storage.Tests.S3Fifo
 {
     /// <summary>
-    /// Functional tests for the S3-FIFO cache table. All tests run with the background
-    /// cleanup task stopped and drive eviction through ForceCleanup, so behavior is
-    /// deterministic.
-    ///
-    /// Size math used throughout: with MaxSize = 10 the cleanup threshold is
-    /// ceil(10 * 0.7) = 7 and the small queue target is max(1, 10/10) = 1, so a cleanup
-    /// at 10 entries evicts 3. With MaxSize = 4 the threshold is 3 and one entry is evicted.
+    /// Functional tests for the S3-FIFO cache table.
+    /// All tests stop the cleanup task and drive eviction through ForceCleanup.
+    /// MaxSize 10 gives cleanup threshold 7 and small target 1, so a cleanup at 10 evicts 3.
     /// </summary>
     public class S3FifoTableSyncTests
     {
@@ -88,7 +84,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             await table.ForceCleanup();
             Assert.True(table.IsInGhostForTests(0));
 
-            // Key 0 was recently evicted from the small queue: a re-add is admitted to main.
+            // Key 0 was recently evicted from the small queue, a re-add goes to main.
             table.Add(0, new TestCacheObject(0), handler);
             Assert.True(table.TryPeekEntryForTests(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
@@ -175,8 +171,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             await table.ForceCleanup();
 
-            // All four promoted to main; the scan then decrements frequencies in FIFO
-            // passes until the oldest entry (key 0) reaches frequency 0 and is evicted.
+            // All four promoted to main, then the scan decrements frequencies in FIFO
+            // passes until the oldest entry reaches 0 and is evicted.
             Assert.Equal(new List<long> { 0 }, handler.EvictedKeys);
             Assert.Equal(3, table.Count);
             for (var i = 1; i < 4; i++)
@@ -200,8 +196,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var handler = new TestEvictHandler();
             var objects = new TestCacheObject[4];
 
-            // Simulates a state client modifying the page while the evict handler is
-            // serializing it: the version bump must prevent the removal.
+            // Simulates a state client modifying the page while it is being serialized.
+            // The version bump must prevent the removal.
             handler.OnEvict = (values, _) =>
             {
                 foreach (var value in values)
@@ -247,9 +243,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, objects[i], handler);
             }
 
-            // 5000 entries with a cleanup threshold of 7: a single cleanup selects 4993
-            // victims, which must span many budget-bounded queue-lock acquisitions while
-            // preserving FIFO eviction order and exact accounting.
+            // 5000 entries over a threshold of 7, so one cleanup selects 4993 victims.
+            // These must span many queue-lock acquisitions and keep FIFO order and accounting.
             var acquisitionsBefore = table.SelectionLockAcquisitionsForTests;
             await table.ForceCleanup();
             var acquisitions = table.SelectionLockAcquisitionsForTests - acquisitionsBefore;
@@ -257,8 +252,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(acquisitions > 1, $"Selection used {acquisitions} lock acquisition(s); large batches must be chunked");
             Assert.Equal(7, table.Count);
             Assert.Equal(total - 7, handler.Evictions.Count);
-            // FIFO order preserved across chunk boundaries: the oldest entries were evicted
-            // and the newest survived.
+            // FIFO order preserved across chunks, the oldest evicted and the newest survived.
             Assert.Equal(0, handler.EvictedKeys.First());
             Assert.Equal(total - 8, handler.EvictedKeys.Last());
             for (var i = total - 7; i < total; i++)
@@ -285,8 +279,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, objects[i], handler);
             }
 
-            // Temporary storage failure while serializing the victims: the cleanup pass
-            // must fail loudly, but the victims must stay cached and remain evictable.
+            // Storage failure while serializing the victims, the cleanup pass must fail loudly
+            // but the victims must stay cached and evictable.
             handler.OnEvict = (_, _) => throw new IOException("temporary storage failure");
             await Assert.ThrowsAsync<IOException>(() => table.ForceCleanup());
 
@@ -294,8 +288,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(table.TryGetValue(0, out var stillCached));
             stillCached!.Return();
 
-            // Handler recovers: every entry, including the previously failed victims,
-            // must be evictable all the way down to an empty table via the deep clean.
+            // Handler recovers, every entry including the failed victims must be evictable
+            // all the way down to an empty table.
             handler.OnEvict = null;
             for (var i = 0; i < 2001 && table.Count > 0; i++)
             {
@@ -322,9 +316,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 {
                     if (value.Item1.Key == 0)
                     {
-                        // The page is modified and then deleted while it is being
-                        // serialized: the version bump alone would requeue it, but the
-                        // delete must win and the entry must not be resurrected.
+                        // The page is modified and then deleted while being serialized.
+                        // The delete must win and the entry must not be resurrected.
                         table.Add(0, value.Item1.Value, handler);
                         table.Delete(0);
                     }
@@ -397,8 +390,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             table.Delete(0);
             Assert.Equal(1, obj0.DisposeCount);
 
-            // Fill up and clean: the stale slot for key 0 must be skipped, so the
-            // victims are the oldest live entries.
+            // Fill up and clean, the stale slot for key 0 must be skipped so the victims
+            // are the oldest live entries.
             for (var i = 2; i <= 10; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
@@ -420,13 +413,9 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// A page that anything still references must never be removed from the cache:
-        /// removing it lets an independent traversal reload a SECOND object for the same
-        /// key, and the two copies then diverge — writers hit "Cannot add a new value to
-        /// the cache with the same key" (or worse, updates are silently split across the
-        /// copies). Seen in production shape as a B+ tree iterator holding a leaf while
-        /// eviction pressure reloads it underneath (WindowFunctionTests under
-        /// CachePageCount = 0).
+        /// A page that anything still references must never be removed from the cache.
+        /// Removing it lets a traversal reload a second object for the same key and the two
+        /// copies diverge. Seen when a B+ tree iterator holds a leaf under eviction pressure.
         /// </summary>
         [Fact]
         public async Task HeldPagesAreNotEvictedSoTheirIdentityIsStable()
@@ -446,8 +435,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             await table.ForceCleanup();
 
-            // The held page was selected and serialized, but must stay cached: a later
-            // read must return the SAME object, not a reloaded copy.
+            // The held page was selected and serialized but must stay cached.
+            // A later read must return the same object, not a reloaded copy.
             Assert.Contains(0, handler.EvictedKeys);
             Assert.True(table.TryGetValue(0, out var again));
             Assert.Same(rented, again);
@@ -459,7 +448,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(table.TryPeekEntryForTests(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Main, entry!.Location);
 
-            // Accounting is unharmed by the skipped eviction: cache share + our rent.
+            // Accounting is unharmed by the skipped eviction, cache share plus our rent.
             Assert.Equal(2, objects[0].RentCount);
             rented!.Return();
             Assert.Equal(1, objects[0].RentCount);
@@ -549,7 +538,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         [Fact]
         public async Task DeleteHeavyChurnCompactsStaleQueueSlots()
         {
-            // Large max size so eviction pressure never kicks in; only add/delete churn.
+            // Large max size so eviction never kicks in, only add and delete churn.
             using var table = await S3FifoTestHelpers.CreateStoppedTable(1_000_000);
             var handler = new TestEvictHandler();
 

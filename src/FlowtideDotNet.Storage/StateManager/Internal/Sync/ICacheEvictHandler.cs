@@ -13,11 +13,9 @@
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     /// <summary>
-    /// Implemented by state clients so the shared cache table can hand back a batch of
-    /// eviction candidates for serialization to temporary storage before they are removed
-    /// from memory. Each tuple carries the entry and the entry version at selection time;
-    /// the table re-checks the version before removal so values modified during
-    /// serialization stay cached.
+    /// Lets the cache table hand a state client a batch of victims to serialize before removal.
+    /// Each tuple carries the entry and its version at selection time, which the table
+    /// re-checks so values modified during serialization stay cached.
     /// </summary>
     internal interface ICacheEvictHandler
     {

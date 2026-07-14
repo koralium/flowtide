@@ -13,31 +13,8 @@
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     /// <summary>
-    /// Logical clock implementing a 2Q-style correlated-reference window on top of the
-    /// S3-FIFO small queue.
-    ///
-    /// Every enqueue into the small queue advances the clock, and the enqueued entry is
-    /// stamped with the sequence. A cache hit only counts toward an entry's frequency once
-    /// at least <see cref="SetWindowSize">WindowSize</see> newer entries have been enqueued
-    /// behind it. Hits before that are correlated references — multiple touches belonging
-    /// to the same logical operation as the insert (a B+ tree write reads, updates and
-    /// re-reads the same page within microseconds) — and carry no evidence of genuine
-    /// reuse, so counting them lets one-hit-wonder bursts earn promotion to the main queue
-    /// and defeat the small queue's filtering.
-    ///
-    /// The window is half the small queue's target size. In steady state (enqueue rate ≈
-    /// evict rate, queue length ≈ target) "WindowSize newer entries behind it" is
-    /// equivalent to "the entry has traveled into the older half of the small queue". The
-    /// clock is enqueue-driven rather than dequeue-driven on purpose: during warm-up the
-    /// cache only grows and nothing is dequeued, so a dequeue-driven clock would never age
-    /// anyone and the first eviction wave would treat every hit as correlated, dumping
-    /// genuinely hot pages to the ghost queue.
-    ///
-    /// Thread safety: <see cref="NextSequence"/> is called under the table's queue lock but
-    /// uses Interlocked so lock-free readers never see torn state. <see cref="IsCorrelated"/>
-    /// runs on the read hot path without any lock and tolerates stale values — a hit
-    /// miscounted or skipped right at a queue-transition boundary is noise the heuristic
-    /// absorbs.
+    /// 2Q style correlation window over the small queue.
+    /// A hit while an entry is young in the small queue does not count as reuse.
     /// </summary>
     internal sealed class S3FifoCorrelationClock
     {
@@ -45,7 +22,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private int m_windowSize;
 
         /// <summary>
-        /// Advances the clock for a new small-queue enqueue and returns the stamp for the entry.
+        /// Advances the clock and returns the new stamp.
         /// </summary>
         public long NextSequence()
         {
@@ -53,8 +30,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Sets the window width in small-queue enqueues. Zero disables the filter entirely
-        /// (small caches), reverting to plain S3-FIFO frequency counting.
+        /// Sets the window width. Zero disables the filter.
         /// </summary>
         public void SetWindowSize(int windowSize)
         {
@@ -62,8 +38,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// True when a hit on an entry stamped with <paramref name="smallQueueStamp"/> is still
-        /// inside the correlation window and must not count toward its frequency.
+        /// True when the hit is still inside the correlation window.
         /// </summary>
         public bool IsCorrelated(long smallQueueStamp)
         {

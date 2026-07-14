@@ -19,15 +19,9 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 {
     /// <summary>
     /// Race condition tests for the S3-FIFO cache table.
-    ///
-    /// The concurrency contract being verified:
-    /// * Reads (TryGetValue/TryGetCacheValue) may race freely with each other, with
-    ///   eviction, with deletes and with adds of other keys.
-    /// * Mutations of a single key (Add/Delete) are externally serialized per key, which
-    ///   the tests respect by giving every key exactly one owner task.
-    /// * Rent/return accounting must balance exactly: at the end every object must have a
-    ///   rent count of 0, be disposed exactly once, and never have been rented after
-    ///   disposal or returned below zero.
+    /// Reads may race freely with eviction, deletes and adds of other keys.
+    /// Add and Delete on one key are serialized by giving each key one owner task.
+    /// At the end every object must have rent count 0 and be disposed exactly once.
     /// </summary>
     public class S3FifoTableSyncConcurrencyTests
     {
@@ -65,10 +59,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Readers hammer the cache while owners reload evicted keys with fresh objects and
-        /// two cleanup drivers (the built-in 10ms task plus a tight ForceCleanup loop) evict
-        /// under them. Verifies the removed-check + rent handoff: a successful get must never
-        /// observe a disposed object, and accounting must balance when everything stops.
+        /// Readers hammer the cache while owners reload evicted keys and two drivers evict.
+        /// A successful get must never see a disposed object and accounting must balance.
         /// </summary>
         [Fact]
         public async Task ReadersRaceEvictionAndReload()
@@ -103,7 +95,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                         }
                         else
                         {
-                            // Cache miss: reload, like a state client reading from storage.
+                            // Cache miss, reload like a state client reading from storage.
                             var obj = new TestCacheObject(key);
                             allObjects.Enqueue(obj);
                             if (table.Add(key, obj, handler))
@@ -175,11 +167,9 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Owners keep their own rented reference to every object across continuous eviction
-        /// pressure. Held pages must never leave the cache (eviction only removes pages
-        /// nothing else references), so every read must return the exact object the owner
-        /// installed — a miss or a foreign object means the identity contract broke and a
-        /// reload could have created a divergent second copy of the page.
+        /// Owners keep their own reference to every object under eviction pressure.
+        /// Held pages must never leave the cache, so every read must return the same object.
+        /// A miss or a foreign object means the identity contract broke.
         /// </summary>
         [Fact]
         public async Task HeldPagesKeepTheirIdentityUnderEvictionPressure()
@@ -279,10 +269,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Add/delete churn with readers and a cleanup loop, with a max size high enough that
-        /// eviction pressure never triggers. Verifies stale queue slots left behind by deletes
-        /// are compacted instead of growing without bound, and that delete accounting stays
-        /// exact under reader races.
+        /// Add and delete churn with readers and a cleanup loop, no eviction pressure.
+        /// Stale slots left by deletes must be compacted and delete accounting must stay exact.
         /// </summary>
         [Fact]
         public async Task DeleteChurnDoesNotLeakQueueSlots()
@@ -368,10 +356,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The evict handler concurrently bumps versions of half the victims while they are
-        /// being evicted (the same shape as a state client modifying a page during
-        /// serialization), racing readers and reloads. Bumped victims must survive, and
-        /// accounting must balance at the end.
+        /// The evict handler bumps versions of half the victims while they are being evicted,
+        /// racing readers and reloads. Bumped victims must survive and accounting must balance.
         /// </summary>
         [Fact]
         public async Task VersionBumpsDuringEvictionRaceReadersAndReloads()
@@ -460,10 +446,9 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Writers race large chunked victim selections: owners continuously add fresh keys
-        /// to a table whose eviction batches exceed the selection operation budget, so
-        /// Add/Delete interleave with selection at chunk boundaries. Verifies chunked
-        /// selection keeps exact rent accounting under concurrent mutation.
+        /// Writers race large chunked victim selections.
+        /// Owners add fresh keys so Add and Delete interleave with selection at chunk boundaries.
+        /// Chunked selection must keep exact rent accounting.
         /// </summary>
         [Fact]
         public async Task LargeEvictionBatchesRaceWriters()
@@ -522,12 +507,10 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Deterministic two-thread interleaving storm on the removed-check + rent handoff:
-        /// one thread continuously evicts a single key through cleanup while another reads
-        /// it and re-adds it on miss, crossing the tight window between the removed check
-        /// and TryRent many times. The reader loop is adaptive: it runs until enough
-        /// evict/re-add cycles have actually been observed (a fixed iteration count can
-        /// finish before the thread pool ever schedules the evictor).
+        /// Two-thread storm on the removed-check and rent handoff.
+        /// One thread evicts a single key while another reads and re-adds it on miss, crossing
+        /// the window between the removed check and TryRent. The reader loop runs adaptively
+        /// until enough evict and re-add cycles are observed.
         /// </summary>
         [Fact]
         public async Task SingleKeyEvictReadStorm()

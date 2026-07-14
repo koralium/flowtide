@@ -20,9 +20,8 @@ using System.Diagnostics.Metrics;
 namespace FlowtideDotNet.Storage.Tests.S3Fifo
 {
     /// <summary>
-    /// Cache object with the same rent semantics as the B+ tree nodes (BaseNode):
-    /// the rent count starts at 1 (the reference handed to the cache on Add),
-    /// TryRent fails once the count reaches 0, Return disposes at 0.
+    /// Cache object with the same rent semantics as a B+ tree node.
+    /// Rent count starts at 1, TryRent fails at 0, Return disposes at 0.
     /// Tracks invariant violations so concurrency tests can assert on them.
     /// </summary>
     internal class TestCacheObject : ICacheObject
@@ -118,8 +117,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         public ConcurrentQueue<(long Key, bool IsCleanup)> Evictions { get; } = new();
 
         /// <summary>
-        /// Invoked before the evictions are recorded, on the eviction task thread,
-        /// mirroring where a state client would serialize the value to temporary storage.
+        /// Invoked on the eviction thread before evictions are recorded.
+        /// Mirrors where a state client would serialize the value.
         /// </summary>
         public Action<List<(S3FifoCacheEntry, long)>, bool>? OnEvict { get; set; }
 

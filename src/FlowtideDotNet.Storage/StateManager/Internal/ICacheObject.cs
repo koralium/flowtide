@@ -24,12 +24,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         void Return();
 
         /// <summary>
-        /// Atomically claims the object for eviction, but only if the cache holds the sole
-        /// reference (rent count == 1). On success the object is reclaimed (disposed) and the
-        /// method returns true. If anything else still references the object the count is left
-        /// untouched and the method returns false, so a page that a B+ tree iterator (or any
-        /// other holder) is using is never evicted out from under it — which would let an
-        /// independent reload create a divergent second copy of the same page.
+        /// Claims the object for eviction only if the cache holds the sole reference.
+        /// Disposes and returns true on success, otherwise leaves it untouched and returns false
+        /// so a page still in use is never evicted.
         /// </summary>
         bool TryReclaimForEviction();
 

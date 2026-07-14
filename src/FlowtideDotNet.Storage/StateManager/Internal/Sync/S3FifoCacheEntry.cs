@@ -13,14 +13,12 @@
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     /// <summary>
-    /// Which S3-FIFO queue an entry currently resides in.
-    /// Guarded by the cache table's queue lock.
+    /// Which queue an entry is in. Guarded by the queue lock.
     /// </summary>
     internal enum S3FifoQueueLocation : byte
     {
         /// <summary>
-        /// Not present in any queue, either because it was just created,
-        /// or because it was dequeued as an eviction candidate.
+        /// Not in any queue, just created or picked as a victim.
         /// </summary>
         None = 0,
         Small = 1,
@@ -28,44 +26,29 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     }
 
     /// <summary>
-    /// A stable handle for a value stored in <see cref="S3FifoTableSync"/>.
-    /// State clients cache references to these entries in their local lookup tables,
-    /// so the same instance must represent a key for the entire time it is cached.
-    ///
-    /// Concurrency rules:
-    /// * Reads are lock-free: <see cref="TryRentValue"/> is the only correct way to rent
-    ///   through an entry. It relies on <see cref="ICacheObject.TryRent"/> failing once the
-    ///   count reaches zero, and on every code path that returns the cache's reference
-    ///   setting <see cref="Removed"/> (volatile) before calling Return, so a failed rent
-    ///   on a non-removed entry can only mean reference-count corruption.
-    /// * <see cref="Frequency"/> is accessed with Volatile/Interlocked only.
-    /// * <see cref="Version"/> is guarded by lock(entry); only mutators and eviction touch it.
-    /// * <see cref="Removed"/> is written under lock(entry) with a volatile write, and may be
-    ///   read either under the lock or with a volatile read.
-    /// * <see cref="Location"/> is guarded by the table's queue lock.
-    /// * An entry lock may be taken while holding the queue lock, never the reverse.
+    /// Stable handle for a value in the cache table.
+    /// State clients cache these, so one instance must represent a key while it is cached.
+    /// Reads are lock-free through TryRentValue. Frequency uses Volatile and Interlocked.
+    /// Version and Removed are guarded by lock(entry), Location by the queue lock.
+    /// An entry lock may be taken inside the queue lock, never the reverse.
     /// </summary>
     internal sealed class S3FifoCacheEntry
     {
         /// <summary>
-        /// Maximum access frequency tracked per entry, as in the S3-FIFO paper (2 bits).
+        /// Max access frequency per entry, 2 bits.
         /// </summary>
         public const int MaxFrequency = 3;
 
         /// <summary>
-        /// Sentinel for <see cref="_smallQueueStamp"/> when the entry is not resident in the
-        /// small queue, so every hit counts toward its frequency.
+        /// Set when the entry is not in the small queue, so every hit counts.
         /// </summary>
         private const long NotInSmallQueue = -1;
 
         private readonly S3FifoCorrelationClock _correlationClock;
 
         /// <summary>
-        /// The small-queue enqueue sequence this entry was stamped with, or
-        /// <see cref="NotInSmallQueue"/> when it is not in the small queue. Written under the
-        /// table's queue lock at every queue transition (stamped on small-queue enqueue,
-        /// cleared on promotion, victim selection and direct main admission); read lock-free
-        /// on the hit path, where a stale value near a transition is benign.
+        /// Small queue enqueue sequence, or NotInSmallQueue.
+        /// Written under the queue lock, read lock-free on the hit path.
         /// </summary>
         private long _smallQueueStamp = NotInSmallQueue;
 
@@ -84,45 +67,32 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public ICacheEvictHandler EvictHandler { get; }
 
         /// <summary>
-        /// Incremented every time the value behind the key is modified (AddOrUpdate on an existing key).
-        /// Eviction snapshots the version when selecting a victim and skips the removal if the
-        /// version changed while the value was being serialized, so a newer modification is never lost.
+        /// Bumped when the value is modified. Eviction snapshots it to skip a stale removal.
         /// Guarded by lock(entry).
         /// </summary>
         public long Version;
 
         /// <summary>
-        /// Saturating access counter in [0, <see cref="MaxFrequency"/>].
-        /// Incremented on every cache hit, consumed by the eviction scan
-        /// (promotion out of the small queue, reinsertion in the main queue).
-        /// Accessed with Volatile/Interlocked only; readers bump it without any lock.
+        /// Access counter from 0 to MaxFrequency, bumped on every hit.
+        /// Uses Volatile and Interlocked, no lock.
         /// </summary>
         public int Frequency;
 
         /// <summary>
-        /// Set to true before the cache's reference is returned, with a volatile write under
-        /// lock(entry). Once true it never becomes false again; a re-add of the key creates
-        /// a new entry.
+        /// Set true before the cache reference is returned. Never resets.
         /// </summary>
         public bool Removed;
 
         /// <summary>
-        /// The queue this entry currently sits in. Guarded by the table's queue lock.
+        /// Which queue the entry sits in. Guarded by the queue lock.
         /// </summary>
         public S3FifoQueueLocation Location;
 
         /// <summary>
-        /// Lock-free read handoff: rents the value and records the access. Returns false when
-        /// the value cannot be rented, which callers treat as a cache miss.
-        ///
-        /// A rent only fails once the value's count has reached zero, which happens exclusively
-        /// when eviction claims the sole (cache) reference via
-        /// <see cref="ICacheObject.TryRent"/>'s counterpart in the removal phase, or on
-        /// delete/dispose. In every such case no other holder exists, so a caller that misses
-        /// here and reloads from storage becomes the new sole owner — it cannot create a
-        /// second live copy of a page that something else is holding, because a held page
-        /// (count &gt; the cache's one share) is never evictable. Reference-count corruption is
-        /// caught in the <c>Add</c> path instead, which inspects the entry under its lock.
+        /// Lock-free rent and access record. False is treated as a cache miss.
+        /// A rent only fails once the count reaches zero, which is when eviction claimed the
+        /// sole reference, so the caller reloads as the new owner. Count corruption is caught
+        /// in Add instead.
         /// </summary>
         public bool TryRentValue()
         {
@@ -139,10 +109,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Stamps the entry with its small-queue enqueue sequence. Called under the table's
-        /// queue lock whenever the entry is enqueued into the small queue: the initial insert
-        /// and the failed-evict requeue path (which restarts the window, since the entry
-        /// re-enters at the tail).
+        /// Stamps the entry when it enters the small queue.
+        /// Called under the queue lock on insert and on the failed-evict requeue.
         /// </summary>
         public void SetSmallQueueStamp(long sequence)
         {
@@ -150,9 +118,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Clears the stamp when the entry leaves the small queue (promotion to main or
-        /// selection as an eviction victim). From then on every hit counts toward frequency.
-        /// Entries admitted directly to the main queue are never stamped.
+        /// Clears the stamp when the entry leaves the small queue.
+        /// From then on every hit counts.
         /// </summary>
         public void ClearSmallQueueStamp()
         {
@@ -160,16 +127,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Saturating lock-free frequency bump. On a hot entry the counter stays at the cap,
-        /// so the steady-state cost is a single volatile read.
-        ///
-        /// Correlation window (2Q-style, see <see cref="S3FifoCorrelationClock"/>): hits while
-        /// the entry is still in the young half of the small queue are correlated references —
-        /// touches belonging to the same logical operation as the insert — and are not counted,
-        /// so an insertion burst cannot earn promotion to the main queue. The stamp read races
-        /// queue transitions on purpose; a stale value only means one hit is counted or skipped
-        /// right at a transition boundary, which the heuristic tolerates. Saturated (hot)
-        /// entries return before the stamp read, keeping their cost unchanged.
+        /// Saturating lock-free frequency bump.
+        /// Correlated hits while young in the small queue do not count, so an insertion burst
+        /// cannot earn promotion. Hot entries return before the stamp read, cost unchanged.
         /// </summary>
         public void RecordAccess()
         {

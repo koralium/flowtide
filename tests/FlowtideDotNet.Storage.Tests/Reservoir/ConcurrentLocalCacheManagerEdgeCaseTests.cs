@@ -776,10 +776,9 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             TaskCompletionSource evictionLoopSignal = new TaskCompletionSource();
             s.Cclm.SetEvictionLoopSignal_Test(evictionLoopSignal);
 
-            // The eviction loop parks on Task.Delay against the fake time provider. If the
-            // loop thread has not yet registered its next delay when Advance runs (possible
-            // under scheduler load), a single Advance is silently missed and the loop sleeps
-            // forever. Keep advancing until the loop signals a completed pass.
+            // The eviction loop parks on Task.Delay against the fake time provider.
+            // A single Advance can be missed if the loop has not registered its next delay yet.
+            // Keep advancing until the loop signals a completed pass.
             for (var attempt = 0; !evictionLoopSignal.Task.IsCompleted; attempt++)
             {
                 Assert.True(attempt < 600, "Eviction loop never completed a pass.");

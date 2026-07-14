@@ -23,11 +23,9 @@ using Xunit;
 namespace FlowtideDotNet.Storage.Tests
 {
     /// <summary>
-    /// Reproduces the Commit-vs-Evict version race deterministically: an eviction that
-    /// straddles a commit leaves a m_fileCacheVersion entry behind whose counter value can
-    /// collide with the next commit interval's counter (both restarting from the same
-    /// numbering), making the eviction dedup skip serializing a genuinely modified page —
-    /// the modified content is then dropped from memory and lost.
+    /// Reproduces the Commit vs Evict version race deterministically.
+    /// An eviction that straddles a commit leaves a version entry that collides with the next
+    /// interval, so the dedup skips serializing a modified page and it is lost.
     /// </summary>
     public class CommitEvictVersionRaceTests
     {
@@ -120,10 +118,9 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
-        /// Flags whenever two threads are inside <see cref="Serialize(in IBufferWriter{byte}, in TestPage)"/>
-        /// at once. A commit and a background eviction both serialize pages through the state client's
-        /// single (non-thread-safe) value serializer, so a concurrent serialize corrupts a page's bytes.
-        /// The short spin widens the window so a real overlap is observed rather than missed.
+        /// Flags whenever two threads are inside Serialize at once.
+        /// A commit and a background eviction both use the single client serializer, which is
+        /// not thread-safe, so a concurrent serialize corrupts a page. The spin widens the window.
         /// </summary>
         private class ConcurrencyTrackingSerializer : IStateSerializer<TestPage>
         {
@@ -181,8 +178,8 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
-        /// Wraps a file cache so a test can freeze an eviction inside its spill write while
-        /// other work (a commit) runs through the open window.
+        /// Wraps a file cache so a test can freeze an eviction inside its spill write while a
+        /// commit runs through the window.
         /// </summary>
         private class GatedFileCache : IFileCache
         {
@@ -271,11 +268,9 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
-        /// Reproduces the "Segment not found" flake seen with CachePageCount = 0: an eviction
-        /// writes its spill data BEFORE the commit's file-cache frees run, but records its
-        /// m_fileCacheVersion entry AFTER the commit cleared the version map. The leftover
-        /// version entry then points at freed file-cache storage, and the next read of the
-        /// page throws instead of falling back to persistent storage.
+        /// Reproduces the Segment not found flake seen with CachePageCount 0.
+        /// An eviction writes its spill before the commit frees but records its version entry
+        /// after the commit cleared the map, so the entry points at freed data and a read throws.
         /// </summary>
         [Fact]
         public async Task EvictionStraddlingCommitMustNotLeaveVersionEntryForFreedData()
@@ -307,9 +302,8 @@ namespace FlowtideDotNet.Storage.Tests
             var key = client.GetNewPageId();
             client.AddOrUpdate(key, new TestPage(1));
 
-            // Freeze the eviction between writing its spill data and recording the version
-            // entry, run a full commit through the window (freeing the spill and clearing
-            // the version map), then let the eviction finish its bookkeeping.
+            // Freeze the eviction between writing its spill and recording the version entry,
+            // run a full commit through the window, then let the eviction finish.
             var gate = new ManualResetEventSlim(false);
             var fileCache = factory.Created.Single();
             fileCache.ArmGateAfterWrite(gate);
@@ -319,8 +313,8 @@ namespace FlowtideDotNet.Storage.Tests
             gate.Set();
             await cleanup;
 
-            // The page must be readable: either from a live spill or from persistent
-            // storage. A version entry pointing at freed data throws "Segment not found".
+            // The page must be readable, from a live spill or from persistent storage.
+            // A version entry pointing at freed data throws Segment not found.
             var after = await client.GetValue(key);
             Assert.NotNull(after);
             Assert.Equal(1, after!.Value);
@@ -370,7 +364,7 @@ namespace FlowtideDotNet.Storage.Tests
             gate.Set();
             await cleanup;
 
-            // Next commit interval: reload the page and modify it once.
+            // Next commit interval, reload the page and modify it once.
             var reloaded = await client.GetValue(key);
             Assert.NotNull(reloaded);
             Assert.Equal(1, reloaded!.Value);
@@ -378,9 +372,8 @@ namespace FlowtideDotNet.Storage.Tests
             client.AddOrUpdate(key, reloaded);
             reloaded.Return();
 
-            // Evict again: if the new write's version collides with the stale entry left
-            // by the straddling eviction, the spill write is skipped while the modified
-            // page is still dropped from memory.
+            // Evict again. If the new write collides with the stale entry the spill write is
+            // skipped while the modified page is still dropped from memory.
             await manager.CacheTable.ForceCleanup();
 
             var after = await client.GetValue(key);
@@ -391,14 +384,10 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
-        /// A checkpoint commit and a background eviction both serialize pages through the same
-        /// (non-thread-safe) state client value serializer. Under CachePageCount = 0 the background
-        /// eviction task runs constantly, so without making the commit mutually exclusive with
-        /// eviction the two serialize a page at the same time and corrupt the bytes the commit
-        /// persists — a corruption that stays hidden behind the intact in-memory copy until a crash
-        /// reverts to the corrupted checkpoint (observed as scrambled leaves in the acceptance suite).
-        /// The commit must pause the background eviction task so the serializer is never used
-        /// concurrently.
+        /// A commit and a background eviction both serialize pages through the same client
+        /// serializer, which is not thread-safe. Under CachePageCount 0 the eviction task runs
+        /// constantly, so without pausing eviction the two corrupt the persisted bytes.
+        /// The commit must pause eviction so the serializer is never used concurrently.
         /// </summary>
         [Fact]
         public async Task CommitAndBackgroundEvictionNeverSerializeConcurrently()
@@ -423,9 +412,9 @@ namespace FlowtideDotNet.Storage.Tests
                 new StateClientOptions<TestPage>() { ValueSerializer = serializer },
                 GlobalMemoryManager.Instance);
 
-            // Held pages keep an extra rent so they stay in the cache and every commit serializes
-            // them, while the steady stream of throwaway pages keeps the background eviction task
-            // serializing victims. Without the commit/eviction pause the two overlap.
+            // Held pages keep an extra rent so they stay cached and every commit serializes them,
+            // while throwaway pages keep the eviction task serializing victims.
+            // Without the pause the two overlap.
             var held = new List<(long key, TestPage page)>();
             for (int i = 0; i < 16; i++)
             {

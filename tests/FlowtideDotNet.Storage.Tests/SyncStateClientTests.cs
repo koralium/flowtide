@@ -25,9 +25,8 @@ namespace FlowtideDotNet.Storage.Tests
     {
         /// <summary>
         /// Wraps a file cache and records writes that arrive after Dispose has started.
-        /// Dispose deliberately holds the state-client teardown open long enough for the
-        /// cache table's 10ms background cleanup task to run an eviction into the window,
-        /// making the dispose-ordering race deterministic instead of timing-dependent.
+        /// Dispose holds the teardown open so the cleanup task runs an eviction into the window,
+        /// making the dispose ordering race deterministic.
         /// </summary>
         private class DisposeTrackingFileCache : FlowtideDotNet.Storage.FileCache.IFileCache
         {
@@ -95,9 +94,8 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
-        /// Disposing the state manager must stop the cache table's background cleanup task
-        /// BEFORE the state clients are torn down; otherwise an in-flight eviction writes
-        /// through the client's already-disposed file cache and serializer.
+        /// Disposing the state manager must stop the cleanup task before the clients are torn down.
+        /// Otherwise an in-flight eviction writes through an already disposed client.
         /// </summary>
         [Fact]
         public async Task DisposeStopsEvictionBeforeStateClientsAreDisposed()
@@ -193,10 +191,9 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
-        /// Regression net for the GetValue_Persistent rent ordering: pages loaded from
-        /// persistent storage must survive continuous eviction pressure racing the read.
-        /// With CachePageCount = 0 every cleanup evicts everything, so each read round
-        /// re-loads pages from storage while the evictor concurrently tears them out.
+        /// Regression net for the GetValue_Persistent rent ordering.
+        /// Pages loaded from persistent storage must survive eviction pressure racing the read.
+        /// With CachePageCount 0 every cleanup evicts everything as each read reloads from storage.
         /// </summary>
         [Fact]
         public async Task PersistentReadsSurviveContinuousEviction()

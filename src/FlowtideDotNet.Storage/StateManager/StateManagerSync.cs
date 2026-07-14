@@ -199,9 +199,8 @@ namespace FlowtideDotNet.Storage.StateManager
         }
 
         /// <summary>
-        /// Pauses the shared cache's background eviction task so a checkpoint commit or recovery
-        /// does not run concurrently with an eviction (see <see cref="S3FifoTableSync.PauseEvictionAsync"/>).
-        /// Must be paired with <see cref="ResumeEviction"/> in a finally block.
+        /// Pauses the background eviction task so a commit or recovery does not race an eviction.
+        /// Must be paired with ResumeEviction in a finally block.
         /// </summary>
         internal Task PauseEvictionAsync()
         {
@@ -429,10 +428,8 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
 
-            // Pause the background eviction task for the whole reset: it clears the cache and
-            // reverts persistent storage, and an in-flight eviction running concurrently would
-            // write a stale pre-recovery page through the state client after its state was reset,
-            // re-populating file-cache version entries that route later reads to stale data.
+            // Pause eviction for the whole reset. An in-flight eviction could otherwise write a
+            // stale page after the reset and route later reads to it.
             await PauseEvictionAsync();
             try
             {
@@ -488,10 +485,8 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 if (disposing)
                 {
-                    // The cache table must be disposed first: it owns the background cleanup
-                    // task, and disposing it cancels and joins that task. Torn down in any
-                    // other order, an in-flight eviction can write through a state client's
-                    // already-disposed file cache and serializer.
+                    // Dispose the cache table first so it stops the cleanup task.
+                    // Otherwise an in-flight eviction writes through an already disposed client.
                     if (m_cacheTable != null)
                     {
                         m_cacheTable.Dispose();

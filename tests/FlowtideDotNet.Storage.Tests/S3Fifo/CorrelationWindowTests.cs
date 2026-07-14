@@ -19,13 +19,9 @@ using Xunit;
 namespace FlowtideDotNet.Storage.Tests.S3Fifo
 {
     /// <summary>
-    /// Tests for the 2Q-style correlation window on the small queue: hits while an entry is
-    /// still in the young half of the small queue are correlated references (same logical
-    /// operation as the insert) and must not count toward promotion to the main queue.
-    ///
-    /// Size math: MaxSize = 100 gives a small queue target of 10, a correlation window of
-    /// 10 / 2 = 5 small-queue enqueues, and a cleanup threshold of ceil(100 * 0.7) = 70, so a
-    /// cleanup at 101 entries evicts 31.
+    /// Tests for the correlation window on the small queue.
+    /// A hit while an entry is young in the small queue must not count toward promotion.
+    /// MaxSize 100 gives small target 10, window 5 and cleanup threshold 70.
     /// </summary>
     public class CorrelationWindowTests
     {
@@ -51,9 +47,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             using var large = await S3FifoTestHelpers.CreateStoppedTable(100);
             Assert.Equal(5, large.CorrelationWindowSizeForTests);
 
-            // MaxSize < 20 => window 0 => the filter is disabled (plain S3-FIFO counting),
-            // which keeps small caches and the CachePageCount = 0 torture configuration on
-            // the exact previous behavior.
+            // MaxSize below 20 gives window 0, so the filter is disabled.
+            // This keeps small caches and the CachePageCount 0 config on the old behavior.
             using var tiny = await S3FifoTestHelpers.CreateStoppedTable(10);
             Assert.Equal(0, tiny.CorrelationWindowSizeForTests);
         }
@@ -64,8 +59,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
             var handler = new TestEvictHandler();
 
-            // Insert and immediately touch twice: age 0 < window 5, so both hits are
-            // correlated references and must not earn promotion.
+            // Insert and immediately touch twice, both hits are inside the window.
+            // They are correlated and must not earn promotion.
             var obj = new TestCacheObject(0);
             table.Add(0, obj, handler);
             Touch(table, 0, 2);
@@ -77,8 +72,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             await table.ForceCleanup();
 
-            // Key 0 was at the head of the small queue with an (uncounted) frequency of 0,
-            // so it is evicted to the ghost queue instead of being promoted to main.
+            // Key 0 reached the small queue head with frequency 0, so it goes to ghost
+            // instead of being promoted to main.
             Assert.False(table.TryGetValue(0, out _));
             Assert.True(table.IsInGhostForTests(0));
             Assert.True(obj.Disposed);
@@ -92,7 +87,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             table.Add(0, new TestCacheObject(0), handler);
 
-            // Age key 0 past the window: 6 newer small-queue enqueues >= window 5.
+            // Age key 0 past the window with 6 newer enqueues.
             for (var i = 1; i <= 6; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
@@ -114,10 +109,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The scenario the window exists for: a one-pass scan whose pages are each touched
-        /// several times in a burst (a B+ tree operation reads and updates the same page
-        /// within one logical operation) must not displace the genuinely reused working set
-        /// from the main queue.
+        /// The scenario the window exists for.
+        /// A scan whose pages are each touched in a burst must not displace the reused set.
         /// </summary>
         [Fact]
         public async Task CorrelatedScanDoesNotPolluteMainQueue()
@@ -125,7 +118,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
             var handler = new TestEvictHandler();
 
-            // Hot working set: inserted, aged past the window, then genuinely reused.
+            // Hot working set, inserted, aged past the window, then reused.
             for (var i = 0; i < 5; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
@@ -139,7 +132,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 Touch(table, i, 2);
             }
 
-            // Scan: every page touched twice immediately after insert (correlated burst).
+            // Scan, every page touched twice right after insert.
             for (var i = 10; i < 100; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
@@ -148,8 +141,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             await table.ForceCleanup();
 
-            // Only the hot set earned main-queue residency; the scan's correlated double
-            // touches earned nothing, so the main queue holds exactly the 5 hot entries.
+            // Only the hot set reached main. The scan touches earned nothing, so the main
+            // queue holds exactly the 5 hot entries.
             for (var i = 0; i < 5; i++)
             {
                 Assert.True(table.TryPeekEntryForTests(i, out var entry));
@@ -160,16 +153,9 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The memory-adaptive resize (MaxMemoryUsageInBytes) recomputes maxSize from the
-        /// observed allocation per entry; the small queue target follows maxSize, so the
-        /// correlation window must follow both a shrink (RAM pressure) and a growth
-        /// (entries smaller than expected).
-        ///
-        /// Size math: MaxSize = 1000 gives window 1000/10/2 = 50 and cleanup threshold 700.
-        /// Shrink pass: 701 entries at a reported 32 KiB each against an 8 MiB budget gives
-        /// idealMaxSize = floor(8 MiB * 0.8 / 32 KiB) = 204, so the window becomes
-        /// 204/10/2 = 10. Growth pass: the average clamps at the 16 KiB floor, giving
-        /// idealMaxSize = floor(8 MiB * 0.8 / 16 KiB) = 409 and window 409/10/2 = 20.
+        /// The memory-adaptive resize recomputes maxSize from the allocation per entry.
+        /// The window follows maxSize on both a shrink and a growth.
+        /// MaxSize 1000 gives window 50, the shrink drops it to 10 and the growth raises it to 20.
         /// </summary>
         [Fact]
         public async Task MemoryAdaptiveResizeUpdatesTheWindowInBothDirections()
@@ -186,7 +172,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             Assert.Equal(50, table.CorrelationWindowSizeForTests);
 
-            // Shrink: entries report as large, so the same memory budget fits fewer pages.
+            // Shrink, entries report as large so the budget fits fewer pages.
             long key = 0;
             for (; key < 701; key++)
             {
@@ -196,8 +182,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             await table.ForceCleanup();
             Assert.Equal(10, table.CorrelationWindowSizeForTests);
 
-            // Growth: entries report as small (clamped at the 16 KiB floor), so the budget
-            // fits more pages and the window widens with the small queue target.
+            // Growth, entries report as small so the budget fits more pages and the window
+            // widens with the small queue target.
             while (table.Count < 200)
             {
                 table.Add(key++, new TestCacheObject(key), handler);
@@ -208,9 +194,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Small-queue-head outcome counters: a correlated scan earns no promotions (the window
-        /// stops its touches from counting), so the objects that reach the small-queue head are
-        /// evicted to ghost rather than promoted to main.
+        /// Small-queue-head outcome counters.
+        /// A correlated scan earns no promotions, so the head objects go to ghost.
         /// </summary>
         [Fact]
         public async Task CountersReportSmallQueueOutcomes()
@@ -221,7 +206,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             for (var i = 0; i < 100; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
-                Touch(table, i, 2); // both touches are inside the window (age 0)
+                Touch(table, i, 2); // both touches are inside the window
             }
 
             Assert.Equal(0, table.SmallQueuePromotionsForTests);
@@ -229,15 +214,14 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             await table.ForceCleanup();
 
-            // Nothing earned promotion; the small-queue-head objects went to ghost.
+            // Nothing earned promotion, the head objects went to ghost.
             Assert.Equal(0, table.SmallQueuePromotionsForTests);
             Assert.True(table.SmallQueueEvictionsForTests > 0);
         }
 
         /// <summary>
-        /// The one-hit-wonder counter: objects that were added once, never promoted to main,
-        /// and then aged all the way out of the ghost queue without a re-admission — pages the
-        /// cache saw exactly once and got no reuse from.
+        /// The one-hit-wonder counter.
+        /// Objects added once, never promoted, then aged out of ghost without a re-admission.
         /// </summary>
         [Fact]
         public async Task OneHitWonderCounterCountsObjectsThatAgeOutOfGhostUnused()
@@ -245,9 +229,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
             var handler = new TestEvictHandler();
 
-            // Ghost capacity is 9. Churn distinct never-touched keys: each cleanup fills to the
-            // threshold and evicts the oldest small-queue entries to ghost. Once more than 9
-            // have been ghosted, the earliest age out — never promoted, never re-admitted.
+            // Ghost capacity is 9. Churn distinct never-touched keys so each cleanup evicts the
+            // oldest small entries to ghost. Once more than 9 are ghosted the earliest age out.
             long key = 0;
             for (var round = 0; round < 10; round++)
             {
@@ -264,8 +247,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Guards the fallback: with the window disabled (tiny cache) immediate double
-        /// touches still promote, i.e. the exact pre-window S3-FIFO behavior.
+        /// Guards the fallback.
+        /// With the window disabled immediate double touches still promote.
         /// </summary>
         [Fact]
         public async Task TinyCachesKeepPlainS3FifoCounting()

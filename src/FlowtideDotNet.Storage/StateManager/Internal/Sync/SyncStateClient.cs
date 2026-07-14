@@ -42,14 +42,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly ConcurrentDictionary<long, long> m_fileCacheVersion;
 
         /// <summary>
-        /// Monotonic write-generation counter, guarded by m_lock and NEVER reset.
-        /// m_modified records the generation of each page's latest write and the eviction
-        /// dedup compares it against the generation stored in m_fileCacheVersion. An
-        /// eviction that straddles a commit can re-insert its version entry after the
-        /// commit cleared it; if generations restarted per commit interval, that stale
-        /// entry could equal a later write's generation, making the dedup skip serializing
-        /// modified content that is then dropped from memory (lost write). Monotonic
-        /// generations can never collide across intervals.
+        /// Monotonic write generation, guarded by m_lock and never reset.
+        /// The eviction dedup compares it against m_fileCacheVersion. Resetting it per commit
+        /// would let a straddling eviction collide with a later write and drop a modified page.
         /// </summary>
         private long m_writeSequence;
         private readonly Histogram<float>? m_persistenceReadMsHistogram;
@@ -58,10 +53,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly TagList tagList;
 
         /// <summary>
-        /// Direct-mapped (key % length) cache of entry references, in front of the shared
-        /// cache table. Slots are single references so they can be read atomically without
-        /// any lock; the key is validated on the entry itself. All writes happen under
-        /// m_lock, reads on the GetValue fast path are lock-free volatile reads.
+        /// Direct mapped cache of entry references in front of the shared table.
+        /// Slots are single references read atomically, the key is validated on the entry.
+        /// Writes happen under m_lock, the GetValue fast path reads lock-free.
         /// </summary>
         private S3FifoCacheEntry?[] _lookupTable;
 
@@ -164,12 +158,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             Debug.Assert(options.ValueSerializer != null);
 
-            // Eviction serializes pages through the same (non-thread-safe) value serializer and
-            // touches m_modified/m_fileCacheVersion that this commit reads and clears. Pause the
-            // background eviction task for the duration of the commit so a concurrent eviction can
-            // never corrupt the bytes written to persistent storage. The corruption is otherwise
-            // hidden by the intact in-memory page and only surfaces after a crash reverts to the
-            // corrupted checkpoint.
+            // Eviction serializes pages through the same value serializer this commit uses.
+            // Pause it for the commit so a concurrent eviction cannot corrupt the persisted bytes.
             await stateManager.PauseEvictionAsync();
             try
             {
@@ -211,9 +201,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         // Remove it from file cache version and file cache
                         // This is required since the data can have been modified since it was written to the cache.
-                        // Free before removing the version entry: evictions record their version
-                        // before their write, and this pairing keeps "version entry exists"
-                        // implying "spill data exists" under any interleaving (see Evict).
+                        // Free before removing the version entry, see Evict.
+                        // The pairing keeps a surviving version entry pointing at live spill data.
                         m_fileCache.Free(kv.Key);
                         m_fileCacheVersion.Remove(kv.Key, out _);
                     }
@@ -307,10 +296,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             var modLookup = key % _lookupTable.Length;
 
-            // Lock-free fast path: a slot is a single reference (atomic to read), the key is
-            // validated on the entry, and TryRentValue makes the removed-check + rent handoff
-            // safe against concurrent eviction. A stale or mid-eviction slot simply falls
-            // through to the locked path, which repopulates it.
+            // Lock-free fast path. The slot is one reference, the key is validated on the entry,
+            // and TryRentValue is safe against eviction. A stale slot falls through to the lock.
             var entry = Volatile.Read(ref _lookupTable[modLookup]);
             if (entry != null && entry.Key == key && entry.TryRentValue())
             {
@@ -368,9 +355,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 throw new FlowtidePersistentStorageException($"Error reading persistent data in client '{name}' with key '{key}'", e);
             }
 
-            // Rent for the caller BEFORE publishing to the cache, like GetValue_FromCache:
-            // after AddOrUpdate the cache owns the object's only reference and a concurrent
-            // eviction could dispose it before the caller's rent lands.
+            // Rent for the caller before publishing to the cache, like GetValue_FromCache.
+            // Otherwise a concurrent eviction could dispose it before the caller rents.
             if (!value.TryRent())
             {
                 throw new InvalidOperationException("Could not rent value when fetched from storage.");
@@ -490,13 +476,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         if (!entry.Removed)
                         {
-                            // The version entry must be recorded BEFORE the spill write. Commit
-                            // concurrently frees spill data and then clears/removes version
-                            // entries; if the write landed before the free but the version entry
-                            // landed after the clear, the entry would point at freed data and the
-                            // next read would throw "Segment not found". With record-before-write
-                            // a version entry that survives the clear implies its write also
-                            // happened after the free, so the data it points at is live.
+                            // Record the version entry before the spill write.
+                            // A surviving version entry then always points at live spill data,
+                            // so a read never hits freed data and throws Segment not found.
                             m_fileCacheVersion[entry.Key] = val;
                             try
                             {
@@ -504,8 +486,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             }
                             catch
                             {
-                                // A failed spill write must not leave a version entry behind that
-                                // claims the data exists.
+                                // A failed spill write must not leave a version entry behind.
                                 m_fileCacheVersion.TryRemove(new KeyValuePair<long, long>(entry.Key, val));
                                 throw;
                             }

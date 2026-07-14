@@ -25,19 +25,10 @@ using Xunit;
 namespace FlowtideDotNet.Storage.Tests
 {
     /// <summary>
-    /// Deterministic-ish crash-consistency harness for the page cache under maximal eviction.
-    ///
-    /// The stream-level symptom is a wrong row count after a crash under CachePageCount = 0.
-    /// This drives the same conditions at the storage layer: a B+ tree with maximal eviction
-    /// (every page evicted continuously) while a dedicated evictor thread races the main
-    /// thread's Commit/CheckpointAsync. After each simulated crash (InitializeAsync, which
-    /// drops all volatile cache/spill state and recovers the durable checkpoint) the recovered
-    /// tree must EXACTLY equal the state as of the last checkpoint. A divergence is the
-    /// storage-level form of the lost/gained rows seen at the stream level.
-    ///
-    /// The crashGate serializes eviction against the crash+verify phase (so verification reads
-    /// a quiescent tree) while letting eviction freely race Commit/CheckpointAsync, which is
-    /// where the durability race lives.
+    /// Crash-consistency harness for the page cache under maximal eviction.
+    /// A B+ tree evicts every page while a dedicated evictor thread races Commit and Checkpoint.
+    /// After each crash the recovered tree must exactly equal the last checkpoint.
+    /// The crashGate serializes eviction against the crash and verify phase.
     /// </summary>
     public class CrashConsistencyStressTests
     {
@@ -64,8 +55,8 @@ namespace FlowtideDotNet.Storage.Tests
                     },
                     CachePageCount = 0,
                     MinCachePageCount = 0,
-                    // Tiny pages force deep multi-leaf trees with constant splits/merges, like the
-                    // aggregate stress test (SetPageSizeBytes(160)) that exposed the flake.
+                    // Tiny pages force deep multi-leaf trees with constant splits and merges,
+                    // like the aggregate stress test that exposed the flake.
                     DefaultBPlusTreePageSize = 6,
                     DefaultBPlusTreePageSizeBytes = 256,
                 }, NullLoggerFactory.Instance, new Meter(Guid.NewGuid().ToString()), "storage", GlobalMemoryManager.Instance);
@@ -108,9 +99,8 @@ namespace FlowtideDotNet.Storage.Tests
             var stateManager = harness.StateManager;
             var tree = harness.Tree;
 
-            // Stop the built-in cleanup task so this test drives eviction through a SINGLE
-            // dedicated evictor thread. In production only the one background cleanup task
-            // evicts (serialized by _fullLock); two concurrent evictors would be unrealistic.
+            // Stop the built-in cleanup task so this test drives eviction through a single
+            // evictor thread. Production has one background evictor, two would be unrealistic.
             await stateManager.CacheTable.StopCleanupTask();
             var crashGate = new SemaphoreSlim(1);
             var stop = new CancellationTokenSource();
@@ -127,7 +117,7 @@ namespace FlowtideDotNet.Storage.Tests
                     catch
                     {
                         // A real background cleanup task restarts on fault rather than dying.
-                        // Transient file-cache segment errors are a separate concern; keep going
+                        // Transient file-cache segment errors are a separate concern, keep going
                         // so this test isolates crash-consistency corruption.
                         Interlocked.Increment(ref transientEvictorErrors);
                     }
@@ -135,9 +125,8 @@ namespace FlowtideDotNet.Storage.Tests
                     {
                         crashGate.Release();
                     }
-                    // Yield so this stress test does not monopolize a core and starve other
-                    // timing-sensitive tests running in parallel; eviction still fires hundreds
-                    // of times a second, far above the production 10ms cadence.
+                    // Yield so this stress test does not starve other tests running in parallel.
+                    // Eviction still fires hundreds of times a second.
                     await Task.Delay(1);
                 }
             });
@@ -176,9 +165,9 @@ namespace FlowtideDotNet.Storage.Tests
                 var choice = rnd.Next(3);
                 if (choice != 0)
                 {
-                    // Checkpoint: commit tree pages and take a checkpoint. The evictor races this.
-                    // Commit throwing (e.g. "Segment not found") IS a corruption failure and must
-                    // propagate; a transient segment-writer file error is retried once.
+                    // Checkpoint, commit tree pages and take a checkpoint. The evictor races this.
+                    // Commit throwing Segment not found is a corruption failure and must propagate,
+                    // a transient segment-writer file error is retried once.
                     try
                     {
                         await tree.Commit();
@@ -193,8 +182,8 @@ namespace FlowtideDotNet.Storage.Tests
                 }
                 else
                 {
-                    // Crash: revert to the last checkpoint and verify the recovered tree exactly
-                    // matches it. Pause the evictor so verification reads a quiescent tree.
+                    // Crash, revert to the last checkpoint and verify the recovered tree matches.
+                    // Pause the evictor so verification reads a quiescent tree.
                     await crashGate.WaitAsync();
                     try
                     {
