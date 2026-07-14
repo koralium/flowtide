@@ -96,6 +96,9 @@ namespace FlowtideDotNet.Benchmarks
         private S3FifoCacheEntry _entry = null!;
         private PairSlot[] _pairSlots = null!;
         private S3FifoCacheEntry?[] _refSlots = null!;
+        private S3FifoCorrelationClock _correlationClock = null!;
+        private S3FifoCacheEntry _hotEntry = null!;
+        private S3FifoCacheEntry _youngEntry = null!;
         private long _hits;
         private long _plainCounter;
 
@@ -123,6 +126,25 @@ namespace FlowtideDotNet.Benchmarks
             // The key is validated on the entry object itself.
             _refSlots = new S3FifoCacheEntry?[1024];
             _refSlots[Key & (_refSlots.Length - 1)] = _entry;
+
+            // Dedicated entries for the correlation window cost, isolated from the other
+            // benchmarks so their frequency is never bumped.
+            _correlationClock = new S3FifoCorrelationClock();
+            _correlationClock.SetWindowSize(5000);
+            for (int i = 0; i < 16; i++)
+            {
+                _correlationClock.NextSequence();
+            }
+
+            // Saturated frequency, so RecordAccess hits the early-out before the gate.
+            _hotEntry = new S3FifoCacheEntry(1, new BenchCacheObject(), new NoopEvictHandler(), _correlationClock);
+            _hotEntry.Frequency = S3FifoCacheEntry.MaxFrequency;
+            _hotEntry.ClearSmallQueueStamp();
+
+            // Young in the small queue and inside the window, so RecordAccess runs the gate
+            // and stays uncounted, never saturating.
+            _youngEntry = new S3FifoCacheEntry(2, new BenchCacheObject(), new NoopEvictHandler(), _correlationClock);
+            _youngEntry.SetSmallQueueStamp(_correlationClock.NextSequence());
         }
 
         [GlobalCleanup]
@@ -222,6 +244,30 @@ namespace FlowtideDotNet.Benchmarks
                 }
             }
             return false;
+        }
+
+        [Benchmark]
+        public int RecordAccess_HotSaturated_WithGate()
+        {
+            // Saturated entry, so the gate is bypassed by the frequency early-out.
+            _hotEntry.RecordAccess();
+            return _hotEntry.Frequency;
+        }
+
+        [Benchmark]
+        public int RecordAccess_HotSaturated_NoGate()
+        {
+            // The pre-window bump on the same saturated entry, for a direct hot-path comparison.
+            BumpFrequency(_hotEntry);
+            return _hotEntry.Frequency;
+        }
+
+        [Benchmark]
+        public int RecordAccess_YoungInSmall_WithGate()
+        {
+            // Young in the small queue, so the gate runs the stamp read and IsCorrelated.
+            _youngEntry.RecordAccess();
+            return _youngEntry.Frequency;
         }
 
         private static void BumpFrequency(S3FifoCacheEntry entry)
