@@ -211,174 +211,221 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            // Clear all triggers, they have to be readded by the stream
-            await _context.ClearTriggers();
-            // Enable trigger registration
-            _context.EnableTriggerRegistration();
-
-
-            long? restoreVersion;
-            lock (_context._checkpointLock)
+            var beforeGateHook = StreamContext.StartupBeforeGateRegistrationHookForTests;
+            if (beforeGateHook != null)
             {
-                restoreVersion = _context._restoreCheckpointVersion;
+                await beforeGateHook(_context.streamName);
             }
 
-            // This start creates the blocks below; a failure before that must not run the
-            // block teardown.
+            // Serialize the state manager region across starts.
+            var initGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Task? predecessorInitGate;
             lock (_context._blockClaimLock)
             {
-                _context._blocksCreated = 0;
+                predecessorInitGate = _context._inFlightStartInitGate;
+                _context._inFlightStartInitGate = initGate.Task;
             }
-
-            if (StartAborted())
-            {
-                return;
-            }
-
-            // Initialize state
-            await _context._stateManager.InitializeAsync(_context._streamVersionInformation, restoreVersion);
-
-            if (StartAborted())
-            {
-                return;
-            }
-            _context._lastState = _context._stateManager.Metadata;
-            _context._startCheckpointVersion = _context._stateManager.CurrentVersion;
-            if (_context._lastState == null)
-            {
-                _context._lastState = await _context.stateHandler.LoadLatestState(_context.streamName);
-                if (_context._lastState == null)
-                {
-                    _context._lastState = StreamState.NullState;
-                }
-            }
-            else
-            {
-                if (_context._streamVersionInformation != null)
-                {
-                    _context._logger.CheckingStreamHashConsistency(_context.streamName);
-                    if (_context._streamVersionInformation.Hash != _context._lastState.StreamHash)
-                    {
-                        throw new InvalidOperationException("Stream plan hash stored in storage is different than the hash used.");
-                    }
-                }
-            }
-
-            // Seed the producing time with the wall clock so checkpoint times stay unique
-            // across a rollback. The restored time comes from the state manager metadata,
-            // which rolls back together with the state, so seeding with restored time + 1
-            // alone would mint the same times as the aborted epoch, whose barriers can still
-            // be in flight in exchange queues and messages between substreams. The pairing of
-            // checkpoint barriers between substreams relies on the times being unique. The
-            // max guards against a wall clock that moved backwards.
-            _context.producingTime = Math.Max(_context._lastState.Time + 1, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-
-            if (StartAborted())
-            {
-                return;
-            }
-
-            // Create the blocks
-            _context._logger.SettingUpBlocks(_context.streamName);
-            _context.ForEachBlock((key, block) =>
-            {
-                block.Setup(_context.streamName, key);
-                block.CreateBlock();
-            });
-            lock (_context._blockClaimLock)
-            {
-                _context._blockGeneration++;
-                _myBlockGeneration = _context._blockGeneration;
-                _context._blocksCreated = 1;
-            }
-            // Link the blocks
-            _context._logger.LinkingBlocks(_context.streamName);
-            _context.ForEachBlock((key, block) =>
-            {
-                block.Link();
-            });
 
             try
             {
-                _context._logger.InitializingPropagatorBLocks(_context.streamName);
-                foreach (var block in _context.propagatorBlocks)
+                if (predecessorInitGate != null)
                 {
-                    TagList tags = new TagList()
-                    {
-                        { "stream", _context.streamName },
-                        { "operator", block.Key }
-                    };
-                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
-                    VertexHandler vertexHandler = new VertexHandler(
-                        _context.streamName,
-                        block.Key,
-                        _context.TryScheduleCheckpointIn,
-                        _context.AddTrigger,
-                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
-                        blockStateClient,
-                        _context.loggerFactory,
-                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                        _context.FailAndRollback);
-                    await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
-                }
-                
-                _context._logger.InitializingEgressBlocks(_context.streamName);
-                foreach (var block in _context.egressBlocks)
-                {
-                    TagList tags = new TagList()
-                    {
-                        { "stream", _context.streamName },
-                        { "operator", block.Key }
-                    };
-                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
-                    VertexHandler vertexHandler = new VertexHandler(
-                        _context.streamName,
-                        block.Key,
-                        _context.TryScheduleCheckpointIn,
-                        _context.AddTrigger,
-                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
-                        blockStateClient,
-                        _context.loggerFactory,
-                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                        _context.FailAndRollback);
-                    await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
-                    block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone, _context.EgressDependenciesDone);
+                    await predecessorInitGate;
                 }
 
-                _context._logger.InitializingIngressBlocks(_context.streamName);
-                foreach (var block in _context.ingressBlocks)
+                // A superseded start must skip the shared setup.
+                if (StartAborted())
                 {
-                    TagList tags = new TagList()
+                    return;
+                }
+
+                // Clear all triggers, they have to be readded by the stream
+                await _context.ClearTriggers();
+                // Enable trigger registration
+                _context.EnableTriggerRegistration();
+
+
+                long? restoreVersion;
+                lock (_context._checkpointLock)
+                {
+                    restoreVersion = _context._restoreCheckpointVersion;
+                }
+
+                // This start creates the blocks below; a failure before that must not run the
+                // block teardown.
+                lock (_context._blockClaimLock)
+                {
+                    _context._blocksCreated = 0;
+                }
+
+                if (StartAborted())
+                {
+                    return;
+                }
+
+                // Initialize state
+                await _context._stateManager.InitializeAsync(_context._streamVersionInformation, restoreVersion);
+
+                if (StartAborted())
+                {
+                    return;
+                }
+                _context._lastState = _context._stateManager.Metadata;
+                _context._startCheckpointVersion = _context._stateManager.CurrentVersion;
+                if (_context._lastState == null)
+                {
+                    _context._lastState = await _context.stateHandler.LoadLatestState(_context.streamName);
+                    if (_context._lastState == null)
                     {
-                        { "stream", _context.streamName },
-                        { "operator", block.Key }
-                    };
-                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
-                    VertexHandler vertexHandler = new VertexHandler(
-                        _context.streamName,
-                        block.Key,
-                        _context.TryScheduleCheckpointIn,
-                        _context.AddTrigger,
-                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
-                        blockStateClient,
-                        _context.loggerFactory,
-                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                        _context.FailAndRollback);
-                    await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
-                    block.Value.SetDependenciesDoneFunction(_context.EgressDependenciesDone);
+                        _context._lastState = StreamState.NullState;
+                    }
+                }
+                else
+                {
+                    if (_context._streamVersionInformation != null)
+                    {
+                        _context._logger.CheckingStreamHashConsistency(_context.streamName);
+                        if (_context._streamVersionInformation.Hash != _context._lastState.StreamHash)
+                        {
+                            throw new InvalidOperationException("Stream plan hash stored in storage is different than the hash used.");
+                        }
+                    }
+                }
+
+                // Seed the producing time with the wall clock so checkpoint times stay unique
+                // across a rollback. The restored time comes from the state manager metadata,
+                // which rolls back together with the state, so seeding with restored time + 1
+                // alone would mint the same times as the aborted epoch, whose barriers can still
+                // be in flight in exchange queues and messages between substreams. The pairing of
+                // checkpoint barriers between substreams relies on the times being unique. The
+                // max guards against a wall clock that moved backwards.
+                _context.producingTime = Math.Max(_context._lastState.Time + 1, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+                if (StartAborted())
+                {
+                    return;
+                }
+
+                // Create the blocks
+                _context._logger.SettingUpBlocks(_context.streamName);
+                _context.ForEachBlock((key, block) =>
+                {
+                    block.Setup(_context.streamName, key);
+                    block.CreateBlock();
+                });
+                lock (_context._blockClaimLock)
+                {
+                    _context._blockGeneration++;
+                    _myBlockGeneration = _context._blockGeneration;
+                    _context._blocksCreated = 1;
+                }
+                // Link the blocks
+                _context._logger.LinkingBlocks(_context.streamName);
+                _context.ForEachBlock((key, block) =>
+                {
+                    block.Link();
+                });
+
+                var blockInitHook = StreamContext.StartupDuringBlockInitHookForTests;
+                if (blockInitHook != null)
+                {
+                    await blockInitHook(_context.streamName);
+                }
+
+                if (StartAborted())
+                {
+                    // Abandon before initializing the blocks.
+                    await AbandonStartedBlocks();
+                    return;
+                }
+
+                try
+                {
+                    _context._logger.InitializingPropagatorBLocks(_context.streamName);
+                    foreach (var block in _context.propagatorBlocks)
+                    {
+                        TagList tags = new TagList()
+                        {
+                            { "stream", _context.streamName },
+                            { "operator", block.Key }
+                        };
+                        var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
+                        VertexHandler vertexHandler = new VertexHandler(
+                            _context.streamName,
+                            block.Key,
+                            _context.TryScheduleCheckpointIn,
+                            _context.AddTrigger,
+                            _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
+                            blockStateClient,
+                            _context.loggerFactory,
+                            _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
+                            _context.FailAndRollback);
+                        await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
+                    }
+
+                    _context._logger.InitializingEgressBlocks(_context.streamName);
+                    foreach (var block in _context.egressBlocks)
+                    {
+                        TagList tags = new TagList()
+                        {
+                            { "stream", _context.streamName },
+                            { "operator", block.Key }
+                        };
+                        var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
+                        VertexHandler vertexHandler = new VertexHandler(
+                            _context.streamName,
+                            block.Key,
+                            _context.TryScheduleCheckpointIn,
+                            _context.AddTrigger,
+                            _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
+                            blockStateClient,
+                            _context.loggerFactory,
+                            _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
+                            _context.FailAndRollback);
+                        await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
+                        block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone, _context.EgressDependenciesDone);
+                    }
+
+                    _context._logger.InitializingIngressBlocks(_context.streamName);
+                    foreach (var block in _context.ingressBlocks)
+                    {
+                        TagList tags = new TagList()
+                        {
+                            { "stream", _context.streamName },
+                            { "operator", block.Key }
+                        };
+                        var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
+                        VertexHandler vertexHandler = new VertexHandler(
+                            _context.streamName,
+                            block.Key,
+                            _context.TryScheduleCheckpointIn,
+                            _context.AddTrigger,
+                            _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
+                            blockStateClient,
+                            _context.loggerFactory,
+                            _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
+                            _context.FailAndRollback);
+                        await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
+                        block.Value.SetDependenciesDoneFunction(_context.EgressDependenciesDone);
+                    }
+                }
+                catch (Exception e)
+                {
+
+                    await _context.OnFailure(e);
+                    return;
+                }
+
+                if (StartAborted())
+                {
+                    await AbandonStartedBlocks();
+                    return;
                 }
             }
-            catch (Exception e)
+            finally
             {
-
-                await _context.OnFailure(e);
-                return;
-            }
-
-            if (StartAborted())
-            {
-                await AbandonStartedBlocks();
-                return;
+                // A successor may now run its own setup.
+                initGate.TrySetResult();
             }
 
             var completionTasks = _context.GetCompletionTasks();
