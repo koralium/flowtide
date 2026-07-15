@@ -319,9 +319,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 m_cleanupTokenSource.Token.ThrowIfCancellationRequested();
                 await timer.WaitForNextTickAsync(m_cleanupTokenSource.Token);
+                // Acquire outside the try so a failed wait cannot release without a matching
+                // acquire, and pass the token so disposal can wake a parked wait.
+                await _fullLock.WaitAsync(m_cleanupTokenSource.Token);
                 try
                 {
-                    await _fullLock.WaitAsync();
                     await Cleanup();
                 }
                 finally
@@ -344,11 +346,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             // Lock-free read, the rent handoff lives in TryRentValue.
             // A rent failure means the entry is being evicted and is treated as a miss.
-            if (m_cache.TryGetValue(key, out entry) && entry.TryRentValue())
+            if (m_cache.TryGetValue(key, out entry))
             {
-                Interlocked.Increment(ref m_cacheHits);
-                return true;
+                if (entry.TryRentValue())
+                {
+                    Interlocked.Increment(ref m_cacheHits);
+                    return true;
+                }
+                return false;
             }
+            Interlocked.Increment(ref m_cacheMisses);
             return false;
         }
 
@@ -705,18 +712,35 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         foreach (var entry in requeueToSmall)
                         {
-                            // Re-enters the small queue at the tail, so the window restarts.
-                            entry.SetSmallQueueStamp(m_correlationClock.NextSequence());
-                            entry.Location = S3FifoQueueLocation.Small;
-                            m_smallQueue.Enqueue(entry);
+                            lock (entry)
+                            {
+                                // Deleted after the removal phase kept it, enqueuing it would
+                                // resurrect a dead slot with no stale count.
+                                if (entry.Removed)
+                                {
+                                    continue;
+                                }
+                                // Re-enters the small queue at the tail, so the window restarts.
+                                entry.SetSmallQueueStamp(m_correlationClock.NextSequence());
+                                entry.Location = S3FifoQueueLocation.Small;
+                                m_smallQueue.Enqueue(entry);
+                            }
                         }
                     }
                     if (requeueToMain != null)
                     {
                         foreach (var entry in requeueToMain)
                         {
-                            entry.Location = S3FifoQueueLocation.Main;
-                            m_mainQueue.Enqueue(entry);
+                            lock (entry)
+                            {
+                                // Same delete race as the small requeue above.
+                                if (entry.Removed)
+                                {
+                                    continue;
+                                }
+                                entry.Location = S3FifoQueueLocation.Main;
+                                m_mainQueue.Enqueue(entry);
+                            }
                         }
                     }
                     if (ghostInserts != null)

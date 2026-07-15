@@ -91,8 +91,15 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
         }
 
+        /// <summary>
+        /// Invoked at the start of TryReclaimForEviction, lets a test hold the removal
+        /// phase open at a precise victim.
+        /// </summary>
+        public Action? OnTryReclaimForEviction { get; set; }
+
         public bool TryReclaimForEviction()
         {
+            OnTryReclaimForEviction?.Invoke();
             if (Interlocked.CompareExchange(ref _rentCount, 0, 1) == 1)
             {
                 Interlocked.Increment(ref _disposeCount);

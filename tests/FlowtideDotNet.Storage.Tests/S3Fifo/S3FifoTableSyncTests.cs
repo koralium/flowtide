@@ -581,5 +581,77 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 Assert.Equal(1, objects[i].DisposeCount);
             }
         }
+
+        /// <summary>
+        /// A delete landing between a victims requeue decision and the requeue block must not
+        /// resurrect the dead entry into a queue, that slot would carry no stale count and
+        /// drift the compaction accounting.
+        /// </summary>
+        [Fact]
+        public async Task DeleteDuringVictimRequeueDoesNotResurrectDeadEntry()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
+            var handler = new TestEvictHandler();
+
+            var gateEntered = new SemaphoreSlim(0);
+            var gateRelease = new ManualResetEventSlim(false);
+
+            var objects = new TestCacheObject[10];
+            for (var i = 0; i < 10; i++)
+            {
+                objects[i] = new TestCacheObject(i);
+                table.Add(i, objects[i], handler);
+            }
+
+            // Key 0 is held so its reclaim fails and it lands on the requeue list.
+            Assert.True(table.TryGetValue(0, out _));
+
+            // Key 1 holds the removal phase open after key 0's requeue decision was made.
+            objects[1].OnTryReclaimForEviction = () =>
+            {
+                gateEntered.Release();
+                gateRelease.Wait();
+            };
+
+            var cleanup = Task.Run(() => table.ForceCleanup());
+            Assert.True(await gateEntered.WaitAsync(5000));
+
+            // Delete key 0 in the window between its requeue decision and the requeue block.
+            table.Delete(0);
+
+            gateRelease.Set();
+            await cleanup;
+
+            // The dead entry must not be resurrected into the main queue.
+            var counts = table.GetQueueCountsForTests();
+            Assert.Equal(0, counts.MainCount);
+            Assert.Equal(0, counts.MainStale);
+            Assert.Equal(7, table.Count);
+
+            // The delete already returned the cache reference, this is the held rent.
+            objects[0].Return();
+            Assert.True(objects[0].Disposed);
+        }
+
+        /// <summary>
+        /// Stopping the cleanup task must complete even while a commit or recovery holds the
+        /// eviction pause, the parked wait must observe the cancellation.
+        /// </summary>
+        [Fact]
+        public async Task StopCleanupTaskCompletesWhileEvictionIsPaused()
+        {
+            using var table = S3FifoTestHelpers.CreateRunningTable(10);
+            await table.PauseEvictionAsync();
+
+            // Let the timer tick so the loop parks on the eviction pause lock.
+            await Task.Delay(100);
+
+            var stop = table.StopCleanupTask();
+            var finished = await Task.WhenAny(stop, Task.Delay(2000)) == stop;
+            table.ResumeEviction();
+
+            Assert.True(finished, "cleanup task did not observe cancellation while eviction was paused");
+            await stop;
+        }
     }
 }
