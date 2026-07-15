@@ -1654,5 +1654,92 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedMinMaxBy(long.MinValue, 2, isMin: true));
         }
+
+        public record UnboundedSumResult(string? companyId, int userkey, string? firstName, long? total);
+
+        private const string UnboundedSumQuery = @"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                FirstName,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS INT) as total
+            FROM users";
+
+        private List<UnboundedSumResult> ExpectedUnboundedSum()
+        {
+            return Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var total = (long)g.Sum(x => x.DoubleValue);
+                    return g.OrderBy(x => x.UserKey)
+                        .Select(x => new UnboundedSumResult(x.CompanyId, x.UserKey, x.FirstName, total));
+                }).ToList();
+        }
+
+        private User AddUserWithName(string companyId, int userKey, double doubleValue, string firstName)
+        {
+            var user = new User
+            {
+                UserKey = userKey,
+                CompanyId = companyId,
+                DoubleValue = doubleValue,
+                FirstName = firstName
+            };
+            AddOrUpdateUser(user);
+            return user;
+        }
+
+        /// <summary>
+        /// Inserting a few wide rows into the middle of a persistent-tree leaf makes the leaf's N-way
+        /// split leave its last node without any rows: the split boundaries land inside the wide run,
+        /// and the minimum-rows-per-node deficit loop then drains the leaf's remaining rows and the
+        /// rest of the batch into the middle node, so an empty page is persisted and stays linked in
+        /// the middle of the tree. The whole-partition sum pre-scans the partition with
+        /// BulkWindowForwardPartitionReader, which treats an empty page as the end of the partition,
+        /// so every row stored after the empty page is missing from the total emitted for all rows.
+        /// </summary>
+        [Fact]
+        public async Task UnboundedSumWideRowSplitMidPartition()
+        {
+            // Layout phase: one partition whose rows span two leaves at the default 32KiB page size.
+            // 20 small rows (keys 1..20), 8 filler rows of ~4200 bytes (keys 30,32..44) and 20 small
+            // witness rows (keys 100..119) load as one batch of ~35KiB, which splits into a first
+            // leaf holding the small rows plus four fillers (separator at the key-36 filler) and a
+            // second leaf holding the remaining fillers and all witnesses.
+            for (int i = 1; i <= 20; i++)
+            {
+                AddUserWithName("a", i, 1, "s");
+            }
+            for (int i = 0; i < 8; i++)
+            {
+                AddUserWithName("a", 30 + i * 2, 1, new string('f', 4200));
+            }
+            for (int i = 0; i < 20; i++)
+            {
+                AddUserWithName("a", 100 + i, 1, "w");
+            }
+
+            await StartStream(UnboundedSumQuery);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedUnboundedSum());
+
+            // Split phase: insert four ~20KiB rows at keys 21..24, between the small rows and the
+            // fillers of the first leaf. The leaf (~17KiB + ~80KiB incoming) splits three ways: the
+            // first boundary lands after one wide row, the second boundary's deficit loop then
+            // consumes the remaining wide rows and the leaf's trailing fillers for the middle node,
+            // and the third node is persisted as an empty page sitting before the leaf that holds
+            // the remaining fillers and the witnesses.
+            for (int i = 0; i < 4; i++)
+            {
+                AddUserWithName("a", 21 + i, 1000, new string('h', 20000));
+            }
+
+            // The partition scan recomputes every row of the partition: the whole-partition pre-scan
+            // stops at the empty page, so the remaining fillers and all witness rows are missing from
+            // the emitted total on every row.
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedUnboundedSum());
+        }
     }
 }
