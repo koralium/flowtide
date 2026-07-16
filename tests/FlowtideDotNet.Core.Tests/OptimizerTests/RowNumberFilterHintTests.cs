@@ -132,5 +132,86 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             var rowNumberFunction = Assert.Single(windowRelation.WindowFunctions);
             Assert.True(rowNumberFunction.Options == null || !rowNumberFunction.Options.ContainsKey("max_row_number"));
         }
+
+        [Fact]
+        public void TwoUpperBoundConditionsKeepTheSmallest()
+        {
+            var plan = BuildOptimizedPlan(@"
+            INSERT INTO output
+            SELECT userkey, companyid
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY companyid ORDER BY userkey) <= 5
+              AND ROW_NUMBER() OVER (PARTITION BY companyid ORDER BY userkey) <= 3");
+
+            var windowRelation = FindWindowRelation(plan.Relations[plan.Relations.Count - 1]);
+            foreach (var windowFunction in windowRelation.WindowFunctions)
+            {
+                Assert.NotNull(windowFunction.Options);
+                Assert.Equal("3", windowFunction.Options["max_row_number"]);
+            }
+        }
+
+        [Fact]
+        public void StaleSmallerHintIsReplacedOnReoptimize()
+        {
+            // A stored plan can carry a hint from an earlier optimization. When the filter has been
+            // relaxed the smaller stale hint must not survive, it would silently drop rows.
+            var plan = BuildOptimizedPlan(@"
+            INSERT INTO output
+            SELECT userkey, companyid
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY companyid ORDER BY userkey) <= 5");
+
+            var windowRelation = FindWindowRelation(plan.Relations[plan.Relations.Count - 1]);
+            var rowNumberFunction = Assert.Single(windowRelation.WindowFunctions);
+            rowNumberFunction.Options!["max_row_number"] = "1";
+
+            plan = PlanOptimizer.Optimize(plan);
+
+            windowRelation = FindWindowRelation(plan.Relations[plan.Relations.Count - 1]);
+            rowNumberFunction = Assert.Single(windowRelation.WindowFunctions);
+            Assert.NotNull(rowNumberFunction.Options);
+            Assert.Equal("5", rowNumberFunction.Options["max_row_number"]);
+        }
+
+        [Fact]
+        public void StaleHintIsRemovedWhenNoFilterExists()
+        {
+            // When the filter is gone the hint must go too, row numbers past the bound become null.
+            var plan = BuildOptimizedPlan(@"
+            INSERT INTO output
+            SELECT userkey, companyid, ROW_NUMBER() OVER (PARTITION BY companyid ORDER BY userkey)
+            FROM users");
+
+            var windowRelation = FindWindowRelation(plan.Relations[plan.Relations.Count - 1]);
+            var rowNumberFunction = Assert.Single(windowRelation.WindowFunctions);
+            rowNumberFunction.Options = new SortedList<string, string>
+            {
+                { "max_row_number", "1" }
+            };
+
+            plan = PlanOptimizer.Optimize(plan);
+
+            windowRelation = FindWindowRelation(plan.Relations[plan.Relations.Count - 1]);
+            rowNumberFunction = Assert.Single(windowRelation.WindowFunctions);
+            Assert.True(rowNumberFunction.Options == null || !rowNumberFunction.Options.ContainsKey("max_row_number"));
+        }
+
+        [Fact]
+        public void ReoptimizeKeepsTheSameHint()
+        {
+            var plan = BuildOptimizedPlan(@"
+            INSERT INTO output
+            SELECT userkey, companyid
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY companyid ORDER BY userkey) <= 3");
+
+            plan = PlanOptimizer.Optimize(plan);
+
+            var windowRelation = FindWindowRelation(plan.Relations[plan.Relations.Count - 1]);
+            var rowNumberFunction = Assert.Single(windowRelation.WindowFunctions);
+            Assert.NotNull(rowNumberFunction.Options);
+            Assert.Equal("3", rowNumberFunction.Options["max_row_number"]);
+        }
     }
 }

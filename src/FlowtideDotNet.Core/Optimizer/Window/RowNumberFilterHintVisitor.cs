@@ -27,6 +27,17 @@ namespace FlowtideDotNet.Core.Optimizer.Window
     /// </summary>
     internal class RowNumberFilterHintVisitor : OptimizerBaseVisitor
     {
+        public override Relation VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, object state)
+        {
+            // Remove hints from earlier optimizer runs, the current plan shape decides the bound.
+            // The window relation is visited before the filter above it applies new bounds.
+            foreach (var windowFunction in consistentPartitionWindowRelation.WindowFunctions)
+            {
+                windowFunction.Options?.Remove(BulkWindowFunctionOptions.MaxRowNumber);
+            }
+            return base.VisitConsistentPartitionWindowRelation(consistentPartitionWindowRelation, state);
+        }
+
         public override Relation VisitFilterRelation(FilterRelation filterRelation, object state)
         {
             filterRelation.Input = Visit(filterRelation.Input, state);
