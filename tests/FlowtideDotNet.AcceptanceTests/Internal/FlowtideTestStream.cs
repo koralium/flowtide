@@ -110,6 +110,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public int BPlusTreePageSizeBytes { get; set; } = 32 * 1024;
 
+        /// <summary>
+        /// Overrides the column store mode of the stream. Set before starting the stream.
+        /// </summary>
+        public bool? UseColumnStore { get; set; }
+
         public Watermark? LastWatermark => _lastWatermark;
 
         public StreamStateValue State => _stream!.State;
@@ -354,6 +359,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (!string.IsNullOrWhiteSpace(version))
             {
                 flowtideBuilder.SetVersion(version);
+            }
+
+            if (UseColumnStore.HasValue)
+            {
+                flowtideBuilder.ColumnStore(UseColumnStore.Value);
             }
 
             if (distributedOptions != null)
