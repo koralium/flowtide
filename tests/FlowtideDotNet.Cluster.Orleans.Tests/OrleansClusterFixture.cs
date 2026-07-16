@@ -14,6 +14,7 @@ using FlowtideDotNet.DependencyInjection;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orleans.Configuration;
@@ -35,6 +36,8 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             // reach the grains.
             FlowtideDotNet.Base.Engine.Internal.StateMachine.FailureStreamState.RecoveryRestartDelay = TimeSpan.FromMilliseconds(50);
             FlowtideDotNet.Core.Operators.Exchange.SubstreamCommunicationPoint.NotStartedRetrySliceMs = 50;
+            // Handoff drain must survive parallel-load starvation.
+            FlowtideDotNet.Core.Operators.Exchange.SubstreamReadOperator.HandoffDrainTimeout = TimeSpan.FromSeconds(30);
 
             var builder = new TestClusterBuilder(siloCount);
             if (durableStreamState)
@@ -45,6 +48,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             {
                 builder.AddSiloBuilderConfigurator<TestSiloConfigurator>();
             }
+            builder.AddClientBuilderConfigurator<TestClientConfigurator>();
             Cluster = builder.Build();
             Cluster.Deploy();
         }
@@ -53,6 +57,18 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         {
             Cluster.StopAllSilos();
             Cluster.Dispose();
+        }
+
+        // Client must wait out a slow MigrateAsync handoff.
+        private sealed class TestClientConfigurator : IClientBuilderConfigurator
+        {
+            public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
+            {
+                clientBuilder.Services.Configure<ClientMessagingOptions>(options =>
+                {
+                    options.ResponseTimeout = TimeSpan.FromSeconds(75);
+                });
+            }
         }
 
         private sealed class TestSiloConfigurator : ISiloConfigurator
