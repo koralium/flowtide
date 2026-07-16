@@ -267,6 +267,15 @@ namespace FlowtideDotNet.Core.Compute
         }
 
         /// <summary>
+        /// Replaces a registered bulk window function, used by tests to simulate builds with other
+        /// function implementations.
+        /// </summary>
+        internal void SetBulkWindowFunctionForTests(string uri, string name, BulkWindowFunctionDefinition bulkWindowFunctionDefinition)
+        {
+            _bulkWindowFunctions[$"{uri}:{name}"] = bulkWindowFunctionDefinition;
+        }
+
+        /// <summary>
         /// Tries to create a bulk window function for the given window function expression. Returns false
         /// when no bulk implementation is registered or the concrete configuration, such as the frame
         /// bounds, is not supported in bulk mode.

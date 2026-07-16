@@ -12,9 +12,6 @@
 
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
-using FlowtideDotNet.Storage.Persistence;
-using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
-using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
@@ -23,34 +20,6 @@ namespace FlowtideDotNet.AcceptanceTests
     /// </summary>
     public class WindowOperatorModeSwitchTests
     {
-        /// <summary>
-        /// Keeps the stored files alive when the storage is disposed, so state survives a restart.
-        /// </summary>
-        private sealed class KeepAliveMemoryFileProvider : MemoryFileProvider, Storage.Persistence.Reservoir.IReservoirStorageProvider
-        {
-            public new void Dispose()
-            {
-            }
-        }
-
-        /// <summary>
-        /// Test stream that uses a shared file provider, so two streams can share persisted state.
-        /// </summary>
-        private sealed class SharedStorageTestStream : FlowtideTestStream
-        {
-            private readonly KeepAliveMemoryFileProvider _fileProvider;
-
-            public SharedStorageTestStream(string testName, KeepAliveMemoryFileProvider fileProvider) : base(testName)
-            {
-                _fileProvider = fileProvider;
-            }
-
-            protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
-            {
-                return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = _fileProvider });
-            }
-        }
-
         private const string RunningSumQuery = @"
             INSERT INTO output
             SELECT

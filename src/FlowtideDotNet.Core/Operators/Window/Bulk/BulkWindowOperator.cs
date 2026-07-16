@@ -71,6 +71,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private IBPlusTreeBulkInserter<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryBulkInserter;
         private IBPlusTreeIterator<ColumnRowReference, BulkWindowValue, ColumnKeyStorageContainer, BulkWindowValueContainer>? _scanIterator;
         private IObjectState<bool>? _hasSentInitialData;
+        private IObjectState<string>? _stateLayout;
 
         private BulkWindowEmitter? _emitter;
         private BulkWindowSeedReader? _seedReader;
@@ -240,6 +241,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 await _functions[i].Commit();
             }
             await _hasSentInitialData.Commit();
+            await _stateLayout!.Commit();
         }
 
         protected override IAsyncEnumerable<StreamEventBatch> OnLockingEventPrepare()
@@ -999,6 +1001,27 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
 
             _hasSentInitialData = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initialDataSent");
+
+            // The state column layout depends on each function's auxiliary column count, which can
+            // change between builds. Restoring a checkpoint with another layout would silently read
+            // shifted columns, so the layout is stored with the state and validated on restore.
+            var auxCounts = new string[_functions.Length];
+            for (int f = 0; f < _functions.Length; f++)
+            {
+                auxCounts[f] = _functions[f].AuxiliaryStateColumnCount.ToString();
+            }
+            var layout = string.Join(",", auxCounts);
+            _stateLayout = await stateManagerClient.GetOrCreateObjectStateAsync<string>("state_layout");
+            if (_stateLayout.Value == null)
+            {
+                _stateLayout.Value = layout;
+            }
+            else if (_stateLayout.Value != layout)
+            {
+                throw new InvalidOperationException(
+                    $"Found existing bulk window operator state with a different function state layout, stored auxiliary column counts '{_stateLayout.Value}' but this version uses '{layout}'. " +
+                    "Reset the stream state, or run a version with a matching window function state layout.");
+            }
 
             _persistentTree = await stateManagerClient.GetOrCreateTree("persistent_v1",
                 new BPlusTreeOptions<ColumnRowReference, BulkWindowValue, ColumnKeyStorageContainer, BulkWindowValueContainer>()
