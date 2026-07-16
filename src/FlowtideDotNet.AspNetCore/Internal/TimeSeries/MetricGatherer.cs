@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.AspNetCore.TimeSeries.Instruments;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 
@@ -23,13 +24,15 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
         private readonly ConcurrentDictionary<string, IMetricInstrument> _instruments = new ConcurrentDictionary<string, IMetricInstrument>();
         private readonly MetricOptions options;
         private readonly MetricSeries series;
+        private readonly ILogger? _logger;
         private Task _gatheringTask;
         private readonly CancellationTokenSource _cancellationTokenSource;
 
-        public MetricGatherer(MetricOptions options, MetricSeries series)
+        public MetricGatherer(MetricOptions options, MetricSeries series, ILogger? logger = null)
         {
             this.options = options;
             this.series = series;
+            _logger = logger;
             _cancellationTokenSource = new CancellationTokenSource();
             _meterListener = new MeterListener();
 
@@ -109,7 +112,19 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                 try
                 {
                     _meterListener.RecordObservableInstruments();
-                    await series.Lock();
+                }
+                catch (Exception e)
+                {
+                    // A throwing observable callback must not stop the values that were
+                    // recorded from being stored.
+                    _logger?.LogWarning(e, "Exception while recording observable instruments.");
+                }
+
+                // Unlock must only run when the lock was taken, an unbalanced release
+                // silently breaks the mutual exclusion with the query endpoints.
+                await series.Lock();
+                try
+                {
                     await StoreMeasurements(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), series);
 
                     if (options.MaxLifetime != null)
@@ -124,11 +139,10 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                             iterationsSinceLastPrune++;
                         }
                     }
-
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-
+                    _logger?.LogWarning(e, "Exception while storing metric measurements.");
                 }
                 finally
                 {
@@ -143,7 +157,17 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
         {
             foreach (var instrument in _instruments)
             {
-                await instrument.Value.StoreMeasurements(timestamp, series);
+                try
+                {
+                    await instrument.Value.StoreMeasurements(timestamp, series);
+                }
+                catch (Exception e)
+                {
+                    // One faulty instrument must not stop the remaining instruments from
+                    // being stored, otherwise every instrument that enumerates after it
+                    // silently disappears from the metrics API.
+                    _logger?.LogWarning(e, "Exception while storing measurements for instrument {instrument}.", instrument.Key);
+                }
             }
         }
 

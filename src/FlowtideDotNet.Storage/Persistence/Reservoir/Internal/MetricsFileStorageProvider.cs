@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.IO.Pipelines;
 
@@ -24,6 +25,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private long _numberOfDeletes;
         private readonly Histogram<long> _numberOfDataBytesRead;
         private readonly Histogram<long> _numberOfDataBytesWritten;
+        // Measurements must carry the stream tag, multiple streams in one process would
+        // otherwise produce indistinguishable series for the same instrument name.
+        private readonly TagList _tagList;
 
         public bool SupportsFileListing => _internalProvider.SupportsFileListing;
 
@@ -42,12 +46,17 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             Interlocked.Increment(ref _numberOfDeletes);
         }
 
-        public MetricsFileStorageProvider(Meter meter, IReservoirStorageProvider internalProvider)
+        public MetricsFileStorageProvider(Meter meter, string streamName, IReservoirStorageProvider internalProvider)
         {
             _internalProvider = internalProvider;
-            meter.CreateObservableCounter<long>(MetricNames.PersistentStorageNumberOfReads, () => Interlocked.Read(ref _numberOfReads));
-            meter.CreateObservableCounter<long>(MetricNames.PersistentStorageNumberOfWrites, () => Interlocked.Read(ref _numberOfWrites));
-            meter.CreateObservableCounter<long>(MetricNames.PersistentStorageNumberOfDeletes, () => Interlocked.Read(ref _numberOfDeletes));
+            _tagList = new TagList
+            {
+                { "stream", streamName }
+            };
+            var tagList = _tagList;
+            meter.CreateObservableCounter<long>(MetricNames.PersistentStorageNumberOfReads, () => new Measurement<long>(Interlocked.Read(ref _numberOfReads), tagList));
+            meter.CreateObservableCounter<long>(MetricNames.PersistentStorageNumberOfWrites, () => new Measurement<long>(Interlocked.Read(ref _numberOfWrites), tagList));
+            meter.CreateObservableCounter<long>(MetricNames.PersistentStorageNumberOfDeletes, () => new Measurement<long>(Interlocked.Read(ref _numberOfDeletes), tagList));
             _numberOfDataBytesRead = meter.CreateHistogram<long>(MetricNames.PersistentStorageDataBytesRead, "bytes");
             _numberOfDataBytesWritten = meter.CreateHistogram<long>(MetricNames.PersistentStorageDataBytesWritten, "bytes");
         }
@@ -97,7 +106,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         public Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
         {
             AddRead();
-            _numberOfDataBytesRead.Record(fileSize);
+            _numberOfDataBytesRead.Record(fileSize, _tagList);
             return _internalProvider.ReadDataFileAsync(fileId, fileSize, cancellationToken);
         }
 
@@ -121,7 +130,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         public Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundled, PipeReader data, CancellationToken cancellationToken = default)
         {
             AddWrite();
-            _numberOfDataBytesWritten.Record(size);
+            _numberOfDataBytesWritten.Record(size, _tagList);
             return _internalProvider.WriteDataFileAsync(fileId, crc64, size, isBundled, data, cancellationToken);
         }
 

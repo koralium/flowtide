@@ -57,10 +57,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         {
             if (Environment.GetEnvironmentVariable("FLOWTIDE_RUN_PROBES") != "1")
             {
-                // Opt-in only: the probe generates ~1.8 million rows through the shared
-                // Bogus faker, whose UniqueIndex is a process wide static counter. Running
-                // inside the normal suite pushes later tests' generated keys high enough
-                // that their expected-value int sums overflow.
+                // Opt-in only: a manual throughput measurement, nine full stream runs over
+                // 200k-row datasets is far too slow for the normal suite.
                 return;
             }
             var results = new List<string>();

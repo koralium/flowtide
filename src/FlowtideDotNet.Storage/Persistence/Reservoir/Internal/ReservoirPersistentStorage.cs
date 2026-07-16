@@ -615,7 +615,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             else if (!(_fileProvider is MetricsFileStorageProvider))
             {
                 // Add the metrics proxy here so we get metrics
-                _fileProvider = new MetricsFileStorageProvider(_meter, _fileProvider);
+                _fileProvider = new MetricsFileStorageProvider(_meter, metadata.StreamName, _fileProvider);
             }
             
         }
