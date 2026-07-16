@@ -411,7 +411,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             if (targetPosition >= 0)
             {
-                if (_readerPosition > targetPosition)
+                // An exhausted reader rests on the last row, that row must be re-read after a reset.
+                if (_readerPosition > targetPosition || (_readerDone && _readerPosition == targetPosition))
                 {
                     await _reader.Reset(new ColumnRowReference() { referenceBatch = _anchorBatch!, RowIndex = 0 });
                     _readerPosition = -1;

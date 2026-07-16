@@ -1284,6 +1284,53 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task LeadDynamicOffsetTargetsLastRowAfterExhaustion()
+        {
+            // The offset 10 at position 6 runs the reader past the partition end.
+            // The next rows target the last row exactly, which must still return its value.
+            int?[] offsets = { 1, 1, 1, 1, 1, 1, 10, 2, 1, 1 };
+            for (int i = 0; i < offsets.Length; i++)
+            {
+                AddUserVisits("1", i * 10, offsets[i]);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LEAD(UserKey, Visits) OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users");
+            await WaitForUpdate();
+
+            List<LeadLagResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<LeadLagResult>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            long offset = ordered[i].Visits ?? 1;
+                            long target = i + offset;
+                            long? val = target >= 0 && target < ordered.Count ? ordered[(int)target].UserKey : null;
+                            output.Add(new LeadLagResult(ordered[i].CompanyId, ordered[i].UserKey, val));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // Append a row and make the row after the exhausting one target the new last row.
+            AddUserVisits("1", 100, 1);
+            AddUserVisits("1", 70, 3);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
         public async Task SumSuffixFollowingIncremental()
         {
             for (int i = 0; i < 10; i++)
