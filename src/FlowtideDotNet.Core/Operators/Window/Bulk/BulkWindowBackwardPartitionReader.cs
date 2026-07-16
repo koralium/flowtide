@@ -107,8 +107,11 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 var page = _enumerator.Current;
                 if (page.CurrentPage == null || page.Keys == null || page.Keys.Count == 0)
                 {
-                    _done = true;
-                    return false;
+                    // Empty pages can sit in the middle of the tree and do not end the partition.
+                    // The first page handling is kept so the anchor is still located on the first
+                    // page that has rows.
+                    _currentPage = null;
+                    continue;
                 }
                 if (_firstPage)
                 {

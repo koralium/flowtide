@@ -148,8 +148,11 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 var page = _enumerator.Current;
                 if (page.CurrentPage == null || page.Keys == null || page.Keys.Count == 0)
                 {
-                    _done = true;
-                    return false;
+                    // Empty pages can sit in the middle of the tree and do not end the partition.
+                    // The first page allowance is kept so a partition that begins after both a page
+                    // end and an empty page is still found.
+                    _currentPage = null;
+                    continue;
                 }
                 _partitionComparer.FindIndex(in _partitionRow, page.Keys);
                 if (_partitionComparer.noMatch)
