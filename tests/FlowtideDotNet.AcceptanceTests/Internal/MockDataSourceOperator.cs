@@ -47,13 +47,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private readonly TimeSpan? _initialDataDelay;
         private readonly bool _failInitialize;
+        private readonly int? _batchSize;
 
-        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false) : base(options)
+        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null) : base(options)
         {
             this.readRelation = readRelation;
             this.mockDatabase = mockDatabase;
             _initialDataDelay = initialDataDelay;
             _failInitialize = failInitialize;
+            _batchSize = batchSize;
 
             _table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
 
@@ -112,7 +114,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                         weights.Add(1);
                     }
 
-                    if (weights.Count > 100)
+                    if (weights.Count > (_batchSize ?? 100))
                     {
                         pendingBatches.Add(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
 
@@ -336,7 +338,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     weights.Add(1);
                 }
 
-                if (weights.Count > 1000)
+                if (weights.Count > (_batchSize ?? 1000))
                 {
                     var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
 #if DEBUG_WRITE

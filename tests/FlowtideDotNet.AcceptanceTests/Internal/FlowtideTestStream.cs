@@ -98,6 +98,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public TimeSpan? InitialDataDelay { get; set; }
 
         /// <summary>
+        /// Overrides the mock source's batch flush size. Set before starting the stream.
+        /// </summary>
+        public int? SourceBatchSize { get; set; }
+
+        /// <summary>
         /// Sets the minimum time between checkpoint triggers. Set before starting the stream.
         /// </summary>
         public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
@@ -576,7 +581,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay));
+            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay, batchSize: SourceBatchSize));
         }
 
         /// <summary>

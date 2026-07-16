@@ -97,6 +97,11 @@ namespace FlowtideDotNet.AcceptanceTests
         protected TimeSpan? InitialDataDelay { set => flowtideTestStream.InitialDataDelay = value; }
 
         /// <summary>
+        /// Overrides the mock source's batch flush size, set before StartStream.
+        /// </summary>
+        protected int? SourceBatchSize { set => flowtideTestStream.SourceBatchSize = value; }
+
+        /// <summary>
         /// Sets the minimum time between checkpoint triggers, set before StartStream.
         /// </summary>
         protected TimeSpan? MinimumTimeBetweenCheckpoints { set => flowtideTestStream.MinimumTimeBetweenCheckpoints = value; }

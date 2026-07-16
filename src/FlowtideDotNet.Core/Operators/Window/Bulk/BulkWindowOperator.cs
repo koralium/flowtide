@@ -106,6 +106,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private BulkWindowValue[] _valueScratch = Array.Empty<BulkWindowValue>();
         private int[] _tempValueScratch = Array.Empty<int>();
         private int[] _duplicateTagScratch = Array.Empty<int>();
+        private int[] _chunkSortedIndices = Array.Empty<int>();
+        private int[] _chunkTagScratch = Array.Empty<int>();
 
         private ICounter<long>? _eventsOutCounter;
         private ICounter<long>? _eventsInCounter;
@@ -300,7 +302,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     }
                 }
 
-                var scratchSize = Math.Min(dataCount, ReceiveChunkSize);
+                var scratchSize = dataCount;
                 if (_keyScratch.Length < scratchSize)
                 {
                     _keyScratch = new ColumnRowReference[scratchSize];
@@ -313,46 +315,69 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 var totalByteSize = extendedBatch.GetByteSize();
                 var mutator = new BulkWindowMutator(_emitter, _functions.Length, _totalStateColumns, _mutatorScratch);
 
-                // The batch is applied in chunks with an output flush between them, so the retractions a
-                // large delete batch produces do not all accumulate in memory before the first emission.
-                for (int chunkStart = 0; chunkStart < dataCount; chunkStart += ReceiveChunkSize)
+                // The bulk inserter and containers require that a key's row index equals its array index.
+                for (int i = 0; i < dataCount; i++)
                 {
-                    var chunkLength = Math.Min(ReceiveChunkSize, dataCount - chunkStart);
-                    for (int i = 0; i < chunkLength; i++)
+                    _keyScratch[i] = new ColumnRowReference()
                     {
-                        _keyScratch[i] = new ColumnRowReference()
-                        {
-                            referenceBatch = extendedBatch,
-                            RowIndex = chunkStart + i
-                        };
-                        _valueScratch[i] = new BulkWindowValue()
-                        {
-                            weight = msg.Data.Weights[chunkStart + i]
-                        };
-                        _tempValueScratch[i] = 1;
+                        referenceBatch = extendedBatch,
+                        RowIndex = i
+                    };
+                    _valueScratch[i] = new BulkWindowValue()
+                    {
+                        weight = msg.Data.Weights[i]
+                    };
+                    _tempValueScratch[i] = 1;
+                }
+
+                var sortedIndices = _persistentBulkInserter.SortAndGetIndices(_keyScratch, dataCount);
+
+                int currentTag = 0;
+                _duplicateTagScratch[0] = 0;
+                for (int i = 1; i < dataCount; i++)
+                {
+                    var previous = _keyScratch[sortedIndices[i - 1]];
+                    var current = _keyScratch[sortedIndices[i]];
+                    if (_markerComparer.CompareTo(in previous, in current) != 0)
+                    {
+                        currentTag++;
                     }
+                    _duplicateTagScratch[i] = currentTag;
+                }
 
-                    var sortedIndices = _persistentBulkInserter.SortAndGetIndices(_keyScratch, chunkLength);
-
-                    int currentTag = 0;
-                    _duplicateTagScratch[0] = 0;
-                    for (int i = 1; i < chunkLength; i++)
+                // The batch is applied in sorted order chunks with an output flush between them, so the
+                // retractions a large delete batch produces do not all accumulate in memory before the
+                // first emission. A chunk ends on a duplicate boundary so equal rows share one apply.
+                for (int chunkStart = 0; chunkStart < dataCount;)
+                {
+                    var chunkEnd = Math.Min(chunkStart + ReceiveChunkSize, dataCount);
+                    while (chunkEnd < dataCount && _duplicateTagScratch[chunkEnd] == _duplicateTagScratch[chunkEnd - 1])
                     {
-                        var previous = _keyScratch[sortedIndices[i - 1]];
-                        var current = _keyScratch[sortedIndices[i]];
-                        if (_markerComparer.CompareTo(in previous, in current) != 0)
+                        chunkEnd++;
+                    }
+                    var chunkLength = chunkEnd - chunkStart;
+
+                    var chunkSortedIndices = sortedIndices;
+                    var chunkTags = _duplicateTagScratch;
+                    if (chunkStart > 0 || chunkEnd < dataCount)
+                    {
+                        if (_chunkSortedIndices.Length < chunkLength)
                         {
-                            currentTag++;
+                            _chunkSortedIndices = new int[chunkLength];
+                            _chunkTagScratch = new int[chunkLength];
                         }
-                        _duplicateTagScratch[i] = currentTag;
+                        Array.Copy(sortedIndices, chunkStart, _chunkSortedIndices, 0, chunkLength);
+                        Array.Copy(_duplicateTagScratch, chunkStart, _chunkTagScratch, 0, chunkLength);
+                        chunkSortedIndices = _chunkSortedIndices;
+                        chunkTags = _chunkTagScratch;
                     }
 
                     var chunkByteSize = (int)((long)totalByteSize * chunkLength / dataCount) + (chunkLength * 8);
-                    await _persistentBulkInserter.ApplyBatch(_keyScratch, _valueScratch, chunkLength, sortedIndices, _duplicateTagScratch, mutator, chunkByteSize);
+                    await _persistentBulkInserter.ApplyBatch(_keyScratch, _valueScratch, chunkLength, chunkSortedIndices, chunkTags, mutator, chunkByteSize);
 
                     if (_hasSentInitialData.Value)
                     {
-                        await _temporaryBulkInserter.ApplyBatch(_keyScratch, _tempValueScratch, chunkLength, sortedIndices, _duplicateTagScratch, new BulkTemporaryMutator(), chunkByteSize);
+                        await _temporaryBulkInserter.ApplyBatch(_keyScratch, _tempValueScratch, chunkLength, chunkSortedIndices, chunkTags, new BulkTemporaryMutator(), chunkByteSize);
                     }
 
                     // The retractions emitted by the mutator reference the extended batch, copy them out
@@ -365,6 +390,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                         _eventsOutCounter.Add(chunkBatch.Weights.Count);
                         yield return new StreamEventBatch(chunkBatch);
                     }
+
+                    chunkStart = chunkEnd;
                 }
             }
             finally

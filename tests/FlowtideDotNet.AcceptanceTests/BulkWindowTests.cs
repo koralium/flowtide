@@ -390,6 +390,78 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task RunningSumSingleBatchLargerThanChunkSize()
+        {
+            // Batches over the operator's 2048 row chunk size are applied in chunks, every chunk
+            // must insert its own rows and not the first chunk's.
+            SourceBatchSize = 10000;
+            for (int i = 0; i < 3000; i++)
+            {
+                AddUser("1", i, 1);
+            }
+
+            await StartStream(RunningSumQuery);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedRunningSum());
+
+            // A single update batch over the chunk size after initial data.
+            for (int i = 3000; i < 6000; i++)
+            {
+                AddUser("1", i, 1);
+            }
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedRunningSum());
+        }
+
+        [Fact]
+        public async Task RunningSumExpressionPartitionSingleBatchLargerThanChunkSize()
+        {
+            // A computed PARTITION BY expression is stored in a plain column, which the key container
+            // inserts by row index. Every chunk after the first must insert its own rows.
+            SourceBatchSize = 10000;
+            for (int i = 0; i < 3000; i++)
+            {
+                AddUser("1", i, 1);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY UserKey % 3 ORDER BY UserKey ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS INT) as value
+            FROM users");
+            await WaitForUpdate();
+
+            List<SumResult> Expected()
+            {
+                return Users.GroupBy(x => x.UserKey % 3)
+                    .SelectMany(g =>
+                    {
+                        var sum = 0.0;
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<SumResult>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            sum += ordered[i].DoubleValue;
+                            output.Add(new SumResult(ordered[i].CompanyId, ordered[i].UserKey, (long)sum));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // A single update batch over the chunk size after initial data.
+            for (int i = 3000; i < 6000; i++)
+            {
+                AddUser("1", i, 1);
+            }
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
         public async Task RunningSumCrashRecovery()
         {
             GenerateData(500);
