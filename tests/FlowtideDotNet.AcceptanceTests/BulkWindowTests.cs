@@ -462,6 +462,47 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task FollowingFrameChangeNearTreeStart()
+        {
+            // A following frame walks backwards from the first marker to find the scan anchor.
+            // A change near the start of the tree's first partition ends that walk at the tree
+            // start, where the backward iterator must not be read as a row.
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i, 1);
+            }
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+            CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 PRECEDING AND 2 FOLLOWING) AS INT) as value
+            FROM users");
+            await WaitForUpdate();
+
+            List<SumResult> Expected()
+            {
+                var ordered = Users.OrderBy(x => x.UserKey).ToList();
+                var output = new List<SumResult>();
+                for (int i = 0; i < ordered.Count; i++)
+                {
+                    double sum = 0;
+                    for (int k = Math.Max(0, i - 1); k <= Math.Min(ordered.Count - 1, i + 2); k++)
+                    {
+                        sum += ordered[k].DoubleValue;
+                    }
+                    output.Add(new SumResult(ordered[i].CompanyId, ordered[i].UserKey, (long)sum));
+                }
+                return output;
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // Update the partition's second row, the anchor walk reaches the tree start.
+            AddUser("1", 1, 5);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
         public async Task RunningSumCrashRecovery()
         {
             GenerateData(500);

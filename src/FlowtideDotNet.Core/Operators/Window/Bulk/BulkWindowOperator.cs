@@ -542,7 +542,14 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     walked += _backwardReader.Weight;
                     anchorFound = true;
                 }
-                if (anchorFound)
+                if (anchorFound && walked < _maxAffectedRowsBefore)
+                {
+                    // The partition start, or the tree start, was reached before the full walk. The
+                    // reader no longer rests on a partition row, so the scan starts at the partition's
+                    // first row instead of at an anchor.
+                    fromPartitionStart = true;
+                }
+                else if (anchorFound)
                 {
                     for (int c = 0; c < _totalKeyColumns; c++)
                     {
@@ -553,12 +560,6 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                         referenceBatch = _scanStartBatch,
                         RowIndex = 0
                     };
-                    if (walked < _maxAffectedRowsBefore)
-                    {
-                        // The partition start was reached before the full walk, the anchor is the
-                        // partition's first row.
-                        fromPartitionStart = true;
-                    }
                 }
                 // With no rows before the first marker the scan starts at the marker itself.
             }
