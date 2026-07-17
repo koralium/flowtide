@@ -495,6 +495,261 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Expected());
         }
 
+        public record AvgRow(string? companyId, int userkey, double? value);
+        public record DupSumRow(string? companyId, double value, long sum);
+        public record MixedRow(string? companyId, int userkey, long? followingSum, long? runningSum, double? minValue);
+        public record TopRow(string? companyId, int userkey);
+        public record LastRow(string? companyId, int userkey, long? value);
+
+        [Fact]
+        public async Task AverageRunningCrashChurn()
+        {
+            // Average carries sum and count auxiliary columns, churn continues over restored state.
+            var rng = new Random(9011);
+            Churn(rng, DefaultPartitions, 50, 300, 20);
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+            AVG(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+            FROM users");
+
+            List<AvgRow> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<AvgRow>();
+                        double sum = 0;
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            sum += ordered[i].DoubleValue;
+                            output.Add(new AvgRow(ordered[i].CompanyId, ordered[i].UserKey, sum / (i + 1)));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            for (int cycle = 0; cycle < 6; cycle++)
+            {
+                await WaitForUpdate();
+                AssertCurrentDataEqual(Expected());
+                Churn(rng, DefaultPartitions, 50, 300, 20);
+            }
+
+            await Crash();
+
+            for (int cycle = 0; cycle < 6; cycle++)
+            {
+                await WaitForUpdate();
+                AssertCurrentDataEqual(Expected());
+                Churn(rng, DefaultPartitions, 50, 300, 20);
+            }
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
+        public async Task FollowingFrameDuplicatesChurn()
+        {
+            // Only company and value are projected, so rows merge with weights above one, and the
+            // following frame's lookahead must skip already fed duplicates correctly.
+            var rng = new Random(9012);
+            Churn(rng, DefaultPartitions, 40, 120, 3);
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, DoubleValue,
+            CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY DoubleValue ROWS BETWEEN 1 PRECEDING AND 2 FOLLOWING) AS INT)
+            FROM users");
+
+            List<DupSumRow> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.DoubleValue).ToList();
+                        var output = new List<DupSumRow>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            double sum = 0;
+                            for (int k = Math.Max(0, i - 1); k <= Math.Min(ordered.Count - 1, i + 2); k++)
+                            {
+                                sum += ordered[k].DoubleValue;
+                            }
+                            output.Add(new DupSumRow(ordered[i].CompanyId, ordered[i].DoubleValue, (long)sum));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            for (int cycle = 0; cycle < 15; cycle++)
+            {
+                await WaitForUpdate();
+                AssertCurrentDataEqual(Expected());
+                Churn(rng, DefaultPartitions, 40, 120, 3);
+            }
+        }
+
+        [Fact]
+        public async Task MultiFunctionMixedFramesChurn()
+        {
+            // A following frame forces backward anchor walks while bounded and running functions
+            // share the same scan, mixing every seeding path in one relation.
+            var rng = new Random(9013);
+            Churn(rng, DefaultPartitions, 60, 400, 20);
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+            CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 PRECEDING AND 2 FOLLOWING) AS INT),
+            CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS INT),
+            min_by(DoubleValue, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 3 PRECEDING AND CURRENT ROW)
+            FROM users");
+
+            List<MixedRow> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<MixedRow>();
+                        double runningSum = 0;
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            runningSum += ordered[i].DoubleValue;
+                            double followingSum = 0;
+                            for (int k = Math.Max(0, i - 1); k <= Math.Min(ordered.Count - 1, i + 2); k++)
+                            {
+                                followingSum += ordered[k].DoubleValue;
+                            }
+                            double? minValue = default;
+                            for (int k = Math.Max(0, i - 3); k <= i; k++)
+                            {
+                                if (minValue == null || ordered[k].DoubleValue < minValue)
+                                {
+                                    minValue = ordered[k].DoubleValue;
+                                }
+                            }
+                            output.Add(new MixedRow(ordered[i].CompanyId, ordered[i].UserKey, (long)followingSum, (long)runningSum, minValue));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            for (int cycle = 0; cycle < 15; cycle++)
+            {
+                await WaitForUpdate();
+                AssertCurrentDataEqual(Expected());
+                Churn(rng, DefaultPartitions, 60, 400, 20);
+            }
+        }
+
+        [Fact]
+        public async Task RowNumberMaxHintChurn()
+        {
+            // The filter gives the row number function a max bound, rows past it become null and
+            // are dropped, churn moves rows in and out of the top three constantly.
+            var rng = new Random(9014);
+            Churn(rng, DefaultPartitions, 50, 300, 30);
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) <= 3");
+
+            List<TopRow> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g => g.OrderBy(x => x.UserKey).Take(3).Select(x => new TopRow(x.CompanyId, x.UserKey)))
+                    .ToList();
+            }
+
+            for (int cycle = 0; cycle < 15; cycle++)
+            {
+                await WaitForUpdate();
+                AssertCurrentDataEqual(Expected());
+                Churn(rng, DefaultPartitions, 50, 300, 30);
+            }
+        }
+
+        [Fact]
+        public async Task LagConstantChurn()
+        {
+            var rng = new Random(9015);
+            Churn(rng, DefaultPartitions, 50, 300, 30);
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+            lag(UserKey, 2) OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users");
+
+            List<LeadRow> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<LeadRow>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            long? value = i >= 2 ? ordered[i - 2].UserKey : null;
+                            output.Add(new LeadRow(ordered[i].CompanyId, ordered[i].UserKey, value));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            for (int cycle = 0; cycle < 15; cycle++)
+            {
+                await WaitForUpdate();
+                AssertCurrentDataEqual(Expected());
+                Churn(rng, DefaultPartitions, 50, 300, 30);
+            }
+        }
+
+        [Fact]
+        public async Task LastValueIgnoreNullsChurn()
+        {
+            // Delay frame with the ignore nulls candidate chain, Visits carries frequent nulls.
+            var rng = new Random(9016);
+            Churn(rng, DefaultPartitions, 50, 300, 30, mutateVisits: true);
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+            LAST_VALUE(Visits) IGNORE NULLS OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 PRECEDING AND 1 PRECEDING)
+            FROM users");
+
+            List<LastRow> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        var output = new List<LastRow>();
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            long? value = default;
+                            for (int k = Math.Min(ordered.Count - 1, i - 1); k >= Math.Max(0, i - 4); k--)
+                            {
+                                if (k <= i - 1 && ordered[k].Visits != null)
+                                {
+                                    value = ordered[k].Visits;
+                                    break;
+                                }
+                            }
+                            output.Add(new LastRow(ordered[i].CompanyId, ordered[i].UserKey, value));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            for (int cycle = 0; cycle < 15; cycle++)
+            {
+                await WaitForUpdate();
+                AssertCurrentDataEqual(Expected());
+                Churn(rng, DefaultPartitions, 50, 300, 30, mutateVisits: true);
+            }
+        }
+
         [Fact]
         public async Task DynamicLeadChurn()
         {
