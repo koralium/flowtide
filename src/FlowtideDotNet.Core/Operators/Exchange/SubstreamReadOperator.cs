@@ -49,6 +49,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // otherwise take minutes.
         internal static TimeSpan PairingAttemptDelay = TimeSpan.FromSeconds(5);
 
+        // Handoff drain patience; raised in tests.
+        internal static TimeSpan HandoffDrainTimeout = TimeSpan.FromSeconds(10);
+
         private readonly SubstreamCommunicationPoint _communicationPoint;
         private readonly SubstreamExchangeReferenceRelation _exchangeReferenceRelation;
         private readonly object _lock = new object();
@@ -568,17 +571,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         public override async Task CompleteHandoffDrainAsync()
         {
-            await _communicationPoint.WaitForFetchLoopIdleAsync(TimeSpan.FromSeconds(10));
+            await _communicationPoint.WaitForFetchLoopIdleAsync(HandoffDrainTimeout);
 
             var channel = _channel;
             if (channel != null)
             {
-                var deadline = Environment.TickCount64 + (long)TimeSpan.FromSeconds(10).TotalMilliseconds;
+                var deadline = Environment.TickCount64 + (long)HandoffDrainTimeout.TotalMilliseconds;
                 while (channel.Reader.Count > 0)
                 {
                     if (Environment.TickCount64 >= deadline)
                     {
-                        throw new TimeoutException($"The read channel of {Name} did not drain within 10 seconds during the handoff drain.");
+                        throw new TimeoutException($"The read channel of {Name} did not drain within {HandoffDrainTimeout} during the handoff drain.");
                     }
                     await Task.Delay(10);
                 }

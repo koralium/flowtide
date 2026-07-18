@@ -71,6 +71,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             private readonly IPersistentStorage _inner;
             private readonly int _holdOnCall;
             private int _calls;
+            private int _concurrent;
+            private int _maxConcurrent;
 
             public readonly TaskCompletionSource Held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             public readonly TaskCompletionSource Release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -83,14 +85,33 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             public long CurrentVersion => _inner.CurrentVersion;
 
+            // High-water mark of overlapping inits.
+            public int MaxConcurrent => Volatile.Read(ref _maxConcurrent);
+
+            // Number of inits started.
+            public int Calls => Volatile.Read(ref _calls);
+
             public async Task InitializeAsync(StorageInitializationMetadata metadata)
             {
-                if (Interlocked.Increment(ref _calls) == _holdOnCall)
+                var now = Interlocked.Increment(ref _concurrent);
+                int observed;
+                while (now > (observed = Volatile.Read(ref _maxConcurrent)))
                 {
-                    Held.TrySetResult();
-                    await Release.Task;
+                    Interlocked.CompareExchange(ref _maxConcurrent, now, observed);
                 }
-                await _inner.InitializeAsync(metadata);
+                try
+                {
+                    if (Interlocked.Increment(ref _calls) == _holdOnCall)
+                    {
+                        Held.TrySetResult();
+                        await Release.Task;
+                    }
+                    await _inner.InitializeAsync(metadata);
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref _concurrent);
+                }
             }
 
             public IPersistentStorageSession CreateSession() => _inner.CreateSession();
@@ -118,7 +139,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         {
             var generator = new DatasetGenerator(_db);
             generator.Generate(200);
-            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var latestData = new ConcurrentDictionary<string, int>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
 
             // Held on the second initialization: the first is the initial start, the second
@@ -137,7 +158,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 {
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, true));
-                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }));
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
                 })
@@ -166,6 +187,210 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
         }
 
+        // Superseded start's init must not overlap the successor's.
+        [Fact]
+        public async Task SupersededStartDoesNotInitializeConcurrentlyWithTheSuccessor()
+        {
+            var generator = new DatasetGenerator(_db);
+            generator.Generate(200);
+            var latestData = new ConcurrentDictionary<string, int>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            var holdingStorage = new HoldingStorage(
+                new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                {
+                    FileProvider = new MemoryFileProvider()
+                }),
+                holdOnCall: 2);
+
+            _stream = new DistributedStreamBuilder(TestName)
+                .AddPlan(BuildPlan)
+                .WithStateOptionsFactory((_, substreamName) => CreateStateOptions(substreamName, substreamName == "substream_0" ? holdingStorage : null))
+                .ConfigureSubstream((substreamName, substreamBuilder) =>
+                {
+                    var connectorManager = new ConnectorManager();
+                    connectorManager.AddSource(new MockSourceFactory("*", _db, true));
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
+                    substreamBuilder.AddConnectorManager(connectorManager);
+                    substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                })
+                .DistributeAutomatically(2)
+                .Build();
+            await _stream.StartAsync();
+            await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
+
+            var substream0 = _stream.Substreams["substream_0"];
+
+            // Park the restart inside the state manager restore.
+            await substream0.InjectFailureForTests(new Exception("Forces the recovery restart"));
+            var held = await Task.WhenAny(holdingStorage.Held.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+            Assert.True(held == holdingStorage.Held.Task, "The recovery restart never reached the storage initialization");
+
+            // Supersede the parked start, then wait for the successor.
+            await substream0.InjectFailureForTests(new Exception("Late failure during the restart"));
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            Assert.Equal(1, holdingStorage.MaxConcurrent);
+
+            // Release; only then may the successor init.
+            holdingStorage.Release.TrySetResult();
+            generator.Generate(100);
+            await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
+            Assert.Equal(1, holdingStorage.MaxConcurrent);
+        }
+
+        // Serialization must cover block setup, not just init.
+        [Fact]
+        public async Task SupersededStartInBlockSetupDoesNotLetTheSuccessorInitialize()
+        {
+            var generator = new DatasetGenerator(_db);
+            generator.Generate(200);
+            var latestData = new ConcurrentDictionary<string, int>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            // Storage only counts inits; parking is via the hook.
+            var holdingStorage = new HoldingStorage(
+                new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                {
+                    FileProvider = new MemoryFileProvider()
+                }),
+                holdOnCall: int.MaxValue);
+
+            int substream0BlockInits = 0;
+            var restartInBlockSetup = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseRestart = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            StreamContext.StartupDuringBlockInitHookForTests = async (streamName) =>
+            {
+                if (!streamName.Contains(TestName) || !streamName.Contains("substream_0"))
+                {
+                    return;
+                }
+                // Second block setup is the recovery restart.
+                if (Interlocked.Increment(ref substream0BlockInits) == 2)
+                {
+                    restartInBlockSetup.TrySetResult();
+                    await releaseRestart.Task;
+                }
+            };
+
+            try
+            {
+                _stream = new DistributedStreamBuilder(TestName)
+                    .AddPlan(BuildPlan)
+                    .WithStateOptionsFactory((_, substreamName) => CreateStateOptions(substreamName, substreamName == "substream_0" ? holdingStorage : null))
+                    .ConfigureSubstream((substreamName, substreamBuilder) =>
+                    {
+                        var connectorManager = new ConnectorManager();
+                        connectorManager.AddSource(new MockSourceFactory("*", _db, true));
+                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
+                        substreamBuilder.AddConnectorManager(connectorManager);
+                        substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    })
+                    .DistributeAutomatically(2)
+                    .Build();
+                await _stream.StartAsync();
+                await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
+
+                var substream0 = _stream.Substreams["substream_0"];
+
+                // Park the restart in block setup.
+                await substream0.InjectFailureForTests(new Exception("Forces the recovery restart"));
+                var held = await Task.WhenAny(restartInBlockSetup.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+                Assert.True(held == restartInBlockSetup.Task, "The recovery restart never reached block setup");
+
+                var callsWhenParked = holdingStorage.Calls;
+
+                // Supersede; the successor must not init while parked.
+                await substream0.InjectFailureForTests(new Exception("Late failure during block setup"));
+                await Task.Delay(TimeSpan.FromSeconds(2));
+                Assert.Equal(callsWhenParked, holdingStorage.Calls);
+
+                // Release; only then may the successor init.
+                releaseRestart.TrySetResult();
+                generator.Generate(100);
+                await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
+                Assert.Equal(1, holdingStorage.MaxConcurrent);
+            }
+            finally
+            {
+                StreamContext.StartupDuringBlockInitHookForTests = null;
+                releaseRestart.TrySetResult();
+            }
+        }
+
+        // Superseded start must not clobber the successor's created flag.
+        [Fact]
+        public async Task SupersededStartWhoseGateLostTheRaceDoesNotClobberTheSuccessor()
+        {
+            var generator = new DatasetGenerator(_db);
+            generator.Generate(200);
+            var latestData = new ConcurrentDictionary<string, int>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            int substream0Starts = 0;
+            var restartBeforeGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseRestart = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            StreamContext.StartupBeforeGateRegistrationHookForTests = async (streamName) =>
+            {
+                if (!streamName.Contains(TestName) || !streamName.Contains("substream_0"))
+                {
+                    return;
+                }
+                // Park before gate registration, so the successor registers first.
+                if (Interlocked.Increment(ref substream0Starts) == 2)
+                {
+                    restartBeforeGate.TrySetResult();
+                    await releaseRestart.Task;
+                }
+            };
+
+            try
+            {
+                _stream = new DistributedStreamBuilder(TestName)
+                    .AddPlan(BuildPlan)
+                    .WithStateOptionsFactory((_, substreamName) => CreateStateOptions(substreamName, null))
+                    .ConfigureSubstream((substreamName, substreamBuilder) =>
+                    {
+                        var connectorManager = new ConnectorManager();
+                        connectorManager.AddSource(new MockSourceFactory("*", _db, true));
+                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
+                        substreamBuilder.AddConnectorManager(connectorManager);
+                        substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    })
+                    .DistributeAutomatically(2)
+                    .Build();
+                await _stream.StartAsync();
+                await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
+
+                var substream0 = _stream.Substreams["substream_0"];
+
+                // Failure 1: the restart parks before gate registration.
+                await substream0.InjectFailureForTests(new Exception("Forces the recovery restart"));
+                var held = await Task.WhenAny(restartBeforeGate.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+                Assert.True(held == restartBeforeGate.Task, "The recovery restart never reached the pre-gate point");
+
+                // Failure 2: the successor registers first and creates its blocks.
+                await substream0.InjectFailureForTests(new Exception("Supersedes the parked restart"));
+                await WaitForBlocksCreated(substream0);
+
+                // Release; the superseded start must not reset the flag.
+                releaseRestart.TrySetResult();
+                await Task.Delay(TimeSpan.FromSeconds(1));
+                Assert.Equal(1, substream0.BlocksCreatedForTests);
+
+                // Successor stays healthy: a further recovery still converges.
+                await substream0.InjectFailureForTests(new Exception("Later recovery"));
+                generator.Generate(100);
+                await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
+            }
+            finally
+            {
+                StreamContext.StartupBeforeGateRegistrationHookForTests = null;
+                releaseRestart.TrySetResult();
+            }
+        }
+
         /// <summary>
         /// An abandoned start may only tear down blocks it created itself. When the abandon
         /// runs late - here parked in the startup hook - the failure teardown has already
@@ -181,7 +406,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         {
             var generator = new DatasetGenerator(_db);
             generator.Generate(200);
-            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var latestData = new ConcurrentDictionary<string, int>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
 
             int substream0Starts = 0;
@@ -222,7 +447,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     {
                         var connectorManager = new ConnectorManager();
                         connectorManager.AddSource(new MockSourceFactory("*", _db, true));
-                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }));
+                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
                     })
@@ -297,8 +522,18 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             };
         }
 
+        private static async Task WaitForBlocksCreated(FlowtideDotNet.Base.Engine.DataflowStream substream)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            while (substream.BlocksCreatedForTests != 1)
+            {
+                Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(30), "The successor never created its blocks");
+                await Task.Delay(20);
+            }
+        }
+
         private static async Task WaitForCount(
-            ConcurrentDictionary<string, EventBatchData> latestData,
+            ConcurrentDictionary<string, int> latestData,
             string key,
             int expectedCount,
             ConcurrentBag<(string Substream, Exception? Exception)> failures)
@@ -306,15 +541,16 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var stopwatch = Stopwatch.StartNew();
             while (true)
             {
-                if (latestData.TryGetValue(key, out var batch) && batch.Count == expectedCount)
+                if (latestData.TryGetValue(key, out var count) && count == expectedCount)
                 {
                     return;
                 }
                 if (stopwatch.Elapsed > TimeSpan.FromSeconds(60))
                 {
                     var runningTasks = failures.Count(f => f.Exception?.ToString().Contains("Initialize while there are running tasks") == true);
+                    latestData.TryGetValue(key, out var last);
                     throw new TimeoutException(
-                        $"The result did not reach {expectedCount} rows, last {(latestData.TryGetValue(key, out var last) ? last.Count : 0)}. " +
+                        $"The result did not reach {expectedCount} rows, last {last}. " +
                         $"Failures containing 'Initialize while there are running tasks': {runningTasks} - the failure during the restart orphaned the running start.");
                 }
                 await Task.Delay(20);

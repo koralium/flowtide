@@ -441,13 +441,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// <returns></returns>
         public async Task Crash()
         {
+            Debug.Assert(_notificationReciever != null);
+            int failuresBefore = Volatile.Read(ref _notificationReciever._failureNotifications);
             await _stream!.CallTrigger("crash", default);
 
-            var graph = _stream.GetDiagnosticsGraph();
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
-            while (_stream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
+            while (Volatile.Read(ref _notificationReciever._failureNotifications) == failuresBefore)
             {
-                graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
                 CheckForErrors();

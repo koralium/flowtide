@@ -743,7 +743,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 currentLeafLo = _splitPointsBuffer[s].LeafIndex;
                 currentBatchLo = _splitPointsBuffer[s].BatchIndex;
+
+                if (currentLeafLo == leafCount && currentBatchLo == insertCount)
+                {
+                    // All rows are consumed, any more nodes would be persisted as empty pages.
+                    numNodes = s + 1;
+                    break;
+                }
             }
+
+            // The first boundary can never consume all rows, so at least two nodes remain.
+            Debug.Assert(numNodes >= 2, "N-way split shrank below two nodes");
 
             InternalNode<K, V, TKeyContainer>? parent = null;
             int indexInParent = 0;

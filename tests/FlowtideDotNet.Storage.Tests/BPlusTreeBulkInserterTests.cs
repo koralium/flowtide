@@ -2119,6 +2119,101 @@ namespace FlowtideDotNet.Storage.Tests
 
         #endregion
 
+        /// <summary>
+        /// Upserts and reports a fixed byte size per row, used to simulate wide rows.
+        /// </summary>
+        private readonly struct FixedSizeUpsertMutator : IRowMutator<long, long>
+        {
+            private readonly int _bytesPerRow;
+
+            public FixedSizeUpsertMutator(int bytesPerRow)
+            {
+                _bytesPerRow = bytesPerRow;
+            }
+
+            public void GetSizePrefixSum(long[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    sizes[i] = _bytesPerRow * (i + 1);
+                }
+            }
+
+            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData, int sortedIndex)
+            {
+                return GenericWriteOperation.Upsert;
+            }
+        }
+
+        [Fact]
+        public async Task NWaySplitWithWideTrailingRowsDoesNotPersistEmptyLeaf()
+        {
+            // Wide rows at the end of a leaf made the N-way split persist an empty last node.
+            // Empty pages should never be persisted, readers can treat them as the end of a range.
+            var nodeClient = _stateManager.GetOrCreateClient("empty_leaf_node");
+            var tree = (BPlusTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>)await nodeClient
+                .GetOrCreateTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>("empty_leaf_tree",
+                new BPlusTreeOptions<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>()
+                {
+                    PageSizeBytes = 800,
+                    UseByteBasedPageSizes = true,
+                    Comparer = new PrimitiveListComparer<long>(),
+                    KeySerializer = new PrimitiveListKeyContainerSerializer<long>(GlobalMemoryManager.Instance),
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<long>(GlobalMemoryManager.Instance),
+                    MemoryAllocator = GlobalMemoryManager.Instance
+                });
+            var bulkInserter = new BPlusTreeBulkInserter<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>(tree);
+
+            // 20 small rows stay on one leaf.
+            var smallCount = 20;
+            var smallKeys = new long[smallCount];
+            var smallValues = new long[smallCount];
+            for (int i = 0; i < smallCount; i++)
+            {
+                smallKeys[i] = i;
+                smallValues[i] = i * 10;
+            }
+            await bulkInserter.ApplyBatch(smallKeys, smallValues, smallCount, new FixedSizeUpsertMutator(8), smallCount * 8);
+
+            // 4 wide rows after all existing rows, the deficit fill consumes every row.
+            var wideCount = 4;
+            var wideKeys = new long[wideCount];
+            var wideValues = new long[wideCount];
+            for (int i = 0; i < wideCount; i++)
+            {
+                wideKeys[i] = 100 + i;
+                wideValues[i] = (100 + i) * 10;
+            }
+            await bulkInserter.ApplyBatch(wideKeys, wideValues, wideCount, new FixedSizeUpsertMutator(400), wideCount * 400);
+
+            // No page may be empty, and all rows must be present in order.
+            var it = tree.CreateIterator();
+            await it.SeekFirst();
+            int pageCount = 0;
+            var rows = new List<(long key, long value)>();
+            await foreach (var page in it)
+            {
+                pageCount++;
+                Assert.True(page.Keys.Count > 0, $"Page {pageCount} of the tree is empty");
+                foreach (var kv in page)
+                {
+                    rows.Add((kv.Key, kv.Value));
+                }
+            }
+            Assert.True(pageCount >= 2, "The batch was expected to split the leaf");
+
+            var expected = new List<(long key, long value)>();
+            for (int i = 0; i < smallCount; i++)
+            {
+                expected.Add((i, i * 10));
+            }
+            for (int i = 0; i < wideCount; i++)
+            {
+                expected.Add((100 + i, (100 + i) * 10));
+            }
+            Assert.Equal(expected, rows);
+        }
+
         public void Dispose()
         {
             _stateManager?.Dispose();

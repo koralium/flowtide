@@ -104,6 +104,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal int _blockGeneration;
         internal readonly object _blockClaimLock = new object();
 
+        // Serializes the state manager region across starts. Guarded by _blockClaimLock.
+        internal Task? _inFlightStartInitGate;
+
         // Test hooks, null in production. Each gets the stream name so a test can filter to its own
         // stream: CheckpointCommitHookForTests awaits inside the commit (so a test can hold a write in
         // flight), CompactionScheduledHookForTests awaits at the entry of a scheduled compaction task
@@ -125,6 +128,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // stream in the Starting phase and deliver a spurious egress checkpoint done into that
         // window.
         internal static Func<string, Task>? StartupBeforeInitTrackingHookForTests;
+        // Test hook: park during block setup.
+        internal static Func<string, Task>? StartupDuringBlockInitHookForTests;
+        // Test hook: park before gate registration.
+        internal static Func<string, Task>? StartupBeforeGateRegistrationHookForTests;
 
         private StreamStatus _streamStatus;
 

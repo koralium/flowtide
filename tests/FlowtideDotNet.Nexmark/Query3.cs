@@ -20,6 +20,7 @@ using System.Text;
 namespace FlowtideDotNet.Nexmark
 {
     [EventCountDiagnoser]
+    [CacheHitRateDiagnoser]
     public class Query3 : QueryBase
     {
         [Benchmark]
