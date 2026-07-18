@@ -43,16 +43,18 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             int numberOfcheckpoints = 0;
             TestSubstreamComFactory comFactory = new TestSubstreamComFactory((v, epoch) =>
             {
-                currentVersion = v;
+                Volatile.Write(ref currentVersion, v);
                 Interlocked.Increment(ref numberOfcheckpoints);
                 return Task.CompletedTask;
             }, (v) =>
             {
-                currentVersion = v;
+                // Runs on an unawaited Task.Run (SubstreamCommunicationPoint.NotifyFailAndRecover),
+                // concurrently with the restarting stream's initialize request reading the version.
+                Volatile.Write(ref currentVersion, v);
                 return Task.CompletedTask;
             }, (v, epoch) =>
             {
-                return Task.FromResult(new SubstreamInitializeResponse(false, true, currentVersion));
+                return Task.FromResult(new SubstreamInitializeResponse(false, true, Volatile.Read(ref currentVersion)));
             });
             // The version mismatch triggers an intentional fail and recover without an exception
             AllowFailureAndRecover();
