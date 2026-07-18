@@ -43,16 +43,18 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             int numberOfcheckpoints = 0;
             TestSubstreamComFactory comFactory = new TestSubstreamComFactory((v, epoch) =>
             {
-                currentVersion = v;
-                numberOfcheckpoints++;
+                Volatile.Write(ref currentVersion, v);
+                Interlocked.Increment(ref numberOfcheckpoints);
                 return Task.CompletedTask;
             }, (v) =>
             {
-                currentVersion = v;
+                // Runs on an unawaited Task.Run (SubstreamCommunicationPoint.NotifyFailAndRecover),
+                // concurrently with the restarting stream's initialize request reading the version.
+                Volatile.Write(ref currentVersion, v);
                 return Task.CompletedTask;
             }, (v, epoch) =>
             {
-                return Task.FromResult(new SubstreamInitializeResponse(false, true, currentVersion));
+                return Task.FromResult(new SubstreamInitializeResponse(false, true, Volatile.Read(ref currentVersion)));
             });
             // The version mismatch triggers an intentional fail and recover without an exception
             AllowFailureAndRecover();
@@ -91,7 +93,15 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }).ToList();
 
             AssertCurrentDataEqual(expected);
-            Assert.Equal(1, numberOfcheckpoints);
+
+            // The checkpoint-done ack to the other substream is sent by the block fan-out that
+            // runs after the checkpoint-complete notification WaitForUpdate observes, so it can
+            // still be in flight here.
+            for (int i = 0; Volatile.Read(ref numberOfcheckpoints) == 0 && i < 1000; i++)
+            {
+                await Task.Delay(10);
+            }
+            Assert.Equal(1, Volatile.Read(ref numberOfcheckpoints));
         }
 
         /// <summary>
@@ -162,7 +172,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             AssertCurrentDataEqual(expected);
             Assert.Equal(0, numberOfFailAndRecover);
-            Assert.True(numberOfcheckpoints >= 2, $"Expected at least two checkpoints, got {numberOfcheckpoints}");
+            // Same in-flight window as in TestWrongHigherStartupVersionInOtherSubstream: the
+            // latest checkpoint's ack can trail the notification that released WaitForUpdate.
+            for (int i = 0; Volatile.Read(ref numberOfcheckpoints) < 2 && i < 1000; i++)
+            {
+                await Task.Delay(10);
+            }
+            var checkpoints = Volatile.Read(ref numberOfcheckpoints);
+            Assert.True(checkpoints >= 2, $"Expected at least two checkpoints, got {checkpoints}");
         }
 
         /// <summary>
