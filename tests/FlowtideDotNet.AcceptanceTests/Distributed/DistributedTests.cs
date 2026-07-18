@@ -44,7 +44,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             TestSubstreamComFactory comFactory = new TestSubstreamComFactory((v, epoch) =>
             {
                 currentVersion = v;
-                numberOfcheckpoints++;
+                Interlocked.Increment(ref numberOfcheckpoints);
                 return Task.CompletedTask;
             }, (v) =>
             {
@@ -91,7 +91,15 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }).ToList();
 
             AssertCurrentDataEqual(expected);
-            Assert.Equal(1, numberOfcheckpoints);
+
+            // The checkpoint-done ack to the other substream is sent by the block fan-out that
+            // runs after the checkpoint-complete notification WaitForUpdate observes, so it can
+            // still be in flight here.
+            for (int i = 0; Volatile.Read(ref numberOfcheckpoints) == 0 && i < 1000; i++)
+            {
+                await Task.Delay(10);
+            }
+            Assert.Equal(1, Volatile.Read(ref numberOfcheckpoints));
         }
 
         /// <summary>
@@ -162,7 +170,13 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             AssertCurrentDataEqual(expected);
             Assert.Equal(0, numberOfFailAndRecover);
-            Assert.True(numberOfcheckpoints >= 2, $"Expected at least two checkpoints, got {numberOfcheckpoints}");
+            // Same in-flight window as in TestWrongHigherStartupVersionInOtherSubstream: the
+            // latest checkpoint's ack can trail the notification that released WaitForUpdate.
+            for (int i = 0; Volatile.Read(ref numberOfcheckpoints) < 2 && i < 1000; i++)
+            {
+                await Task.Delay(10);
+            }
+            Assert.True(Volatile.Read(ref numberOfcheckpoints) >= 2, $"Expected at least two checkpoints, got {numberOfcheckpoints}");
         }
 
         /// <summary>
