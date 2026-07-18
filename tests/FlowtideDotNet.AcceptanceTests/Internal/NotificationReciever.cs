@@ -19,6 +19,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly Action onCheckpointComplete;
         internal Exception? _exception;
         internal bool _error;
+        internal int _failureNotifications;
 
         public NotificationReciever(Action onCheckpointComplete)
         {
@@ -49,6 +50,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void OnFailure(StreamFailureNotification notification)
         {
+            // Counted for every failure, including intentional CrashExceptions, so a wait
+            // for a crash can latch on this notification instead of polling the transient
+            // failure state, which recovery erases within RecoveryRestartDelay. See
+            // FlowtideTestStream.Crash.
+            Interlocked.Increment(ref _failureNotifications);
             if (IsCrashException(notification.Exception))
             {
                 return;
