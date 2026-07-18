@@ -176,7 +176,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             {
                 await Task.Delay(10);
             }
-            Assert.True(Volatile.Read(ref numberOfcheckpoints) >= 2, $"Expected at least two checkpoints, got {numberOfcheckpoints}");
+            var checkpoints = Volatile.Read(ref numberOfcheckpoints);
+            Assert.True(checkpoints >= 2, $"Expected at least two checkpoints, got {checkpoints}");
         }
 
         /// <summary>
