@@ -634,6 +634,33 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
+        /// Hits and misses are counted per path.
+        /// TryGetCacheValue is the read path and TryGetValue is the commit path.
+        /// </summary>
+        [Fact]
+        public async Task HitAndMissCountersAreSplitByPath()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
+            var handler = new TestEvictHandler();
+            table.Add(1, new TestCacheObject(1), handler);
+
+            Assert.True(table.TryGetCacheValue(1, out var entry));
+            entry!.Value.Return();
+            Assert.False(table.TryGetCacheValue(2, out _));
+
+            Assert.True(table.TryGetValue(1, out var obj));
+            obj!.Return();
+            Assert.True(table.TryGetValue(1, out obj));
+            obj!.Return();
+            Assert.False(table.TryGetValue(3, out _));
+
+            Assert.Equal(1, table.ReadCacheHitsForTests);
+            Assert.Equal(1, table.ReadCacheMissesForTests);
+            Assert.Equal(2, table.CommitCacheHitsForTests);
+            Assert.Equal(1, table.CommitCacheMissesForTests);
+        }
+
+        /// <summary>
         /// Stopping the cleanup task must complete even while a commit or recovery holds the
         /// eviction pause, the parked wait must observe the cancellation.
         /// </summary>

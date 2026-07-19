@@ -104,8 +104,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private int cleanupStart;
         private readonly SemaphoreSlim _fullLock;
         private int m_count;
-        private long m_cacheHits;
-        private long m_cacheMisses;
+
+        private long m_readCacheHits;
+        private long m_readCacheMisses;
+        private long m_commitCacheHits;
+        private long m_commitCacheMisses;
         // Written only on the cleanup thread, read lock-free by the metric callbacks.
         // Small-queue-head outcomes and one-hit-wonders, see the metric registrations.
         private long m_smallQueuePromotions;
@@ -186,8 +189,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 });
                 meter.CreateObservableGauge("flowtide_lru_table_cache_hits_percentage", () =>
                 {
-                    var hit = Volatile.Read(ref m_cacheHits);
-                    var misses = Volatile.Read(ref m_cacheMisses);
+                    var hit = TotalCacheHits();
+                    var misses = TotalCacheMisses();
                     var total = hit + misses;
                     if (total > m_metrics_lastSeenTotal)
                     {
@@ -205,17 +208,33 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 });
                 meter.CreateObservableCounter("flowtide_lru_table_cache_hits", () =>
                 {
-                    return new Measurement<long>(Volatile.Read(ref m_cacheHits), new KeyValuePair<string, object?>("stream", m_streamName));
+                    return new Measurement<long>(TotalCacheHits(), new KeyValuePair<string, object?>("stream", m_streamName));
                 });
                 meter.CreateObservableCounter("flowtide_lru_table_cache_misses", () =>
                 {
-                    return new Measurement<long>(Volatile.Read(ref m_cacheMisses), new KeyValuePair<string, object?>("stream", m_streamName));
+                    return new Measurement<long>(TotalCacheMisses(), new KeyValuePair<string, object?>("stream", m_streamName));
                 });
                 meter.CreateObservableCounter("flowtide_lru_table_cache_tries", () =>
                 {
-                    var hits = Volatile.Read(ref m_cacheHits);
-                    var misses = Volatile.Read(ref m_cacheMisses);
-                    return new Measurement<long>(hits + misses, new KeyValuePair<string, object?>("stream", m_streamName));
+                    return new Measurement<long>(TotalCacheHits() + TotalCacheMisses(), new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                // Split by path. Read numbers measure cache quality for query processing,
+                // commit numbers measure dirty pages surviving until the checkpoint.
+                meter.CreateObservableCounter("flowtide_cache_read_hits", () =>
+                {
+                    return new Measurement<long>(Volatile.Read(ref m_readCacheHits), new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                meter.CreateObservableCounter("flowtide_cache_read_misses", () =>
+                {
+                    return new Measurement<long>(Volatile.Read(ref m_readCacheMisses), new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                meter.CreateObservableCounter("flowtide_cache_commit_hits", () =>
+                {
+                    return new Measurement<long>(Volatile.Read(ref m_commitCacheHits), new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                meter.CreateObservableCounter("flowtide_cache_commit_misses", () =>
+                {
+                    return new Measurement<long>(Volatile.Read(ref m_commitCacheMisses), new KeyValuePair<string, object?>("stream", m_streamName));
                 });
             }
 
@@ -226,6 +245,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// Number of live entries, used by unit tests and metrics.
         /// </summary>
         internal int Count => Volatile.Read(ref m_count);
+
+        private long TotalCacheHits()
+        {
+            return Volatile.Read(ref m_readCacheHits) + Volatile.Read(ref m_commitCacheHits);
+        }
+
+        private long TotalCacheMisses()
+        {
+            return Volatile.Read(ref m_readCacheMisses) + Volatile.Read(ref m_commitCacheMisses);
+        }
 
         /// <summary>
         /// Drops all entries without returning the cache references.
@@ -350,12 +379,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 if (entry.TryRentValue())
                 {
-                    Interlocked.Increment(ref m_cacheHits);
+                    Interlocked.Increment(ref m_readCacheHits);
                     return true;
                 }
                 return false;
             }
-            Interlocked.Increment(ref m_cacheMisses);
+            Interlocked.Increment(ref m_readCacheMisses);
             return false;
         }
 
@@ -366,13 +395,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (entry.TryRentValue())
                 {
                     cacheObject = entry.Value;
-                    Interlocked.Increment(ref m_cacheHits);
+                    Interlocked.Increment(ref m_commitCacheHits);
                     return true;
                 }
                 cacheObject = default;
                 return false;
             }
-            Interlocked.Increment(ref m_cacheMisses);
+            Interlocked.Increment(ref m_commitCacheMisses);
             cacheObject = default;
             return false;
         }
@@ -504,7 +533,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             bool isCleanup = false;
             if (currentCount <= cleanupStartLocal)
             {
-                var cacheHitsLocal = Volatile.Read(ref m_cacheHits);
+                var cacheHitsLocal = TotalCacheHits();
                 if (m_lastSeenCacheHits == cacheHitsLocal)
                 {
                     m_sameCacheHitsCount++;
@@ -992,6 +1021,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         internal int CorrelationWindowSizeForTests => m_correlationClock.WindowSizeForTests;
 
         internal long OneHitWondersForTests => Volatile.Read(ref m_oneHitWonders);
+
+        internal long ReadCacheHitsForTests => Volatile.Read(ref m_readCacheHits);
+
+        internal long ReadCacheMissesForTests => Volatile.Read(ref m_readCacheMisses);
+
+        internal long CommitCacheHitsForTests => Volatile.Read(ref m_commitCacheHits);
+
+        internal long CommitCacheMissesForTests => Volatile.Read(ref m_commitCacheMisses);
 
         internal long SmallQueuePromotionsForTests => Volatile.Read(ref m_smallQueuePromotions);
 

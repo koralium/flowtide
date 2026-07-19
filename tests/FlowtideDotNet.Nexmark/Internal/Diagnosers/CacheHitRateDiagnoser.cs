@@ -31,13 +31,15 @@ using System.Threading.Tasks;
 namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
 {
     /// <summary>
-    /// Reports the page cache hit percentage for the run.
-    /// Hits are the shared table hits plus the state client lookup table hits, since the
-    /// lock-free fast path bypasses the shared table counter. Misses are the table misses.
+    /// Reports the page cache hit percentages for the run, overall plus split by path.
+    /// Read hits are the table read hits plus the state client lookup table hits, since the
+    /// lock-free fast path bypasses the shared table counter. The read percentage measures
+    /// cache quality for query processing, the commit percentage measures how many dirty
+    /// pages survived in cache until the checkpoint.
     /// </summary>
     internal class CacheHitRateDiagnoser : IInProcessDiagnoser
     {
-        private readonly Dictionary<BenchmarkCase, (long Hits, long Misses)> results = [];
+        private readonly Dictionary<BenchmarkCase, (long ReadHits, long ReadMisses, long CommitHits, long CommitMisses)> results = [];
 
         public IEnumerable<string> Ids => [nameof(CacheHitRateDiagnoser)];
 
@@ -48,7 +50,11 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
         public void DeserializeResults(BenchmarkCase benchmarkCase, string serializedResults)
         {
             var parts = serializedResults.Split('|');
-            results.Add(benchmarkCase, (long.Parse(parts[0], CultureInfo.InvariantCulture), long.Parse(parts[1], CultureInfo.InvariantCulture)));
+            results.Add(benchmarkCase, (
+                long.Parse(parts[0], CultureInfo.InvariantCulture),
+                long.Parse(parts[1], CultureInfo.InvariantCulture),
+                long.Parse(parts[2], CultureInfo.InvariantCulture),
+                long.Parse(parts[3], CultureInfo.InvariantCulture)));
         }
 
         public void DisplayResults(ILogger logger)
@@ -74,10 +80,21 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
         {
             if (results.TryGetValue(diagnoserResults.BenchmarkCase, out var counts))
             {
-                var total = counts.Hits + counts.Misses;
+                var hits = counts.ReadHits + counts.CommitHits;
+                var total = hits + counts.ReadMisses + counts.CommitMisses;
                 if (total > 0)
                 {
-                    yield return new Metric(new CacheHitRateMetricDescriptor(), 100.0 * counts.Hits / total);
+                    yield return new Metric(new CacheHitRateMetricDescriptor(), 100.0 * hits / total);
+                }
+                var readTotal = counts.ReadHits + counts.ReadMisses;
+                if (readTotal > 0)
+                {
+                    yield return new Metric(new ReadHitRateMetricDescriptor(), 100.0 * counts.ReadHits / readTotal);
+                }
+                var commitTotal = counts.CommitHits + counts.CommitMisses;
+                if (commitTotal > 0)
+                {
+                    yield return new Metric(new CommitHitRateMetricDescriptor(), 100.0 * counts.CommitHits / commitTotal);
                 }
             }
         }
@@ -100,12 +117,42 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
             public bool GetIsAvailable(Metric metric)
                 => true;
         }
+
+        internal class ReadHitRateMetricDescriptor() : IMetricDescriptor
+        {
+            public string Id => "ReadHitRate";
+            public string DisplayName => "Read hit %";
+            public string Legend => "";
+            public string NumberFormat => "#0.00";
+            public UnitType UnitType => UnitType.Dimensionless;
+            public string Unit => "%";
+            public bool TheGreaterTheBetter => true;
+            public int PriorityInCategory => 2;
+            public bool GetIsAvailable(Metric metric)
+                => true;
+        }
+
+        internal class CommitHitRateMetricDescriptor() : IMetricDescriptor
+        {
+            public string Id => "CommitHitRate";
+            public string DisplayName => "Commit hit %";
+            public string Legend => "";
+            public string NumberFormat => "#0.00";
+            public UnitType UnitType => UnitType.Dimensionless;
+            public string Unit => "%";
+            public bool TheGreaterTheBetter => true;
+            public int PriorityInCategory => 3;
+            public bool GetIsAvailable(Metric metric)
+                => true;
+        }
     }
 
     public class CacheHitRateHandler : IInProcessDiagnoserHandler
     {
-        private long _hits;
-        private long _misses;
+        private long _readHits;
+        private long _readMisses;
+        private long _commitHits;
+        private long _commitMisses;
         private MeterListener? _listener;
 
         public ValueTask HandleAsync(BenchmarkSignal signal, InProcessDiagnoserActionArgs args, CancellationToken cancellationToken)
@@ -134,9 +181,10 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
             _listener = new MeterListener();
             _listener.InstrumentPublished = (instrument, meterListener) =>
             {
-                // Exact names, cache_hits is a prefix of cache_hits_percentage.
-                if (instrument.Name == "flowtide_lru_table_cache_hits" ||
-                    instrument.Name == "flowtide_lru_table_cache_misses" ||
+                if (instrument.Name == "flowtide_cache_read_hits" ||
+                    instrument.Name == "flowtide_cache_read_misses" ||
+                    instrument.Name == "flowtide_cache_commit_hits" ||
+                    instrument.Name == "flowtide_cache_commit_misses" ||
                     instrument.Name == "flowtide_state_client_lookup_hits")
                 {
                     meterListener.EnableMeasurementEvents(instrument, null);
@@ -144,13 +192,21 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
             };
             _listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) =>
             {
-                if (instrument.Name == "flowtide_lru_table_cache_misses")
+                switch (instrument.Name)
                 {
-                    Interlocked.Add(ref _misses, measurement);
-                }
-                else
-                {
-                    Interlocked.Add(ref _hits, measurement);
+                    case "flowtide_cache_read_hits":
+                    case "flowtide_state_client_lookup_hits":
+                        Interlocked.Add(ref _readHits, measurement);
+                        break;
+                    case "flowtide_cache_read_misses":
+                        Interlocked.Add(ref _readMisses, measurement);
+                        break;
+                    case "flowtide_cache_commit_hits":
+                        Interlocked.Add(ref _commitHits, measurement);
+                        break;
+                    case "flowtide_cache_commit_misses":
+                        Interlocked.Add(ref _commitMisses, measurement);
+                        break;
                 }
             });
             _listener.Start();
@@ -162,7 +218,7 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
 
         public string SerializeResults()
         {
-            return string.Create(CultureInfo.InvariantCulture, $"{Volatile.Read(ref _hits)}|{Volatile.Read(ref _misses)}");
+            return string.Create(CultureInfo.InvariantCulture, $"{Volatile.Read(ref _readHits)}|{Volatile.Read(ref _readMisses)}|{Volatile.Read(ref _commitHits)}|{Volatile.Read(ref _commitMisses)}");
         }
     }
 }

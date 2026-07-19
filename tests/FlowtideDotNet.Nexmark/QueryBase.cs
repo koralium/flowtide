@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Nexmark
             string baseDir = GetBaseDir();
             _stream = new NexmarkQueryStream(baseDir, iterationId.ToString())
             {
-                CachePageCount = 100_000
+                CachePageCount = 1000
             };
             iterationId++;
         }
