@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
     /// </summary>
     internal class CacheHitRateDiagnoser : IInProcessDiagnoser
     {
-        private readonly Dictionary<BenchmarkCase, (long ReadHits, long ReadMisses, long CommitHits, long CommitMisses)> results = [];
+        private readonly Dictionary<BenchmarkCase, (long ReadHits, long ReadMisses, long CommitHits, long CommitMisses, double AvgSize, long MaxSize, long Promotions, double AvgMain, long Refills)> results = [];
 
         public IEnumerable<string> Ids => [nameof(CacheHitRateDiagnoser)];
 
@@ -54,7 +54,12 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
                 long.Parse(parts[0], CultureInfo.InvariantCulture),
                 long.Parse(parts[1], CultureInfo.InvariantCulture),
                 long.Parse(parts[2], CultureInfo.InvariantCulture),
-                long.Parse(parts[3], CultureInfo.InvariantCulture)));
+                long.Parse(parts[3], CultureInfo.InvariantCulture),
+                double.Parse(parts[4], CultureInfo.InvariantCulture),
+                long.Parse(parts[5], CultureInfo.InvariantCulture),
+                long.Parse(parts[6], CultureInfo.InvariantCulture),
+                double.Parse(parts[7], CultureInfo.InvariantCulture),
+                long.Parse(parts[8], CultureInfo.InvariantCulture)));
         }
 
         public void DisplayResults(ILogger logger)
@@ -95,6 +100,18 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
                 if (commitTotal > 0)
                 {
                     yield return new Metric(new CommitHitRateMetricDescriptor(), 100.0 * counts.CommitHits / commitTotal);
+                }
+                if (counts.MaxSize > 0)
+                {
+                    // Sampled resident page count, shows whether an eviction backlog let the
+                    // cache grow past its configured limit and inflated the hit percentages.
+                    yield return new Metric(new AvgCachePagesMetricDescriptor(), counts.AvgSize);
+                    yield return new Metric(new MaxCachePagesMetricDescriptor(), counts.MaxSize);
+                    // Shows whether the promotion machinery participates at all.
+                    yield return new Metric(new PromotionsMetricDescriptor(), counts.Promotions);
+                    yield return new Metric(new AvgMainPagesMetricDescriptor(), counts.AvgMain);
+                    // Only nonzero when the long usage credit design is active.
+                    yield return new Metric(new RefillsMetricDescriptor(), counts.Refills);
                 }
             }
         }
@@ -145,15 +162,91 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
             public bool GetIsAvailable(Metric metric)
                 => true;
         }
+
+        internal class AvgCachePagesMetricDescriptor() : IMetricDescriptor
+        {
+            public string Id => "CacheAvgPages";
+            public string DisplayName => "Avg pages";
+            public string Legend => "Sampled resident cache pages, above the configured limit means an eviction backlog inflated the hit rate";
+            public string NumberFormat => "#0";
+            public UnitType UnitType => UnitType.Dimensionless;
+            public string Unit => "Count";
+            public bool TheGreaterTheBetter => false;
+            public int PriorityInCategory => 4;
+            public bool GetIsAvailable(Metric metric)
+                => true;
+        }
+
+        internal class MaxCachePagesMetricDescriptor() : IMetricDescriptor
+        {
+            public string Id => "CacheMaxPages";
+            public string DisplayName => "Max pages";
+            public string Legend => "";
+            public string NumberFormat => "#0";
+            public UnitType UnitType => UnitType.Dimensionless;
+            public string Unit => "Count";
+            public bool TheGreaterTheBetter => false;
+            public int PriorityInCategory => 5;
+            public bool GetIsAvailable(Metric metric)
+                => true;
+        }
+
+        internal class PromotionsMetricDescriptor() : IMetricDescriptor
+        {
+            public string Id => "CachePromotions";
+            public string DisplayName => "Promotions";
+            public string Legend => "Small to main queue promotions, zero means the frequency machinery never participates";
+            public string NumberFormat => "#0";
+            public UnitType UnitType => UnitType.Dimensionless;
+            public string Unit => "Count";
+            public bool TheGreaterTheBetter => false;
+            public int PriorityInCategory => 6;
+            public bool GetIsAvailable(Metric metric)
+                => true;
+        }
+
+        internal class AvgMainPagesMetricDescriptor() : IMetricDescriptor
+        {
+            public string Id => "CacheAvgMainPages";
+            public string DisplayName => "Avg main";
+            public string Legend => "";
+            public string NumberFormat => "#0";
+            public UnitType UnitType => UnitType.Dimensionless;
+            public string Unit => "Count";
+            public bool TheGreaterTheBetter => false;
+            public int PriorityInCategory => 7;
+            public bool GetIsAvailable(Metric metric)
+                => true;
+        }
+
+        internal class RefillsMetricDescriptor() : IMetricDescriptor
+        {
+            public string Id => "CacheLongRefills";
+            public string DisplayName => "Refills";
+            public string Legend => "Long usage credit refills in the main queue scan";
+            public string NumberFormat => "#0";
+            public UnitType UnitType => UnitType.Dimensionless;
+            public string Unit => "Count";
+            public bool TheGreaterTheBetter => false;
+            public int PriorityInCategory => 8;
+            public bool GetIsAvailable(Metric metric)
+                => true;
+        }
     }
 
     public class CacheHitRateHandler : IInProcessDiagnoserHandler
     {
-        private long _readHits;
-        private long _readMisses;
-        private long _commitHits;
-        private long _commitMisses;
+        // Observable counters are cumulative, polling must store the last value per
+        // instrument instead of adding, and lookup hits has one instrument per state
+        // client so the final value is the sum of the last values.
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<Instrument, long> _counterValues = new();
+        private long _sizeSum;
+        private long _sizeSamples;
+        private long _sizeMax;
+        private long _mainSizeSum;
+        private long _mainSizeSamples;
         private MeterListener? _listener;
+        private System.Threading.Timer? _timer;
 
         public ValueTask HandleAsync(BenchmarkSignal signal, InProcessDiagnoserActionArgs args, CancellationToken cancellationToken)
         {
@@ -163,11 +256,11 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
                     SetupMetricGatherer();
                     break;
                 case BenchmarkSignal.AfterExtraIteration:
+                    _timer?.Dispose();
                     if (_listener != null)
                     {
-                        // The counters are observable, they only report when polled.
-                        // One pull here reads the final cumulative values while the streams
-                        // meters are still alive, iteration cleanup disposes them later.
+                        // Final pull while the streams meters are still alive, iteration
+                        // cleanup disposes them later.
                         _listener.RecordObservableInstruments();
                         _listener.Dispose();
                     }
@@ -185,31 +278,54 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
                     instrument.Name == "flowtide_cache_read_misses" ||
                     instrument.Name == "flowtide_cache_commit_hits" ||
                     instrument.Name == "flowtide_cache_commit_misses" ||
-                    instrument.Name == "flowtide_state_client_lookup_hits")
+                    instrument.Name == "flowtide_state_client_lookup_hits" ||
+                    instrument.Name == "flowtide_s3fifo_small_queue_promotions" ||
+                    instrument.Name == "flowtide_s3fifo_long_usage_refills" ||
+                    instrument.Name == "flowtide_s3fifo_main_queue_size" ||
+                    instrument.Name == "flowtide_lru_table_size")
                 {
                     meterListener.EnableMeasurementEvents(instrument, null);
                 }
             };
             _listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) =>
             {
-                switch (instrument.Name)
+                _counterValues[instrument] = measurement;
+            });
+            // The size gauges sample the resident page count during the run, so the result
+            // shows whether an eviction backlog let the cache grow past its configured
+            // limit, which would inflate the hit percentages, and how populated the main
+            // queue actually is.
+            _listener.SetMeasurementEventCallback<int>((instrument, measurement, tags, state) =>
+            {
+                if (instrument.Name == "flowtide_s3fifo_main_queue_size")
                 {
-                    case "flowtide_cache_read_hits":
-                    case "flowtide_state_client_lookup_hits":
-                        Interlocked.Add(ref _readHits, measurement);
+                    Interlocked.Add(ref _mainSizeSum, measurement);
+                    Interlocked.Increment(ref _mainSizeSamples);
+                    return;
+                }
+                Interlocked.Add(ref _sizeSum, measurement);
+                Interlocked.Increment(ref _sizeSamples);
+                long current;
+                while (measurement > (current = Volatile.Read(ref _sizeMax)))
+                {
+                    if (Interlocked.CompareExchange(ref _sizeMax, measurement, current) == current)
+                    {
                         break;
-                    case "flowtide_cache_read_misses":
-                        Interlocked.Add(ref _readMisses, measurement);
-                        break;
-                    case "flowtide_cache_commit_hits":
-                        Interlocked.Add(ref _commitHits, measurement);
-                        break;
-                    case "flowtide_cache_commit_misses":
-                        Interlocked.Add(ref _commitMisses, measurement);
-                        break;
+                    }
                 }
             });
             _listener.Start();
+            _timer = new System.Threading.Timer(_ =>
+            {
+                try
+                {
+                    _listener?.RecordObservableInstruments();
+                }
+                catch
+                {
+                    // The listener can be disposed while a tick is in flight.
+                }
+            }, null, 20, 20);
         }
 
         public void Initialize(string? serializedConfig)
@@ -218,7 +334,42 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
 
         public string SerializeResults()
         {
-            return string.Create(CultureInfo.InvariantCulture, $"{Volatile.Read(ref _readHits)}|{Volatile.Read(ref _readMisses)}|{Volatile.Read(ref _commitHits)}|{Volatile.Read(ref _commitMisses)}");
+            long readHits = 0;
+            long readMisses = 0;
+            long commitHits = 0;
+            long commitMisses = 0;
+            long promotions = 0;
+            long refills = 0;
+            foreach (var kv in _counterValues)
+            {
+                switch (kv.Key.Name)
+                {
+                    case "flowtide_cache_read_hits":
+                    case "flowtide_state_client_lookup_hits":
+                        readHits += kv.Value;
+                        break;
+                    case "flowtide_cache_read_misses":
+                        readMisses += kv.Value;
+                        break;
+                    case "flowtide_cache_commit_hits":
+                        commitHits += kv.Value;
+                        break;
+                    case "flowtide_cache_commit_misses":
+                        commitMisses += kv.Value;
+                        break;
+                    case "flowtide_s3fifo_small_queue_promotions":
+                        promotions += kv.Value;
+                        break;
+                    case "flowtide_s3fifo_long_usage_refills":
+                        refills += kv.Value;
+                        break;
+                }
+            }
+            var samples = Volatile.Read(ref _sizeSamples);
+            var avgSize = samples > 0 ? (double)Volatile.Read(ref _sizeSum) / samples : 0;
+            var mainSamples = Volatile.Read(ref _mainSizeSamples);
+            var avgMain = mainSamples > 0 ? (double)Volatile.Read(ref _mainSizeSum) / mainSamples : 0;
+            return string.Create(CultureInfo.InvariantCulture, $"{readHits}|{readMisses}|{commitHits}|{commitMisses}|{avgSize:0.##}|{Volatile.Read(ref _sizeMax)}|{promotions}|{avgMain:0.##}|{refills}");
         }
     }
 }

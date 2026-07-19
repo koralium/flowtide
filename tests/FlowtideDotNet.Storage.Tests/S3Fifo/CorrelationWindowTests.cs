@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         [Fact]
-        public async Task WindowIsHalfTheSmallQueueTarget()
+        public async Task WindowIsFivePercentOfCacheSize()
         {
             using var large = await S3FifoTestHelpers.CreateStoppedTable(100);
             Assert.Equal(5, large.CorrelationWindowSizeForTests);
@@ -80,7 +80,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         [Fact]
-        public async Task HitsAfterAgingPastTheWindowStillPromote()
+        public async Task HitsInSeparateWindowsPromote()
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
             var handler = new TestEvictHandler();
@@ -93,10 +93,17 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, new TestCacheObject(i), handler);
             }
 
-            // These hits are outside the window and count.
-            Touch(table, 0, 2);
+            // Outside the window, counts and moves the stamp.
+            Touch(table, 0, 1);
 
-            for (var i = 7; i <= 100; i++)
+            // Age past the window again so the second hit also counts.
+            for (var i = 7; i <= 12; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            Touch(table, 0, 1);
+
+            for (var i = 13; i <= 100; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
@@ -106,6 +113,36 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(table.TryPeekEntryForTests(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
             Assert.False(table.IsInGhostForTests(0));
+        }
+
+        /// <summary>
+        /// A burst of hits counts as one reuse event.
+        /// The stamp moves on a counted hit, so more hits only count after the window passes.
+        /// </summary>
+        [Fact]
+        public async Task BurstCountsOnceUntilWindowPasses()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
+            var handler = new TestEvictHandler();
+
+            table.Add(0, new TestCacheObject(0), handler);
+            for (var i = 1; i <= 6; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+
+            // Aged past the window, the first hit counts, the burst does not.
+            Touch(table, 0, 3);
+            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.Equal(1, entry.Frequency);
+
+            // After the window passes the next burst counts once more.
+            for (var i = 7; i <= 12; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            Touch(table, 0, 3);
+            Assert.Equal(2, entry.Frequency);
         }
 
         /// <summary>
@@ -129,11 +166,22 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
             for (var i = 0; i < 5; i++)
             {
-                Touch(table, i, 2);
+                Touch(table, i, 1);
             }
 
             // Scan, every page touched twice right after insert.
-            for (var i = 10; i < 100; i++)
+            for (var i = 10; i < 65; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+                Touch(table, i, 2);
+            }
+
+            // Second reuse of the hot set in a later window, then the rest of the scan.
+            for (var i = 0; i < 5; i++)
+            {
+                Touch(table, i, 1);
+            }
+            for (var i = 65; i < 100; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
                 Touch(table, i, 2);

@@ -139,12 +139,11 @@ namespace FlowtideDotNet.Benchmarks
             // Saturated frequency, so RecordAccess hits the early-out before the gate.
             _hotEntry = new S3FifoCacheEntry(1, new BenchCacheObject(), new NoopEvictHandler(), _correlationClock);
             _hotEntry.Frequency = S3FifoCacheEntry.MaxFrequency;
-            _hotEntry.ClearSmallQueueStamp();
 
-            // Young in the small queue and inside the window, so RecordAccess runs the gate
+            // Freshly stamped and inside the window, so RecordAccess runs the gate
             // and stays uncounted, never saturating.
             _youngEntry = new S3FifoCacheEntry(2, new BenchCacheObject(), new NoopEvictHandler(), _correlationClock);
-            _youngEntry.SetSmallQueueStamp(_correlationClock.NextSequence());
+            _youngEntry.SetCountStamp(_correlationClock.NextSequence());
         }
 
         [GlobalCleanup]

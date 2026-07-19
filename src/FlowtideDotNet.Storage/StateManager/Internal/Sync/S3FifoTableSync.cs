@@ -32,7 +32,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     ///
     /// Reads never touch the queues, a hit only bumps the entry frequency.
     /// Queue maintenance happens on insert and in the background cleanup task.
-    /// A 2Q style correlation window stops insertion bursts from being promoted, see S3FifoCorrelationClock.
+    /// Frequency uses spaced counting, a hit only counts when the entry aged past the
+    /// correlation window since its insertion or last counted hit, so a burst counts as
+    /// one reuse event, see S3FifoCorrelationClock.
     ///
     /// lock(entry) guards Removed, Frequency and Version.
     /// m_queueLock guards the queues, the stale counters and entry.Location.
@@ -472,18 +474,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                     lock (m_queueLock)
                     {
+                        // The entry is already in the dictionary, so a hit can land before
+                        // this stamp and count. The gap is tiny and the filter is a heuristic.
+                        entry.SetCountStamp(m_correlationClock.NextSequence());
                         if (m_ghostKeys.Remove(key))
                         {
                             // Recently evicted from the small queue, admit directly to main.
-                            // Never stamped, so every hit counts.
                             entry.Location = S3FifoQueueLocation.Main;
                             m_mainQueue.Enqueue(entry);
                         }
                         else
                         {
-                            // The entry is already in the dictionary, so a hit can land before
-                            // this stamp and count. The gap is tiny and the filter is a heuristic.
-                            entry.SetSmallQueueStamp(m_correlationClock.NextSequence());
                             entry.Location = S3FifoQueueLocation.Small;
                             m_smallQueue.Enqueue(entry);
                         }
@@ -511,13 +512,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Correlation window width, half the small queue target.
-        /// The target is used instead of the live length, which races and counts stale slots.
-        /// Integer division makes the window 0 for MaxSize below 20, disabling the filter.
+        /// Correlation window width, five percent of the cache capacity.
+        /// A hit must be this many insertions after the entrys insertion or last counted hit
+        /// to count as reuse. Integer division makes the window 0 for MaxSize below 20,
+        /// disabling the filter.
         /// </summary>
         private int CorrelationWindowSize()
         {
-            return SmallQueueTargetSize() / 2;
+            return Volatile.Read(ref maxSize) / 20;
         }
 
         private int GhostCapacity()
@@ -749,8 +751,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                                 {
                                     continue;
                                 }
-                                // Re-enters the small queue at the tail, so the window restarts.
-                                entry.SetSmallQueueStamp(m_correlationClock.NextSequence());
                                 entry.Location = S3FifoQueueLocation.Small;
                                 m_smallQueue.Enqueue(entry);
                             }
@@ -868,18 +868,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         }
                         continue;
                     }
-                    if (Volatile.Read(ref entry.Frequency) > 1)
+                    if (Volatile.Read(ref entry.Frequency) > 0)
                     {
-                        // Accessed more than once while in the small queue, promote to main.
-                        // With the window only aged hits count, so this means two aged hits.
-                        entry.ClearSmallQueueStamp();
+                        // One counted hit promotes. With spaced counting a counted hit is a
+                        // real reuse signal, the insertion burst never counts, so promotion
+                        // here saves the page the ghost round trip and its extra miss.
                         entry.Location = S3FifoQueueLocation.Main;
                         m_mainQueue.Enqueue(entry);
                         m_smallQueuePromotions++;
                         continue;
                     }
-                    // Leaving the small queue as a victim, later hits should count.
-                    entry.ClearSmallQueueStamp();
                     entry.Location = S3FifoQueueLocation.None;
                     victims.Add(new EvictionCandidate(entry, entry.Version, fromSmallQueue: true));
                     return true;

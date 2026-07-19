@@ -35,22 +35,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     internal sealed class S3FifoCacheEntry
     {
         /// <summary>
-        /// Max access frequency per entry, 2 bits.
+        /// Max access frequency per entry.
+        /// With spaced counting each point is one window of real reuse. Kept shallow so an
+        /// abandoned page drains in a few scan laps.
         /// </summary>
         public const int MaxFrequency = 3;
-
-        /// <summary>
-        /// Set when the entry is not in the small queue, so every hit counts.
-        /// </summary>
-        private const long NotInSmallQueue = -1;
 
         private readonly S3FifoCorrelationClock _correlationClock;
 
         /// <summary>
-        /// Small queue enqueue sequence, or NotInSmallQueue.
-        /// Written under the queue lock, read lock-free on the hit path.
+        /// Clock value at the insertion or the last counted hit.
+        /// A hit within the window of this stamp is correlated and does not count.
+        /// Always valid, the constructor stamps it so a hit landing before the insert
+        /// finishes its bookkeeping is treated as part of the insertion burst.
+        /// Written at insertion and by RecordAccess itself, read lock-free on the hit path.
         /// </summary>
-        private long _smallQueueStamp = NotInSmallQueue;
+        private long _lastCountedStamp;
 
         public S3FifoCacheEntry(long key, ICacheObject value, ICacheEvictHandler evictHandler, S3FifoCorrelationClock correlationClock)
         {
@@ -58,6 +58,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             Value = value;
             EvictHandler = evictHandler;
             _correlationClock = correlationClock;
+            _lastCountedStamp = correlationClock.CurrentSequence();
         }
 
         public long Key { get; }
@@ -109,27 +110,21 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Stamps the entry when it enters the small queue.
-        /// Called under the queue lock on insert and on the failed-evict requeue.
+        /// Stamps the entry at insertion, so the insertion burst does not count as reuse.
         /// </summary>
-        public void SetSmallQueueStamp(long sequence)
+        public void SetCountStamp(long sequence)
         {
-            Volatile.Write(ref _smallQueueStamp, sequence);
+            Volatile.Write(ref _lastCountedStamp, sequence);
         }
 
         /// <summary>
-        /// Clears the stamp when the entry leaves the small queue.
-        /// From then on every hit counts.
-        /// </summary>
-        public void ClearSmallQueueStamp()
-        {
-            Volatile.Write(ref _smallQueueStamp, NotInSmallQueue);
-        }
-
-        /// <summary>
-        /// Saturating lock-free frequency bump.
-        /// Correlated hits while young in the small queue do not count, so an insertion burst
-        /// cannot earn promotion. Hot entries return before the stamp read, cost unchanged.
+        /// Saturating lock-free frequency bump with spaced counting.
+        /// A hit only counts when the entry has aged past the window since its insertion or
+        /// its last counted hit, so a burst of accesses close together counts as one reuse
+        /// event instead of saturating the frequency instantly. The stamp only moves on a
+        /// counted hit, a hammered entry still earns frequency once per window.
+        /// One window for all entries. Racing counted hits can both pass the check, that is
+        /// accepted heuristic noise.
         /// </summary>
         public void RecordAccess()
         {
@@ -138,8 +133,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 return;
             }
-            var stamp = Volatile.Read(ref _smallQueueStamp);
-            if (stamp != NotInSmallQueue && _correlationClock.IsCorrelated(stamp))
+            if (_correlationClock.IsCorrelated(Volatile.Read(ref _lastCountedStamp)))
             {
                 return;
             }
@@ -148,6 +142,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var observed = Interlocked.CompareExchange(ref Frequency, current + 1, current);
                 if (observed == current)
                 {
+                    Volatile.Write(ref _lastCountedStamp, _correlationClock.CurrentSequence());
                     break;
                 }
                 current = observed;

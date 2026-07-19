@@ -13,8 +13,9 @@
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     /// <summary>
-    /// 2Q style correlation window over the small queue.
-    /// A hit while an entry is young in the small queue does not count as reuse.
+    /// Correlation window clock, ticks on every cache insertion.
+    /// A hit within the window of an entrys last counted hit does not count as reuse,
+    /// so a burst of accesses close together counts as one reuse event.
     /// </summary>
     internal sealed class S3FifoCorrelationClock
     {
@@ -30,6 +31,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
+        /// Current clock value without advancing, used to stamp a counted hit.
+        /// </summary>
+        public long CurrentSequence()
+        {
+            return Volatile.Read(ref m_sequence);
+        }
+
+        /// <summary>
         /// Sets the window width. Zero disables the filter.
         /// </summary>
         public void SetWindowSize(int windowSize)
@@ -40,10 +49,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// <summary>
         /// True when the hit is still inside the correlation window.
         /// </summary>
-        public bool IsCorrelated(long smallQueueStamp)
+        public bool IsCorrelated(long stamp)
         {
             var window = Volatile.Read(ref m_windowSize);
-            return window > 0 && Volatile.Read(ref m_sequence) - smallQueueStamp < window;
+            return window > 0 && Volatile.Read(ref m_sequence) - stamp < window;
         }
 
         internal int WindowSizeForTests => Volatile.Read(ref m_windowSize);

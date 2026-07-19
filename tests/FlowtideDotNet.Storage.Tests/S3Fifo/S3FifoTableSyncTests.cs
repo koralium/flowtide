@@ -131,7 +131,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         [Fact]
-        public async Task EntryAccessedOnceIsStillEvictedFromSmallQueue()
+        public async Task EntryAccessedOnceIsPromotedFromSmallQueue()
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
             var handler = new TestEvictHandler();
@@ -139,13 +139,16 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // A single access gives frequency 1, which does not promote (needs > 1).
+            // One counted access is a real reuse signal and promotes, saving the page the
+            // ghost round trip. The next-oldest entries are evicted instead.
             Assert.True(table.TryGetValue(0, out var cacheObject));
             cacheObject!.Return();
 
             await table.ForceCleanup();
 
-            Assert.Contains(0, handler.EvictedKeys);
+            Assert.DoesNotContain(0, handler.EvictedKeys);
+            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
         }
 
         [Fact]
@@ -430,8 +433,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
 
             // Hold a reference to key 0 across a cleanup, like a B+ tree iterator would.
-            Assert.True(table.TryGetValue(0, out var rented));
-            Assert.Same(objects[0], rented);
+            // Rent directly on the object, a table read would now count as a promoting hit.
+            Assert.True(objects[0].TryRent());
 
             await table.ForceCleanup();
 
@@ -439,7 +442,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             // A later read must return the same object, not a reloaded copy.
             Assert.Contains(0, handler.EvictedKeys);
             Assert.True(table.TryGetValue(0, out var again));
-            Assert.Same(rented, again);
+            Assert.Same(objects[0], again);
             again!.Return();
             Assert.False(objects[0].RemovedFromCache);
             Assert.False(objects[0].Disposed);
@@ -450,7 +453,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             // Accounting is unharmed by the skipped eviction, cache share plus our rent.
             Assert.Equal(2, objects[0].RentCount);
-            rented!.Return();
+            objects[0].Return();
             Assert.Equal(1, objects[0].RentCount);
 
             // A second cleanup finds an unreferenced victim instead.
@@ -604,7 +607,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
 
             // Key 0 is held so its reclaim fails and it lands on the requeue list.
-            Assert.True(table.TryGetValue(0, out _));
+            // Rent directly on the object, a table read would now count as a promoting hit.
+            Assert.True(objects[0].TryRent());
 
             // Key 1 holds the removal phase open after key 0's requeue decision was made.
             objects[1].OnTryReclaimForEviction = () =>
