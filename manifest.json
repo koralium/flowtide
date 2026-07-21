@@ -12277,6 +12277,16 @@
     },
     {
       "type": "Conceptual",
+      "source_relative_path": "docs/expressions/tablefunctions/datetime.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/expressions/tablefunctions/datetime.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
       "source_relative_path": "docs/expressions/tablefunctions/generic.md",
       "output": {
         ".html": {

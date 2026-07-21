@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Datetime Functions | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Datetime Functions | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../../../images/favicon.ico">
+      <link rel="stylesheet" href="../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/blob/main/docs/docs/expressions/tablefunctions/datetime.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../index.html">
+            <img id="logo" class="svg" src="../../../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="datetime-functions">Datetime Functions</h1>
+
+<h2 id="hopping-window">Hopping Window</h2>
+<p><em>This function has no substrait equivalent</em></p>
+<ul>
+<li><strong>Extension URI:</strong> /functions_datetime.yaml</li>
+<li><strong>Extension Name:</strong> hopping_window</li>
+</ul>
+<p>Hopping window, also called sliding window, returns one row for each window a timestamp belongs to.
+It adds two columns:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>window_start</code></td>
+<td>timestamp</td>
+<td>Start of the window, inclusive</td>
+</tr>
+<tr>
+<td><code>window_end</code></td>
+<td>timestamp</td>
+<td>End of the window, exclusive</td>
+</tr>
+</tbody>
+</table>
+<p>Each window is <em>size</em> long and a new window starts every <em>hop</em>.
+The window starts are aligned from year one, which means that a one week window starts on a monday.
+A timestamp belongs to a window if it is on or after <em>window_start</em> and before <em>window_end</em>.</p>
+<p>Arguments:</p>
+<ol>
+<li>Timestamp to assign to windows</li>
+<li>Hop amount, the distance between two window starts</li>
+<li>Hop unit</li>
+<li>Size amount, the length of a window</li>
+<li>Size unit</li>
+</ol>
+<p>The amounts must be integer literals, and the units one of <em>WEEK</em>, <em>DAY</em>, <em>HOUR</em>, <em>MINUTE</em>, <em>SECOND</em>, <em>MILLISECOND</em> or <em>MICROSECOND</em>.
+Fractions are not allowed, use a smaller unit instead, for example <em>342 SECOND</em> instead of <em>5.7 MINUTE</em>.
+Calendar units such as <em>MONTH</em> and <em>YEAR</em> are not supported since their length varies.</p>
+<p>A timestamp falls into <em>size / hop</em> windows, rounded up:</p>
+<ul>
+<li>If the hop is smaller than the size, the windows overlap and a timestamp belongs to several windows.</li>
+<li>If the hop is equal to the size, the windows tumble and a timestamp belongs to exactly one window.</li>
+<li>If the hop is larger than the size, there are gaps between the windows and a timestamp can belong to no window.</li>
+</ul>
+<p>Since each row is duplicated once per window, a small hop together with a large size is rejected when the stream starts.
+The limit is 100 000 windows per row.</p>
+<p>If the input is null or not a timestamp, no windows are returned.</p>
+<h3 id="sql-usage">SQL Usage</h3>
+<h4 id="assigning-rows-to-windows">Assigning rows to windows</h4>
+<pre><code class="lang-sql">-- An order at 00:07 with a 5 minute hop and 10 minute size
+-- belongs to the windows starting at 00:00 and 00:05
+SELECT window_start, window_end
+FROM orders o
+INNER JOIN hopping_window(o.order_time, 5, 'MINUTE', 10, 'MINUTE')
+</code></pre>
+<h4 id="aggregating-per-window">Aggregating per window</h4>
+<p>The most common usage is to assign the rows to windows and then aggregate per window:</p>
+<pre><code class="lang-sql">SELECT
+  window_start,
+  count(*) as order_count
+FROM orders o
+INNER JOIN hopping_window(o.order_time, 5, 'MINUTE', 10, 'MINUTE')
+GROUP BY window_start
+</code></pre>
+<h4 id="left-join">Left join</h4>
+<pre><code class="lang-sql">SELECT o.id, window_start
+FROM orders o
+LEFT JOIN hopping_window(o.order_time, 10, 'MINUTE', 5, 'MINUTE')
+</code></pre>
+<p>When used in a LEFT JOIN, rows are still returned even if the timestamp does not belong to any window.
+The window columns are then null.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/docs/docs/expressions/tablefunctions/datetime.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
