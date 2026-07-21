@@ -39,9 +39,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
         private readonly List<int> _leftOutputColumns;
         private readonly List<int> _leftOutputIndices;
 
-        // The function output columns that are emitted, and the emit position each maps to.
-        // A query may project only some of a multi-column function's output (e.g. window_start
-        // without window_end), so these can be a subset of all function columns.
+        // A query can use only some of the function columns, these are the ones that are emitted
         private List<int>? _rightIncomingColumns;
         private List<int>? _rightOutputIndices;
 
@@ -230,9 +228,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
                     output.FoundOffsets.Dispose();
                 }
 
-                // Place the projected function columns. A query may drop some of a multi-column
-                // function's output, so only the columns in _rightIncomingColumns are emitted; the
-                // rest were produced but are unused and must be disposed.
+                // Only emit the columns that are used, the rest must be disposed
                 for (int i = 0; i < _rightIncomingColumns!.Count; i++)
                 {
                     emitColumns[_rightOutputIndices[i]] = output.FunctionColumns[_rightIncomingColumns[i]];

@@ -20,21 +20,13 @@ using System.Reflection;
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
 {
     /// <summary>
-    /// <c>hopping_window(timestamp, hop_amount, hop_unit, size_amount, size_unit)</c>: for each input
-    /// row, emits one <c>(window_start, window_end)</c> row for every hopping window the timestamp
-    /// falls into. Windows overlap when hop &lt; size and leave gaps when hop &gt; size. Stateless.
-    /// <para>
-    /// The hop and size are resolved to a fixed number of ticks at compile time, so they must be
-    /// literals with a fixed-duration unit (WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or
-    /// MICROSECOND); calendar units such as MONTH are rejected because their length varies.
-    /// </para>
+    /// Emits one window_start/window_end row for each hopping window the timestamp falls into.
+    /// Hop and size are converted to ticks at compile time, so they must be literals
+    /// with a fixed duration unit. Calendar units such as MONTH vary in length and are not allowed.
     /// </summary>
     internal static class HoppingWindowFunction
     {
-        // Every input row fans out into ceil(size / hop) windows. A tiny hop against a large size
-        // (e.g. a millisecond hop with a multi-day size, or a hop/size mix-up) would emit an
-        // enormous number of rows per input row and exhaust memory. Reject such configurations at
-        // compile time. 100k still allows fine-grained windows (e.g. per-second over a full day).
+        // Guard against a tiny hop with a large size, it would emit a huge amount of rows
         private const long MaxWindowsPerRow = 100_000;
 
         private static readonly MethodInfo _hoppingMethod = typeof(HoppingWindowFunction).GetMethod(nameof(DoHopping), BindingFlags.Static | BindingFlags.Public)
@@ -57,8 +49,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
                     var hopTicks = ResolveTicks(tableFunc.Arguments[1], tableFunc.Arguments[2], "hop");
                     var sizeTicks = ResolveTicks(tableFunc.Arguments[3], tableFunc.Arguments[4], "size");
 
-                    // floor(size / hop); the true window count is at most this + 1. Division avoids
-                    // any overflow from computing the ceiling directly.
+                    // Floor division, the real count is at most one higher, but this avoids overflow
                     var maxWindowsPerRow = sizeTicks / hopTicks;
                     if (maxWindowsPerRow > MaxWindowsPerRow)
                     {
@@ -117,7 +108,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
         {
             if (timestamp.Type != ArrowTypeId.Timestamp)
             {
-                // Non-timestamp / null input produces no windows (a LEFT join then emits its null row).
+                // Null or non timestamp values belong to no window
                 return;
             }
 
@@ -128,7 +119,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
             var startColumn = output.Columns[0];
             var endColumn = output.Columns[1];
 
-            // Largest window start (a multiple of hop) that is <= t.
+            // Find the last window start before or on the timestamp
             long mod = t % hopTicks;
             if (mod < 0)
             {
@@ -136,7 +127,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
             }
             long lastStart = t - mod;
 
-            // Walk backwards while the window still contains t (start > t - size).
+            // Go backwards as long as the window still contains the timestamp
             int count = 0;
             for (long start = lastStart; start > t - sizeTicks; start -= hopTicks)
             {

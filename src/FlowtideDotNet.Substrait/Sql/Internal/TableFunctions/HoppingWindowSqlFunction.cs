@@ -18,10 +18,7 @@ using SqlParser.Ast;
 namespace FlowtideDotNet.Substrait.Sql.Internal.TableFunctions
 {
     /// <summary>
-    /// Registers the <c>hopping_window(timestamp, hop_amount, hop_unit, size_amount, size_unit)</c>
-    /// table function. For each input row it emits one row per hopping window the timestamp falls
-    /// into, adding <c>window_start</c> and <c>window_end</c> columns. Overlapping windows are
-    /// produced when the hop is smaller than the size.
+    /// Table function that emits window_start and window_end for each window a timestamp falls into.
     /// </summary>
     internal static class HoppingWindowSqlFunction
     {

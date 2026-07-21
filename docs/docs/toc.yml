@@ -117,6 +117,8 @@
       items:
         - name: Generic Functions
           href: expressions/tablefunctions/generic.md
+        - name: Datetime Functions
+          href: expressions/tablefunctions/datetime.md
     - name: Window Functions
       href: expressions/windowfunctions/index.md
       items:

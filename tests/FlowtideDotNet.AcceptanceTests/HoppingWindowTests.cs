@@ -24,8 +24,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowOverlappingWindows()
         {
-            // hop 5 min, size 10 min => each timestamp belongs to two overlapping windows.
-            // 00:07 falls into [00:00, 00:10) and [00:05, 00:15).
+            // 00:07 with hop 5 min and size 10 min lands in two overlapping windows
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
             await StartStream(@"
                 INSERT INTO output
@@ -44,7 +43,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowTumblingSingleWindow()
         {
-            // hop == size => non-overlapping (tumbling) windows, each timestamp in exactly one.
+            // Equal hop and size gives tumbling windows, each timestamp lands in exactly one
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
             await StartStream(@"
                 INSERT INTO output
@@ -62,8 +61,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowGapEmitsNullForLeftJoin()
         {
-            // hop 10 min > size 5 min leaves gaps between windows. 00:07 falls in the gap
-            // [00:05, 00:10), so it belongs to no window and the LEFT join emits a null window.
+            // A hop larger than the size leaves gaps, 00:07 lands in a gap and gets null windows
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
             await StartStream(@"
                 INSERT INTO output
@@ -81,9 +79,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowTimestampOnBoundary()
         {
-            // A timestamp exactly on a window start must be included in that window (start-inclusive)
-            // and excluded from the window that ends on it (end-exclusive). 00:05 belongs to
-            // [00:00, 00:10) and [00:05, 00:15) but NOT [23:55, 00:05).
+            // The start is inclusive and the end exclusive, so 00:05 is not in [23:55, 00:05)
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 5, 0) });
             await StartStream(@"
                 INSERT INTO output
@@ -102,7 +98,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowDayUnit()
         {
-            // Exercises a different (larger) fixed unit than MINUTE. Daily tumbling window.
+            // Daily tumbling window, checks a larger unit than minutes
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 12, 0, 0) });
             await StartStream(@"
                 INSERT INTO output
@@ -120,8 +116,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowSecondUnit()
         {
-            // Sub-minute unit: verifies second precision survives timestamp ingestion and the
-            // SECOND multiplier. 00:00:07 with hop 5s / size 10s falls into two windows.
+            // Checks that second precision is kept through the stream
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 0, 7) });
             await StartStream(@"
                 INSERT INTO output
@@ -140,7 +135,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowMillisecondUnit()
         {
-            // Millisecond-granularity windows. 7ms with hop 5ms / size 10ms falls into two windows.
+            // Checks that millisecond precision is kept through the stream
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 0, 0, 7) });
             await StartStream(@"
                 INSERT INTO output
@@ -159,8 +154,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowMicrosecondUnit()
         {
-            // Microsecond-granularity windows: verifies precision below a millisecond survives
-            // timestamp ingestion. 7us with hop 5us / size 10us falls into two windows.
+            // Checks that microsecond precision is kept through the stream
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 0, 0, 0, 7) });
             await StartStream(@"
                 INSERT INTO output
@@ -179,8 +173,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowSizeTenHopTwoGivesFiveWindows()
         {
-            // size 10s / hop 2s => each timestamp falls into ceil(10/2) = 5 overlapping windows.
-            // 00:00:11 keeps all five windows on the same day.
+            // A size five times the hop should give five overlapping windows
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 0, 11) });
             await StartStream(@"
                 INSERT INTO output
@@ -202,9 +195,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowProjectOnlyLeftColumns()
         {
-            // Projecting none of the function's output columns exercises the empty-right-column
-            // path of the join emit mapping (all generated columns produced then disposed), while
-            // the fan-out still duplicates the left row once per window.
+            // Using no window column should still duplicate the row for each window
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 7, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
             await StartStream(@"
                 INSERT INTO output
@@ -213,7 +204,6 @@ namespace FlowtideDotNet.AcceptanceTests
                 INNER JOIN hopping_window(Orderdate, 5, 'MINUTE', 10, 'MINUTE');");
             await WaitForUpdate();
 
-            // 00:07 falls into two windows, so the row is emitted twice.
             AssertCurrentDataEqual(new[]
             {
                 new { OrderKey = 7 },
@@ -224,8 +214,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowRejectsExcessiveFanout()
         {
-            // A millisecond hop against a day-long size would fan every row into ~86M windows.
-            // The compile-time guard must reject it rather than exhaust memory.
+            // A millisecond hop with a day long size must be rejected on start
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 0, 0) });
             var ex = await Assert.ThrowsAnyAsync<Exception>(async () =>
             {
@@ -242,9 +231,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task HoppingWindowGroupByAggregation()
         {
-            // The typical usage: fan rows into windows, then aggregate per window.
-            // Two orders four minutes apart; with hop 5 min / size 10 min they share the
-            // window [00:00, 00:10) and each also lands in one neighbouring window.
+            // The common use case, aggregate the rows per window
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 3, 0) });
             AddOrUpdateOrder(new Entities.Order() { OrderKey = 2, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
             await StartStream(@"
@@ -255,7 +242,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 GROUP BY window_start;");
             await WaitForUpdate();
 
-            // 00:03 -> windows starting 23:55(prev), 00:00 ; 00:07 -> windows starting 00:00, 00:05
+            // Both orders share the window starting at 00:00
             AssertCurrentDataEqual(new[]
             {
                 new { window_start = new DateTimeOffset(1999, 12, 31, 23, 55, 0, TimeSpan.Zero), cnt = 1 },

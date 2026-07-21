@@ -6,54 +6,51 @@ sidebar_position: 2
 
 ## Hopping Window
 
-*There is no substrait definition for hopping_window*
+*This function has no substrait equivalent*
 
 * **Extension URI:** /functions_datetime.yaml
 * **Extension Name:** hopping_window
 
-Hopping window (also known as a sliding window) assigns a timestamp to every hopping window it
-falls into. For each input row it returns one row per window, adding two columns:
+Hopping window, also called sliding window, returns one row for each window a timestamp belongs to.
+It adds two columns:
 
-| Column         | Type      | Description                          |
-|----------------|-----------|--------------------------------------|
-| `window_start` | timestamp | Inclusive start of the window        |
-| `window_end`   | timestamp | Exclusive end of the window          |
+| Column         | Type      | Description                    |
+|----------------|-----------|--------------------------------|
+| `window_start` | timestamp | Start of the window, inclusive |
+| `window_end`   | timestamp | End of the window, exclusive   |
 
-A window covers the interval `[window_start, window_end)` where `window_end = window_start + size`,
-and window starts are aligned to multiples of the hop from the epoch. A timestamp belongs to a
-window when `window_start <= timestamp < window_end`.
+Each window is *size* long and a new window starts every *hop*, aligned from epoch.
+A timestamp belongs to a window if it is on or after *window_start* and before *window_end*.
 
-The signature is:
+Arguments:
 
-```sql
-hopping_window(timestamp, hop_amount, hop_unit, size_amount, size_unit)
-```
+1. Timestamp to assign to windows
+2. Hop amount, the distance between two window starts
+3. Hop unit
+4. Size amount, the length of a window
+5. Size unit
 
-* `timestamp` – the timestamp expression to assign to windows. A non-timestamp or null value
-  produces no windows (under a LEFT join a single row with null window columns is returned).
-* `hop_amount`, `hop_unit` – the distance between consecutive window starts (the slide).
-* `size_amount`, `size_unit` – the length of each window.
+The amounts must be integer literals, and the units one of *WEEK*, *DAY*, *HOUR*, *MINUTE*, *SECOND*, *MILLISECOND* or *MICROSECOND*.
+Calendar units such as *MONTH* and *YEAR* are not supported since their length varies.
 
-`hop_amount`/`size_amount` must be integer literals and `hop_unit`/`size_unit` must be one of the
-fixed-duration units `WEEK`, `DAY`, `HOUR`, `MINUTE`, `SECOND`, `MILLISECOND` or `MICROSECOND`.
-Calendar units such as `MONTH` and `YEAR` are not supported because their length varies.
+A timestamp falls into *size / hop* windows, rounded up:
 
-Each timestamp falls into `ceil(size / hop)` windows:
+* If the hop is smaller than the size, the windows overlap and a timestamp belongs to several windows.
+* If the hop is equal to the size, the windows tumble and a timestamp belongs to exactly one window.
+* If the hop is larger than the size, there are gaps between the windows and a timestamp can belong to no window.
 
-* When `hop < size` the windows overlap, so a timestamp belongs to several windows.
-* When `hop = size` the windows tumble (no overlap), so a timestamp belongs to exactly one window.
-* When `hop > size` there are gaps between windows, so a timestamp in a gap belongs to no window.
+Since each row is duplicated once per window, a small hop together with a large size is rejected when the stream starts.
+The limit is 100 000 windows per row.
 
-Because every row fans out into `ceil(size / hop)` rows, a very small hop combined with a large
-size is rejected at query start (the limit is 100,000 windows per row) to avoid exhausting memory.
+If the input is null or not a timestamp, no windows are returned.
 
 ### SQL Usage
 
 #### Assigning rows to windows
 
 ```sql
---- An order at 00:07 with a 5 minute hop and 10 minute size falls into
---- [00:00, 00:10) and [00:05, 00:15)
+--- An order at 00:07 with a 5 minute hop and 10 minute size
+--- belongs to the windows starting at 00:00 and 00:05
 SELECT window_start, window_end
 FROM orders o
 INNER JOIN hopping_window(o.order_time, 5, 'MINUTE', 10, 'MINUTE')
@@ -61,7 +58,7 @@ INNER JOIN hopping_window(o.order_time, 5, 'MINUTE', 10, 'MINUTE')
 
 #### Aggregating per window
 
-The typical use is to fan rows into windows and then aggregate per window:
+The most common usage is to assign the rows to windows and then aggregate per window:
 
 ```sql
 SELECT
@@ -80,5 +77,5 @@ FROM orders o
 LEFT JOIN hopping_window(o.order_time, 10, 'MINUTE', 5, 'MINUTE')
 ```
 
-When used in a LEFT JOIN, a row is still returned with null window columns when the timestamp
-falls into no window (for example when it lands in a gap between non-overlapping windows).
+When used in a LEFT JOIN, rows are still returned even if the timestamp does not belong to any window.
+The window columns are then null.
