@@ -13,8 +13,10 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -31,24 +33,42 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     {
         private const string PullBucketRequestTriggerPrefix = "exchange_";
 
-        private readonly ExchangeRelation exchangeRelation;
+        private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
+        internal readonly ExchangeRelation exchangeRelation;
         private readonly IExchangeKindExecutor _executor;
-        private Action<string>? _checkpointDone;
-        private Action<string>? _dependenciesDone;
+        private Action<string, ILockingEvent?>? _checkpointDone;
+        private Action<string, ILockingEvent?>? _dependenciesDone;
         private IObjectState<ExchangeOperatorState>? _state;
-        private bool _containPullBucket = false;
 
-        public ExchangeOperator(ExchangeRelation exchangeRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(CalculateTargetNumber(exchangeRelation), executionDataflowBlockOptions)
+        private readonly object _dependenciesDoneLock = new object();
+        // Checkpoint done credits per peer substream target, guarded by _dependenciesDoneLock.
+        // A checkpoint cycle's cross-substream dependency completes when EVERY peer target has
+        // at least one credit; one credit per target is then consumed. Attribution per target
+        // keeps acknowledgements from one peer from standing in for a peer that never
+        // acknowledged, which would complete and compact a checkpoint the silent peer has not
+        // stored the barrier for. Surplus credits carry over between cycles: a stopping peer
+        // acknowledges once per stop drain cycle and each of those is a real acknowledgement a
+        // following cycle consumes, dropping one would leave that cycle waiting forever.
+        private readonly Dictionary<int, int> _dependencyAckCredits = new Dictionary<int, int>();
+        private readonly List<int> _substreamTargetIds = new List<int>();
+        private int _numberOfSubstreams = 0;
+        // Checkpoint done signals from other substreams that arrived before this stream
+        // finished starting, replayed on the first checkpoint cycle. At most one per peer
+        // target, guarded by _dependenciesDoneLock.
+        private readonly HashSet<int> _pendingDependenciesDoneTargets = new HashSet<int>();
+
+
+        public ExchangeOperator(ExchangeRelation exchangeRelation, SubstreamCommunicationPointFactory communicationPointFactory, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(CalculateTargetNumber(exchangeRelation), executionDataflowBlockOptions)
         {
             this.exchangeRelation = exchangeRelation;
-
+            this._communicationPointFactory = communicationPointFactory;
             switch (exchangeRelation.ExchangeKind.Type)
             {
                 case ExchangeKindType.Broadcast:
                     _executor = new BroadcastExecutor(exchangeRelation);
                     break;
                 case ExchangeKindType.Scatter:
-                    _executor = new ScatterExecutor(exchangeRelation, functionsRegister);
+                    _executor = new ScatterExecutor(exchangeRelation, communicationPointFactory, functionsRegister, TargetCallDependenciesDone);
                     break;
                 default:
                     throw new NotImplementedException(exchangeRelation.ExchangeKind.Type.ToString());
@@ -56,10 +76,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             foreach(var target in exchangeRelation.Targets)
             {
-                if (target.Type == ExchangeTargetType.PullBucket)
+                if (target.Type == ExchangeTargetType.Substream)
                 {
-                    _containPullBucket = true;
-                    break;
+                    _numberOfSubstreams++;
+                    if (target is SubstreamExchangeTarget substreamExchangeTarget)
+                    {
+                        _substreamTargetIds.Add(substreamExchangeTarget.ExchangeTargetId);
+                    }
                 }
             }
         }
@@ -71,15 +94,38 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public override string DisplayName => "Exchange";
 
-        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
+        /// <summary>
+        /// The stream may first finish stopping when other substreams have fetched this
+        /// streams stop barrier from all substream targets.
+        /// </summary>
+        public bool ReadyToStop => _executor.ReadyToStop;
+
+        private Task FailAndRecoverMethod(long recoveryPoint)
         {
+            return FailAndRollback(restoreVersion: recoveryPoint);
+        }
+
+        protected override async Task InitializeOrRestore(long restoreVersion, IStateManagerClient stateManagerClient)
+        {
+            lock (_dependenciesDoneLock)
+            {
+                // Reset credits from a checkpoint that was aborted by a failure so an old
+                // checkpoint done message cannot complete dependencies for a new checkpoint.
+                _dependencyAckCredits.Clear();
+                // Buffered signals from before the restore belong to the aborted epoch. The
+                // rollback re-aligns both substreams at a common version, the peer sends a
+                // fresh acknowledgement when it completes a checkpoint in the new epoch.
+                // Replaying a stale one would complete a new checkpoints dependencies before
+                // the peer stored it, and every cycle after that completes one ack early.
+                _pendingDependenciesDoneTargets.Clear();
+            }
             _state = await stateManagerClient.GetOrCreateObjectStateAsync<ExchangeOperatorState>("state");
             if (_state.Value == null)
             {
                 _state.Value = new ExchangeOperatorState();
             }
 
-            await _executor.Initialize(exchangeRelation, stateManagerClient, _state.Value, MemoryAllocator);
+            await _executor.Initialize(restoreVersion, exchangeRelation, stateManagerClient, _state.Value, MemoryAllocator, FailAndRecoverMethod);
 
             foreach(var pullTarget in exchangeRelation.Targets)
             {
@@ -131,11 +177,88 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             if (_checkpointDone != null)
             {
-                _checkpointDone(Name);
+                _checkpointDone(Name, lockingEvent);
             }
-            if (_dependenciesDone != null && !_containPullBucket)
+            if (_dependenciesDone != null && (_numberOfSubstreams == 0 || lockingEvent is InitWatermarksEvent))
             {
-                _dependenciesDone(Name);
+                _dependenciesDone(Name, lockingEvent);
+            }
+            else if (lockingEvent is ICheckpointEvent)
+            {
+                // Replay checkpoint done signals that arrived before this stream finished
+                // starting. A cycle needs one signal per peer substream, so every buffered
+                // signal is replayed at once, they can only belong to this cycle: no
+                // barriers were produced while the callback was unwired, so each peer can
+                // have at most one acknowledgement in flight from before the start.
+                List<int>? replayTargets = null;
+                lock (_dependenciesDoneLock)
+                {
+                    if (_pendingDependenciesDoneTargets.Count > 0)
+                    {
+                        replayTargets = new List<int>(_pendingDependenciesDoneTargets);
+                        _pendingDependenciesDoneTargets.Clear();
+                    }
+                }
+                if (replayTargets != null)
+                {
+                    Logger.LogDebug("Exchange {name} processed checkpoint event, replays {count} buffered signals", Name, replayTargets.Count);
+                    foreach (var targetId in replayTargets)
+                    {
+                        TargetCallDependenciesDone(targetId);
+                    }
+                }
+            }
+        }
+
+        // Internal so tests can drive the acknowledgement path without a running peer.
+        internal int PendingDependenciesDoneSignalsForTests
+        {
+            get
+            {
+                lock (_dependenciesDoneLock)
+                {
+                    return _pendingDependenciesDoneTargets.Count;
+                }
+            }
+        }
+
+        internal void TargetCallDependenciesDone(int exchangeTargetId)
+        {
+            lock (_dependenciesDoneLock)
+            {
+                if (_dependenciesDone == null)
+                {
+                    // The signal arrived before this stream finished starting, the dependencies
+                    // done callback is not wired yet. Each checkpoint cycle consumes the signals
+                    // from the other substreams, so the signal must not be lost, it is buffered
+                    // and replayed when a checkpoint runs. The buffer holds at most one signal
+                    // per peer target: a peer can only have one un-acknowledged cycle in flight,
+                    // extra signals come from a peer running its own stop cycles and buffering
+                    // them would let a later cycle complete without a real acknowledgement.
+                    _pendingDependenciesDoneTargets.Add(exchangeTargetId);
+                    Logger.LogDebug("Exchange {name} buffered a dependencies done signal from target {targetId}, total buffered: {count}", Name, exchangeTargetId, _pendingDependenciesDoneTargets.Count);
+                    return;
+                }
+
+                _dependencyAckCredits[exchangeTargetId] = _dependencyAckCredits.GetValueOrDefault(exchangeTargetId) + 1;
+                Logger.LogDebug("Exchange {name} dependencies done from target {targetId}, credit {credit}", Name, exchangeTargetId, _dependencyAckCredits[exchangeTargetId]);
+
+                // The cycle completes only when every peer target acknowledged; one credit per
+                // target is consumed and any surplus carries to the next cycle.
+                foreach (var targetId in _substreamTargetIds)
+                {
+                    if (_dependencyAckCredits.GetValueOrDefault(targetId) < 1)
+                    {
+                        return;
+                    }
+                }
+                foreach (var targetId in _substreamTargetIds)
+                {
+                    _dependencyAckCredits[targetId]--;
+                }
+                // Checkpoint acknowledgements from the other substreams, always checkpoint
+                // related so no locking event instance is passed.
+                _dependenciesDone(Name, null);
             }
         }
 
@@ -149,12 +272,22 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _executor.OnWatermark(watermark);
         }
 
-        protected override IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
+        protected override Task OnInitialDataDone()
         {
-            return _executor.PartitionData(data, time);
+            return _executor.OnInitialDataDone();
         }
 
-        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string> checkpointDone, Action<string> dependenciesDone)
+        protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
+        {
+            Logger.ExchangePartitionInput(Name, data.Data.Weights.Count);
+            await foreach (var partition in _executor.PartitionData(data, time))
+            {
+                Logger.ExchangePartitionOutput(Name, partition.Value.Data.Data.Weights.Count, partition.Key);
+                yield return partition;
+            }
+        }
+
+        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string, ILockingEvent?> checkpointDone, Action<string, ILockingEvent?> dependenciesDone)
         {
             _checkpointDone = checkpointDone;
             _dependenciesDone = dependenciesDone;
@@ -164,6 +297,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             Debug.Assert(_state?.Value != null);
             await _executor.AddCheckpointState(_state.Value);
+        }
+
+        public override Task OnFailure(long rollbackVersion)
+        {
+            return _executor.OnFailure(rollbackVersion);
+        }
+
+        public Task CheckpointDone(long checkpointVersion)
+        {
+            return _executor.CheckpointDone(checkpointVersion);
         }
     }
 }

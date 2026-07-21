@@ -448,6 +448,8 @@ namespace FlowtideDotNet.Storage.StateManager
                 await stateClient.Value.Reset(newMetadata);
             }
 
+            logger.LogDebug("State manager initialized, requested version: {requestedVersion}, recovered version: {recoveredVersion}, new metadata: {newMetadata}, reset {stateClientCount} state clients", checkpointVersion, LastCompletedCheckpointVersion, newMetadata, _stateClients.Count);
+
             Initialized = true;
         }
 

@@ -14,8 +14,6 @@ namespace FlowtideDotNet.Base.Engine
 {
     public interface IStateHandler
     {
-        Task WriteLatestState(string streamName, StreamState state);
-
         Task<StreamState?> LoadLatestState(string stateName);
     }
 }

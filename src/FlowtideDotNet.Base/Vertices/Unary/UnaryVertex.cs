@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Base.Vertices
         private long _currentTime = 0;
         private IVertexHandler? _vertexHandler;
         private bool _isHealthy = true;
-        private TaskCompletionSource? _pauseSource;
+        private readonly PauseGate _pauseGate = new PauseGate();
 
         private string? _name;
         
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Base.Vertices
                 {
                     var enumerator = OnRecieve(streamMessage.Data, streamMessage.Time);
 
-                    if (_pauseSource != null)
+                    if (_pauseGate.IsPaused)
                     {
                         enumerator = WaitForPause(enumerator);
                     }
@@ -369,7 +369,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async IAsyncEnumerable<T> WaitForPause(IAsyncEnumerable<T> input)
         {
-            var task = _pauseSource?.Task;
+            var task = _pauseGate.PauseTask;
             if (task != null)
             {
                 await task;
@@ -460,7 +460,12 @@ namespace FlowtideDotNet.Base.Vertices
         /// <param name="exception">The triggering exception.</param>
         public void Fault(Exception exception)
         {
-            Debug.Assert(_transformBlock != null, nameof(_transformBlock));
+            if (_transformBlock == null)
+            {
+                // The block is created first at start, a failure before that (for example
+                // storage initialization) has nothing to fault.
+                return;
+            }
             (_transformBlock as IDataflowBlock).Fault(exception);
         }
 
@@ -578,10 +583,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Pause()
         {
-            if (_pauseSource == null)
-            {
-                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            }
+            _pauseGate.Pause();
         }
 
         /// <summary>
@@ -589,11 +591,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Resume()
         {
-            if (_pauseSource != null)
-            {
-                _pauseSource.SetResult();
-                _pauseSource = null;
-            }
+            _pauseGate.Resume();
         }
 
         /// <summary>

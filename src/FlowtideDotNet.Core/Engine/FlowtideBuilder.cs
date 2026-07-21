@@ -22,6 +22,7 @@ using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -49,6 +50,7 @@ namespace FlowtideDotNet.Core.Engine
         private bool _isCheckFailureRegistered = false;
         private readonly string _streamName;
         private OpenLineageHttpOptions? _openLineageHttpOptions;
+        private DistributedOptions? _distributedOptions;
 
         public FlowtideBuilder(string streamName)
         {
@@ -192,6 +194,26 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        /// <summary>
+        /// Sets how long a stopping stream waits for vertices that exchange data with other
+        /// substreams to drain before it finishes stopping anyway.
+        /// </summary>
+        public FlowtideBuilder SetStopDrainTimeout(TimeSpan timeSpan)
+        {
+            dataflowStreamBuilder.SetStopDrainTimeout(timeSpan);
+            return this;
+        }
+
+        /// <summary>
+        /// When enabled the stream takes a checkpoint right after its initial data has been
+        /// loaded, holding off any other checkpoint until then.
+        /// </summary>
+        public FlowtideBuilder WaitForCheckpointAfterInitialData(bool wait)
+        {
+            dataflowStreamBuilder.WaitForCheckpointAfterInitialData(wait);
+            return this;
+        }
+
         public FlowtideBuilder SetTaskScheduler(TaskScheduler taskScheduler)
         {
             _taskScheduler = taskScheduler;
@@ -262,6 +284,13 @@ namespace FlowtideDotNet.Core.Engine
             }
         }
 
+        public FlowtideBuilder SetDistributedOptions(DistributedOptions distributedOptions)
+        {
+            _distributedOptions = distributedOptions;
+            return this;
+        }
+
+
         public FlowtideDotNet.Base.Engine.DataflowStream Build()
         {
             if (_plan == null)
@@ -310,6 +339,18 @@ namespace FlowtideDotNet.Core.Engine
                 planModifier.VisitPlan(_plan);
             }
 
+            if (_distributedOptions != null)
+            {
+                var substreamNames = _plan.Relations.OfType<SubStreamRootRelation>().Select(x => x.Name).Distinct().ToList();
+                if (substreamNames.Count > 0 && !substreamNames.Contains(_distributedOptions.SubstreamName))
+                {
+                    // Every substream root would be skipped, silently building an empty
+                    // stream that produces nothing while the other substreams wait for it.
+                    throw new InvalidOperationException(
+                        $"The substream name '{_distributedOptions.SubstreamName}' does not exist in the plan, it contains the substreams: {string.Join(", ", substreamNames)}.");
+                }
+            }
+
             SubstraitVisitor visitor = new SubstraitVisitor(
                 _plan,
                 dataflowStreamBuilder,
@@ -320,7 +361,9 @@ namespace FlowtideDotNet.Core.Engine
                 _parallelism,
                 _getTimestampInterval,
                 _useColumnStore,
-                _taskScheduler);
+                dataflowStreamBuilder.LoggerFactory,
+                _taskScheduler,
+                _distributedOptions);
 
             if (_connectorManager != null && _openLineageHttpOptions != null)
             {

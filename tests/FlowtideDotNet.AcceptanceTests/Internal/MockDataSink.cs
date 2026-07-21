@@ -19,6 +19,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -29,6 +30,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly WriteRelation writeRelation;
         private readonly Action<EventBatchData> onDataChange;
         private int crashOnCheckpointCount;
+        private int _checkpointsBeforeCrash;
         private bool watermarkRecieved = false;
         private Action<Watermark> onWatermark;
         private EventBatchData? _lastSentBatch;
@@ -40,17 +42,23 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private StreamWriter? allInput;
 #endif
 
+        private int _deleteFailCount;
+
         public MockDataSink(
             WriteRelation writeRelation,
             ExecutionDataflowBlockOptions executionDataflowBlockOptions,
             Action<EventBatchData> onDataChange,
             int crashOnCheckpointCount,
-            Action<Watermark> onWatermark) : base(executionDataflowBlockOptions)
+            Action<Watermark> onWatermark,
+            int checkpointsBeforeCrash = 0,
+            int deleteFailCount = 0) : base(executionDataflowBlockOptions)
         {
             this.writeRelation = writeRelation;
             this.onDataChange = onDataChange;
             this.crashOnCheckpointCount = crashOnCheckpointCount;
             this.onWatermark = onWatermark;
+            _checkpointsBeforeCrash = checkpointsBeforeCrash;
+            _deleteFailCount = deleteFailCount;
         }
 
         public override string DisplayName => "Mock Data Sink";
@@ -62,6 +70,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public override Task DeleteAsync()
         {
+            if (_deleteFailCount > 0)
+            {
+                // Simulates a storage delete that fails transiently, or permanently when the
+                // count is set higher than the retry budget.
+                _deleteFailCount--;
+                throw new InvalidOperationException("Simulated delete failure");
+            }
             return Task.CompletedTask;
         }
 
@@ -101,8 +116,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             if (crashOnCheckpointCount > 0)
             {
-                crashOnCheckpointCount--;
-                throw new CrashException("Crash on checkpoint");
+                if (_checkpointsBeforeCrash > 0)
+                {
+                    _checkpointsBeforeCrash--;
+                }
+                else
+                {
+                    crashOnCheckpointCount--;
+                    throw new CrashException("Crash on checkpoint");
+                }
             }
 
             Debug.Assert(_tree != null);
@@ -117,6 +139,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             var iterator = _tree.CreateIterator();
             await iterator.SeekFirst();
 
+            long rowCount = 0;
             await foreach (var page in iterator)
             {
                 foreach (var kv in page)
@@ -125,6 +148,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     {
                         Assert.Fail("Row exist in sink with negaive weight: " + kv.Key.ToString());
                     }
+                    rowCount += kv.Value;
                     for (int i = 0; i < kv.Key.referenceBatch.Columns.Count; i++)
                     {
                         var val = kv.Key.referenceBatch.Columns[i].GetValueAt(kv.Key.RowIndex, default);
@@ -135,6 +159,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     }
                 }
             }
+
+            Logger.LogDebug("Mock sink checkpoint with {rowCount} rows, publishes data: {publish}", rowCount, watermarkRecieved);
 
             var newData = new EventBatchData(columns);
 
@@ -157,6 +183,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
+            Logger.LogDebug("Mock sink recieved batch with {count} rows", msg.Data.Weights.Count);
 #if DEBUG_WRITE
             allInput!.WriteLine("New batch");
             foreach (var e in msg.Events)

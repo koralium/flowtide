@@ -36,6 +36,7 @@ using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.Operators.Exchange;
 using FlowtideDotNet.Core.Operators.Aggregate.Bulk;
+using Microsoft.Extensions.Logging;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -66,7 +67,9 @@ namespace FlowtideDotNet.Core.Engine
         private Dictionary<int, RelationTree> _doneRelations;
         private Dictionary<string, ColumnIterationOperator> _iterationOperators = new Dictionary<string, ColumnIterationOperator>();
         private readonly TaskScheduler? _taskScheduler;
+        private readonly DistributedOptions? _distributedOptions;
         private readonly int _queueSize;
+        private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
 
         private ExecutionDataflowBlockOptions DefaultBlockOptions
         {
@@ -129,7 +132,9 @@ namespace FlowtideDotNet.Core.Engine
             int parallelism,
             TimeSpan getTimestampInterval,
             bool useColumnStore,
-            TaskScheduler? taskScheduler = default)
+            ILoggerFactory? loggerFactory,
+            TaskScheduler? taskScheduler = default,
+            DistributedOptions? distributedOptions = default)
         {
             this.plan = plan;
             this.dataflowStreamBuilder = dataflowStreamBuilder;
@@ -141,7 +146,18 @@ namespace FlowtideDotNet.Core.Engine
             _useColumnStore = useColumnStore;
             _queueSize = queueSize;
             _taskScheduler = taskScheduler;
+            _distributedOptions = distributedOptions;
             _doneRelations = new Dictionary<int, RelationTree>();
+            if (distributedOptions != null && distributedOptions.CommunicationHandlerFactory != null)
+            {
+                _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory, distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory, distributedOptions.AnnounceCleanHandoff);
+            }
+            else
+            {
+                // Factory without a communication handler, it throws a descriptive error
+                // if a communication point is requested without distributed options.
+                _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory);
+            }
         }
 
         //private ExecutionDataflowBlockOptions CreateBlockOptions()
@@ -687,7 +703,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitExchangeRelation(ExchangeRelation exchangeRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new ExchangeOperator(exchangeRelation, functionsRegister, DefaultBlockOptions);
+            var op = new ExchangeOperator(exchangeRelation, _communicationPointFactory, functionsRegister, DefaultBlockOptions);
 
             exchangeRelation.Input.Accept(this, op);
             dataflowStreamBuilder.AddEgressBlock(id.ToString(), op);
@@ -710,7 +726,16 @@ namespace FlowtideDotNet.Core.Engine
             {
                 if (state != null)
                 {
-                    exchangeOperator.Sources[standardOutputExchangeReferenceRelation.TargetId].LinkTo(state);
+                    int sourceTargetId = 0;
+                    for (int i = 0; i < exchangeOperator.exchangeRelation.Targets.Count && i < standardOutputExchangeReferenceRelation.TargetId; i++)
+                    {
+                        var target = exchangeOperator.exchangeRelation.Targets[i];
+                        if (target.Type == ExchangeTargetType.StandardOutput)
+                        {
+                            sourceTargetId++;
+                        }
+                    }
+                    exchangeOperator.Sources[sourceTargetId].LinkTo(state);
                 }
                 return exchangeOperator;
             }
@@ -718,6 +743,61 @@ namespace FlowtideDotNet.Core.Engine
             {
                 throw new InvalidOperationException("StandardOutputExchangeReferenceRelation must reference an ExchangeOperator");
             }
+        }
+
+        public override IStreamVertex VisitSubStreamRootRelation(SubStreamRootRelation subStreamRootRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            if (_distributedOptions == null)
+            {
+                return Visit(subStreamRootRelation.Input, state);
+            }
+            else
+            {
+                if (_distributedOptions.SubstreamName == subStreamRootRelation.Name)
+                {
+                    return Visit(subStreamRootRelation.Input, state);
+                }
+                // Substream roots that belong to other substreams are not built in this stream
+                return null!;
+            }
+        }
+
+        public override IStreamVertex VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            if(_distributedOptions == null)
+            {
+                throw new InvalidOperationException("PullExchangeReferenceRelation is not supported without DistributedOptions");
+            }
+            if (_distributedOptions.PullBucketExchangeReadFactory == null)
+            {
+                throw new InvalidOperationException("PullExchangeReferenceRelation is not supported without a PullBucketExchangeReadFactory in the DistributedOptions");
+            }
+            var op = _distributedOptions.PullBucketExchangeReadFactory.GetOperator(pullExchangeReferenceRelation, DefaultBlockOptions);
+            var id = _operatorId++;
+            if (state != null && op is ISourceBlock<IStreamEvent> sourceBlock)
+            {
+                sourceBlock.LinkTo(state);
+            }
+            dataflowStreamBuilder.AddIngressBlock(id.ToString(), op);
+            return op;
+        }
+
+        public override IStreamVertex VisitSubstreamExchangeReferenceRelation(SubstreamExchangeReferenceRelation substreamExchangeReferenceRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            if (_distributedOptions == null)
+            {
+                throw new InvalidOperationException("SubstreamExchangeReferenceRelation is not supported without DistributedOptions");
+            }
+
+            var comPoint = _communicationPointFactory.GetCommunicationPoint(substreamExchangeReferenceRelation.SubStreamName);
+            var op = new SubstreamReadOperator(comPoint, substreamExchangeReferenceRelation, DefaultBlockOptions);
+            var id = _operatorId++;
+            if (state != null && op is ISourceBlock<IStreamEvent> sourceBlock)
+            {
+                sourceBlock.LinkTo(state);
+            }
+            dataflowStreamBuilder.AddIngressBlock(id.ToString(), op);
+            return op;
         }
     }
 }

@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Optimizer.DistributedMode;
+
 namespace FlowtideDotNet.Core.Optimizer
 {
     public class PlanOptimizerSettings
@@ -32,5 +34,15 @@ namespace FlowtideDotNet.Core.Optimizer
         public int Parallelization { get; set; } = 1;
 
         public bool TryAddWatermarkOutputMode { get; set; } = true;
+
+        /// <summary>
+        /// If set, the plan is split into substreams for distributed mode as the last
+        /// optimization step. Merge joins, aggregates and window functions are partitioned
+        /// with one partition per substream. Plans that already contain substream statements
+        /// should not use this setting.
+        /// When set, the <see cref="Parallelization"/> setting is not used, the substream count
+        /// controls the partitioning instead.
+        /// </summary>
+        public DistributedPlanOptions? DistributedPlanOptions { get; set; }
     }
 }

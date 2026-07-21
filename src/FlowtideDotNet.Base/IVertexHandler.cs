@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Base
         /// Schedules a checkpoint to be taken by the stream engine.
         /// </summary>
         /// <param name="time">The interval after which the checkpoint should be scheduled.</param>
-        void ScheduleCheckpoint(TimeSpan time);
+        void ScheduleCheckpoint(TimeSpan time, long? checkpointVersion);
 
         /// <summary>
         /// Registers a trigger that can be called externally from the stream.

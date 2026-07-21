@@ -84,6 +84,30 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public int CachePageCount { get; set; } = 100_000;
 
+        /// <summary>
+        /// Enables the stream option that takes a checkpoint right after initial data, which
+        /// installs a checkpoint placeholder during startup. Set before starting the stream.
+        /// </summary>
+        public bool WaitForCheckpointAfterInitialData { get; set; }
+
+        /// <summary>
+        /// Delays every source's initial data send by this amount, keeping the stream in its
+        /// starting phase so a test can act while startup is still in progress. Set before
+        /// starting the stream.
+        /// </summary>
+        public TimeSpan? InitialDataDelay { get; set; }
+
+        /// <summary>
+        /// Sets the minimum time between checkpoint triggers. Set before starting the stream.
+        /// </summary>
+        public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
+
+        /// <summary>
+        /// Sets the stop drain timeout, which also bounds a stop deferred behind an
+        /// in-progress checkpoint. Set before starting the stream.
+        /// </summary>
+        public TimeSpan? StopDrainTimeout { get; set; }
+
         public int BPlusTreePageSizeBytes { get; set; } = 32 * 1024;
 
         public Watermark? LastWatermark => _lastWatermark;
@@ -253,7 +277,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             bool ignoreSameDataCheck = false,
             ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
-            string? version = default)
+            string? version = default,
+            DistributedOptions? distributedOptions = default)
         {
             if (stateSerializeOptions == null)
             {
@@ -331,9 +356,29 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 flowtideBuilder.SetVersion(version);
             }
 
+            if (distributedOptions != null)
+            {
+                flowtideBuilder.SetDistributedOptions(distributedOptions);
+            }
+
             if (checkFailureListener != null)
             {
                 flowtideBuilder.WithCheckFailureListener(checkFailureListener);
+            }
+
+            if (WaitForCheckpointAfterInitialData)
+            {
+                flowtideBuilder.WaitForCheckpointAfterInitialData(true);
+            }
+
+            if (MinimumTimeBetweenCheckpoints.HasValue)
+            {
+                flowtideBuilder.SetMinimumTimeBetweenCheckpoint(MinimumTimeBetweenCheckpoints.Value);
+            }
+
+            if (StopDrainTimeout.HasValue)
+            {
+                flowtideBuilder.SetStopDrainTimeout(StopDrainTimeout.Value);
             }
 
             var stream = flowtideBuilder.Build();
@@ -350,9 +395,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             bool ignoreSameDataCheck = false,
             ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
-            string? version = default)
+            string? version = default,
+            DistributedOptions? distributedOptions = default)
         {
-            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version);
+            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version, distributedOptions);
             await _stream!.StartAsync();
         }
 
@@ -395,17 +441,26 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// <returns></returns>
         public async Task Crash()
         {
+            Debug.Assert(_notificationReciever != null);
+            int failuresBefore = Volatile.Read(ref _notificationReciever._failureNotifications);
             await _stream!.CallTrigger("crash", default);
 
-            var graph = _stream.GetDiagnosticsGraph();
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
-            while (_stream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
+            while (Volatile.Read(ref _notificationReciever._failureNotifications) == failuresBefore)
             {
-                graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
                 CheckForErrors();
             }
+        }
+
+        /// <summary>
+        /// Fires the crash trigger without waiting for the stream to reach the failure
+        /// state, so a test can control scheduler ticks around the crash itself.
+        /// </summary>
+        public Task FireCrashTrigger()
+        {
+            return _stream!.CallTrigger("crash", default);
         }
 
         public async Task StopMockIngressAutocompleteDependencies()
@@ -464,6 +519,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             CheckForErrors();
         }
 
+        /// <summary>
+        /// When true, stream failures without an exception do not fail the test.
+        /// Used by tests that expect a fail and recover, for example distributed tests
+        /// where substreams recover to a common checkpoint version.
+        /// </summary>
+        public bool AllowFailureAndRecover { get; set; }
+
         private void CheckForErrors()
         {
             if (_notificationReciever != null && _notificationReciever._error)
@@ -472,7 +534,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 {
                     throw _notificationReciever._exception;
                 }
-                else
+                else if (!AllowFailureAndRecover)
                 {
                     throw new Exception("Unknown error occured in stream without exception");
                 }
@@ -504,12 +566,18 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource));
+            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay));
         }
+
+        /// <summary>
+        /// Makes the sinks DeleteAsync throw this many times, simulating a storage delete
+        /// that fails transiently, or permanently when set above the delete retry budget.
+        /// </summary>
+        public int SinkDeleteFailCount { get; set; }
 
         protected virtual void AddWriteResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark));
+            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark, deleteFailCount: SinkDeleteFailCount));
         }
 
         protected virtual void OnWatermark(Watermark watermark)
@@ -551,9 +619,39 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return _stream!.GetDiagnosticsGraph();
         }
 
+        public void Pause()
+        {
+            _stream!.Pause();
+        }
+
+        public void Resume()
+        {
+            _stream!.Resume();
+        }
+
         public Task StopStream()
         {
             return _stream!.StopAsync();
+        }
+
+        /// <summary>
+        /// Injects a failure as if a block had faulted, so a test can drive the failure
+        /// paths at a precise moment, for example while a state manager write is held in
+        /// flight by a test hook.
+        /// </summary>
+        public Task InjectFailure(Exception exception)
+        {
+            return _stream!.InjectFailureForTests(exception);
+        }
+
+        /// <summary>
+        /// Delivers an egress checkpoint done into the stream as if an egress vertex fired it,
+        /// so a test can reproduce a spurious or stale acknowledgement arriving at a precise
+        /// moment.
+        /// </summary>
+        public void InjectEgressCheckpointDone(string operatorName, ILockingEvent? lockingEvent)
+        {
+            _stream!.InjectEgressCheckpointDoneForTests(operatorName, lockingEvent);
         }
 
         public Task StartStream()
