@@ -96,12 +96,21 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
                 _ => throw new ArgumentException($"hopping_window {which} unit '{unit.Value}' is not supported. Use WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND.")
             };
 
-            var ticks = (long)amount.Value * ticksPerUnit;
-            if (ticks <= 0)
+            // A fraction can always be written with a smaller unit, so reject it instead of truncating
+            if (amount.Value != decimal.Truncate(amount.Value))
+            {
+                throw new ArgumentException($"hopping_window {which} amount must be a whole number, use a smaller unit instead");
+            }
+            if (amount.Value <= 0)
             {
                 throw new ArgumentException($"hopping_window {which} must be a positive duration");
             }
-            return ticks;
+            // Check the range before multiplying, the multiplication would otherwise overflow silently
+            if (amount.Value > long.MaxValue / ticksPerUnit)
+            {
+                throw new ArgumentException($"hopping_window {which} is too large");
+            }
+            return (long)amount.Value * ticksPerUnit;
         }
 
         public static void DoHopping(IDataValue timestamp, long hopTicks, long sizeTicks, ITableFunctionOutput output)

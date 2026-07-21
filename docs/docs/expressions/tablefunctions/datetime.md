@@ -19,7 +19,8 @@ It adds two columns:
 | `window_start` | timestamp | Start of the window, inclusive |
 | `window_end`   | timestamp | End of the window, exclusive   |
 
-Each window is *size* long and a new window starts every *hop*, aligned from epoch.
+Each window is *size* long and a new window starts every *hop*.
+The window starts are aligned from year one, which means that a one week window starts on a monday.
 A timestamp belongs to a window if it is on or after *window_start* and before *window_end*.
 
 Arguments:
@@ -31,6 +32,7 @@ Arguments:
 5. Size unit
 
 The amounts must be integer literals, and the units one of *WEEK*, *DAY*, *HOUR*, *MINUTE*, *SECOND*, *MILLISECOND* or *MICROSECOND*.
+Fractions are not allowed, use a smaller unit instead, for example *342 SECOND* instead of *5.7 MINUTE*.
 Calendar units such as *MONTH* and *YEAR* are not supported since their length varies.
 
 A timestamp falls into *size / hop* windows, rounded up:

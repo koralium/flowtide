@@ -250,5 +250,283 @@ namespace FlowtideDotNet.AcceptanceTests
                 new { window_start = new DateTimeOffset(2000, 1, 1, 0, 5, 0, TimeSpan.Zero), cnt = 1 },
             });
         }
+
+        [Fact]
+        public async Task HoppingWindowRetractsOnDelete()
+        {
+            // Deleting an order must retract it from all its windows
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 3, 0) });
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 2, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT window_start, count(*) as cnt
+                FROM orders
+                INNER JOIN hopping_window(Orderdate, 5, 'MINUTE', 10, 'MINUTE')
+                GROUP BY window_start;");
+            await WaitForUpdate();
+
+            DeleteOrder(Orders[0]);
+            await WaitForUpdate();
+
+            // The 23:55 window is now empty and 00:00 only has the second order left
+            AssertCurrentDataEqual(new[]
+            {
+                new { window_start = new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero), cnt = 1 },
+                new { window_start = new DateTimeOffset(2000, 1, 1, 0, 5, 0, TimeSpan.Zero), cnt = 1 },
+            });
+        }
+
+        [Fact]
+        public async Task HoppingWindowUpdateMovesRowToNewWindows()
+        {
+            // Changing the timestamp must move the row to the new windows
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 3, 0) });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT window_start
+                FROM orders
+                INNER JOIN hopping_window(Orderdate, 5, 'MINUTE', 10, 'MINUTE');");
+            await WaitForUpdate();
+
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 3, 33, 0) });
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new { window_start = new DateTimeOffset(2000, 1, 1, 3, 25, 0, TimeSpan.Zero) },
+                new { window_start = new DateTimeOffset(2000, 1, 1, 3, 30, 0, TimeSpan.Zero) },
+            });
+        }
+
+        [Fact]
+        public async Task HoppingWindowInnerJoinWithCondition()
+        {
+            // A condition should only keep the windows that match
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT window_start, window_end
+                FROM orders
+                INNER JOIN hopping_window(Orderdate, 5, 'MINUTE', 10, 'MINUTE')
+                ON window_start = timestamp_parse('2000-01-01 00:05:00', 'yyyy-MM-dd HH:mm:ss');");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new { window_start = new DateTimeOffset(2000, 1, 1, 0, 5, 0, TimeSpan.Zero), window_end = new DateTimeOffset(2000, 1, 1, 0, 15, 0, TimeSpan.Zero) },
+            });
+        }
+
+        [Fact]
+        public async Task HoppingWindowLeftJoinWithConditionThatNeverMatches()
+        {
+            // The row is kept but both window columns are null
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT OrderKey, window_start, window_end
+                FROM orders
+                LEFT JOIN hopping_window(Orderdate, 5, 'MINUTE', 10, 'MINUTE')
+                ON window_start = timestamp_parse('2010-01-01 00:00:00', 'yyyy-MM-dd HH:mm:ss');");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new { OrderKey = 1, window_start = (DateTimeOffset?)null, window_end = (DateTimeOffset?)null },
+            });
+        }
+
+        [Fact]
+        public async Task HoppingWindowNullTimestampInnerJoin()
+        {
+            // A null timestamp belongs to no window, so the row is dropped
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT OrderKey, window_start
+                FROM orders
+                INNER JOIN hopping_window(null, 5, 'MINUTE', 10, 'MINUTE');");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.Take(0).Select(x => new { x.OrderKey, window_start = (DateTimeOffset?)null }));
+        }
+
+        [Fact]
+        public async Task HoppingWindowNullTimestampLeftJoin()
+        {
+            // A left join keeps the row and sets both window columns to null
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT OrderKey, window_start, window_end
+                FROM orders
+                LEFT JOIN hopping_window(null, 5, 'MINUTE', 10, 'MINUTE');");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new { OrderKey = 1, window_start = (DateTimeOffset?)null, window_end = (DateTimeOffset?)null },
+            });
+        }
+
+        [Fact]
+        public async Task HoppingWindowSelectOnlyWindowEnd()
+        {
+            // Only using the second column must not emit the first one
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT window_end
+                FROM orders
+                INNER JOIN hopping_window(Orderdate, 5, 'MINUTE', 10, 'MINUTE');");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new { window_end = new DateTimeOffset(2000, 1, 1, 0, 10, 0, TimeSpan.Zero) },
+                new { window_end = new DateTimeOffset(2000, 1, 1, 0, 15, 0, TimeSpan.Zero) },
+            });
+        }
+
+        [Fact]
+        public async Task HoppingWindowWeekUnit()
+        {
+            // Weeks are aligned from year one, so they start on a monday
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 6, 12, 0, 0) });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT window_start, window_end
+                FROM orders
+                INNER JOIN hopping_window(Orderdate, 1, 'WEEK', 1, 'WEEK');");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new { window_start = new DateTimeOffset(2000, 1, 3, 0, 0, 0, TimeSpan.Zero), window_end = new DateTimeOffset(2000, 1, 10, 0, 0, 0, TimeSpan.Zero) },
+            });
+        }
+
+        [Fact]
+        public async Task HoppingWindowHourUnit()
+        {
+            // Hourly windows with a half hour hop gives two windows
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 12, 45, 0) });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT window_start, window_end
+                FROM orders
+                INNER JOIN hopping_window(Orderdate, 30, 'MINUTE', 1, 'HOUR');");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new { window_start = new DateTimeOffset(2000, 1, 1, 12, 0, 0, TimeSpan.Zero), window_end = new DateTimeOffset(2000, 1, 1, 13, 0, 0, TimeSpan.Zero) },
+                new { window_start = new DateTimeOffset(2000, 1, 1, 12, 30, 0, TimeSpan.Zero), window_end = new DateTimeOffset(2000, 1, 1, 13, 30, 0, TimeSpan.Zero) },
+            });
+        }
+
+        [Fact]
+        public async Task HoppingWindowLowercaseUnit()
+        {
+            // The unit should not be case sensitive
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT window_start
+                FROM orders
+                INNER JOIN hopping_window(Orderdate, 5, 'minute', 10, 'minute');");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new { window_start = new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero) },
+                new { window_start = new DateTimeOffset(2000, 1, 1, 0, 5, 0, TimeSpan.Zero) },
+            });
+        }
+
+        [Fact]
+        public async Task HoppingWindowRejectsCalendarUnit()
+        {
+            // Months vary in length and must be rejected
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            var ex = await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                await StartStream(@"
+                    INSERT INTO output
+                    SELECT window_start
+                    FROM orders
+                    INNER JOIN hopping_window(Orderdate, 1, 'MONTH', 1, 'MONTH');");
+                await WaitForUpdate();
+            });
+            Assert.Contains("unit 'MONTH' is not supported", ex.ToString());
+        }
+
+        [Fact]
+        public async Task HoppingWindowRejectsZeroAmount()
+        {
+            // A zero hop would never move the window forward
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            var ex = await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                await StartStream(@"
+                    INSERT INTO output
+                    SELECT window_start
+                    FROM orders
+                    INNER JOIN hopping_window(Orderdate, 0, 'MINUTE', 10, 'MINUTE');");
+                await WaitForUpdate();
+            });
+            Assert.Contains("must be a positive duration", ex.ToString());
+        }
+
+        [Fact]
+        public async Task HoppingWindowRejectsFractionalAmount()
+        {
+            // A fraction should be written with a smaller unit instead
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            var ex = await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                await StartStream(@"
+                    INSERT INTO output
+                    SELECT window_start
+                    FROM orders
+                    INNER JOIN hopping_window(Orderdate, 5.7, 'MINUTE', 10, 'MINUTE');");
+                await WaitForUpdate();
+            });
+            Assert.Contains("must be a whole number", ex.ToString());
+        }
+
+        [Fact]
+        public async Task HoppingWindowRejectsTooLargeAmount()
+        {
+            // The amount must fit in ticks, otherwise the multiplication overflows
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            var ex = await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                await StartStream(@"
+                    INSERT INTO output
+                    SELECT window_start
+                    FROM orders
+                    INNER JOIN hopping_window(Orderdate, 10000000, 'WEEK', 10, 'MINUTE');");
+                await WaitForUpdate();
+            });
+            Assert.Contains("is too large", ex.ToString());
+        }
+
+        [Fact]
+        public async Task HoppingWindowRejectsColumnAsAmount()
+        {
+            // The hop and size are resolved on start, so columns can not be used
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = 1, Orderdate = new DateTime(2000, 1, 1, 0, 7, 0) });
+            var ex = await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                await StartStream(@"
+                    INSERT INTO output
+                    SELECT window_start
+                    FROM orders
+                    INNER JOIN hopping_window(Orderdate, UserKey, 'MINUTE', 10, 'MINUTE');");
+                await WaitForUpdate();
+            });
+            Assert.Contains("must be a numeric literal", ex.ToString());
+        }
     }
 }
