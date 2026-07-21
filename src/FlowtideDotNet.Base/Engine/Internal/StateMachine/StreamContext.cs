@@ -132,6 +132,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal static Func<string, Task>? StartupDuringBlockInitHookForTests;
         // Test hook: park before gate registration.
         internal static Func<string, Task>? StartupBeforeGateRegistrationHookForTests;
+        // Test hook: park after a delete gives up.
+        internal static Func<string, Task>? DeleteGaveUpHookForTests;
 
         private StreamStatus _streamStatus;
 
