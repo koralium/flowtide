@@ -51,8 +51,8 @@ If the input is null or not a timestamp, no windows are returned.
 #### Assigning rows to windows
 
 ```sql
---- An order at 00:07 with a 5 minute hop and 10 minute size
---- belongs to the windows starting at 00:00 and 00:05
+-- An order at 00:07 with a 5 minute hop and 10 minute size
+-- belongs to the windows starting at 00:00 and 00:05
 SELECT window_start, window_end
 FROM orders o
 INNER JOIN hopping_window(o.order_time, 5, 'MINUTE', 10, 'MINUTE')
