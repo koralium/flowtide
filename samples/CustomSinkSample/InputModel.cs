@@ -10,18 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using BenchmarkDotNet.Running;
-using FlowtideDotNet.Nexmark;
+namespace CustomSinkSample
+{
+    public class InputModel
+    {
+        public string? Id { get; set; }
 
-//Query5 query3 = new Query5();
-//query3.Setup();
+        public string? Name { get; set; }
 
-//for (int i = 0; i < 10000; i++)
-//{
-//    query3.IterationSetup();
-//    await query3.Q5();
-//    query3.IterationCleanup();
-//}
+        public bool IsDeleted { get; set; }
 
-
-var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args: [.. args, "--join"]);
+        public bool Crash { get; set; }
+    }
+}

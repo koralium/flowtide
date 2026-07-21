@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -27,10 +27,30 @@ namespace FlowtideDotNet.Core.Sources.Generic
         public abstract IAsyncEnumerable<FlowtideGenericObject<T>> FullLoadAsync();
 
         /// <summary>
-        /// Fetches all objects from the data source that have changed since the last delta load
+        /// Fetches all objects from the data source that have changed since the last delta load.
+        /// Must be overridden when <see cref="IsPushBased"/> is <c>false</c> (the default).
         /// </summary>
         /// <returns></returns>
-        public abstract IAsyncEnumerable<FlowtideGenericObject<T>> DeltaLoadAsync(long lastWatermark);
+        public virtual IAsyncEnumerable<FlowtideGenericObject<T>> DeltaLoadAsync(long lastWatermark)
+        {
+            throw new NotImplementedException("Either DeltaLoadAsync or RunDeltaLoad must be implemented.");
+        }
+
+        /// <summary>
+        /// Push-based delta loading. Override this method and set <see cref="IsPushBased"/> to <c>true</c>
+        /// to use the push-based model where the source controls when data is submitted via transactions.
+        /// </summary>
+        public virtual Task RunDeltaLoad(IDeltaLoadContext<T> context, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException($"RunDeltaLoad must be overridden when IsPushBased is true. Either override RunDeltaLoad or set IsPushBased to false and override DeltaLoadAsync instead.");
+        }
+
+        /// <summary>
+        /// Indicates whether this data source uses the push-based delta load model (RunDeltaLoad)
+        /// instead of the pull-based model (DeltaLoadAsync).
+        /// Defaults to false. Override and return true to use the push-based model.
+        /// </summary>
+        public virtual bool IsPushBased => false;
 
         public virtual IEnumerable<IObjectColumnResolver> GetCustomConverters()
         {
