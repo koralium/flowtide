@@ -26,6 +26,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
     {
         public static void AddBuiltInDatetimeFunctions(FunctionsRegister functionsRegister)
         {
+            TableFunctions.HoppingWindowFunction.AddBuiltInHoppingWindowFunction(functionsRegister);
+
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.Strftime, typeof(BuiltInDatetimeFunctions), nameof(StrfTimeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay, typeof(BuiltInDatetimeFunctions), nameof(FloorTimestampDayImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.ParseTimestamp, typeof(BuiltInDatetimeFunctions), nameof(TimestampParseImplementation));
