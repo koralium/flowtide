@@ -12,17 +12,7 @@
 
 using BenchmarkDotNet.Attributes;
 using FlowtideDotNet.Nexmark.Internal.Diagnosers;
-using FlowtideDotNet.Nexmark.Models;
-using Microsoft.VisualStudio.TestPlatform.Utilities;
-using SqlParser.Ast;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using static Google.Protobuf.WellKnownTypes.Field.Types;
-using static SqlParser.Ast.JoinOperator;
-
 namespace FlowtideDotNet.Nexmark
 {
     [EventCountDiagnoser]
