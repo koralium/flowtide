@@ -13,8 +13,7 @@
 namespace FlowtideDotNet.Core.ColumnStore.Sort
 {
     /// <summary>
-    /// Per column sort order for <see cref="BatchSorter"/>. The default matches the plain column
-    /// comparison: ascending with nulls first.
+    /// Per column sort order, default ascending nulls first.
     /// </summary>
     public enum SortColumnDirection : byte
     {
@@ -32,10 +31,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         }
 
         /// <summary>
-        /// True when the null placement is on the opposite end from where the value order would put it:
-        /// ascending with nulls last, or descending with nulls first. These cannot be expressed by
-        /// complementing radix prefix bytes, since the null marker byte is less significant than the value
-        /// bytes within a column's prefix range.
+        /// True for asc nulls last and desc nulls first, which radix masking can't express.
         /// </summary>
         public static bool HasSwappedNulls(this SortColumnDirection direction)
         {
@@ -43,8 +39,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         }
 
         /// <summary>
-        /// Normalizes the direction for a column that contains no nulls in the current batch, where null
-        /// placement is meaningless and only the value order remains.
+        /// Drops null placement for a null-free column, only value order remains.
         /// </summary>
         public static SortColumnDirection NormalizeForNoNulls(this SortColumnDirection direction)
         {

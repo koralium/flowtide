@@ -50,9 +50,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 case BulkWindowFrameKind.BoundedRows:
                     if (bounds.To == long.MaxValue)
                     {
-                        // Respect nulls with a frame ending at the partition end gives the partition's last
-                        // value for every row (the non bulk implementation ignores the frame start), which
-                        // is the whole partition variant. Ignore nulls still depends on the frame start.
+                        // Respect nulls to the partition end is the whole partition variant.
                         bulkWindowFunction = ignoreNull
                             ? new BulkLastValueIgnoreNullsSuffixWindowFunction(compiledValue, bounds.From)
                             : new BulkLastValueWindowFunctionUnbounded(compiledValue, false);
@@ -60,8 +58,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                     }
                     if (ignoreNull && bounds.From != long.MinValue && bounds.From > bounds.To)
                     {
-                        // With ignore nulls the frame is really empty, so every row is null. Respect nulls
-                        // keeps the frame-start-ignoring behaviour of the non bulk implementation.
+                        // Ignore nulls with an empty frame is always null.
                         bulkWindowFunction = new BulkEmptyFrameWindowFunction();
                         return true;
                     }
@@ -83,8 +80,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// last_value with respect nulls and a frame ending at or before the current row: the value of the row
-    /// at the frame end, matching the non bulk implementation which ignores the frame start.
+    /// last_value respect nulls, frame ending at or before the row, the value at the frame end.
     /// </summary>
     internal class BulkLastValueRespectDelayWindowFunction : IBulkWindowFunction
     {
@@ -165,9 +161,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// last_value with respect nulls and a frame ending ahead of the current row, read through a lookahead
-    /// reader. When the frame end is beyond the partition the last row of the partition is used, matching
-    /// the non bulk implementation.
+    /// last_value respect nulls, frame ending ahead, read through a lookahead.
     /// </summary>
     internal class BulkLastValueRespectLookaheadWindowFunction : IBulkWindowFunction
     {
@@ -282,9 +276,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// last_value with ignore nulls and a frame ending at or before the current row. Tracks the last
-    /// non null value and how many rows back it sits; the output is null when it falls before the frame
-    /// start. The position is stored as auxiliary state so scans can seed from the previous row.
+    /// last_value ignore nulls, frame ending at or before the row, candidate position in aux state.
     /// </summary>
     internal class BulkLastValueIgnoreNullsDelayWindowFunction : IBulkWindowFunction
     {
@@ -353,8 +345,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 return;
             }
 
-            // A previous output that is null means there is no candidate inside the frame, and a candidate
-            // that has fallen out of the frame can never return, so it seeds the same as none at all.
+            // A null previous output seeds the same as no candidate.
             var previousOutput = seedReader.GetState(1, _functionIndex);
             if (!previousOutput.IsNull)
             {
@@ -440,8 +431,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// last_value with ignore nulls and a frame ending ahead of the current row, read through a lookahead
-    /// reader. Positions are tracked absolutely since the candidate can sit ahead of the current row.
+    /// last_value ignore nulls, frame ending ahead, absolute candidate position.
     /// </summary>
     internal class BulkLastValueIgnoreNullsLookaheadWindowFunction : IBulkWindowFunction
     {
@@ -525,7 +515,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                         _candidatePosition = -1 - (offsetState.IsNull ? 0 : offsetState.AsLong);
                     }
                 }
-                // The previous row's output already accounts for rows up to its frame end.
+                // Previous output already covers rows up to its frame end.
                 _nextFeedPosition = _to;
             }
         }
@@ -690,10 +680,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// last_value with ignore nulls over a frame that ends at the partition end, for example
-    /// ROWS BETWEEN 4 PRECEDING AND UNBOUNDED FOLLOWING. A pre-scan finds the partition's last non null
-    /// value and its logical position; a row's result is that value when the position lies inside its
-    /// frame, and null when the frame starts after it.
+    /// last_value ignore nulls to the partition end, e.g. ROWS BETWEEN 4 PRECEDING AND UNBOUNDED FOLLOWING.
+    /// A pre-scan finds the last non null, null when the frame starts after it.
     /// </summary>
     internal class BulkLastValueIgnoreNullsSuffixWindowFunction : IBulkWindowFunction
     {
@@ -754,7 +742,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 {
                     _lastValueColumn.UpdateAt(0, value);
                     _hasValue = true;
-                    // The last duplicate of the row is the frame position that matters.
+                    // The row's last duplicate is the frame position.
                     _lastValuePosition = position + _reader.Weight - 1;
                 }
                 position += _reader.Weight;

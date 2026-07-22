@@ -33,8 +33,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             var compiledValue = ColumnProjectCompiler.CompileToValue(windowFunction.Arguments[0], functionsRegister);
             var bounds = BulkWindowFrameBounds.Parse(windowFunction);
 
-            // The variant selection matches SumWindowFunctionDefinition so results stay identical with the
-            // non bulk operator.
+            // Variant selection matches the non bulk SumWindowFunctionDefinition.
             switch (bounds.Kind)
             {
                 case BulkWindowFrameKind.BoundedRows:
@@ -101,10 +100,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum over a bounded rows frame that does not reach ahead of the current row,
-    /// for example ROWS BETWEEN 4 PRECEDING AND 1 PRECEDING. The frame contents are kept in an in memory
-    /// ring during the scan, seeded from the rows before the scan start, so a change only recomputes the
-    /// rows whose frame can contain the change.
+    /// Sum over a bounded frame not reaching ahead, e.g. ROWS BETWEEN 4 PRECEDING AND 1 PRECEDING.
     /// </summary>
     internal class BulkSumWindowFunctionBounded : IBulkWindowFunction
     {
@@ -211,10 +207,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum from the partition start up to the current row or a preceding offset, for example a running sum.
-    /// The sum is seeded from the stored value of the row before the scan start, so appended rows only add
-    /// to the previous sum instead of rescanning the partition. The function is stable once a recomputed
-    /// row keeps its stored sum.
+    /// Running sum from the partition start, seeded from the previous row's stored sum.
     /// </summary>
     internal class BulkSumWindowFunctionUnboundedFrom : IBulkWindowFunction
     {
@@ -273,8 +266,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 return;
             }
 
-            // The previous row's stored output is the sum up to its own frame end, feed the rows after that
-            // frame end into the pending ring so they enter the sum at the right rows.
+            // Seed the sum, pending rows enter it after their frame end.
             BulkSumUtils.CopySumValue(seedReader.GetState(1, _functionIndex), _sumState);
             var pendingRows = (int)Math.Min(-_to, seedReader.MaterializedRows);
             for (int back = pendingRows; back >= 1; back--)
@@ -311,9 +303,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum over a bounded rows frame that reaches ahead of the current row, for example
-    /// ROWS BETWEEN 2 PRECEDING AND 4 FOLLOWING. Rows ahead of the scan position are read through a
-    /// lookahead reader, so computation is always asynchronous.
+    /// Sum over a bounded frame reaching ahead, e.g. ROWS BETWEEN 2 PRECEDING AND 4 FOLLOWING.
     /// </summary>
     internal class BulkSumWindowFunctionBoundedFollowing : IBulkWindowFunction
     {
@@ -421,8 +411,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 _lookaheadStarted = true;
                 await _lookahead.ResetAtRow(new ColumnRowReference() { referenceBatch = context.Batch, RowIndex = context.RowIndex }, _memoryAllocator);
-                // The first logical row the lookahead yields is the first duplicate of the current
-                // physical row.
+                // Lookahead yields the current physical row's first duplicate first.
                 _lookaheadPosition = _currentPosition - context.DupIndex - 1;
             }
 
@@ -458,10 +447,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum from the partition start to an offset ahead of the current row, for example
-    /// ROWS BETWEEN UNBOUNDED PRECEDING AND 2 FOLLOWING. The sum is seeded from the previous row's stored
-    /// output, which already covers everything up to its own frame end, so only the rows entering the
-    /// frame are read through the lookahead.
+    /// Sum from the partition start reaching ahead, e.g. ROWS BETWEEN UNBOUNDED PRECEDING AND 2 FOLLOWING.
     /// </summary>
     internal class BulkSumWindowFunctionUnboundedFromFollowing : IBulkWindowFunction
     {
@@ -519,8 +505,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             if (!fromPartitionStart && await seedReader.EnsureRows(1))
             {
-                // The previous row's stored sum covers everything through its own frame end, which is
-                // to - 1 rows ahead of the scan start.
+                // Seeded sum covers through the previous frame end, to - 1 rows ahead.
                 BulkSumUtils.CopySumValue(seedReader.GetState(1, _functionIndex), _sumState);
                 _nextFeedPosition = _to;
             }
@@ -571,10 +556,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum from an offset at or before the current row to the partition end, for example
-    /// ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING. A change affects every earlier row, so scans
-    /// always start at the partition start; the partition total is computed with a pre-scan and each row's
-    /// value is the total minus the prefix that lies before its frame.
+    /// Sum to the partition end from at or before the row, e.g. ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING.
+    /// Total from a pre-scan minus the prefix before each frame.
     /// </summary>
     internal class BulkSumWindowFunctionSuffix : IBulkWindowFunction
     {
@@ -668,10 +651,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum from an offset after the current row to the partition end, for example
-    /// ROWS BETWEEN 2 FOLLOWING AND UNBOUNDED FOLLOWING. The partition total is computed with a pre-scan
-    /// and each row's value is the total minus the prefix before its frame, fed through a lookahead
-    /// reader. An empty frame at the partition end produces null.
+    /// Sum to the partition end from after the row, e.g. ROWS BETWEEN 2 FOLLOWING AND UNBOUNDED FOLLOWING.
+    /// Empty frame at the partition end is null.
     /// </summary>
     internal class BulkSumWindowFunctionSuffixFollowing : IBulkWindowFunction
     {
@@ -763,8 +744,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             if (!_lookaheadStarted)
             {
-                // Scans always start at the partition start, so the lookahead covers the prefix rows that
-                // lie before each row's frame.
+                // Lookahead covers the prefix rows before each frame.
                 _lookaheadStarted = true;
                 await _lookahead.ResetAtRow(new ColumnRowReference() { referenceBatch = context.Batch, RowIndex = context.RowIndex }, _memoryAllocator);
                 _lookaheadPosition = _currentPosition - context.DupIndex - 1;
@@ -797,9 +777,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Sum over the whole partition. Any change requires re-emitting every row of the partition, so the
-    /// partition total is computed with a single pre-scan; when the total is unchanged the scan stops after
-    /// the first recomputed row.
+    /// Sum over the whole partition, total from a pre-scan.
     /// </summary>
     internal class BulkSumWindowFunctionUnbounded : IBulkWindowFunction
     {

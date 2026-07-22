@@ -617,10 +617,8 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task WindowUnderCacheEvictionPressure()
         {
-            // A page cache far smaller than the working set keeps the eviction thread continuously
-            // serializing pages while the operator scans and mutates them, exercising the page write lock
-            // interaction that no other test reaches (the default cache never fills). The descending order
-            // by also runs the descending radix sort and boundary search under the same pressure.
+            // Tiny cache keeps eviction serializing pages during the scan, exercising the page write
+            // lock. Descending order by runs the descending radix and boundary paths under the same pressure.
             CachePageCount = 256;
             SetPageSizeBytes(2048);
             GenerateData(10_000);

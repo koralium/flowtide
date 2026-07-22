@@ -97,10 +97,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                     var direction = _directions != null && i < _directions.Count ? _directions[i] : SortColumnDirection.AscendingNullsFirst;
                     if (direction.HasSwappedNulls())
                     {
-                        // Null placement only matters when either side can hold nulls; without them the
-                        // asymmetric orders collapse to their symmetric fast variants. Both sides count:
-                        // a null probe against a null free region still needs its insertion position on
-                        // the configured end.
+                        // Only collapse when neither side has nulls, a null probe still needs placement.
                         var nullFlags = CompareColumnState.HasValidityBitmap | CompareColumnState.OffsetContainsNull;
                         if (((treeColumnState | inputColumnState) & nullFlags) == 0)
                         {

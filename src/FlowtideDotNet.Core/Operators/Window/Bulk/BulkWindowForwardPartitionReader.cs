@@ -20,9 +20,7 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.Operators.Window.Bulk
 {
     /// <summary>
-    /// Iterates the physical rows of one partition in the persistent window tree from the partition start.
-    /// Used by window functions that need to precompute a whole partition value, for example an
-    /// unbounded sum or min.
+    /// Iterates one partition forwards, used for pre-scans and lookahead reads.
     /// </summary>
     internal class BulkWindowForwardPartitionReader : IDisposable
     {
@@ -57,8 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         public int Weight => _currentPage!.Values._weights.Get(_currentIndex);
 
         /// <summary>
-        /// Positions the reader at the start of the partition that <paramref name="partitionRow"/> belongs to.
-        /// The row reference must stay valid for the duration of the iteration.
+        /// Starts at the row's partition, the reference must stay valid for the walk.
         /// </summary>
         public async ValueTask Reset(ColumnRowReference partitionRow)
         {
@@ -73,16 +70,13 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Positions the reader at the first row whose key is greater than or equal to
-        /// <paramref name="anchorRow"/> within the anchor's partition, used for lookahead reads that start
-        /// in the middle of a partition. Requires an insert comparer to have been given at construction.
-        /// The anchor is copied, so the given row reference only needs to be valid during this call.
+        /// Starts at the anchor row instead of the partition start, the anchor is copied.
         /// </summary>
         public async ValueTask ResetAtRow(ColumnRowReference anchorRow, IMemoryAllocator memoryAllocator)
         {
             Debug.Assert(_insertComparer != null, "An insert comparer is required for anchored resets");
 
-            // The reader advances lazily across many rows, so the anchor must outlive the caller's page.
+            // The anchor must outlive the caller's page, the reader advances lazily.
             if (_anchorColumns == null)
             {
                 _anchorColumns = new Column[anchorRow.referenceBatch.Columns.Count];
@@ -148,9 +142,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 var page = _enumerator.Current;
                 if (page.CurrentPage == null || page.Keys == null || page.Keys.Count == 0)
                 {
-                    // Empty pages can sit in the middle of the tree and do not end the partition.
-                    // The first page allowance is kept so a partition that begins after both a page
-                    // end and an empty page is still found.
+                    // Empty pages sit mid tree and do not end the partition.
                     _currentPage = null;
                     continue;
                 }

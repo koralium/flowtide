@@ -30,8 +30,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         IsIndirectView = 1 << 9,  // "Using Offset" -> The data is behind an indirection array
         OffsetContainsNull = 1 << 10, // The -1 fast-null check is required
 
-        // Sort request bits, not part of the column itself. Mixed into compiled sort cache keys so a
-        // descending layout never reuses an ascending delegate.
+        // Sort request bits, keyed so a descending layout never reuses an ascending delegate.
         SortDescending = 1 << 11,
         SortNullsSwapped = 1 << 12
     }

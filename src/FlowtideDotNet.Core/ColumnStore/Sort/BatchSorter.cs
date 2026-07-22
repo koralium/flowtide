@@ -24,8 +24,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
     /// One sorter should be created per thread.
     /// This keeps track of pointer assignment and keeps
     /// the last used sort method in cache to not call concurrent dictionary.
-    /// An optional per column direction layout supports descending columns and explicit null placement;
-    /// the directions are baked into the compiled delegates, so they add no per row cost.
+    /// Directions are baked into the compiled delegates, so they add no per row cost.
     /// </summary>
     internal class BatchSorter
     {

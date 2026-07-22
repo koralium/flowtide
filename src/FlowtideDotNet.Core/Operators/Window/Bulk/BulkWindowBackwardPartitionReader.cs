@@ -18,10 +18,8 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.Operators.Window.Bulk
 {
     /// <summary>
-    /// Walks physical rows of the persistent window tree backwards, starting at the row just before an
-    /// anchor key and stopping at the partition start. Used to seed window function state when a scan
-    /// starts in the middle of a partition and to rescan bounded frames.
-    /// The anchor row reference must stay valid for the duration of the walk.
+    /// Walks backwards from just before an anchor to the partition start.
+    /// The anchor reference must stay valid for the walk.
     /// </summary>
     internal class BulkWindowBackwardPartitionReader : IDisposable
     {
@@ -55,8 +53,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         public BulkWindowValueContainer Values => _currentPage!.Values;
 
         /// <summary>
-        /// Positions the reader so the next <see cref="MoveNextRow"/> returns the last row whose key is
-        /// strictly smaller than the anchor within the anchor's partition.
+        /// Positions at the last row strictly before the anchor in its partition.
         /// </summary>
         public async ValueTask Reset(ColumnRowReference anchor)
         {
@@ -69,8 +66,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Moves to the previous physical row within the partition. Rows with a non positive weight are
-        /// skipped. Returns false when the partition start (or tree start) has been reached.
+        /// Previous row in the partition, skips non positive weights.
         /// </summary>
         public async ValueTask<bool> MoveNextRow()
         {
@@ -107,9 +103,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 var page = _enumerator.Current;
                 if (page.CurrentPage == null || page.Keys == null || page.Keys.Count == 0)
                 {
-                    // Empty pages can sit in the middle of the tree and do not end the partition.
-                    // The first page handling is kept so the anchor is still located on the first
-                    // page that has rows.
+                    // Empty pages sit mid tree and do not end the partition.
                     _currentPage = null;
                     continue;
                 }
@@ -122,7 +116,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     {
                         lower = ~lower;
                     }
-                    // Start one before the anchor position so only rows strictly before the anchor are returned.
+                    // One before the anchor, only earlier rows are returned.
                     _currentIndex = Math.Min(lower, page.Keys.Count);
                     _currentPage = page;
                 }

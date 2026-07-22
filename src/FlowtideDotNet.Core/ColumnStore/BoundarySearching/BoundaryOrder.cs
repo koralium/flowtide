@@ -17,15 +17,12 @@ using System.Runtime.CompilerServices;
 namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
 {
     /// <summary>
-    /// Region order for the primitive hybrid boundary search. The JIT monomorphizes each instantiation,
-    /// so the ascending search compiles to exactly the code it had before directions existed and the
-    /// descending search to its mirrored comparisons, without any runtime branch.
+    /// Region order for the hybrid search, monomorphized so direction is no runtime branch.
     /// </summary>
     internal interface IBoundaryOrder<T> where T : unmanaged
     {
         /// <summary>
-        /// True when <paramref name="value"/> is positioned after <paramref name="target"/> in the
-        /// region's sort order.
+        /// True when value sorts after target in region order.
         /// </summary>
         static abstract bool SortsAfter(T value, T target);
     }
@@ -45,15 +42,12 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
     }
 
     /// <summary>
-    /// Row order semantics for the value based fallback searches, matching the four sort field
-    /// comparison implementations used by the tree comparers. Each instantiation is monomorphized, so
-    /// the null handling and direction are compiled into the search instead of dispatched per row.
+    /// Order for the value based fallback searches, monomorphized per direction.
     /// </summary>
     internal interface IDirectedValueCompare
     {
         /// <summary>
-        /// Compares a tree value against the probe target in region order. Negative when the tree value
-        /// is positioned before the target.
+        /// Compares tree value to target in region order, negative when it sorts before.
         /// </summary>
         static abstract int Compare(IDataValue treeValue, IDataValue target);
     }

@@ -1742,10 +1742,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 createdNullByte = true;
             }
 
-            // The data column reads its value slot for every row, including null rows whose slot holds an
-            // undefined value. The null byte is less significant than the value bytes, so a null row must
-            // have the minimal (all zero) value bytes for nulls to group first; they are cleared below
-            // after the data column has written.
+            // Null rows must get all-zero value bytes so nulls group first, cleared below after the write.
             int innerBytes = _dataColumn.SetRadixPrefix(items, insertBytePosition, selectionVector);
 
             if (selectionVector.IsEmpty)

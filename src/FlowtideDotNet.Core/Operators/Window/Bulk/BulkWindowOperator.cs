@@ -33,20 +33,14 @@ using System.Threading.Tasks.Dataflow;
 namespace FlowtideDotNet.Core.Operators.Window.Bulk
 {
     /// <summary>
-    /// Window operator that applies incoming rows in bulk against its persistent tree and recomputes only
-    /// the rows that a change can affect. Incoming batches are sorted and written with a single pass per
-    /// touched leaf. Changed rows are recorded in a temporary tree, and on watermark each dirty partition is
-    /// scanned starting at the first changed row, seeding window function state from the stored values of
-    /// the preceding rows, and the scan stops as soon as every function reports its remaining stored values
-    /// are still valid.
+    /// Writes batches in bulk and recomputes only the rows a change can affect.
     /// </summary>
     internal class BulkWindowOperator : UnaryVertex<StreamEventBatch>
     {
         private const int OutputBatchSize = 100;
 
         /// <summary>
-        /// Incoming batches are applied to the trees in chunks of this many rows, with an output flush
-        /// between chunks, bounding how many retraction rows can accumulate in memory for one batch.
+        /// Rows per apply chunk, bounds retraction memory per batch.
         /// </summary>
         private const int ReceiveChunkSize = 2048;
 
@@ -88,18 +82,16 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private IDataValue[] _mutatorScratch = Array.Empty<IDataValue>();
         private bool[] _rowValueStable = Array.Empty<bool>();
 
-        // Scratch batch used to group changed rows per partition during the watermark scan.
+        // Changed rows grouped per partition for the scan.
         private ColumnStore.Column[]? _markerColumns;
         private EventBatchData? _markerBatch;
         private int _markerCount;
 
-        // Scratch row holding the partition values of the partition currently being scanned during the
-        // initial full computation.
+        // Partition values of the partition being scanned.
         private ColumnStore.Column[]? _partitionScratchColumns;
         private EventBatchData? _partitionScratchBatch;
 
-        // Scratch row holding the key of the row a scan starts at when functions need rows before the
-        // first change recomputed, found by walking backwards from the first marker.
+        // Key of the row a scan starts at.
         private ColumnStore.Column[]? _scanStartColumns;
         private EventBatchData? _scanStartBatch;
 
@@ -110,10 +102,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private int[] _chunkSortedIndices = Array.Empty<int>();
         private int[] _chunkTagScratch = Array.Empty<int>();
 
-        // Radix based batch sorting of incoming rows, available when every order by key is a plain
-        // column. The layout mirrors BulkWindowInsertComparer's ordering: partition columns, the order by
-        // columns with their directions and the remaining columns ascending, so the sorted batch order is
-        // exactly the tree order.
+        // Radix sort layout, must match the tree comparer's order.
         private readonly ColumnStore.Sort.BatchSorter? _batchSorter;
         private readonly int[]? _sortLayoutColumns;
         private readonly ColumnStore.Sort.SortColumnDirection[]? _sortLayoutDirections;
@@ -125,9 +114,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private bool _initialComputeSawData;
 
         /// <summary>
-        /// Creates a bulk window operator when every window function in the relation has a bulk
-        /// implementation that supports its configuration. Returns false when the relation must fall back
-        /// to the non bulk <see cref="WindowOperator"/>.
+        /// False when any window function has no bulk implementation.
         /// </summary>
         public static bool TryCreate(
             ConsistentPartitionWindowRelation relation,
@@ -195,8 +182,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             _totalStateColumns = auxIndex;
             _maxAffectedRowsBefore = maxAffectedBefore;
 
-            // Functions whose null output means the row is dropped by a filter above, so the row is not
-            // emitted at all. A logical row is emitted only when every such function's value is non null.
+            // Null output here means a filter above drops the row.
             List<int> emitRequired = new List<int>();
             for (int i = 0; i < relation.WindowFunctions.Count; i++)
             {
@@ -226,8 +212,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Builds the batch sorter's column layout when every order by key is a direct field reference.
-        /// Order by expressions that are computed cannot be radix sorted and keep the comparison sort.
+        /// Null when an order by key is a computed expression.
         /// </summary>
         private (int[] columns, ColumnStore.Sort.SortColumnDirection[] directions)? TryBuildSortLayout()
         {
@@ -287,8 +272,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// True when every emission gating function has a non null value, meaning the row would survive
-        /// the row_number filter that sits (or sat, before it was removed) above this relation.
+        /// True when the row survives the row_number filter above.
         /// </summary>
         private bool ShouldEmitRow(IDataValue[] functionValues)
         {
@@ -389,7 +373,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
             _eventsInCounter.Add(dataCount);
 
-            // Compute partition expressions that are not direct column references into extra columns.
+            // Partition expressions that are not direct column references.
             ColumnStore.Column[] extraPartitionColumns = new ColumnStore.Column[_partitionCalculateExpressions.Count];
             for (int i = 0; i < extraPartitionColumns.Length; i++)
             {
@@ -433,7 +417,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 var totalByteSize = extendedBatch.GetByteSize();
                 var mutator = new BulkWindowMutator(_emitter, _functions.Length, _totalStateColumns, _mutatorScratch, _emitRequiredFunctions);
 
-                // The bulk inserter and containers require that a key's row index equals its array index.
+                // Bulk inserter requires row index to equal array index.
                 for (int i = 0; i < dataCount; i++)
                 {
                     _keyScratch[i] = new ColumnRowReference()
@@ -471,9 +455,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     }
                 }
 
-                // The batch is applied in sorted order chunks with an output flush between them, so the
-                // retractions a large delete batch produces do not all accumulate in memory before the
-                // first emission. A chunk ends on a duplicate boundary so equal rows share one apply.
+                // Chunked so retractions do not all accumulate before emission.
+                // Chunks end on a duplicate boundary so equal rows share one apply.
                 for (int chunkStart = 0; chunkStart < dataCount;)
                 {
                     var chunkEnd = Math.Min(chunkStart + ReceiveChunkSize, dataCount);
@@ -506,8 +489,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                         await _temporaryBulkInserter.ApplyBatch(_keyScratch, _tempValueScratch, chunkLength, chunkSortedIndices, chunkTags, new BulkTemporaryMutator(), chunkByteSize);
                     }
 
-                    // The retractions emitted by the mutator reference the extended batch, copy them out
-                    // before the extra partition columns can be disposed.
+                    // Retractions reference the extended batch, copy before disposal.
                     _emitter.FlushPending();
 
                     if (_emitter.Count >= OutputBatchSize)
@@ -537,8 +519,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Sorts the incoming batch with the radix batch sorter, producing the sorted order and the
-        /// duplicate tags in one cache friendly pass instead of the comparison sort and the tag loop.
+        /// Sorts and tags the batch in one radix pass.
         /// </summary>
         private int[] SortBatchWithRadix(EventBatchData extendedBatch, int dataCount)
         {
@@ -574,8 +555,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     _eventsOutCounter.Add(batch.Data.Weights.Count);
                     yield return batch;
                 }
-                // Only switch to incremental change tracking once actual data has been scanned, so an
-                // early empty checkpoint does not disable the faster initial full computation.
+                // Only after real data, an empty checkpoint must not burn the fast path.
                 if (_initialComputeSawData)
                 {
                     _hasSentInitialData.Value = true;
@@ -653,8 +633,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Scans the partition of the currently collected marker rows, recomputing values from the first
-        /// changed row until every function is stable.
+        /// Recomputes the marked partition until every function is stable.
         /// </summary>
         private async IAsyncEnumerable<StreamEventBatch> ScanPartition()
         {
@@ -673,9 +652,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 RowIndex = 0
             };
 
-            // The scan must start early enough that every row a change can affect is recomputed. Functions
-            // whose frames reach ahead of the current row report how many rows before a change they need,
-            // and the scan start is walked backwards that many logical rows from the first changed row.
+            // Walk back far enough to cover frames that reach ahead.
             var scanAnchor = firstMarker;
             bool fromPartitionStart = _maxAffectedRowsBefore == long.MaxValue;
             if (!fromPartitionStart && _maxAffectedRowsBefore > 0)
@@ -694,9 +671,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 }
                 if (anchorFound && walked < _maxAffectedRowsBefore)
                 {
-                    // The partition start, or the tree start, was reached before the full walk. The
-                    // reader no longer rests on a partition row, so the scan starts at the partition's
-                    // first row instead of at an anchor.
+                    // Walk hit the partition start, scan from the first row.
                     fromPartitionStart = true;
                 }
                 else if (anchorFound)
@@ -731,7 +706,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
 
             int markerIndex = 0;
-            // Distance in logical rows from the last consumed change to the next row to scan.
+            // Logical rows from the last change to the next row.
             long nextRowDistance = long.MaxValue / 2;
 
             var enumerator = _scanIterator.GetAsyncEnumerator();
@@ -786,7 +761,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 var keyBatch = page.Keys.Data;
                 var values = page.Values;
 
-                // The leaf's write lock is taken once for the whole page, see PageWriteLockScope.
+                // Leaf write lock taken once per page.
                 _pageLock.Enter(page);
                 try
                 {
@@ -830,8 +805,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     var rowChanged = await ProcessLogicalRows(keyBatch, values, i, weight, rowDistance);
                     pageDirty |= rowChanged;
 
-                    // A changed row can hide a weight change, so the next logical row is treated as
-                    // distance one from the change no matter the row's weight.
+                    // A changed row can hide a weight change.
                     nextRowDistance = consumedMarker ? 1 : nextRowDistance + weight;
 
                     if (markerIndex >= _markerCount)
@@ -840,11 +814,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                         for (int f = 0; f < _functions.Length; f++)
                         {
                             var function = _functions[f];
-                            // Distance stability: no future row can have a change inside its frame.
-                            // Value stability: the last row kept its stored output and auxiliary state and
-                            // sits far enough after the change that its value covers it. It must also not
-                            // be the changed row itself, since a weight change on the row would not be
-                            // visible in its values.
+                            // Stable when no later frame can contain the change,
+                            // or the row kept its stored values far enough after it.
                             bool stable = nextRowDistance > function.AffectedRowsAfter ||
                                 (function.StableByValueEquality &&
                                     rowDistance >= Math.Max(1L, function.EqualityStableAfterRows) &&
@@ -868,8 +839,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     _pageLock.Release();
                 }
 
-                // The emitter's pending block copies reference this page's batch, copy them out before the
-                // page is released.
+                // Emitter references this page's batch, copy out before release.
                 _emitter.FlushPending();
 
                 if (pageDirty)
@@ -896,11 +866,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Holds a leaf's write lock for the duration of a page's row loop. Taking the lock once per page
-        /// instead of once per row matters: the lock is a monitor on the leaf that the cache eviction
-        /// thread also takes, and per row acquisition made it a top profile entry.
-        /// Releasing is tracked so the rare asynchronous compute path can drop the lock and the caller's
-        /// cleanup stays correct even when that path throws.
+        /// Holds a leaf write lock for one page, tracks release for the async path.
         /// </summary>
         private sealed class PageWriteLockScope
         {
@@ -917,7 +883,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
 
             /// <summary>
-            /// Releases the lock if held. Safe to call when it is not.
+            /// Releases the lock if held.
             /// </summary>
             public void Release()
             {
@@ -941,18 +907,14 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private readonly PageWriteLockScope _pageLock = new PageWriteLockScope();
 
         /// <summary>
-        /// Awaits an operation that may read other pages while the current page's write lock is held.
-        /// The lock is only dropped when the operation actually suspends: a synchronous completion never
-        /// switches threads and only ever waited on another page's lock, which cannot deadlock since the
-        /// cache eviction path holds one page lock at a time. Partition starts and window function
-        /// computations complete synchronously for most frame shapes, so this keeps the common path free
-        /// of lock churn on a monitor the eviction thread contends for.
+        /// Drops the page lock only when the operation actually suspends.
+        /// Requires storage waits to suspend rather than block synchronously.
         /// </summary>
         private ValueTask AwaitWithPageLock(ValueTask task)
         {
             if (task.IsCompleted)
             {
-                // Propagates exceptions without releasing the lock.
+                // Propagates exceptions without releasing.
                 task.GetAwaiter().GetResult();
                 return ValueTask.CompletedTask;
             }
@@ -973,11 +935,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Computes all functions for every logical duplicate of a physical row, emits changes and updates
-        /// the stored state lists. Returns true when the page was modified.
-        /// The caller must hold the leaf's write lock through <see cref="_pageLock"/> so a concurrent page
-        /// serialization from cache eviction cannot observe a half written page. Functions never mutate
-        /// the page themselves, their auxiliary values are buffered in the row context and applied here.
+        /// Computes and emits every duplicate of a row, true when the page changed.
+        /// Caller must hold the page lock, functions never mutate the page themselves.
         /// </summary>
         private async ValueTask<bool> ProcessLogicalRows(
             EventBatchData keyBatch,
@@ -1014,8 +973,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     context.ResetPendingAux();
                     if (!_functions[f].TryComputeRow(context, _resultContainers[f]))
                     {
-                        // The asynchronous path may load pages, the lock is only dropped when it
-                        // actually suspends.
+                        // Async path may load pages, drops the lock only if it suspends.
                         await AwaitWithPageLock(_functions[f].ComputeRow(context, _resultContainers[f]));
                     }
                     if (context._pendingAuxCount > 0 && ApplyPendingAux(values, rowIndex, dup))
@@ -1040,8 +998,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     if (valueChanged)
                     {
                         anyChanged = true;
-                        // A suppressed row was never sent downstream, so it has nothing to retract and an
-                        // update into suppression only retracts the previously sent values.
+                        // A suppressed row was never sent, nothing to retract.
                         if (ShouldEmitRow(_oldValueScratch))
                         {
                             _emitter.AddOutputRow(keyBatch, rowIndex, _oldValueScratch, -1);
@@ -1081,8 +1038,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Applies the auxiliary values a function buffered for the current logical row. Must be called
-        /// while the leaf's write lock is held. Returns true when any stored auxiliary value changed.
+        /// Applies buffered auxiliary values, true when any changed. Page lock must be held.
         /// </summary>
         private bool ApplyPendingAux(BulkWindowValueContainer values, int rowIndex, int dupIndex)
         {
@@ -1115,8 +1071,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// First computation after start, scans the whole persistent tree partition by partition and emits
-        /// every value. The temporary tree is not used before the initial values have been sent.
+        /// First computation after start, scans and emits the whole tree.
         /// </summary>
         private async IAsyncEnumerable<StreamEventBatch> InitialFullCompute()
         {
@@ -1151,8 +1106,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 bool pageDirty = false;
                 _initialComputeSawData = true;
 
-                // The leaf's write lock is taken once for the whole page and only dropped around the
-                // asynchronous partition starts, see PageWriteLockScope.
+                // Leaf write lock taken once per page.
                 _pageLock.Enter(page);
                 try
                 {
@@ -1169,8 +1123,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                             }
                             else
                             {
-                                // A new partition starts at this row. Starting it can read other pages,
-                                // the lock is only dropped when it actually suspends.
+                                // Starting a partition can read other pages.
                                 await AwaitWithPageLock(StartNewPartition(keyBatch, index));
                                 _partitionRangeComparer.FindIndex(in partitionRow, page.Keys);
                                 endIndex = _partitionRangeComparer.end;
@@ -1203,8 +1156,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     _pageLock.Release();
                 }
 
-                // The emitter's pending block copies reference this page's batch, copy them out before the
-                // page is released.
+                // Emitter references this page's batch, copy out before release.
                 _emitter.FlushPending();
 
                 if (pageDirty)
@@ -1271,9 +1223,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 _eventsInCounter = Metrics.CreateCounter<long>("events_processed");
             }
 
-            // The non bulk WindowOperator stored its state under "persistent"/"temporary" with an
-            // incompatible layout. Restoring such state silently as an empty bulk tree would produce
-            // permanently wrong output, so fail loudly instead.
+            // Old operator state has an incompatible layout, restoring it silently would be wrong.
             if (stateManagerClient.StateExists("persistent"))
             {
                 throw new InvalidOperationException(
@@ -1284,9 +1234,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
             _hasSentInitialData = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initialDataSent");
 
-            // The state column layout depends on each function's auxiliary column count, which can
-            // change between builds. Restoring a checkpoint with another layout would silently read
-            // shifted columns, so the layout is stored with the state and validated on restore.
+            // A changed layout would silently read shifted state columns.
             var auxCounts = new string[_functions.Length];
             for (int f = 0; f < _functions.Length; f++)
             {

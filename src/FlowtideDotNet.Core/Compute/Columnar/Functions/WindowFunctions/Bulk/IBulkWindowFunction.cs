@@ -22,8 +22,7 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 {
     /// <summary>
-    /// The current logical row of a bulk window scan. The operator mutates the fields between rows, so
-    /// implementations must not hold on to the instance across rows.
+    /// The current scan row, reused between rows so do not hold on to it.
     /// </summary>
     internal sealed class BulkWindowRowContext
     {
@@ -48,16 +47,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public int Weight;
 
         /// <summary>
-        /// Logical rows scanned since the last change position was passed. Zero when the current row is a
-        /// changed row or directly follows a deleted row.
+        /// Logical rows since the last change, zero on a changed row.
         /// </summary>
         public long RowsSinceLastChange;
 
         internal BulkWindowValueContainer Values = null!;
 
-        // Auxiliary values written by functions are buffered here and applied to the page by the operator
-        // while it holds the leaf's write lock, so functions never mutate pages themselves. The values are
-        // applied directly after the function's compute call, so they only need to stay valid until then.
+        // Aux values buffered here, the operator applies them under the page lock.
         internal readonly IDataValue?[] _pendingAuxValues;
         internal readonly int[] _pendingAuxSlots;
         internal int _pendingAuxCount;
@@ -69,8 +65,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         }
 
         /// <summary>
-        /// Stores an auxiliary state value for the current logical row. The value is applied by the
-        /// operator right after the compute call returns, so it must stay valid until then.
+        /// Buffers an aux value, must stay valid until the compute call returns.
         /// </summary>
         public void SetAuxValue(int auxColumnIndex, IDataValue value)
         {
@@ -101,8 +96,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public required List<int> PartitionColumns { get; init; }
 
         /// <summary>
-        /// Creates a new comparer instance over the full row ordering of the persistent tree. Comparer
-        /// instances hold scratch state, so each reader needs its own instance.
+        /// Comparers hold scratch state, each reader needs its own instance.
         /// </summary>
         public required Func<BulkWindowInsertComparer> CreateInsertComparer { get; init; }
 
@@ -122,40 +116,32 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// A window function implementation for the bulk window operator. Functions compute values during a
-    /// forward scan over a partition and can seed their state from the stored values of rows before the
-    /// scan start, which allows recomputing only the rows a change can affect.
+    /// Computes values during a forward partition scan, seeded from earlier stored rows.
     /// </summary>
     internal interface IBulkWindowFunction
     {
         /// <summary>
-        /// How many logical rows before a changed row can have their value affected by that change.
-        /// long.MaxValue means the scan must always start at the partition start.
+        /// Rows before a change it can affect, long.MaxValue means scan from the partition start.
         /// </summary>
         long AffectedRowsBefore { get; }
 
         /// <summary>
-        /// How many logical rows after the last changed row can have their value affected. When the scan has
-        /// passed this many rows since the last change the function is stable. long.MaxValue means the
-        /// function never becomes stable by distance alone.
+        /// Rows after a change it can affect, long.MaxValue means never stable by distance.
         /// </summary>
         long AffectedRowsAfter { get; }
 
         /// <summary>
-        /// When true, the function is stable once a row's computed output and stored auxiliary state are
-        /// unchanged and at least <see cref="EqualityStableAfterRows"/> logical rows have passed since the
-        /// last change.
+        /// True when unchanged stored values imply stability after <see cref="EqualityStableAfterRows"/>.
         /// </summary>
         bool StableByValueEquality { get; }
 
         /// <summary>
-        /// The minimum number of logical rows that must have passed since the last change before value
-        /// equality implies stability.
+        /// Rows since the last change before value equality implies stability.
         /// </summary>
         long EqualityStableAfterRows { get; }
 
         /// <summary>
-        /// The number of extra state list columns the function needs besides its output column.
+        /// Extra state list columns needed besides the output column.
         /// </summary>
         int AuxiliaryStateColumnCount { get; }
 
@@ -164,18 +150,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         ValueTask Commit();
 
         /// <summary>
-        /// Called before rows are scanned. <paramref name="partitionValues"/> references a row belonging to
-        /// the partition and stays valid for the whole scan. When <paramref name="fromPartitionStart"/> is
-        /// false the seed reader provides the logical rows preceding the scan start; the reader may reach the
-        /// partition start early, in which case the function should treat the scan start as the partition start.
+        /// Called before scanning, the seed reader provides rows before the scan start.
         /// </summary>
         ValueTask StartScan(ColumnRowReference partitionValues, BulkWindowSeedReader seedReader, bool fromPartitionStart);
 
         /// <summary>
-        /// Computes the function value for the current logical row into <paramref name="result"/> when it
-        /// can be done synchronously, which is the common case. Returns false when asynchronous work such
-        /// as a storage read is needed, in which case <see cref="ComputeRow"/> must be awaited instead and
-        /// this call must not have modified any state.
+        /// Sync compute, false when a storage read is needed (must not have mutated state then).
         /// </summary>
         bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result);
 

@@ -18,11 +18,8 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 {
     /// <summary>
-    /// A ring of data values backed by a column, used by bounded frame window functions to keep the values
-    /// currently inside the frame. Pushing copies the value into the ring's own memory, so pushed values
-    /// stay valid when the source page is released. Storage starts small and grows on demand up to the
-    /// declared capacity, so a frame declared much larger than the partitions it runs over only allocates
-    /// what is actually used.
+    /// Column backed value ring for bounded frames, pushes copy so they outlive the page.
+    /// Grows on demand up to capacity so a huge declared frame only allocates what it uses.
     /// </summary>
     internal sealed class BulkWindowValueRing : IDisposable
     {
@@ -81,8 +78,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         }
 
         /// <summary>
-        /// Removes and returns the oldest value. The returned value references the ring's storage and is
-        /// only valid until the slot is overwritten by a later push, so it must be consumed immediately.
+        /// Pops the oldest value, valid until the slot is overwritten.
         /// </summary>
         public IDataValue PopOldest()
         {
@@ -94,8 +90,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         }
 
         /// <summary>
-        /// Returns the value at the given index, where 0 is the oldest entry. The returned value
-        /// references the ring's storage and is only valid until the slot is overwritten.
+        /// Value at the index, 0 is oldest, valid until the slot is overwritten.
         /// </summary>
         public IDataValue GetAt(int index)
         {

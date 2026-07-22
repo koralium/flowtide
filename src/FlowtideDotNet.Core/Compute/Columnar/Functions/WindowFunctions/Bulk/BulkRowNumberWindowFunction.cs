@@ -36,14 +36,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Row number for the bulk window operator. When a scan starts in the middle of a partition the next
-    /// row number is seeded from the stored value of the previous row, so appending rows at the end of a
-    /// partition only touches the appended rows. The function is stable as soon as a recomputed row keeps
-    /// its stored number, since all later numbers are then unchanged as well.
-    /// When the optimizer provides a maximum row number (a filter such as row_number() = 1 sits directly
-    /// above), rows past the bound output null instead of an exact number. Since null stays null when rows
-    /// shift, a change near the top of a partition only recomputes rows up to the bound instead of the
-    /// whole partition.
+    /// Row number, seeded from the previous row's stored number.
+    /// With a max row number bound, rows past it output null so scans stop at the bound.
     /// </summary>
     internal class BulkRowNumberWindowFunction : IBulkWindowFunction
     {
@@ -91,8 +85,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 {
                     throw new InvalidOperationException("The stored row number of the previous row is missing");
                 }
-                // The previous row is past the maximum row number, so every following row is as well. The
-                // exact number is unknown but not needed, any value above the bound behaves the same.
+                // Previous row is past the bound, so every following row is too.
                 _nextRowNumber = _maxRowNumber + 1;
                 return;
             }

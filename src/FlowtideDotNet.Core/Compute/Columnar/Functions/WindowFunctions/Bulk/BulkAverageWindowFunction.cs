@@ -72,8 +72,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     internal static class BulkAverageUtils
     {
         /// <summary>
-        /// Writes sum divided by count into the result container using the same typing rules as
-        /// <see cref="AverageWindowUtils.DivideWithCount{T}"/>.
+        /// Writes sum / count, same typing as <see cref="AverageWindowUtils.DivideWithCount{T}"/>.
         /// </summary>
         public static void DivideToContainer(DataValueContainer sum, long count, DataValueContainer result)
         {
@@ -104,8 +103,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Average over a bounded rows frame that does not reach ahead of the current row. Mirrors
-    /// <see cref="BulkSumWindowFunctionBounded"/> with a count of numeric values for the division.
+    /// Average mirror of <see cref="BulkSumWindowFunctionBounded"/>, adds a count.
     /// </summary>
     internal class BulkAverageWindowFunctionBounded : IBulkWindowFunction
     {
@@ -216,8 +214,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Average over a bounded rows frame that reaches ahead of the current row, using a lookahead reader.
-    /// Mirrors <see cref="BulkSumWindowFunctionBoundedFollowing"/>.
+    /// Average mirror of <see cref="BulkSumWindowFunctionBoundedFollowing"/>.
     /// </summary>
     internal class BulkAverageWindowFunctionBoundedFollowing : IBulkWindowFunction
     {
@@ -363,8 +360,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Running average from the partition start, seeded from the previous row's stored auxiliary sum and
-    /// count since the average itself cannot be continued from.
+    /// Running average, seeded from the previous row's stored aux sum and count.
     /// </summary>
     internal class BulkAverageWindowFunctionUnboundedFrom : IBulkWindowFunction
     {
@@ -472,8 +468,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Average from the partition start to an offset ahead of the current row, seeded from the previous
-    /// row's stored auxiliary sum and count with a lookahead for the rows entering the frame.
+    /// Average from the partition start reaching ahead, aux mirror of the sum variant.
     /// </summary>
     internal class BulkAverageWindowFunctionUnboundedFromFollowing : IBulkWindowFunction
     {
@@ -593,8 +588,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Average from an offset at or before the current row to the partition end, computed as the partition
-    /// total minus the prefix before the frame. Mirrors <see cref="BulkSumWindowFunctionSuffix"/>.
+    /// Average mirror of <see cref="BulkSumWindowFunctionSuffix"/>.
     /// </summary>
     internal class BulkAverageWindowFunctionSuffix : IBulkWindowFunction
     {
@@ -699,9 +693,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Average from an offset after the current row to the partition end. Mirrors
-    /// <see cref="BulkSumWindowFunctionSuffixFollowing"/> with a count for the division; an empty frame at
-    /// the partition end produces null through the zero count.
+    /// Average mirror of <see cref="BulkSumWindowFunctionSuffixFollowing"/>.
     /// </summary>
     internal class BulkAverageWindowFunctionSuffixFollowing : IBulkWindowFunction
     {

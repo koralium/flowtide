@@ -18,11 +18,8 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.Operators.Window.Bulk
 {
     /// <summary>
-    /// Applies an incoming batch of rows to the bulk window operator's persistent tree.
-    /// Weights are merged; when a row's weight reaches zero the row is deleted and all previously emitted
-    /// values are retracted immediately. When a weight decreases, the now excess duplicate outputs are
-    /// retracted and their state list entries removed. New values for inserted or updated rows are
-    /// computed later during the watermark scan.
+    /// Merges weights into the tree and retracts outputs that lost their duplicate.
+    /// New values are computed later during the watermark scan.
     /// </summary>
     internal struct BulkWindowMutator : IRowMutator<ColumnRowReference, BulkWindowValue>
     {
@@ -63,8 +60,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         {
             if (!exists)
             {
-                // Negative weights are stored as well so a later matching insert can cancel them,
-                // they count as zero logical rows during scans.
+                // Negative weights are stored so a later insert can cancel them.
                 return GenericWriteOperation.Upsert;
             }
 
@@ -74,8 +70,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             var container = existingData.valueContainer;
             if (container == null)
             {
-                // The existing value is a pending insert from the same batch that has not been written to
-                // a page yet, it has no stored state lists.
+                // Pending insert from the same batch, no stored state lists yet.
                 if (newWeight == 0)
                 {
                     return GenericWriteOperation.Delete;
@@ -98,8 +93,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     {
                         _valueScratch[f] = container._functionStates[f].GetListElementValue(index, dup);
                     }
-                    // Duplicates whose emission gating value is null were suppressed at emission and were
-                    // never sent downstream, so they must not be retracted either.
+                    // Suppressed duplicates were never sent, nothing to retract.
                     if (WasEmitted())
                     {
                         _emitter.AddOutputRow(key.referenceBatch, key.RowIndex, _valueScratch, -1);
@@ -107,9 +101,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 }
             }
 
-            // The now excess state entries are removed even when the row is deleted, since a later
-            // insert of the same key in the same batch reinstates the row in place. Without clearing, the
-            // reinstated row would keep the already retracted values and the scan would retract them again.
+            // Cleared even when deleted, a same batch reinsert would reuse these and double retract.
             if (storedOutputs > newOutputCount)
             {
                 for (int dup = storedOutputs - 1; dup >= newOutputCount; dup--)
@@ -143,9 +135,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// The excess entry removal below indexes duplicate positions derived from the first function's
-        /// list length into every state column, so all output and auxiliary lists of a row must stay the
-        /// same length. A misaligned removal would silently corrupt neighboring rows' list boundaries.
+        /// All state lists of a row must stay the same length, removal indexes them together.
         /// </summary>
         [Conditional("DEBUG")]
         private void AssertStateListsAligned(BulkWindowValueContainer container, int index, int storedOutputs)

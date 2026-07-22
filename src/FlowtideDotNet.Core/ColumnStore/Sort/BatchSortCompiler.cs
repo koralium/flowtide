@@ -50,8 +50,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         }
 
         /// <summary>
-        /// Ascending value order with nulls at the end, used for columns whose null placement is opposite
-        /// the value order so the normal null-first column compare cannot be reused.
+        /// Ascending with nulls last, for the asymmetric case the null-first compare can't do.
         /// </summary>
         public static int CompareColumnAscendingNullsLast(IColumn column, int x, int y)
         {
@@ -69,7 +68,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         }
 
         /// <summary>
-        /// Descending value order with nulls at the start, the mirrored asymmetric case.
+        /// Descending with nulls first, the mirrored asymmetric case.
         /// </summary>
         public static int CompareColumnDescendingNullsFirst(IColumn column, int x, int y)
         {
@@ -214,8 +213,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                 Expression compareResult;
                 if (direction.HasSwappedNulls())
                 {
-                    // Nulls sit on the opposite end of the value order, which the null-first column
-                    // compare cannot express, so these use the explicit helper.
+                    // Opposite null placement needs the explicit helper.
                     var col = Expression.ArrayIndex(fetchColumns, Expression.Constant(i));
                     var method = direction.IsDescending() ? nameof(CompareColumnDescendingNullsFirst) : nameof(CompareColumnAscendingNullsLast);
                     compareResult = Expression.Call(
@@ -227,8 +225,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                 }
                 else
                 {
-                    // Descending with nulls last is the exact inversion of the default order, so the
-                    // operands are swapped at compile time.
+                    // Descending nulls last inverts the default, swap operands at compile time.
                     var left = direction.IsDescending() ? yParameter : xParameter;
                     var right = direction.IsDescending() ? xParameter : yParameter;
                     if (column.SupportSelfCompareExpression)
@@ -260,11 +257,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
             if (columns.Length > 7)
             {
-                // Generate the remainder compares with directions baked in per column. The column types
-                // are not part of the sort cache key beyond the fast path, so these stay type agnostic
-                // through CompareColumn, but the direction is a per layout constant and compiles here.
-                // The raw direction is used since the columns' null states are not keyed either; the
-                // asymmetric helpers are correct for batches with and without nulls.
+                // Tail compares, direction baked in per column. Raw direction since tail null
+                // states are not keyed, the asymmetric helpers handle both.
                 for (int i = 7; i < columns.Length; i++)
                 {
                     var direction = directions != null && i < directions.Length ? directions[i] : SortColumnDirection.AscendingNullsFirst;
@@ -309,9 +303,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         }
 
         /// <summary>
-        /// A column without nulls in the current batch reduces the asymmetric null placements to their
-        /// symmetric counterparts, which keeps the fast compiled compare paths. Only valid for the fast
-        /// path columns whose null state is part of the sort cache key.
+        /// A null-free column collapses asymmetric placements to symmetric, keeping the fast paths.
+        /// Only valid for fast path columns whose null state is keyed.
         /// </summary>
         internal static SortColumnDirection GetEffectiveDirection(IColumn column, SortColumnDirection[]? directions, int index)
         {

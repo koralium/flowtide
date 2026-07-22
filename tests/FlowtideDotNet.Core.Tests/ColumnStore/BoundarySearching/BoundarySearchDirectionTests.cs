@@ -20,10 +20,8 @@ using FlowtideDotNet.Storage.Memory;
 namespace FlowtideDotNet.Core.Tests.ColumnStore.BoundarySearching
 {
     /// <summary>
-    /// Verifies the direction aware bulk boundary search against a linear scan reference over trees
-    /// sorted with the same directions: matching ranges and insertion points must be identical, since the
-    /// bulk inserter uses both to position writes. Covers the specialized descending primitive path, the
-    /// directed value fallbacks and mixed multi column layouts like the window operator's.
+    /// Direction aware bulk boundary search vs a linear scan reference, ranges and insertion points
+    /// must match since the inserter positions writes with both.
     /// </summary>
     public class BoundarySearchDirectionTests
     {
@@ -126,8 +124,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.BoundarySearching
         }
 
         /// <summary>
-        /// Materializes columns reordered into the order the directions define, since the bulk search
-        /// operates over a region that is sorted like a tree page.
+        /// Sorts columns into a region like a tree page, the search's input.
         /// </summary>
         private static IColumn[] SortIntoRegion(IColumn[] columns, int count, SortColumnDirection[] directions)
         {
@@ -238,8 +235,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.BoundarySearching
         [Fact]
         public void WindowStyleLayoutMixedDirections()
         {
-            // Partition column ascending, a descending order by column and ascending remainder, like the
-            // bulk window operator's tree layout for ORDER BY x DESC.
+            // Mixed directions like the window layout for ORDER BY x DESC.
             for (int seed = 0; seed < 10; seed++)
             {
                 var random = new Random(2000 + seed);

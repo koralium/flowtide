@@ -16,9 +16,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 {
     /// <summary>
-    /// Creates bulk window function instances. TryCreate may return false when the concrete window function
-    /// configuration is not supported in bulk mode, for example an unsupported frame bound, in which case
-    /// the window relation falls back to the non bulk window operator.
+    /// Creates bulk window functions, false when the configuration is unsupported.
     /// </summary>
     internal abstract class BulkWindowFunctionDefinition
     {

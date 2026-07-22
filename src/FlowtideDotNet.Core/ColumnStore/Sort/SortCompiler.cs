@@ -29,11 +29,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         public delegate void SortWithTagsDelegate(SortCompareContext context, ref Span<int> indices, ref Span<int> tags, ref Span<RadixItem> radixItems);
 
         /// <summary>
-        /// Global compile cache key. The column state key only covers the fast path columns, so the
-        /// column count and the per column directions are part of the key as well: the compiled delegates
-        /// bake the tail column count and every direction in, nothing is decided at runtime. Instances of
-        /// <see cref="BatchSorter"/> have fixed directions and column count, so their per batch fast path
-        /// only needs to compare the state key; this composite key is only touched on a state change.
+        /// Compile cache key. Column count and directions join the state key since the tail columns
+        /// bake them in, nothing is decided at runtime. Only built on a state change.
         /// </summary>
         private readonly struct SortLayoutKey : IEquatable<SortLayoutKey>
         {
@@ -139,8 +136,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         public const int AvailableBytesRadix = 12;
 
         /// <summary>
-        /// One radix absorbed column: which column writes its prefix bytes at which position, and whether
-        /// its byte range is complemented afterwards to invert the order for a descending column.
+        /// One radix absorbed column, where its prefix bytes go.
         /// </summary>
         private readonly struct RadixExtraction
         {
@@ -155,9 +151,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         }
 
         /// <summary>
-        /// The shared routing decision for a column layout: which columns the radix prefix absorbs, where
-        /// the tie comparer starts and the combined complement masks for descending columns. Computed once
-        /// so the sort entry points and the extractor can never disagree.
+        /// Shared radix routing: absorbed columns, tie comparer start, complement masks. Computed once
+        /// so the entry points and extractor never disagree.
         /// </summary>
         private sealed class RadixPlan
         {
@@ -180,9 +175,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                 var direction = BatchSortCompiler.GetEffectiveDirection(columns[i], directions, i);
                 if (direction.HasSwappedNulls())
                 {
-                    // The null marker byte is less significant than the value bytes within a column's
-                    // range, so null placement opposite the value order cannot be encoded in the prefix.
-                    // The comparer resolves the order from this column on.
+                    // The null byte is below the value bytes, so opposite null placement can't be
+                    // encoded in the prefix. The comparer resolves the order from here.
                     plan.QuicksortStartIndex = i;
                     break;
                 }
@@ -227,8 +221,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
                 if (consumed[i].complement)
                 {
-                    // A descending column inverts its whole byte range, including the null marker byte,
-                    // which turns nulls-first ascending into nulls-last descending.
+                    // Inverting the whole byte range turns nulls-first asc into nulls-last desc.
                     for (int b = bytePosition; b < bytePosition + consumed[i].bytes; b++)
                     {
                         if (b < 4)
@@ -583,9 +576,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         }
 
         /// <summary>
-        /// Complements the byte ranges of every descending column in one pass, inverting their order in
-        /// the prefix. Runs once per batch with compile time constant masks, so direction never appears as
-        /// a branch in any per row loop.
+        /// Inverts descending columns in one pass with compile time constant masks.
         /// </summary>
         private static void ApplyComplementMasks(ref Span<RadixItem> items, ulong primaryMask, uint secondaryMask)
         {

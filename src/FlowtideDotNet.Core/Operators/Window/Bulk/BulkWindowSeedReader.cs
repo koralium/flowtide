@@ -19,10 +19,8 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.Operators.Window.Bulk
 {
     /// <summary>
-    /// Lazily materializes the logical rows that precede a scan start position so window functions can seed
-    /// their incremental state. Row values, weights and stored function state are copied into scratch
-    /// columns since the source pages are released as the backward walk advances.
-    /// Logical rows are exposed newest first: back = 1 is the row immediately before the scan start.
+    /// Materializes rows before a scan start so functions can seed their state.
+    /// Newest first, back = 1 is the row immediately before the scan start.
     /// </summary>
     internal class BulkWindowSeedReader : IDisposable
     {
@@ -66,8 +64,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         public int MaterializedRows => _materializedRows;
 
         /// <summary>
-        /// Starts a new seed at the given anchor. Rows strictly before the anchor within its partition
-        /// become available.
+        /// Starts a seed at the anchor, exposing earlier rows in its partition.
         /// </summary>
         public async ValueTask Reset(ColumnRowReference anchor)
         {
@@ -101,8 +98,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Ensures at least <paramref name="logicalRows"/> rows are materialized. Returns true when that
-        /// many rows exist before the scan start, false when the partition start was reached first.
+        /// Materializes the requested rows, false when the partition start came first.
         /// </summary>
         public async ValueTask<bool> EnsureRows(int logicalRows)
         {
@@ -146,10 +142,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     }
                     else
                     {
-                        // Rows before a scan start must always have one state entry per duplicate, since
-                        // any row with incomplete state carries a change marker and scans start at or
-                        // before the first marker. Padding with null here would silently seed wrong
-                        // function state, so it should never be reached.
+                        // Rows before a scan start always have one state entry per duplicate.
                         Debug.Assert(false, "Seed row is missing stored state for a duplicate, function state would seed incorrectly");
                         _stateColumns[s].Add(NullValue.Instance);
                     }
@@ -159,8 +152,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Returns a reference to the logical row <paramref name="back"/> rows before the scan start.
-        /// back = 1 is the closest row. Only valid for back &lt;= <see cref="MaterializedRows"/>.
+        /// The row <paramref name="back"/> rows before the scan start, 1 is closest.
         /// </summary>
         public ColumnRowReference GetRow(int back)
         {

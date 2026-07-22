@@ -17,10 +17,8 @@ using FlowtideDotNet.Storage.Tree;
 namespace FlowtideDotNet.Core.Operators.Window.Bulk
 {
     /// <summary>
-    /// Locates the row range of a partition inside a leaf page. The search key is a full row
-    /// (same layout as the stored keys) and only the partition columns are compared, so a seek positions
-    /// the iterator at the first row of the key's partition. After <see cref="FindIndex"/> the matched
-    /// range within the page is available through <see cref="start"/> and <see cref="end"/>.
+    /// Finds a partition's row range in a page, comparing only the partition columns.
+    /// The matched range is exposed through <see cref="start"/> and <see cref="end"/>.
     /// </summary>
     internal class BulkWindowPartitionComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {

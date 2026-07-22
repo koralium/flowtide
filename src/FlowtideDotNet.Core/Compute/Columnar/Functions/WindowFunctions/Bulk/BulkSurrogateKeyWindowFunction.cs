@@ -34,9 +34,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Assigns a stable int64 key per partition, stored in its own tree so the key survives across
-    /// changes to the partition's rows. The entry is created when the partition first produces a row and
-    /// removed when a scan finds the partition empty.
+    /// Stable int64 key per partition, stored in its own tree, removed when the partition empties.
     /// </summary>
     internal class BulkSurrogateKeyInt64WindowFunction : IBulkWindowFunction
     {
@@ -45,10 +43,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private IObjectState<long>? _keyCounterState;
         private BulkWindowForwardPartitionReader? _emptyCheckReader;
 
-        // Scratch batch holding only the partition columns, which is the surrogate tree's key layout.
+        // Partition columns only, the surrogate tree's key layout.
         private Column[]? _partitionKeyColumns;
         private EventBatchData? _partitionKeyBatch;
-        // Full width scratch row used by the empty check reader, which expects full row keys.
+        // Full width row for the empty check reader, which needs full keys.
         private Column[]? _fullRowColumns;
         private EventBatchData? _fullRowBatch;
         private IMemoryAllocator? _memoryAllocator;
@@ -189,8 +187,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 return;
             }
 
-            // The scan produced no rows but an entry exists. The scan may have covered only part of the
-            // partition, so verify the partition is empty before removing the surrogate key.
+            // Scan produced no rows, verify the whole partition is empty before removing the key.
             var fullRowKey = new ColumnRowReference()
             {
                 referenceBatch = _fullRowBatch!,

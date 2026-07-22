@@ -21,39 +21,35 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     internal enum BulkWindowFrameKind
     {
         /// <summary>
-        /// A rows frame with a finite lower bound, for example ROWS BETWEEN 4 PRECEDING AND CURRENT ROW.
-        /// The upper bound may still be long.MaxValue (UNBOUNDED FOLLOWING).
+        /// Finite lower bound, the upper may still be UNBOUNDED FOLLOWING.
         /// </summary>
         BoundedRows,
 
         /// <summary>
-        /// UNBOUNDED PRECEDING to a finite upper bound, for example a running aggregate.
+        /// UNBOUNDED PRECEDING to a finite upper bound.
         /// </summary>
         UnboundedPreceding,
 
         /// <summary>
-        /// The whole partition, either explicit unbounded bounds or no frame at all.
+        /// The whole partition, unbounded both ends or no frame.
         /// </summary>
         WholePartition
     }
 
     /// <summary>
-    /// Shared classification of a window function's frame bounds, so every bulk function definition maps
-    /// bound shapes to variants the same way as the non bulk definitions.
+    /// Shared frame bound classification, matches the non bulk definitions.
     /// </summary>
     internal readonly struct BulkWindowFrameBounds
     {
         public BulkWindowFrameKind Kind { get; }
 
         /// <summary>
-        /// Lower bound offset relative to the current row, negative for preceding. long.MinValue when the
-        /// frame starts at the partition start.
+        /// Lower offset from the current row, long.MinValue at the partition start.
         /// </summary>
         public long From { get; }
 
         /// <summary>
-        /// Upper bound offset relative to the current row, negative for preceding. long.MaxValue when the
-        /// frame ends at the partition end.
+        /// Upper offset from the current row, long.MaxValue at the partition end.
         /// </summary>
         public long To { get; }
 
@@ -65,8 +61,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         }
 
         /// <summary>
-        /// Parses the window function's bounds using the same rules as the non bulk function definitions:
-        /// no bounds at all maps to the whole partition.
+        /// Parses the bounds, no frame maps to the whole partition.
         /// </summary>
         public static BulkWindowFrameBounds Parse(WindowFunction windowFunction)
         {
@@ -84,8 +79,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Window function for degenerate frames whose start lies after their end (for example
-    /// ROWS BETWEEN 1 PRECEDING AND 3 PRECEDING). The frame is always empty, so every row is null.
+    /// Frame with start after end, always empty so every row is null.
     /// </summary>
     internal sealed class BulkEmptyFrameWindowFunction : IBulkWindowFunction
     {

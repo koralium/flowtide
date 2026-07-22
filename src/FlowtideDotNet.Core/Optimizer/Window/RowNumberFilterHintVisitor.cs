@@ -19,20 +19,14 @@ using FlowtideDotNet.Substrait.Relations;
 namespace FlowtideDotNet.Core.Optimizer.Window
 {
     /// <summary>
-    /// Detects filters directly above a window relation that bound a row_number function to a maximum
-    /// value, for example WHERE ROW_NUMBER() OVER (...) = 1, and annotates the window function with the
-    /// bound. The bulk window operator then stops maintaining exact row numbers past the bound, which
-    /// avoids scanning whole partitions when rows shift, and skips emitting the rows the filter would drop
-    /// anyway, so only the surviving rows flow through the filter. The filter itself is kept: it carries
-    /// the query's semantics through re-optimization, and after emission suppression it only sees the few
-    /// rows within the bound.
+    /// Bounds row_number from a filter like WHERE ROW_NUMBER() OVER (...) = 1, so the operator stops at
+    /// the bound and skips emitting dropped rows. The filter is kept to carry the semantics.
     /// </summary>
     internal class RowNumberFilterHintVisitor : OptimizerBaseVisitor
     {
         public override Relation VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, object state)
         {
-            // Remove hints from earlier optimizer runs, the current plan shape decides the bound.
-            // The window relation is visited before the filter above it applies new bounds.
+            // Clear stale hints, the current plan shape decides the bound.
             foreach (var windowFunction in consistentPartitionWindowRelation.WindowFunctions)
             {
                 windowFunction.Options?.Remove(BulkWindowFunctionOptions.MaxRowNumber);

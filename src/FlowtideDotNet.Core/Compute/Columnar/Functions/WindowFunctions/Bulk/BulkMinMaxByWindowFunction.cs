@@ -104,11 +104,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// min_by/max_by over a trailing rows frame ending at the current row, for example
-    /// ROWS BETWEEN 364 PRECEDING AND CURRENT ROW. Each logical row stores, besides its output value, how
-    /// many rows back the best value sits and its compare value. When rows are appended the previous row's
-    /// stored position is shifted and only compared against the new value, so no frame scan is needed
-    /// unless the best value falls out of the frame, in which case the frame is rescanned backwards.
+    /// min_by/max_by over a trailing frame, e.g. ROWS BETWEEN 364 PRECEDING AND CURRENT ROW.
+    /// Stores the best's offset back and compare value, rescans backwards when it drops out.
     /// </summary>
     internal class BulkMinMaxByWindowFunctionBounded : IBulkWindowFunction
     {
@@ -213,8 +210,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             if (_hasBest && _bestOffsetBack + 1 > -_from)
             {
-                // The best value falls out of the frame at this row, a backwards frame rescan is needed
-                // which may load pages.
+                // Best drops out here, the backwards rescan may load pages.
                 return false;
             }
             FastPathStep(context);
@@ -226,7 +222,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             if (_hasBest && _bestOffsetBack + 1 > -_from)
             {
-                // The best value fell out of the frame, rescan the frame backwards from the current row.
+                // Best dropped out, rescan the frame backwards.
                 await Rescan(context);
             }
             else
@@ -277,7 +273,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             _hasBest = false;
             var reach = -_from;
 
-            // The current row and its earlier duplicates, ties prefer the oldest entry in the frame.
+            // Ties prefer the oldest entry.
             var compareValue = _fetchCompareValueFunction(context.Batch, context.RowIndex);
             if (!compareValue.IsNull)
             {
@@ -319,9 +315,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// min_by/max_by from the partition start to the current row. The running best value and its compare
-    /// value are seeded from the previous row's stored state, so appended rows are a single comparison. The
-    /// function is stable once a recomputed row keeps both its output and its stored compare value.
+    /// min_by/max_by from the partition start to the current row, seeded from the previous best.
     /// </summary>
     internal class BulkMinMaxByWindowFunctionUnboundedFrom : IBulkWindowFunction
     {
@@ -438,8 +432,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// min_by/max_by over the whole partition. The partition best is computed with a single pre-scan; when
-    /// it is unchanged the emit scan stops after the first recomputed row.
+    /// min_by/max_by over the whole partition, best from a pre-scan.
     /// </summary>
     internal class BulkMinMaxByWindowFunctionUnbounded : IBulkWindowFunction
     {
@@ -544,10 +537,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Shared frame state for min_by/max_by over frames not ending at the current row: the frame's compare
-    /// and result values are kept in in-memory rings, the best entry is updated as values enter and the
-    /// rings are rescanned when the best entry leaves the frame. Ties keep the oldest entry, matching the
-    /// non bulk implementation.
+    /// Shared frame rings for min_by/max_by, rescanned when the best entry leaves. Ties keep the oldest.
     /// </summary>
     internal sealed class BulkMinMaxFrameState : IDisposable
     {
@@ -606,8 +596,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         }
 
         /// <summary>
-        /// Removes entries whose position is before <paramref name="frameStartPosition"/> and rescans the
-        /// rings when the best entry was among them.
+        /// Drops entries before the frame start, rescans if the best was among them.
         /// </summary>
         public void Evict(long frameStartPosition)
         {
@@ -685,10 +674,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// min_by/max_by over a frame that ends before the current row, for example
-    /// ROWS BETWEEN 5 PRECEDING AND 2 PRECEDING. Scanned rows pass through a small delay pipeline before
-    /// entering the frame rings, and the frame is rebuilt from the seed rows when a scan starts in the
-    /// middle of a partition.
+    /// min_by/max_by over a frame ending before the row, e.g. ROWS BETWEEN 5 PRECEDING AND 2 PRECEDING.
     /// </summary>
     internal class BulkMinMaxByWindowFunctionFrameDelay : IBulkWindowFunction
     {
@@ -803,9 +789,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// min_by/max_by over a frame that reaches ahead of the current row, for example
-    /// ROWS BETWEEN 2 PRECEDING AND 3 FOLLOWING. Rows ahead of the scan are read through a lookahead
-    /// reader into the frame rings.
+    /// min_by/max_by over a frame reaching ahead, e.g. ROWS BETWEEN 2 PRECEDING AND 3 FOLLOWING.
     /// </summary>
     internal class BulkMinMaxByWindowFunctionFrameLookahead : IBulkWindowFunction
     {
@@ -930,9 +914,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// min_by/max_by from the partition start to an offset before the current row. Candidates enter the
-    /// running best through a small delay pipeline; the best never falls out since the frame start is
-    /// unbounded.
+    /// min_by/max_by from the partition start to an offset before the row, best never drops out.
     /// </summary>
     internal class BulkMinMaxByWindowFunctionUnboundedFromDelay : IBulkWindowFunction
     {
@@ -1093,9 +1075,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// min_by/max_by from the partition start to an offset ahead of the current row. Candidates enter the
-    /// running best through a lookahead reader; the previous row's stored best already covers everything up
-    /// to its own frame end.
+    /// min_by/max_by from the partition start to an offset ahead, fed through a lookahead.
     /// </summary>
     internal class BulkMinMaxByWindowFunctionUnboundedFromLookahead : IBulkWindowFunction
     {
@@ -1254,12 +1234,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// min_by/max_by over a frame that ends at the partition end, for example
-    /// ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING. A pre-scan over the partition builds the suffix
-    /// best change points (the classic monotonic stack: each entry is the best from its position to the
-    /// partition end), then each row's result is the first change point at or after its frame start. Ties
-    /// keep the oldest entry, matching the non bulk implementation, and rows with null compare values are
-    /// skipped.
+    /// min_by/max_by to the partition end, e.g. ROWS BETWEEN 2 PRECEDING AND UNBOUNDED FOLLOWING.
+    /// A pre-scan builds the suffix best change points (monotonic stack), result is the first at or after the frame start.
     /// </summary>
     internal class BulkMinMaxByWindowFunctionSuffix : IBulkWindowFunction
     {
@@ -1331,8 +1307,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 var compareValue = _fetchCompareValueFunction(_reader.Batch, _reader.RowIndex);
                 if (!compareValue.IsNull)
                 {
-                    // Entries strictly worse than the new value can never be a suffix best again. Equal
-                    // entries stay so the oldest wins.
+                    // Pop strictly worse entries, keep equal ones so the oldest wins.
                     while (_stackCount > 0)
                     {
                         var compareResult = DataValueComparer.Instance.Compare(_stackCompareColumn.GetValueAt(_stackCount - 1, default), compareValue);

@@ -50,9 +50,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int32, ArrowTypeId.Int32)] = BoundarySearchPrimitiveNoNullWithInputOffsets<int, AscendingBoundaryOrder<int>>;
             _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int64, ArrowTypeId.Int64)] = BoundarySearchPrimitiveNoNullWithInputOffsets<long, AscendingBoundaryOrder<long>>;
 
-            // Descending regions, keyed by the descending sort bit on the tree column state. Nulls are
-            // never present here since the states are the no null variants, so descending nulls first and
-            // last collapse to the same search.
+            // Descending regions, keyed by the sort bit. No nulls here so both null placements collapse.
             _delegateCache[GetKeyFromTypeNoNullDescending(ArrowTypeId.Int8, ArrowTypeId.Int8)]   = BoundarySearchHybridPrimitiveNoNull<sbyte, DescendingBoundaryOrder<sbyte>>.SearchBoundries_Hybrid;
             _delegateCache[GetKeyFromTypeNoNullDescending(ArrowTypeId.Int16, ArrowTypeId.Int16)] = BoundarySearchHybridPrimitiveNoNull<short, DescendingBoundaryOrder<short>>.SearchBoundries_Hybrid;
             _delegateCache[GetKeyFromTypeNoNullDescending(ArrowTypeId.Int32, ArrowTypeId.Int32)] = BoundarySearchHybridPrimitiveNoNull<int, DescendingBoundaryOrder<int>>.SearchBoundries_Hybrid;
@@ -203,9 +201,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
         }
 
         /// <summary>
-        /// Value based fallback for regions whose order is not plain ascending nulls first, used when no
-        /// specialized delegate exists for the column state pair. The order semantics are a monomorphized
-        /// type parameter; each probe costs two binary searches over the current bounds.
+        /// Value based fallback for regions with no specialized delegate, two binary searches per probe.
         /// </summary>
         internal static void FallbackMethodDirected<TCompare>(
             IColumn column,

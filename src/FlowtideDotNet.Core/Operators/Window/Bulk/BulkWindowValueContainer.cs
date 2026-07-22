@@ -27,10 +27,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
     }
 
     /// <summary>
-    /// Value storage for the bulk window operator. Each row stores its weight, whether any value has been
-    /// emitted downstream, one output list per window function (one list element per weight duplicate) and
-    /// optionally extra auxiliary state lists used by functions to support incremental fast paths.
-    /// The output columns come first followed by the auxiliary columns.
+    /// Per row: weight, sent flag, one output list per function then auxiliary lists.
+    /// List elements are one per weight duplicate.
     /// </summary>
     internal class BulkWindowValueContainer : IValueContainer<BulkWindowValue>
     {
@@ -143,8 +141,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
         public void InsertFrom(BulkWindowValue[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
         {
-            // Incoming values from the bulk inserter never carry state lists, only a weight,
-            // so each insert creates a row with empty lists.
+            // Incoming values carry only a weight, lists start empty.
             for (int i = 0; i < sortedLookup.Length; i++)
             {
                 var position = targetPositions[i] + i;

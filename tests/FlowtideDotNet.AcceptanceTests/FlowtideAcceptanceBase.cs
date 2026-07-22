@@ -52,8 +52,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public StreamStateValue State => flowtideTestStream.State;
 
         /// <summary>
-        /// Number of pages the state cache holds before eviction starts. Set before starting the stream;
-        /// a small value keeps the eviction thread continuously active during the test.
+        /// State cache page count, set before starting. A small value keeps eviction active.
         /// </summary>
         protected int CachePageCount { set => flowtideTestStream.CachePageCount = value; }
 

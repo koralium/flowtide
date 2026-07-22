@@ -18,12 +18,8 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.Operators.Window.Bulk
 {
     /// <summary>
-    /// Collects output rows for the bulk window operator. A row consists of the input columns
-    /// (copied from the stored key row) and one value per window function, mapped through the emit list.
-    /// Function values are appended per row, while the input column values are collected as row offsets
-    /// into the source batch and copied in blocks when the source batch changes or the batch is built.
-    /// Callers must call <see cref="FlushPending"/> before the source batch of previously added rows is
-    /// released, for example when a scan leaves a leaf page.
+    /// Collects output rows, input columns are block copied from the source batch.
+    /// Call <see cref="FlushPending"/> before the source batch is released.
     /// </summary>
     internal class BulkWindowEmitter
     {
@@ -33,8 +29,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private readonly List<int> _emitList;
         private readonly IMemoryAllocator _memoryAllocator;
 
-        // Emit slots that map to input columns as (output slot, source column) pairs, and the slots that
-        // map to window function values as (output slot, function index) pairs.
+        // Emit slots mapped to input columns and to function values.
         private readonly (int OutputSlot, int SourceColumn)[] _inputMappings;
         private readonly (int OutputSlot, int FunctionIndex)[] _functionMappings;
 
@@ -99,18 +94,14 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Adds one output row. The input column values are copied from <paramref name="rowBatch"/> at
-        /// <paramref name="rowIndex"/> and the function values from <paramref name="functionValues"/>.
-        /// The source batch must stay valid until <see cref="FlushPending"/> or <see cref="GetCurrentBatch"/>
-        /// has been called.
+        /// Adds one output row, the source batch must stay valid until the next flush.
         /// </summary>
         public void AddOutputRow(EventBatchData rowBatch, int rowIndex, IDataValue[] functionValues, int weight)
         {
             if (_pendingOffsets.Count > 0 &&
                 (!ReferenceEquals(_pendingSourceBatch, rowBatch) || rowIndex < _pendingOffsets[_pendingOffsets.Count - 1]))
             {
-                // The source changed, or the offsets would no longer be in non decreasing order which the
-                // block copy expects.
+                // Source changed, or offsets would stop being non decreasing.
                 FlushPending();
             }
             _pendingSourceBatch = rowBatch;
@@ -154,7 +145,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     var sourceColumn = _pendingSourceBatch.Columns[_inputMappings[m].SourceColumn];
                     if (sourceColumn is ColumnWithOffset columnWithOffset)
                     {
-                        // Translate through the offset column so the block copy reads the inner column.
+                        // Translate offsets so the copy reads the inner column.
                         var innerOffsets = columnWithOffset.Offsets;
                         _translatedOffsetScratch.Clear();
                         _translatedOffsetScratch.EnsureCapacity(count);

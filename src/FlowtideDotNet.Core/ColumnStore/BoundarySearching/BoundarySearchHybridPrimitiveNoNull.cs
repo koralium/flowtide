@@ -26,9 +26,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
     /// <summary>
     /// This class implements a hybrid boundary search algorithm for primitive types without nulls.
     /// It combines binary search with SIMD linear scans for small ranges from the binary search.
-    /// The region order is a monomorphized type parameter: only the three ordering comparisons differ
-    /// between ascending and descending, the SIMD equality scans, duplicate grouping and the divide and
-    /// conquer over the probes are order agnostic since the probes arrive sorted in region order.
+    /// Region order is a monomorphized type parameter, only three comparisons differ by direction.
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <typeparam name="TOrder">The region's sort order.</typeparam>

@@ -25,8 +25,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     internal static class BulkLeadLagUtils
     {
         /// <summary>
-        /// Reads a constant non negative offset argument, which the ring and lookahead fast paths handle.
-        /// Dynamic per-row offsets and negative constants use the slower dynamic variant instead.
+        /// Reads a constant non negative offset, dynamic and negative use the slow variant.
         /// </summary>
         public static bool TryGetConstantOffset(WindowFunction windowFunction, out long offset)
         {
@@ -88,8 +87,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// lag with a constant offset: the value of the row a fixed number of logical rows earlier, kept in a
-    /// small ring that is seeded from the rows before the scan start.
+    /// lag with a constant offset, kept in a ring seeded from earlier rows.
     /// </summary>
     internal class BulkLagWindowFunction : IBulkWindowFunction
     {
@@ -191,8 +189,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// lead with a constant offset: the value of the row a fixed number of logical rows later, read through
-    /// a lookahead reader; the default value is used when the target is beyond the partition end.
+    /// lead with a constant offset, read through a lookahead, default past the partition end.
     /// </summary>
     internal class BulkLeadWindowFunction : IBulkWindowFunction
     {
@@ -305,11 +302,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// lead/lag with a per-row offset expression. The target row can be anywhere in the partition, so any
-    /// change recomputes the whole partition and each row's target is found with a forward reader from the
-    /// partition start that rewinds when a target lies behind it, matching the non bulk implementation.
-    /// Offsets that are not int64 values fall back to 1 and a negative offset reaches in the other
-    /// direction; targets outside the partition produce the default value.
+    /// lead/lag with a per-row offset, a rewinding forward reader finds each target.
+    /// Non int64 offsets fall back to 1, negative reaches the other way, out of range is the default.
     /// </summary>
     internal class BulkLeadLagDynamicWindowFunction : IBulkWindowFunction
     {
@@ -321,8 +315,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private BulkWindowForwardPartitionReader? _reader;
         private IMemoryAllocator? _memoryAllocator;
 
-        // Scans always start at the partition start, so the anchor for reader resets is copied from the
-        // scan's first row and stays valid while the reader lazily advances across pages.
+        // Anchor copied from the scan's first row, outlives the lazy reader.
         private Column[]? _anchorColumns;
         private EventBatchData? _anchorBatch;
 
@@ -411,7 +404,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             if (targetPosition >= 0)
             {
-                // An exhausted reader rests on the last row, that row must be re-read after a reset.
+                // An exhausted reader rests on the last row, re-read it after reset.
                 if (_readerPosition > targetPosition || (_readerDone && _readerPosition == targetPosition))
                 {
                     await _reader.Reset(new ColumnRowReference() { referenceBatch = _anchorBatch!, RowIndex = 0 });

@@ -19,16 +19,12 @@ using FlowtideDotNet.Storage.Memory;
 namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
 {
     /// <summary>
-    /// Verifies that BatchSorter with per column directions produces exactly the order and duplicate tags
-    /// that the row based sort field comparison semantics define. This must hold for every combination of
-    /// radix absorbed and comparer resolved columns, since a divergence would corrupt trees whose comparer
-    /// disagrees with the sorted batch order.
+    /// BatchSorter directions must match the row comparison, a divergence would corrupt trees.
     /// </summary>
     public class BatchSorterDirectionTests
     {
         /// <summary>
-        /// Mirrors SortFieldCompareCompiler's four comparison implementations, the semantics the tree
-        /// comparers use for order by columns.
+        /// Mirrors SortFieldCompareCompiler's four comparison implementations.
         /// </summary>
         private static int ReferenceCompareColumn(IColumn column, SortColumnDirection direction, int x, int y)
         {
@@ -214,8 +210,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
         [Fact]
         public void RandomizedMixedLayouts()
         {
-            // Layouts mirror the window operator's usage: ascending partition columns, a directed order
-            // by column and ascending remaining columns, over radix friendly and comparer only types.
+            // Mixed radix and comparer types, like the window layout.
             var directionsPool = new[]
             {
                 SortColumnDirection.AscendingNullsFirst,
@@ -278,8 +273,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
         [Fact]
         public void SameColumnTwiceWithDifferentDirections()
         {
-            // The window layout can contain the same physical column both as a directed order by column
-            // and as an ascending remaining column.
+            // A physical column can appear as both a directed and an ascending column.
             var random = new Random(11);
             const int count = 300;
             var column = CreateInt64Column(random, count, withNulls: true, valueRange: 3);
