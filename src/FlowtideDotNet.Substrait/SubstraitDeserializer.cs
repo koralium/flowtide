@@ -37,10 +37,11 @@ namespace FlowtideDotNet.Substrait
             {
                 if (option.Preference.Count > 0)
                 {
-                    result.Add(option.Name, option.Preference[0]);
+                    // Allow duplicate option names by letting later entries win.
+                    result[option.Name] = option.Preference[0];
                 }
             }
-            return result;
+            return result.Count == 0 ? null : result;
         }
 
         private sealed class ExpressionDeserializerImpl
