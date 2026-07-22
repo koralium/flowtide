@@ -30,13 +30,15 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private readonly int _numberOfFunctions;
         private readonly int _totalStateColumns;
         private readonly IDataValue[] _valueScratch;
+        private readonly int[] _emitRequiredFunctions;
 
-        public BulkWindowMutator(BulkWindowEmitter emitter, int numberOfFunctions, int totalStateColumns, IDataValue[] valueScratch)
+        public BulkWindowMutator(BulkWindowEmitter emitter, int numberOfFunctions, int totalStateColumns, IDataValue[] valueScratch, int[] emitRequiredFunctions)
         {
             _emitter = emitter;
             _numberOfFunctions = numberOfFunctions;
             _totalStateColumns = totalStateColumns;
             _valueScratch = valueScratch;
+            _emitRequiredFunctions = emitRequiredFunctions;
         }
 
         public void GetSizePrefixSum(ColumnRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
@@ -96,7 +98,12 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     {
                         _valueScratch[f] = container._functionStates[f].GetListElementValue(index, dup);
                     }
-                    _emitter.AddOutputRow(key.referenceBatch, key.RowIndex, _valueScratch, -1);
+                    // Duplicates whose emission gating value is null were suppressed at emission and were
+                    // never sent downstream, so they must not be retracted either.
+                    if (WasEmitted())
+                    {
+                        _emitter.AddOutputRow(key.referenceBatch, key.RowIndex, _valueScratch, -1);
+                    }
                 }
             }
 
@@ -121,6 +128,18 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
 
             return GenericWriteOperation.Upsert;
+        }
+
+        private bool WasEmitted()
+        {
+            for (int i = 0; i < _emitRequiredFunctions.Length; i++)
+            {
+                if (_valueScratch[_emitRequiredFunctions[i]].IsNull)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /// <summary>

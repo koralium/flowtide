@@ -21,9 +21,11 @@ namespace FlowtideDotNet.Core.Optimizer.Window
     /// <summary>
     /// Detects filters directly above a window relation that bound a row_number function to a maximum
     /// value, for example WHERE ROW_NUMBER() OVER (...) = 1, and annotates the window function with the
-    /// bound. The bulk window operator can then stop maintaining exact row numbers past the bound, which
-    /// avoids scanning whole partitions when rows shift. The filter itself is kept, so the hint only
-    /// removes work for rows the filter would drop anyway.
+    /// bound. The bulk window operator then stops maintaining exact row numbers past the bound, which
+    /// avoids scanning whole partitions when rows shift, and skips emitting the rows the filter would drop
+    /// anyway, so only the surviving rows flow through the filter. The filter itself is kept: it carries
+    /// the query's semantics through re-optimization, and after emission suppression it only sees the few
+    /// rows within the bound.
     /// </summary>
     internal class RowNumberFilterHintVisitor : OptimizerBaseVisitor
     {
@@ -34,6 +36,7 @@ namespace FlowtideDotNet.Core.Optimizer.Window
             foreach (var windowFunction in consistentPartitionWindowRelation.WindowFunctions)
             {
                 windowFunction.Options?.Remove(BulkWindowFunctionOptions.MaxRowNumber);
+                windowFunction.Options?.Remove(BulkWindowFunctionOptions.EmitOnlyWithinMaxRowNumber);
             }
             return base.VisitConsistentPartitionWindowRelation(consistentPartitionWindowRelation, state);
         }
@@ -190,6 +193,9 @@ namespace FlowtideDotNet.Core.Optimizer.Window
             }
 
             windowFunction.Options ??= new SortedList<string, string>();
+            // Rows beyond the bound get a null row number, which no bound comparison matches, so they can
+            // be dropped at emission instead of being sent through the filter.
+            windowFunction.Options[BulkWindowFunctionOptions.EmitOnlyWithinMaxRowNumber] = "true";
             if (windowFunction.Options.TryGetValue(BulkWindowFunctionOptions.MaxRowNumber, out var existing) &&
                 long.TryParse(existing, out var existingBound) &&
                 existingBound <= bound)

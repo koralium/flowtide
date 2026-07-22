@@ -24,5 +24,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         /// rows instead of maintaining exact numbers, so shifts only recompute up to the bound.
         /// </summary>
         public const string MaxRowNumber = "max_row_number";
+
+        /// <summary>
+        /// Set together with <see cref="MaxRowNumber"/> when the filter above drops every row whose bounded
+        /// row_number is null. The bulk window operator then skips emitting those rows entirely instead of
+        /// sending them downstream just to be filtered out. Only valid when a filter on the row_number
+        /// output sits above the window relation, since it changes which rows are emitted.
+        /// </summary>
+        public const string EmitOnlyWithinMaxRowNumber = "emit_only_within_max_row_number";
     }
 }

@@ -64,6 +64,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private readonly int _totalStateColumns;
         private readonly int[] _auxiliaryStartIndices;
         private readonly long _maxAffectedRowsBefore;
+        private readonly int[] _emitRequiredFunctions;
 
         private IBPlusTree<ColumnRowReference, BulkWindowValue, ColumnKeyStorageContainer, BulkWindowValueContainer>? _persistentTree;
         private IBPlusTreeBulkInserter<ColumnRowReference, BulkWindowValue, ColumnKeyStorageContainer, BulkWindowValueContainer>? _persistentBulkInserter;
@@ -183,6 +184,37 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
             _totalStateColumns = auxIndex;
             _maxAffectedRowsBefore = maxAffectedBefore;
+
+            // Functions whose null output means the row is dropped by a filter above, so the row is not
+            // emitted at all. A logical row is emitted only when every such function's value is non null.
+            List<int> emitRequired = new List<int>();
+            for (int i = 0; i < relation.WindowFunctions.Count; i++)
+            {
+                var options = relation.WindowFunctions[i].Options;
+                if (options != null &&
+                    options.ContainsKey(BulkWindowFunctionOptions.EmitOnlyWithinMaxRowNumber) &&
+                    options.ContainsKey(BulkWindowFunctionOptions.MaxRowNumber))
+                {
+                    emitRequired.Add(i);
+                }
+            }
+            _emitRequiredFunctions = emitRequired.ToArray();
+        }
+
+        /// <summary>
+        /// True when every emission gating function has a non null value, meaning the row would survive
+        /// the row_number filter that sits (or sat, before it was removed) above this relation.
+        /// </summary>
+        private bool ShouldEmitRow(IDataValue[] functionValues)
+        {
+            for (int i = 0; i < _emitRequiredFunctions.Length; i++)
+            {
+                if (functionValues[_emitRequiredFunctions[i]].IsNull)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         [MemberNotNull(nameof(_partitionColumns), nameof(_partitionCalculateExpressions), nameof(_otherColumns))]
@@ -313,7 +345,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
                 Debug.Assert(_markerComparer != null);
                 var totalByteSize = extendedBatch.GetByteSize();
-                var mutator = new BulkWindowMutator(_emitter, _functions.Length, _totalStateColumns, _mutatorScratch);
+                var mutator = new BulkWindowMutator(_emitter, _functions.Length, _totalStateColumns, _mutatorScratch, _emitRequiredFunctions);
 
                 // The bulk inserter and containers require that a key's row index equals its array index.
                 for (int i = 0; i < dataCount; i++)
@@ -807,12 +839,20 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     if (valueChanged)
                     {
                         anyChanged = true;
-                        _emitter.AddOutputRow(keyBatch, rowIndex, _oldValueScratch, -1);
+                        // A suppressed row was never sent downstream, so it has nothing to retract and an
+                        // update into suppression only retracts the previously sent values.
+                        if (ShouldEmitRow(_oldValueScratch))
+                        {
+                            _emitter.AddOutputRow(keyBatch, rowIndex, _oldValueScratch, -1);
+                        }
                         for (int f = 0; f < _functions.Length; f++)
                         {
                             values._functionStates[f].UpdateListElement(rowIndex, dup, _resultContainers[f]);
                         }
-                        _emitter.AddOutputRow(keyBatch, rowIndex, _resultValues, 1);
+                        if (ShouldEmitRow(_resultValues))
+                        {
+                            _emitter.AddOutputRow(keyBatch, rowIndex, _resultValues, 1);
+                        }
                     }
                 }
                 else
@@ -823,7 +863,10 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                         values._functionStates[f].AppendToList(rowIndex, _resultContainers[f]);
                         _rowValueStable[f] = false;
                     }
-                    _emitter.AddOutputRow(keyBatch, rowIndex, _resultValues, 1);
+                    if (ShouldEmitRow(_resultValues))
+                    {
+                        _emitter.AddOutputRow(keyBatch, rowIndex, _resultValues, 1);
+                    }
                 }
 
                 if (anyChanged)

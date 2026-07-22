@@ -709,6 +709,60 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task FilterRowNumberEqualsTwoIncremental()
+        {
+            // With rn = 2 the emission suppression drops rows beyond the bound, while the kept filter
+            // still removes the rn = 1 row from the emitted ones.
+            for (int i = 10; i < 20; i++)
+            {
+                AddUser("1", i, i);
+                AddUser("2", 100 + i, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) = 2");
+            await WaitForUpdate();
+
+            List<TopRowResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .Where(g => g.Count() >= 2)
+                    .Select(g =>
+                    {
+                        var second = g.OrderBy(x => x.UserKey).Skip(1).First();
+                        return new TopRowResult(second.CompanyId, second.UserKey);
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // A new top row shifts which row is number two.
+            AddUser("1", 1, 1);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            // Deleting the top row shifts it back.
+            DeleteUser(Users.First(x => x.UserKey == 1));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            // Deleting the current number two promotes the next row.
+            DeleteUser(Users.First(x => x.UserKey == 11));
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            // Appends at the end change nothing.
+            AddUser("1", 50, 50);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
         public async Task RunningSumLargeInitialThenSingleAppend()
         {
             GenerateData(5000);

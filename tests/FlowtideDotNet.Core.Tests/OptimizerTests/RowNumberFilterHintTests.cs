@@ -73,6 +73,66 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             var rowNumberFunction = Assert.Single(windowRelation.WindowFunctions);
             Assert.NotNull(rowNumberFunction.Options);
             Assert.Equal("1", rowNumberFunction.Options["max_row_number"]);
+            Assert.True(rowNumberFunction.Options.ContainsKey("emit_only_within_max_row_number"));
+        }
+
+        [Fact]
+        public void FilterIsKeptAboveTheWindowRelation()
+        {
+            // The filter carries the query's semantics through re-optimization; emission suppression
+            // means it only sees rows within the bound, but it must stay in the plan.
+            var plan = BuildOptimizedPlan(@"
+            INSERT INTO output
+            SELECT userkey, companyid
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY companyid ORDER BY userkey) = 1");
+
+            bool ContainsFilterAboveWindow(Relation relation)
+            {
+                if (relation is FilterRelation filterRelation)
+                {
+                    return filterRelation.Input is ConsistentPartitionWindowRelation || ContainsFilterAboveWindow(filterRelation.Input);
+                }
+                if (relation is ProjectRelation projectRelation)
+                {
+                    return ContainsFilterAboveWindow(projectRelation.Input);
+                }
+                if (relation is WriteRelation writeRelation)
+                {
+                    return ContainsFilterAboveWindow(writeRelation.Input);
+                }
+                if (relation is RootRelation rootRelation)
+                {
+                    return ContainsFilterAboveWindow(rootRelation.Input);
+                }
+                return false;
+            }
+
+            Assert.True(ContainsFilterAboveWindow(plan.Relations[plan.Relations.Count - 1]));
+        }
+
+        [Fact]
+        public void StaleEmitOptionIsRemovedWhenNoFilterExists()
+        {
+            var plan = BuildOptimizedPlan(@"
+            INSERT INTO output
+            SELECT userkey, companyid, ROW_NUMBER() OVER (PARTITION BY companyid ORDER BY userkey)
+            FROM users");
+
+            var windowRelation = FindWindowRelation(plan.Relations[plan.Relations.Count - 1]);
+            var rowNumberFunction = Assert.Single(windowRelation.WindowFunctions);
+            rowNumberFunction.Options = new SortedList<string, string>
+            {
+                { "max_row_number", "1" },
+                { "emit_only_within_max_row_number", "true" }
+            };
+
+            plan = PlanOptimizer.Optimize(plan);
+
+            windowRelation = FindWindowRelation(plan.Relations[plan.Relations.Count - 1]);
+            rowNumberFunction = Assert.Single(windowRelation.WindowFunctions);
+            Assert.True(rowNumberFunction.Options == null || !rowNumberFunction.Options.ContainsKey("max_row_number"));
+            Assert.True(rowNumberFunction.Options == null || !rowNumberFunction.Options.ContainsKey("emit_only_within_max_row_number"));
         }
 
         [Fact]
