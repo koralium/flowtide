@@ -612,6 +612,61 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Expected());
         }
 
+        public record EvictionPressureResult(string? companyId, int userkey, long sumValue, long rowNumber);
+
+        [Fact]
+        public async Task WindowUnderCacheEvictionPressure()
+        {
+            // A page cache far smaller than the working set keeps the eviction thread continuously
+            // serializing pages while the operator scans and mutates them, exercising the page write lock
+            // interaction that no other test reaches (the default cache never fills). The descending order
+            // by also runs the descending radix sort and boundary search under the same pressure.
+            CachePageCount = 256;
+            SetPageSizeBytes(2048);
+            GenerateData(10_000);
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                SUM(UserKey) OVER (PARTITION BY CompanyId ORDER BY UserKey DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as sumValue,
+                ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey DESC)
+            FROM users");
+            await WaitForUpdate();
+
+            List<EvictionPressureResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderByDescending(x => x.UserKey).ToList();
+                        var output = new List<EvictionPressureResult>();
+                        long sum = 0;
+                        for (int i = 0; i < ordered.Count; i++)
+                        {
+                            sum += ordered[i].UserKey;
+                            output.Add(new EvictionPressureResult(ordered[i].CompanyId, ordered[i].UserKey, sum, i + 1));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // Incremental changes while pages of the existing state are being evicted and reloaded.
+            GenerateData(2_000);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+
+            // Recovery must restore from pages that were written under eviction pressure.
+            await Crash();
+
+            GenerateData(2_000);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
         public record TopRowResult(string? companyId, int userkey);
 
         [Fact]
