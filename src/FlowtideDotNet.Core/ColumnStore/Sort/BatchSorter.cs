@@ -24,27 +24,38 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
     /// One sorter should be created per thread.
     /// This keeps track of pointer assignment and keeps
     /// the last used sort method in cache to not call concurrent dictionary.
+    /// An optional per column direction layout supports descending columns and explicit null placement;
+    /// the directions are baked into the compiled delegates, so they add no per row cost.
     /// </summary>
     internal class BatchSorter
     {
         private readonly SelfComparePointers[] _pointers;
+        private readonly SortColumnDirection[]? _directions;
         private RadixItem[] _radixItems = Array.Empty<RadixItem>();
         private UInt128 _lastKey = 0;
         private SortCompiler.SortDelegate? _lastSort;
         private SortCompiler.SortWithTagsDelegate? _lastSortWithTags;
+
         public BatchSorter(int columnCount)
+            : this(columnCount, null)
         {
+        }
+
+        public BatchSorter(int columnCount, SortColumnDirection[]? directions)
+        {
+            Debug.Assert(directions == null || directions.Length == columnCount);
             _pointers = new SelfComparePointers[columnCount];
+            _directions = directions;
         }
 
         public void SortData(IColumn[] columns, ref Span<int> indirect)
         {
             Debug.Assert(columns.Length == _pointers.Length);
-            var key = SortCompiler.CreateKey(columns);
+            var key = SortCompiler.CreateKey(columns, _directions);
 
             if (key != _lastKey || _lastSort == null)
             {
-                _lastSort = SortCompiler.GetOrCompile(key, columns);
+                _lastSort = SortCompiler.GetOrCompile(key, columns, _directions);
                 _lastKey = key;
             }
 
@@ -77,10 +88,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         public void SortDataWithTags(IColumn[] columns, ref Span<int> indirect, ref Span<int> tags)
         {
             Debug.Assert(columns.Length == _pointers.Length);
-            var key = SortCompiler.CreateKey(columns);
+            var key = SortCompiler.CreateKey(columns, _directions);
             if (key != _lastKey || _lastSortWithTags == null)
             {
-                _lastSortWithTags = SortCompiler.GetOrCompileWithTags(key, columns);
+                _lastSortWithTags = SortCompiler.GetOrCompileWithTags(key, columns, _directions);
                 _lastKey = key;
             }
             for (int i = 0; i < columns.Length; i++)

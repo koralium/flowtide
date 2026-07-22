@@ -1742,6 +1742,12 @@ namespace FlowtideDotNet.Core.ColumnStore
                 createdNullByte = true;
             }
 
+            // The data column reads its value slot for every row, including null rows whose slot holds an
+            // undefined value. The null byte is less significant than the value bytes, so a null row must
+            // have the minimal (all zero) value bytes for nulls to group first; they are cleared below
+            // after the data column has written.
+            int innerBytes = _dataColumn.SetRadixPrefix(items, insertBytePosition, selectionVector);
+
             if (selectionVector.IsEmpty)
             {
                 for (int i = 0; i < items.Length; i++)
@@ -1758,6 +1764,15 @@ namespace FlowtideDotNet.Core.ColumnStore
                     else if (!isNotNull)
                     {
                         nullByte = 0x00;
+                    }
+
+                    if (!isNotNull)
+                    {
+                        ref byte valueBytes = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+                        for (int b = 0; b < innerBytes; b++)
+                        {
+                            Unsafe.Add(ref valueBytes, b) = 0x00;
+                        }
                     }
                 }
             }
@@ -1780,10 +1795,17 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         nullByte = 0x00;
                     }
+
+                    if (!isNotNull)
+                    {
+                        ref byte valueBytes = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+                        for (int b = 0; b < innerBytes; b++)
+                        {
+                            Unsafe.Add(ref valueBytes, b) = 0x00;
+                        }
+                    }
                 }
             }
-
-            int innerBytes = _dataColumn.SetRadixPrefix(items, insertBytePosition, selectionVector);
 
             return (createdNullByte ? 1 : 0) + innerBytes;
         }

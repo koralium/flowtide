@@ -110,6 +110,15 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private int[] _chunkSortedIndices = Array.Empty<int>();
         private int[] _chunkTagScratch = Array.Empty<int>();
 
+        // Radix based batch sorting of incoming rows, available when every order by key is a plain
+        // column. The layout mirrors BulkWindowInsertComparer's ordering: partition columns, the order by
+        // columns with their directions and the remaining columns ascending, so the sorted batch order is
+        // exactly the tree order.
+        private readonly ColumnStore.Sort.BatchSorter? _batchSorter;
+        private readonly int[]? _sortLayoutColumns;
+        private readonly IColumn[]? _sortLayoutScratch;
+        private int[] _sortIndicesScratch = Array.Empty<int>();
+
         private ICounter<long>? _eventsOutCounter;
         private ICounter<long>? _eventsInCounter;
         private bool _initialComputeSawData;
@@ -199,6 +208,75 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 }
             }
             _emitRequiredFunctions = emitRequired.ToArray();
+
+            var sortLayout = TryBuildSortLayout();
+            if (sortLayout != null)
+            {
+                _sortLayoutColumns = sortLayout.Value.columns;
+                _batchSorter = new ColumnStore.Sort.BatchSorter(_sortLayoutColumns.Length, sortLayout.Value.directions);
+                _sortLayoutScratch = new IColumn[_sortLayoutColumns.Length];
+            }
+        }
+
+        /// <summary>
+        /// Builds the batch sorter's column layout when every order by key is a direct field reference.
+        /// Order by expressions that are computed cannot be radix sorted and keep the comparison sort.
+        /// </summary>
+        private (int[] columns, ColumnStore.Sort.SortColumnDirection[] directions)? TryBuildSortLayout()
+        {
+            var orderColumns = new List<(int column, ColumnStore.Sort.SortColumnDirection direction)>();
+            foreach (var sortField in _relation.OrderBy)
+            {
+                if (sortField.Expression is not DirectFieldReference directFieldReference ||
+                    directFieldReference.ReferenceSegment is not StructReferenceSegment structReferenceSegment ||
+                    structReferenceSegment.Child != null)
+                {
+                    return null;
+                }
+                ColumnStore.Sort.SortColumnDirection direction;
+                switch (sortField.SortDirection)
+                {
+                    case SortDirection.SortDirectionAscNullsFirst:
+                    case SortDirection.SortDirectionUnspecified:
+                        direction = ColumnStore.Sort.SortColumnDirection.AscendingNullsFirst;
+                        break;
+                    case SortDirection.SortDirectionAscNullsLast:
+                        direction = ColumnStore.Sort.SortColumnDirection.AscendingNullsLast;
+                        break;
+                    case SortDirection.SortDirectionDescNullsFirst:
+                        direction = ColumnStore.Sort.SortColumnDirection.DescendingNullsFirst;
+                        break;
+                    case SortDirection.SortDirectionDescNullsLast:
+                        direction = ColumnStore.Sort.SortColumnDirection.DescendingNullsLast;
+                        break;
+                    default:
+                        return null;
+                }
+                orderColumns.Add((structReferenceSegment.Field, direction));
+            }
+
+            var columns = new int[_partitionColumns.Count + orderColumns.Count + _otherColumns.Count];
+            var directions = new ColumnStore.Sort.SortColumnDirection[columns.Length];
+            int index = 0;
+            for (int i = 0; i < _partitionColumns.Count; i++)
+            {
+                columns[index] = _partitionColumns[i];
+                directions[index] = ColumnStore.Sort.SortColumnDirection.AscendingNullsFirst;
+                index++;
+            }
+            for (int i = 0; i < orderColumns.Count; i++)
+            {
+                columns[index] = orderColumns[i].column;
+                directions[index] = orderColumns[i].direction;
+                index++;
+            }
+            for (int i = 0; i < _otherColumns.Count; i++)
+            {
+                columns[index] = _otherColumns[i];
+                directions[index] = ColumnStore.Sort.SortColumnDirection.AscendingNullsFirst;
+                index++;
+            }
+            return (columns, directions);
         }
 
         /// <summary>
@@ -341,6 +419,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     _valueScratch = new BulkWindowValue[scratchSize];
                     _tempValueScratch = new int[scratchSize];
                     _duplicateTagScratch = new int[scratchSize];
+                    _sortIndicesScratch = new int[scratchSize];
                 }
 
                 Debug.Assert(_markerComparer != null);
@@ -362,19 +441,27 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     _tempValueScratch[i] = 1;
                 }
 
-                var sortedIndices = _persistentBulkInserter.SortAndGetIndices(_keyScratch, dataCount);
-
-                int currentTag = 0;
-                _duplicateTagScratch[0] = 0;
-                for (int i = 1; i < dataCount; i++)
+                int[] sortedIndices;
+                if (_batchSorter != null)
                 {
-                    var previous = _keyScratch[sortedIndices[i - 1]];
-                    var current = _keyScratch[sortedIndices[i]];
-                    if (_markerComparer.CompareTo(in previous, in current) != 0)
+                    sortedIndices = SortBatchWithRadix(extendedBatch, dataCount);
+                }
+                else
+                {
+                    sortedIndices = _persistentBulkInserter.SortAndGetIndices(_keyScratch, dataCount);
+
+                    int currentTag = 0;
+                    _duplicateTagScratch[0] = 0;
+                    for (int i = 1; i < dataCount; i++)
                     {
-                        currentTag++;
+                        var previous = _keyScratch[sortedIndices[i - 1]];
+                        var current = _keyScratch[sortedIndices[i]];
+                        if (_markerComparer.CompareTo(in previous, in current) != 0)
+                        {
+                            currentTag++;
+                        }
+                        _duplicateTagScratch[i] = currentTag;
                     }
-                    _duplicateTagScratch[i] = currentTag;
                 }
 
                 // The batch is applied in sorted order chunks with an output flush between them, so the
@@ -440,6 +527,30 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 _eventsOutCounter.Add(batch.Weights.Count);
                 yield return new StreamEventBatch(batch);
             }
+        }
+
+        /// <summary>
+        /// Sorts the incoming batch with the radix batch sorter, producing the sorted order and the
+        /// duplicate tags in one cache friendly pass instead of the comparison sort and the tag loop.
+        /// </summary>
+        private int[] SortBatchWithRadix(EventBatchData extendedBatch, int dataCount)
+        {
+            Debug.Assert(_batchSorter != null);
+            Debug.Assert(_sortLayoutColumns != null);
+            Debug.Assert(_sortLayoutScratch != null);
+
+            for (int i = 0; i < dataCount; i++)
+            {
+                _sortIndicesScratch[i] = i;
+            }
+            for (int k = 0; k < _sortLayoutColumns.Length; k++)
+            {
+                _sortLayoutScratch[k] = extendedBatch.Columns[_sortLayoutColumns[k]];
+            }
+            var indexSpan = _sortIndicesScratch.AsSpan(0, dataCount);
+            var tagSpan = _duplicateTagScratch.AsSpan(0, dataCount);
+            _batchSorter.SortDataWithTags(_sortLayoutScratch, ref indexSpan, ref tagSpan);
+            return _sortIndicesScratch;
         }
 
         private async IAsyncEnumerable<StreamEventBatch> SendData()

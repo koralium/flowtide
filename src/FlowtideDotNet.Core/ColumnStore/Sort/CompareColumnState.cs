@@ -28,7 +28,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         // Upper 8 bits: Execution Branches
         HasValidityBitmap = 1 << 8,  // Standard null bitmap (if used)
         IsIndirectView = 1 << 9,  // "Using Offset" -> The data is behind an indirection array
-        OffsetContainsNull = 1 << 10 // The -1 fast-null check is required
+        OffsetContainsNull = 1 << 10, // The -1 fast-null check is required
+
+        // Sort request bits, not part of the column itself. Mixed into compiled sort cache keys so a
+        // descending layout never reuses an ascending delegate.
+        SortDescending = 1 << 11,
+        SortNullsSwapped = 1 << 12
     }
 
     public static class CompareColumnStateBuilder
@@ -45,6 +50,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         {
             if (index >= MaxFastPathColumns) return;
             key |= ((UInt128)(ushort)state) << (index * 16);
+        }
+
+        public static CompareColumnState ApplyDirection(CompareColumnState state, SortColumnDirection direction)
+        {
+            if (direction.IsDescending())
+            {
+                state |= CompareColumnState.SortDescending;
+            }
+            if (direction.HasSwappedNulls())
+            {
+                state |= CompareColumnState.SortNullsSwapped;
+            }
+            return state;
         }
 
         public static void AddHasTailToKey(ref UInt128 key)
