@@ -24,14 +24,21 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     {
         private readonly SqlFunctionRegister sqlFunctionRegister;
         private HashSet<Expression.Function> _windowFunctions;
+        private HashSet<string> _identifiers;
 
         public ContainsWindowFunctionVisitor(SqlFunctionRegister sqlFunctionRegister)
         {
             this.sqlFunctionRegister = sqlFunctionRegister;
             _windowFunctions = new HashSet<Expression.Function>();
+            _identifiers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
 
         public IReadOnlySet<Expression.Function> WindowFunctions => _windowFunctions;
+
+        /// <summary>
+        /// Unqualified column names seen while visiting, used to find select list alias usage.
+        /// </summary>
+        public IReadOnlySet<string> Identifiers => _identifiers;
 
         public bool VisitSelectItem(SelectItem selectItem)
         {
@@ -111,6 +118,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override bool VisitCompoundIdentifier(Expression.CompoundIdentifier compoundIdentifier, object? state)
         {
+            if (compoundIdentifier.Idents.Count == 1)
+            {
+                _identifiers.Add(compoundIdentifier.Idents[0].Value);
+            }
             return false;
         }
 

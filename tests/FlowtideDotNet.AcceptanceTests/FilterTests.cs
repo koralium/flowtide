@@ -233,5 +233,34 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Where(x => x.Gender == Entities.Gender.Male ^ x.UserKey <= 200).Select(x => new { x.UserKey }));
         }
+
+        [Fact]
+        public async Task SelectListAliasFilter()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output
+                SELECT
+                    u.userkey + 100 as shiftedkey
+                FROM users u
+                WHERE shiftedkey > 200");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.UserKey + 100 > 200).Select(x => new { shiftedkey = x.UserKey + 100 }));
+        }
+
+        [Fact]
+        public async Task SelectListAliasFilterUsesColumnBeforeAlias()
+        {
+            GenerateData();
+            // 'userkey' is a column of the input, it must win over the alias with the same name
+            await StartStream(@"
+                INSERT INTO output
+                SELECT
+                    u.userkey + 100 as userkey
+                FROM users u
+                WHERE userkey > 200");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.UserKey > 200).Select(x => new { userkey = x.UserKey + 100 }));
+        }
     }
 }
