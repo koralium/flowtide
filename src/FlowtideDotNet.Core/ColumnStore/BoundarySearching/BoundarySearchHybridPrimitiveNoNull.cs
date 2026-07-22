@@ -24,12 +24,17 @@ using System.Threading.Tasks;
 namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
 {
     /// <summary>
-    /// This class implements a hybrid boundary search algorithm for primitive types without nulls. 
-    /// It combines binary search with SIMD linear scans for small ranges from the binary search. 
+    /// This class implements a hybrid boundary search algorithm for primitive types without nulls.
+    /// It combines binary search with SIMD linear scans for small ranges from the binary search.
+    /// The region order is a monomorphized type parameter: only the three ordering comparisons differ
+    /// between ascending and descending, the SIMD equality scans, duplicate grouping and the divide and
+    /// conquer over the probes are order agnostic since the probes arrive sorted in region order.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    internal unsafe static class BoundarySearchHybridPrimitiveNoNull<T>
+    /// <typeparam name="TOrder">The region's sort order.</typeparam>
+    internal unsafe static class BoundarySearchHybridPrimitiveNoNull<T, TOrder>
          where T : unmanaged, IComparisonOperators<T, T, bool>
+         where TOrder : IBoundaryOrder<T>
     {
         struct SearchTask
         {
@@ -267,7 +272,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                         return;
                     }
 
-                    if (data[i + (step - 1)] > target) break;
+                    if (TOrder.SortsAfter(data[i + (step - 1)], target)) break;
                 }
             }
 
@@ -282,7 +287,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                     while (upper < end && data[upper + 1] == target) upper++;
                     return;
                 }
-                if (val > target)
+                if (TOrder.SortsAfter(val, target))
                 {
                     lower = ~i; upper = ~i;
                     return;
@@ -310,7 +315,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                     matchIndex = mid;
                     break;
                 }
-                if (midVal < target) low = mid + 1;
+                if (TOrder.SortsAfter(target, midVal)) low = mid + 1;
                 else high = mid - 1;
             }
 

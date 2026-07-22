@@ -28,20 +28,31 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
         private readonly IReadOnlyList<int> _treeColumnOrder;
         private readonly IReadOnlyList<int> _incomingColumnOrder;
         private readonly List<JoinComparisonType>? _comparisonTypes;
+        private readonly IReadOnlyList<SortColumnDirection>? _directions;
 
         // Containers here are for fallback where we skip heap allocation on GetValue
         // This is only used for permutations where there is no specialized code
         private readonly DataValueContainer _xContainer;
         private readonly DataValueContainer _yContainer;
-        
+
 
         public ColumnBoundarySearch(IReadOnlyList<int> treeColumnOrder, IReadOnlyList<int> incomingColumnOrder, List<JoinComparisonType>? comparisonTypes = null)
+            : this(treeColumnOrder, incomingColumnOrder, null, comparisonTypes)
+        {
+        }
+
+        public ColumnBoundarySearch(
+            IReadOnlyList<int> treeColumnOrder,
+            IReadOnlyList<int> incomingColumnOrder,
+            IReadOnlyList<SortColumnDirection>? directions,
+            List<JoinComparisonType>? comparisonTypes = null)
         {
             this._columnCount = treeColumnOrder.Count;
             _treeColumnOrder = treeColumnOrder;
             _incomingColumnOrder = incomingColumnOrder;
             _comparisonTypes = comparisonTypes;
-            
+            _directions = directions;
+
             columnStates = new int[_columnCount];
 
             for (int i = 0; i < columnStates.Length; i++)
@@ -58,9 +69,9 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             IReadOnlyList<IColumn> columns,
             IReadOnlyList<IColumn> inputs,
             ReadOnlySpan<int> inputSortedLookup,
-            Span<int> lowerBounds, 
-            Span<int> upperBounds, 
-            int start, 
+            Span<int> lowerBounds,
+            Span<int> upperBounds,
+            int start,
             int end,
             bool doNotMatchNull,
             Span<int> buffer)
@@ -82,15 +93,57 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                 {
                     var treeColumnState = treeColumn.GetColumnState();
                     var inputColumnState = inputColumn.GetColumnState();
+
+                    var direction = _directions != null && i < _directions.Count ? _directions[i] : SortColumnDirection.AscendingNullsFirst;
+                    if (direction.HasSwappedNulls())
+                    {
+                        // Null placement only matters when either side can hold nulls; without them the
+                        // asymmetric orders collapse to their symmetric fast variants. Both sides count:
+                        // a null probe against a null free region still needs its insertion position on
+                        // the configured end.
+                        var nullFlags = CompareColumnState.HasValidityBitmap | CompareColumnState.OffsetContainsNull;
+                        if (((treeColumnState | inputColumnState) & nullFlags) == 0)
+                        {
+                            direction = direction.NormalizeForNoNulls();
+                        }
+                    }
+                    if (direction.IsDescending())
+                    {
+                        treeColumnState |= CompareColumnState.SortDescending;
+                    }
+                    if (direction.HasSwappedNulls())
+                    {
+                        treeColumnState |= CompareColumnState.SortNullsSwapped;
+                    }
+
                     var searchKey = ColumnBoundarySearchDelegates.GetKey(treeColumnState, inputColumnState);
                     if (columnStates[i] != searchKey)
                     {
                         // If the state has changed, we need to get a new delegate for this column
-                        _savedDelegates[i] = ColumnBoundarySearchDelegates.GetDelegate(searchKey);
+                        _savedDelegates[i] = ResolveDelegate(searchKey, direction);
                         columnStates[i] = searchKey;
                     }
                     _savedDelegates[i](treeColumn, inputColumn, inputSortedLookup, lowerBounds, upperBounds, _xContainer, _yContainer, doNotMatchNull, buffer);
                 }
+            }
+        }
+
+        private static SearchBoundriesBulkDelegate ResolveDelegate(int searchKey, SortColumnDirection direction)
+        {
+            if (ColumnBoundarySearchDelegates.TryGetDelegate(searchKey, out var del))
+            {
+                return del;
+            }
+            switch (direction)
+            {
+                case SortColumnDirection.DescendingNullsLast:
+                    return ColumnBoundarySearchDelegates.FallbackMethodDirected<DescendingNullsLastValueCompare>;
+                case SortColumnDirection.DescendingNullsFirst:
+                    return ColumnBoundarySearchDelegates.FallbackMethodDirected<DescendingNullsFirstValueCompare>;
+                case SortColumnDirection.AscendingNullsLast:
+                    return ColumnBoundarySearchDelegates.FallbackMethodDirected<AscendingNullsLastValueCompare>;
+                default:
+                    return ColumnBoundarySearchDelegates.FallbackMethod;
             }
         }
     }

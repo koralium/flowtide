@@ -13,13 +13,13 @@
 using BenchmarkDotNet.Running;
 using FlowtideDotNet.Nexmark;
 
-//Query5 query3 = new Query5();
+//Query6 query3 = new Query6();
 //query3.Setup();
 
 //for (int i = 0; i < 10000; i++)
 //{
 //    query3.IterationSetup();
-//    await query3.Q5();
+//    await query3.Q6();
 //    query3.IterationCleanup();
 //}
 

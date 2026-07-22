@@ -122,7 +122,7 @@ namespace FlowtideDotNet.Benchmarks
         public void HybridInt32()
         {
             ResetBounds();
-            BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
+            BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid(
                 _treeColumn,
                 _inputColumn,
                 _inputSortedLookup,

@@ -11,7 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.BoundarySearching;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 
@@ -21,7 +23,9 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
     /// Orders full rows for the bulk window operator's trees: first by the partition columns, then by the
     /// window order by expressions and finally by the remaining columns so that equal rows compare equal.
     /// Unlike <see cref="WindowInsertComparer"/> this implements the full comparer surface needed by the
-    /// bulk inserter (row to row comparison and boundary searches).
+    /// bulk inserter (row to row comparison and boundary searches). When the order by keys are plain
+    /// columns the bulk boundary search runs vectorized over all probes at once; computed order by
+    /// expressions keep the per key search through the compiled order comparer.
     /// </summary>
     internal class BulkWindowInsertComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {
@@ -30,11 +34,22 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private readonly IReadOnlyList<int> _partitionColumns;
         private readonly IReadOnlyList<int> _otherColumns;
         private readonly DataValueContainer _dataValueContainer = new DataValueContainer();
+        private readonly ColumnBoundarySearch? _bulkSearch;
 
         public BulkWindowInsertComparer(
             Func<EventBatchData, int, EventBatchData, int, int>? orderCompareFunction,
             IReadOnlyList<int> partitionColumns,
             IReadOnlyList<int> otherColumns)
+            : this(orderCompareFunction, partitionColumns, otherColumns, null, null)
+        {
+        }
+
+        public BulkWindowInsertComparer(
+            Func<EventBatchData, int, EventBatchData, int, int>? orderCompareFunction,
+            IReadOnlyList<int> partitionColumns,
+            IReadOnlyList<int> otherColumns,
+            IReadOnlyList<int>? sortLayoutColumns,
+            IReadOnlyList<SortColumnDirection>? sortLayoutDirections)
         {
             _orderCompareFunction = orderCompareFunction;
             if (orderCompareFunction != null)
@@ -43,6 +58,38 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
             _partitionColumns = partitionColumns;
             _otherColumns = otherColumns;
+            if (sortLayoutColumns != null)
+            {
+                _bulkSearch = new ColumnBoundarySearch(sortLayoutColumns, sortLayoutColumns, sortLayoutDirections);
+            }
+        }
+
+        void IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>.FindBoundriesBulk(
+            ReadOnlySpan<ColumnRowReference> keys,
+            ReadOnlySpan<int> sortedLookup,
+            in ColumnKeyStorageContainer keyContainer,
+            Span<int> lowerBounds,
+            Span<int> upperBounds,
+            Span<int> lookupBuffer)
+        {
+            if (_bulkSearch != null && keys.Length > 0)
+            {
+                var incomingBatch = keys[0].referenceBatch.Columns;
+                _bulkSearch.SearchBoundries(keyContainer._data.Columns, incomingBatch, sortedLookup, lowerBounds, upperBounds, 0, keyContainer.Count - 1, false, lookupBuffer);
+                return;
+            }
+
+            // Same shape as the interface default: per key searches narrowed by the previous result.
+            int currentStart = 0;
+            int maxEnd = keyContainer.Count - 1;
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                var keyIndex = sortedLookup[i];
+                var bounds = FindBoundries(in keys[keyIndex], in keyContainer, currentStart, maxEnd);
+                lowerBounds[i] = bounds.lowerBounds;
+                upperBounds[i] = bounds.upperBounds;
+                currentStart = bounds.lowerBounds < 0 ? ~bounds.lowerBounds : bounds.lowerBounds;
+            }
         }
 
         private sealed class SortFieldColumnRowComparer : IColumnComparer<ColumnRowReference>

@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -116,6 +116,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         // exactly the tree order.
         private readonly ColumnStore.Sort.BatchSorter? _batchSorter;
         private readonly int[]? _sortLayoutColumns;
+        private readonly ColumnStore.Sort.SortColumnDirection[]? _sortLayoutDirections;
         private readonly IColumn[]? _sortLayoutScratch;
         private int[] _sortIndicesScratch = Array.Empty<int>();
 
@@ -213,9 +214,15 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             if (sortLayout != null)
             {
                 _sortLayoutColumns = sortLayout.Value.columns;
-                _batchSorter = new ColumnStore.Sort.BatchSorter(_sortLayoutColumns.Length, sortLayout.Value.directions);
+                _sortLayoutDirections = sortLayout.Value.directions;
+                _batchSorter = new ColumnStore.Sort.BatchSorter(_sortLayoutColumns.Length, _sortLayoutDirections);
                 _sortLayoutScratch = new IColumn[_sortLayoutColumns.Length];
             }
+        }
+
+        private BulkWindowInsertComparer CreateTreeComparer()
+        {
+            return new BulkWindowInsertComparer(_orderCompareFunction, _partitionColumns, _otherColumns, _sortLayoutColumns, _sortLayoutDirections);
         }
 
         /// <summary>
@@ -779,6 +786,10 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 var keyBatch = page.Keys.Data;
                 var values = page.Values;
 
+                // The leaf's write lock is taken once for the whole page, see PageWriteLockScope.
+                _pageLock.Enter(page);
+                try
+                {
                 for (int i = startIndex; i <= endIndex; i++)
                 {
                     bool consumedMarker = false;
@@ -816,7 +827,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     }
 
                     var rowDistance = nextRowDistance;
-                    var rowChanged = await ProcessLogicalRows(page, keyBatch, values, i, weight, rowDistance);
+                    var rowChanged = await ProcessLogicalRows(keyBatch, values, i, weight, rowDistance);
                     pageDirty |= rowChanged;
 
                     // A changed row can hide a weight change, so the next logical row is treated as
@@ -851,6 +862,11 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                         }
                     }
                 }
+                }
+                finally
+                {
+                    _pageLock.Release();
+                }
 
                 // The emitter's pending block copies reference this page's batch, copy them out before the
                 // page is released.
@@ -880,14 +896,90 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
+        /// Holds a leaf's write lock for the duration of a page's row loop. Taking the lock once per page
+        /// instead of once per row matters: the lock is a monitor on the leaf that the cache eviction
+        /// thread also takes, and per row acquisition made it a top profile entry.
+        /// Releasing is tracked so the rare asynchronous compute path can drop the lock and the caller's
+        /// cleanup stays correct even when that path throws.
+        /// </summary>
+        private sealed class PageWriteLockScope
+        {
+            private ILockableObject? _page;
+
+            public bool Held { get; private set; }
+
+            public void Enter(ILockableObject page)
+            {
+                Debug.Assert(!Held, "The previous page's lock must be released first");
+                _page = page;
+                page.EnterWriteLock();
+                Held = true;
+            }
+
+            /// <summary>
+            /// Releases the lock if held. Safe to call when it is not.
+            /// </summary>
+            public void Release()
+            {
+                if (Held)
+                {
+                    Held = false;
+                    _page!.ExitWriteLock();
+                }
+            }
+
+            public void Reacquire()
+            {
+                if (!Held)
+                {
+                    _page!.EnterWriteLock();
+                    Held = true;
+                }
+            }
+        }
+
+        private readonly PageWriteLockScope _pageLock = new PageWriteLockScope();
+
+        /// <summary>
+        /// Awaits an operation that may read other pages while the current page's write lock is held.
+        /// The lock is only dropped when the operation actually suspends: a synchronous completion never
+        /// switches threads and only ever waited on another page's lock, which cannot deadlock since the
+        /// cache eviction path holds one page lock at a time. Partition starts and window function
+        /// computations complete synchronously for most frame shapes, so this keeps the common path free
+        /// of lock churn on a monitor the eviction thread contends for.
+        /// </summary>
+        private ValueTask AwaitWithPageLock(ValueTask task)
+        {
+            if (task.IsCompleted)
+            {
+                // Propagates exceptions without releasing the lock.
+                task.GetAwaiter().GetResult();
+                return ValueTask.CompletedTask;
+            }
+            return AwaitSuspendedWithPageLock(task);
+        }
+
+        private async ValueTask AwaitSuspendedWithPageLock(ValueTask task)
+        {
+            _pageLock.Release();
+            try
+            {
+                await task;
+            }
+            finally
+            {
+                _pageLock.Reacquire();
+            }
+        }
+
+        /// <summary>
         /// Computes all functions for every logical duplicate of a physical row, emits changes and updates
         /// the stored state lists. Returns true when the page was modified.
-        /// The leaf's write lock is held while the stored state is mutated so a concurrent page
+        /// The caller must hold the leaf's write lock through <see cref="_pageLock"/> so a concurrent page
         /// serialization from cache eviction cannot observe a half written page. Functions never mutate
         /// the page themselves, their auxiliary values are buffered in the row context and applied here.
         /// </summary>
         private async ValueTask<bool> ProcessLogicalRows(
-            ILockableObject pageLock,
             EventBatchData keyBatch,
             BulkWindowValueContainer values,
             int rowIndex,
@@ -911,7 +1003,6 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 _rowValueStable[f] = true;
             }
 
-            pageLock.EnterWriteLock();
             for (int dup = 0; dup < weight; dup++)
             {
                 context.DupIndex = dup;
@@ -923,10 +1014,9 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     context.ResetPendingAux();
                     if (!_functions[f].TryComputeRow(context, _resultContainers[f]))
                     {
-                        // The asynchronous path may load pages, the lock cannot be held across it.
-                        pageLock.ExitWriteLock();
-                        await _functions[f].ComputeRow(context, _resultContainers[f]);
-                        pageLock.EnterWriteLock();
+                        // The asynchronous path may load pages, the lock is only dropped when it
+                        // actually suspends.
+                        await AwaitWithPageLock(_functions[f].ComputeRow(context, _resultContainers[f]));
                     }
                     if (context._pendingAuxCount > 0 && ApplyPendingAux(values, rowIndex, dup))
                     {
@@ -986,7 +1076,6 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     pageDirty = true;
                 }
             }
-            pageLock.ExitWriteLock();
 
             return pageDirty;
         }
@@ -1062,45 +1151,56 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 bool pageDirty = false;
                 _initialComputeSawData = true;
 
-                int index = 0;
-                while (index < page.Keys.Count)
+                // The leaf's write lock is taken once for the whole page and only dropped around the
+                // asynchronous partition starts, see PageWriteLockScope.
+                _pageLock.Enter(page);
+                try
                 {
-                    int endIndex;
-                    if (hasPartition)
+                    int index = 0;
+                    while (index < page.Keys.Count)
                     {
-                        _partitionRangeComparer.FindIndex(in partitionRow, page.Keys);
-                        if (!_partitionRangeComparer.noMatch && index >= _partitionRangeComparer.start && index <= _partitionRangeComparer.end)
+                        int endIndex;
+                        if (hasPartition)
                         {
-                            endIndex = _partitionRangeComparer.end;
+                            _partitionRangeComparer.FindIndex(in partitionRow, page.Keys);
+                            if (!_partitionRangeComparer.noMatch && index >= _partitionRangeComparer.start && index <= _partitionRangeComparer.end)
+                            {
+                                endIndex = _partitionRangeComparer.end;
+                            }
+                            else
+                            {
+                                // A new partition starts at this row. Starting it can read other pages,
+                                // the lock is only dropped when it actually suspends.
+                                await AwaitWithPageLock(StartNewPartition(keyBatch, index));
+                                _partitionRangeComparer.FindIndex(in partitionRow, page.Keys);
+                                endIndex = _partitionRangeComparer.end;
+                            }
                         }
                         else
                         {
-                            // A new partition starts at this row.
-                            await StartNewPartition(keyBatch, index);
+                            await AwaitWithPageLock(StartNewPartition(keyBatch, index));
+                            hasPartition = true;
                             _partitionRangeComparer.FindIndex(in partitionRow, page.Keys);
                             endIndex = _partitionRangeComparer.end;
                         }
-                    }
-                    else
-                    {
-                        await StartNewPartition(keyBatch, index);
-                        hasPartition = true;
-                        _partitionRangeComparer.FindIndex(in partitionRow, page.Keys);
-                        endIndex = _partitionRangeComparer.end;
-                    }
 
-                    for (int i = index; i <= endIndex; i++)
-                    {
-                        var weight = values._weights.Get(i);
-                        if (weight <= 0)
+                        for (int i = index; i <= endIndex; i++)
                         {
-                            continue;
+                            var weight = values._weights.Get(i);
+                            if (weight <= 0)
+                            {
+                                continue;
+                            }
+                            var rowChanged = await ProcessLogicalRows(keyBatch, values, i, weight, long.MaxValue / 2);
+                            pageDirty |= rowChanged;
                         }
-                        var rowChanged = await ProcessLogicalRows(page, keyBatch, values, i, weight, long.MaxValue / 2);
-                        pageDirty |= rowChanged;
-                    }
 
-                    index = endIndex + 1;
+                        index = endIndex + 1;
+                    }
+                }
+                finally
+                {
+                    _pageLock.Release();
                 }
 
                 // The emitter's pending block copies reference this page's batch, copy them out before the
@@ -1208,7 +1308,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             _persistentTree = await stateManagerClient.GetOrCreateTree("persistent_v1",
                 new BPlusTreeOptions<ColumnRowReference, BulkWindowValue, ColumnKeyStorageContainer, BulkWindowValueContainer>()
                 {
-                    Comparer = new BulkWindowInsertComparer(_orderCompareFunction, _partitionColumns, _otherColumns),
+                    Comparer = CreateTreeComparer(),
                     KeySerializer = new ColumnStoreSerializer(_totalKeyColumns, MemoryAllocator),
                     ValueSerializer = new BulkWindowValueContainerSerializer(_totalStateColumns, MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
@@ -1221,7 +1321,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             _temporaryTree = await stateManagerClient.GetOrCreateTree("temporary_v1",
                 new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
-                    Comparer = new BulkWindowInsertComparer(_orderCompareFunction, _partitionColumns, _otherColumns),
+                    Comparer = CreateTreeComparer(),
                     KeySerializer = new ColumnStoreSerializer(_totalKeyColumns, MemoryAllocator),
                     ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
@@ -1230,12 +1330,12 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             _temporaryBulkInserter = _temporaryTree.CreateBulkInserter();
 
             _emitter = new BulkWindowEmitter(_inputColumnCount, _emitList, MemoryAllocator);
-            _markerComparer = new BulkWindowInsertComparer(_orderCompareFunction, _partitionColumns, _otherColumns);
+            _markerComparer = CreateTreeComparer();
             _partitionRangeComparer = new BulkWindowPartitionComparer(_partitionColumns);
             _partitionSeekComparer = new BulkWindowPartitionComparer(_partitionColumns);
             _backwardReader = new BulkWindowBackwardPartitionReader(
                 _persistentTree,
-                new BulkWindowInsertComparer(_orderCompareFunction, _partitionColumns, _otherColumns),
+                CreateTreeComparer(),
                 _partitionColumns);
             _seedReader = new BulkWindowSeedReader(_backwardReader, _totalKeyColumns, _totalStateColumns, MemoryAllocator);
             _rowContext = new BulkWindowRowContext(_totalStateColumns);
@@ -1273,7 +1373,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 {
                     PersistentTree = _persistentTree,
                     PartitionColumns = _partitionColumns,
-                    CreateInsertComparer = () => new BulkWindowInsertComparer(_orderCompareFunction, _partitionColumns, _otherColumns),
+                    CreateInsertComparer = () => CreateTreeComparer(),
                     FunctionIndex = f,
                     AuxiliaryColumnStartIndex = _auxiliaryStartIndices[f],
                     MemoryAllocator = MemoryAllocator,

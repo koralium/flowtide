@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             // lowerBounds.Fill(start) -> 0, upperBounds.Fill(end) -> treeColumn.Count - 1
             Array.Fill(upper, treeColumn.Count - 1);
 
-            BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
+            BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid(
                 treeColumn,
                 inputColumn,
                 inputSortedLookup,
@@ -585,7 +585,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             // Tree: [100000, 100001, 100001, 100002, 100002, 100002, 100003]
             using var tree = CreateInt32Column(100000, 100001, 100001, 100002, 100002, 100002, 100003);
 
-            // Input: [99999, 100001, 100001, 100002, 100002, 100004] — below, dup match, dup match, above
+            // Input: [99999, 100001, 100001, 100002, 100002, 100004] â€” below, dup match, dup match, above
             using var input = CreateInt32Column(99999, 100001, 100001, 100002, 100002, 100004);
             var lookup = new int[] { 0, 1, 2, 3, 4, 5 };
 
@@ -670,7 +670,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             for (int i = 0; i < 50; i++) treeList.Add(100051 + i);
             using var tree = CreateInt32Column(treeList.ToArray());
 
-            // Input: search for 100050 once — should find the full run [50..149]
+            // Input: search for 100050 once â€” should find the full run [50..149]
             using var input = CreateInt32Column(100050);
             var lookup = new int[] { 0 };
 
@@ -788,10 +788,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         /// Two input entries with different pre-set bounds searching
         /// different sorted segments of the tree.
         /// Tree: [50000, 60000, 70000, 40000, 45000, 50000, 55000, 60000, 65000]
-        ///        segment 0: indices [0,2]   → sorted: 50000, 60000, 70000
-        ///        segment 1: indices [3,8]   → sorted: 40000, 45000, 50000, 55000, 60000, 65000
-        /// Input[0] = 60000, bounds [0,2]   → should find at index 1
-        /// Input[1] = 55000, bounds [3,8]   → should find at index 6
+        ///        segment 0: indices [0,2]   â†’ sorted: 50000, 60000, 70000
+        ///        segment 1: indices [3,8]   â†’ sorted: 40000, 45000, 50000, 55000, 60000, 65000
+        /// Input[0] = 60000, bounds [0,2]   â†’ should find at index 1
+        /// Input[1] = 55000, bounds [3,8]   â†’ should find at index 6
         /// </summary>
         [Fact]
         public void TestHybridInt32PreSetMicroBoundsNonGlobalOrder()
@@ -806,16 +806,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var lower = new int[] { 0, 3 };
             var upper = new int[] { 2, 8 };
 
-            BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
+            BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
                 new DataValueContainer(), new DataValueContainer(),
                 false, Array.Empty<int>());
 
-            // Input[0] = 60000 in [0,2] → found at index 1
+            // Input[0] = 60000 in [0,2] â†’ found at index 1
             Assert.Equal(1, lower[0]);
             Assert.Equal(1, upper[0]);
 
-            // Input[1] = 55000 in [3,8] → found at index 6
+            // Input[1] = 55000 in [3,8] â†’ found at index 6
             Assert.Equal(6, lower[1]);
             Assert.Equal(6, upper[1]);
         }
@@ -823,10 +823,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         /// <summary>
         /// Pre-set bounds with duplicates within segments.
         /// Tree: [50000, 50000, 60000, 35000, 40000, 40000, 40000, 50000]
-        ///        segment 0: indices [0,2]   → 50000, 50000, 60000
-        ///        segment 1: indices [3,7]   → 35000, 40000, 40000, 40000, 50000
-        /// Input[0] = 50000, bounds [0,2]   → should find at indices 0-1
-        /// Input[1] = 40000, bounds [3,7]   → should find at indices 4-6
+        ///        segment 0: indices [0,2]   â†’ 50000, 50000, 60000
+        ///        segment 1: indices [3,7]   â†’ 35000, 40000, 40000, 40000, 50000
+        /// Input[0] = 50000, bounds [0,2]   â†’ should find at indices 0-1
+        /// Input[1] = 40000, bounds [3,7]   â†’ should find at indices 4-6
         /// </summary>
         [Fact]
         public void TestHybridInt32PreSetMicroBoundsDuplicatesInSegments()
@@ -839,27 +839,27 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var lower = new int[] { 0, 3 };
             var upper = new int[] { 2, 7 };
 
-            BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
+            BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
                 new DataValueContainer(), new DataValueContainer(),
                 false, Array.Empty<int>());
 
-            // Input[0] = 50000 in [0,2] → found at indices 0..1
+            // Input[0] = 50000 in [0,2] â†’ found at indices 0..1
             Assert.Equal(0, lower[0]);
             Assert.Equal(1, upper[0]);
 
-            // Input[1] = 40000 in [3,7] → found at indices 4..6
+            // Input[1] = 40000 in [3,7] â†’ found at indices 4..6
             Assert.Equal(4, lower[1]);
             Assert.Equal(6, upper[1]);
         }
 
         /// <summary>
-        /// Pre-set bounds where a value is missing in its segment → complement.
+        /// Pre-set bounds where a value is missing in its segment â†’ complement.
         /// Tree: [50000, 60000, 70000, 40000, 45000, 55000]
-        ///        segment 0: indices [0,2]   → 50000, 60000, 70000
-        ///        segment 1: indices [3,5]   → 40000, 45000, 55000
-        /// Input[0] = 65000, bounds [0,2]   → not found, insert at 2 → ~2
-        /// Input[1] = 50000, bounds [3,5]   → not found, insert at 5 → ~5
+        ///        segment 0: indices [0,2]   â†’ 50000, 60000, 70000
+        ///        segment 1: indices [3,5]   â†’ 40000, 45000, 55000
+        /// Input[0] = 65000, bounds [0,2]   â†’ not found, insert at 2 â†’ ~2
+        /// Input[1] = 50000, bounds [3,5]   â†’ not found, insert at 5 â†’ ~5
         /// </summary>
         [Fact]
         public void TestHybridInt32PreSetMicroBoundsMissInSegment()
@@ -872,16 +872,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var lower = new int[] { 0, 3 };
             var upper = new int[] { 2, 5 };
 
-            BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
+            BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
                 new DataValueContainer(), new DataValueContainer(),
                 false, Array.Empty<int>());
 
-            // Input[0] = 65000 in [0,2] → between 60000 and 70000, insert at 2 → ~2
+            // Input[0] = 65000 in [0,2] â†’ between 60000 and 70000, insert at 2 â†’ ~2
             Assert.Equal(~2, lower[0]);
             Assert.Equal(~2, upper[0]);
 
-            // Input[1] = 50000 in [3,5] → between 45000 and 55000, insert at 5 → ~5
+            // Input[1] = 50000 in [3,5] â†’ between 45000 and 55000, insert at 5 â†’ ~5
             Assert.Equal(~5, lower[1]);
             Assert.Equal(~5, upper[1]);
         }
@@ -909,32 +909,32 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var lower = new int[] { 0, 0, 4, 4, 8, 8 };
             var upper = new int[] { 3, 3, 7, 7, 11, 11 };
 
-            BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
+            BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
                 new DataValueContainer(), new DataValueContainer(),
                 false, Array.Empty<int>());
 
-            // Input[0] = 85000 in [0,3] → found at index 1
+            // Input[0] = 85000 in [0,3] â†’ found at index 1
             Assert.Equal(1, lower[0]);
             Assert.Equal(1, upper[0]);
 
-            // Input[1] = 90000 in [0,3] → found at index 2
+            // Input[1] = 90000 in [0,3] â†’ found at index 2
             Assert.Equal(2, lower[1]);
             Assert.Equal(2, upper[1]);
 
-            // Input[2] = 45000 in [4,7] → found at index 5
+            // Input[2] = 45000 in [4,7] â†’ found at index 5
             Assert.Equal(5, lower[2]);
             Assert.Equal(5, upper[2]);
 
-            // Input[3] = 50000 in [4,7] → found at index 6
+            // Input[3] = 50000 in [4,7] â†’ found at index 6
             Assert.Equal(6, lower[3]);
             Assert.Equal(6, upper[3]);
 
-            // Input[4] = 65000 in [8,11] → found at index 9
+            // Input[4] = 65000 in [8,11] â†’ found at index 9
             Assert.Equal(9, lower[4]);
             Assert.Equal(9, upper[4]);
 
-            // Input[5] = 70000 in [8,11] → found at index 10
+            // Input[5] = 70000 in [8,11] â†’ found at index 10
             Assert.Equal(10, lower[5]);
             Assert.Equal(10, upper[5]);
         }

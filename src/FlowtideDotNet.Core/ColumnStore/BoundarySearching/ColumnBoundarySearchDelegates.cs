@@ -41,14 +41,26 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
 
         static ColumnBoundarySearchDelegates()
         {
-            _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.Int8, ArrowTypeId.Int8)]    = BoundarySearchHybridPrimitiveNoNull<sbyte>.SearchBoundries_Hybrid;
-            _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.Int16, ArrowTypeId.Int16)]  = BoundarySearchHybridPrimitiveNoNull<short>.SearchBoundries_Hybrid;
-            _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.Int32, ArrowTypeId.Int32)]  = BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid;
-            _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.Int64, ArrowTypeId.Int64)]  = BoundarySearchHybridPrimitiveNoNull<long>.SearchBoundries_Hybrid;
-            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int8, ArrowTypeId.Int8)] = BoundarySearchPrimitiveNoNullWithInputOffsets<sbyte>;
-            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int16, ArrowTypeId.Int16)] = BoundarySearchPrimitiveNoNullWithInputOffsets<short>;
-            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int32, ArrowTypeId.Int32)] = BoundarySearchPrimitiveNoNullWithInputOffsets<int>;
-            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int64, ArrowTypeId.Int64)] = BoundarySearchPrimitiveNoNullWithInputOffsets<long>;
+            _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.Int8, ArrowTypeId.Int8)]    = BoundarySearchHybridPrimitiveNoNull<sbyte, AscendingBoundaryOrder<sbyte>>.SearchBoundries_Hybrid;
+            _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.Int16, ArrowTypeId.Int16)]  = BoundarySearchHybridPrimitiveNoNull<short, AscendingBoundaryOrder<short>>.SearchBoundries_Hybrid;
+            _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.Int32, ArrowTypeId.Int32)]  = BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid;
+            _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.Int64, ArrowTypeId.Int64)]  = BoundarySearchHybridPrimitiveNoNull<long, AscendingBoundaryOrder<long>>.SearchBoundries_Hybrid;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int8, ArrowTypeId.Int8)] = BoundarySearchPrimitiveNoNullWithInputOffsets<sbyte, AscendingBoundaryOrder<sbyte>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int16, ArrowTypeId.Int16)] = BoundarySearchPrimitiveNoNullWithInputOffsets<short, AscendingBoundaryOrder<short>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int32, ArrowTypeId.Int32)] = BoundarySearchPrimitiveNoNullWithInputOffsets<int, AscendingBoundaryOrder<int>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int64, ArrowTypeId.Int64)] = BoundarySearchPrimitiveNoNullWithInputOffsets<long, AscendingBoundaryOrder<long>>;
+
+            // Descending regions, keyed by the descending sort bit on the tree column state. Nulls are
+            // never present here since the states are the no null variants, so descending nulls first and
+            // last collapse to the same search.
+            _delegateCache[GetKeyFromTypeNoNullDescending(ArrowTypeId.Int8, ArrowTypeId.Int8)]   = BoundarySearchHybridPrimitiveNoNull<sbyte, DescendingBoundaryOrder<sbyte>>.SearchBoundries_Hybrid;
+            _delegateCache[GetKeyFromTypeNoNullDescending(ArrowTypeId.Int16, ArrowTypeId.Int16)] = BoundarySearchHybridPrimitiveNoNull<short, DescendingBoundaryOrder<short>>.SearchBoundries_Hybrid;
+            _delegateCache[GetKeyFromTypeNoNullDescending(ArrowTypeId.Int32, ArrowTypeId.Int32)] = BoundarySearchHybridPrimitiveNoNull<int, DescendingBoundaryOrder<int>>.SearchBoundries_Hybrid;
+            _delegateCache[GetKeyFromTypeNoNullDescending(ArrowTypeId.Int64, ArrowTypeId.Int64)] = BoundarySearchHybridPrimitiveNoNull<long, DescendingBoundaryOrder<long>>.SearchBoundries_Hybrid;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId.Int8, ArrowTypeId.Int8)] = BoundarySearchPrimitiveNoNullWithInputOffsets<sbyte, DescendingBoundaryOrder<sbyte>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId.Int16, ArrowTypeId.Int16)] = BoundarySearchPrimitiveNoNullWithInputOffsets<short, DescendingBoundaryOrder<short>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId.Int32, ArrowTypeId.Int32)] = BoundarySearchPrimitiveNoNullWithInputOffsets<int, DescendingBoundaryOrder<int>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId.Int64, ArrowTypeId.Int64)] = BoundarySearchPrimitiveNoNullWithInputOffsets<long, DescendingBoundaryOrder<long>>;
         }
 
         private static int GetKeyFromTypeNoNull(ArrowTypeId key1, ArrowTypeId key2)
@@ -56,11 +68,24 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             return GetKey(CompareColumnStateBuilder.Create(key1), CompareColumnStateBuilder.Create(key2));
         }
 
+        private static int GetKeyFromTypeNoNullDescending(ArrowTypeId key1, ArrowTypeId key2)
+        {
+            return GetKey(CompareColumnStateBuilder.Create(key1) | CompareColumnState.SortDescending, CompareColumnStateBuilder.Create(key2));
+        }
+
         private static int GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId key1, ArrowTypeId key2)
         {
             var inputCol = CompareColumnStateBuilder.Create(key2);
             inputCol |= CompareColumnState.IsIndirectView;
             var key = GetKey(CompareColumnStateBuilder.Create(key1), inputCol);
+            return key;
+        }
+
+        private static int GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId key1, ArrowTypeId key2)
+        {
+            var inputCol = CompareColumnStateBuilder.Create(key2);
+            inputCol |= CompareColumnState.IsIndirectView;
+            var key = GetKey(CompareColumnStateBuilder.Create(key1) | CompareColumnState.SortDescending, inputCol);
             return key;
         }
 
@@ -85,7 +110,12 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             return FallbackMethod;
         }
 
-        internal static void BoundarySearchPrimitiveNoNullWithInputOffsets<T>(
+        public static bool TryGetDelegate(int key, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out SearchBoundriesBulkDelegate? del)
+        {
+            return _delegateCache.TryGetValue(key, out del);
+        }
+
+        internal static void BoundarySearchPrimitiveNoNullWithInputOffsets<T, TOrder>(
             IColumn treeColumn,
             IColumn inputColumn,
             ReadOnlySpan<int> inputSortedLookup,
@@ -97,6 +127,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             Span<int> buffer
             )
             where T : unmanaged, IComparisonOperators<T, T, bool>
+            where TOrder : IBoundaryOrder<T>
         {
             SelfComparePointers treePointers = default;
             treeColumn.SetSelfComparePointers(ref treePointers);
@@ -120,7 +151,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                 buffer[i] = idx;
             }
 
-            BoundarySearchHybridPrimitiveNoNull<T>.SearchBoundries_Hybrid_StructInput(treePointers, inputPointers, buffer, lowerBounds, upperBounds);
+            BoundarySearchHybridPrimitiveNoNull<T, TOrder>.SearchBoundries_Hybrid_StructInput(treePointers, inputPointers, buffer, lowerBounds, upperBounds);
         }
 
         internal static void FallbackMethod(
@@ -168,6 +199,109 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                 upperBounds[i] = upper;
 
                 currentFastForward = lower < 0 ? ~lower : lower;
+            }
+        }
+
+        /// <summary>
+        /// Value based fallback for regions whose order is not plain ascending nulls first, used when no
+        /// specialized delegate exists for the column state pair. The order semantics are a monomorphized
+        /// type parameter; each probe costs two binary searches over the current bounds.
+        /// </summary>
+        internal static void FallbackMethodDirected<TCompare>(
+            IColumn column,
+            IColumn inputCol,
+            ReadOnlySpan<int> inputSortedLookup,
+            Span<int> lowerBounds,
+            Span<int> upperBounds,
+            DataValueContainer xContainer,
+            DataValueContainer yContainer,
+            bool doNotMatchNull,
+            Span<int> buffer)
+            where TCompare : IDirectedValueCompare
+        {
+            int currentFastForward = 0;
+
+            for (int i = 0; i < inputSortedLookup.Length; i++)
+            {
+                int lowerBound = lowerBounds[i];
+                int searchEnd = upperBounds[i];
+
+                if (lowerBound < 0) continue;
+
+                int searchStart = lowerBound > currentFastForward ? lowerBound : currentFastForward;
+
+                if (searchStart > searchEnd)
+                {
+                    lowerBounds[i] = ~searchStart;
+                    upperBounds[i] = ~searchStart;
+                    continue;
+                }
+
+                var inputIndex = inputSortedLookup[i];
+                inputCol.GetValueAt(inputIndex, xContainer, null);
+
+                if (doNotMatchNull && xContainer.Type == ArrowTypeId.Null)
+                {
+                    lowerBounds[i] = ~searchStart;
+                    upperBounds[i] = ~searchStart;
+                    continue;
+                }
+
+                // First position at or after the target in region order.
+                int low = searchStart;
+                int high = searchEnd;
+                while (low <= high)
+                {
+                    int mid = low + ((high - low) >> 1);
+                    column.GetValueAt(mid, yContainer, null);
+                    if (TCompare.Compare(yContainer, xContainer) < 0)
+                    {
+                        low = mid + 1;
+                    }
+                    else
+                    {
+                        high = mid - 1;
+                    }
+                }
+
+                if (low > searchEnd)
+                {
+                    lowerBounds[i] = ~low;
+                    upperBounds[i] = ~low;
+                    currentFastForward = low;
+                    continue;
+                }
+
+                column.GetValueAt(low, yContainer, null);
+                if (TCompare.Compare(yContainer, xContainer) != 0)
+                {
+                    lowerBounds[i] = ~low;
+                    upperBounds[i] = ~low;
+                    currentFastForward = low;
+                    continue;
+                }
+
+                // First position strictly after the target gives the upper bound.
+                int matchStart = low;
+                low = matchStart + 1;
+                high = searchEnd;
+                while (low <= high)
+                {
+                    int mid = low + ((high - low) >> 1);
+                    column.GetValueAt(mid, yContainer, null);
+                    if (TCompare.Compare(yContainer, xContainer) <= 0)
+                    {
+                        low = mid + 1;
+                    }
+                    else
+                    {
+                        high = mid - 1;
+                    }
+                }
+
+                lowerBounds[i] = matchStart;
+                upperBounds[i] = low - 1;
+                currentFastForward = matchStart;
             }
         }
 
