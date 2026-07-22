@@ -156,7 +156,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData__ctor" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.#ctor">
   EmitData()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L38"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -186,7 +186,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_Count" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.Count">
   Count
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L416"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L430"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -221,7 +221,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_Add_FlowtideDotNet_Substrait_Sql_EmitData_System_Int32_" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.Add(FlowtideDotNet.Substrait.Sql.EmitData,System.Int32)">
   Add(EmitData, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L136"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L140"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -252,16 +252,16 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <a id="FlowtideDotNet_Substrait_Sql_EmitData_Add_" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.Add*"></a>
 
-  <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_Add_SqlParser_Ast_Expression_System_Int32_System_String_FlowtideDotNet_Substrait_Type_SubstraitBaseType_" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.Add(SqlParser.Ast.Expression,System.Int32,System.String,FlowtideDotNet.Substrait.Type.SubstraitBaseType)">
-  Add(Expression, int, string, SubstraitBaseType)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L178"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_Add_SqlParser_Ast_Expression_System_Int32_System_String_FlowtideDotNet_Substrait_Type_SubstraitBaseType_System_Boolean_" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.Add(SqlParser.Ast.Expression,System.Int32,System.String,FlowtideDotNet.Substrait.Type.SubstraitBaseType,System.Boolean)">
+  Add(Expression, int, string, SubstraitBaseType, bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L187"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void Add(Expression expr, int index, string name, SubstraitBaseType type)</code></pre>
+    <pre><code class="lang-csharp hljs">public void Add(Expression expr, int index, string name, SubstraitBaseType type, bool hiddenFromWildcard = false)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -274,6 +274,9 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
     <dd></dd>
     <dt><code>type</code> <a class="xref" href="FlowtideDotNet.Substrait.Type.SubstraitBaseType.html">SubstraitBaseType</a></dt>
     <dd></dd>
+    <dt><code>hiddenFromWildcard</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>Column exists only for internal use, '*' must not expand to it.</p>
+</dd>
   </dl>
 
 
@@ -291,7 +294,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_AddSourceColumn_System_String_FlowtideDotNet_Substrait_Type_SubstraitBaseType_" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.AddSourceColumn(System.String,FlowtideDotNet.Substrait.Type.SubstraitBaseType)">
   AddSourceColumn(string, SubstraitBaseType)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L172"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L180"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -324,7 +327,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_AddWithAlias_SqlParser_Ast_Expression_System_Int32_" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.AddWithAlias(SqlParser.Ast.Expression,System.Int32)">
   AddWithAlias(Expression, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L209"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L222"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -357,7 +360,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_Clone" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.Clone">
   Clone()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L45"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L47"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -388,7 +391,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_CloneWithAlias_System_String_System_Collections_Generic_List_System_String__" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.CloneWithAlias(System.String,System.Collections.Generic.List{System.String})">
   CloneWithAlias(string, List&lt;string&gt;?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L67"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L70"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -426,7 +429,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_GetExpressions_SqlParser_Ast_ObjectName_" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.GetExpressions(SqlParser.Ast.ObjectName)">
   GetExpressions(ObjectName?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L403"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L416"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -462,7 +465,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_GetName_System_Int32_" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.GetName(System.Int32)">
   GetName(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L359"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L372"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -498,7 +501,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_GetNamedStruct" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.GetNamedStruct">
   GetNamedStruct()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L374"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L387"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -529,7 +532,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_GetNames" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.GetNames">
   GetNames()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L364"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L377"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -560,7 +563,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_GetTypes" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.GetTypes">
   GetTypes()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L369"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L382"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -591,7 +594,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_TryGetEmitIndex_SqlParser_Ast_Expression_FlowtideDotNet_Substrait_Expressions_StructReferenceSegment__System_String__FlowtideDotNet_Substrait_Type_SubstraitBaseType__" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.TryGetEmitIndex(SqlParser.Ast.Expression,FlowtideDotNet.Substrait.Expressions.StructReferenceSegment@,System.String@,FlowtideDotNet.Substrait.Type.SubstraitBaseType@)">
   TryGetEmitIndex(Expression, out StructReferenceSegment?, out string?, out SubstraitBaseType?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L224"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L237"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -633,7 +636,7 @@ Class EmitData  <a class="header-action link-secondary" title="View source" href
 
   <h3 id="FlowtideDotNet_Substrait_Sql_EmitData_UpdateType_System_Int32_FlowtideDotNet_Substrait_Type_SubstraitBaseType_" data-uid="FlowtideDotNet.Substrait.Sql.EmitData.UpdateType(System.Int32,FlowtideDotNet.Substrait.Type.SubstraitBaseType)">
   UpdateType(int, SubstraitBaseType)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L167"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/EmitData.cs/#L175"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
