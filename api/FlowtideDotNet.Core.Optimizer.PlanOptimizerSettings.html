@@ -188,7 +188,7 @@ Class PlanOptimizerSettings  <a class="header-action link-secondary" title="View
 
   <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_DistributedPlanOptions" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.DistributedPlanOptions">
   DistributedPlanOptions
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L52"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>If set, the plan is split into substreams for distributed mode as the last
@@ -211,6 +211,39 @@ controls the partitioning instead.</p>
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
     <dt><a class="xref" href="FlowtideDotNet.Core.Optimizer.DistributedMode.DistributedPlanOptions.html">DistributedPlanOptions</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_FindCommonSubPlans_" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.FindCommonSubPlans*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_FindCommonSubPlans" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.FindCommonSubPlans">
+  FindCommonSubPlans
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L38"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Finds identical subtrees in the plan and computes them only once,
+each usage references the shared result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool FindCommonSubPlans { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
     <dd></dd>
   </dl>
 
@@ -287,7 +320,7 @@ controls the partitioning instead.</p>
 
   <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_Parallelization" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.Parallelization">
   Parallelization
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L40"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -351,7 +384,7 @@ Disabled by default, since its not well tested yet.</p>
 
   <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_TryAddWatermarkOutputMode" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.TryAddWatermarkOutputMode">
   TryAddWatermarkOutputMode
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L36"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L42"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>

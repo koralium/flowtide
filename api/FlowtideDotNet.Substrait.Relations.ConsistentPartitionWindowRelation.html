@@ -101,7 +101,7 @@ Class ConsistentPartitionWindowRelation  <a class="header-action link-secondary"
   <div class="markdown conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public class ConsistentPartitionWindowRelation : Relation</code></pre>
+    <pre><code class="lang-csharp hljs">public class ConsistentPartitionWindowRelation : Relation, IEquatable&lt;ConsistentPartitionWindowRelation&gt;</code></pre>
   </div>
 
 
@@ -116,6 +116,12 @@ Class ConsistentPartitionWindowRelation  <a class="header-action link-secondary"
     </dd>
   </dl>
 
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.html">ConsistentPartitionWindowRelation</a>&gt;</div>
+    </dd>
+  </dl>
 
 
   <dl class="typelist inheritedMembers">
@@ -129,12 +135,6 @@ Class ConsistentPartitionWindowRelation  <a class="header-action link-secondary"
     </div>
     <div>
       <a class="xref" href="FlowtideDotNet.Substrait.Relations.Relation.html#FlowtideDotNet_Substrait_Relations_Relation_Hint">Relation.Hint</a>
-    </div>
-    <div>
-      <a class="xref" href="FlowtideDotNet.Substrait.Relations.Relation.html#FlowtideDotNet_Substrait_Relations_Relation_Equals_System_Object_">Relation.Equals(object)</a>
-    </div>
-    <div>
-      <a class="xref" href="FlowtideDotNet.Substrait.Relations.Relation.html#FlowtideDotNet_Substrait_Relations_Relation_GetHashCode">Relation.GetHashCode()</a>
     </div>
     <div>
       <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
@@ -356,6 +356,197 @@ Class ConsistentPartitionWindowRelation  <a class="header-action link-secondary"
     <dt><code>TState</code></dt>
     <dd></dd>
   </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_Equals_" data-uid="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.Equals*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_Equals_FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_" data-uid="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.Equals(FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation)">
+  Equals(ConsistentPartitionWindowRelation?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ConsistentPartitionWindowRelation.cs/#L67"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Indicates whether the current object is equal to another object of the same type.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Equals(ConsistentPartitionWindowRelation? other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.html">ConsistentPartitionWindowRelation</a></dt>
+    <dd><p>An object to compare with this object.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the current object is equal to the <code class="paramref">other</code> parameter; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_Equals_" data-uid="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.Equals*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_Equals_System_Object_" data-uid="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.Equals(System.Object)">
+  Equals(object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ConsistentPartitionWindowRelation.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether the specified object is equal to the current object.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool Equals(object? obj)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>obj</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The object to compare with the current object.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the specified object  is equal to the current object; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_GetHashCode_" data-uid="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.GetHashCode*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_GetHashCode" data-uid="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.GetHashCode">
+  GetHashCode()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ConsistentPartitionWindowRelation.cs/#L47"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Serves as the default hash function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int GetHashCode()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>A hash code for the current object.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="operators">Operators
+</h2>
+
+
+  <a id="FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_op_Equality_" data-uid="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.op_Equality*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_op_Equality_FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_" data-uid="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.op_Equality(FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation,FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation)">
+  operator ==(ConsistentPartitionWindowRelation?, ConsistentPartitionWindowRelation?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ConsistentPartitionWindowRelation.cs/#L77"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator ==(ConsistentPartitionWindowRelation? left, ConsistentPartitionWindowRelation? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.html">ConsistentPartitionWindowRelation</a></dt>
+    <dd></dd>
+    <dt><code>right</code> <a class="xref" href="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.html">ConsistentPartitionWindowRelation</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_op_Inequality_" data-uid="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.op_Inequality*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_op_Inequality_FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation_" data-uid="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.op_Inequality(FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation,FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation)">
+  operator !=(ConsistentPartitionWindowRelation?, ConsistentPartitionWindowRelation?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ConsistentPartitionWindowRelation.cs/#L82"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator !=(ConsistentPartitionWindowRelation? left, ConsistentPartitionWindowRelation? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.html">ConsistentPartitionWindowRelation</a></dt>
+    <dd></dd>
+    <dt><code>right</code> <a class="xref" href="FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.html">ConsistentPartitionWindowRelation</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
 
 
 
