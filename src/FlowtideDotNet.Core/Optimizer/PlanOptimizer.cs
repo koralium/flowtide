@@ -47,6 +47,13 @@ namespace FlowtideDotNet.Core.Optimizer
                 plan.Relations[i] = relation;
             }
 
+            // Runs after filter pushdown so subtrees that only differ in pushed
+            // down filters are not merged, but before emits diverge the subtrees.
+            if (settings.FindCommonSubPlans)
+            {
+                plan = CommonSubPlan.CommonSubPlanOptimizer.Optimize(plan);
+            }
+
             plan = JoinProjectionPushdown.JoinProjectionPushdown.Optimize(plan);
 
             for (int i = 0; i < plan.Relations.Count; i++)

@@ -31,6 +31,12 @@ namespace FlowtideDotNet.Core.Optimizer
         /// </summary>
         public bool SimplifyProjection { get; set; } = true;
 
+        /// <summary>
+        /// Finds identical subtrees in the plan and computes them only once,
+        /// each usage references the shared result.
+        /// </summary>
+        public bool FindCommonSubPlans { get; set; } = true;
+
         public int Parallelization { get; set; } = 1;
 
         public bool TryAddWatermarkOutputMode { get; set; } = true;
