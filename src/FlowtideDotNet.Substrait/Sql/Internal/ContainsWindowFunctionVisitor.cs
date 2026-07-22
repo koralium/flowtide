@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     {
         private readonly SqlFunctionRegister sqlFunctionRegister;
         private HashSet<Expression.Function> _windowFunctions;
-        private HashSet<string> _identifiers;
+        private readonly HashSet<string> _identifiers;
 
         public ContainsWindowFunctionVisitor(SqlFunctionRegister sqlFunctionRegister)
         {
