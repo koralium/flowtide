@@ -31,6 +31,28 @@ namespace FlowtideDotNet.Substrait
     /// </summary>
     public class SubstraitSerializer
     {
+        /// <summary>
+        /// Writes function options, each option keeps a single preference value.
+        /// </summary>
+        private static void AddOptions(
+            Google.Protobuf.Collections.RepeatedField<Protobuf.FunctionOption> target,
+            SortedList<string, string>? options)
+        {
+            if (options == null)
+            {
+                return;
+            }
+            foreach (var option in options)
+            {
+                var functionOption = new Protobuf.FunctionOption()
+                {
+                    Name = option.Key
+                };
+                functionOption.Preference.Add(option.Value);
+                target.Add(functionOption);
+            }
+        }
+
         private sealed class SerializerVisitorState
         {
             public int uriCounter = 0;
@@ -290,6 +312,7 @@ namespace FlowtideDotNet.Substrait
                         Value = Visit(arg, state)
                     });
                 }
+                AddOptions(scalar.Options, scalarFunction.Options);
 
                 return new Protobuf.Expression()
                 {
@@ -733,6 +756,7 @@ namespace FlowtideDotNet.Substrait
                                     });
                                 }
                             }
+                            AddOptions(m.Measure_.Options, measure.Measure.Options);
                             if (measure.Measure.OutputType != null)
                             {
                                 m.Measure_.OutputType = state.GetType(measure.Measure.OutputType);
@@ -923,6 +947,8 @@ namespace FlowtideDotNet.Substrait
                 output.FunctionReference = state.GetFunctionExtensionAnchor(windowFunction.ExtensionUri, windowFunction.ExtensionName);
                 output.Invocation = Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified;
                 
+                AddOptions(output.Options, windowFunction.Options);
+
                 if (windowFunction.LowerBound != null)
                 {
                     output.LowerBound = GetWindowBound(windowFunction.LowerBound);

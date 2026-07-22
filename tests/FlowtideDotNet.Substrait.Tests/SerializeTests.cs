@@ -263,6 +263,101 @@ namespace FlowtideDotNet.Substrait.Tests
         }
 
         [Fact]
+        public void SerializeWindowFunctionWithOptions()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                insert into out
+                select a, LAST_VALUE(b) IGNORE NULLS OVER (PARTITION BY a ORDER BY b) as last_b FROM table1;
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            // The ignore nulls option changes the result, it has to survive the roundtrip
+            var windowRelation = FindWindowRelation(plan.Relations[0]);
+            Assert.NotNull(windowRelation);
+            Assert.Equal("IGNORE_NULLS", windowRelation.WindowFunctions[0].Options!["NULL_TREATMENT"]);
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void SerializeScalarFunctionWithOptions()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Expressions = [new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionName = FunctionsString.Substring,
+                            Arguments = [new StringLiteral() { Value = "a" }],
+                            Options = new SortedList<string, string>() { { "negative_start", "WRAP_FROM_END" } }
+                        }],
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct() { Names = ["a"] },
+                            NamedTable = new Type.NamedTable() { Names = ["a"] }
+                        },
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void SerializeAggregateFunctionWithOptions()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new AggregateRelation()
+                    {
+                        Groupings = new List<AggregateGrouping>(),
+                        Measures = new List<AggregateMeasure>()
+                        {
+                            new AggregateMeasure()
+                            {
+                                Measure = new AggregateFunction()
+                                {
+                                    ExtensionUri = FunctionsArithmetic.Uri,
+                                    ExtensionName = FunctionsArithmetic.Sum,
+                                    Arguments = [new StringLiteral() { Value = "a" }],
+                                    Options = new SortedList<string, string>() { { "NULL_TREATMENT", "IGNORE_NULLS" } }
+                                }
+                            }
+                        },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct() { Names = ["a"] },
+                            NamedTable = new Type.NamedTable() { Names = ["a"] }
+                        },
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        private static ConsistentPartitionWindowRelation? FindWindowRelation(Relation relation)
+        {
+            switch (relation)
+            {
+                case ConsistentPartitionWindowRelation window: return window;
+                case WriteRelation write: return FindWindowRelation(write.Input);
+                case ProjectRelation project: return FindWindowRelation(project.Input);
+                case FilterRelation filter: return FindWindowRelation(filter.Input);
+                case RootRelation root: return FindWindowRelation(root.Input);
+                default: return null;
+            }
+        }
+
+        [Fact]
         public void SerializeMergeJoin()
         {
             var plan = new Plan()

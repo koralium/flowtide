@@ -49,7 +49,8 @@ namespace FlowtideDotNet.Substrait.Expressions
             return other != null &&
                    ExtensionUri == other.ExtensionUri &&
                    ExtensionName == other.ExtensionName &&
-                   Arguments.SequenceEqual(other.Arguments);
+                   Arguments.SequenceEqual(other.Arguments) &&
+                   FunctionOptions.AreEqual(Options, other.Options);
         }
 
         public override int GetHashCode()
@@ -61,6 +62,7 @@ namespace FlowtideDotNet.Substrait.Expressions
             {
                 code.Add(argument);
             }
+            FunctionOptions.AddToHash(ref code, Options);
             return code.ToHashCode();
         }
 
