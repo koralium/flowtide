@@ -54,6 +54,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long newPages;
         private long cacheMisses;
 
+        /// <summary>
+        /// Hits served by the lock-free lookup table, which bypass the shared table's hit
+        /// counter. Plain increment, the client read path runs on one thread. Read with
+        /// Volatile by the metric callback.
+        /// </summary>
+        private long m_lookupTableHits;
+
         public long CacheMisses => cacheMisses;
 
         public override long MetadataId => metadataId;
@@ -93,6 +100,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             tagList = options.TagList;
             tagList.Add("state_client", name);
+
+            if (!string.IsNullOrEmpty(name))
+            {
+                meter.CreateObservableCounter("flowtide_state_client_lookup_hits", () =>
+                {
+                    return new Measurement<long>(Volatile.Read(ref m_lookupTableHits), tagList);
+                });
+            }
 
             _lookupTable = new CacheValue[1009];
         }
@@ -285,6 +300,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             {
                                 throw new InvalidOperationException("Could not rent value from cache");
                             }
+                            m_lookupTableHits++;
                             node.ValueRef.useCount = Math.Min(node.ValueRef.useCount + 1, 5);
                             return ValueTask.FromResult<V?>((V)_lookupTable[modLookup].Value!.ValueRef.value);
                         }

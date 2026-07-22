@@ -263,6 +263,69 @@ namespace FlowtideDotNet.Substrait.Tests
         }
 
         [Fact]
+        public void SerializeScalarFunctionWithOptions()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Expressions = [new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionName = FunctionsString.Substring,
+                            Arguments = [new StringLiteral() { Value = "a" }],
+                            Options = new SortedList<string, string>() { { "negative_start", "WRAP_FROM_END" } }
+                        }],
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct() { Names = ["a"] },
+                            NamedTable = new Type.NamedTable() { Names = ["a"] }
+                        },
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void SerializeAggregateFunctionWithOptions()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new AggregateRelation()
+                    {
+                        Groupings = new List<AggregateGrouping>(),
+                        Measures = new List<AggregateMeasure>()
+                        {
+                            new AggregateMeasure()
+                            {
+                                Measure = new AggregateFunction()
+                                {
+                                    ExtensionUri = FunctionsArithmetic.Uri,
+                                    ExtensionName = FunctionsArithmetic.Sum,
+                                    Arguments = [new StringLiteral() { Value = "a" }],
+                                    Options = new SortedList<string, string>() { { "NULL_TREATMENT", "IGNORE_NULLS" } }
+                                }
+                            }
+                        },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct() { Names = ["a"] },
+                            NamedTable = new Type.NamedTable() { Names = ["a"] }
+                        },
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
         public void SerializeWindowFunctionWithOptions()
         {
             SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();

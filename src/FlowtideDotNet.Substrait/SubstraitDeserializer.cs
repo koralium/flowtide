@@ -22,6 +22,28 @@ namespace FlowtideDotNet.Substrait
 {
     public class SubstraitDeserializer
     {
+        /// <summary>
+        /// Reads function options, the consumer uses the first supported preference.
+        /// </summary>
+        private static SortedList<string, string>? ReadOptions(
+            Google.Protobuf.Collections.RepeatedField<Protobuf.FunctionOption> options)
+        {
+            if (options.Count == 0)
+            {
+                return null;
+            }
+            var result = new SortedList<string, string>();
+            foreach (var option in options)
+            {
+                if (option.Preference.Count > 0)
+                {
+                    // Allow duplicate option names by letting later entries win.
+                    result[option.Name] = option.Preference[0];
+                }
+            }
+            return result.Count == 0 ? null : result;
+        }
+
         private sealed class ExpressionDeserializerImpl
         {
             private readonly Dictionary<uint, string> idToFunctionLookup = new Dictionary<uint, string>();
@@ -393,7 +415,8 @@ namespace FlowtideDotNet.Substrait
                 {
                     ExtensionName = name,
                     ExtensionUri = uri,
-                    Arguments = new List<Expression>()
+                    Arguments = new List<Expression>(),
+                    Options = ReadOptions(aggregateFunction.Options)
                 };
 #pragma warning disable CS0612 // Type or member is obsolete
                 if (aggregateFunction.Args.Count > 0)
@@ -509,14 +532,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     result.Arguments.Add(VisitExpression(arg.Value));
                 }
-                if (windowRelFunction.Options.Count > 0)
-                {
-                    result.Options = new SortedList<string, string>();
-                    foreach (var option in windowRelFunction.Options)
-                    {
-                        result.Options[option.Name] = option.Preference.Count > 0 ? option.Preference[0] : string.Empty;
-                    }
-                }
+                result.Options = ReadOptions(windowRelFunction.Options);
                 return result;
             }
 
@@ -662,7 +678,8 @@ namespace FlowtideDotNet.Substrait
                 {
                     ExtensionUri = uri,
                     ExtensionName = name,
-                    Arguments = args
+                    Arguments = args,
+                    Options = ReadOptions(scalarFunction.Options)
                 };
 
 

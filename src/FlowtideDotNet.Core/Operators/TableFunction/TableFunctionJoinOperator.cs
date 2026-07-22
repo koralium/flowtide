@@ -39,6 +39,8 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
         private readonly List<int> _leftOutputColumns;
         private readonly List<int> _leftOutputIndices;
 
+        // A query can use only some of the function columns, these are the ones that are emitted
+        private List<int>? _rightIncomingColumns;
         private List<int>? _rightOutputIndices;
 
         private ICounter<long>? _eventsCounter;
@@ -226,9 +228,20 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
                     output.FoundOffsets.Dispose();
                 }
 
-                for (int i = 0; i < output.FunctionColumns.Length; i++)
+                // Only emit the columns that are used, the rest must be disposed
+                for (int i = 0; i < _rightIncomingColumns!.Count; i++)
                 {
-                    emitColumns[_rightOutputIndices[i]] = output.FunctionColumns[i];
+                    emitColumns[_rightOutputIndices[i]] = output.FunctionColumns[_rightIncomingColumns[i]];
+                }
+                if (_rightIncomingColumns.Count < output.FunctionColumns.Length)
+                {
+                    for (int j = 0; j < output.FunctionColumns.Length; j++)
+                    {
+                        if (!_rightIncomingColumns.Contains(j))
+                        {
+                            output.FunctionColumns[j].Dispose();
+                        }
+                    }
                 }
 
                 _eventsCounter.Add(output.Weights.Count);
@@ -260,7 +273,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             var compileResult = ColumnTableFunctionCompiler.CompileWithArg(_tableFunctionRelation.TableFunction, _functionsRegister, MemoryAllocator);
             _func = compileResult.Emit;
             _functionOutputLength = _tableFunctionRelation.TableFunction.TableSchema.Names.Count;
-            (_, _rightOutputIndices) = GetOutputColumns(_tableFunctionRelation, _tableFunctionRelation.Input.OutputLength, _functionOutputLength);
+            (_rightIncomingColumns, _rightOutputIndices) = GetOutputColumns(_tableFunctionRelation, _tableFunctionRelation.Input.OutputLength, _functionOutputLength);
             if (_tableFunctionRelation.JoinCondition != null)
             {
                 if (_scratch != null)

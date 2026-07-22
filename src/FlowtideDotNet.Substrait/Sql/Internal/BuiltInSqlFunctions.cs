@@ -993,6 +993,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);
+            HoppingWindowSqlFunction.AddHoppingWindow(sqlFunctionRegister);
 
             // WindowFunction
             RegisterSingleVariableWindowFunction(sqlFunctionRegister, "sum", FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, (p1) => p1, true, false);

@@ -34,9 +34,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private readonly List<Relation> subRelations;
         private readonly Stack<EmitData> scopeStack = new Stack<EmitData>();
 
-        private SqlExpressionVisitor CreateExpressionVisitor()
+        private SqlExpressionVisitor CreateExpressionVisitor(IReadOnlyDictionary<string, Expression>? columnAliases = null)
         {
-            return new SqlExpressionVisitor(sqlFunctionRegister, q => this.Visit(q, null), scopeStack.ToList());
+            return new SqlExpressionVisitor(sqlFunctionRegister, q => this.Visit(q, null), scopeStack.ToList(), columnAliases);
         }
 
         public SqlSubstraitVisitor(SqlPlanBuilder sqlPlanBuilder, SqlFunctionRegister sqlFunctionRegister)
@@ -531,17 +531,24 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 if (select.Selection != null)
                 {
-                    bool selectionContainsWindow = false;
                     ContainsWindowFunctionVisitor containsWindowSelectFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
-                    selectionContainsWindow |= containsWindowSelectFunctionVisitor.Visit(select.Selection, default);
+                    bool selectionContainsWindow = containsWindowSelectFunctionVisitor.Visit(select.Selection, default);
+
+                    // Select list aliases the where clause uses, e.g. 'WHERE rownum <= 1' on a ROW_NUMBER() alias
+                    var filterAliases = GetAliasesUsedInFilter(select, containsWindowSelectFunctionVisitor.Identifiers, outNode.EmitData);
+
+                    // Window functions behind such an alias must be computed before the filter,
+                    // the projection then reads that column instead of computing it again
+                    outNode = VisitFilterAliasWindowFunctions(filterAliases.Values, outNode);
+
                     if (selectionContainsWindow)
                     {
                         // Does not include expressions from the window functions in the emit data
-                        outNode = VisitFilterWithWindowExpressions(select.Selection, containsWindowSelectFunctionVisitor, outNode);
+                        outNode = VisitFilterWithWindowExpressions(select.Selection, containsWindowSelectFunctionVisitor, outNode, filterAliases);
                     }
                     else
                     {
-                        var exprVisitor = CreateExpressionVisitor();
+                        var exprVisitor = CreateExpressionVisitor(filterAliases);
                         var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
                         outNode = new RelationData(new FilterRelation()
                         {
@@ -645,11 +652,71 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return outNode;
         }
 
-        private RelationData VisitFilterWithWindowExpressions(Expression filter, ContainsWindowFunctionVisitor containsWindowFunctionVisitor, RelationData parent)
+        /// <summary>
+        /// Finds the select list aliases that the where clause refers to, e.g. 'WHERE rownum &lt;= 1'
+        /// where rownum is declared in the select list. Columns of the input win over an alias.
+        /// </summary>
+        private static Dictionary<string, Expression> GetAliasesUsedInFilter(Select select, IReadOnlySet<string> filterIdentifiers, EmitData emitData)
+        {
+            var aliases = new Dictionary<string, Expression>(StringComparer.OrdinalIgnoreCase);
+
+            if (select.Projection == null || filterIdentifiers.Count == 0)
+            {
+                return aliases;
+            }
+
+            foreach (var item in select.Projection)
+            {
+                if (item is not SelectItem.ExpressionWithAlias exprAlias)
+                {
+                    continue;
+                }
+                string alias = exprAlias.Alias;
+                if (!filterIdentifiers.Contains(alias) || aliases.ContainsKey(alias))
+                {
+                    continue;
+                }
+                var identifier = new Expression.CompoundIdentifier(new Sequence<Ident>(new List<Ident>() { new Ident(alias) }));
+                if (emitData.TryGetEmitIndex(identifier, out _, out _, out _))
+                {
+                    continue;
+                }
+                aliases.Add(alias, exprAlias.Expression);
+            }
+
+            return aliases;
+        }
+
+        /// <summary>
+        /// Computes the window functions that the where clause reaches through a select list alias,
+        /// so the filter and the projection share one window relation.
+        /// </summary>
+        private RelationData VisitFilterAliasWindowFunctions(IEnumerable<Expression> aliasExpressions, RelationData parent)
+        {
+            var containsWindowFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
+            bool containsWindow = false;
+            foreach (var aliasExpression in aliasExpressions)
+            {
+                containsWindow |= containsWindowFunctionVisitor.Visit(aliasExpression, default);
+            }
+
+            if (!containsWindow)
+            {
+                return parent;
+            }
+
+            return VisitWindow(containsWindowFunctionVisitor, parent);
+        }
+
+        private RelationData VisitFilterWithWindowExpressions(
+            Expression filter,
+            ContainsWindowFunctionVisitor containsWindowFunctionVisitor,
+            RelationData parent,
+            IReadOnlyDictionary<string, Expression>? columnAliases = null)
         {
             var windowResult = VisitWindow(containsWindowFunctionVisitor, parent);
 
-            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, columnAliases: columnAliases);
             var expr = exprVisitor.Visit(filter, windowResult.EmitData);
 
             var filterRelation = new FilterRelation()
@@ -744,6 +811,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             // Go through the found functions, we create one relation per window function at this time
             foreach (var windowFunction in containsWindowFunctionVisitor.WindowFunctions)
             {
+                // Already computed, for example hoisted before a where clause that filters on its alias
+                if (outputData.EmitData.TryGetEmitIndex(windowFunction, out _, out _, out _))
+                {
+                    continue;
+                }
                 if (!sqlFunctionRegister.TryGetWindowMapper(windowFunction.Name, out var mapper))
                 {
                     throw new NotSupportedException($"Window function '{windowFunction.Name}' is not supported");
@@ -804,7 +876,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                 for (int i = 0; i  < windowGroup.Value.Count; i++)
                 {
-                    emitData.Add(windowGroup.Value[i].Item1, emitData.Count, $"$window{i}", windowGroup.Value[i].Item3);
+                    // Hidden from '*', the column only exists so the projection can reference the function
+                    emitData.Add(windowGroup.Value[i].Item1, emitData.Count, $"$window{i}", windowGroup.Value[i].Item3, hiddenFromWildcard: true);
                 }
 
 
