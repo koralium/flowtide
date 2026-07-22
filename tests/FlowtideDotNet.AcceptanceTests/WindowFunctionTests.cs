@@ -912,6 +912,110 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task FilterOnRowNumberAlias()
+        {
+            GenerateData();
+
+            // Top N pattern, the where clause reads the row number through its select list alias.
+            // The projected value must be the one that was filtered on, not a recomputed one.
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) as rownum
+            FROM users
+            WHERE rownum <= 3
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => $"{x.CompanyId}")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, i + 1));
+                    }
+                    return output;
+                })
+                .Where(x => x.value <= 3).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task FilterOnRowNumberAliasFromSubQuery()
+        {
+            GenerateData();
+
+            // The nexmark q6 shape, the row number alias is filtered inside the sub query
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                q.CompanyId,
+                q.UserKey,
+                q.rownum
+            FROM (
+                SELECT
+                    CompanyId,
+                    UserKey,
+                    ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) as rownum
+                FROM users
+                WHERE rownum <= 1
+            ) q
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => $"{x.CompanyId}")
+                .Select(g =>
+                {
+                    var first = g.OrderBy(x => x.UserKey).First();
+                    return new RowNumberResult(first.CompanyId, first.UserKey, 1);
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task WildcardDoesNotIncludeWindowFunctionColumn()
+        {
+            GenerateData();
+
+            // '*' must expand to the columns of the input only, the window function
+            // gets a column of its own that the wildcard must not pick up
+            await StartStream(@"
+            INSERT INTO output
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) as rownum
+            FROM (
+                SELECT
+                    CompanyId,
+                    UserKey
+                FROM users
+            ) u
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => $"{x.CompanyId}")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, i + 1));
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
         public async Task LagWithPartitionOneArgument()
         {
             GenerateData();
