@@ -2210,8 +2210,8 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         // General coverage for min_by suffix across several partitions with nullable compare values and a
-        // mutation. The specific stack-column desync crash (bug 2) is guarded by the retained discovery
-        // seed in BulkWindowOracleTests.DiscoveredBugSeedsStayFixed, which reproduces the exact scenario.
+        // mutation. The specific stack-column desync crash (bug 2) is guarded by
+        // MinBySuffixReusedStackColumnsSurviveCrash, which reproduces the exact re-initialization scenario.
         [Fact]
         public async Task MinBySuffixAcrossPartitionsWithNullsAndMutation()
         {
@@ -2264,6 +2264,64 @@ namespace FlowtideDotNet.AcceptanceTests
 
             // A mutation forces a re-scan of a partition, reusing the stack columns.
             AddUserVisits("b", 5, 0);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        [Fact]
+        public async Task MinBySuffixReusedStackColumnsSurviveCrash()
+        {
+            // The suffix stack columns are reused across scans. A stale allocation counter that survived a
+            // re-initialization (crash recovery re-inits the function while the counter kept the pre-crash
+            // depth) made the reused columns index past their real length. Build a stack, crash, then re-scan.
+            void Add(int key, double compare, int value) =>
+                AddOrUpdateUser(new User { UserKey = key, CompanyId = "a", DoubleValue = compare, Visits = value });
+
+            // Increasing compare so nothing pops: the stack grows to full depth.
+            for (int i = 0; i < 8; i++)
+            {
+                Add(i, i, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                min_by(CAST(Visits AS DOUBLE), DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            List<MinByResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderBy(x => x.UserKey).ToList();
+                        int n = ordered.Count;
+                        var output = new List<MinByResult>();
+                        for (int i = 0; i < n; i++)
+                        {
+                            double bestCompare = double.MaxValue;
+                            double? best = null;
+                            for (int j = i; j < n; j++)
+                            {
+                                if (ordered[j].DoubleValue < bestCompare)
+                                {
+                                    bestCompare = ordered[j].DoubleValue;
+                                    best = ordered[j].Visits;
+                                }
+                            }
+                            output.Add(new MinByResult(ordered[i].CompanyId, ordered[i].UserKey, best));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            await Crash();
+
+            // A mutation after recovery forces the partition to be re-scanned, reusing the stack columns.
+            Add(8, 8, 8);
             await WaitForUpdate();
             AssertCurrentDataEqual(Expected());
         }
