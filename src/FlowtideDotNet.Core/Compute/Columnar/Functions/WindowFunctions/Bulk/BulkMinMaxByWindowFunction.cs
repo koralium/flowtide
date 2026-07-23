@@ -837,7 +837,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             _memoryAllocator = context.MemoryAllocator;
             _lookahead = new BulkWindowForwardPartitionReader(context.PersistentTree, context.PartitionColumns, context.CreateInsertComparer());
-            _frame = new BulkMinMaxFrameState(_isMin, _to - _from + 3, context.MemoryAllocator);
+            // The first row loads positions 0..to before any eviction, so the ring must hold to + the
+            // seeded preceding rows, not just the frame width.
+            _frame = new BulkMinMaxFrameState(_isMin, _to + Math.Max(0, -_from) + 2, context.MemoryAllocator);
             return Task.CompletedTask;
         }
 
@@ -1249,7 +1251,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private Column? _stackValueColumn;
         private readonly List<long> _stackPositions = new List<long>();
         private int _stackCount;
-        private int _stackAllocated;
         private int _cursor;
         private long _currentPosition;
 
@@ -1322,11 +1323,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                         }
                     }
                     var lastDupPosition = position + _reader.Weight - 1;
-                    if (_stackCount == _stackAllocated)
+                    // The columns are reused across partition scans, so grow only past their real length.
+                    if (_stackCount == _stackCompareColumn.Count)
                     {
                         _stackCompareColumn.Add(compareValue);
                         _stackValueColumn.Add(_fetchValueFunction(_reader.Batch, _reader.RowIndex));
-                        _stackAllocated++;
                     }
                     else
                     {

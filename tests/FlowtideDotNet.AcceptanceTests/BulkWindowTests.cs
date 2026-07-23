@@ -2008,5 +2008,332 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedUnboundedSum());
         }
+
+        // ---- Regression tests for bugs found by BulkWindowOracleTests ----
+
+        // Bug 1: a FOLLOWING-start frame loads positions 0..to on the very first row before any eviction,
+        // which is to + 1 entries, more than the frame width. The frame ring was sized for the frame width
+        // and overflowed. Found on min_by/max_by; the same latent overflow existed in sum and avg.
+
+        [Fact]
+        public async Task MinByFollowingOnlyFrameDoesNotOverflow()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                min_by(DoubleValue, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 FOLLOWING AND 4 FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            // The frame is the single row 4 ahead, so the value is that row's DoubleValue or null past the end.
+            var expected = Enumerable.Range(0, 10)
+                .Select(i => new MinByResult("1", i, i + 4 <= 9 ? (double?)(i + 4) : null));
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task MaxByFollowingOnlyFrameDoesNotOverflow()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                max_by(DoubleValue, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 FOLLOWING AND 4 FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            var expected = Enumerable.Range(0, 10)
+                .Select(i => new MinByResult("1", i, i + 4 <= 9 ? (double?)(i + 4) : null));
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task SumFollowingOnlyFrameDoesNotOverflow()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 FOLLOWING AND 4 FOLLOWING) AS INT) as value
+            FROM users");
+            await WaitForUpdate();
+
+            var expected = Enumerable.Range(0, 10)
+                .Select(i => new SumResult("1", i, i + 4 <= 9 ? (long?)(i + 4) : null));
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task AverageFollowingOnlyFrameDoesNotOverflow()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                AVG(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 FOLLOWING AND 4 FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            var expected = Enumerable.Range(0, 10)
+                .Select(i => new AvgResult("1", i, i + 4 <= 9 ? (double?)(i + 4) : null));
+            AssertCurrentDataEqual(expected);
+        }
+
+        // Bug 3: SQL SUM over a frame with no non-null values is null, but the incremental sum reaches a
+        // typed 0 when values are added then all subtracted out again. The fix tracks a non-null count.
+
+        [Fact]
+        public async Task SumBoundedFrameAllNullReturnsNull()
+        {
+            // The only non null value leaves the frame at row 3, whose frame is then all null.
+            AddUserVisits("1", 0, 3);
+            AddUserVisits("1", 1, null);
+            AddUserVisits("1", 2, null);
+            AddUserVisits("1", 3, null);
+            AddUserVisits("1", 4, null);
+            AddUserVisits("1", 5, null);
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                CAST(SUM(CAST(Visits AS DOUBLE)) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS INT) as value
+            FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new SumResult("1", 0, 3),
+                new SumResult("1", 1, 3),
+                new SumResult("1", 2, 3),
+                new SumResult("1", 3, null),
+                new SumResult("1", 4, null),
+                new SumResult("1", 5, null)
+            });
+        }
+
+        [Fact]
+        public async Task SumFollowingFrameAllNullReturnsNull()
+        {
+            // The only non null value is at row 3; it is inside the frame for rows 1 and 2, then leaves.
+            AddUserVisits("1", 0, null);
+            AddUserVisits("1", 1, null);
+            AddUserVisits("1", 2, null);
+            AddUserVisits("1", 3, 5);
+            AddUserVisits("1", 4, null);
+            AddUserVisits("1", 5, null);
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                CAST(SUM(CAST(Visits AS DOUBLE)) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING) AS INT) as value
+            FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new SumResult("1", 0, null),
+                new SumResult("1", 1, 5),
+                new SumResult("1", 2, 5),
+                new SumResult("1", 3, null),
+                new SumResult("1", 4, null),
+                new SumResult("1", 5, null)
+            });
+        }
+
+        [Fact]
+        public async Task SumSuffixFrameAllNullReturnsNull()
+        {
+            AddUserVisits("1", 0, 7);
+            AddUserVisits("1", 1, null);
+            AddUserVisits("1", 2, null);
+            AddUserVisits("1", 3, null);
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                CAST(SUM(CAST(Visits AS DOUBLE)) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 PRECEDING AND UNBOUNDED FOLLOWING) AS INT) as value
+            FROM users");
+            await WaitForUpdate();
+
+            // Rows 0 and 1 include position 0 (value 7); rows 2 and 3 exclude it and see only nulls.
+            AssertCurrentDataEqual(new[]
+            {
+                new SumResult("1", 0, 7),
+                new SumResult("1", 1, 7),
+                new SumResult("1", 2, null),
+                new SumResult("1", 3, null)
+            });
+        }
+
+        [Fact]
+        public async Task SumSuffixFollowingFrameAllNullReturnsNull()
+        {
+            AddUserVisits("1", 0, null);
+            AddUserVisits("1", 1, 7);
+            AddUserVisits("1", 2, null);
+            AddUserVisits("1", 3, null);
+            AddUserVisits("1", 4, null);
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                CAST(SUM(CAST(Visits AS DOUBLE)) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS INT) as value
+            FROM users");
+            await WaitForUpdate();
+
+            // Only row 0's frame [1..end] includes position 1 (value 7); every later frame is all null.
+            AssertCurrentDataEqual(new[]
+            {
+                new SumResult("1", 0, 7),
+                new SumResult("1", 1, null),
+                new SumResult("1", 2, null),
+                new SumResult("1", 3, null),
+                new SumResult("1", 4, null)
+            });
+        }
+
+        // General coverage for min_by suffix across several partitions with nullable compare values and a
+        // mutation. The specific stack-column desync crash (bug 2) is guarded by the retained discovery
+        // seed in BulkWindowOracleTests.DiscoveredBugSeedsStayFixed, which reproduces the exact scenario.
+        [Fact]
+        public async Task MinBySuffixAcrossPartitionsWithNullsAndMutation()
+        {
+            // Three partitions with different value shapes so the suffix stack grows to different depths.
+            int key = 0;
+            AddUserVisits("a", key++, 5);
+            AddUserVisits("a", key++, 4);
+            AddUserVisits("a", key++, 3);
+            AddUserVisits("a", key++, 2);
+            AddUserVisits("b", key++, 1);
+            AddUserVisits("b", key++, null);
+            AddUserVisits("b", key++, 9);
+            AddUserVisits("c", key++, null);
+            AddUserVisits("c", key++, 7);
+            AddUserVisits("c", key++, null);
+            AddUserVisits("c", key++, 8);
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                min_by(CAST(Visits AS DOUBLE), CAST(Visits AS DOUBLE)) OVER (PARTITION BY CompanyId ORDER BY UserKey DESC ROWS BETWEEN 3 PRECEDING AND UNBOUNDED FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            List<MinByResult> Expected()
+            {
+                return Users.GroupBy(x => x.CompanyId)
+                    .SelectMany(g =>
+                    {
+                        var ordered = g.OrderByDescending(x => x.UserKey).ToList();
+                        int n = ordered.Count;
+                        var output = new List<MinByResult>();
+                        for (int i = 0; i < n; i++)
+                        {
+                            double? best = null;
+                            for (int j = Math.Max(0, i - 3); j < n; j++)
+                            {
+                                if (ordered[j].Visits.HasValue && (best == null || ordered[j].Visits.Value < best))
+                                {
+                                    best = ordered[j].Visits.Value;
+                                }
+                            }
+                            output.Add(new MinByResult(ordered[i].CompanyId, ordered[i].UserKey, best));
+                        }
+                        return output;
+                    }).ToList();
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // A mutation forces a re-scan of a partition, reusing the stack columns.
+            AddUserVisits("b", 5, 0);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
+
+        public record RowNumberDoubleResult(string? companyId, int userkey, double? value);
+
+        private static User NullOrderUser(int key, string company, int? visits) => new User
+        {
+            UserKey = key,
+            CompanyId = company,
+            DoubleValue = 0,
+            Visits = visits
+        };
+
+        [Fact]
+        public async Task DeleteNullOrderKeyRowDoesNotLeavePhantom()
+        {
+            // Regression for the phantom left behind when a row whose ORDER BY key is null is deleted under
+            // DESC NULLS FIRST. The deleted null row lingered in the row number ordinal walk, so every later
+            // row kept its old number and the sequence skipped a value. An all null incoming order column is
+            // a Null typed column that reported no null flag, so the boundary search wrongly collapsed the
+            // swapped null direction and placed the null probe last. Found by randomized nullable order probing.
+            var sql = @"
+                INSERT INTO output
+                SELECT CompanyId, UserKey, CAST(ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY Visits DESC NULLS FIRST) AS DOUBLE) as val
+                FROM users";
+
+            // Five nulls plus a sixth (key 63) that is the last entry in the null bucket, plus non null rows
+            // across three value groups.
+            AddOrUpdateUser(NullOrderUser(8, "c0", 0));
+            AddOrUpdateUser(NullOrderUser(18, "c0", 3));
+            AddOrUpdateUser(NullOrderUser(20, "c0", 1));
+            AddOrUpdateUser(NullOrderUser(38, "c0", 0));
+            AddOrUpdateUser(NullOrderUser(41, "c0", null));
+            AddOrUpdateUser(NullOrderUser(43, "c0", null));
+            AddOrUpdateUser(NullOrderUser(51, "c0", 1));
+            AddOrUpdateUser(NullOrderUser(52, "c0", null));
+            AddOrUpdateUser(NullOrderUser(53, "c0", null));
+            AddOrUpdateUser(NullOrderUser(54, "c0", 0));
+            AddOrUpdateUser(NullOrderUser(56, "c0", 1));
+            AddOrUpdateUser(NullOrderUser(59, "c0", 2));
+            AddOrUpdateUser(NullOrderUser(62, "c0", null));
+            AddOrUpdateUser(NullOrderUser(63, "c0", null));
+
+            await StartStream(sql);
+            await WaitForUpdate();
+
+            List<RowNumberDoubleResult> Expected()
+            {
+                var ordered = Users
+                    .OrderBy(u => u.Visits.HasValue ? 1 : 0)          // nulls first
+                    .ThenByDescending(u => u.Visits ?? 0)             // then value descending
+                    .ThenBy(u => u.UserKey)                           // tie break
+                    .ToList();
+                var output = new List<RowNumberDoubleResult>();
+                for (int i = 0; i < ordered.Count; i++)
+                {
+                    output.Add(new RowNumberDoubleResult(ordered[i].CompanyId, ordered[i].UserKey, i + 1));
+                }
+                return output;
+            }
+
+            AssertCurrentDataEqual(Expected());
+
+            // In one batch add a new non null row and delete the last null row, reproducing the trigger.
+            AddOrUpdateUser(NullOrderUser(64, "c0", 2));
+            DeleteUser(NullOrderUser(63, "c0", null));
+
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Expected());
+        }
     }
 }

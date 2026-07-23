@@ -259,7 +259,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             _memoryAllocator = context.MemoryAllocator;
             _lookahead = new BulkWindowForwardPartitionReader(context.PersistentTree, context.PartitionColumns, context.CreateInsertComparer());
-            _frame = new BulkWindowValueRing(_frameSize + 2, context.MemoryAllocator);
+            // The first row loads positions 0..to before eviction, so size by to and the seeded rows.
+            _frame = new BulkWindowValueRing(_to + Math.Max(0, -_from) + 2, context.MemoryAllocator);
             return Task.CompletedTask;
         }
 

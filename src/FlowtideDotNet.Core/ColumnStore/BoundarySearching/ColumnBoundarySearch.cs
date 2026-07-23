@@ -97,9 +97,13 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                     var direction = _directions != null && i < _directions.Count ? _directions[i] : SortColumnDirection.AscendingNullsFirst;
                     if (direction.HasSwappedNulls())
                     {
-                        // Only collapse when neither side has nulls, a null probe still needs placement.
+                        // Only collapse when neither side can hold a null, a null probe still needs
+                        // placement. An all null column carries type Null with no null flag, so treat a
+                        // Null typed column as having nulls too.
                         var nullFlags = CompareColumnState.HasValidityBitmap | CompareColumnState.OffsetContainsNull;
-                        if (((treeColumnState | inputColumnState) & nullFlags) == 0)
+                        bool treeHasNull = (treeColumnState & nullFlags) != 0 || (treeColumnState & CompareColumnState.TypeMask) == 0;
+                        bool inputHasNull = (inputColumnState & nullFlags) != 0 || (inputColumnState & CompareColumnState.TypeMask) == 0;
+                        if (!treeHasNull && !inputHasNull)
                         {
                             direction = direction.NormalizeForNoNulls();
                         }

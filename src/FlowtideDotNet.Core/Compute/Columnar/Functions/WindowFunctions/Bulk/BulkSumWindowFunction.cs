@@ -112,6 +112,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private BulkWindowValueRing? _pending;
         private BulkWindowValueRing? _frame;
         private readonly DataValueContainer _sumState = new DataValueContainer();
+        // Non null values currently in the sum. SQL sum over an all null or empty frame is null, not 0.
+        private long _count;
 
         public BulkSumWindowFunctionBounded(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from, long to)
         {
@@ -152,6 +154,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             _pending.Clear();
             _frame.Clear();
             _sumState._type = ArrowTypeId.Null;
+            _count = 0;
 
             if (fromPartitionStart)
             {
@@ -178,11 +181,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 var enteringFrame = _pending.PopOldest();
                 SumWindowUtils.DoSum(enteringFrame, _sumState, 1);
+                AverageWindowUtils.ModifyCount(ref _count, 1, enteringFrame.Type);
                 _frame.Push(enteringFrame);
                 while (_frame.Count > _frameSize)
                 {
                     var leavingFrame = _frame.PopOldest();
                     SumWindowUtils.DoSum(leavingFrame, _sumState, -1);
+                    AverageWindowUtils.ModifyCount(ref _count, -1, leavingFrame.Type);
                 }
             }
         }
@@ -190,6 +195,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
             Feed(_fetchValueFunction(context.Batch, context.RowIndex));
+            if (_count == 0)
+            {
+                result._type = ArrowTypeId.Null;
+                return true;
+            }
             BulkSumUtils.CopySumValue(_sumState, result);
             return true;
         }
@@ -316,6 +326,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private BulkWindowValueRing? _frame;
         private IMemoryAllocator? _memoryAllocator;
         private readonly DataValueContainer _sumState = new DataValueContainer();
+        private long _count;
 
         private long _currentPosition;
         private long _nextFeedPosition;
@@ -347,7 +358,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             _memoryAllocator = context.MemoryAllocator;
             _lookahead = new BulkWindowForwardPartitionReader(context.PersistentTree, context.PartitionColumns, context.CreateInsertComparer());
-            _frame = new BulkWindowValueRing(_frameSize + 2, context.MemoryAllocator);
+            // The first row loads positions 0..to before eviction, so size by to and the seeded rows.
+            _frame = new BulkWindowValueRing(_to + Math.Max(0, -_from) + 2, context.MemoryAllocator);
             return Task.CompletedTask;
         }
 
@@ -362,6 +374,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             _frame.Clear();
             _sumState._type = ArrowTypeId.Null;
+            _count = 0;
             _currentPosition = -1;
             _lookaheadStarted = false;
             _lookaheadDone = false;
@@ -389,6 +402,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 _oldestFramePosition = _nextFeedPosition;
             }
             SumWindowUtils.DoSum(value, _sumState, 1);
+            AverageWindowUtils.ModifyCount(ref _count, 1, value.Type);
             _frame.Push(value);
             _nextFeedPosition++;
         }
@@ -434,9 +448,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 var leavingFrame = _frame.PopOldest();
                 SumWindowUtils.DoSum(leavingFrame, _sumState, -1);
+                AverageWindowUtils.ModifyCount(ref _count, -1, leavingFrame.Type);
                 _oldestFramePosition++;
             }
 
+            if (_count == 0)
+            {
+                result._type = ArrowTypeId.Null;
+                return;
+            }
             BulkSumUtils.CopySumValue(_sumState, result);
         }
 
@@ -568,6 +588,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private BulkWindowValueRing? _recentValues;
         private readonly DataValueContainer _totalState = new DataValueContainer();
         private readonly DataValueContainer _prefixState = new DataValueContainer();
+        private long _totalCount;
+        private long _prefixCount;
 
         private long _currentPosition;
         private long _nextExcludePosition;
@@ -608,6 +630,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             _totalState._type = ArrowTypeId.Null;
             _prefixState._type = ArrowTypeId.Null;
+            _totalCount = 0;
+            _prefixCount = 0;
             _recentValues.Clear();
             _currentPosition = -1;
             _nextExcludePosition = 0;
@@ -617,6 +641,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 var value = _fetchValueFunction(_reader.Batch, _reader.RowIndex);
                 SumWindowUtils.DoSum(value, _totalState, _reader.Weight);
+                AverageWindowUtils.ModifyCount(ref _totalCount, _reader.Weight, value.Type);
             }
         }
 
@@ -630,9 +655,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 var excluded = _recentValues.PopOldest();
                 SumWindowUtils.DoSum(excluded, _prefixState, 1);
+                AverageWindowUtils.ModifyCount(ref _prefixCount, 1, excluded.Type);
                 _nextExcludePosition++;
             }
 
+            if (_totalCount - _prefixCount == 0)
+            {
+                result._type = ArrowTypeId.Null;
+                return true;
+            }
             BulkSumUtils.CopySumValue(_totalState, result);
             SumWindowUtils.DoSum(_prefixState, result, -1);
             return true;
@@ -664,6 +695,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private IMemoryAllocator? _memoryAllocator;
         private readonly DataValueContainer _totalState = new DataValueContainer();
         private readonly DataValueContainer _prefixState = new DataValueContainer();
+        private long _totalCount;
+        private long _prefixCount;
 
         private long _partitionRowCount;
         private long _currentPosition;
@@ -708,6 +741,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             _totalState._type = ArrowTypeId.Null;
             _prefixState._type = ArrowTypeId.Null;
+            _totalCount = 0;
+            _prefixCount = 0;
             _partitionRowCount = 0;
             _currentPosition = -1;
             _nextPrefixPosition = 0;
@@ -719,6 +754,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 var value = _fetchValueFunction(_reader.Batch, _reader.RowIndex);
                 SumWindowUtils.DoSum(value, _totalState, _reader.Weight);
+                AverageWindowUtils.ModifyCount(ref _totalCount, _reader.Weight, value.Type);
                 _partitionRowCount += _reader.Weight;
             }
         }
@@ -762,10 +798,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 {
                     continue;
                 }
-                SumWindowUtils.DoSum(_fetchValueFunction(_lookahead.Batch, _lookahead.RowIndex), _prefixState, 1);
+                var prefixValue = _fetchValueFunction(_lookahead.Batch, _lookahead.RowIndex);
+                SumWindowUtils.DoSum(prefixValue, _prefixState, 1);
+                AverageWindowUtils.ModifyCount(ref _prefixCount, 1, prefixValue.Type);
                 _nextPrefixPosition++;
             }
 
+            if (_totalCount - _prefixCount == 0)
+            {
+                result._type = ArrowTypeId.Null;
+                return;
+            }
             BulkSumUtils.CopySumValue(_totalState, result);
             SumWindowUtils.DoSum(_prefixState, result, -1);
         }
