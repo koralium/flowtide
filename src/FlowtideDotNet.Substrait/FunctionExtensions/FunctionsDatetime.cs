@@ -25,5 +25,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string TimestampAdd = "timestamp_add";
         public const string Datediff = "datediff";
         public const string HoppingWindow = "hopping_window";
+        public const string TumblingWindow = "tumbling_window";
     }
 }
