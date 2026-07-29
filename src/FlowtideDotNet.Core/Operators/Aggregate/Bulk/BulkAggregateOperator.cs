@@ -106,6 +106,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private PrimitiveList<uint>? _retractIterations;
         private uint m_currentIteration;
 
+        // Deferred insert buffering for random group keys
+        private readonly DeferredInsertBuffer _defer = new DeferredInsertBuffer();
+        private long _lastReceiveTime;
+        private uint _pendingIteration;
+
         public BulkAggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this._aggregateRelation = aggregateRelation;
@@ -174,6 +179,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             Debug.Assert(m_temporaryStateValues != null);
             Debug.Assert(m_hasSentInitialData != null);
 
+            if (_defer.HasPending)
+            {
+                // Watermark flush always runs before the checkpoint barrier
+                throw new InvalidOperationException("Deferred aggregate data pending at checkpoint, watermark flush must precede the checkpoint barrier.");
+            }
+
             await _tree.Commit();
 
             if (_temporaryTree != null)
@@ -220,6 +231,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             Debug.Assert(m_hasSentInitialData != null);
             Debug.Assert(weights != null);
             Debug.Assert(iterations != null);
+
+            // Buffered batches must be in state before emitting results
+            await foreach (var batch in FlushPending())
+            {
+                yield return batch;
+            }
+            _defer.ExitBuffering();
 
             int groupLength = m_groupValues.Length;
 
@@ -580,7 +598,58 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             _retractIterations = new PrimitiveList<uint>(MemoryAllocator);
         }
 
-        public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        {
+            _lastReceiveTime = time;
+            if (_defer.Buffering)
+            {
+                return BufferBatch(msg);
+            }
+            return ProcessBatch(msg, time);
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> BufferBatch(StreamEventBatch msg)
+        {
+            if (msg.Data.Weights.Count == 0)
+            {
+                yield break;
+            }
+            // Batches from different loop iterations must not merge
+            if (_defer.HasPending && msg.Data.Iterations[0] != _pendingIteration)
+            {
+                await foreach (var batch in FlushPending())
+                {
+                    yield return batch;
+                }
+            }
+            _pendingIteration = msg.Data.Iterations[0];
+            if (_defer.Add(msg.Data))
+            {
+                await foreach (var batch in FlushPending())
+                {
+                    yield return batch;
+                }
+            }
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> FlushPending()
+        {
+            if (!_defer.HasPending)
+            {
+                yield break;
+            }
+
+            // One sort and insert amortized over all pending rows
+            var combined = _defer.TakePending(MemoryAllocator);
+            var combinedMsg = new StreamEventBatch(combined);
+            await foreach (var batch in ProcessBatch(combinedMsg, _lastReceiveTime))
+            {
+                yield return batch;
+            }
+            combined.Return();
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> ProcessBatch(StreamEventBatch msg, long time)
         {
             if (msg.Data.Count > 0)
             {
@@ -849,6 +918,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             // Apply the batch, mutator handles calling compute on measures for a group of values
             await _treeBulkInserter.ApplyBatch(_rowReferenceBuffer, _rowValuesBuffer, uniqueCounter, _noDuplicateIndices, _duplicateTags, mutator, totalBatchSize);
 
+            // Unique group count and leaf hits drive the buffering
+            _defer.OnBatchApplied(uniqueCounter, _treeBulkInserter.LeafHitCount);
+
             // Temporary should be moved
             if (_tempIndices.Length < uniqueCounter)
             {
@@ -898,6 +970,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
                 InitForwardColumns();
             }
+        }
+
+        public override ValueTask DisposeAsync()
+        {
+            _defer.ReturnPending();
+            return base.DisposeAsync();
         }
 
         protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
