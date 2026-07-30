@@ -30,13 +30,19 @@ namespace FlowtideDotNet.Core.Operators
         private const double TargetDensity = 8.0;
 
         private const int InitialRowCap = 1_000;
-        private const int MaxRowCap = 100_000;
+
+        // Sanity bound for the cap doubling, memory is bounded by bytes
+        private const int MaxRowCap = 1_000_000;
+
+        // Hard memory ceiling, flush happens regardless of row cap
+        private const long MaxPendingBytes = 16 * 1024 * 1024;
 
         // Smaller batches give too noisy a density signal
         private const int MinRowsForSignal = 64;
 
         private readonly List<EventBatchWeighted> _pending = new List<EventBatchWeighted>();
         private int _pendingRows;
+        private long _pendingBytes;
         private int _flushRowCap = InitialRowCap;
 
         public bool Buffering { get; private set; }
@@ -52,7 +58,9 @@ namespace FlowtideDotNet.Core.Operators
             data.Rent(1);
             _pending.Add(data);
             _pendingRows += data.Count;
-            return _pendingRows >= _flushRowCap;
+            // Data size plus weights and iterations
+            _pendingBytes += data.EventBatchData.GetByteSize() + (long)data.Count * 8;
+            return _pendingRows >= _flushRowCap || _pendingBytes >= MaxPendingBytes;
         }
 
         /// <summary>
@@ -92,6 +100,7 @@ namespace FlowtideDotNet.Core.Operators
             }
             _pending.Clear();
             _pendingRows = 0;
+            _pendingBytes = 0;
             return result;
         }
 
@@ -147,6 +156,7 @@ namespace FlowtideDotNet.Core.Operators
             }
             _pending.Clear();
             _pendingRows = 0;
+            _pendingBytes = 0;
         }
     }
 }
