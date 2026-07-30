@@ -6495,6 +6495,23 @@ references:
   fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputVertex(Of T).OnCheckpoint
   nameWithType: MultipleInputVertex<T>.OnCheckpoint
   nameWithType.vb: MultipleInputVertex(Of T).OnCheckpoint
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputVertex`1.OnCheckpointFlush
+  name: OnCheckpointFlush()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_OnCheckpointFlush
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputVertex`1.OnCheckpointFlush
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputVertex<T>.OnCheckpointFlush()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputVertex(Of T).OnCheckpointFlush()
+  nameWithType: MultipleInputVertex<T>.OnCheckpointFlush()
+  nameWithType.vb: MultipleInputVertex(Of T).OnCheckpointFlush()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputVertex`1.OnCheckpointFlush*
+  name: OnCheckpointFlush
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_OnCheckpointFlush_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputVertex`1.OnCheckpointFlush
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputVertex<T>.OnCheckpointFlush
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputVertex(Of T).OnCheckpointFlush
+  nameWithType: MultipleInputVertex<T>.OnCheckpointFlush
+  nameWithType.vb: MultipleInputVertex(Of T).OnCheckpointFlush
 - uid: FlowtideDotNet.Base.Vertices.MultipleInputVertex`1.OnFailure(System.Int64)
   name: OnFailure(long)
   href: api/FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_OnFailure_System_Int64_
@@ -6513,6 +6530,23 @@ references:
   fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputVertex(Of T).OnFailure
   nameWithType: MultipleInputVertex<T>.OnFailure
   nameWithType.vb: MultipleInputVertex(Of T).OnFailure
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputVertex`1.OnLockingEventPrepare
+  name: OnLockingEventPrepare()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_OnLockingEventPrepare
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputVertex`1.OnLockingEventPrepare
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputVertex<T>.OnLockingEventPrepare()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputVertex(Of T).OnLockingEventPrepare()
+  nameWithType: MultipleInputVertex<T>.OnLockingEventPrepare()
+  nameWithType.vb: MultipleInputVertex(Of T).OnLockingEventPrepare()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputVertex`1.OnLockingEventPrepare*
+  name: OnLockingEventPrepare
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_OnLockingEventPrepare_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputVertex`1.OnLockingEventPrepare
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputVertex<T>.OnLockingEventPrepare
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputVertex(Of T).OnLockingEventPrepare
+  nameWithType: MultipleInputVertex<T>.OnLockingEventPrepare
+  nameWithType.vb: MultipleInputVertex(Of T).OnLockingEventPrepare
 - uid: FlowtideDotNet.Base.Vertices.MultipleInputVertex`1.OnRecieve(System.Int32,`0,System.Int64)
   name: OnRecieve(int, T, long)
   href: api/FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_OnRecieve_System_Int32__0_System_Int64_
@@ -7858,6 +7892,23 @@ references:
   fullName.vb: FlowtideDotNet.Base.Vertices.UnaryVertex(Of T).OnCheckpoint
   nameWithType: UnaryVertex<T>.OnCheckpoint
   nameWithType.vb: UnaryVertex(Of T).OnCheckpoint
+- uid: FlowtideDotNet.Base.Vertices.UnaryVertex`1.OnCheckpointFlush
+  name: OnCheckpointFlush()
+  href: api/FlowtideDotNet.Base.Vertices.UnaryVertex-1.html#FlowtideDotNet_Base_Vertices_UnaryVertex_1_OnCheckpointFlush
+  commentId: M:FlowtideDotNet.Base.Vertices.UnaryVertex`1.OnCheckpointFlush
+  fullName: FlowtideDotNet.Base.Vertices.UnaryVertex<T>.OnCheckpointFlush()
+  fullName.vb: FlowtideDotNet.Base.Vertices.UnaryVertex(Of T).OnCheckpointFlush()
+  nameWithType: UnaryVertex<T>.OnCheckpointFlush()
+  nameWithType.vb: UnaryVertex(Of T).OnCheckpointFlush()
+- uid: FlowtideDotNet.Base.Vertices.UnaryVertex`1.OnCheckpointFlush*
+  name: OnCheckpointFlush
+  href: api/FlowtideDotNet.Base.Vertices.UnaryVertex-1.html#FlowtideDotNet_Base_Vertices_UnaryVertex_1_OnCheckpointFlush_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.UnaryVertex`1.OnCheckpointFlush
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.UnaryVertex<T>.OnCheckpointFlush
+  fullName.vb: FlowtideDotNet.Base.Vertices.UnaryVertex(Of T).OnCheckpointFlush
+  nameWithType: UnaryVertex<T>.OnCheckpointFlush
+  nameWithType.vb: UnaryVertex(Of T).OnCheckpointFlush
 - uid: FlowtideDotNet.Base.Vertices.UnaryVertex`1.OnFailure(System.Int64)
   name: OnFailure(long)
   href: api/FlowtideDotNet.Base.Vertices.UnaryVertex-1.html#FlowtideDotNet_Base_Vertices_UnaryVertex_1_OnFailure_System_Int64_
