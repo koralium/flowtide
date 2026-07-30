@@ -17,9 +17,7 @@ using FlowtideDotNet.Storage.Memory;
 namespace FlowtideDotNet.Core.Operators
 {
     /// <summary>
-    /// Buffers batches when inserts touch almost one leaf per row, merged
-    /// flushes amortize the per leaf work. Buffering latches until watermark,
-    /// the flush cap adapts from an estimated leaf count.
+    /// Buffers batches when inserts scatter over leaves, merged flushes amortize the work
     /// </summary>
     internal sealed class DeferredInsertBuffer
     {

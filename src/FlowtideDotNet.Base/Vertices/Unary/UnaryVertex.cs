@@ -351,10 +351,7 @@ namespace FlowtideDotNet.Base.Vertices
         }
 
         /// <summary>
-        /// Called when a checkpoint event arrives, before <see cref="OnCheckpoint"/> runs.
-        /// Emitted data is sent downstream ahead of the checkpoint event, allowing
-        /// operators to flush buffered data into the checkpoint.
-        /// Not invoked when the vertex runs with parallel execution.
+        /// Flush data before the checkpoint event is forwarded, not called in parallel mode
         /// </summary>
         protected virtual IAsyncEnumerable<T> OnCheckpointFlush()
         {

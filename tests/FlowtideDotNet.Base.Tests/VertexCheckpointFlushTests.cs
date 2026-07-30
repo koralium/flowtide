@@ -24,13 +24,6 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Tests
 {
-    /// <summary>
-    /// Checkpoints are injected by the engine independently of watermarks, so an
-    /// operator buffering data between watermarks can receive a checkpoint event
-    /// while data is still pending. OnCheckpointFlush lets the operator emit that
-    /// data downstream ahead of the checkpoint event, so it lands inside the same
-    /// checkpoint, before OnCheckpoint commits state.
-    /// </summary>
     public class VertexCheckpointFlushTests
     {
         private sealed class StubVertexHandler : IVertexHandler
@@ -222,11 +215,10 @@ namespace FlowtideDotNet.Base.Tests
             await vertex.Targets[0].SendAsync(new StreamMessage<string>("a", 1));
             await vertex.Targets[1].SendAsync(new StreamMessage<string>("b", 1));
 
-            // First barrier only, alignment is not complete so nothing may be emitted
+            // The barrier gates its input, this send waits for alignment
             await vertex.Targets[0].SendAsync(new Checkpoint(0, 1));
-            await Task.Delay(200);
-            Assert.False(collector.TryReceive(out _), "Output was emitted before barrier alignment completed");
-            Assert.Equal(0, vertex.FlushCalls);
+            var gatedSend = vertex.Targets[0].SendAsync(new StreamMessage<string>("gated", 1));
+            Assert.False(gatedSend.IsCompleted, "The barrier did not gate its input");
 
             // Second barrier completes alignment, flush must precede the checkpoint event
             await vertex.Targets[1].SendAsync(new Checkpoint(0, 1));
@@ -242,8 +234,12 @@ namespace FlowtideDotNet.Base.Tests
             var third = await ReceiveWithTimeout(collector, vertex);
             Assert.IsAssignableFrom<ICheckpointEvent>(third);
 
+            // A flush per arriving barrier instead of per alignment would be two
             Assert.Equal(1, vertex.FlushCalls);
             Assert.Equal(0, vertex.PendingAtCheckpoint);
+
+            // The gate opens once the checkpoint is sent
+            Assert.True(await gatedSend);
         }
 
         [Fact]
