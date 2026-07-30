@@ -246,8 +246,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             if (_leftDefer.HasPending || _rightDefer.HasPending)
             {
-                // Watermark flush always runs before the checkpoint barrier
-                throw new InvalidOperationException("Deferred join data pending at checkpoint, watermark flush must precede the checkpoint barrier.");
+                // OnCheckpointFlush always runs before OnCheckpoint
+                throw new InvalidOperationException("Deferred join data pending at checkpoint, OnCheckpointFlush should have flushed it.");
             }
 
             await _leftTree.Commit();
@@ -350,6 +350,25 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
             _leftDefer.ExitBuffering();
             _rightDefer.ExitBuffering();
+        }
+
+        // Checkpoints arrive independently of watermarks, keep buffering latched
+        protected override async IAsyncEnumerable<StreamEventBatch> OnCheckpointFlush()
+        {
+            await foreach (var batch in FlushPendingSide(0))
+            {
+                yield return batch;
+            }
+            await foreach (var batch in FlushPendingSide(1))
+            {
+                yield return batch;
+            }
+        }
+
+        // Buffered data must be visible to the loop before it can settle
+        protected override IAsyncEnumerable<StreamEventBatch> OnLockingEventPrepare()
+        {
+            return OnCheckpointFlush();
         }
 
         public override ValueTask DisposeAsync()

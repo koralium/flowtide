@@ -335,8 +335,30 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async IAsyncEnumerable<IStreamEvent> HandleCheckpointEnumerable(ILockingEvent checkpointEvent)
         {
+            if (checkpointEvent is ICheckpointEvent)
+            {
+                await foreach (var e in OnCheckpointFlush())
+                {
+                    if (e is IRentable rentable)
+                    {
+                        rentable.Rent(_links.Count);
+                    }
+                    yield return new StreamMessage<T>(e, _currentTime);
+                }
+            }
             var transformedCheckpoint = await HandleCheckpoint(checkpointEvent);
             yield return transformedCheckpoint;
+        }
+
+        /// <summary>
+        /// Called when a checkpoint event arrives, before <see cref="OnCheckpoint"/> runs.
+        /// Emitted data is sent downstream ahead of the checkpoint event, allowing
+        /// operators to flush buffered data into the checkpoint.
+        /// Not invoked when the vertex runs with parallel execution.
+        /// </summary>
+        protected virtual IAsyncEnumerable<T> OnCheckpointFlush()
+        {
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private async IAsyncEnumerable<IStreamEvent> HandleLockEventPrepare(LockingEventPrepare prepare)

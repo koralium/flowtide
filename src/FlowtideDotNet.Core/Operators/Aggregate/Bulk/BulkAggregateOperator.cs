@@ -181,8 +181,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
             if (_defer.HasPending)
             {
-                // Watermark flush always runs before the checkpoint barrier
-                throw new InvalidOperationException("Deferred aggregate data pending at checkpoint, watermark flush must precede the checkpoint barrier.");
+                // OnCheckpointFlush always runs before OnCheckpoint
+                throw new InvalidOperationException("Deferred aggregate data pending at checkpoint, OnCheckpointFlush should have flushed it.");
             }
 
             await _tree.Commit();
@@ -221,6 +221,18 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
 
             await m_hasSentInitialData.Commit();
+        }
+
+        // Checkpoints arrive independently of watermarks, keep buffering latched
+        protected override IAsyncEnumerable<StreamEventBatch> OnCheckpointFlush()
+        {
+            return FlushPending();
+        }
+
+        // Buffered data must be visible to the loop before it can settle
+        protected override IAsyncEnumerable<StreamEventBatch> OnLockingEventPrepare()
+        {
+            return FlushPending();
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)

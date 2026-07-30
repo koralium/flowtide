@@ -346,7 +346,30 @@ namespace FlowtideDotNet.Base.Vertices
                 }
             }
 
-            return new SingleAsyncEnumerable<IStreamEvent>(lockingEventPrepare);
+            return FlushAndForwardPrepare(lockingEventPrepare);
+        }
+
+        private async IAsyncEnumerable<IStreamEvent> FlushAndForwardPrepare(LockingEventPrepare lockingEventPrepare)
+        {
+            await foreach (var e in OnLockingEventPrepare())
+            {
+                if (e is IRentable rentable)
+                {
+                    rentable.Rent(_links.Count);
+                }
+                yield return new StreamMessage<T>(e, _currentTime);
+            }
+            yield return lockingEventPrepare;
+        }
+
+        /// <summary>
+        /// Called in iteration loops when a locking event prepare is forwarded.
+        /// Emitted data is sent downstream ahead of the prepare event, so buffered
+        /// data becomes visible to the loop before it can settle.
+        /// </summary>
+        protected virtual IAsyncEnumerable<T> OnLockingEventPrepare()
+        {
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private async IAsyncEnumerable<IStreamEvent> HandleInitialDataDoneEvent(int targetId, InitialDataDoneEvent initialDataDoneEvent)
@@ -514,9 +537,31 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async IAsyncEnumerable<IStreamEvent> HandleCheckpointEnumerable(ILockingEvent checkpointEvent)
         {
+            if (checkpointEvent is ICheckpointEvent)
+            {
+                await foreach (var e in OnCheckpointFlush())
+                {
+                    if (e is IRentable rentable)
+                    {
+                        rentable.Rent(_links.Count);
+                    }
+                    yield return new StreamMessage<T>(e, _currentTime);
+                }
+            }
             var transformedEvent = await HandleCheckpoint(checkpointEvent);
             CheckpointSent();
             yield return transformedEvent;
+        }
+
+        /// <summary>
+        /// Called when checkpoint events have aligned on all inputs, before <see cref="OnCheckpoint"/> runs.
+        /// Emitted data is sent downstream ahead of the checkpoint event, allowing
+        /// operators to flush buffered data into the checkpoint.
+        /// Not invoked when the vertex runs with parallel execution.
+        /// </summary>
+        protected virtual IAsyncEnumerable<T> OnCheckpointFlush()
+        {
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private async Task<ILockingEvent> HandleCheckpoint(ILockingEvent lockingEvent)
