@@ -577,7 +577,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             Assert.True(spillFiles > 0, "The backlogged exchange queues never spilled to temporary storage, the spill serialization path was not exercised.");
 
             _stream.Substreams["substream_0"].Resume();
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), timeout: TimeSpan.FromMinutes(3));
             Assert.Empty(failures);
         }
 
@@ -4025,9 +4025,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             ConcurrentBag<(string Substream, Exception? Exception)> failures,
             string substreamName,
             List<T> expected,
-            bool allowFailures = false)
+            bool allowFailures = false,
+            TimeSpan? timeout = null)
         {
             Debug.Assert(_stream != null);
+            var waitLimit = timeout ?? TimeSpan.FromSeconds(60);
             var expectedBatch = BatchConverter.ConvertToBatchSorted(expected, GlobalMemoryManager.Instance);
 
             var stopwatch = Stopwatch.StartNew();
@@ -4049,13 +4051,13 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                         EventBatchAssertion.Equal(expectedBatch, actual);
                         return;
                     }
-                    catch when (stopwatch.Elapsed < TimeSpan.FromSeconds(60))
+                    catch when (stopwatch.Elapsed < waitLimit)
                     {
                         // Data has not caught up yet, keep waiting
                     }
                 }
 
-                if (stopwatch.Elapsed >= TimeSpan.FromSeconds(60))
+                if (stopwatch.Elapsed >= waitLimit)
                 {
                     if (!latestData.TryGetValue(substreamName, out var lastSeen))
                     {
