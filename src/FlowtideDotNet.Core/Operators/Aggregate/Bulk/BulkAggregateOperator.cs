@@ -653,12 +653,18 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
             // One sort and insert amortized over all pending rows
             var combined = _defer.TakePending(MemoryAllocator);
-            var combinedMsg = new StreamEventBatch(combined);
-            await foreach (var batch in ProcessBatch(combinedMsg, _lastReceiveTime))
+            try
             {
-                yield return batch;
+                var combinedMsg = new StreamEventBatch(combined);
+                await foreach (var batch in ProcessBatch(combinedMsg, _lastReceiveTime))
+                {
+                    yield return batch;
+                }
             }
-            combined.Return();
+            finally
+            {
+                combined.Return();
+            }
         }
 
         private async IAsyncEnumerable<StreamEventBatch> ProcessBatch(StreamEventBatch msg, long time)

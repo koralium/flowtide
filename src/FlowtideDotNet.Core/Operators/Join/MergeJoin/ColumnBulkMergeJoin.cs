@@ -327,15 +327,21 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             // One sort, probe and insert amortized over all pending rows
             var combined = buffer.TakePending(MemoryAllocator);
-            var combinedMsg = new StreamEventBatch(combined);
-            var enumerable = targetId == 0
-                ? OnRecieveLeft(combinedMsg, _lastReceiveTime)
-                : OnRecieveRight(combinedMsg, _lastReceiveTime);
-            await foreach (var batch in enumerable)
+            try
             {
-                yield return batch;
+                var combinedMsg = new StreamEventBatch(combined);
+                var enumerable = targetId == 0
+                    ? OnRecieveLeft(combinedMsg, _lastReceiveTime)
+                    : OnRecieveRight(combinedMsg, _lastReceiveTime);
+                await foreach (var batch in enumerable)
+                {
+                    yield return batch;
+                }
             }
-            combined.Return();
+            finally
+            {
+                combined.Return();
+            }
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
