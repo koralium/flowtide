@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Base.Tests
 
         private sealed class BufferingMultiVertex : MultipleInputVertex<string>
         {
-            public List<string> Buffered = new List<string>();
+            public readonly List<string> Buffered = new List<string>();
             public int FlushCalls;
             public int PrepareFlushCalls;
             public int PendingAtCheckpoint = -1;
