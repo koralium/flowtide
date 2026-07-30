@@ -346,7 +346,25 @@ namespace FlowtideDotNet.Base.Vertices
                 }
             }
 
-            return new SingleAsyncEnumerable<IStreamEvent>(lockingEventPrepare);
+            return FlushAndForwardPrepare(lockingEventPrepare);
+        }
+
+        private async IAsyncEnumerable<IStreamEvent> FlushAndForwardPrepare(LockingEventPrepare lockingEventPrepare)
+        {
+            await foreach (var e in OnLockingEventPrepare())
+            {
+                if (e is IRentable rentable)
+                {
+                    rentable.Rent(_links.Count);
+                }
+                yield return new StreamMessage<T>(e, _currentTime);
+            }
+            yield return lockingEventPrepare;
+        }
+
+        protected virtual IAsyncEnumerable<T> OnLockingEventPrepare()
+        {
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private async IAsyncEnumerable<IStreamEvent> HandleInitialDataDoneEvent(int targetId, InitialDataDoneEvent initialDataDoneEvent)
@@ -514,9 +532,28 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async IAsyncEnumerable<IStreamEvent> HandleCheckpointEnumerable(ILockingEvent checkpointEvent)
         {
+            if (checkpointEvent is ICheckpointEvent)
+            {
+                await foreach (var e in OnCheckpointFlush())
+                {
+                    if (e is IRentable rentable)
+                    {
+                        rentable.Rent(_links.Count);
+                    }
+                    yield return new StreamMessage<T>(e, _currentTime);
+                }
+            }
             var transformedEvent = await HandleCheckpoint(checkpointEvent);
             CheckpointSent();
             yield return transformedEvent;
+        }
+
+        /// <summary>
+        /// Flush data before the aligned checkpoint event is forwarded, not called in parallel mode
+        /// </summary>
+        protected virtual IAsyncEnumerable<T> OnCheckpointFlush()
+        {
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private async Task<ILockingEvent> HandleCheckpoint(ILockingEvent lockingEvent)
