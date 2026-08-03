@@ -188,7 +188,7 @@ Class PlanOptimizerSettings  <a class="header-action link-secondary" title="View
 
   <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_DistributedPlanOptions" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.DistributedPlanOptions">
   DistributedPlanOptions
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L59"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>If set, the plan is split into substreams for distributed mode as the last
@@ -392,6 +392,40 @@ Disabled by default, since its not well tested yet.</p>
 
   <div class="codewrapper">
     <pre><code class="lang-csharp hljs">public bool TryAddWatermarkOutputMode { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_WindowJoinKeyOptimization_" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.WindowJoinKeyOptimization*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_WindowJoinKeyOptimization" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.WindowJoinKeyOptimization">
+  WindowJoinKeyOptimization
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Rewrites merge joins with a tumbling window band condition to lead with
+an equality on the computed window bucket, so the join state trees sort
+window first and time correlated inserts become appends.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool WindowJoinKeyOptimization { get; set; }</code></pre>
   </div>
 
 

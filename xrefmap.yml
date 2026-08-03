@@ -34410,6 +34410,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.TryAddWatermarkOutputMode
   nameWithType: PlanOptimizerSettings.TryAddWatermarkOutputMode
+- uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.WindowJoinKeyOptimization
+  name: WindowJoinKeyOptimization
+  href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_WindowJoinKeyOptimization
+  commentId: P:FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.WindowJoinKeyOptimization
+  fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.WindowJoinKeyOptimization
+  nameWithType: PlanOptimizerSettings.WindowJoinKeyOptimization
+- uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.WindowJoinKeyOptimization*
+  name: WindowJoinKeyOptimization
+  href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_WindowJoinKeyOptimization_
+  commentId: Overload:FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.WindowJoinKeyOptimization
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.WindowJoinKeyOptimization
+  nameWithType: PlanOptimizerSettings.WindowJoinKeyOptimization
 - uid: FlowtideDotNet.Core.PermifyConnectorManagerExtensions
   name: PermifyConnectorManagerExtensions
   href: api/FlowtideDotNet.Core.PermifyConnectorManagerExtensions.html
@@ -59950,6 +59963,18 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.TimestampAdd
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.TimestampAdd
   nameWithType: FunctionsDatetime.TimestampAdd
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.TumblingWindow
+  name: TumblingWindow
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsDatetime_TumblingWindow
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.TumblingWindow
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.TumblingWindow
+  nameWithType: FunctionsDatetime.TumblingWindow
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.TumblingWindowStart
+  name: TumblingWindowStart
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsDatetime_TumblingWindowStart
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.TumblingWindowStart
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.TumblingWindowStart
+  nameWithType: FunctionsDatetime.TumblingWindowStart
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.Uri
   name: Uri
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsDatetime_Uri

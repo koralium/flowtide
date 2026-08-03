@@ -163,6 +163,71 @@ LEFT JOIN hopping_window(o.order_time, 10, 'MINUTE', 5, 'MINUTE')
 </code></pre>
 <p>When used in a LEFT JOIN, rows are still returned even if the timestamp does not belong to any window.
 The window columns are then null.</p>
+<h2 id="tumbling-window">Tumbling Window</h2>
+<p><em>This function has no substrait equivalent</em></p>
+<ul>
+<li><strong>Extension URI:</strong> /functions_datetime.yaml</li>
+<li><strong>Extension Name:</strong> tumbling_window</li>
+</ul>
+<p>Tumbling window returns one row with the window a timestamp belongs to.
+It adds two columns:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>window_start</code></td>
+<td>timestamp</td>
+<td>Start of the window, inclusive</td>
+</tr>
+<tr>
+<td><code>window_end</code></td>
+<td>timestamp</td>
+<td>End of the window, exclusive</td>
+</tr>
+</tbody>
+</table>
+<p>The windows are <em>size</em> long, non overlapping and without gaps, so each timestamp belongs to exactly one window.
+It is equivalent to a hopping window where the hop equals the size.
+The window starts are aligned from year one, which means that a one week window starts on a monday.
+A timestamp belongs to a window if it is on or after <em>window_start</em> and before <em>window_end</em>.</p>
+<p>Arguments:</p>
+<ol>
+<li>Timestamp to assign to a window</li>
+<li>Size amount, the length of a window</li>
+<li>Size unit</li>
+</ol>
+<p>The amount must be an integer literal, and the unit one of <em>WEEK</em>, <em>DAY</em>, <em>HOUR</em>, <em>MINUTE</em>, <em>SECOND</em>, <em>MILLISECOND</em> or <em>MICROSECOND</em>.
+Fractions are not allowed, use a smaller unit instead, for example <em>342 SECOND</em> instead of <em>5.7 MINUTE</em>.
+Calendar units such as <em>MONTH</em> and <em>YEAR</em> are not supported since their length varies.</p>
+<p>If the input is null or not a timestamp, no window is returned.</p>
+<h3 id="sql-usage-1">SQL Usage</h3>
+<h4 id="aggregating-per-window-1">Aggregating per window</h4>
+<pre><code class="lang-sql">SELECT
+  window_start,
+  count(*) as order_count
+FROM orders o
+INNER JOIN tumbling_window(o.order_time, 10, 'MINUTE')
+GROUP BY window_start
+</code></pre>
+<h4 id="joining-rows-against-their-window-aggregate">Joining rows against their window aggregate</h4>
+<pre><code class="lang-sql">-- Orders that have the highest amount in their window
+SELECT o.id, o.amount
+FROM orders o
+JOIN (
+  SELECT max(amount) AS maxamount, window_start, window_end
+  FROM orders
+  INNER JOIN tumbling_window(order_time, 10, 'MINUTE')
+  GROUP BY window_start, window_end
+) m
+ON o.amount = m.maxamount AND o.order_time &gt;= m.window_start AND o.order_time &lt; m.window_end
+</code></pre>
+<p>When used in a LEFT JOIN, rows with a null timestamp are still returned with null window columns.</p>
 
 </article>
 
