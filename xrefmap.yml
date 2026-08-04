@@ -29097,6 +29097,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.ModifyPlan
   nameWithType: AbstractConnectorSinkFactory.ModifyPlan
+- uid: FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+  name: SupportsPrimaryKeyDeclaration
+  href: api/FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.html#FlowtideDotNet_Core_Connectors_AbstractConnectorSinkFactory_SupportsPrimaryKeyDeclaration
+  commentId: P:FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+  fullName: FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+  nameWithType: AbstractConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+- uid: FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.SupportsPrimaryKeyDeclaration*
+  name: SupportsPrimaryKeyDeclaration
+  href: api/FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.html#FlowtideDotNet_Core_Connectors_AbstractConnectorSinkFactory_SupportsPrimaryKeyDeclaration_
+  commentId: Overload:FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+  nameWithType: AbstractConnectorSinkFactory.SupportsPrimaryKeyDeclaration
 - uid: FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory
   name: AbstractConnectorSourceFactory
   href: api/FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.html
@@ -29241,6 +29254,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.ModifyPlan
   nameWithType: IConnectorSinkFactory.ModifyPlan
+- uid: FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+  name: SupportsPrimaryKeyDeclaration
+  href: api/FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.html#FlowtideDotNet_Core_Connectors_IConnectorSinkFactory_SupportsPrimaryKeyDeclaration
+  commentId: P:FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+  fullName: FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+  nameWithType: IConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+- uid: FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.SupportsPrimaryKeyDeclaration*
+  name: SupportsPrimaryKeyDeclaration
+  href: api/FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.html#FlowtideDotNet_Core_Connectors_IConnectorSinkFactory_SupportsPrimaryKeyDeclaration_
+  commentId: Overload:FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.SupportsPrimaryKeyDeclaration
+  nameWithType: IConnectorSinkFactory.SupportsPrimaryKeyDeclaration
 - uid: FlowtideDotNet.Core.Connectors.IConnectorSourceFactory
   name: IConnectorSourceFactory
   href: api/FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.html
@@ -30715,6 +30741,49 @@ references:
   fullName.vb: FlowtideDotNet.Core.Exceptions.FlowtideNoConnectorFoundException.New
   nameWithType: FlowtideNoConnectorFoundException.FlowtideNoConnectorFoundException
   nameWithType.vb: FlowtideNoConnectorFoundException.New
+- uid: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException
+  name: FlowtidePrimaryKeyDeclarationNotSupportedException
+  href: api/FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.html
+  commentId: T:FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException
+  fullName: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException
+  nameWithType: FlowtidePrimaryKeyDeclarationNotSupportedException
+- uid: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor
+  name: FlowtidePrimaryKeyDeclarationNotSupportedException()
+  href: api/FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.html#FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException__ctor
+  commentId: M:FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor
+  name.vb: New()
+  fullName: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.FlowtidePrimaryKeyDeclarationNotSupportedException()
+  fullName.vb: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.New()
+  nameWithType: FlowtidePrimaryKeyDeclarationNotSupportedException.FlowtidePrimaryKeyDeclarationNotSupportedException()
+  nameWithType.vb: FlowtidePrimaryKeyDeclarationNotSupportedException.New()
+- uid: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor(System.String)
+  name: FlowtidePrimaryKeyDeclarationNotSupportedException(string?)
+  href: api/FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.html#FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException__ctor_System_String_
+  commentId: M:FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor(System.String)
+  name.vb: New(String)
+  fullName: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.FlowtidePrimaryKeyDeclarationNotSupportedException(string?)
+  fullName.vb: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.New(String)
+  nameWithType: FlowtidePrimaryKeyDeclarationNotSupportedException.FlowtidePrimaryKeyDeclarationNotSupportedException(string?)
+  nameWithType.vb: FlowtidePrimaryKeyDeclarationNotSupportedException.New(String)
+- uid: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor(System.String,System.Exception)
+  name: FlowtidePrimaryKeyDeclarationNotSupportedException(string?, Exception?)
+  href: api/FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.html#FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException__ctor_System_String_System_Exception_
+  commentId: M:FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor(System.String,System.Exception)
+  name.vb: New(String, Exception)
+  fullName: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.FlowtidePrimaryKeyDeclarationNotSupportedException(string?, System.Exception?)
+  fullName.vb: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.New(String, System.Exception)
+  nameWithType: FlowtidePrimaryKeyDeclarationNotSupportedException.FlowtidePrimaryKeyDeclarationNotSupportedException(string?, Exception?)
+  nameWithType.vb: FlowtidePrimaryKeyDeclarationNotSupportedException.New(String, Exception)
+- uid: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor*
+  name: FlowtidePrimaryKeyDeclarationNotSupportedException
+  href: api/FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.html#FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException__ctor_
+  commentId: Overload:FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.FlowtidePrimaryKeyDeclarationNotSupportedException
+  fullName.vb: FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.New
+  nameWithType: FlowtidePrimaryKeyDeclarationNotSupportedException.FlowtidePrimaryKeyDeclarationNotSupportedException
+  nameWithType.vb: FlowtidePrimaryKeyDeclarationNotSupportedException.New
 - uid: FlowtideDotNet.Core.Flexbuffer
   name: FlowtideDotNet.Core.Flexbuffer
   href: api/FlowtideDotNet.Core.Flexbuffer.html
@@ -54969,6 +55038,191 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.CustomProtobuf.TopNRelation.WriteTo
   nameWithType: TopNRelation.WriteTo
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys
+  name: WriteRelationPrimaryKeys
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html
+  commentId: T:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys
+  nameWithType: WriteRelationPrimaryKeys
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.#ctor
+  name: WriteRelationPrimaryKeys()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys__ctor
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.#ctor
+  name.vb: New()
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.WriteRelationPrimaryKeys()
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.New()
+  nameWithType: WriteRelationPrimaryKeys.WriteRelationPrimaryKeys()
+  nameWithType.vb: WriteRelationPrimaryKeys.New()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys)
+  name: WriteRelationPrimaryKeys(WriteRelationPrimaryKeys)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys__ctor_FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys)
+  name.vb: New(WriteRelationPrimaryKeys)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.WriteRelationPrimaryKeys(FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.New(FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys)
+  nameWithType: WriteRelationPrimaryKeys.WriteRelationPrimaryKeys(WriteRelationPrimaryKeys)
+  nameWithType.vb: WriteRelationPrimaryKeys.New(WriteRelationPrimaryKeys)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.#ctor*
+  name: WriteRelationPrimaryKeys
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys__ctor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.WriteRelationPrimaryKeys
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.New
+  nameWithType: WriteRelationPrimaryKeys.WriteRelationPrimaryKeys
+  nameWithType.vb: WriteRelationPrimaryKeys.New
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.CalculateSize
+  name: CalculateSize()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_CalculateSize
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.CalculateSize
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.CalculateSize()
+  nameWithType: WriteRelationPrimaryKeys.CalculateSize()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.CalculateSize*
+  name: CalculateSize
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_CalculateSize_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.CalculateSize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.CalculateSize
+  nameWithType: WriteRelationPrimaryKeys.CalculateSize
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Clone
+  name: Clone()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_Clone
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Clone
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Clone()
+  nameWithType: WriteRelationPrimaryKeys.Clone()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Clone*
+  name: Clone
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_Clone_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Clone
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Clone
+  nameWithType: WriteRelationPrimaryKeys.Clone
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Descriptor
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_Descriptor
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Descriptor
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Descriptor
+  nameWithType: WriteRelationPrimaryKeys.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Descriptor*
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_Descriptor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Descriptor
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Descriptor
+  nameWithType: WriteRelationPrimaryKeys.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Equals(FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys)
+  name: Equals(WriteRelationPrimaryKeys)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_Equals_FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Equals(FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Equals(FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys)
+  nameWithType: WriteRelationPrimaryKeys.Equals(WriteRelationPrimaryKeys)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Equals(System.Object)
+  name: Equals(object)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Equals(object)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Equals(Object)
+  nameWithType: WriteRelationPrimaryKeys.Equals(object)
+  nameWithType.vb: WriteRelationPrimaryKeys.Equals(Object)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Equals
+  nameWithType: WriteRelationPrimaryKeys.Equals
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.GetHashCode
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.GetHashCode()
+  nameWithType: WriteRelationPrimaryKeys.GetHashCode()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.GetHashCode
+  nameWithType: WriteRelationPrimaryKeys.GetHashCode
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys)
+  name: MergeFrom(WriteRelationPrimaryKeys)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_MergeFrom_FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys)
+  nameWithType: WriteRelationPrimaryKeys.MergeFrom(WriteRelationPrimaryKeys)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.MergeFrom(Google.Protobuf.CodedInputStream)
+  name: MergeFrom(CodedInputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_MergeFrom_Google_Protobuf_CodedInputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.MergeFrom(Google.Protobuf.CodedInputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.MergeFrom(Google.Protobuf.CodedInputStream)
+  nameWithType: WriteRelationPrimaryKeys.MergeFrom(CodedInputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.MergeFrom*
+  name: MergeFrom
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_MergeFrom_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.MergeFrom
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.MergeFrom
+  nameWithType: WriteRelationPrimaryKeys.MergeFrom
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Names
+  name: Names
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_Names
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Names
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Names
+  nameWithType: WriteRelationPrimaryKeys.Names
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Names*
+  name: Names
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_Names_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Names
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Names
+  nameWithType: WriteRelationPrimaryKeys.Names
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.NamesFieldNumber
+  name: NamesFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_NamesFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.NamesFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.NamesFieldNumber
+  nameWithType: WriteRelationPrimaryKeys.NamesFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Parser
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_Parser
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Parser
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Parser
+  nameWithType: WriteRelationPrimaryKeys.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Parser*
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_Parser_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Parser
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.Parser
+  nameWithType: WriteRelationPrimaryKeys.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.ToString
+  name: ToString()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_ToString
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.ToString
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.ToString()
+  nameWithType: WriteRelationPrimaryKeys.ToString()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.ToString*
+  name: ToString
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_ToString_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.ToString
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.ToString
+  nameWithType: WriteRelationPrimaryKeys.ToString
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.WriteTo(Google.Protobuf.CodedOutputStream)
+  name: WriteTo(CodedOutputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_WriteTo_Google_Protobuf_CodedOutputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.WriteTo(Google.Protobuf.CodedOutputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.WriteTo(Google.Protobuf.CodedOutputStream)
+  nameWithType: WriteRelationPrimaryKeys.WriteTo(CodedOutputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.WriteTo*
+  name: WriteTo
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.html#FlowtideDotNet_Substrait_CustomProtobuf_WriteRelationPrimaryKeys_WriteTo_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.WriteTo
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.WriteRelationPrimaryKeys.WriteTo
+  nameWithType: WriteRelationPrimaryKeys.WriteTo
 - uid: FlowtideDotNet.Substrait.Exceptions
   name: FlowtideDotNet.Substrait.Exceptions
   href: api/FlowtideDotNet.Substrait.Exceptions.html
@@ -66270,6 +66524,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.Relations.WriteRelation.Overwrite
   nameWithType: WriteRelation.Overwrite
+- uid: FlowtideDotNet.Substrait.Relations.WriteRelation.PrimaryKeyNames
+  name: PrimaryKeyNames
+  href: api/FlowtideDotNet.Substrait.Relations.WriteRelation.html#FlowtideDotNet_Substrait_Relations_WriteRelation_PrimaryKeyNames
+  commentId: P:FlowtideDotNet.Substrait.Relations.WriteRelation.PrimaryKeyNames
+  fullName: FlowtideDotNet.Substrait.Relations.WriteRelation.PrimaryKeyNames
+  nameWithType: WriteRelation.PrimaryKeyNames
+- uid: FlowtideDotNet.Substrait.Relations.WriteRelation.PrimaryKeyNames*
+  name: PrimaryKeyNames
+  href: api/FlowtideDotNet.Substrait.Relations.WriteRelation.html#FlowtideDotNet_Substrait_Relations_WriteRelation_PrimaryKeyNames_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.WriteRelation.PrimaryKeyNames
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.WriteRelation.PrimaryKeyNames
+  nameWithType: WriteRelation.PrimaryKeyNames
 - uid: FlowtideDotNet.Substrait.Relations.WriteRelation.ShallowCopy
   name: ShallowCopy()
   href: api/FlowtideDotNet.Substrait.Relations.WriteRelation.html#FlowtideDotNet_Substrait_Relations_WriteRelation_ShallowCopy
@@ -67313,6 +67580,44 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.Sql.Internal.BeginSubStream.ToSql
   nameWithType: BeginSubStream.ToSql
+- uid: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation
+  name: FlowtideInsertOperation
+  href: api/FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.html
+  commentId: T:FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation
+  fullName: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation
+  nameWithType: FlowtideInsertOperation
+- uid: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.#ctor(SqlParser.Ast.ObjectName,SqlParser.Ast.Statement.Select,SqlParser.Sequence{SqlParser.Ast.Ident})
+  name: FlowtideInsertOperation(ObjectName, Select?, Sequence<Ident>)
+  href: api/FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.html#FlowtideDotNet_Substrait_Sql_Internal_FlowtideInsertOperation__ctor_SqlParser_Ast_ObjectName_SqlParser_Ast_Statement_Select_SqlParser_Sequence_SqlParser_Ast_Ident__
+  commentId: M:FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.#ctor(SqlParser.Ast.ObjectName,SqlParser.Ast.Statement.Select,SqlParser.Sequence{SqlParser.Ast.Ident})
+  name.vb: New(ObjectName, Select, Sequence(Of Ident))
+  fullName: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.FlowtideInsertOperation(SqlParser.Ast.ObjectName, SqlParser.Ast.Statement.Select?, SqlParser.Sequence<SqlParser.Ast.Ident>)
+  fullName.vb: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.New(SqlParser.Ast.ObjectName, SqlParser.Ast.Statement.Select, SqlParser.Sequence(Of SqlParser.Ast.Ident))
+  nameWithType: FlowtideInsertOperation.FlowtideInsertOperation(ObjectName, Statement.Select?, Sequence<Ident>)
+  nameWithType.vb: FlowtideInsertOperation.New(ObjectName, Statement.Select, Sequence(Of Ident))
+- uid: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.#ctor*
+  name: FlowtideInsertOperation
+  href: api/FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.html#FlowtideDotNet_Substrait_Sql_Internal_FlowtideInsertOperation__ctor_
+  commentId: Overload:FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.FlowtideInsertOperation
+  fullName.vb: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.New
+  nameWithType: FlowtideInsertOperation.FlowtideInsertOperation
+  nameWithType.vb: FlowtideInsertOperation.New
+- uid: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.PrimaryKeys
+  name: PrimaryKeys
+  href: api/FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.html#FlowtideDotNet_Substrait_Sql_Internal_FlowtideInsertOperation_PrimaryKeys
+  commentId: P:FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.PrimaryKeys
+  fullName: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.PrimaryKeys
+  nameWithType: FlowtideInsertOperation.PrimaryKeys
+- uid: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.PrimaryKeys*
+  name: PrimaryKeys
+  href: api/FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.html#FlowtideDotNet_Substrait_Sql_Internal_FlowtideInsertOperation_PrimaryKeys_
+  commentId: Overload:FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.PrimaryKeys
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Sql.Internal.FlowtideInsertOperation.PrimaryKeys
+  nameWithType: FlowtideInsertOperation.PrimaryKeys
 - uid: FlowtideDotNet.Substrait.Sql.Internal.MapSqlDataType
   name: MapSqlDataType
   href: api/FlowtideDotNet.Substrait.Sql.Internal.MapSqlDataType.html

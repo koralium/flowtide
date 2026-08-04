@@ -187,7 +187,7 @@ Class SqlServerSinkOptions  <a class="header-action link-secondary" title="View 
 
   <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_CustomBulkCopyDestinationTable" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.CustomBulkCopyDestinationTable">
   CustomBulkCopyDestinationTable
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L44"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>If set, the sink writes data to the custom table and does not trigger any merge into to another table.
@@ -231,7 +231,8 @@ If not set, the primary keys are collected from the database.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public List&lt;string&gt;? CustomPrimaryKeys { get; set; }</code></pre>
+    <pre><code class="lang-csharp hljs">[Obsolete(&quot;Declare the primary keys in the statement instead, &#39;INSERT INTO table PRIMARY KEY (c1, c2) SELECT ...&#39;. The option applies the same keys to every table the sink handles, which does not work when a stream writes to more than one table.&quot;)]
+public List&lt;string&gt;? CustomPrimaryKeys { get; set; }</code></pre>
   </div>
 
 
@@ -255,7 +256,7 @@ If not set, the primary keys are collected from the database.</p>
 
   <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_ExecutionMode" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.ExecutionMode">
   ExecutionMode
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L36"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -286,7 +287,7 @@ If not set, the primary keys are collected from the database.</p>
 
   <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_ModifyRow" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.ModifyRow">
   ModifyRow
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L55"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L56"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Allows modifying a data row adding extra metadata columns if required.
@@ -320,7 +321,7 @@ The last argument is if this is the initial data upload.</p>
 
   <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnDataTableCreation" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnDataTableCreation">
   OnDataTableCreation
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L48"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L49"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Allows adding extra columns to the data table that will be bulk uploaded</p>
@@ -352,7 +353,7 @@ The last argument is if this is the initial data upload.</p>
 
   <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnDataUploaded" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnDataUploaded">
   OnDataUploaded
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L61"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L62"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Called when all data in a batch has been uploaded.
@@ -385,7 +386,7 @@ First argument is the sql connection, second the watermark, third the checkpoint
 
   <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_UseDatabaseDefinedInConnectionStringOnly" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.UseDatabaseDefinedInConnectionStringOnly">
   UseDatabaseDefinedInConnectionStringOnly
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L33"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L34"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>If set to false, the sink will look at any database on the server that the connection string points to.</p>

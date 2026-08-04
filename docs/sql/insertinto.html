@@ -95,6 +95,28 @@ select_statement
 <pre><code class="lang-sql">INSERT INTO outputtable
 SELECT column1, column2 FROM inputtable
 </code></pre>
+<h2 id="primary-keys">Primary keys</h2>
+<p>A sink groups the rows it writes by a primary key. Most connectors find the primary key on their own, for instance by
+looking at the destination table, but the <em>PRIMARY KEY</em> clause lets the statement decide which columns to use instead.</p>
+<pre><code class="lang-sql">INSERT INTO table_name PRIMARY KEY (column1, column2)
+select_statement
+</code></pre>
+<p>This is useful when the destination has no primary key, when its primary key is not written by the stream, or when a
+stream writes to several tables that each need different keys.</p>
+<p>Example:</p>
+<pre><code class="lang-sql">INSERT INTO outputtable PRIMARY KEY (column1)
+SELECT column1, column2 FROM inputtable
+</code></pre>
+<p>Every declared column must be written by the statement, a column that is not part of the select is an error. The clause
+is also placed after the column list when one is given:</p>
+<pre><code class="lang-sql">INSERT INTO outputtable (column1, column2) PRIMARY KEY (column1)
+SELECT a, b FROM inputtable
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Not all connectors can use declared primary keys. Building the stream fails if the statement declares primary keys for
+a sink that does not support them, rather than writing the data with other keys than the declared ones.</p>
+</div>
 
 </article>
 

@@ -214,13 +214,22 @@ After all data has been merged, the temporary table is cleared of all data.</p>
 </div>
 <h3 id="custom-primary-keys">Custom Primary Keys</h3>
 <p>In some scenarios you may want to override the table's primary keys or the table might not have a primary key configured.
-In this scenario you can provide column names for the columns you want Flowtide to use as primary keys.</p>
-<p>Ex:</p>
-<pre><code class="lang-csharp">connectorManager.AddSqlServerSink(&quot;your regexp on table names&quot;, new SqlServerSinkOptions() {
+In this scenario you can declare the columns that Flowtide should use as primary keys in the insert statement:</p>
+<pre><code class="lang-sql">INSERT INTO [my-db].[dbo].[my-table] PRIMARY KEY ([my_column1], [my_column2])
+SELECT my_column1, my_column2, my_column3 FROM ...
+</code></pre>
+<p>The declared columns must all be written by the statement. To learn more, visit the <a href="../sql/insertinto.html">Insert Into docs</a>.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The <code>CustomPrimaryKeys</code> option on <code>SqlServerSinkOptions</code> does the same thing and is still honored, but it is obsolete.
+It applies the same keys to every table the sink handles, so it cannot be used by a stream that writes to more than one
+table. When both are given, the keys declared in the statement are used.</p>
+<pre><code class="lang-csharp">connectorManager.AddSqlServerSink(new SqlServerSinkOptions() {
   ConnectionStringFunc = () =&gt; connectionString,
   CustomPrimaryKeys = new List&lt;string&gt;() { &quot;my_column1&quot;, &quot;my_column2&quot; }
 });
 </code></pre>
+</div>
 <h2 id="sql-table-provider">SQL Table Provider</h2>
 <p>The SQL table provider is added to the <em>SQL plan builder</em> which will try and look after used tables in its configured <em>SQL Server</em>.
 It provides metadata information about what the column names are in the table.</p>

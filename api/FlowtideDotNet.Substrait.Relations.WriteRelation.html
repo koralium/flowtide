@@ -283,6 +283,39 @@ Class WriteRelation  <a class="header-action link-secondary" title="View source"
 
 
 
+  <a id="FlowtideDotNet_Substrait_Relations_WriteRelation_PrimaryKeyNames_" data-uid="FlowtideDotNet.Substrait.Relations.WriteRelation.PrimaryKeyNames*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Relations_WriteRelation_PrimaryKeyNames" data-uid="FlowtideDotNet.Substrait.Relations.WriteRelation.PrimaryKeyNames">
+  PrimaryKeyNames
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L33"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Primary key columns declared by the plan, using <a class="xref" href="FlowtideDotNet.Substrait.Relations.WriteRelation.html#FlowtideDotNet_Substrait_Relations_WriteRelation_TableSchema">TableSchema</a> casing.
+Null when the plan declares none.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public List&lt;string&gt;? PrimaryKeyNames { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Substrait_Relations_WriteRelation_TableSchema_" data-uid="FlowtideDotNet.Substrait.Relations.WriteRelation.TableSchema*"></a>
 
   <h3 id="FlowtideDotNet_Substrait_Relations_WriteRelation_TableSchema" data-uid="FlowtideDotNet.Substrait.Relations.WriteRelation.TableSchema">
@@ -322,7 +355,7 @@ Class WriteRelation  <a class="header-action link-secondary" title="View source"
 
   <h3 id="FlowtideDotNet_Substrait_Relations_WriteRelation_Accept__2_FlowtideDotNet_Substrait_Relations_RelationVisitor___0___1____1_" data-uid="FlowtideDotNet.Substrait.Relations.WriteRelation.Accept``2(FlowtideDotNet.Substrait.Relations.RelationVisitor{``0,``1},``1)">
   Accept&lt;TReturn, TState&gt;(RelationVisitor&lt;TReturn, TState&gt;, TState)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L29"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L35"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -367,7 +400,7 @@ Class WriteRelation  <a class="header-action link-secondary" title="View source"
 
   <h3 id="FlowtideDotNet_Substrait_Relations_WriteRelation_Equals_FlowtideDotNet_Substrait_Relations_WriteRelation_" data-uid="FlowtideDotNet.Substrait.Relations.WriteRelation.Equals(FlowtideDotNet.Substrait.Relations.WriteRelation)">
   Equals(WriteRelation?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L46"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Indicates whether the current object is equal to another object of the same type.</p>
@@ -406,7 +439,7 @@ Class WriteRelation  <a class="header-action link-secondary" title="View source"
 
   <h3 id="FlowtideDotNet_Substrait_Relations_WriteRelation_Equals_System_Object_" data-uid="FlowtideDotNet.Substrait.Relations.WriteRelation.Equals(System.Object)">
   Equals(object?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L40"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Determines whether the specified object is equal to the current object.</p>
@@ -445,7 +478,7 @@ Class WriteRelation  <a class="header-action link-secondary" title="View source"
 
   <h3 id="FlowtideDotNet_Substrait_Relations_WriteRelation_GetHashCode" data-uid="FlowtideDotNet.Substrait.Relations.WriteRelation.GetHashCode">
   GetHashCode()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L50"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L66"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Serves as the default hash function.</p>
@@ -478,7 +511,7 @@ Class WriteRelation  <a class="header-action link-secondary" title="View source"
 
   <h3 id="FlowtideDotNet_Substrait_Relations_WriteRelation_ShallowCopy" data-uid="FlowtideDotNet.Substrait.Relations.WriteRelation.ShallowCopy">
   ShallowCopy()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L75"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L98"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Create a shallow copy where this object is a new instance but the inputs are the same.</p>
@@ -514,7 +547,7 @@ Class WriteRelation  <a class="header-action link-secondary" title="View source"
 
   <h3 id="FlowtideDotNet_Substrait_Relations_WriteRelation_op_Equality_FlowtideDotNet_Substrait_Relations_WriteRelation_FlowtideDotNet_Substrait_Relations_WriteRelation_" data-uid="FlowtideDotNet.Substrait.Relations.WriteRelation.op_Equality(FlowtideDotNet.Substrait.Relations.WriteRelation,FlowtideDotNet.Substrait.Relations.WriteRelation)">
   operator ==(WriteRelation?, WriteRelation?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L61"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L84"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -552,7 +585,7 @@ Class WriteRelation  <a class="header-action link-secondary" title="View source"
 
   <h3 id="FlowtideDotNet_Substrait_Relations_WriteRelation_op_Inequality_FlowtideDotNet_Substrait_Relations_WriteRelation_FlowtideDotNet_Substrait_Relations_WriteRelation_" data-uid="FlowtideDotNet.Substrait.Relations.WriteRelation.op_Inequality(FlowtideDotNet.Substrait.Relations.WriteRelation,FlowtideDotNet.Substrait.Relations.WriteRelation)">
   operator !=(WriteRelation?, WriteRelation?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L66"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/WriteRelation.cs/#L89"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>

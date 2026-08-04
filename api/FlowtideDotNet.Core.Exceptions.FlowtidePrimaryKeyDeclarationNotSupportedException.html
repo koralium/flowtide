@@ -2,11 +2,11 @@
 <html>
   <head>
     <meta charset="utf-8">
-      <title>Class FlowtideException | Flowtide.NET </title>
+      <title>Class FlowtidePrimaryKeyDeclarationNotSupportedException | Flowtide.NET </title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <meta name="title" content="Class FlowtideException | Flowtide.NET ">
+      <meta name="title" content="Class FlowtidePrimaryKeyDeclarationNotSupportedException | Flowtide.NET ">
       
-      
+      <meta name="description" content="Thrown when a connector cannot use plan declared primary keys.">
       <link rel="icon" href="../images/favicon.ico">
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
@@ -16,7 +16,7 @@
       <meta name="docfx:rel" content="../">
       
       
-      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Core_Exceptions_FlowtideException.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Core.Exceptions.FlowtideException%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
       <meta name="loc:inThisArticle" content="In this article">
       <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
       <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
@@ -84,12 +84,12 @@
           <nav id="breadcrumb"></nav>
         </div>
 
-        <article data-uid="FlowtideDotNet.Core.Exceptions.FlowtideException">
+        <article data-uid="FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException">
 
 
 
-  <h1 id="FlowtideDotNet_Core_Exceptions_FlowtideException" data-uid="FlowtideDotNet.Core.Exceptions.FlowtideException" class="text-break">
-Class FlowtideException  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Exceptions/FlowtideException.cs/#L15"><i class="bi bi-code-slash"></i></a>
+  <h1 id="FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException" data-uid="FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException" class="text-break">
+Class FlowtidePrimaryKeyDeclarationNotSupportedException  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Exceptions/FlowtidePrimaryKeyDeclarationNotSupportedException.cs/#L18"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -97,11 +97,12 @@ Class FlowtideException  <a class="header-action link-secondary" title="View sou
   <dl><dt>Assembly</dt><dd>FlowtideDotNet.Core.dll</dd></dl>
   </div>
 
-  <div class="markdown summary"></div>
+  <div class="markdown summary"><p>Thrown when a connector cannot use plan declared primary keys.</p>
+</div>
   <div class="markdown conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public class FlowtideException : Exception, ISerializable</code></pre>
+    <pre><code class="lang-csharp hljs">public class FlowtidePrimaryKeyDeclarationNotSupportedException : FlowtideException, ISerializable</code></pre>
   </div>
 
 
@@ -112,7 +113,8 @@ Class FlowtideException  <a class="header-action link-secondary" title="View sou
     <dd>
       <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
       <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a></div>
-      <div><span class="xref">FlowtideException</span></div>
+      <div><a class="xref" href="FlowtideDotNet.Core.Exceptions.FlowtideException.html">FlowtideException</a></div>
+      <div><span class="xref">FlowtidePrimaryKeyDeclarationNotSupportedException</span></div>
     </dd>
   </dl>
 
@@ -123,15 +125,6 @@ Class FlowtideException  <a class="header-action link-secondary" title="View sou
     </dd>
   </dl>
 
-  <dl class="typelist derived">
-    <dt>Derived</dt>
-    <dd>
-      <div><a class="xref" href="FlowtideDotNet.Core.Exceptions.FlowtideDuplicateConnectorsException.html">FlowtideDuplicateConnectorsException</a></div>
-      <div><a class="xref" href="FlowtideDotNet.Core.Exceptions.FlowtideNoConnectorFoundException.html">FlowtideNoConnectorFoundException</a></div>
-      <div><a class="xref" href="FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.html">FlowtidePrimaryKeyDeclarationNotSupportedException</a></div>
-      <div><a class="xref" href="FlowtideDotNet.DependencyInjection.Exceptions.FlowtideMissingConnectorManagerException.html">FlowtideMissingConnectorManagerException</a></div>
-    </dd>
-  </dl>
 
   <dl class="typelist inheritedMembers">
     <dt>Inherited Members</dt>
@@ -198,18 +191,18 @@ Class FlowtideException  <a class="header-action link-secondary" title="View sou
 </h2>
 
 
-  <a id="FlowtideDotNet_Core_Exceptions_FlowtideException__ctor_" data-uid="FlowtideDotNet.Core.Exceptions.FlowtideException.#ctor*"></a>
+  <a id="FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException__ctor_" data-uid="FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Core_Exceptions_FlowtideException__ctor" data-uid="FlowtideDotNet.Core.Exceptions.FlowtideException.#ctor">
-  FlowtideException()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Exceptions/FlowtideException.cs/#L17"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException__ctor" data-uid="FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor">
+  FlowtidePrimaryKeyDeclarationNotSupportedException()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Exceptions/FlowtidePrimaryKeyDeclarationNotSupportedException.cs/#L20"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public FlowtideException()</code></pre>
+    <pre><code class="lang-csharp hljs">public FlowtidePrimaryKeyDeclarationNotSupportedException()</code></pre>
   </div>
 
 
@@ -224,18 +217,18 @@ Class FlowtideException  <a class="header-action link-secondary" title="View sou
 
 
 
-  <a id="FlowtideDotNet_Core_Exceptions_FlowtideException__ctor_" data-uid="FlowtideDotNet.Core.Exceptions.FlowtideException.#ctor*"></a>
+  <a id="FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException__ctor_" data-uid="FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Core_Exceptions_FlowtideException__ctor_System_String_" data-uid="FlowtideDotNet.Core.Exceptions.FlowtideException.#ctor(System.String)">
-  FlowtideException(string?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Exceptions/FlowtideException.cs/#L21"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException__ctor_System_String_" data-uid="FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor(System.String)">
+  FlowtidePrimaryKeyDeclarationNotSupportedException(string?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Exceptions/FlowtidePrimaryKeyDeclarationNotSupportedException.cs/#L24"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public FlowtideException(string? message)</code></pre>
+    <pre><code class="lang-csharp hljs">public FlowtidePrimaryKeyDeclarationNotSupportedException(string? message)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -255,18 +248,18 @@ Class FlowtideException  <a class="header-action link-secondary" title="View sou
 
 
 
-  <a id="FlowtideDotNet_Core_Exceptions_FlowtideException__ctor_" data-uid="FlowtideDotNet.Core.Exceptions.FlowtideException.#ctor*"></a>
+  <a id="FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException__ctor_" data-uid="FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Core_Exceptions_FlowtideException__ctor_System_String_System_Exception_" data-uid="FlowtideDotNet.Core.Exceptions.FlowtideException.#ctor(System.String,System.Exception)">
-  FlowtideException(string?, Exception?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Exceptions/FlowtideException.cs/#L25"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Core_Exceptions_FlowtidePrimaryKeyDeclarationNotSupportedException__ctor_System_String_System_Exception_" data-uid="FlowtideDotNet.Core.Exceptions.FlowtidePrimaryKeyDeclarationNotSupportedException.#ctor(System.String,System.Exception)">
+  FlowtidePrimaryKeyDeclarationNotSupportedException(string?, Exception?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Exceptions/FlowtidePrimaryKeyDeclarationNotSupportedException.cs/#L28"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public FlowtideException(string? message, Exception? innerException)</code></pre>
+    <pre><code class="lang-csharp hljs">public FlowtidePrimaryKeyDeclarationNotSupportedException(string? message, Exception? innerException)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -292,7 +285,7 @@ Class FlowtideException  <a class="header-action link-secondary" title="View sou
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Exceptions/FlowtideException.cs/#L15" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Exceptions/FlowtidePrimaryKeyDeclarationNotSupportedException.cs/#L18" class="edit-link">Edit this page</a>
         </div>
 
 

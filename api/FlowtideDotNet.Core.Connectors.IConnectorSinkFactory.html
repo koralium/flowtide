@@ -116,6 +116,43 @@ Interface IConnectorSinkFactory  <a class="header-action link-secondary" title="
 
 
 
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Connectors_IConnectorSinkFactory_SupportsPrimaryKeyDeclaration_" data-uid="FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.SupportsPrimaryKeyDeclaration*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Connectors_IConnectorSinkFactory_SupportsPrimaryKeyDeclaration" data-uid="FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.SupportsPrimaryKeyDeclaration">
+  SupportsPrimaryKeyDeclaration
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Connectors/IConnectorSinkFactory.cs/#L27"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>If the sink uses <a class="xref" href="FlowtideDotNet.Substrait.Relations.WriteRelation.html#FlowtideDotNet_Substrait_Relations_WriteRelation_PrimaryKeyNames">PrimaryKeyNames</a> declared by the plan.
+Building a stream fails when false and keys are declared.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool SupportsPrimaryKeyDeclaration { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <h2 class="section" id="methods">Methods
 </h2>
 
@@ -124,7 +161,7 @@ Interface IConnectorSinkFactory  <a class="header-action link-secondary" title="
 
   <h3 id="FlowtideDotNet_Core_Connectors_IConnectorSinkFactory_CanHandle_FlowtideDotNet_Substrait_Relations_WriteRelation_" data-uid="FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.CanHandle(FlowtideDotNet.Substrait.Relations.WriteRelation)">
   CanHandle(WriteRelation)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Connectors/IConnectorSinkFactory.cs/#L23"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Connectors/IConnectorSinkFactory.cs/#L29"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -160,7 +197,7 @@ Interface IConnectorSinkFactory  <a class="header-action link-secondary" title="
 
   <h3 id="FlowtideDotNet_Core_Connectors_IConnectorSinkFactory_CreateSink_FlowtideDotNet_Substrait_Relations_WriteRelation_FlowtideDotNet_Core_Compute_IFunctionsRegister_System_Threading_Tasks_Dataflow_ExecutionDataflowBlockOptions_" data-uid="FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.CreateSink(FlowtideDotNet.Substrait.Relations.WriteRelation,FlowtideDotNet.Core.Compute.IFunctionsRegister,System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)">
   CreateSink(WriteRelation, IFunctionsRegister, ExecutionDataflowBlockOptions)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Connectors/IConnectorSinkFactory.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Connectors/IConnectorSinkFactory.cs/#L45"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Create the source vertex for the read relation.</p>
@@ -201,7 +238,7 @@ Interface IConnectorSinkFactory  <a class="header-action link-secondary" title="
 
   <h3 id="FlowtideDotNet_Core_Connectors_IConnectorSinkFactory_GetLineageMetadata_FlowtideDotNet_Substrait_Relations_WriteRelation_System_Boolean_" data-uid="FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.GetLineageMetadata(FlowtideDotNet.Substrait.Relations.WriteRelation,System.Boolean)">
   GetLineageMetadata(WriteRelation, bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Connectors/IConnectorSinkFactory.cs/#L41"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Connectors/IConnectorSinkFactory.cs/#L47"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -239,7 +276,7 @@ Interface IConnectorSinkFactory  <a class="header-action link-secondary" title="
 
   <h3 id="FlowtideDotNet_Core_Connectors_IConnectorSinkFactory_ModifyPlan_FlowtideDotNet_Substrait_Relations_WriteRelation_" data-uid="FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.ModifyPlan(FlowtideDotNet.Substrait.Relations.WriteRelation)">
   ModifyPlan(WriteRelation)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Connectors/IConnectorSinkFactory.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Connectors/IConnectorSinkFactory.cs/#L37"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Allows for modification of the plan before it is executed.
