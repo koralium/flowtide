@@ -63,6 +63,13 @@ message TableFunctionRelation {
     }
 }
 
+// Primary keys a plan declares for a write relation.
+// Packed into the advanced extension enhancement of a WriteRel.
+message WriteRelationPrimaryKeys {
+    // Column names, always present in the table schema.
+    repeated string names = 1;
+}
+
 message SubStreamRootRelation {
     // Name of the substream this relation should execute on.
     // Multiple relations can exist that have the same name, then they should all execute on the same substream.

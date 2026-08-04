@@ -25,6 +25,7 @@ namespace FlowtideDotNet.Connector.SqlServer
         /// Set custom primary keys for the table.
         /// If not set, the primary keys are collected from the database.
         /// </summary>
+        [Obsolete("Declare the primary keys in the statement instead, 'INSERT INTO table PRIMARY KEY (c1, c2) SELECT ...'. The option applies the same keys to every table the sink handles, which does not work when a stream writes to more than one table.")]
         public List<string>? CustomPrimaryKeys { get; set; }
 
         /// <summary>

@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Tests.SqlServer;
+using System.Data;
 
 namespace FlowtideDotNet.SqlServer.Tests
 {
@@ -47,6 +49,58 @@ namespace FlowtideDotNet.SqlServer.Tests
             }, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
             var tableName = sink.GetTmpTableName();
             Assert.StartsWith("#", tableName);
+        }
+
+        [Fact]
+        public void PrimaryKeyColumnsResolveToTheCasingOfTheDestinationTable()
+        {
+            var (indices, columnNames) = SqlServerUtils.ResolvePrimaryKeyColumns(
+                new List<string>() { "guid-dash", "Name" },
+                new List<string>() { "NAME" },
+                "test-db.dbo.dest");
+
+            Assert.Equal(new List<int>() { 1 }, indices);
+            Assert.Equal(new List<string>() { "Name" }, columnNames);
+        }
+
+        [Fact]
+        public void PrimaryKeyColumnThatIsNotWrittenThrows()
+        {
+            var e = Assert.Throws<InvalidOperationException>(() =>
+            {
+                SqlServerUtils.ResolvePrimaryKeyColumns(
+                    new List<string>() { "guid-dash", "Name" },
+                    new List<string>() { "id" },
+                    "test-db.dbo.dest");
+            });
+
+            Assert.Equal("All primary keys of the sink table must be sent to the sink operator, 'id' is not written to 'test-db.dbo.dest'.", e.Message);
+        }
+
+        /// <summary>
+        /// The merge statement must never update a primary key column.
+        /// </summary>
+        [Fact]
+        public void MergeStatementDoesNotUpdatePrimaryKeyDeclaredWithOtherCasing()
+        {
+            var writtenColumnNames = new List<string>() { "Name", "guid-dash" };
+
+            using var dataTable = new DataTable();
+            dataTable.Columns.Add("md_operation");
+            foreach (var columnName in writtenColumnNames)
+            {
+                dataTable.Columns.Add(columnName);
+            }
+
+            var (_, primaryKeyColumnNames) = SqlServerUtils.ResolvePrimaryKeyColumns(
+                writtenColumnNames,
+                new List<string>() { "name" },
+                "dest");
+
+            var statement = SqlServerUtils.CreateMergeIntoProcedure("#tmp", "[dest]", primaryKeyColumnNames.ToHashSet(), dataTable);
+
+            Assert.Contains("UPDATE SET tgt.[guid-dash] = src.[guid-dash]", statement);
+            Assert.DoesNotContain("tgt.[Name] = src.[Name]", statement);
         }
     }
 }
