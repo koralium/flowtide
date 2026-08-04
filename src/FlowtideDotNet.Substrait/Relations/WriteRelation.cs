@@ -26,6 +26,12 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public bool Overwrite { get; set; } = false;
 
+        /// <summary>
+        /// Primary key columns declared by the plan, using <see cref="TableSchema"/> casing.
+        /// Null when the plan declares none.
+        /// </summary>
+        public List<string>? PrimaryKeyNames { get; set; }
+
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitWriteRelation(this, state);
@@ -44,7 +50,17 @@ namespace FlowtideDotNet.Substrait.Relations
                 Equals(Input, other.Input) &&
                 Equals(TableSchema, other.TableSchema) &&
                 Equals(NamedObject, other.NamedObject) &&
-                Equals(Overwrite, other.Overwrite);
+                Equals(Overwrite, other.Overwrite) &&
+                PrimaryKeyNamesEqual(other);
+        }
+
+        private bool PrimaryKeyNamesEqual(WriteRelation other)
+        {
+            if (PrimaryKeyNames == null || other.PrimaryKeyNames == null)
+            {
+                return PrimaryKeyNames == null && other.PrimaryKeyNames == null;
+            }
+            return PrimaryKeyNames.SequenceEqual(other.PrimaryKeyNames);
         }
 
         public override int GetHashCode()
@@ -55,6 +71,13 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(TableSchema);
             code.Add(NamedObject);
             code.Add(Overwrite);
+            if (PrimaryKeyNames != null)
+            {
+                foreach (var primaryKeyName in PrimaryKeyNames)
+                {
+                    code.Add(primaryKeyName);
+                }
+            }
             return code.ToHashCode();
         }
 
@@ -85,7 +108,8 @@ namespace FlowtideDotNet.Substrait.Relations
                 {
                     Names = new List<string>(TableSchema.Names)
                 },
-                Overwrite = Overwrite
+                Overwrite = Overwrite,
+                PrimaryKeyNames = PrimaryKeyNames != null ? new List<string>(PrimaryKeyNames) : null
             };
             if (TableSchema.Struct != null)
             {

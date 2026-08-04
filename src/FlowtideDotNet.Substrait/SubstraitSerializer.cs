@@ -1289,6 +1289,16 @@ namespace FlowtideDotNet.Substrait
                     writeRel.CreateMode = WriteRel.Types.CreateMode.ReplaceIfExists;
                 }
 
+                if (writeRelation.PrimaryKeyNames != null)
+                {
+                    var primaryKeys = new CustomProtobuf.WriteRelationPrimaryKeys();
+                    primaryKeys.Names.AddRange(writeRelation.PrimaryKeyNames);
+                    writeRel.AdvancedExtension = new Protobuf.AdvancedExtension()
+                    {
+                        Enhancement = Google.Protobuf.WellKnownTypes.Any.Pack(primaryKeys)
+                    };
+                }
+
                 writeRel.Input = Visit(writeRelation.Input, state);
 
                 return new Protobuf.Rel()
@@ -1724,21 +1734,7 @@ namespace FlowtideDotNet.Substrait
         public static string SerializeToJson(Plan plan)
         {
             var protoPlan = Serialize(plan);
-            var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
-                CustomProtobuf.IterationReferenceReadRelation.Descriptor,
-                CustomProtobuf.IterationRelation.Descriptor,
-                CustomProtobuf.NormalizationRelation.Descriptor,
-                CustomProtobuf.BufferRelation.Descriptor,
-                CustomProtobuf.TopNRelation.Descriptor,
-                CustomProtobuf.TableFunction.Descriptor,
-                CustomProtobuf.TableFunctionRelation.Descriptor,
-                CustomProtobuf.SubStreamRootRelation.Descriptor,
-                CustomProtobuf.StandardOutputTargetReferenceRelation.Descriptor,
-                CustomProtobuf.SubstreamExchangeReferenceRelation.Descriptor,
-                CustomProtobuf.PullExchangeReferenceRelation.Descriptor,
-                CustomProtobuf.SubstreamExchangeTarget.Descriptor,
-                CustomProtobuf.PullBucketExchangeTarget.Descriptor);
-            var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
+            var settings = new Google.Protobuf.JsonFormatter.Settings(true, CustomProtoTypeRegistry.Instance)
                 .WithIndentation();
             var formatter = new Google.Protobuf.JsonFormatter(settings);
             return formatter.Format(protoPlan);

@@ -90,10 +90,17 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             }
 
             List<string>? m_primaryKeyNames = null;
-            if (m_sqlServerSinkOptions.CustomPrimaryKeys != null)
+            if (m_writeRelation.PrimaryKeyNames != null)
+            {
+                // Keys declared per table win over the sink option.
+                m_primaryKeyNames = m_writeRelation.PrimaryKeyNames;
+            }
+#pragma warning disable CS0618 // Obsolete option must keep working until removed.
+            else if (m_sqlServerSinkOptions.CustomPrimaryKeys != null)
             {
                 m_primaryKeyNames = m_sqlServerSinkOptions.CustomPrimaryKeys;
             }
+#pragma warning restore CS0618
             else
             {
                 m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(m_connection, m_writeRelation.NamedObject.DotSeperated);
@@ -101,23 +108,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             var dbSchema = await SqlServerUtils.GetWriteTableSchema(m_connection, m_writeRelation);
 
-            List<int> primaryKeyIndices = new List<int>();
-            foreach (var primaryKey in m_primaryKeyNames)
-            {
-                int index = -1;
-                for (int i = 0; i < dbSchema.Count; i++)
-                {
-                    if (dbSchema[i].ColumnName.Equals(primaryKey, StringComparison.OrdinalIgnoreCase))
-                    {
-                        index = i;
-                    }
-                }
-                if (index == -1)
-                {
-                    throw new InvalidOperationException("All primary keys of the sink table must be sent to the sink operator.");
-                }
-                primaryKeyIndices.Add(index);
-            }
+            var (primaryKeyIndices, primaryKeyColumnNames) = SqlServerUtils.ResolvePrimaryKeyColumns(
+                dbSchema.Select(x => x.ColumnName).ToList(),
+                m_primaryKeyNames,
+                m_writeRelation.NamedObject.DotSeperated);
             m_primaryKeys = primaryKeyIndices;
 
             m_dataTable = new DataTable();
@@ -189,7 +183,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             {
                 await SqlServerUtils.CreateTemporaryTable(m_connection, dbSchema, m_tmpTableName);
                 m_mergeIntoCommand = m_connection.CreateCommand();
-                var mergeIntoStatement = SqlServerUtils.CreateMergeIntoProcedure(m_tmpTableName, string.Join(".", m_writeRelation.NamedObject.Names.Select(x => $"[{x}]")), m_primaryKeyNames.ToHashSet(), m_dataTable);
+                var mergeIntoStatement = SqlServerUtils.CreateMergeIntoProcedure(m_tmpTableName, string.Join(".", m_writeRelation.NamedObject.Names.Select(x => $"[{x}]")), primaryKeyColumnNames.ToHashSet(), m_dataTable);
                 m_mergeIntoCommand.CommandText = mergeIntoStatement;
                 await m_mergeIntoCommand.PrepareAsync();
             }   

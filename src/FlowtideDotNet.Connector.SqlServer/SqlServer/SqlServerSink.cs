@@ -123,10 +123,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             using var conn = new SqlConnection(connectionStringFunc());
             await conn.OpenAsync();
             List<string>? m_primaryKeyNames = null;
+#pragma warning disable CS0618 // Obsolete option must keep working until removed.
             if (sqlServerSinkOptions.CustomPrimaryKeys != null)
             {
                 m_primaryKeyNames = sqlServerSinkOptions.CustomPrimaryKeys;
             }
+#pragma warning restore CS0618
             else
             {
                 m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(conn, writeRelation.NamedObject.DotSeperated);
@@ -168,10 +170,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             }
 
             List<string>? m_primaryKeyNames = null;
+#pragma warning disable CS0618 // Obsolete option must keep working until removed.
             if (sqlServerSinkOptions.CustomPrimaryKeys != null)
             {
                 m_primaryKeyNames = sqlServerSinkOptions.CustomPrimaryKeys;
             }
+#pragma warning restore CS0618
             else
             {
                 m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(connection, writeRelation.NamedObject.DotSeperated);

@@ -14,6 +14,7 @@ using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Core.Operators.Aggregate;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Core.Operators.Buffer;
@@ -500,10 +501,20 @@ namespace FlowtideDotNet.Core.Engine
             if (connectorManager != null)
             {
                 var sinkFactory = connectorManager.GetSinkFactory(writeRelation);
+                if (writeRelation.PrimaryKeyNames != null && !sinkFactory.SupportsPrimaryKeyDeclaration)
+                {
+                    throw new FlowtidePrimaryKeyDeclarationNotSupportedException(
+                        $"The connector writing to '{writeRelation.NamedObject.DotSeperated}' cannot use primary keys declared in the plan. Remove the 'PRIMARY KEY' declaration from the insert statement, the connector would otherwise write the data with other primary keys than the declared ones.");
+                }
                 op = sinkFactory.CreateSink(writeRelation, functionsRegister, DefaultBlockOptions);
             }
             else if (readWriteFactory != null)
             {
+                if (writeRelation.PrimaryKeyNames != null)
+                {
+                    throw new FlowtidePrimaryKeyDeclarationNotSupportedException(
+                        $"Primary keys declared in the plan for '{writeRelation.NamedObject.DotSeperated}' are only supported by connectors registered in a connector manager. Remove the 'PRIMARY KEY' declaration from the insert statement or register the connector with a connector manager.");
+                }
                 op = readWriteFactory.GetWriteOperator(writeRelation, functionsRegister, DefaultBlockOptions);
             }
             else
