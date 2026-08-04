@@ -85,7 +85,7 @@ namespace FlowtideDotNet.SqlServer.Tests
         {
             var writtenColumnNames = new List<string>() { "Name", "guid-dash" };
 
-            var dataTable = new DataTable();
+            using var dataTable = new DataTable();
             dataTable.Columns.Add("md_operation");
             foreach (var columnName in writtenColumnNames)
             {
