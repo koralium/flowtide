@@ -42,6 +42,13 @@ namespace FlowtideDotNet.Core.Optimizer
         public bool TryAddWatermarkOutputMode { get; set; } = true;
 
         /// <summary>
+        /// Rewrites merge joins with a tumbling window band condition to lead with
+        /// an equality on the computed window bucket, so the join state trees sort
+        /// window first and time correlated inserts become appends.
+        /// </summary>
+        public bool WindowJoinKeyOptimization { get; set; } = true;
+
+        /// <summary>
         /// If set, the plan is split into substreams for distributed mode as the last
         /// optimization step. Merge joins, aggregates and window functions are partitioned
         /// with one partition per substream. Plans that already contain substream statements
