@@ -14,13 +14,11 @@
 // for heaps (no limit on the number that can be allocated).
 // Original: Copyright (c) 2019-2026 Microsoft Research, Daan Leijen (MIT license).
 //
-// Port deviations (documented in PORTING.md):
-//  - The per-thread slots array is allocated via the meta allocator (falling back to
-//    the OS for very large arrays) instead of `mi_rezalloc`, because the malloc API
-//    lands in task #9; the provenance memid is stored in the array header.
+// Port deviation (documented in PORTING.md):
 //  - The per-thread state (slots array pointer + fast slot) lives in the native
 //    per-thread context (`mi_thread_ctx_t` in Init.cs) so the thread-exit sentinel
-//    can free it from the finalizer thread.
+//    can free it from the finalizer thread (which adopts the dead thread's
+//    identity, so the `mi_free` here behaves as the same-thread free in C).
 
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -38,7 +36,6 @@ namespace FlowtideDotNet.MiMalloc
     internal unsafe struct mi_thread_locals_t
     {
         public nuint count;
-        public mi_memid_t memid;   // port addition: provenance for meta/OS free
         // followed by count slots
     }
 
@@ -118,29 +115,6 @@ namespace FlowtideDotNet.MiMalloc
             return key;
         }
 
-        // allocate a fresh slots array via meta (or OS for large sizes); port replacement for mi_rezalloc
-        private static mi_thread_locals_t* mi_thread_locals_alloc(nuint count)
-        {
-            nuint size = (nuint)sizeof(mi_thread_locals_t) + count * (nuint)sizeof(mi_tls_slot_t);
-            mi_memid_t memid;
-            mi_subproc_t* subproc = _mi_subproc_main();
-            var tls = (mi_thread_locals_t*)_mi_meta_zalloc(subproc, size, &memid);
-            if (tls == null)
-            {
-                tls = (mi_thread_locals_t*)_mi_os_zalloc(subproc, size, &memid);
-            }
-            if (tls == null) return null;
-            tls->memid = memid;
-            return tls;
-        }
-
-        private static void mi_thread_locals_free_mem(mi_thread_locals_t* tls)
-        {
-            if (tls == null || tls->count == 0) return;
-            nuint size = (nuint)sizeof(mi_thread_locals_t) + tls->count * (nuint)sizeof(mi_tls_slot_t);
-            _mi_meta_free(_mi_subproc_main(), tls, size, tls->memid);
-        }
-
         // dynamically reallocate the thread local slots when needed
         private static mi_thread_locals_t* mi_thread_locals_expand(nuint least_idx)
         {
@@ -149,7 +123,7 @@ namespace FlowtideDotNet.MiMalloc
             nuint count;
             if (count_old == 0)
             {
-                tls_old = null;   // so we allocate fresh
+                tls_old = null;   // so we allocate fresh (from mi_thread_locals_empty)
                 count = 16;       // start with 16 slots
             }
             else if (count_old >= 1024)
@@ -165,16 +139,10 @@ namespace FlowtideDotNet.MiMalloc
                 count = least_idx + 1;
             }
             if (count > MI_TLS_IDX_MAX) { return null; }   // too large
-            mi_thread_locals_t* tls = mi_thread_locals_alloc(count);
+            mi_thread_locals_t* tls = (mi_thread_locals_t*)mi_rezalloc(tls_old, (nuint)sizeof(mi_thread_locals_t) + count * (nuint)sizeof(mi_tls_slot_t));
             if (tls == null) return null;
-            if (tls_old != null)
-            {
-                // copy the old slots (C: mi_rezalloc semantics)
-                _mi_memcpy(mi_tls_slots(tls), mi_tls_slots(tls_old), count_old * (nuint)sizeof(mi_tls_slot_t));
-            }
             tls->count = count;
             mi_thread_locals_set(tls);
-            if (tls_old != null) { mi_thread_locals_free_mem(tls_old); }
             return tls;
         }
 
@@ -261,14 +229,15 @@ namespace FlowtideDotNet.MiMalloc
         }
 
         // release the given thread context's dynamic locals (C: _mi_thread_locals_thread_done;
-        // ctx-based so the exit sentinel can run it from the finalizer thread)
+        // ctx-based so the exit sentinel can run it from the finalizer thread under the
+        // dead thread's adopted identity -- the mi_free below is then a same-thread free)
         public static void _mi_thread_locals_thread_done(mi_thread_ctx_t* ctx)
         {
             if (ctx == null) return;
             mi_thread_locals_t* tls = ctx->thread_locals;
             if (tls != null && tls->count > 0)
             {
-                mi_thread_locals_free_mem(tls);
+                mi_free(tls);
                 ctx->thread_locals = null;
             }
             if (ctx->slot_fast != null)

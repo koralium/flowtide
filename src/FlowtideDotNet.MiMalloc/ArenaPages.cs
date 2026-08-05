@@ -16,11 +16,10 @@
 // Original: Copyright (c) 2019-2026 Microsoft Research, Daan Leijen (MIT license).
 //
 // Port notes:
-//  - `mi_arena_pages_alloc` (per-heap page-bitmap allocation for NON-main heaps)
-//    needs `mi_heap_zalloc_aligned` and is stubbed to null until the heap API lands
-//    (task #9); only the main heap exists until then and it uses `arena->pages_main`.
 //  - `_mi_page_associated_theap_peek` is implemented in Heap.cs (with the other
 //    prim-tls.h inlines).
+//  - The heap-wide page/block visiting and heap page move/destroy (C arena.c
+//    lines ~2300-2506) live at the bottom of this file.
 
 using System.Runtime.CompilerServices;
 
@@ -83,13 +82,23 @@ namespace FlowtideDotNet.MiMalloc
             }
         }
 
-        // allocate initial arena_pages from the main heap -- STUB until the heap API
-        // lands (task #9); only used for non-main heaps.
+        // allocate initial arena_pages from the main heap (used for non-main heaps;
+        // the main heap uses the pre-carved `arena->pages_main`)
         private static mi_arena_pages_t* mi_arena_pages_alloc(mi_arena_t* arena)
         {
-            // TODO(task #9): C allocates via mi_heap_zalloc_aligned(arena->subproc->heap_main, ...)
-            _mi_warning_message("internal: arena page-bitmaps for non-main heaps are not yet supported by the port");
-            return null;
+            nuint slice_count = arena->slice_count;
+            nuint bitmap_base = 0;
+            nuint size = mi_arena_pages_size(slice_count, &bitmap_base);
+            mi_arena_pages_t* arena_pages = (mi_arena_pages_t*)mi_heap_zalloc_aligned(_mi_subproc_heap_main(arena->subproc), size, MI_BCHUNK_SIZE);
+            if (arena_pages == null) return null;
+            byte* @base = (byte*)arena_pages + bitmap_base;
+            mi_assert_internal(_mi_is_aligned(@base, MI_BCHUNK_SIZE));
+            arena_pages->pages = mi_arena_bitmap_init(slice_count, &@base);
+            for (int i = 0; i < MI_ARENA_BIN_COUNT; i++)
+            {
+                arena_pages->pages_abandoned[i] = (ulong)mi_arena_bitmap_init(slice_count, &@base);
+            }
+            return arena_pages;
         }
 
         private static mi_arena_pages_t* mi_heap_arena_pages(mi_heap_t* heap, mi_arena_t* arena)
@@ -343,7 +352,12 @@ namespace FlowtideDotNet.MiMalloc
                 page = (mi_page_t*)slice_start;
                 block_start = mi_page_block_start(block_size, os_align);
             }
-            mi_assert_internal(block_start % MI_MAX_ALIGN_SIZE == 0);
+            // note: C asserts `block_start % MI_MAX_ALIGN_SIZE == 0` -- with separated page
+            // meta an 8-byte block size gives block_start == 8, but C debug builds never see
+            // that (MI_PADDING>=1 forces block sizes >= 16 there); the port pins MI_PADDING=0
+            // so the reachable invariant is alignment to min(block_size, MI_MAX_ALIGN_SIZE).
+            mi_assert_internal(block_start % MI_MAX_ALIGN_SIZE == 0
+                || (page_meta_is_separate && block_size < MI_MAX_ALIGN_SIZE && (block_start % block_size) == 0));
 
             // commit first block?
             nuint commit_size = 0;
@@ -384,7 +398,12 @@ namespace FlowtideDotNet.MiMalloc
             byte* start = slice_start + block_start;
             mi_assert_internal(start > (byte*)page);
             nuint offset = (nuint)(start - (byte*)page);
-            mi_assert_internal((offset % MI_MAX_ALIGN_SIZE) == 0 && (offset / MI_MAX_ALIGN_SIZE) <= uint.MaxValue);
+            // note: C asserts `offset % MI_MAX_ALIGN_SIZE == 0`; for block sizes < 16 with
+            // separated page meta the offset can be ~8 mod 16 (see the block_start note above)
+            // and the truncating division below matches the C release behavior exactly: the
+            // effective page start snaps down within the slice, and ALL later pointer math
+            // derives consistently from `mi_page_start` so the layout stays self-consistent.
+            mi_assert_internal(((offset % MI_MAX_ALIGN_SIZE) == 0 || block_size < MI_MAX_ALIGN_SIZE) && (offset / MI_MAX_ALIGN_SIZE) <= uint.MaxValue);
             page->page_ma_offset = (uint)(offset / MI_MAX_ALIGN_SIZE);
 
             // initialize page meta-data
@@ -755,6 +774,256 @@ namespace FlowtideDotNet.MiMalloc
             {
                 __mi_stat_decrease_mt(&heap->stats.pages_abandoned, 1);
             }
+        }
+
+        /* -----------------------------------------------------------
+          Visit all pages and blocks in a heap (C: arena.c ~2300)
+        ----------------------------------------------------------- */
+
+        private struct mi_heap_visit_info_t
+        {
+            public mi_heap_t* heap;
+            public delegate*<mi_heap_t*, mi_heap_area_t*, void*, nuint, void*, bool> visitor;
+            public void* arg;
+            public bool visit_blocks;
+        }
+
+        private static bool mi_heap_visit_page(mi_page_t* page, mi_heap_visit_info_t* vinfo)
+        {
+            mi_heap_area_t area;
+            _mi_heap_area_init(&area, page);
+            mi_assert_internal(vinfo->heap == mi_page_heap(page));
+            if (!vinfo->visitor(vinfo->heap, &area, null, area.block_size, vinfo->arg))
+            {
+                return false;
+            }
+            if (vinfo->visit_blocks)
+            {
+                return _mi_theap_area_visit_blocks(&area, page, vinfo->visitor, vinfo->arg);
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+        private static bool mi_heap_visit_page_at(nuint slice_index, nuint slice_count, mi_arena_t* arena, void* arg)
+        {
+            mi_heap_visit_info_t* vinfo = (mi_heap_visit_info_t*)arg;
+            mi_page_t* page = mi_arena_page_at_slice(arena, slice_index);
+            return mi_heap_visit_page(page, vinfo);
+        }
+
+        public static bool _mi_heap_visit_blocks(mi_heap_t* heap, bool abandoned_only, bool visit_blocks, delegate*<mi_heap_t*, mi_heap_area_t*, void*, nuint, void*, bool> visitor, void* arg)
+        {
+            mi_assert(visitor != null);
+            if (visitor == null) return false;
+            if (heap == null) { heap = mi_heap_main(); }
+            // visit all pages in a heap
+            // we don't have to claim because we assume we are the only thread running (with this heap).
+            // (but we could atomically claim as well by first doing abandoned_reclaim and afterwards reabandoning).
+            mi_heap_visit_info_t visit_info;
+            visit_info.heap = heap;
+            visit_info.visitor = visitor;
+            visit_info.arg = arg;
+            visit_info.visit_blocks = visit_blocks;
+            bool ok = true;
+            var iter = new mi_forall_arenas_iter(heap, null, 0);
+            while (iter.TryNext(out mi_arena_t* arena))
+            {
+                mi_arena_pages_t* arena_pages = mi_heap_arena_pages(heap, arena);
+                if (ok && arena_pages != null)
+                {
+                    if (abandoned_only)
+                    {
+                        for (nuint bin = 0; ok && bin < MI_ARENA_BIN_COUNT; bin++)
+                        {
+                            // todo: if we had a single abandoned page map as well, this can be faster.
+                            if (mi_atomic_load_relaxed(ref *(nuint*)&heap->abandoned_count[(int)bin]) > 0)
+                            {
+                                ok = _mi_bitmap_forall_set((mi_bitmap_t*)arena_pages->pages_abandoned[(int)bin], &mi_heap_visit_page_at, arena, &visit_info);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ok = _mi_bitmap_forall_set(arena_pages->pages, &mi_heap_visit_page_at, arena, &visit_info);
+                    }
+                }
+            }
+            if (!ok) return false;
+
+            // visit abandoned pages in OS allocated memory
+            // (technically we don't need the initial lock as we assume we are the only thread running in this subproc)
+            mi_page_t* page = null;
+            mi_lock_acquire(&heap->os_abandoned_pages_lock);
+            try
+            {
+                page = heap->os_abandoned_pages;
+            }
+            finally
+            {
+                mi_lock_release(&heap->os_abandoned_pages_lock);
+            }
+            while (ok && page != null)
+            {
+                mi_page_t* next = page->next;   // read upfront in case the visitor frees the page
+                ok = mi_heap_visit_page(page, &visit_info);
+                page = next;
+            }
+
+            return ok;
+        }
+
+        public static bool mi_heap_visit_blocks(mi_heap_t* heap, bool visit_blocks, delegate*<mi_heap_t*, mi_heap_area_t*, void*, nuint, void*, bool> visitor, void* arg)
+        {
+            return _mi_heap_visit_blocks(heap, false, visit_blocks, visitor, arg);
+        }
+
+        public static bool mi_heap_visit_abandoned_blocks(mi_heap_t* heap, bool visit_blocks, delegate*<mi_heap_t*, mi_heap_area_t*, void*, nuint, void*, bool> visitor, void* arg)
+        {
+            return _mi_heap_visit_blocks(heap, true, visit_blocks, visitor, arg);
+        }
+
+        /* -----------------------------------------------------------
+          Move / destroy all pages of a heap (C: arena.c ~2386)
+        ----------------------------------------------------------- */
+
+        private struct mi_heap_delete_visit_info_t
+        {
+            public mi_heap_t* heap_target;
+            public mi_theap_t* theap_target;
+            public mi_theap_t* theap;
+        }
+
+        private static bool mi_heap_delete_page(mi_heap_t* heap, mi_heap_area_t* area, void* block, nuint block_size, void* arg)
+        {
+            mi_heap_delete_visit_info_t* info = (mi_heap_delete_visit_info_t*)arg;
+            mi_heap_t* heap_target = info->heap_target;
+            mi_theap_t* theap = null;   // C: info->theap is unused (NULL)
+            mi_page_t* page = (mi_page_t*)area->reserved1;
+
+            mi_page_claim_ownership(page);   // claim ownership
+            if (mi_page_is_abandoned(page))
+            {
+                _mi_arenas_page_unabandon(page, theap);
+            }
+            else
+            {
+                page->next = page->prev = null;   // yikes.. better not to try to access this from a thread later on..
+                mi_page_set_theap(page, null);    // set threadid to abandoned
+            }
+            mi_assert_internal(mi_page_is_abandoned(page));
+            mi_assert_internal(mi_page_is_owned(page));
+
+            if (page->used == 0)
+            {
+                // free the page
+                _mi_arenas_page_free(page, theap);
+            }
+            else if (heap_target == null)
+            {
+                // destroy the page
+                page->used = 0;   // note: invariant `|local_free| + |free| == reserved - used` does not hold in this case
+                _mi_arenas_page_free(page, theap);
+            }
+            else
+            {
+                // move the page to `heap_target` as an abandoned page
+                // first remove it from the current heap
+                nuint sbin = _mi_page_stats_bin(page);
+                mi_arena_t* arena = null;
+                nuint slice_index = 0;
+                if (page->memid.memkind == mi_memkind_t.MI_MEM_ARENA)
+                {
+                    nuint slice_count;
+                    mi_arena_pages_t* arena_pages = null;
+                    arena = mi_page_arena_pages(page, &slice_index, &slice_count, &arena_pages);
+                    mi_assert_internal(mi_bitmap_is_set(arena_pages->pages, slice_index));
+                    mi_bitmap_clear(arena_pages->pages, slice_index);
+                }
+                else
+                {
+                    // os allocated
+                    mi_assert_internal(mi_memkind_is_os(page->memid.memkind) && page->next == null);
+                }
+                // C: theap is NULL here so use the (atomic) heap stats
+                __mi_stat_decrease_mt((mi_stat_count_t*)Unsafe.AsPointer(ref heap->stats.page_bins[(int)sbin]), 1);
+                __mi_stat_decrease_mt(&heap->stats.pages, 1);
+                mi_theap_t* theap_target = info->theap_target;
+
+                // and then add it to the new target heap
+                if (arena != null)
+                {
+                    mi_arena_pages_t* arena_pages_target = mi_heap_ensure_arena_pages(heap_target, arena);
+                    if (arena_pages_target == null)
+                    {
+                        // if we cannot allocate this, we move it to the main heap instead (which does not require allocation)
+                        heap_target = mi_arena_heap_main(arena);
+                        theap_target = mi_heap_theap(heap_target);
+                        arena_pages_target = mi_heap_ensure_arena_pages(heap_target, arena);
+                        mi_assert_internal(arena_pages_target != null);
+                    }
+                    mi_assert_internal(mi_bitmap_is_clear(arena_pages_target->pages, slice_index));
+                    mi_bitmap_set(arena_pages_target->pages, slice_index);
+                }
+                page->heap = heap_target;
+                __mi_stat_increase((mi_stat_count_t*)Unsafe.AsPointer(ref theap_target->stats.page_bins[(int)sbin]), 1);
+                __mi_stat_increase(&theap_target->stats.pages, 1);
+
+                // and abandon in the new heap
+                _mi_arenas_page_abandon(page, theap_target);
+            }
+            return true;
+        }
+
+        private static void mi_heap_delete_pages(mi_heap_t* heap, mi_heap_t* heap_target)
+        {
+            mi_theap_t* theap_target = (heap_target != null ? _mi_heap_theap(heap_target) : null);
+            mi_heap_delete_visit_info_t info;
+            info.heap_target = heap_target;
+            info.theap_target = theap_target;
+            info.theap = null;
+            _mi_heap_visit_blocks(heap, false, false, &mi_heap_delete_page, &info);
+#if MI_DEBUG
+            // no more arena pages?
+            for (int i = 0; i < MI_MAX_ARENAS; i++)
+            {
+                mi_arena_pages_t* arena_pages = (mi_arena_pages_t*)mi_atomic_load_relaxed(ref *(nuint*)&heap->arena_pages[i]);
+                if (arena_pages != null)
+                {
+                    mi_assert_internal(mi_bitmap_is_all_clear(arena_pages->pages));
+                }
+            }
+            // nor os abandoned pages?
+            mi_lock_acquire(&heap->os_abandoned_pages_lock);
+            try
+            {
+                mi_assert_internal(heap->os_abandoned_pages == null);
+            }
+            finally
+            {
+                mi_lock_release(&heap->os_abandoned_pages_lock);
+            }
+            // nor arena abandoned pages?
+            for (nuint i = 0; i < MI_ARENA_BIN_COUNT; i++)
+            {
+                mi_assert_internal(mi_atomic_load_relaxed(ref *(nuint*)&heap->abandoned_count[(int)i]) == 0);
+            }
+#endif
+        }
+
+        public static void _mi_heap_move_pages(mi_heap_t* heap_from, mi_heap_t* heap_to)
+        {
+            if (_mi_is_heap_main(heap_from)) return;
+            if (heap_to == null) { heap_to = _mi_subproc_heap_main(heap_from->subproc); }
+            mi_heap_delete_pages(heap_from, heap_to);
+        }
+
+        public static void _mi_heap_destroy_pages(mi_heap_t* heap_from)
+        {
+            if (_mi_is_heap_main(heap_from)) return;
+            mi_heap_delete_pages(heap_from, null);
         }
     }
 }

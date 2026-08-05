@@ -314,11 +314,10 @@ namespace FlowtideDotNet.MiMalloc
             {
                 __mi_stat_decrease_mt(&_mi_theap_subproc(theap)->stats.theaps, 1);
                 // free the used memory
-                if (theap->memid.memkind == mi_memkind_t.MI_MEM_HEAP_MAIN)
+                if (theap->memid.memkind == mi_memkind_t.MI_MEM_HEAP_MAIN)   // note: for now unused (as in C)
                 {
-                    // C: _mi_free_subproc_safe(theap). Unused (even in C, "for now"); the port
-                    // never allocates theaps in the main heap, so this is unreachable.
-                    mi_assert_internal(false);
+                    mi_assert_internal(_mi_is_heap_main(mi_heap_of(theap)));
+                    _mi_free_subproc_safe(theap);
                 }
                 else if (theap->memid.memkind == mi_memkind_t.MI_MEM_META)
                 {

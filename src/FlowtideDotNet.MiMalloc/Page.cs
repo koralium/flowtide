@@ -735,7 +735,104 @@ namespace FlowtideDotNet.MiMalloc
             return page;
         }
 
-        // note: `mi_find_page` and `_mi_malloc_generic` are ported with alloc.c (task #9)
-        // as they call `_mi_thread_init`, `mi_theap_collect` and `_mi_page_malloc_zero`.
+        // Allocate a page
+        // Note: in debug mode the size includes MI_PADDING_SIZE and might have overflowed.
+        private static mi_page_t* mi_find_page(mi_theap_t* theap, nuint size, nuint huge_alignment)
+        {
+            nuint req_size = size - MI_PADDING_SIZE;   // correct for padding_size in case of an overflow on `size`
+            if (req_size > unchecked((nuint)MI_MAX_ALLOC_SIZE))
+            {
+                _mi_error_message(EOVERFLOW, $"allocation request is too large ({req_size} bytes)");
+                return null;
+            }
+            mi_page_queue_t* pq = mi_page_queue(theap, (huge_alignment > 0 ? MI_LARGE_MAX_OBJ_SIZE + 1 : size));
+            // huge allocation?
+            if (mi_page_queue_is_huge(pq) || req_size > unchecked((nuint)MI_MAX_ALLOC_SIZE))
+            {
+                return mi_huge_page_alloc(theap, size, huge_alignment, pq);
+            }
+            else
+            {
+                // otherwise find a page with free blocks in our size segregated queues
+                return mi_find_free_page(theap, pq);
+            }
+        }
+
+        // Generic allocation routine if the fast path (`alloc.c:mi_page_malloc`) does not succeed.
+        // Note: in debug mode the size includes MI_PADDING_SIZE and might have overflowed.
+        // The `huge_alignment` is normally 0 but is set to a multiple of MI_SLICE_SIZE for
+        // very large requested alignments in which case we use a huge singleton page.
+        // Note: we put `bool zero, size_t huge_alignment` into one parameter (with zero in the low bit)
+        // to use 4 parameters which compiles better on msvc for the malloc fast path.
+        public static void* _mi_malloc_generic(mi_theap_t* theap, nuint size, nuint zero_huge_alignment, nuint* usable)
+        {
+            bool zero = ((zero_huge_alignment & 1) != 0);
+            nuint huge_alignment = (zero_huge_alignment & ~(nuint)1);
+
+            // initialize if necessary
+            if (!mi_theap_is_initialized(theap))
+            {
+                if (theap == _mi_theap_empty_wrong())
+                {
+                    // we were unable to allocate a theap for a first-class heap
+                    return null;
+                }
+                // otherwise we initialize the thread and its default theap
+                theap = _mi_thread_init();
+                if (!mi_theap_is_initialized(theap)) { return null; }
+            }
+            mi_assert_internal(mi_theap_is_initialized(theap));
+
+            // do administrative tasks every N generic mallocs
+            if (++theap->generic_count >= 1000)
+            {
+                theap->generic_collect_count += theap->generic_count;
+                theap->generic_count = 0;
+                // call potential deferred free routines
+                _mi_deferred_free(theap, false);
+                // free retired pages
+                _mi_theap_collect_retired(theap, false);
+
+                // collect every once in a while (10000 by default)
+                long generic_collect = mi_option_get_clamp(mi_option_t.mi_option_generic_collect, 1, 1000000L);
+                if (theap->generic_collect_count >= generic_collect)
+                {
+                    theap->generic_collect_count = 0;
+                    mi_theap_collect(theap, false /* force? */);
+                }
+            }
+
+            // find (or allocate) a page of the right size
+            mi_page_t* page = mi_find_page(theap, size, huge_alignment);
+            if (page == null)   // first time out of memory, try to collect and retry the allocation once more
+            {
+                mi_theap_collect(theap, true /* force? */);
+                page = mi_find_page(theap, size, huge_alignment);
+            }
+
+            if (page == null)   // out of memory
+            {
+                nuint req_size = size - MI_PADDING_SIZE;   // correct for padding_size in case of an overflow on `size`
+                _mi_error_message(ENOMEM, $"unable to allocate memory ({req_size} bytes)");
+                return null;
+            }
+
+            mi_assert_internal(mi_page_immediate_available(page));
+            mi_assert_internal(mi_page_block_size(page) >= size);
+            mi_assert_internal(_mi_is_aligned(mi_page_slice_start(page), MI_PAGE_ALIGN));
+            mi_assert_internal(_mi_ptr_page(mi_page_start(page)) == page);
+
+            // and try again, this time succeeding! (i.e. this should never recurse through _mi_page_malloc)
+            if (usable != null) { *usable = mi_page_usable_block_size(page); }
+            void* p = _mi_page_malloc_zero(theap, page, size, zero);
+            mi_assert_internal(p != null);
+
+            // move full pages to the full queue
+            if (mi_page_block_size(page) > MI_SMALL_MAX_OBJ_SIZE && mi_page_is_full(page))
+            {
+                mi_page_to_full(page, mi_page_queue_of(page));
+            }
+            return p;
+        }
     }
 }

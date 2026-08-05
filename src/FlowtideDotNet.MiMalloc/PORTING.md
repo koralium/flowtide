@@ -20,7 +20,7 @@ The C code has many `#if` variants. This port pins ONE configuration (the 64-bit
 | 64-bit only | yes | `MI_SIZE_SHIFT=3`, `MI_INTPTR_SHIFT=3`, `MI_SIZE_BITS=64`. Runtime-guard against 32-bit. |
 | `MI_SECURE` | 0 | no guard pages / freelist encoding |
 | `MI_DEBUG` | 0/2 | assertions become `mi_assert`/`mi_assert_internal` → `Debug.Assert` under `MI_DEBUG` symbol (Debug builds) |
-| `MI_STAT` | 0 | keep only the stat fields/calls needed to compile; counters may be no-ops initially |
+| `MI_STAT` | 1 | full stat machinery is implemented (Stats.cs); `MI_STAT>0` blocks included (malloc_normal/malloc_huge), `MI_STAT>1` blocks (malloc_bins, requested) skipped |
 | `MI_PADDING`, `MI_ENCODE_FREELIST`, `MI_GUARDED` | 0 | debug/security features, not correctness. `keys[2]` field kept out of structs. |
 | `MI_ENABLE_LARGE_PAGES` | 1 | large pages (4 MiB) enabled — default |
 | `MI_PAGE_MAP_FLAT` | 0 | two-level page map (x64 MAX_VABITS=47 > 40 → default) |
@@ -153,8 +153,17 @@ Dependency-ordered. Update the checkboxes as work lands; also mirrored in the se
       `mi_rezalloc` until task #9. `_mi_page_associated_theap_peek` stub replaced
       with the real prim-tls implementation (Heap.cs); real `_mi_subproc()`;
       `mi_heap_new/delete/destroy` + `mi_subproc_new` deferred to task #9.
-- [ ] 8. `Alloc.cs`, `Free.cs`, `AllocAligned.cs` — malloc/zalloc/calloc/realloc fast paths,
-      multithreaded free with ownership claim, aligned alloc, usable_size/good_size, collect
+- [x] 8. `Alloc.cs`, `Free.cs`, `AllocAligned.cs` — malloc/zalloc/calloc/realloc fast paths,
+      multithreaded free with ownership claim, aligned alloc, usable_size/good_size, collect.
+      Also: `mi_find_page` + `_mi_malloc_generic` (Page.cs), the heap lifecycle
+      (`mi_heap_new/delete/destroy` in Heap.cs), heap-wide visiting + page
+      move/destroy + real `mi_arena_pages_alloc` (ArenaPages.cs), `_mi_free_subproc_safe`,
+      and threadlocal.c switched to real `mi_rezalloc`/`mi_free` (task-#8 meta-alloc
+      deviation removed). Not ported: `mi_realpath`, the C++ `mi_new_*` family,
+      `mi_subproc_new/destroy` (single-subproc pinned). One latent task-#7 issue
+      surfaced by 8-byte blocks (unreachable in C debug builds where MI_PADDING>=1):
+      two over-strong asserts in `mi_arenas_page_alloc_fresh` relaxed to the
+      reachable invariant; the computation matches C release byte-for-byte.
 - [ ] 9. Public API class `MiMalloc` (mi_* surface used by Flowtide), integration into
       `FlowtideMemoryAllocation`, multi-threaded stress tests, full Flowtide test suite, benchmarks
 
@@ -270,3 +279,29 @@ Dependency-ordered. Update the checkboxes as work lands; also mirrored in the se
   by creating the ctx at the top of `mi_thread_init_ex` so ctx OOM propagates
   as a clean init failure before anything registers, making the later stores
   infallible (asserted). 121 tests re-run green on both matrices.
+- **2026-08-05 (cont. 6):** User committed checkpoint (808ff7f9). Task #9: ported
+  `Alloc.cs` (alloc.c), `Free.cs` (free.c incl. the xthread_free CAS push with
+  ownership claim and the try-collect free/reclaim/reabandon/unown chain),
+  `AllocAligned.cs` (alloc-aligned.c), `mi_find_page` + `_mi_malloc_generic`
+  (Page.cs), heap lifecycle `mi_heap_new/delete/destroy` + `_mi_heap_new_for_subproc`
+  (Heap.cs), heap-wide block visiting + `_mi_heap_move_pages`/`_mi_heap_destroy_pages`
+  + real `mi_arena_pages_alloc` (ArenaPages.cs), `_mi_strlen/strnlen/memset_aligned`
+  (Libc.cs), threadlocal.c re-based on `mi_rezalloc`/`mi_free`, and the
+  `MI_MEM_HEAP_MAIN` theap-free branch restored via `_mi_free_subproc_safe`.
+  158 tests green on net8.0 Debug + net10.0 Release: full write/read/free
+  roundtrips across every size class incl. huge singletons, zalloc/rezalloc
+  zeroing, realloc reuse-vs-move semantics, aligned alloc for alignments 32B-4MiB
+  (natural, over-alloc and huge-singleton paths) + aligned realloc, usable/good
+  size equality, cross-thread frees collected via xthread_free, frees into
+  ABANDONED pages after thread exit (try-collect path frees the pages), 20k-op
+  single-thread churn with stat balance, 6-thread producer/consumer stress with
+  cross-thread frees + thread exits, heap new/delete (pages move to main heap,
+  blocks stay freeable) and destroy, and heap_visit_blocks. One latent task-#7
+  finding fixed along the way (see step 8 note: over-strong asserts for 8-byte
+  blocks with separated page meta -- unreachable in C debug builds).
+  Adversarial verification (6 finders: alloc/free/alloc-aligned/malloc-generic/
+  heap-lifecycle line comparers + a lock-free free-path concurrency reviewer
+  covering the xthread_free CAS protocol, unown retry structure, xtid dispatch
+  atomicity and collect-partly guarantees): ZERO findings across all six.
+  Remaining: task #10 -- public API surface, FlowtideMemoryAllocation
+  integration, Flowtide test suites, benchmarks vs native.

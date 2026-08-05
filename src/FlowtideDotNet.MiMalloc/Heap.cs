@@ -14,11 +14,8 @@
 // heap<->theap association, plus the `_mi_heap_theap*` inlines of prim-tls.h.
 // Original: Copyright (c) 2018-2026 Microsoft Research, Daan Leijen (MIT license).
 //
-// Deferred to task #9 (they need the malloc/free API):
-//   _mi_heap_new_for_subproc, mi_heap_new(_in_arena), mi_heap_free,
-//   mi_heap_delete, _mi_heap_force_destroy, mi_heap_destroy
-// (mi_heap_initialize and mi_heap_free_theaps are ported now as they only
-//  use already-ported machinery.)
+// Includes the full heap lifecycle (new/delete/destroy) on top of the
+// malloc/free API (Alloc.cs / Free.cs).
 
 using System.Runtime.CompilerServices;
 
@@ -215,6 +212,123 @@ namespace FlowtideDotNet.MiMalloc
                     mi_assert_internal(heap->theaps == null);
                 }
             } while (!all_freed);
+        }
+
+        // C: heap.c `_mi_heap_new_for_subproc`
+        public static mi_heap_t* _mi_heap_new_for_subproc(mi_subproc_t* subproc, void* exclusive_arena_id, bool is_main_heap)
+        {
+            mi_assert_internal(is_main_heap
+                ? (mi_atomic_load_ptr_relaxed(&subproc->heap_main) == null && subproc->parent != null)
+                : mi_atomic_load_ptr_relaxed(&subproc->heap_main) != null);
+            // heap data is allocated in the current subproc
+            mi_heap_t* heap_main = (is_main_heap ? mi_atomic_load_ptr_relaxed(&subproc->parent->heap_main) : mi_atomic_load_ptr_relaxed(&subproc->heap_main));
+            mi_heap_t* heap = (mi_heap_t*)mi_heap_zalloc(heap_main, (nuint)sizeof(mi_heap_t));
+            if (heap == null) return null;
+            // reserve a thread local slot for this heap (see also issue #1230)
+            nuint theap_slot = (is_main_heap ? mi_thread_local_key_fast : _mi_thread_local_create());
+            if (theap_slot == 0)
+            {
+                _mi_error_message(EFAULT, "unable to dynamically create a thread local for a heap");
+                mi_free(heap);
+                return null;
+            }
+            if (is_main_heap)
+            {
+                mi_assert_internal(mi_atomic_load_ptr_relaxed(&subproc->heap_main) == null);
+                mi_atomic_store_ptr_release(&subproc->heap_main, heap);
+            }
+            mi_heap_initialize(heap, theap_slot, subproc, exclusive_arena_id);
+            return heap;
+        }
+
+        public static mi_heap_t* mi_heap_new_in_arena(void* exclusive_arena_id)
+        {
+            return _mi_heap_new_for_subproc(_mi_subproc(), exclusive_arena_id, false);
+        }
+
+        public static mi_heap_t* mi_heap_new()
+        {
+            return mi_heap_new_in_arena(null);
+        }
+
+        // free the heap resources (assuming the pages are already moved/destroyed, and all theaps have been freed)
+        private static void mi_heap_free(mi_heap_t* heap, bool acquire_heaps_lock)
+        {
+            mi_assert_internal(heap != null && !_mi_is_heap_main(heap));
+
+            // free all arena pages infos
+            mi_lock_acquire(&heap->arena_pages_lock);
+            try
+            {
+                for (int i = 0; i < MI_MAX_ARENAS; i++)
+                {
+                    mi_arena_pages_t* arena_pages = (mi_arena_pages_t*)mi_atomic_load_relaxed(ref *(nuint*)&heap->arena_pages[i]);
+                    if (arena_pages != null)
+                    {
+                        mi_atomic_store_relaxed(ref *(nuint*)&heap->arena_pages[i], 0);
+                        _mi_free_subproc_safe(arena_pages);
+                    }
+                }
+            }
+            finally
+            {
+                mi_lock_release(&heap->arena_pages_lock);
+            }
+
+            // remove the heap from the subproc
+            mi_heap_stats_merge_to_main(heap);
+            mi_atomic_decrement_relaxed(ref heap->subproc->heap_count);
+            __mi_stat_decrease_mt(&heap->subproc->stats.heaps, 1);
+            if (acquire_heaps_lock) { mi_lock_acquire(&heap->subproc->heaps_lock); }   // C: mi_lock_maybe
+            try
+            {
+                if (heap->next != null) { heap->next->prev = heap->prev; }
+                if (heap->prev != null) { heap->prev->next = heap->next; }
+                else { heap->subproc->heaps = heap->next; }
+            }
+            finally
+            {
+                if (acquire_heaps_lock) { mi_lock_release(&heap->subproc->heaps_lock); }
+            }
+
+            _mi_thread_local_free(heap->theap);
+            mi_lock_done(&heap->theaps_lock);
+            mi_lock_done(&heap->os_abandoned_pages_lock);
+            mi_lock_done(&heap->arena_pages_lock);
+            _mi_free_subproc_safe(heap);
+        }
+
+        public static void mi_heap_delete(mi_heap_t* heap)
+        {
+            if (heap == null) return;
+            mi_heap_t* heap_main = mi_heap_get_heap_main(heap);
+            if (heap == heap_main)
+            {
+                _mi_warning_message("cannot delete the main heap");
+                return;
+            }
+            mi_heap_free_theaps(heap);
+            _mi_heap_move_pages(heap, heap_main);
+            mi_heap_free(heap, true /* acquire subproc->heaps_lock */);
+        }
+
+        public static void _mi_heap_force_destroy(mi_heap_t* heap, bool acquire_heaps_lock)
+        {
+            if (heap == null) return;
+            mi_heap_free_theaps(heap);
+            _mi_heap_destroy_pages(heap);
+            if (!_mi_is_heap_main(heap)) { mi_heap_free(heap, acquire_heaps_lock); }
+        }
+
+        public static void mi_heap_destroy(mi_heap_t* heap)
+        {
+            if (heap == null) return;
+            if (_mi_is_heap_main(heap))
+            {
+                _mi_warning_message("cannot destroy the main heap");
+                return;
+            }
+            _mi_heap_force_destroy(heap, true /* acquire subproc->heaps_lock */);
         }
 
         public static mi_heap_t* mi_heap_of(void* p)

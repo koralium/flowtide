@@ -47,6 +47,30 @@ namespace FlowtideDotNet.MiMalloc
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void _mi_memcpy_aligned(void* dst, void* src, nuint size) => NativeMemory.Copy(src, dst, size);
 
+        // C: _mi_memset_aligned (used for the MI_DEBUG freed/uninit fill patterns)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void _mi_memset_aligned(void* dst, byte val, nuint size) => NativeMemory.Fill(dst, size, val);
+
+        // ---------------------------------------------------------------------------
+        // string helpers (C: libc.c `_mi_strlen` / `_mi_strnlen`)
+        // ---------------------------------------------------------------------------
+
+        public static nuint _mi_strlen(byte* s)
+        {
+            if (s == null) return 0;
+            nuint len = 0;
+            while (s[len] != 0) { len++; }
+            return len;
+        }
+
+        public static nuint _mi_strnlen(byte* s, nuint max_len)
+        {
+            if (s == null) return 0;
+            nuint len = 0;
+            while (s[len] != 0 && len < max_len) { len++; }
+            return len;
+        }
+
         // note: the message/error functions (_mi_error_message, _mi_warning_message,
         // _mi_verbose_message, _mi_trace_message) live in Options.cs (as in the C code).
 
