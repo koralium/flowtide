@@ -66,5 +66,17 @@ namespace FlowtideDotNet.MiMalloc
         // Regular code calls `_mi_thread_id()` (in C defined in init.c).
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static nuint _mi_thread_id() => _mi_prim_thread_id();
+
+        // Swap the RAW thread id of the current thread (0 = not yet assigned) and return
+        // the previous raw value. Port-only: used by the thread-exit sentinel to run the
+        // dead thread's cleanup on the finalizer thread under the dead thread's identity,
+        // so the same-thread checks in `_mi_thread_done` behave as in C. Not part of the
+        // C API; must always be paired with a restoring swap.
+        internal static nuint _mi_prim_thread_id_swap_raw(nuint tid)
+        {
+            nuint prev = _threadId;
+            _threadId = tid;
+            return prev;
+        }
     }
 }

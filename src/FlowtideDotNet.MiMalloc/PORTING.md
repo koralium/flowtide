@@ -62,11 +62,16 @@ The C code has many `#if` variants. This port pins ONE configuration (the 64-bit
 - **Bit intrinsics (`bits.h`):** `System.Numerics.BitOperations` (`PopCount`,
   `TrailingZeroCount`, `LeadingZeroCount`, `RotateLeft/Right`) — JIT hardware intrinsics on
   x64/arm64. `mi_ctz(0)==64`, `mi_clz(0)==64` semantics are matched by BitOperations already.
-- **Thread-locals:** `mi_tld_t*` via `[ThreadStatic]` static field. Heap-dynamic theap slots
-  (`threadlocal.c`) ported over a `[ThreadStatic]` slot array. Thread-exit (`mi_thread_done`) has
-  no reliable hook in .NET → a per-thread sentinel class in a `[ThreadStatic]` field whose
-  finalizer runs after the thread dies and abandons the theaps (mimalloc already supports delayed
-  abandonment; a GC-delayed `mi_thread_done` is semantically fine, verify with tests).
+- **Thread-locals:** all per-thread native state lives in ONE meta-allocated
+  `mi_thread_ctx_t` behind a single `[ThreadStatic]` pointer (Init.cs): `theap_default` /
+  `theap_cached` (null until set — `MI_THEAP_INITASNULL` semantics like the C Windows model),
+  the `threadlocal.c` slots array, the fast slot, and the thread id. Thread-exit
+  (`mi_thread_done`) has no reliable hook in .NET → a per-thread sentinel class in a
+  `[ThreadStatic]` field whose finalizer runs `_mi_thread_done` after the thread dies,
+  temporarily ADOPTING the dead thread's id (`_mi_prim_thread_id_swap_raw`) and ctx pointer
+  so the C same-thread cleanup logic (incl. the `tld->thread_id` guard) runs unchanged on
+  the finalizer thread; the ctx itself is meta-freed at the end. Explicit `mi_thread_done`
+  on a live thread keeps the ctx armed (the thread may allocate again, as in C).
 - **OS layer (`os.c` + `src/prim`):** P/Invoke straight to the OS: `VirtualAlloc/VirtualFree/`
   `VirtualProtect` (Windows), `mmap/munmap/madvise/mprotect` (Linux/macOS via libc). This keeps
   reserve/commit/decommit/purge semantics (`NativeMemory` can't do reserve-only). No bundled
@@ -134,8 +139,20 @@ Dependency-ordered. Update the checkboxes as work lands; also mirrored in the se
       ZERO issues; one confirmed minor fixed (deferred-free handler/arg needed the
       C's Volatile ordering). Remaining stubs: `mi_arena_pages_alloc` (non-main
       heaps; step 8/9) and `_mi_page_associated_theap_peek` (threadlocal; step 7→8).
-- [ ] 7. `Heap.cs`, `Theap.cs`, `ThreadLocalMi.cs`, `Init.cs` — heaps, theaps, dynamic TLS,
-      process/thread init, thread-exit abandonment
+- [x] 7. `Heap.cs`, `Theap.cs`, `ThreadLocalMi.cs`, `Init.cs` — heaps, theaps, dynamic TLS,
+      process/thread init, thread-exit abandonment. Design (deviations documented in
+      the file headers): no static main theap/tld — EVERY thread meta-allocates its
+      tld+theap (`.NET` needs no allocation-free bootstrap); all per-thread state in
+      one native `mi_thread_ctx_t` behind a single `[ThreadStatic]` pointer
+      (theap_default/cached with `MI_THEAP_INITASNULL` semantics, dynamic-TLS slots
+      array, fast slot, thread id); thread exit via a finalizable sentinel whose
+      finalizer runs `_mi_thread_done` on the finalizer thread while ADOPTING the
+      dead thread's id + ctx (swap/restore), so C's same-thread checks and cleanup
+      (abandon-then-free of theaps, tld free) run unchanged; threadlocal.c slots
+      array uses the meta allocator (memid stored in a header field) instead of
+      `mi_rezalloc` until task #9. `_mi_page_associated_theap_peek` stub replaced
+      with the real prim-tls implementation (Heap.cs); real `_mi_subproc()`;
+      `mi_heap_new/delete/destroy` + `mi_subproc_new` deferred to task #9.
 - [ ] 8. `Alloc.cs`, `Free.cs`, `AllocAligned.cs` — malloc/zalloc/calloc/realloc fast paths,
       multithreaded free with ownership claim, aligned alloc, usable_size/good_size, collect
 - [ ] 9. Public API class `MiMalloc` (mi_* surface used by Flowtide), integration into
@@ -219,3 +236,37 @@ Dependency-ordered. Update the checkboxes as work lands; also mirrored in the se
   fixed (deferred-free Volatile ordering); static-memid flags aligned. Next:
   task #8 = theap.c/heap.c/threadlocal.c/init.c rest (thread init/done, TLS,
   theap collect), then #9 alloc/free fast paths + _mi_malloc_generic, #10 integration.
+- **2026-08-05 (cont. 5):** User committed checkpoint. Task #8: ported `mi_stats_add` +
+  `_mi_stats_merge_into` (Stats.cs), `ThreadLocalMi.cs` (threadlocal.c; slots array via
+  meta alloc with memid header field — mi_rezalloc lands with task #9), `Theap.cs`
+  (theap.c: visit/collect/init/create/incref-decref/free + area/block visiting with the
+  fast-divisor bitmap walk), `Heap.cs` (heap.c minus new/delete/destroy + the prim-tls.h
+  `_mi_heap_theap*` inlines incl. the real `_mi_page_associated_theap_peek`), and the
+  Init.cs completion: per-thread `mi_thread_ctx_t` + finalizer sentinel with id/ctx
+  adoption, `_mi_theap_default/cached(_set)`, `_mi_theap_options_init`,
+  `mi_tld_alloc/free`, thread init/done (`mi_thread_init_ex`, `mi_thread_theaps_done`
+  with the C freed-exchange retry protocol), real `_mi_subproc()`, `mi_heap_main()`,
+  `heap->theap = mi_thread_local_key_fast` for the main heap, `_mi_thread_locals_init`
+  in process init. 121 tests green on net8.0 Debug + net10.0 Release, including:
+  thread init wiring (fast slot, cookie, tld/heap lists), heap-theap caching +
+  refcount (1 init + 1 cached), explicit thread-done abandonment of used pages +
+  cross-thread reclaim, **finalizer-sentinel abandonment when a thread exits without
+  mi_thread_done** (GC-driven), forced theap collect freeing empty pages, 8-thread
+  concurrent init with distinct theaps/ids, dynamic TLS key create/free/version
+  protection, slots expansion (16→64) and cross-thread isolation. One test
+  expectation fixed (reading a FREED key returns the stale value — C semantics;
+  only the reused key's version protects). Known C-inherited quirk noted: the
+  mi_heap_free_theaps (heap→tld lock order) vs mi_thread_theaps_done (tld→heap)
+  inversion is resolved by the freed-exchange short-circuit exactly as in C; with
+  only the main heap (Flowtide) mi_heap_free_theaps never runs.
+  Adversarial verification (6 finders incl. a dedicated sentinel-concurrency
+  reviewer + 2 refuters per finding, 12 agents): threadlocal.c, theap.c and
+  stats-merge comparers found ZERO issues; 2 distinct findings confirmed and
+  fixed: (1) mi_heap_free_theaps used the non-atomic `__mi_stat_counter_increase`
+  where C's heap-stat macro is the atomic `_mt` variant (heap->stats is shared);
+  (2) OOM-path divergence — `_mi_theap_default_set` could silently fail if the
+  port-only thread-ctx meta-allocation failed AFTER the tld/theap were already
+  created+registered (unreachable in C where the TLS store is infallible); fixed
+  by creating the ctx at the top of `mi_thread_init_ex` so ctx OOM propagates
+  as a clean init failure before anything registers, making the later stores
+  infallible (asserted). 121 tests re-run green on both matrices.

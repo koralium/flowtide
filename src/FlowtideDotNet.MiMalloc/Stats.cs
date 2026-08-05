@@ -122,6 +122,69 @@ namespace FlowtideDotNet.MiMalloc
             if (stat == src) return;
             mi_atomic_void_addi64_relaxed(ref stat->total, ref src->total);
         }
+
+        // must be thread safe as it is called from stats_merge
+        // (MI_STAT <= 1: malloc_bins are not merged, matching the C release build)
+        private static void mi_stats_add(mi_stats_t* stats, mi_stats_t* src)
+        {
+            if (stats == null || src == null || stats == src) return;
+
+            // copy all fields (MI_STAT_FIELDS in declaration order)
+            mi_stat_count_add_mt(&stats->pages, &src->pages);
+            mi_stat_count_add_mt(&stats->reserved, &src->reserved);
+            mi_stat_count_add_mt(&stats->committed, &src->committed);
+            mi_stat_counter_add_mt(&stats->reset, &src->reset);
+            mi_stat_counter_add_mt(&stats->purged, &src->purged);
+            mi_stat_count_add_mt(&stats->page_committed, &src->page_committed);
+            mi_stat_count_add_mt(&stats->pages_abandoned, &src->pages_abandoned);
+            mi_stat_count_add_mt(&stats->threads, &src->threads);
+            mi_stat_count_add_mt(&stats->malloc_normal, &src->malloc_normal);
+            mi_stat_count_add_mt(&stats->malloc_huge, &src->malloc_huge);
+            mi_stat_count_add_mt(&stats->malloc_requested, &src->malloc_requested);
+            mi_stat_counter_add_mt(&stats->mmap_calls, &src->mmap_calls);
+            mi_stat_counter_add_mt(&stats->commit_calls, &src->commit_calls);
+            mi_stat_counter_add_mt(&stats->reset_calls, &src->reset_calls);
+            mi_stat_counter_add_mt(&stats->purge_calls, &src->purge_calls);
+            mi_stat_counter_add_mt(&stats->arena_count, &src->arena_count);
+            mi_stat_counter_add_mt(&stats->malloc_normal_count, &src->malloc_normal_count);
+            mi_stat_counter_add_mt(&stats->malloc_huge_count, &src->malloc_huge_count);
+            mi_stat_counter_add_mt(&stats->malloc_guarded_count, &src->malloc_guarded_count);
+            mi_stat_counter_add_mt(&stats->arena_rollback_count, &src->arena_rollback_count);
+            mi_stat_counter_add_mt(&stats->arena_purges, &src->arena_purges);
+            mi_stat_counter_add_mt(&stats->pages_extended, &src->pages_extended);
+            mi_stat_counter_add_mt(&stats->pages_retire, &src->pages_retire);
+            mi_stat_counter_add_mt(&stats->page_searches, &src->page_searches);
+            mi_stat_counter_add_mt(&stats->page_searches_count, &src->page_searches_count);
+            mi_stat_count_add_mt(&stats->segments, &src->segments);
+            mi_stat_count_add_mt(&stats->segments_abandoned, &src->segments_abandoned);
+            mi_stat_count_add_mt(&stats->segments_cache, &src->segments_cache);
+            mi_stat_count_add_mt(&stats->_segments_reserved, &src->_segments_reserved);
+            mi_stat_count_add_mt(&stats->heaps, &src->heaps);
+            mi_stat_count_add_mt(&stats->theaps, &src->theaps);
+            mi_stat_counter_add_mt(&stats->pages_reclaim_on_alloc, &src->pages_reclaim_on_alloc);
+            mi_stat_counter_add_mt(&stats->pages_reclaim_on_free, &src->pages_reclaim_on_free);
+            mi_stat_counter_add_mt(&stats->pages_reabandon_full, &src->pages_reabandon_full);
+            mi_stat_counter_add_mt(&stats->pages_unabandon_busy_wait, &src->pages_unabandon_busy_wait);
+            mi_stat_counter_add_mt(&stats->heaps_delete_wait, &src->heaps_delete_wait);
+
+            // (MI_STAT <= 1: skip malloc_bins)
+            for (int i = 0; i <= MI_BIN_HUGE; i++)
+            {
+                mi_stat_count_add_mt((mi_stat_count_t*)Unsafe.AsPointer(ref stats->page_bins[i]), (mi_stat_count_t*)Unsafe.AsPointer(ref src->page_bins[i]));
+            }
+            for (int i = 0; i < (int)mi_chunkbin_t.MI_CBIN_COUNT; i++)
+            {
+                mi_stat_count_add_mt((mi_stat_count_t*)Unsafe.AsPointer(ref stats->chunk_bins[i]), (mi_stat_count_t*)Unsafe.AsPointer(ref src->chunk_bins[i]));
+            }
+        }
+
+        public static void _mi_stats_merge_into(mi_stats_t* to, mi_stats_t* from)
+        {
+            mi_assert_internal(to != null && from != null);
+            if (to == from) return;
+            mi_stats_add(to, from);
+            mi_stats_init(from);   // zero fields and keep the header
+        }
     }
 
     // count allocation over time

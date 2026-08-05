@@ -19,9 +19,8 @@
 //  - `mi_arena_pages_alloc` (per-heap page-bitmap allocation for NON-main heaps)
 //    needs `mi_heap_zalloc_aligned` and is stubbed to null until the heap API lands
 //    (task #9); only the main heap exists until then and it uses `arena->pages_main`.
-//  - `_mi_page_associated_theap_peek` needs the per-heap dynamic thread locals of
-//    threadlocal.c and is stubbed to null until task #8 (callers treat null as
-//    "cannot reabandon", the conservative C behavior).
+//  - `_mi_page_associated_theap_peek` is implemented in Heap.cs (with the other
+//    prim-tls.h inlines).
 
 using System.Runtime.CompilerServices;
 
@@ -663,13 +662,7 @@ namespace FlowtideDotNet.MiMalloc
             mi_abandoned_page_unown(page, current_theap);
         }
 
-        // stub until threadlocal.c lands (task #8): the theap associated with a page's heap
-        // on the CURRENT thread; null means "not available" which callers treat conservatively.
-        public static mi_theap_t* _mi_page_associated_theap_peek(mi_page_t* page)
-        {
-            // TODO(task #8): read the heap's dynamic thread-local theap slot
-            return null;
-        }
+        // (`_mi_page_associated_theap_peek` lives in Heap.cs with the other prim-tls inlines)
 
         // this is called from `free.c:mi_free_try_collect_mt` only.
         public static bool _mi_arenas_page_try_reabandon_to_mapped(mi_page_t* page)

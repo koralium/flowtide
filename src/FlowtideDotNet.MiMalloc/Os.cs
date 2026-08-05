@@ -18,8 +18,8 @@
 //  - Huge OS pages (1 GiB) are not supported: _mi_os_alloc_huge_os_pages returns null
 //    (the arena layer treats that as "no huge pages available", same as when the OS
 //    refuses them). NUMA is single-node.
-//  - The aligned-hint start address is not randomized yet (C randomizes via the theap
-//    random context when NDEBUG; hardening only, not correctness). TODO with Random.cs.
+//  - The aligned-hint start address is randomized via the theap random context in
+//    Release builds only (C: MI_SECURE>=1 || NDEBUG), matching the C debug/release split.
 //  - Custom commit functions (`mi_commit_fun_t`) are not supported (never set by Flowtide).
 
 namespace FlowtideDotNet.MiMalloc
@@ -159,9 +159,14 @@ namespace FlowtideDotNet.MiMalloc
             nuint hint = mi_atomic_add_acq_rel(ref mi_os_aligned_base, size);
             if (hint == 0 || hint > unchecked((nuint)MI_HINT_MAX))   // wrap or initialize
             {
-                // note: C randomizes `init` via the theap random context (NDEBUG builds);
-                // hardening only -- not ported yet (see file header).
                 nuint init = unchecked((nuint)MI_HINT_BASE);
+#if !MI_DEBUG
+                // security: randomize start of aligned allocations unless in debug mode (C: MI_SECURE>=1 || NDEBUG)
+                mi_theap_t* theap = _mi_theap_default();   // don't use `mi_theap_get_default()` as that can cause allocation recursively (issue #1267)
+                if (!mi_theap_is_initialized(theap)) return null;   // no hint as we lack randomness at this point
+                nuint r = _mi_theap_random_next(theap);
+                init = init + ((MI_HINT_ALIGN * ((r >> 17) & 0xFFFFF)) % unchecked((nuint)MI_HINT_AREA));   // (randomly 20 bits)*4MiB == 0 to 4TiB
+#endif
                 nuint expected = hint + size;
                 mi_atomic_cas_strong_acq_rel(ref mi_os_aligned_base, ref expected, init);
                 hint = mi_atomic_add_acq_rel(ref mi_os_aligned_base, size); // this may still give 0 or > MI_HINT_MAX but that is ok, it is a hint after all

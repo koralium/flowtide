@@ -517,9 +517,15 @@ namespace FlowtideDotNet.MiMalloc
         public static mi_subproc_t* mi_page_subproc(mi_page_t* page)
             => mi_page_heap(page)->subproc;
 
+        // C: init.c `_mi_subproc_heap_main` (the port creates the main heap eagerly in
+        // mi_process_init so the lazy-init branch of the C version is not needed)
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static mi_heap_t* _mi_subproc_heap_main(mi_subproc_t* subproc)
-            => mi_atomic_load_ptr_relaxed(&subproc->heap_main);
+        {
+            mi_heap_t* heap = mi_atomic_load_ptr_acquire(&subproc->heap_main);
+            mi_assert_internal(heap != null);
+            return heap;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static mi_heap_t* mi_arena_heap_main(mi_arena_t* arena)
