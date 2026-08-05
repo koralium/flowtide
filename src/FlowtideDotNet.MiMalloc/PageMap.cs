@@ -161,8 +161,11 @@ namespace FlowtideDotNet.MiMalloc
         }
 
         // initialize the page map
+        // (port note: idempotent -- C calls this exactly once from process init, but the
+        // port also allows explicit calls, e.g. from tests, without resetting a live map)
         public static bool _mi_page_map_init()
         {
+            if (mi_page_map_get() != mi_page_map_empty_get()) return true;   // already initialized
             nuint vbits = (nuint)mi_option_get_clamp(mi_option_t.mi_option_max_vabits, 0, MI_MAX_VABITS);
             if (vbits == 0)
             {

@@ -182,14 +182,23 @@ namespace FlowtideDotNet.MiMalloc.Tests
             long saved = mi_option_get(mi_option_t.mi_option_purge_delay);
             try
             {
-                mi_option_set(mi_option_t.mi_option_purge_delay, 50);   // 50ms delay
+                // long delay so concurrently running tests cannot purge our slices via a
+                // non-forced collect before we assert; an EXCLUSIVE arena keeps other
+                // tests from allocating/freeing in it at all.
+                mi_option_set(mi_option_t.mi_option_purge_delay, 10_000);
                 mi_heap_t* heap = MainHeap();
                 mi_subproc_t* subproc = heap->subproc;
+
+                void* arena_id = null;
+                Assert.Equal(0, mi_reserve_os_memory_ex(64 * 1024 * 1024, true /* commit */, false, true /* exclusive */, &arena_id));
+                mi_arena_t* req_arena = _mi_arena_from_id(arena_id);
+
                 nuint size = 4 * MI_ARENA_SLICE_SIZE;
                 mi_memid_t memid;
-                byte* p = (byte*)_mi_arenas_alloc(heap, size, true, true, null, 0, -1, &memid);
+                byte* p = (byte*)_mi_arenas_alloc(heap, size, true, true, req_arena, 0, -1, &memid);
                 Assert.True(p != null && memid.memkind == mi_memkind_t.MI_MEM_ARENA);
                 mi_arena_t* arena = memid.mem.arena.arena;
+                Assert.True(arena == req_arena);
                 nuint slice_index = memid.mem.arena.slice_index;
 
                 _mi_arenas_free(subproc, p, size, memid);

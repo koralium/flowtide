@@ -121,11 +121,19 @@ Dependency-ordered. Update the checkboxes as work lands; also mirrored in the se
       heap-visiting) moves to step 6 with page.c — one concurrency unit.
       Init.cs now wires the main heap (subproc->heap_main) so arena allocation works;
       ArenaMeta.cs stubs removed (meta allocator is arena-backed now).
-- [ ] 6. `PageQueue.cs`, `Page.cs` — page queues, page init/extend/retire, free-list
-      collect. PLUS the page half of arena.c (`_mi_arenas_page_alloc/free/abandon/
-      unabandon/reabandon`, `mi_arenas_page_try_find_abandoned`, `mi_heap_ensure_arena_pages`,
-      `mi_arena_pages_alloc`) and the page-flag/ownership inlines from internal.h
-      (`mi_page_is_owned`, `mi_tf_*`, `mi_page_claim_ownership`, `_mi_bin`).
+- [x] 6. `PageQueue.cs` (page-queue.c: mi_bin with the MI_ALIGN2W branch, queue ops,
+      pages_free_direct maintenance), `Page.cs` (page.c: thread-free collect, page
+      init/extend with commit-on-demand, retire, full-queue, find-free candidate
+      search; `_mi_malloc_generic`/`mi_find_page` deferred to step 8 with alloc.c),
+      `ArenaPages.cs` (the page half of arena.c: fresh/abandoned page alloc, free,
+      abandon/unabandon with the ownership protocol), the page-flag/ownership
+      inlines + theap accessors into Internal.cs, and the empty statics
+      (`_mi_page_empty`, `_mi_theap_empty(_wrong)`, bin-size table) + lazy
+      `mi_process_init` (options → OS → subproc/heap_main → page map) into Init.cs.
+      Adversarially verified (3 finders + 2 refuters): ArenaPages comparer found
+      ZERO issues; one confirmed minor fixed (deferred-free handler/arg needed the
+      C's Volatile ordering). Remaining stubs: `mi_arena_pages_alloc` (non-main
+      heaps; step 8/9) and `_mi_page_associated_theap_peek` (threadlocal; step 7→8).
 - [ ] 7. `Heap.cs`, `Theap.cs`, `ThreadLocalMi.cs`, `Init.cs` — heaps, theaps, dynamic TLS,
       process/thread init, thread-exit abandonment
 - [ ] 8. `Alloc.cs`, `Free.cs`, `AllocAligned.cs` — malloc/zalloc/calloc/realloc fast paths,
@@ -194,5 +202,20 @@ Dependency-ordered. Update the checkboxes as work lands; also mirrored in the se
   Debug + net10.0 Release (arena roundtrips, immediate+delayed purge, arena-backed
   meta allocator, concurrent alloc/free stress). Adversarial verification (2 finders
   + 1 refuter): ZERO confirmed findings (one numa_node candidate refuted; aligned to
-  the C value anyway). Next: page-queue.c + page.c + the page half of arena.c
-  (task #7 in the session task list / step 6 here).
+  the C value anyway).
+- **2026-08-05 (cont. 4):** User committed checkpoint. Ported the page layer:
+  PageQueue.cs, Page.cs, ArenaPages.cs, page-flag/ownership/theap inlines into
+  Internal.cs, empty statics + bin-size table + lazy `mi_process_init` into Init.cs
+  (the page map now initializes as part of process init, matching C; explicit
+  `_mi_page_map_init` calls are idempotent). 111 tests green on net8.0 Debug +
+  net10.0 Release: bin function invariants, full page lifecycles through the public
+  surface (fresh alloc for all size classes + singleton, block pop/free/collect,
+  queue/retire/collect-retired, abandon → find-abandoned reclaim → unabandon
+  roundtrips, cross-thread xthread_free push + collect). All intermediate test
+  failures during development were WRONG TEST EXPECTATIONS (single-block extends
+  for >=4KiB blocks, abandoned-mapped thread-id persisting after bitmap claim,
+  unreachable bins 3/5/7 and 61-72) -- the ported code matched C each time.
+  Adversarial verification: ArenaPages comparer zero issues; one confirmed minor
+  fixed (deferred-free Volatile ordering); static-memid flags aligned. Next:
+  task #8 = theap.c/heap.c/threadlocal.c/init.c rest (thread init/done, TLS,
+  theap collect), then #9 alloc/free fast paths + _mi_malloc_generic, #10 integration.
