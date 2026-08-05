@@ -176,32 +176,6 @@ namespace FlowtideDotNet.MiMalloc
             return false;
         }
 
-        // ---------------------------------------------------------------------------
-        // TEMPORARY arena stubs -- REPLACED by the Arena.cs port (task #6).
-        // `_mi_arenas_alloc_aligned` returning null makes the meta allocator fall back
-        // to OS allocation (a supported configuration in C when arenas are exhausted),
-        // and `_mi_arenas_free` routes OS memids to the OS exactly like the C does.
-        // ---------------------------------------------------------------------------
-
-        public static void* _mi_arenas_alloc_aligned(mi_heap_t* heap, nuint size, nuint alignment, nuint align_offset,
-            bool commit, bool allow_large, mi_arena_t* req_arena, nuint tseq, int numa_node, mi_memid_t* memid)
-        {
-            // TODO(task #6): real arena allocation; null -> callers use their OS fallback
-            *memid = _mi_memid_none();
-            return null;
-        }
-
-        public static void _mi_arenas_free(mi_subproc_t* subproc, void* p, nuint size, mi_memid_t memid)
-        {
-            // TODO(task #6): real arena free; until then only OS/static memids can occur
-            if (mi_memkind_is_os(memid.memkind))
-            {
-                _mi_os_free(subproc, p, size, memid);
-            }
-            else
-            {
-                mi_assert_internal(mi_memid_needs_no_free(memid));
-            }
-        }
+        // note: `_mi_arenas_alloc_aligned` / `_mi_arenas_free` live in Arena.cs
     }
 }

@@ -27,7 +27,9 @@ namespace FlowtideDotNet.MiMalloc
     {
         private static nint mi_subproc_main_field;   // holds the mi_subproc_t* once created
 
-        // C: the relevant parts of mi_subproc_main_init() that don't need the main heap yet.
+        // C: the relevant parts of mi_subproc_main_init() / the static heap initializers
+        // that don't need theaps yet. (C: `static mi_subproc_t subproc_main` and
+        // `static mi_heap_t mi_process_heap_main` in .bss.)
         private static mi_subproc_t* mi_subproc_main_create()
         {
             var subproc = (mi_subproc_t*)NativeMemory.AllocZeroed((nuint)sizeof(mi_subproc_t));
@@ -35,7 +37,22 @@ namespace FlowtideDotNet.MiMalloc
             mi_stats_header_init(&subproc->stats);
             mi_lock_init(&subproc->arena_reserve_lock);
             mi_lock_init(&subproc->heaps_lock);
-            // note: heap_main / heaps list wiring happens with the init.c port (task #8)
+
+            // main heap (minimal wiring; theap slot / theaps list land with task #8)
+            var heap = (mi_heap_t*)NativeMemory.AllocZeroed((nuint)sizeof(mi_heap_t));
+            heap->subproc = subproc;
+            heap->heap_seq = 0;
+            heap->numa_node = 0;   // C: mi_process_heap_main is zero-initialized (dynamic heaps get -1)
+            mi_lock_init(&heap->theaps_lock);
+            mi_lock_init(&heap->os_abandoned_pages_lock);
+            mi_lock_init(&heap->arena_pages_lock);
+            mi_stats_header_init(&heap->stats);
+
+            subproc->heaps = heap;
+            subproc->heap_total_count = 1;
+            subproc->heap_count = 1;
+            mi_atomic_store_ptr_release(&subproc->heap_main, heap);
+            __mi_stat_increase_mt(&subproc->stats.heaps, 1);
             return subproc;
         }
 
@@ -49,6 +66,7 @@ namespace FlowtideDotNet.MiMalloc
                 if (prev != 0)
                 {
                     // another thread won the race
+                    NativeMemory.Free(fresh->heaps);
                     NativeMemory.Free(fresh);
                     p = prev;
                 }
@@ -59,5 +77,14 @@ namespace FlowtideDotNet.MiMalloc
             }
             return (mi_subproc_t*)p;
         }
+
+        // The sub-process of the current thread. In C this reads the thread-local
+        // tld->subproc (defaulting to the main subproc); custom sub-processes are out
+        // of scope for the port so this is always the main one (revisit with task #8).
+        public static mi_subproc_t* _mi_subproc() => _mi_subproc_main();
+
+        // C: internal.h `_mi_is_heap_main`
+        public static bool _mi_is_heap_main(mi_heap_t* heap)
+            => heap == mi_atomic_load_ptr_relaxed(&heap->subproc->heap_main);
     }
 }

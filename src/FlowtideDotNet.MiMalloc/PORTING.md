@@ -112,8 +112,20 @@ Dependency-ordered. Update the checkboxes as work lands; also mirrored in the se
       minimal `Init.cs` with `_mi_subproc_main`), `Random.cs` (chacha20, verified
       against the RFC 8439 vectors). Note: pointer-to-pointer atomic cells (submap
       entries) go through the nuint atomics -- C# generics reject `T*` type args.
-- [ ] 5. `Arena.cs` — arena.c (slice alloc/free, reserve/grow, purge, abandoned page bitmaps)
-- [ ] 6. `PageQueue.cs`, `Page.cs` — page queues, page init/extend/retire, free-list collect
+- [x] 5. `Arena.cs` — the MEMORY half of arena.c: slice alloc (`mi_arena_try_alloc_at`,
+      `_mi_arenas_alloc_aligned`), arena reserve/creation (`mi_reserve_os_memory*`,
+      `mi_manage_os_memory*`, `mi_arena_initialize` with bitmap carving), free with
+      delayed purging (schedule/try_purge incl. the `mi_atomic_guard` pattern), and
+      the `mi_forall_arenas` iteration. Adversarially verified: zero confirmed
+      findings. The PAGE half of arena.c (page alloc/free/abandon/unabandon +
+      heap-visiting) moves to step 6 with page.c — one concurrency unit.
+      Init.cs now wires the main heap (subproc->heap_main) so arena allocation works;
+      ArenaMeta.cs stubs removed (meta allocator is arena-backed now).
+- [ ] 6. `PageQueue.cs`, `Page.cs` — page queues, page init/extend/retire, free-list
+      collect. PLUS the page half of arena.c (`_mi_arenas_page_alloc/free/abandon/
+      unabandon/reabandon`, `mi_arenas_page_try_find_abandoned`, `mi_heap_ensure_arena_pages`,
+      `mi_arena_pages_alloc`) and the page-flag/ownership inlines from internal.h
+      (`mi_page_is_owned`, `mi_tf_*`, `mi_page_claim_ownership`, `_mi_bin`).
 - [ ] 7. `Heap.cs`, `Theap.cs`, `ThreadLocalMi.cs`, `Init.cs` — heaps, theaps, dynamic TLS,
       process/thread init, thread-exit abandonment
 - [ ] 8. `Alloc.cs`, `Free.cs`, `AllocAligned.cs` — malloc/zalloc/calloc/realloc fast paths,
@@ -173,5 +185,14 @@ Dependency-ordered. Update the checkboxes as work lands; also mirrored in the se
   arena stubs -> OS fallback, marked for replacement in task #6). 86 tests green on
   net8.0 Debug + net10.0 Release. Remaining known gaps: aligned-hint randomization
   (wire _mi_os_get_aligned_hint to theap random when init.c lands), thread auto-done
-  prims (task #8 init.c), mi_atomic_guard (add with arena.c purge, its only consumer).
-  Next: arena.c (task #6) -- the largest single file (2616 lines).
+  prims (task #8 init.c).
+- **2026-08-05 (cont. 3):** User committed checkpoint (e9829b85). Ported the memory
+  half of arena.c to Arena.cs (~1100 lines: ids, try_alloc_at, reserve with
+  exponential scaling, forall-arenas iteration, alloc_aligned, free, full purge
+  machinery with the atomic guard); replaced the ArenaMeta stubs; wired the main heap
+  in Init.cs (heap_main + _mi_subproc + _mi_is_heap_main). 97 tests green on net8.0
+  Debug + net10.0 Release (arena roundtrips, immediate+delayed purge, arena-backed
+  meta allocator, concurrent alloc/free stress). Adversarial verification (2 finders
+  + 1 refuter): ZERO confirmed findings (one numa_node candidate refuted; aligned to
+  the C value anyway). Next: page-queue.c + page.c + the page half of arena.c
+  (task #7 in the session task list / step 6 here).
