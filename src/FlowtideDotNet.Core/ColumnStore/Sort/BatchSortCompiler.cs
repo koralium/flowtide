@@ -51,20 +51,21 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
         /// <summary>
         /// Ascending with nulls last, for the asymmetric case the null-first compare can't do.
+        /// Probes the type and self compares, the IDataValue overload would box twice per comparison.
         /// </summary>
         public static int CompareColumnAscendingNullsLast(IColumn column, int x, int y)
         {
-            var xval = column.GetValueAt(x, default);
-            var yval = column.GetValueAt(y, default);
-            if (xval.IsNull)
+            var xIsNull = column.GetTypeAt(x, default) == ArrowTypeId.Null;
+            var yIsNull = column.GetTypeAt(y, default) == ArrowTypeId.Null;
+            if (xIsNull)
             {
-                return yval.IsNull ? 0 : 1;
+                return yIsNull ? 0 : 1;
             }
-            if (yval.IsNull)
+            if (yIsNull)
             {
                 return -1;
             }
-            return DataValueComparer.CompareTo(xval, yval);
+            return column.CompareTo(column, x, y);
         }
 
         /// <summary>
@@ -72,17 +73,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         /// </summary>
         public static int CompareColumnDescendingNullsFirst(IColumn column, int x, int y)
         {
-            var xval = column.GetValueAt(x, default);
-            var yval = column.GetValueAt(y, default);
-            if (xval.IsNull)
+            var xIsNull = column.GetTypeAt(x, default) == ArrowTypeId.Null;
+            var yIsNull = column.GetTypeAt(y, default) == ArrowTypeId.Null;
+            if (xIsNull)
             {
-                return yval.IsNull ? 0 : -1;
+                return yIsNull ? 0 : -1;
             }
-            if (yval.IsNull)
+            if (yIsNull)
             {
                 return 1;
             }
-            return DataValueComparer.CompareTo(yval, xval);
+            // Operands swapped, descending is the reverse of the column's own order.
+            return column.CompareTo(column, y, x);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -313,8 +315,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             {
                 return direction;
             }
-            var state = column.GetColumnState();
-            if ((state & (CompareColumnState.HasValidityBitmap | CompareColumnState.OffsetContainsNull)) == 0)
+            if (!CompareColumnStateBuilder.CanContainNull(column.GetColumnState()))
             {
                 return direction.NormalizeForNoNulls();
             }

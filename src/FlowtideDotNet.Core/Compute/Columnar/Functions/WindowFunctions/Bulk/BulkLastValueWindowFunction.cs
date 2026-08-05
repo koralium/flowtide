@@ -44,21 +44,20 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             switch (bounds.Kind)
             {
                 case BulkWindowFrameKind.WholePartition:
-                    bulkWindowFunction = new BulkLastValueWindowFunctionUnbounded(compiledValue, ignoreNull);
+                    bulkWindowFunction = new BulkLastValueWindowFunctionUnbounded(compiledValue, ignoreNull, long.MinValue);
                     return true;
                 case BulkWindowFrameKind.UnboundedPreceding:
                 case BulkWindowFrameKind.BoundedRows:
                     if (bounds.To == long.MaxValue)
                     {
-                        // Respect nulls to the partition end is the whole partition variant.
                         bulkWindowFunction = ignoreNull
                             ? new BulkLastValueIgnoreNullsSuffixWindowFunction(compiledValue, bounds.From)
-                            : new BulkLastValueWindowFunctionUnbounded(compiledValue, false);
+                            : new BulkLastValueWindowFunctionUnbounded(compiledValue, false, bounds.From);
                         return true;
                     }
-                    if (ignoreNull && bounds.From != long.MinValue && bounds.From > bounds.To)
+                    if (bounds.From != long.MinValue && bounds.From > bounds.To)
                     {
-                        // Ignore nulls with an empty frame is always null.
+                        // A frame starting after it ends is always empty, whatever the null treatment.
                         bulkWindowFunction = new BulkEmptyFrameWindowFunction();
                         return true;
                     }
@@ -66,7 +65,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                     {
                         bulkWindowFunction = ignoreNull
                             ? new BulkLastValueIgnoreNullsLookaheadWindowFunction(compiledValue, bounds.From, bounds.To)
-                            : new BulkLastValueRespectLookaheadWindowFunction(compiledValue, bounds.To);
+                            : new BulkLastValueRespectLookaheadWindowFunction(compiledValue, bounds.From, bounds.To);
                         return true;
                     }
                     bulkWindowFunction = ignoreNull
@@ -166,6 +165,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     internal class BulkLastValueRespectLookaheadWindowFunction : IBulkWindowFunction
     {
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
+        private readonly long _from;
         private readonly long _to;
 
         private BulkWindowForwardPartitionReader? _lookahead;
@@ -179,10 +179,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private bool _lookaheadStarted;
         private bool _lookaheadDone;
 
-        public BulkLastValueRespectLookaheadWindowFunction(Func<EventBatchData, int, IDataValue> fetchValueFunction, long to)
+        public BulkLastValueRespectLookaheadWindowFunction(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from, long to)
         {
             Debug.Assert(to > 0);
             _fetchValueFunction = fetchValueFunction;
+            _from = from;
             _to = to;
         }
 
@@ -259,7 +260,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 _nextFeedPosition++;
             }
 
-            if (_anyFed)
+            // The last fed position is the frame end clipped to the partition, an empty frame starts past it.
+            if (_anyFed && (_from == long.MinValue || _currentPosition + _from <= _nextFeedPosition - 1))
             {
                 _lastValueColumn.GetValueAt(0, result, default);
             }
@@ -600,15 +602,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     {
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
         private readonly bool _ignoreNulls;
+        private readonly long _from;
 
         private BulkWindowForwardPartitionReader? _reader;
         private Column? _lastValueColumn;
         private bool _hasValue;
+        private long _logicalLength;
+        private long _position;
 
-        public BulkLastValueWindowFunctionUnbounded(Func<EventBatchData, int, IDataValue> fetchValueFunction, bool ignoreNulls)
+        public BulkLastValueWindowFunctionUnbounded(Func<EventBatchData, int, IDataValue> fetchValueFunction, bool ignoreNulls, long from)
         {
             _fetchValueFunction = fetchValueFunction;
             _ignoreNulls = ignoreNulls;
+            _from = from;
         }
 
         public long AffectedRowsBefore => long.MaxValue;
@@ -640,9 +646,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             Debug.Assert(_lastValueColumn != null);
 
             _hasValue = false;
+            _logicalLength = 0;
+            // AffectedRowsBefore is unbounded, so the scan always starts at the partition start and positions line up.
+            _position = -1;
             await _reader.Reset(partitionValues);
             while (await _reader.MoveNextRow())
             {
+                _logicalLength += _reader.Weight;
                 var value = _fetchValueFunction(_reader.Batch, _reader.RowIndex);
                 if (_ignoreNulls && value.IsNull)
                 {
@@ -656,7 +666,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)
         {
             Debug.Assert(_lastValueColumn != null);
-            if (_hasValue)
+            _position++;
+            if (_hasValue && (_from == long.MinValue || _position + _from <= _logicalLength - 1))
             {
                 _lastValueColumn.GetValueAt(0, result, default);
             }

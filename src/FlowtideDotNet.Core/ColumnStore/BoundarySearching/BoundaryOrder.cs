@@ -25,6 +25,11 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
         /// True when value sorts after target in region order.
         /// </summary>
         static abstract bool SortsAfter(T value, T target);
+
+        /// <summary>
+        /// Where this order places nulls, ascending keeps them first and descending last.
+        /// </summary>
+        static abstract bool NullsFirst { get; }
     }
 
     internal readonly struct AscendingBoundaryOrder<T> : IBoundaryOrder<T>
@@ -32,6 +37,8 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool SortsAfter(T value, T target) => value > target;
+
+        public static bool NullsFirst => true;
     }
 
     internal readonly struct DescendingBoundaryOrder<T> : IBoundaryOrder<T>
@@ -39,6 +46,8 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool SortsAfter(T value, T target) => value < target;
+
+        public static bool NullsFirst => false;
     }
 
     /// <summary>

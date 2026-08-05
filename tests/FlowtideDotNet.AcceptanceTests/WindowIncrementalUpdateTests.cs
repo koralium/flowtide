@@ -16,13 +16,11 @@ using Xunit.Abstractions;
 namespace FlowtideDotNet.AcceptanceTests
 {
     /// <summary>
-    /// Tests for the bulk window operator's incremental recompute paths: appends at the end of a
-    /// partition, inserts and deletes in the middle, updates of existing rows and crash recovery, all
-    /// across multiple watermarks.
+    /// Window results after appends, mid partition inserts, deletes, updates and crash recovery
     /// </summary>
-    public class BulkWindowTests : FlowtideAcceptanceBase
+    public class WindowIncrementalUpdateTests : FlowtideAcceptanceBase
     {
-        public BulkWindowTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
+        public WindowIncrementalUpdateTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
         {
         }
 

@@ -1962,5 +1962,567 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected);
         }
 
+        public record LagOffsetResult(string? companyId, int userkey, long? value);
+
+        public record LagStringResult(string? companyId, int userkey, string? firstName, string? lagValue);
+
+        public record LastValueDoubleResult(string? companyId, int userkey, double? value);
+
+        public record LastValueLongResult(string? companyId, int userkey, long? value);
+
+        public record LastValueAndMinByResult(string? companyId, int userkey, double? lastValue, double? minValue);
+
+        public record RespectAndIgnoreResult(string? companyId, int userkey, long? respectValue, long? ignoreValue);
+
+        public record JoinResult(string? companyId, int userkey, decimal? money);
+
+        public record StabilityRow(string? firstName, double windowValue);
+
+        private void AddUser(int userKey)
+        {
+            AddOrUpdateUser(new User()
+            {
+                UserKey = userKey,
+                CompanyId = "1"
+            });
+        }
+
+        private void AddUser(string companyId, int userKey, double doubleValue)
+        {
+            AddOrUpdateUser(new User()
+            {
+                UserKey = userKey,
+                CompanyId = companyId,
+                DoubleValue = doubleValue
+            });
+        }
+
+        private void AddUserVisits(string companyId, int userKey, int? visits)
+        {
+            AddOrUpdateUser(new User()
+            {
+                UserKey = userKey,
+                CompanyId = companyId,
+                Visits = visits
+            });
+        }
+
+        private void AddNamedUser(int userKey, string firstName)
+        {
+            AddOrUpdateUser(new User()
+            {
+                UserKey = userKey,
+                CompanyId = "1",
+                FirstName = firstName
+            });
+        }
+
+        private void AddNamedUser(int userKey, double doubleValue, string firstName)
+        {
+            AddOrUpdateUser(new User()
+            {
+                UserKey = userKey,
+                CompanyId = "1",
+                FirstName = firstName,
+                DoubleValue = doubleValue
+            });
+        }
+
+        private void AddLagOffsetPartition()
+        {
+            for (int i = 1; i <= 5; i++)
+            {
+                AddUser(i * 10);
+            }
+        }
+
+        private List<LagOffsetResult> ExpectedAllNull()
+        {
+            return Users.OrderBy(x => x.UserKey)
+                .Select(x => new LagOffsetResult(x.CompanyId, x.UserKey, null))
+                .ToList();
+        }
+
+        // Bounds the wait so a stalled stream fails instead of hanging
+        private async Task WaitForUpdateBounded(string message)
+        {
+            var update = WaitForUpdate();
+            var finished = await Task.WhenAny(update, Task.Delay(TimeSpan.FromSeconds(30)));
+            Assert.True(finished == update, message);
+            await update;
+        }
+
+        // A lag offset larger than the partition is null, not a fault
+        [Fact]
+        public async Task LagWithMaxLongOffsetReturnsNullInsteadOfCrashing()
+        {
+            AddLagOffsetPartition();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LAG(UserKey, 9223372036854775807) OVER (PARTITION BY CompanyId ORDER BY UserKey) as value
+            FROM users");
+            await WaitForUpdateBounded("The stream never produced a result for a lag offset of long.MaxValue");
+
+            AssertCurrentDataEqual(ExpectedAllNull());
+        }
+
+        // Offsets above int range stay null, including after a mid partition insert
+        [Fact]
+        public async Task LagWithOffsetAboveIntMaxReturnsNull()
+        {
+            AddLagOffsetPartition();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                LAG(UserKey, 3000000000) OVER (PARTITION BY CompanyId ORDER BY UserKey) as value
+            FROM users");
+            await WaitForUpdateBounded("The stream never produced a result for a lag offset of 3000000000");
+
+            AssertCurrentDataEqual(ExpectedAllNull());
+
+            AddUser(25);
+            await WaitForUpdateBounded("The stream never produced a result after the incremental insert");
+
+            AssertCurrentDataEqual(ExpectedAllNull());
+        }
+
+        private List<LagStringResult> ExpectedLag(int offset)
+        {
+            return Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var ordered = g.OrderBy(x => x.UserKey).ToList();
+                    var output = new List<LagStringResult>();
+                    for (int i = 0; i < ordered.Count; i++)
+                    {
+                        var lag = i - offset >= 0 ? ordered[i - offset].FirstName : null;
+                        output.Add(new LagStringResult(ordered[i].CompanyId, ordered[i].UserKey, ordered[i].FirstName, lag));
+                    }
+                    return output;
+                }).ToList();
+        }
+
+        private const string LagQuery = @"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                FirstName,
+                LAG(FirstName) OVER (PARTITION BY CompanyId ORDER BY UserKey) as lagValue
+            FROM users";
+
+        // Varying name lengths so a wrong value shows up as the wrong string
+        private void AddVaryingLengthNames()
+        {
+            AddNamedUser(10, "a");
+            AddNamedUser(20, "bb");
+            AddNamedUser(30, "cccc");
+            AddNamedUser(40, "d");
+            AddNamedUser(50, "eeeeeee");
+            AddNamedUser(60, "ff");
+        }
+
+        // Lag over a string column returns the previous row's value
+        [Fact]
+        public async Task LagOverStringColumnEmitsPreviousValue()
+        {
+            AddVaryingLengthNames();
+
+            await StartStream(LagQuery);
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(ExpectedLag(1));
+        }
+
+        // Lag with offset two over a string column returns the value two rows back
+        [Fact]
+        public async Task LagWithOffsetTwoOverStringColumnEmitsValueTwoBack()
+        {
+            AddVaryingLengthNames();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                FirstName,
+                LAG(FirstName, 2) OVER (PARTITION BY CompanyId ORDER BY UserKey) as lagValue
+            FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(ExpectedLag(2));
+        }
+
+        // String lag stays correct after an insert in the middle of the partition
+        [Fact]
+        public async Task LagOverStringColumnStaysCorrectAfterIncrementalInsert()
+        {
+            AddVaryingLengthNames();
+
+            await StartStream(LagQuery);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedLag(1));
+
+            AddNamedUser(35, new string('z', 12));
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(ExpectedLag(1));
+        }
+
+        // A single row following frame is null once it runs past the partition end
+        [Fact]
+        public async Task LastValueRespectNullsFollowingOnlyFrameIsNullPastPartitionEnd()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                LAST_VALUE(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 FOLLOWING AND 4 FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            var expected = Enumerable.Range(0, 10)
+                .Select(i => new LastValueDoubleResult("1", i, i + 4 <= 9 ? (double?)(i + 4) : null));
+            AssertCurrentDataEqual(expected);
+        }
+
+        // A frame that starts after it ends is empty, so the value is null
+        [Fact]
+        public async Task LastValueRespectNullsEmptyFrameFromGreaterThanToIsNull()
+        {
+            for (int i = 0; i < 6; i++)
+            {
+                AddUserVisits("1", i, i + 1);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                LAST_VALUE(Visits) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 PRECEDING AND 3 PRECEDING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            var expected = Users.Select(x => new LastValueLongResult(x.CompanyId, x.UserKey, null)).ToList();
+            AssertCurrentDataEqual(expected);
+        }
+
+        // Two functions over the same frame see the same rows
+        [Fact]
+        public async Task LastValueRespectNullsAndMinByAgreeOnEmptyFrame()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                LAST_VALUE(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 FOLLOWING AND 4 FOLLOWING) as lastValue,
+                min_by(DoubleValue, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 FOLLOWING AND 4 FOLLOWING) as minValue
+            FROM users");
+            await WaitForUpdate();
+
+            var expected = Enumerable.Range(0, 10)
+                .Select(i => new LastValueAndMinByResult(
+                    "1",
+                    i,
+                    i + 4 <= 9 ? (double?)(i + 4) : null,
+                    i + 4 <= 9 ? (double?)(i + 4) : null));
+            AssertCurrentDataEqual(expected);
+        }
+
+        // A suffix frame starting past the partition end is empty
+        [Fact]
+        public async Task LastValueRespectNullsFollowingToUnboundedIsNullPastPartitionEnd()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                AddUser("1", i, i);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                LAST_VALUE(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 4 FOLLOWING AND UNBOUNDED FOLLOWING) as value
+            FROM users");
+            await WaitForUpdate();
+
+            var expected = Enumerable.Range(0, 10)
+                .Select(i => new LastValueDoubleResult("1", i, i + 4 <= 9 ? (double?)9 : null));
+            AssertCurrentDataEqual(expected);
+        }
+
+        // Null treatment cannot change the answer over an empty frame
+        [Fact]
+        public async Task LastValueRespectAndIgnoreNullsAgreeOnEmptyFrame()
+        {
+            for (int i = 0; i < 6; i++)
+            {
+                AddUserVisits("1", i, i + 1);
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+                LAST_VALUE(Visits) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 PRECEDING AND 3 PRECEDING) as respectValue,
+                LAST_VALUE(Visits) IGNORE NULLS OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 PRECEDING AND 3 PRECEDING) as ignoreValue
+            FROM users");
+            await WaitForUpdate();
+
+            var expected = Users.Select(x => new RespectAndIgnoreResult(x.CompanyId, x.UserKey, null, null)).ToList();
+            AssertCurrentDataEqual(expected);
+        }
+
+        private const int NullOrderingRowCount = 200;
+
+        // A small source batch makes the join deliver many batches
+        private void SeedMatchedUsersAndOrders()
+        {
+            SourceBatchSize = 16;
+            for (int i = 1; i <= NullOrderingRowCount; i++)
+            {
+                AddOrUpdateUser(new User() { UserKey = i, CompanyId = "c1" });
+                AddOrUpdateOrder(new Order() { OrderKey = i, UserKey = i, Orderdate = new DateTime(2000, 1, 1, 0, 0, 0), Money = i });
+            }
+        }
+
+        private static IEnumerable<RowNumberResult> AscendingRowNumbers()
+        {
+            for (int i = 1; i <= NullOrderingRowCount; i++)
+            {
+                yield return new RowNumberResult("c1", i, i);
+            }
+        }
+
+        private static IEnumerable<RowNumberResult> DescendingRowNumbers()
+        {
+            for (int i = 1; i <= NullOrderingRowCount; i++)
+            {
+                yield return new RowNumberResult("c1", i, NullOrderingRowCount - i + 1);
+            }
+        }
+
+        // Explicit null placement over a joined column, every row matches so no null appears
+        [Fact]
+        public async Task RowNumberAscNullsLastOverJoinedColumnDoesNotFaultTheStream()
+        {
+            SeedMatchedUsersAndOrders();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                u.CompanyId,
+                u.UserKey,
+                ROW_NUMBER() OVER (PARTITION BY u.CompanyId ORDER BY o.Money ASC NULLS LAST)
+            FROM users u
+            LEFT JOIN orders o ON u.UserKey = o.UserKey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(AscendingRowNumbers());
+        }
+
+        // Control, default null placement over the same joined column
+        [Fact]
+        public async Task RowNumberPlainAscOverJoinedColumnIsUnaffected()
+        {
+            SeedMatchedUsersAndOrders();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                u.CompanyId,
+                u.UserKey,
+                ROW_NUMBER() OVER (PARTITION BY u.CompanyId ORDER BY o.Money)
+            FROM users u
+            LEFT JOIN orders o ON u.UserKey = o.UserKey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(AscendingRowNumbers());
+        }
+
+        // Desc nulls first must emit one row per user, not duplicates
+        [Fact]
+        public async Task RowNumberDescNullsFirstOverJoinedColumnDoesNotDuplicateRows()
+        {
+            SeedMatchedUsersAndOrders();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                u.CompanyId,
+                u.UserKey,
+                ROW_NUMBER() OVER (PARTITION BY u.CompanyId ORDER BY o.Money DESC NULLS FIRST)
+            FROM users u
+            LEFT JOIN orders o ON u.UserKey = o.UserKey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(DescendingRowNumbers());
+        }
+
+        // Control, plain desc over the same joined column
+        [Fact]
+        public async Task RowNumberPlainDescOverJoinedColumnIsUnaffected()
+        {
+            SeedMatchedUsersAndOrders();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                u.CompanyId,
+                u.UserKey,
+                ROW_NUMBER() OVER (PARTITION BY u.CompanyId ORDER BY o.Money DESC)
+            FROM users u
+            LEFT JOIN orders o ON u.UserKey = o.UserKey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(DescendingRowNumbers());
+        }
+
+        // Control, the same left join without a window function
+        [Fact]
+        public async Task LeftJoinWithoutWindowIsUnaffected()
+        {
+            SourceBatchSize = 16;
+            var expected = new List<JoinResult>();
+            for (int i = 1; i <= NullOrderingRowCount; i++)
+            {
+                AddOrUpdateUser(new User() { UserKey = i, CompanyId = "c1" });
+                if (i < NullOrderingRowCount)
+                {
+                    AddOrUpdateOrder(new Order() { OrderKey = i, UserKey = i, Orderdate = new DateTime(2000, 1, 1, 0, 0, 0), Money = i });
+                }
+                expected.Add(new JoinResult("c1", i, i < NullOrderingRowCount ? i : null));
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT u.CompanyId, u.UserKey, o.Money
+            FROM users u
+            LEFT JOIN orders o ON u.UserKey = o.UserKey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        // Control, asc nulls last over a plain nullable column
+        [Fact]
+        public async Task RowNumberAscNullsLastWithoutJoinIsUnaffected()
+        {
+            SourceBatchSize = 16;
+            for (int i = 1; i <= NullOrderingRowCount; i++)
+            {
+                AddOrUpdateUser(new User() { UserKey = i, CompanyId = "c1", Visits = i < NullOrderingRowCount ? i : null });
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                u.CompanyId,
+                u.UserKey,
+                ROW_NUMBER() OVER (PARTITION BY u.CompanyId ORDER BY u.Visits ASC NULLS LAST)
+            FROM users u");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(AscendingRowNumbers());
+        }
+
+        // Values where accumulating from the partition start and reseeding land on different ulps
+        private static readonly double[] StabilityValues = { 6.7, 1.4, 1.3, 5.2, 1.7, 2.6, 7.2, 5.1 };
+
+        private void AddStabilityPartition()
+        {
+            for (int i = 0; i < StabilityValues.Length; i++)
+            {
+                AddNamedUser(i, StabilityValues[i], "original");
+            }
+        }
+
+        private Dictionary<int, StabilityRow> CurrentStabilityRows()
+        {
+            var rows = GetActualRows();
+            var result = new Dictionary<int, StabilityRow>();
+            for (int i = 0; i < rows.Count; i++)
+            {
+                var userKey = (int)rows.Columns[1].GetValueAt(i, default).AsLong;
+                var firstName = rows.Columns[2].GetValueAt(i, default).AsString.ToString();
+                var windowValue = rows.Columns[3].GetValueAt(i, default).AsDouble;
+                result[userKey] = new StabilityRow(firstName, windowValue);
+            }
+            return result;
+        }
+
+        private static void AssertWindowValuesUnchanged(Dictionary<int, StabilityRow> before, Dictionary<int, StabilityRow> after)
+        {
+            foreach (var row in before.OrderBy(x => x.Key))
+            {
+                Assert.True(after.ContainsKey(row.Key), $"UserKey {row.Key} is missing from the output after the update");
+                Assert.True(row.Value.windowValue == after[row.Key].windowValue,
+                    $"UserKey {row.Key} window value changed from {row.Value.windowValue:R} to {after[row.Key].windowValue:R} after an update that cannot affect its frame");
+            }
+        }
+
+        // An update outside the frame must not change other rows' sums
+        [Fact]
+        public async Task BoundedSumValueIsStableAcrossUnrelatedUpdate()
+        {
+            AddStabilityPartition();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                FirstName,
+                SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) as value
+            FROM users");
+            await WaitForUpdate();
+            var before = CurrentStabilityRows();
+
+            // Only FirstName changes, the value and the position stay the same
+            AddNamedUser(3, 5.2, "renamed");
+            await WaitForUpdate();
+            var after = CurrentStabilityRows();
+
+            // Guards against a vacuous pass where the update never reached the window
+            Assert.Equal("renamed", after[3].firstName);
+            AssertWindowValuesUnchanged(before, after);
+        }
+
+        // Same stability rule for the bounded average
+        [Fact]
+        public async Task BoundedAverageValueIsStableAcrossUnrelatedUpdate()
+        {
+            AddStabilityPartition();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                FirstName,
+                AVG(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) as value
+            FROM users");
+            await WaitForUpdate();
+            var before = CurrentStabilityRows();
+
+            AddNamedUser(3, 5.2, "renamed");
+            await WaitForUpdate();
+            var after = CurrentStabilityRows();
+
+            Assert.Equal("renamed", after[3].firstName);
+            AssertWindowValuesUnchanged(before, after);
+        }
     }
 }

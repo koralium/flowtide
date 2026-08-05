@@ -114,6 +114,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private readonly DataValueContainer _sumState = new DataValueContainer();
         // Non null values currently in the sum. SQL sum over an all null or empty frame is null, not 0.
         private long _count;
+        private int _functionIndex;
 
         public BulkSumWindowFunctionBounded(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from, long to)
         {
@@ -136,6 +137,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
         public Task Initialize(BulkWindowFunctionContext context)
         {
+            _functionIndex = context.FunctionIndex;
             _pending = new BulkWindowValueRing(-_to + 1, context.MemoryAllocator);
             _frame = new BulkWindowValueRing(_frameSize + 1, context.MemoryAllocator);
             return Task.CompletedTask;
@@ -161,13 +163,35 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 return;
             }
 
-            var lookback = (int)Math.Min(-_from, int.MaxValue);
+            // One row past the frame start, the previous row's stored sum is the seed.
+            var lookback = (int)Math.Min(1 - _from, int.MaxValue);
             await seedReader.EnsureRows(lookback);
-            var available = Math.Min(lookback, seedReader.MaterializedRows);
-            for (int back = available; back >= 1; back--)
+            if (seedReader.MaterializedRows == 0)
+            {
+                return;
+            }
+
+            // Continue the stored arithmetic path instead of re-accumulating, floating point add
+            // then subtract is not associative so a fresh accumulator drifts on unchanged rows.
+            BulkSumUtils.CopySumValue(seedReader.GetState(1, _functionIndex), _sumState);
+
+            var pendingRows = (int)Math.Min(-_to, seedReader.MaterializedRows);
+            for (int back = pendingRows; back >= 1; back--)
             {
                 var row = seedReader.GetRow(back);
-                Feed(_fetchValueFunction(row.referenceBatch, row.RowIndex));
+                _pending.Push(_fetchValueFunction(row.referenceBatch, row.RowIndex));
+            }
+
+            // Refill the previous row's frame so later evictions subtract the right values.
+            for (int back = (int)Math.Min(1 - _from, seedReader.MaterializedRows); back >= 1 - _to; back--)
+            {
+                var row = seedReader.GetRow(back);
+                var value = _fetchValueFunction(row.referenceBatch, row.RowIndex);
+                _frame.Push(value);
+                if (!value.IsNull)
+                {
+                    _count++;
+                }
             }
         }
 

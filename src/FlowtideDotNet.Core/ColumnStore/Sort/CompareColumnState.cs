@@ -64,6 +64,21 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return state;
         }
 
+        /// <summary>
+        /// True when the layout can yield a null, so an asymmetric null placement must be kept.
+        /// </summary>
+        public static bool CanContainNull(CompareColumnState state)
+        {
+            if ((state & (CompareColumnState.HasValidityBitmap | CompareColumnState.OffsetContainsNull | CompareColumnState.IsIndirectView)) != 0)
+            {
+                // An indirect view encodes its nulls as negative offsets, not as a bitmap.
+                return true;
+            }
+            // A null typed column carries no flag, and a union keeps its nulls in a child.
+            var type = (ArrowTypeId)(byte)(state & CompareColumnState.TypeMask);
+            return type == ArrowTypeId.Null || type == ArrowTypeId.Union;
+        }
+
         public static void AddHasTailToKey(ref UInt128 key)
         {
             // Set the 1 bit in the last 16 bits to indicate the presence of a tail column

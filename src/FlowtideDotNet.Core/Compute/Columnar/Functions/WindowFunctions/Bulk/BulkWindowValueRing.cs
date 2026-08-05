@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         }
 
         /// <summary>
-        /// Pops the oldest value, valid until the slot is overwritten.
+        /// Pops the oldest value, a view over the slot that the next push invalidates.
         /// </summary>
         public IDataValue PopOldest()
         {

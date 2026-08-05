@@ -119,7 +119,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
         public Task Initialize(BulkWindowFunctionContext context)
         {
-            if (_offset > 0)
+            // Past int.MaxValue the ring's row count can never reach the offset, so no ring is built.
+            if (_offset > 0 && _offset <= int.MaxValue)
             {
                 _ring = new BulkWindowValueRing(_offset + 1, context.MemoryAllocator);
             }
@@ -158,9 +159,24 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 _valueFunction(context.Batch, context.RowIndex).CopyToContainer(result);
                 return true;
             }
-            Debug.Assert(_ring != null);
+            if (_ring == null)
+            {
+                // No partition can reach back this far, so every row takes the default.
+                if (_defaultFunction != null)
+                {
+                    _defaultFunction(context.Batch, context.RowIndex).CopyToContainer(result);
+                }
+                else
+                {
+                    result._type = ArrowTypeId.Null;
+                }
+                return true;
+            }
 
-            if (_ring.Count >= _offset)
+            // Push before the pop, a popped value is only a view over the slot and the push shifts variable length bytes.
+            _ring.Push(_valueFunction(context.Batch, context.RowIndex));
+
+            if (_ring.Count > _offset)
             {
                 _ring.PopOldest().CopyToContainer(result);
             }
@@ -172,7 +188,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 result._type = ArrowTypeId.Null;
             }
-            _ring.Push(_valueFunction(context.Batch, context.RowIndex));
             return true;
         }
 

@@ -16,12 +16,11 @@ using Xunit.Abstractions;
 namespace FlowtideDotNet.AcceptanceTests
 {
     /// <summary>
-    /// Randomized differential probes for the bulk window operator: seeded mutation churn asserted
-    /// against brute force recomputation after every cycle. Seeds are fixed so failures reproduce.
+    /// Seeded mutation churn asserted against brute force recomputation after every cycle
     /// </summary>
-    public class BulkWindowProbeTests : FlowtideAcceptanceBase
+    public class WindowChurnTests : FlowtideAcceptanceBase
     {
-        public BulkWindowProbeTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
+        public WindowChurnTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
         {
         }
 

@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.MinMax;
 using FlowtideDotNet.Core.Operators.Window.Bulk;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Diagnostics;
@@ -1246,10 +1247,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private readonly long _from;
         private readonly bool _isMin;
 
+        /// <summary>
+        /// A monotone compare key never pops, so the stack reaches one entry per row. Buffers are kept
+        /// across scans up to this, past it one large partition would pin the high water mark for good.
+        /// </summary>
+        private const int MaxRetainedStackEntries = 65536;
+
         private BulkWindowForwardPartitionReader? _reader;
+        private IMemoryAllocator? _memoryAllocator;
         private Column? _stackCompareColumn;
         private Column? _stackValueColumn;
-        private readonly List<long> _stackPositions = new List<long>();
+        // Allocator backed so the stack counts against the stream's memory, a managed list is invisible to it.
+        private PrimitiveList<long>? _stackPositions;
         private int _stackCount;
         private int _cursor;
         private long _currentPosition;
@@ -1279,9 +1288,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
         public Task Initialize(BulkWindowFunctionContext context)
         {
+            _memoryAllocator = context.MemoryAllocator;
             _reader = new BulkWindowForwardPartitionReader(context.PersistentTree, context.PartitionColumns);
             _stackCompareColumn = Column.Create(context.MemoryAllocator);
             _stackValueColumn = Column.Create(context.MemoryAllocator);
+            _stackPositions = new PrimitiveList<long>(context.MemoryAllocator);
             return Task.CompletedTask;
         }
 
@@ -1295,6 +1306,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             Debug.Assert(_reader != null);
             Debug.Assert(_stackCompareColumn != null);
             Debug.Assert(_stackValueColumn != null);
+            Debug.Assert(_stackPositions != null);
 
             _stackCount = 0;
             _stackPositions.Clear();
@@ -1347,7 +1359,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
             _currentPosition++;
             var frameStart = _currentPosition + _from;
-            while (_cursor < _stackCount && _stackPositions[_cursor] < frameStart)
+            while (_cursor < _stackCount && _stackPositions!.Get(_cursor) < frameStart)
             {
                 _cursor++;
             }
@@ -1370,6 +1382,21 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
         public ValueTask EndScan()
         {
+            Debug.Assert(_memoryAllocator != null);
+
+            // Count on the columns is the high water mark, they are only ever grown during a scan.
+            if (_stackCompareColumn != null && _stackCompareColumn.Count > MaxRetainedStackEntries)
+            {
+                _stackCompareColumn.Dispose();
+                _stackValueColumn!.Dispose();
+                _stackCompareColumn = Column.Create(_memoryAllocator);
+                _stackValueColumn = Column.Create(_memoryAllocator);
+            }
+            if (_stackPositions != null && _stackPositions.Count > MaxRetainedStackEntries)
+            {
+                _stackPositions.Dispose();
+                _stackPositions = new PrimitiveList<long>(_memoryAllocator);
+            }
             return ValueTask.CompletedTask;
         }
     }

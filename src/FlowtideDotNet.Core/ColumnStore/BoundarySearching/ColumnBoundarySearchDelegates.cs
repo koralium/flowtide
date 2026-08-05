@@ -142,7 +142,9 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
 
                 if (idx < 0 && lowerBounds[i] >= 0)
                 {
-                    lowerBounds[i] = ~lowerBounds[i];
+                    // The tree holds no nulls, so the probe inserts at whichever end of the region this order places nulls.
+                    var insertPosition = TOrder.NullsFirst ? lowerBounds[i] : upperBounds[i] + 1;
+                    lowerBounds[i] = ~insertPosition;
                     upperBounds[i] = lowerBounds[i];
                 }
 
