@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Storage.Mimalloc;
 using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
