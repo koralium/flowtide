@@ -1,8 +1,7 @@
 # FlowtideDotNet.MiMalloc
 
 C# port of [mimalloc](https://github.com/microsoft/mimalloc) v3.4.4 (tag `v3.4.4`, commit `1f06f694`).
-Used as the default allocator in FlowtideDotNet.Storage, so no native mimalloc binary is needed.
-Set `FLOWTIDE_NATIVE_MIMALLOC=1` to use the native library instead.
+Used as the allocator in FlowtideDotNet.Storage, so no native mimalloc binary is needed.
 
 The port follows the C source closely: one C# file per C file, same function and struct names,
 so it can be diffed side by side against the C when upgrading or debugging. All allocator

@@ -15,18 +15,16 @@ using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Benchmarks
 {
-    // aliases inside the namespace: the FlowtideDotNet.MiMalloc NAMESPACE shadows the
+    // alias inside the namespace: the FlowtideDotNet.MiMalloc NAMESPACE shadows the
     // simple type name `MiMalloc` when resolving from FlowtideDotNet.* namespaces
-    using ManagedMiMalloc = FlowtideDotNet.MiMalloc.MiMalloc;
-    using NativeMiMalloc = FlowtideDotNet.Storage.Mimalloc.MiMalloc;
+    using MiMalloc = FlowtideDotNet.MiMalloc.MiMalloc;
 
     /// <summary>
-    /// Compares the managed mimalloc port against the native mimalloc library and
-    /// NativeMemory for the allocation patterns Flowtide uses (aligned allocation,
-    /// free, realloc-grow, and mixed-size churn).
+    /// Compares the managed mimalloc port against NativeMemory for the allocation
+    /// patterns Flowtide uses (aligned allocation, free, realloc-grow, mixed-size churn).
     ///
     /// Run with:
-    ///   dotnet run -c Release -f net10.0 --project tests/FlowtideDotNet.Benchmarks -- --filter *MiMallocAllocator* --job short
+    ///   dotnet run -c Release -f net10.0 --project tests/FlowtideDotNet.Benchmarks -- --filter *MiMallocAllocator* --job short --inProcess
     /// </summary>
     public unsafe class MiMallocAllocatorBenchmark
     {
@@ -37,22 +35,18 @@ namespace FlowtideDotNet.Benchmarks
         [Params(128, 2048, 16384, 262144)]
         public int Size;
 
-        private void*[] _churnManaged = null!;
-        private void*[] _churnNative = null!;
+        private void*[] _churnMimalloc = null!;
         private void*[] _churnNativeMemory = null!;
         private int[] _churnSizes = null!;
 
         [GlobalSetup]
         public void Setup()
         {
-            // fault in both allocators and make sure the native library is present
-            void* p = ManagedMiMalloc.mi_malloc_aligned((nuint)Size, Alignment);
-            ManagedMiMalloc.mi_free(p);
-            void* q = NativeMiMalloc.mi_malloc_aligned((nuint)Size, Alignment);
-            NativeMiMalloc.mi_free(q);
+            // fault in the allocator
+            void* p = MiMalloc.mi_malloc_aligned((nuint)Size, Alignment);
+            MiMalloc.mi_free(p);
 
-            _churnManaged = new void*[ChurnSlots];
-            _churnNative = new void*[ChurnSlots];
+            _churnMimalloc = new void*[ChurnSlots];
             _churnNativeMemory = new void*[ChurnSlots];
             // deterministic mixed sizes around the parameter size (1/4x .. 2x)
             _churnSizes = new int[ChurnSlots];
@@ -68,12 +62,10 @@ namespace FlowtideDotNet.Benchmarks
         {
             for (int i = 0; i < ChurnSlots; i++)
             {
-                if (_churnManaged[i] != null) { ManagedMiMalloc.mi_free(_churnManaged[i]); _churnManaged[i] = null; }
-                if (_churnNative[i] != null) { NativeMiMalloc.mi_free(_churnNative[i]); _churnNative[i] = null; }
+                if (_churnMimalloc[i] != null) { MiMalloc.mi_free(_churnMimalloc[i]); _churnMimalloc[i] = null; }
                 if (_churnNativeMemory[i] != null) { NativeMemory.AlignedFree(_churnNativeMemory[i]); _churnNativeMemory[i] = null; }
             }
-            ManagedMiMalloc.mi_collect(true);
-            NativeMiMalloc.mi_collect(true);
+            MiMalloc.mi_collect(true);
         }
 
         // ---------------- alloc + touch + free ----------------
@@ -91,26 +83,14 @@ namespace FlowtideDotNet.Benchmarks
         }
 
         [Benchmark(OperationsPerInvoke = OpsPerInvoke)]
-        public void NativeMimalloc_AllocFree()
+        public void Mimalloc_AllocFree()
         {
             for (int i = 0; i < OpsPerInvoke; i++)
             {
-                byte* p = (byte*)NativeMiMalloc.mi_malloc_aligned((nuint)Size, Alignment);
+                byte* p = (byte*)MiMalloc.mi_malloc_aligned((nuint)Size, Alignment);
                 p[0] = 1;
                 p[Size - 1] = 1;
-                NativeMiMalloc.mi_free(p);
-            }
-        }
-
-        [Benchmark(OperationsPerInvoke = OpsPerInvoke)]
-        public void ManagedMimalloc_AllocFree()
-        {
-            for (int i = 0; i < OpsPerInvoke; i++)
-            {
-                byte* p = (byte*)ManagedMiMalloc.mi_malloc_aligned((nuint)Size, Alignment);
-                p[0] = 1;
-                p[Size - 1] = 1;
-                ManagedMiMalloc.mi_free(p);
+                MiMalloc.mi_free(p);
             }
         }
 
@@ -131,28 +111,14 @@ namespace FlowtideDotNet.Benchmarks
         }
 
         [Benchmark(OperationsPerInvoke = OpsPerInvoke)]
-        public void NativeMimalloc_Churn()
+        public void Mimalloc_Churn()
         {
-            var slots = _churnNative;
+            var slots = _churnMimalloc;
             for (int i = 0; i < OpsPerInvoke; i++)
             {
                 int s = i & (ChurnSlots - 1);
-                if (slots[s] != null) { NativeMiMalloc.mi_free(slots[s]); }
-                byte* p = (byte*)NativeMiMalloc.mi_malloc_aligned((nuint)_churnSizes[s], Alignment);
-                p[0] = (byte)i;
-                slots[s] = p;
-            }
-        }
-
-        [Benchmark(OperationsPerInvoke = OpsPerInvoke)]
-        public void ManagedMimalloc_Churn()
-        {
-            var slots = _churnManaged;
-            for (int i = 0; i < OpsPerInvoke; i++)
-            {
-                int s = i & (ChurnSlots - 1);
-                if (slots[s] != null) { ManagedMiMalloc.mi_free(slots[s]); }
-                byte* p = (byte*)ManagedMiMalloc.mi_malloc_aligned((nuint)_churnSizes[s], Alignment);
+                if (slots[s] != null) { MiMalloc.mi_free(slots[s]); }
+                byte* p = (byte*)MiMalloc.mi_malloc_aligned((nuint)_churnSizes[s], Alignment);
                 p[0] = (byte)i;
                 slots[s] = p;
             }
@@ -161,30 +127,16 @@ namespace FlowtideDotNet.Benchmarks
         // ---------------- realloc grow chain ----------------
 
         [Benchmark(OperationsPerInvoke = 100)]
-        public void NativeMimalloc_ReallocGrow()
+        public void Mimalloc_ReallocGrow()
         {
             for (int i = 0; i < 100; i++)
             {
-                void* p = NativeMiMalloc.mi_malloc_aligned(64, Alignment);
+                void* p = MiMalloc.mi_malloc_aligned(64, Alignment);
                 for (nuint sz = 128; sz <= (nuint)Size; sz *= 2)
                 {
-                    p = NativeMiMalloc.mi_realloc_aligned(p, sz, Alignment);
+                    p = MiMalloc.mi_realloc_aligned(p, sz, Alignment);
                 }
-                NativeMiMalloc.mi_free(p);
-            }
-        }
-
-        [Benchmark(OperationsPerInvoke = 100)]
-        public void ManagedMimalloc_ReallocGrow()
-        {
-            for (int i = 0; i < 100; i++)
-            {
-                void* p = ManagedMiMalloc.mi_malloc_aligned(64, Alignment);
-                for (nuint sz = 128; sz <= (nuint)Size; sz *= 2)
-                {
-                    p = ManagedMiMalloc.mi_realloc_aligned(p, sz, Alignment);
-                }
-                ManagedMiMalloc.mi_free(p);
+                MiMalloc.mi_free(p);
             }
         }
     }
@@ -207,8 +159,6 @@ namespace FlowtideDotNet.Benchmarks
         {
             void* p = FlowtideDotNet.MiMalloc.MiMalloc.mi_malloc((nuint)Size);
             FlowtideDotNet.MiMalloc.MiMalloc.mi_free(p);
-            void* q = FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc((nuint)Size);
-            FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_free(q);
         }
 
         private static void RunOnThreads(Action body)
@@ -239,23 +189,7 @@ namespace FlowtideDotNet.Benchmarks
         }
 
         [Benchmark]
-        public void NativeMimalloc_Mt()
-        {
-            int size = Size;
-            RunOnThreads(() =>
-            {
-                for (int i = 0; i < OpsPerThread; i++)
-                {
-                    byte* p = (byte*)FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_aligned((nuint)size, 64);
-                    p[0] = 1;
-                    FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_free(p);
-                }
-                FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_thread_done();
-            });
-        }
-
-        [Benchmark]
-        public void ManagedMimalloc_Mt()
+        public void Mimalloc_Mt()
         {
             int size = Size;
             RunOnThreads(() =>
