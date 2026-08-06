@@ -331,6 +331,27 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             return Task.CompletedTask;
         }
 
+        public override ValueTask DisposeAsync()
+        {
+            // The batches own the scratch columns, _sortLayoutScratch only borrows from the input
+            _markerBatch?.Dispose();
+            _partitionScratchBatch?.Dispose();
+            _scanStartBatch?.Dispose();
+            _markerBatch = null;
+            _partitionScratchBatch = null;
+            _scanStartBatch = null;
+            _markerColumns = null;
+            _partitionScratchColumns = null;
+            _scanStartColumns = null;
+
+            _seedReader?.Dispose();
+            _backwardReader?.Dispose();
+            _seedReader = null;
+            _backwardReader = null;
+
+            return base.DisposeAsync();
+        }
+
         public override async Task OnCheckpoint()
         {
             Debug.Assert(_persistentTree != null);

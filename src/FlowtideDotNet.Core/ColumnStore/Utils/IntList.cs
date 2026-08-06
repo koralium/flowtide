@@ -317,14 +317,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             if (!disposedValue)
             {
-                if (disposing)
+                // Freed on both paths, the memory owner has no finalizer of its own
+                if (_memoryOwner != null)
                 {
-                    if (_memoryOwner != null)
-                    {
-                        _memoryOwner.Dispose();
-                        _memoryOwner = null;
-                        _data = null;
-                    }
+                    _memoryOwner.Dispose();
+                    _memoryOwner = null;
+                    _data = null;
                 }
                 disposedValue = true;
             }

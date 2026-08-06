@@ -314,17 +314,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects)
+                    // The offsets have their own finalizer, only reachable while disposing
                     _offsets.Dispose();
-                    if (_memoryOwner != null)
-                    {
-                        _memoryOwner.Dispose();
-                        _memoryOwner = null;
-                        _data = null;
-                    }
                 }
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
+                // Freed on both paths, the memory owner has no finalizer of its own
+                if (_memoryOwner != null)
+                {
+                    _memoryOwner.Dispose();
+                    _memoryOwner = null;
+                    _data = null;
+                }
                 disposedValue = true;
             }
         }
