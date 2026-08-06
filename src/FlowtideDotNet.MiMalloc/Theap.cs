@@ -479,6 +479,7 @@ namespace FlowtideDotNet.MiMalloc
 
             // create a bitmap of free blocks.
             const int MI_MAX_BLOCKS = (int)(MI_SMALL_PAGE_SIZE / (uint)MI_INTPTR_SIZE);
+            mi_assert_internal(page->capacity <= MI_MAX_BLOCKS);
             nuint* free_map = stackalloc nuint[MI_MAX_BLOCKS / MI_INTPTR_BITS];
             nuint bmapsize = _mi_divide_up(page->capacity, (nuint)MI_INTPTR_BITS);
             _mi_memzero(free_map, bmapsize * (nuint)MI_INTPTR_SIZE);
