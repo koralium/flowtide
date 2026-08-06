@@ -105,7 +105,6 @@ namespace FlowtideDotNet.MiMalloc.Tests
                 Assert.True(theap != null);
 
                 // allocate a real page into the theap's queues and keep one block "allocated"
-                // (block size 896 is used by no other test -- avoids cross-test reclaim races)
                 page = _mi_arenas_page_alloc(theap, 896, 1);
                 Assert.True(page != null);
                 mi_page_set_theap(page, null);
@@ -217,6 +216,7 @@ namespace FlowtideDotNet.MiMalloc.Tests
             var tids = new nuint[N];
             var threads = new Thread[N];
             using var barrier = new Barrier(N);
+            using var sampled = new Barrier(N);
             Exception? error = null;
             for (int i = 0; i < N; i++)
             {
@@ -232,9 +232,13 @@ namespace FlowtideDotNet.MiMalloc.Tests
                         tids[idx] = theap->tld->thread_id;
                         // every thread must see itself on its own tld list
                         Assert.True(theap->tld->theaps == theap);
-                        mi_thread_done();
                     }
                     catch (Exception e) { Interlocked.CompareExchange(ref error, e, null); }
+                    finally
+                    {
+                        try { sampled.SignalAndWait(TimeSpan.FromSeconds(30)); } catch { }
+                        mi_thread_done();
+                    }
                 });
                 threads[i].IsBackground = true;
                 threads[i].Start();

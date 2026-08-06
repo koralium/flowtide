@@ -326,14 +326,21 @@ namespace FlowtideDotNet.MiMalloc.Tests
             mi_page_set_theap(page, null);
             _mi_theap_page_reclaim(_theap, page);
             void* b = PopBlock(page);
+
+            // `abandoned_count` is per-BIN on the process-global main heap, so assert the DELTA
+            // this test causes -- never an absolute value (see PageAbandon_ReclaimViaAbandonedMap,
+            // and the note in AssemblyInfo.cs).
+            nuint abandonedBefore = mi_atomic_load_relaxed(ref *(nuint*)&heap->abandoned_count[(int)bin]);
+
             _mi_page_abandon(page, mi_page_queue(_theap, block_size));
             Assert.True(mi_page_is_abandoned_mapped(page));
+            Assert.Equal(abandonedBefore + 1, mi_atomic_load_relaxed(ref *(nuint*)&heap->abandoned_count[(int)bin]));
 
             // simulate the free.c multi-threaded free path: claim ownership, then unabandon
             Assert.True(mi_page_claim_ownership(page));
             _mi_arenas_page_unabandon(page, _theap);
             Assert.False(mi_page_is_abandoned_mapped(page));
-            Assert.Equal((nuint)0, mi_atomic_load_relaxed(ref *(nuint*)&heap->abandoned_count[(int)bin]));
+            Assert.Equal(abandonedBefore, mi_atomic_load_relaxed(ref *(nuint*)&heap->abandoned_count[(int)bin]));
 
             // now free the block and the page
             _mi_theap_page_reclaim(_theap, page);

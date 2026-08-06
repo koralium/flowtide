@@ -381,3 +381,78 @@ Dependency-ordered. Update the checkboxes as work lands; also mirrored in the se
   Verification: MiMalloc 158/158 on net8.0 Debug + net10.0 Release; Storage 352 tests
   with the SAME failures as the pre-change baseline (7 pre-existing golden-file failures
   on net10 Release, 1 on net8 Debug -- confirmed by stashing the fixes and re-running).
+- **2026-08-06 (review pass 2 — fixes):** A second review pass with different lenses (managed-runtime
+  hazards, cross-file concurrency, completeness, stats pairing, OOM/error paths, integration
+  contract, test audit) found the algorithmic core clean again — the cross-file concurrency lens
+  traced ownership claim/unown pairing on every path, abandon/reclaim ordering, page-map
+  register/unregister and heap/theap refcount balance and reported ZERO divergences. Struct layout
+  was additionally verified EMPIRICALLY: the real C headers were compiled with gcc (64-bit,
+  MI_DEBUG=0 MI_SECURE=0 MI_STAT=1) and diffed against the port's runtime `sizeof`. All 32
+  constants match exactly; 9 of 12 struct sizes are identical, and the three that differ
+  (`mi_tld_t`, `mi_subproc_t`, `mi_heap_t`) differ by exactly 32 bytes x their `mi_lock_t` count
+  (1/2/3) — C's `mi_lock_t` is a 40-byte `pthread_mutex_t`, the port's is an 8-byte spinlock.
+  Every byte accounted for. Two findings fixed here:
+  - **The thread-exit finalizer could kill the process** (Init.cs). `~MiThreadExitSentinel` had no
+    `catch`, only a `try/finally`. It runs the whole shutdown chain (theap collect -> page
+    abandon/free -> arena purge -> `_mi_os_purge` -> `_mi_prim_decommit`), several leaves of which
+    emit warnings; an exception escaping a finalizer is unhandled on the CLR finalizer thread and
+    TERMINATES THE PROCESS. C runs the same cleanup from the FLS / pthread-key destructor, which
+    structurally cannot fail that way. Now wrapped in `try/catch`, and `_mi_meta_free(ctx)` moved
+    into the `finally` so a failed teardown no longer leaks the thread context on top of it.
+  - **The message path could throw into allocator failure paths** (Options.cs). C's
+    `_mi_warning_message`/`_mi_error_message` return BEFORE `va_start` when gated, and otherwise
+    format into a 992-byte stack buffer and `fputs` — infallible by construction. The port did the
+    opposite: interpolated strings are built by the CALLER, before the gate, and `mi_out` wrote via
+    `Console.Error.Write`. Both can throw, and every message site sits mid-failure-path after
+    shared state has been mutated (e.g. `mi_arena_try_alloc_at` has claimed slices via
+    `mi_bbitmap_try_find_and_clearN` and an unwind skips the `mi_bbitmap_setN` rollback, leaking
+    those slices for the life of the process). Fixed on both axes:
+      * each gate factored into `mi_{trace,verbose,warning,error}_message_enabled()`, and four
+        `[InterpolatedStringHandler]` types (`Mi*MessageHandler`) evaluate the gate in their
+        CONSTRUCTOR so a suppressed message never formats, never allocates and never throws —
+        restoring C's before-`va_start` order. Call sites are untouched: `$"..."` binds to the
+        handler overload, a plain `"..."` literal or `string` variable to the `string` overload.
+      * `mi_out` and the registered error handler are wrapped in `try/catch`, so a broken stderr
+        (Console.Error.Write throws IOException for EBADF/EIO/ENOSPC) or a throwing user callback
+        can no longer unwind the allocator.
+    Verified empirically with a probe: gated-off interpolations execute ZERO side effects (proving
+    the handlers bind and the gate precedes formatting), gated-on formats exactly once with the
+    correct text, throwing output and error handlers are both contained, and plain literals still
+    route through the `string` overload.
+  Verification: MiMalloc 160/160 on net8.0 Debug and net10.0 Release (18 consecutive Release runs);
+  Storage 352 with the same 7 pre-existing golden-file failures as the baseline.
+  NOTE — one Release/net10 run failed once and could not be reproduced in 18 subsequent runs, and
+  the failing test name was not captured. This is consistent with the parallel-test races the test
+  audit identified and which are STILL OPEN: `PageTests.cs:336` asserts an absolute 0 on the
+  process-global `heap->abandoned_count[bin]` (its sibling at :288/:295 correctly uses a delta),
+  and `ThreadInitTests.cs:130/:175` + `PageTests.cs:299` rely on a comment claiming "block size N
+  is used by no other test" — but the abandoned map is indexed by BIN, not block size, and bins
+  17/23/27 collide with `MultiThread_ProducerConsumer_Stress` (8..2007 bytes). The test project has
+  no `xunit.runner.json` and no `CollectionBehavior`, so classes run in parallel. Fixing that
+  cluster is the next thing to do if CI shows intermittent failures.
+- **2026-08-06 (flaky-test root cause):** The unattributed intermittent failure noted above was
+  chased down and it is a TEST-ISOLATION defect, not an allocator race. Evidence, in order:
+  (1) A probe proved the mechanism: `MultiThread_ProducerConsumer_Stress` allocates 8..2007 bytes,
+      which spans bins 1..28 -- covering ALL FOUR block sizes whose tests claimed to be "used by no
+      other test" (320->bin 17, 640->21, 896->23, 1792->27). A foreign thread that allocates in bin
+      21, keeps a block live and exits takes `heap->abandoned_count[21]` from 0 to 1.
+  (2) Captured in the wild via trx over repeated runs: `PageTests.PageAbandon_UnabandonRoundtrip`
+      failing `Expected: 0, Actual: 1` -- exactly that counter -- plus a second flaky test,
+      `ArenaTests.Purge_Delayed_RunsViaTryPurge`.
+  Fixes: `AssemblyInfo.cs` adds `[assembly: CollectionBehavior(DisableTestParallelization = true)]`
+  (every test here drives ONE process-global allocator, so classes must not share a process
+  concurrently; the suite runs in ~1s so this is free, and it does not weaken concurrency coverage
+  because the concurrent tests spawn their own threads inside a single test method), and
+  `PageTests.cs` now asserts the abandoned-count DELTA rather than an absolute 0.
+  Serializing then exposed a THIRD latent bug, in `ThreadInitTests.ConcurrentThreadInit_DistinctTheapsAndIds`:
+  its `Barrier` only synchronised the START of the 8 threads, each of which then called
+  `mi_thread_done()` immediately, so early finishers freed their theap and later threads were handed
+  the SAME address -- correct allocator behaviour that made `theaps.Distinct().Count() == 8` fail
+  (observed 4 distinct). Verified this failure reproduces with the round-2 product changes REVERTED,
+  so it is pre-existing and not caused by them. Fixed with a second `Barrier` that holds every theap
+  alive until all N have been sampled, signalled from a `finally` so a faulted thread cannot deadlock
+  the others. The assertion now tests what it claims: N *concurrently live* threads get distinct theaps.
+  Verification: 30 consecutive Release/net10 runs and 20 consecutive Debug/net8 runs (MI_DEBUG
+  asserts live), zero failures. NOTE: the allocator itself was not implicated at any point -- the
+  dedicated cross-file concurrency review found zero divergences, and 30 Debug runs with internal
+  asserts active never fired one.

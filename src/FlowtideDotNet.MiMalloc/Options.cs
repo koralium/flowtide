@@ -23,6 +23,7 @@
 
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace FlowtideDotNet.MiMalloc
@@ -116,6 +117,78 @@ namespace FlowtideDotNet.MiMalloc
 
     internal delegate void mi_error_fun(int err, object? arg);
     internal delegate void mi_output_fun(string msg, object? arg);
+
+    [InterpolatedStringHandler]
+    internal ref struct MiTraceMessageHandler
+    {
+        private DefaultInterpolatedStringHandler _inner;
+        public readonly bool Enabled;
+
+        public MiTraceMessageHandler(int literalLength, int formattedCount, out bool shouldAppend)
+        {
+            Enabled = shouldAppend = Mi.mi_trace_message_enabled();
+            _inner = shouldAppend ? new DefaultInterpolatedStringHandler(literalLength, formattedCount) : default;
+        }
+
+        public void AppendLiteral(string value) => _inner.AppendLiteral(value);
+        public void AppendFormatted<T>(T value) => _inner.AppendFormatted(value);
+        public void AppendFormatted<T>(T value, string? format) => _inner.AppendFormatted(value, format);
+        public string ToStringAndClear() => _inner.ToStringAndClear();
+    }
+
+    [InterpolatedStringHandler]
+    internal ref struct MiVerboseMessageHandler
+    {
+        private DefaultInterpolatedStringHandler _inner;
+        public readonly bool Enabled;
+
+        public MiVerboseMessageHandler(int literalLength, int formattedCount, out bool shouldAppend)
+        {
+            Enabled = shouldAppend = Mi.mi_verbose_message_enabled();
+            _inner = shouldAppend ? new DefaultInterpolatedStringHandler(literalLength, formattedCount) : default;
+        }
+
+        public void AppendLiteral(string value) => _inner.AppendLiteral(value);
+        public void AppendFormatted<T>(T value) => _inner.AppendFormatted(value);
+        public void AppendFormatted<T>(T value, string? format) => _inner.AppendFormatted(value, format);
+        public string ToStringAndClear() => _inner.ToStringAndClear();
+    }
+
+    [InterpolatedStringHandler]
+    internal ref struct MiWarningMessageHandler
+    {
+        private DefaultInterpolatedStringHandler _inner;
+        public readonly bool Enabled;
+
+        public MiWarningMessageHandler(int literalLength, int formattedCount, out bool shouldAppend)
+        {
+            Enabled = shouldAppend = Mi.mi_warning_message_enabled();
+            _inner = shouldAppend ? new DefaultInterpolatedStringHandler(literalLength, formattedCount) : default;
+        }
+
+        public void AppendLiteral(string value) => _inner.AppendLiteral(value);
+        public void AppendFormatted<T>(T value) => _inner.AppendFormatted(value);
+        public void AppendFormatted<T>(T value, string? format) => _inner.AppendFormatted(value, format);
+        public string ToStringAndClear() => _inner.ToStringAndClear();
+    }
+
+    [InterpolatedStringHandler]
+    internal ref struct MiErrorMessageHandler
+    {
+        private DefaultInterpolatedStringHandler _inner;
+        public readonly bool Enabled;
+
+        public MiErrorMessageHandler(int literalLength, int formattedCount, out bool shouldAppend)
+        {
+            Enabled = shouldAppend = Mi.mi_error_message_enabled();
+            _inner = shouldAppend ? new DefaultInterpolatedStringHandler(literalLength, formattedCount) : default;
+        }
+
+        public void AppendLiteral(string value) => _inner.AppendLiteral(value);
+        public void AppendFormatted<T>(T value) => _inner.AppendFormatted(value);
+        public void AppendFormatted<T>(T value, string? format) => _inner.AppendFormatted(value, format);
+        public string ToStringAndClear() => _inner.ToStringAndClear();
+    }
 
     internal static unsafe partial class Mi
     {
@@ -488,16 +561,30 @@ namespace FlowtideDotNet.MiMalloc
             Volatile.Write(ref mi_out_arg, arg);
         }
 
+        // C: `mi_out_stderr` -> `_mi_prim_out_stderr` is noexcept -- `fputs` reports failure
+        // through a return code and can never unwind. Every message site sits in the middle of
+        // an allocator failure path that has already mutated shared state (claimed arena slices,
+        // taken ownership of a page, ...), so an exception escaping here would skip the rollback
+        // and permanently corrupt that state. Console.Error.Write throws IOException for a
+        // broken/closed stderr (only EPIPE-style errors are swallowed by the runtime), and a
+        // user-registered handler can throw anything: contain both.
         private static void mi_out(string msg)
         {
-            mi_output_fun? @out = Volatile.Read(ref mi_out_default);
-            if (@out != null)
+            try
             {
-                @out(msg, Volatile.Read(ref mi_out_arg));
+                mi_output_fun? @out = Volatile.Read(ref mi_out_default);
+                if (@out != null)
+                {
+                    @out(msg, Volatile.Read(ref mi_out_arg));
+                }
+                else
+                {
+                    Console.Error.Write(msg);
+                }
             }
-            else
+            catch
             {
-                Console.Error.Write(msg);
+                // diagnostics must never take down the allocator (see above)
             }
         }
 
@@ -518,27 +605,62 @@ namespace FlowtideDotNet.MiMalloc
             }
         }
 
+        internal static bool mi_trace_message_enabled()
+            => mi_option_get(mi_option_t.mi_option_verbose) > 1;   // only with verbose level 2 or higher
+
+        internal static bool mi_verbose_message_enabled()
+            => mi_option_is_enabled(mi_option_t.mi_option_verbose);
+
+        internal static bool mi_warning_message_enabled()
+        {
+            if (!mi_option_is_enabled(mi_option_t.mi_option_verbose))
+            {
+                if (!mi_option_is_enabled(mi_option_t.mi_option_show_errors)) return false;
+                // C: fetch_add returns the PREVIOUS value, so max+1 messages are printed
+                if (mi_max_warning_count >= 0 && Interlocked.Increment(ref warning_count) - 1 > mi_max_warning_count) return false;
+            }
+            return true;
+        }
+
+        internal static bool mi_error_message_enabled()
+            => mi_option_is_enabled(mi_option_t.mi_option_verbose)
+               || (mi_option_is_enabled(mi_option_t.mi_option_show_errors)
+                   && (mi_max_error_count < 0 || Interlocked.Increment(ref error_count) - 1 <= mi_max_error_count));
+
         public static void _mi_trace_message(string message)
         {
-            if (mi_option_get(mi_option_t.mi_option_verbose) <= 1) return;  // only with verbose level 2 or higher
+            if (!mi_trace_message_enabled()) return;
             mi_message_with_thread_prefix("mimalloc: ", message);
+        }
+
+        public static void _mi_trace_message(ref MiTraceMessageHandler message)
+        {
+            if (!message.Enabled) return;
+            mi_message_with_thread_prefix("mimalloc: ", message.ToStringAndClear());
         }
 
         public static void _mi_verbose_message(string message)
         {
-            if (!mi_option_is_enabled(mi_option_t.mi_option_verbose)) return;
+            if (!mi_verbose_message_enabled()) return;
             mi_out($"mimalloc: {message}\n");
+        }
+
+        public static void _mi_verbose_message(ref MiVerboseMessageHandler message)
+        {
+            if (!message.Enabled) return;
+            mi_out($"mimalloc: {message.ToStringAndClear()}\n");
         }
 
         public static void _mi_warning_message(string message)
         {
-            if (!mi_option_is_enabled(mi_option_t.mi_option_verbose))
-            {
-                if (!mi_option_is_enabled(mi_option_t.mi_option_show_errors)) return;
-                // C: fetch_add returns the PREVIOUS value, so max+1 messages are printed
-                if (mi_max_warning_count >= 0 && Interlocked.Increment(ref warning_count) - 1 > mi_max_warning_count) return;
-            }
+            if (!mi_warning_message_enabled()) return;
             mi_message_with_thread_prefix("mimalloc: warning: ", message);
+        }
+
+        public static void _mi_warning_message(ref MiWarningMessageHandler message)
+        {
+            if (!message.Enabled) return;
+            mi_message_with_thread_prefix("mimalloc: warning: ", message.ToStringAndClear());
         }
 
         // --------------------------------------------------------
@@ -569,20 +691,32 @@ namespace FlowtideDotNet.MiMalloc
         public static void _mi_error_message(int err, string message)
         {
             // show detailed error message
-            // (C: fetch_add returns the PREVIOUS value, so max+1 messages are printed)
-            if (mi_option_is_enabled(mi_option_t.mi_option_verbose)
-                || (mi_option_is_enabled(mi_option_t.mi_option_show_errors)
-                    && (mi_max_error_count < 0 || Interlocked.Increment(ref error_count) - 1 <= mi_max_error_count)))
-            {
-                mi_message_with_thread_prefix("mimalloc: error: ", message);
-            }
-            // and call the error handler which may abort (or return normally)
+            if (mi_error_message_enabled()) { mi_message_with_thread_prefix("mimalloc: error: ", message); }
+            mi_error_message_invoke_handler(err);
+        }
+
+        public static void _mi_error_message(int err, ref MiErrorMessageHandler message)
+        {
+            if (message.Enabled) { mi_message_with_thread_prefix("mimalloc: error: ", message.ToStringAndClear()); }
+            mi_error_message_invoke_handler(err);
+        }
+
+        private static void mi_error_message_invoke_handler(int err)
+        {
+            // call the error handler which may abort (or return normally)
             // (snapshot into a local: C re-reads the volatile `mi_error_handler` for the call,
             //  which would fault if it were cleared between the test and the call)
             mi_error_fun? handler = Volatile.Read(ref mi_error_handler);
             if (handler != null)
             {
-                handler(err, Volatile.Read(ref mi_error_arg));
+                try
+                {
+                    handler(err, Volatile.Read(ref mi_error_arg));
+                }
+                catch
+                {
+                    // ignored on purpose
+                }
             }
             else
             {

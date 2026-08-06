@@ -317,7 +317,16 @@ namespace FlowtideDotNet.MiMalloc
             {
                 mi_thread_ctx_t* c = ctx;
                 ctx = null;
-                if (c != null) { mi_thread_done_from_finalizer(c); }
+                if (c == null) return;
+                // A finalizer must NEVER let an exception escape
+                try
+                {
+                    mi_thread_done_from_finalizer(c);
+                }
+                catch
+                {
+                    // ignored on purpose (see above)
+                }
             }
         }
 
@@ -672,6 +681,7 @@ namespace FlowtideDotNet.MiMalloc
         private static void mi_thread_done_from_finalizer(mi_thread_ctx_t* ctx)
         {
             mi_assert_internal(ctx != null);
+            mi_memid_t memid = ctx->memid;   // read before the context can be released
             nuint prev_id = _mi_prim_thread_id_swap_raw(ctx->thread_id);
             mi_thread_ctx_t* prev_ctx = mi_thread_ctx_current;
             mi_thread_ctx_current = ctx;
@@ -686,8 +696,9 @@ namespace FlowtideDotNet.MiMalloc
             {
                 mi_thread_ctx_current = prev_ctx;
                 _mi_prim_thread_id_swap_raw(prev_id);
+                // release the context even if the teardown above failed
+                _mi_meta_free(_mi_subproc_main(), ctx, (nuint)sizeof(mi_thread_ctx_t), memid);
             }
-            _mi_meta_free(_mi_subproc_main(), ctx, (nuint)sizeof(mi_thread_ctx_t), ctx->memid);
         }
 
         // C: init.c `mi_thread_set_in_threadpool`
