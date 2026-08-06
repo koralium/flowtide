@@ -513,8 +513,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             for (int i = 1; i <= length; i++)
             {
                 bool isTieBreak = i == length ||
-                    Unsafe.As<RadixItem, ulong>(ref radixItems[i]) != Unsafe.As<RadixItem, ulong>(ref radixItems[start]) ||
-                    Unsafe.Add(ref Unsafe.As<RadixItem, uint>(ref radixItems[i]), 2) != Unsafe.Add(ref Unsafe.As<RadixItem, uint>(ref radixItems[start]), 2);
+                    radixItems[i].PrimaryKey != radixItems[start].PrimaryKey ||
+                    radixItems[i].SecondaryKey != radixItems[start].SecondaryKey;
 
                 if (isTieBreak)
                 {
