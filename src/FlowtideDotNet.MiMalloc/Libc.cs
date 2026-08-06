@@ -67,7 +67,9 @@ namespace FlowtideDotNet.MiMalloc
         {
             if (s == null) return 0;
             nuint len = 0;
-            while (s[len] != 0 && len < max_len) { len++; }
+            // note: the bound MUST be tested before the dereference (as in the C), otherwise
+            // `s[max_len]` is read -- one byte past the caller's buffer.
+            while (len < max_len && s[len] != 0) { len++; }
             return len;
         }
 

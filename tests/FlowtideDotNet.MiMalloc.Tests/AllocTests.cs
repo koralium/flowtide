@@ -231,6 +231,25 @@ namespace FlowtideDotNet.MiMalloc.Tests
         }
 
         [Fact]
+        public void Version_MatchesMimallocHeaderEncoding()
+        {
+            // mimalloc.h: major + 2 digits minor + 2 digits patch => v3.4.4 == 30404
+            Assert.Equal(30404, mi_version());
+        }
+
+        [Fact]
+        public void Strnlen_BoundIsRespected()
+        {
+            // no terminator within max_len: must return max_len WITHOUT reading s[max_len]
+            byte* s = stackalloc byte[4] { (byte)'a', (byte)'b', (byte)'c', (byte)'d' };
+            Assert.Equal((nuint)4, _mi_strnlen(s, 4));
+            Assert.Equal((nuint)2, _mi_strnlen(s, 2));
+            Assert.Equal((nuint)0, _mi_strnlen(s, 0));
+            byte* z = stackalloc byte[3] { (byte)'a', 0, (byte)'c' };
+            Assert.Equal((nuint)1, _mi_strnlen(z, 3));   // terminator before the bound
+        }
+
+        [Fact]
         public void Strdup_Roundtrip()
         {
             byte* src = stackalloc byte[6] { (byte)'h', (byte)'e', (byte)'l', (byte)'l', (byte)'o', 0 };

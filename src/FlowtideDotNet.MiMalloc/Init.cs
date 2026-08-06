@@ -88,6 +88,15 @@ namespace FlowtideDotNet.MiMalloc
 
         private static void mi_process_init()
         {
+            // This port pins the 64-bit configuration (MI_INTPTR_SHIFT / MI_SIZE_SHIFT are the
+            // constant 3, see PORTING.md). On a 32-bit runtime every size and shift computation
+            // would be silently wrong, so refuse to start rather than corrupt memory.
+            if (IntPtr.Size != 8)
+            {
+                throw new PlatformNotSupportedException(
+                    "FlowtideDotNet.MiMalloc requires a 64-bit process (the port is compiled for MI_INTPTR_SIZE == 8).");
+            }
+
             lock (mi_process_init_lock)
             {
                 if (Volatile.Read(ref mi_subproc_main_field) != 0) return;
@@ -102,6 +111,23 @@ namespace FlowtideDotNet.MiMalloc
                 {
                     _mi_error_message(ENOMEM, "unable to initialize the page map");
                 }
+
+                // C: the tail of `mi_process_init_once`. (The `mi_option_reserve_huge_os_pages`
+                // branch is out of scope -- 1 GiB huge OS pages are not supported by this port.)
+                // `_mi_subproc()` falls back to the main subproc while there is no default theap,
+                // and a re-entrant `mi_process_init` short-circuits on `mi_subproc_main_field`.
+                if (mi_option_is_enabled(mi_option_t.mi_option_reserve_os_memory))
+                {
+                    long ksize = mi_option_get(mi_option_t.mi_option_reserve_os_memory);
+                    if (ksize > 0)
+                    {
+                        mi_reserve_os_memory((nuint)ksize * MI_KiB, true, true);
+                    }
+                }
+
+                // C: `mi_process_load` calls this right after `mi_process_init`; the port has
+                // no process-load hook, so it runs at the tail of process init instead.
+                _mi_options_post_init();
             }
         }
 

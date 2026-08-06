@@ -388,6 +388,7 @@ namespace FlowtideDotNet.MiMalloc
             long reclaim_on_free = _mi_option_get_fast(mi_option_t.mi_option_page_reclaim_on_free);
 #if MI_DEBUG
             if (mi_page_is_singleton(page)) { mi_assert_internal(mi_page_all_free(page)); }
+            if (mi_page_is_full(page)) { mi_assert(mi_page_is_mostly_used(page)); }
 #endif
 
             // try to: 1. free it, 2. reclaim it, or 3. reabandon it to be mapped

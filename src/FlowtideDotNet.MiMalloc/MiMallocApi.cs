@@ -25,8 +25,11 @@ namespace FlowtideDotNet.MiMalloc
     /// </summary>
     public static unsafe class MiMalloc
     {
-        /// <summary>The mimalloc version this port is based on (3.4.4).</summary>
-        public static int mi_version() => 344;
+        /// <summary>
+        /// The mimalloc version this port is based on, encoded as in <c>mimalloc.h</c>:
+        /// major + 2 digits minor + 2 digits patch. v3.4.4 is <c>30404</c>.
+        /// </summary>
+        public static int mi_version() => Mi.mi_version();
 
         // ------------------------------------------------------
         // Basic allocation

@@ -333,3 +333,51 @@ Dependency-ordered. Update the checkboxes as work lands; also mirrored in the se
   atomicity and collect-partly guarantees): ZERO findings across all six.
   Remaining: task #10 -- public API surface, FlowtideMemoryAllocation
   integration, Flowtide test suites, benchmarks vs native.
+- **2026-08-06 (review pass):** Full-port critical review against the C (15 line-by-line
+  C-file/C#-file comparers, each finding re-checked by an adversarial verifier). The
+  algorithmic core came back CLEAN: zero divergences in Bitmap.cs, ArenaPages.cs,
+  Alloc.cs/AllocAligned.cs, Heap.cs/Theap.cs, Types.cs (constants + struct layout) and
+  Free.cs. Fixed everything that was confirmed:
+  - `_mi_strnlen` (Libc.cs): the `&&` operands were swapped vs libc.c, so it dereferenced
+    `s[len]` BEFORE the bound test -- a one-byte out-of-bounds read at `s[max_len]`
+    (and at `s[0]` when `max_len == 0`), reachable from the public `mi_strndup`.
+  - Three `MI_STAT>0` sites that were dropped (Page.cs): `pages_retire` in
+    `_mi_page_retire`, `pages_extended` and `page_committed` in `mi_page_extend_free`.
+    page.c:691 is the ONLY producer of `page_committed` in all of mimalloc, so the
+    "touched" statistic was permanently zero.
+  - `mi_process_init` (Init.cs): the tail of C's `mi_process_init_once` was missing, so
+    `MIMALLOC_RESERVE_OS_MEMORY` was parsed and then silently discarded. (The
+    `reserve_huge_os_pages` branch stays out of scope -- 1 GiB pages are unsupported.)
+  - `MI_MALLOC_VERSION` was 344; mimalloc.h encodes major*10000+minor*100+patch, so
+    v3.4.4 is 30404. `MiMallocApi.mi_version()` also hardcoded the literal instead of
+    the constant.
+  - Option parsing (Options.cs): C's `strtol` leaves `errno == 0` when it converts NO
+    digits and resets `end` to the start of the buffer, so a bare size suffix ("KB") is
+    accepted with value 0; the port folded that into a parse failure and kept the default.
+  - `mi_message_with_thread_prefix` (Options.cs): C's `mi_vfprintf_thread` only inserts
+    `thread 0x..:` for NON-main threads; the port always did.
+  - Output/error handler globals (Options.cs) are `_Atomic`/`volatile` in C -- now go
+    through `Volatile.Read/Write`. `_mi_error_message` snapshots the handler into a local
+    (C re-reads the volatile for the call, which would fault if cleared in between).
+  - `_mi_options_post_init` / `mi_options_print(_out)` ported, so `MIMALLOC_VERBOSE=1`
+    dumps the effective option table again; called at the tail of process init.
+  - The `MI_DEBUG>1` `mi_page_is_full => mi_page_is_mostly_used` invariant in
+    `mi_free_try_collect_mt` (Free.cs) was dropped; restored.
+  - The "runtime-guard against 32-bit" this document promised did not exist: added a
+    `PlatformNotSupportedException` in `mi_process_init` when `IntPtr.Size != 8`.
+  - **Packaging (release.yml):** FlowtideDotNet.Storage packs as a NuGet package and now
+    ProjectReferences MiMalloc, so its nuspec declared a dependency on an
+    `FlowtideDotNet.MiMalloc` package that was never published -- every consumer of
+    Storage (and transitively Core, the connectors, ...) would fail restore with NU1101.
+    Reproduced with a local feed, then fixed by adding a pack step (the publish step
+    already globs `*.nupkg`).
+  Investigated and REFUTED (kept as-is): `[DllImport("libc")]` resolution on Linux was
+  flagged as process-fatal -- verified by running the actual P/Invoke in
+  `mcr.microsoft.com/dotnet/sdk:8.0` (Debian/glibc) and `:8.0-alpine` (musl); it resolves
+  on both even with no `libc.so` file present. Also refuted as config-driven or
+  unreachable: meta-page 64-byte alignment (the port computes the offset at runtime),
+  `mi_arena_purge_delay` `long` width, unix `large_page_size = 0`, `needs_recommit`,
+  the page-map init assert, and `mi_atomic_do_once`.
+  Verification: MiMalloc 158/158 on net8.0 Debug + net10.0 Release; Storage 352 tests
+  with the SAME failures as the pre-change baseline (7 pre-existing golden-file failures
+  on net10 Release, 1 on net8 Debug -- confirmed by stashing the fixes and re-running).

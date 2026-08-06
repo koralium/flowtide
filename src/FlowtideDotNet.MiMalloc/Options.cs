@@ -22,6 +22,7 @@
 //    initializing data race is benign as in C (all racers compute the same value).
 
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 
 namespace FlowtideDotNet.MiMalloc
@@ -118,7 +119,8 @@ namespace FlowtideDotNet.MiMalloc
 
     internal static unsafe partial class Mi
     {
-        public const int MI_MALLOC_VERSION = 344;   // v3.4.4
+        // C: mimalloc.h `MI_MALLOC_VERSION` -- major + 2 digits minor + 2 digits patch (v3.4.4)
+        public const int MI_MALLOC_VERSION = 30404;
 
         private static long mi_max_error_count = 16;   // stop outputting errors after this (use < 0 for no limit)
         private static long mi_max_warning_count = 16; // stop outputting warnings after this (use < 0 for no limit)
@@ -224,6 +226,51 @@ namespace FlowtideDotNet.MiMalloc
             }
             mi_max_error_count = mi_option_get(mi_option_t.mi_option_max_errors);
             mi_max_warning_count = mi_option_get(mi_option_t.mi_option_max_warnings);
+        }
+
+        // C: options.c `mi_options_print_out`. (`_mi_fprintf(out,arg,..)` falls back to the
+        // registered/default output when `out` is null.)
+        public static void mi_options_print_out(mi_output_fun? @out, object? arg)
+        {
+            static void emit(mi_output_fun? o, object? a, string msg)
+            {
+                if (o != null) { o(msg, a); } else { mi_out(msg); }
+            }
+
+            // show version
+            int vermajor = MI_MALLOC_VERSION / 10000;
+            int verminor = (MI_MALLOC_VERSION % 10000) / 100;
+            int verpatch = MI_MALLOC_VERSION % 100;
+            emit(@out, arg, $"v{vermajor}.{verminor}.{verpatch} (managed port)\n");
+
+            // show options
+            for (int i = 0; i < (int)mi_option_t._mi_option_last; i++)
+            {
+                mi_option_t option = (mi_option_t)i;
+                mi_option_get(option);   // possibly initialize
+                mi_option_desc_t desc = mi_options[i];
+                emit(@out, arg, $"option '{desc.name}': {desc.value} {(mi_option_has_size_in_kib(option) ? "KiB" : "")}\n");
+            }
+
+            // show build configuration
+#if MI_DEBUG
+            emit(@out, arg, "debug level : 2\n");
+#else
+            emit(@out, arg, "debug level : 0\n");
+#endif
+            emit(@out, arg, "secure level: 0\n");
+            emit(@out, arg, "mem tracking: none\n");
+        }
+
+        // C: options.c `mi_options_print`
+        public static void mi_options_print() => mi_options_print_out(null, null);
+
+        // C: options.c `_mi_options_post_init`. (The `mi_add_stderr_output` half is a
+        // documented deviation -- this port has no delayed output buffer, `mi_out`
+        // writes to stderr from the start.)
+        public static void _mi_options_post_init()
+        {
+            if (mi_option_is_enabled(mi_option_t.mi_option_verbose)) { mi_options_print(); }
         }
 
         public static long _mi_option_get_fast(mi_option_t option)
@@ -361,7 +408,23 @@ namespace FlowtideDotNet.MiMalloc
                     int digitsStart = pos;
                     while (pos < buf.Length && char.IsAsciiDigit(buf[pos])) pos++;
                     long value = 0;
-                    bool ok = pos > digitsStart && long.TryParse(buf.AsSpan(signStart, pos - signStart), out value);
+                    bool ok;
+                    if (pos == digitsStart)
+                    {
+                        // C `strtol` performs no conversion here: it returns 0, leaves errno == 0,
+                        // and stores the ORIGINAL pointer in `end` (not the position past the
+                        // whitespace/sign). So a bare size suffix such as "KB" is still accepted,
+                        // with value 0.
+                        ok = true;
+                        value = 0;
+                        pos = 0;
+                    }
+                    else
+                    {
+                        // a parse failure here is C's ERANGE (errno != 0)
+                        ok = long.TryParse(buf.AsSpan(signStart, pos - signStart), NumberStyles.Integer,
+                                           CultureInfo.InvariantCulture, out value);
+                    }
                     if (ok && mi_option_has_size_in_kib(desc.option))
                     {
                         // this option is interpreted in KiB to prevent overflow of `long`
@@ -411,21 +474,26 @@ namespace FlowtideDotNet.MiMalloc
         // Output and messages
         // --------------------------------------------------------
 
-        private static mi_output_fun? mi_out_default;   // NULL -> stderr
+        // C declares both as `_Atomic(void*)` and uses store_release / load_acquire; the
+        // port must go through the volatile accessors for the same ordering. (As the C
+        // comment notes, a handler must still be installed from a single thread: the
+        // function and its argument are two separate stores, so a racing reader can pair
+        // a new function with a stale argument -- that is the C's behaviour too.)
+        private static mi_output_fun? mi_out_default;   // null -> stderr
         private static object? mi_out_arg;
 
         public static void mi_register_output(mi_output_fun? @out, object? arg)
         {
-            mi_out_default = @out;
-            mi_out_arg = arg;
+            Volatile.Write(ref mi_out_default, @out);
+            Volatile.Write(ref mi_out_arg, arg);
         }
 
         private static void mi_out(string msg)
         {
-            mi_output_fun? @out = mi_out_default;
+            mi_output_fun? @out = Volatile.Read(ref mi_out_default);
             if (@out != null)
             {
-                @out(msg, mi_out_arg);
+                @out(msg, Volatile.Read(ref mi_out_arg));
             }
             else
             {
@@ -436,9 +504,18 @@ namespace FlowtideDotNet.MiMalloc
         private static long error_count;     // when >= max_error_count stop emitting errors
         private static long warning_count;   // when >= max_warning_count stop emitting warnings
 
+        // C: `mi_vfprintf_thread` -- the thread id is only inserted for non-main threads
+        // (and only when the prefix fits the 64-byte stack buffer it builds).
         private static void mi_message_with_thread_prefix(string prefix, string message)
         {
-            mi_out($"{prefix}thread 0x{_mi_thread_id():x}: {message}\n");
+            if (prefix.Length <= 32 && !_mi_is_main_thread())
+            {
+                mi_out($"{prefix}thread 0x{_mi_thread_id():x}: {message}\n");
+            }
+            else
+            {
+                mi_out($"{prefix}{message}\n");
+            }
         }
 
         public static void _mi_trace_message(string message)
@@ -468,6 +545,7 @@ namespace FlowtideDotNet.MiMalloc
         // Errors
         // --------------------------------------------------------
 
+        // C: `static mi_error_fun* volatile mi_error_handler` + `_Atomic(void*) mi_error_arg`
         private static mi_error_fun? mi_error_handler;
         private static object? mi_error_arg;
 
@@ -484,8 +562,8 @@ namespace FlowtideDotNet.MiMalloc
 
         public static void mi_register_error(mi_error_fun? fun, object? arg)
         {
-            mi_error_handler = fun;  // can be null
-            mi_error_arg = arg;
+            Volatile.Write(ref mi_error_handler, fun);  // can be null
+            Volatile.Write(ref mi_error_arg, arg);
         }
 
         public static void _mi_error_message(int err, string message)
@@ -499,9 +577,12 @@ namespace FlowtideDotNet.MiMalloc
                 mi_message_with_thread_prefix("mimalloc: error: ", message);
             }
             // and call the error handler which may abort (or return normally)
-            if (mi_error_handler != null)
+            // (snapshot into a local: C re-reads the volatile `mi_error_handler` for the call,
+            //  which would fault if it were cleared between the test and the call)
+            mi_error_fun? handler = Volatile.Read(ref mi_error_handler);
+            if (handler != null)
             {
-                mi_error_handler(err, mi_error_arg);
+                handler(err, Volatile.Read(ref mi_error_arg));
             }
             else
             {

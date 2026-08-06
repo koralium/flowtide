@@ -358,6 +358,8 @@ namespace FlowtideDotNet.MiMalloc
                 if (pq->last == page && pq->first == page)   // the only page in the queue?
                 {
                     mi_theap_t* theap = mi_page_theap(page);
+                    // MI_STAT > 0
+                    __mi_stat_counter_increase(&theap->stats.pages_retire, 1);
                     page->retire_expire = (byte)(bsize <= MI_SMALL_MAX_OBJ_SIZE ? MI_RETIRE_CYCLES : MI_RETIRE_CYCLES / 4);
                     mi_page_queue_t* pages = mi_theap_pages(theap);
                     mi_assert_internal(pq >= pages);
@@ -459,6 +461,8 @@ namespace FlowtideDotNet.MiMalloc
 
             nuint page_size;
             mi_page_area(page, &page_size);
+            // MI_STAT > 0
+            __mi_stat_counter_increase(&theap->stats.pages_extended, 1);
 
             // calculate the extend count
             nuint bsize = mi_page_block_size(page);
@@ -508,6 +512,8 @@ namespace FlowtideDotNet.MiMalloc
             mi_page_free_list_extend(page, bsize, extend);
             // enable the new free list
             page->capacity += (ushort)extend;
+            // MI_STAT > 0
+            __mi_stat_increase(&theap->stats.page_committed, extend * bsize);
             return true;
         }
 
