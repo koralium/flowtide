@@ -131,6 +131,50 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
         }
 
         [Fact]
+        public void TestSortDataNotPoisonedBySortDataWithTags()
+        {
+            var intColumn = new Column(GlobalMemoryManager.Instance);
+            intColumn.Add(new Int64Value(10));
+            intColumn.Add(new Int64Value(5));
+
+            IColumn[] intColumns = new IColumn[] { intColumn };
+            var batchSorter = new BatchSorter(1);
+
+            int[] indirect1 = new int[] { 0, 1 };
+            var span1 = indirect1.AsSpan();
+
+            batchSorter.SortData(intColumns, ref span1);
+
+            Assert.Equal(1, indirect1[0]);
+            Assert.Equal(0, indirect1[1]);
+
+            var stringColumn = new Column(GlobalMemoryManager.Instance);
+            stringColumn.Add(new StringValue("zebra"));
+            stringColumn.Add(new StringValue("apple"));
+
+            IColumn[] stringColumns = new IColumn[] { stringColumn };
+
+            int[] indirect2 = new int[] { 0, 1 };
+            var span2 = indirect2.AsSpan();
+            int[] tags = new int[2];
+            var tagSpan = tags.AsSpan();
+
+            batchSorter.SortDataWithTags(stringColumns, ref span2, ref tagSpan);
+
+            Assert.Equal(1, indirect2[0]);
+            Assert.Equal(0, indirect2[1]);
+
+            // The string key is cached by the tagged sort, the plain sort must not reuse the int delegate
+            int[] indirect3 = new int[] { 0, 1 };
+            var span3 = indirect3.AsSpan();
+
+            batchSorter.SortData(stringColumns, ref span3);
+
+            Assert.Equal(1, indirect3[0]);
+            Assert.Equal(0, indirect3[1]);
+        }
+
+        [Fact]
         public void TestSortManyColumns()
         {
             int numColumns = 8;

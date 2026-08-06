@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -31,7 +31,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         private readonly SelfComparePointers[] _pointers;
         private readonly SortColumnDirection[]? _directions;
         private RadixItem[] _radixItems = Array.Empty<RadixItem>();
-        private UInt128 _lastKey = 0;
+        private UInt128 _lastSortKey = 0;
+        private UInt128 _lastSortWithTagsKey = 0;
         private SortCompiler.SortDelegate? _lastSort;
         private SortCompiler.SortWithTagsDelegate? _lastSortWithTags;
 
@@ -52,10 +53,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             Debug.Assert(columns.Length == _pointers.Length);
             var key = SortCompiler.CreateKey(columns, _directions);
 
-            if (key != _lastKey || _lastSort == null)
+            if (key != _lastSortKey || _lastSort == null)
             {
                 _lastSort = SortCompiler.GetOrCompile(key, columns, _directions);
-                _lastKey = key;
+                _lastSortKey = key;
             }
 
             for (int i = 0; i < columns.Length; i++)
@@ -88,10 +89,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         {
             Debug.Assert(columns.Length == _pointers.Length);
             var key = SortCompiler.CreateKey(columns, _directions);
-            if (key != _lastKey || _lastSortWithTags == null)
+            if (key != _lastSortWithTagsKey || _lastSortWithTags == null)
             {
                 _lastSortWithTags = SortCompiler.GetOrCompileWithTags(key, columns, _directions);
-                _lastKey = key;
+                _lastSortWithTagsKey = key;
             }
             for (int i = 0; i < columns.Length; i++)
             {
