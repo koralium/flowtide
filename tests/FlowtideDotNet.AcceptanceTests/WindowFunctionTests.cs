@@ -1962,6 +1962,49 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected);
         }
 
+        public record MixedAverageResult(string? companyId, int userkey, double value);
+
+        /// <summary>
+        /// A non numeric value in the frame counts like a null, it must not change the divisor.
+        /// The seeded rescan refills the previous frame, so the row after it is the one at risk.
+        /// </summary>
+        [Fact]
+        public async Task BoundedAverageIgnoresNonNumericValueInASeededFrame()
+        {
+            AddOrUpdateUser(new User() { UserKey = 10, CompanyId = "1", DoubleValue = 10, FirstName = "str" });
+            AddOrUpdateUser(new User() { UserKey = 20, CompanyId = "1", DoubleValue = 20, FirstName = "str" });
+            AddOrUpdateUser(new User() { UserKey = 30, CompanyId = "1", DoubleValue = 30, FirstName = "str" });
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                AVG(CASE WHEN UserKey = 20 THEN FirstName ELSE DoubleValue END)
+                    OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as value
+            FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new MixedAverageResult("1", 10, 10),
+                new MixedAverageResult("1", 20, 10),
+                new MixedAverageResult("1", 30, 30)
+            });
+
+            // Lands directly after the non numeric row, so its rescan seeds a frame holding it
+            AddOrUpdateUser(new User() { UserKey = 25, CompanyId = "1", DoubleValue = 25, FirstName = "str" });
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new MixedAverageResult("1", 10, 10),
+                new MixedAverageResult("1", 20, 10),
+                new MixedAverageResult("1", 25, 25),
+                new MixedAverageResult("1", 30, 27.5)
+            });
+        }
+
         public record LagOffsetResult(string? companyId, int userkey, long? value);
 
         public record LagStringResult(string? companyId, int userkey, string? firstName, string? lagValue);

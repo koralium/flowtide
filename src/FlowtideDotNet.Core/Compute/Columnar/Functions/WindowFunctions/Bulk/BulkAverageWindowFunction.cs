@@ -192,10 +192,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 var row = seedReader.GetRow(back);
                 var value = _fetchValueFunction(row.referenceBatch, row.RowIndex);
                 _frame.Push(value);
-                if (!value.IsNull)
-                {
-                    _count++;
-                }
+                // Must match the eviction below, a non numeric value counts like a null
+                AverageWindowUtils.ModifyCount(ref _count, 1, value.Type);
             }
         }
 

@@ -66,6 +66,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public static BulkWindowFrameBounds Parse(WindowFunction windowFunction)
         {
             MinMaxBoundUtils.GetBoundInfo(windowFunction, out var isRowBounded, out var from, out var to);
+
+            // A partition cannot hold more rows than an int, so a wider offset reaches past it and
+            // is unbounded. Kept finite it overflows the frame size the ring is built from.
+            if (from < -int.MaxValue)
+            {
+                from = long.MinValue;
+            }
+            if (to > int.MaxValue)
+            {
+                to = long.MaxValue;
+            }
+
             if (!isRowBounded || (from == long.MinValue && to == long.MaxValue))
             {
                 return new BulkWindowFrameBounds(BulkWindowFrameKind.WholePartition, long.MinValue, long.MaxValue);
