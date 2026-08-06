@@ -164,8 +164,36 @@ Dependency-ordered. Update the checkboxes as work lands; also mirrored in the se
       surfaced by 8-byte blocks (unreachable in C debug builds where MI_PADDING>=1):
       two over-strong asserts in `mi_arenas_page_alloc_fresh` relaxed to the
       reachable invariant; the computation matches C release byte-for-byte.
-- [ ] 9. Public API class `MiMalloc` (mi_* surface used by Flowtide), integration into
-      `FlowtideMemoryAllocation`, multi-threaded stress tests, full Flowtide test suite, benchmarks
+- [x] 9. Public API class `MiMalloc` (MiMallocApi.cs: the full mi_* surface with native
+      names/signatures incl. posix-order `mi_aligned_alloc`), integration into
+      `FlowtideMemoryAllocation` (managed port is the DEFAULT; `FLOWTIDE_NATIVE_MIMALLOC=1`
+      restores the native-library path), allocator benchmarks
+      (tests/FlowtideDotNet.Benchmarks/MiMallocAllocatorBenchmark.cs: managed vs native
+      vs NativeMemory -- alloc/free, mixed churn, realloc-grow, 4-thread MT).
+      Storage test suite parity: all 352 tests run under the managed allocator on
+      net8.0 Debug AND net10.0 Release with results IDENTICAL to the native allocator
+      (1 pre-existing `TestCommit` golden-string failure on all configs; on net10.0
+      six more pre-existing golden failures caused by zlib-ng compressed-URL diffs,
+      identical under native). One pre-existing flaky test fixed
+      (`TestProactiveEvictionLoopEvictsFilesWhenThresholdReached`: its single
+      FakeTimeProvider advance raced the eviction loop's async delay re-arm and hung
+      the suite; Debug-mode MI_DEBUG slowness made the race reliable).
+      C# gotcha hit during integration: the new `FlowtideDotNet.MiMalloc` NAMESPACE
+      shadows the simple type name `MiMalloc` anywhere under `FlowtideDotNet.*`
+      (namespace members beat file-level usings), so consumers alias BOTH classes
+      INSIDE their namespace block.
+      Benchmarks (net10 Release, in-process short job, i7-11850H; per-op):
+      alloc+free 128B: NativeMemory 49ns / native mi 9.7ns / managed 14.8ns;
+      2KB: 44 / 30.5 / 29.5ns; 16KB: 178 / 34.6 / 28.6ns; 256KB: 349 / 32.3 / 30.3ns;
+      mixed churn 16KB: 106 / 38 / 34ns; realloc-grow to 16KB: native mi 357ns vs
+      managed 318ns; 4-thread 64KB blocks: 80.6ms / 2.33ms / 2.07ms. The managed
+      port matches or beats native mimalloc everywhere except the sub-1KB fast
+      path (thread-static ctx read overhead), where it is still 3.3x faster than
+      NativeMemory.
+      FINAL VALIDATION (2026-08-06): Storage suite 352/352 parity with native
+      (net8 Debug + net10 Release); Core suite 760/760 green; Acceptance suite
+      746/746 green (6 minutes of full stream topologies on the managed
+      allocator). THE PORT IS COMPLETE — all 10 tasks done.
 
 ## Testing strategy
 

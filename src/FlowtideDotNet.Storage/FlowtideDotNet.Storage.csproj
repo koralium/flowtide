@@ -16,6 +16,10 @@
 	<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\FlowtideDotNet.MiMalloc\FlowtideDotNet.MiMalloc.csproj" />
+  </ItemGroup>
+
 	<ItemGroup>
 		<None Include="runtimes\**\native\*" Pack="true" PackagePath="runtimes" />
 	</ItemGroup>

@@ -1,9 +1,9 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,6 +24,12 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Memory
 {
+    // note: these aliases must live INSIDE the namespace: the `FlowtideDotNet.MiMalloc`
+    // NAMESPACE otherwise shadows the simple name `MiMalloc` (namespace members are
+    // matched before file-level using directives when walking up from FlowtideDotNet.*).
+    using ManagedMiMalloc = FlowtideDotNet.MiMalloc.MiMalloc;
+    using MiMalloc = FlowtideDotNet.Storage.Mimalloc.MiMalloc;
+
     internal unsafe struct FlowtideAllocatedMemory
     {
         public void* ptr;
@@ -31,12 +37,20 @@ namespace FlowtideDotNet.Storage.Memory
     }
     internal unsafe static class FlowtideMemoryAllocation
     {
+        // Allocator selection:
+        //  - default: the fully managed mimalloc port (FlowtideDotNet.MiMalloc) -- no native
+        //    library needed.
+        //  - FLOWTIDE_NATIVE_MIMALLOC=1: use the native mimalloc library (previous behavior),
+        //    falling back to NativeMemory if it cannot be loaded.
+        private static readonly bool _useManagedMimalloc;
         private static readonly bool _isMimallocAvailable;
 
         static FlowtideMemoryAllocation()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
+                // both the native library and the managed port read these options from the
+                // environment on first use
                 if (Environment.GetEnvironmentVariable("MIMALLOC_ALLOW_THP") == null)
                 {
                     Environment.SetEnvironmentVariable("MIMALLOC_ALLOW_THP", "0");
@@ -46,6 +60,13 @@ namespace FlowtideDotNet.Storage.Memory
                 {
                     Environment.SetEnvironmentVariable("MIMALLOC_PURGE_DECOMMITS", "1");
                 }
+            }
+
+            var forceNative = Environment.GetEnvironmentVariable("FLOWTIDE_NATIVE_MIMALLOC");
+            _useManagedMimalloc = !(forceNative == "1" || string.Equals(forceNative, "true", StringComparison.OrdinalIgnoreCase));
+            if (_useManagedMimalloc)
+            {
+                return;
             }
 
             _isMimallocAvailable = NativeLibrary.TryLoad(MiMalloc.NATIVE_LIBRARY,
@@ -69,6 +90,10 @@ namespace FlowtideDotNet.Storage.Memory
         public static FlowtideAllocatedMemory AllocateAligned(int size, int alignment)
         {
             Debug.Assert(BitOperations.IsPow2(alignment), "Alignment must be a power of 2");
+            if (_useManagedMimalloc)
+            {
+                return AllocateManagedMimalloc(size, alignment);
+            }
             if (_isMimallocAvailable)
             {
                 return AllocateMimalloc(size, alignment);
@@ -78,7 +103,14 @@ namespace FlowtideDotNet.Storage.Memory
 
         public static void FreeAligned(void* ptr, nuint alignment)
         {
-            if (_isMimallocAvailable)
+            if (_useManagedMimalloc)
+            {
+                if (ptr != null)
+                {
+                    ManagedMiMalloc.mi_free_aligned(ptr, alignment);
+                }
+            }
+            else if (_isMimallocAvailable)
             {
                 FreeAlignedMimalloc(ptr, alignment);
             }
@@ -103,6 +135,10 @@ namespace FlowtideDotNet.Storage.Memory
 
         public static FlowtideAllocatedMemory ReallocAligned(void* ptr, int oldSize, int newSize, int alignment)
         {
+            if (_useManagedMimalloc)
+            {
+                return ReallocManagedMimalloc(ptr, oldSize, newSize, alignment);
+            }
             if (_isMimallocAvailable)
             {
                 return ReallocMimalloc(ptr, oldSize, newSize, alignment);
@@ -140,6 +176,26 @@ namespace FlowtideDotNet.Storage.Memory
             return new FlowtideAllocatedMemory() { ptr = newPtr, length = alignedsize };
         }
 
+        private static FlowtideAllocatedMemory ReallocManagedMimalloc(void* ptr, int oldSize, int newSize, int alignment)
+        {
+            Debug.Assert(BitOperations.IsPow2(alignment), "Alignment must be a power of 2");
+
+            var alignedsize = (newSize + alignment - 1) & ~(alignment - 1);
+            alignedsize = (int)ManagedMiMalloc.mi_good_size((nuint)alignedsize);
+            if (alignedsize == oldSize)
+            {
+                return new FlowtideAllocatedMemory() { ptr = ptr, length = oldSize };
+            }
+
+            void* newPtr = ManagedMiMalloc.mi_realloc_aligned(ptr, (nuint)alignedsize, (nuint)alignment);
+
+            if (newPtr == GlobalMemoryManager.NullPtr)
+            {
+                throw new InvalidOperationException("Could not reallocate memory");
+            }
+            return new FlowtideAllocatedMemory() { ptr = newPtr, length = alignedsize };
+        }
+
         private static FlowtideAllocatedMemory AllocateNativeMemory(int size, int alignment)
         {
             var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
@@ -164,9 +220,27 @@ namespace FlowtideDotNet.Storage.Memory
             return new FlowtideAllocatedMemory { ptr = ptr, length = goodSize };
         }
 
+        private static FlowtideAllocatedMemory AllocateManagedMimalloc(int size, int alignment)
+        {
+            var alignedsize = (size + alignment - 1) & ~(alignment - 1);
+            var goodSize = (int)ManagedMiMalloc.mi_good_size((nuint)alignedsize);
+
+            void* ptr = ManagedMiMalloc.mi_aligned_alloc((nuint)alignment, (nuint)goodSize);
+
+            if (ptr == GlobalMemoryManager.NullPtr)
+            {
+                throw new InvalidOperationException("Could not allocate memory");
+            }
+            return new FlowtideAllocatedMemory { ptr = ptr, length = goodSize };
+        }
+
         public static void Collect()
         {
-            if (_isMimallocAvailable)
+            if (_useManagedMimalloc)
+            {
+                ManagedMiMalloc.mi_collect(true);
+            }
+            else if (_isMimallocAvailable)
             {
                 MiMalloc.mi_collect(true);
             }
