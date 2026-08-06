@@ -13,7 +13,7 @@
 // Port of mimalloc v3.4.4 `src/options.c` (+ the mi_option_t enum from `mimalloc.h`).
 // Original: Copyright (c) 2018-2026 Microsoft Research, Daan Leijen (MIT license).
 //
-// Differences from C (documented in PORTING.md):
+// Differences from C (documented in README.md):
 //  - The delayed-output buffer machinery is dropped: .NET can write to stderr at any
 //    time and the port never runs before the runtime is initialized. mi_register_output
 //    still works (defaults to stderr).

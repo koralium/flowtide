@@ -13,7 +13,7 @@
 // Port of mimalloc v3.4.4 `include/mimalloc/types.h` (+ size constants from `mimalloc.h`).
 // Original: Copyright (c) 2018-2026 Microsoft Research, Daan Leijen (MIT license).
 //
-// Pinned configuration (see PORTING.md): 64-bit, MI_SECURE=0, MI_PADDING=0,
+// Pinned configuration (see README.md): 64-bit, MI_SECURE=0, MI_PADDING=0,
 // MI_ENCODE_FREELIST=0, MI_GUARDED=0, MI_ENABLE_LARGE_PAGES=1, MI_PAGE_MAP_FLAT=0,
 // MI_PAGE_META_IS_SEPARATED=1. Fields guarded by disabled defines (e.g. `keys[2]`)
 // are omitted from the structs.

@@ -14,7 +14,7 @@
 // `src/prim/unix/prim.c`) to P/Invoke. Original: Copyright (c) 2018-2026
 // Microsoft Research, Daan Leijen (MIT license).
 //
-// Scope (see PORTING.md): modern Windows 10+/Linux (glibc+musl)/macOS only. Large
+// Scope (see README.md): modern Windows 10+/Linux (glibc+musl)/macOS only. Large
 // (2MiB) and huge (1GiB) OS pages are not supported (large_page_size stays 0 which
 // disables every large-page branch downstream; huge-page alloc returns ENOMEM like
 // the C fallback stub). Return convention: 0 on success, else the raw OS error

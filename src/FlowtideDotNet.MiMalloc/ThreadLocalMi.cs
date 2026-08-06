@@ -14,7 +14,7 @@
 // for heaps (no limit on the number that can be allocated).
 // Original: Copyright (c) 2019-2026 Microsoft Research, Daan Leijen (MIT license).
 //
-// Port deviation (documented in PORTING.md):
+// Port deviation (documented in README.md):
 //  - The per-thread state (slots array pointer + fast slot) lives in the native
 //    per-thread context (`mi_thread_ctx_t` in Init.cs) so the thread-exit sentinel
 //    can free it from the finalizer thread (which adopts the dead thread's

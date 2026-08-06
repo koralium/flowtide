@@ -10,13 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Port of mimalloc v3.4.4 `src/init.c` -- IN PROGRESS (port task #8).
+// Port of mimalloc v3.4.4 `src/init.c` -- process and thread initialization:
+// the main sub-process and heap (C: statics in .bss; here one-time native
+// allocations with MI_MEM_STATIC provenance -- same lifetime), the empty
+// page/theap templates, tld/theap bootstrapping, and thread init/done with
+// the finalizer-sentinel thread-exit mechanism (see README.md).
 // Original: Copyright (c) 2018-2026 Microsoft Research, Daan Leijen (MIT license).
-//
-// Currently only the pieces needed by the page map and meta allocator are here:
-// the main sub-process (C: `static mi_subproc_t subproc_main` in .bss; here a
-// one-time native allocation with MI_MEM_STATIC provenance -- same lifetime).
-// The main heap wiring, tld/theap bootstrapping and thread init/done land with task #8.
 
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -89,7 +88,7 @@ namespace FlowtideDotNet.MiMalloc
         private static void mi_process_init()
         {
             // This port pins the 64-bit configuration (MI_INTPTR_SHIFT / MI_SIZE_SHIFT are the
-            // constant 3, see PORTING.md). On a 32-bit runtime every size and shift computation
+            // constant 3, see README.md). On a 32-bit runtime every size and shift computation
             // would be silently wrong, so refuse to start rather than corrupt memory.
             if (IntPtr.Size != 8)
             {
@@ -428,7 +427,7 @@ namespace FlowtideDotNet.MiMalloc
         }
 
         // Allocate fresh tld (C: init.c `mi_tld_alloc`; the port has no static tld_main --
-        // every thread's tld is meta-allocated, see PORTING.md)
+        // every thread's tld is meta-allocated, see README.md)
         private static mi_tld_t* mi_tld_alloc(mi_subproc_t* subproc)
         {
             // note: we need to be careful to not access the tld from `_mi_meta_zalloc`

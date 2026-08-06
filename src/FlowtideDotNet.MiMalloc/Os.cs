@@ -13,7 +13,7 @@
 // Port of mimalloc v3.4.4 `src/os.c`.
 // Original: Copyright (c) 2018-2026 Microsoft Research, Daan Leijen (MIT license).
 //
-// Deviations (see PORTING.md):
+// Deviations (see README.md):
 //  - MI_SECURE == 0: the secure guard-page helpers are the no-op variants.
 //  - Huge OS pages (1 GiB) are not supported: _mi_os_alloc_huge_os_pages returns null
 //    (the arena layer treats that as "no huge pages available", same as when the OS
