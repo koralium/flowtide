@@ -349,6 +349,9 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             _seedReader = null;
             _backwardReader = null;
 
+            _emitter?.Dispose();
+            _emitter = null;
+
             return base.DisposeAsync();
         }
 

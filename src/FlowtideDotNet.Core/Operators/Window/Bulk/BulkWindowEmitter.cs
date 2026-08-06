@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
     /// Collects output rows, input columns are block copied from the source batch.
     /// Call <see cref="FlushPending"/> before the source batch is released.
     /// </summary>
-    internal class BulkWindowEmitter
+    internal class BulkWindowEmitter : IDisposable
     {
         private IColumn[] _columns;
         private PrimitiveList<int> _weights;
@@ -164,6 +164,24 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
 
             _pendingOffsets.Clear();
+            _pendingSourceBatch = null;
+        }
+
+        public void Dispose()
+        {
+            // Only the batch under construction, GetCurrentBatch hands ownership downstream
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                _columns[i].Dispose();
+            }
+            _weights.Dispose();
+            _iterations.Dispose();
+
+            _pendingOffsets.Dispose();
+            _targetPositionScratch.Dispose();
+            _translatedOffsetScratch.Dispose();
+
+            // Owned by the page, never disposed here
             _pendingSourceBatch = null;
         }
     }
