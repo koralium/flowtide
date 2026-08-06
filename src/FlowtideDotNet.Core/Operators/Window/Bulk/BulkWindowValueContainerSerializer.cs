@@ -83,23 +83,42 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             var weights = new PrimitiveList<int>(weightsNativeMemory, weightsMemoryLength / sizeof(int), _memoryAllocator);
             var bitmap = new BitmapList(bitmapNativeMemory, weights.Count, _memoryAllocator);
 
-            var deserializer = new EventBatchDeserializer(_memoryAllocator);
-            var functionStatesResult = deserializer.DeserializeDataColumns(ref reader);
-
-            ListColumn[] listColumns = new ListColumn[functionStatesResult.DataColumns.Length];
-            for (int i = 0; i < functionStatesResult.DataColumns.Length; i++)
+            // The weights and bitmap own their memory from here, release it deterministically
+            // rather than leaving it to the finalizers if the column stream is corrupt
+            IDataColumn[]? dataColumns = null;
+            try
             {
-                if (functionStatesResult.DataColumns[i] is ListColumn listColumn)
-                {
-                    listColumns[i] = listColumn;
-                }
-                else
-                {
-                    throw new InvalidOperationException("Invalid data column type");
-                }
-            }
+                var deserializer = new EventBatchDeserializer(_memoryAllocator);
+                dataColumns = deserializer.DeserializeDataColumns(ref reader).DataColumns;
 
-            return new BulkWindowValueContainer(weights, listColumns, bitmap);
+                ListColumn[] listColumns = new ListColumn[dataColumns.Length];
+                for (int i = 0; i < dataColumns.Length; i++)
+                {
+                    if (dataColumns[i] is ListColumn listColumn)
+                    {
+                        listColumns[i] = listColumn;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Invalid data column type");
+                    }
+                }
+
+                return new BulkWindowValueContainer(weights, listColumns, bitmap);
+            }
+            catch
+            {
+                weights.Dispose();
+                bitmap.Dispose();
+                if (dataColumns != null)
+                {
+                    for (int i = 0; i < dataColumns.Length; i++)
+                    {
+                        dataColumns[i].Dispose();
+                    }
+                }
+                throw;
+            }
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)

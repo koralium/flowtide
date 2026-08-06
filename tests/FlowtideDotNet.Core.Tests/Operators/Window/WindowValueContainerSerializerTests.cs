@@ -91,12 +91,13 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
             {
                 deserialize(ref reader);
             }
-            catch (InvalidOperationException)
+            catch (Exception)
             {
+                // The corrupt column stream reports a bare Exception, the lengths an InvalidOperationException
                 threw = true;
             }
 
-            Assert.True(threw, "The truncated payload was not rejected");
+            Assert.True(threw, "The invalid payload was not rejected");
             Assert.Equal(0, allocator.ActiveAllocations);
         }
 
@@ -126,6 +127,35 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
             var serializer = new BulkWindowValueContainerSerializer(1, allocator);
 
             AssertThrowsWithoutLeaking(allocator, TruncatedPayload(8, -1, 8), (ref SequenceReader<byte> r) => serializer.Deserialize(ref r));
+        }
+
+        /// <summary>
+        /// Both lengths are satisfied, the column stream after them is not.
+        /// </summary>
+        private static byte[] CorruptColumnStreamPayload()
+        {
+            byte[] data = new byte[8 + 4 + 4];
+            BinaryPrimitives.WriteInt32LittleEndian(data.AsSpan(0), 4);
+            BinaryPrimitives.WriteInt32LittleEndian(data.AsSpan(4), 4);
+            return data;
+        }
+
+        [Fact]
+        public void BulkDeserializeCorruptColumnStreamReleasesWithoutFinalizer()
+        {
+            var allocator = new TrackingMemoryAllocator();
+            var serializer = new BulkWindowValueContainerSerializer(1, allocator);
+
+            AssertThrowsWithoutLeaking(allocator, CorruptColumnStreamPayload(), (ref SequenceReader<byte> r) => serializer.Deserialize(ref r));
+        }
+
+        [Fact]
+        public void DeserializeCorruptColumnStreamReleasesWithoutFinalizer()
+        {
+            var allocator = new TrackingMemoryAllocator();
+            var serializer = new WindowValueContainerSerializer(1, allocator);
+
+            AssertThrowsWithoutLeaking(allocator, CorruptColumnStreamPayload(), (ref SequenceReader<byte> r) => serializer.Deserialize(ref r));
         }
 
         [Fact]
