@@ -2,9 +2,9 @@
 <html>
   <head>
     <meta charset="utf-8">
-      <title>Namespace FlowtideDotNet.Storage.Mimalloc | Flowtide.NET </title>
+      <title>Namespace FlowtideDotNet.MiMalloc | Flowtide.NET </title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <meta name="title" content="Namespace FlowtideDotNet.Storage.Mimalloc | Flowtide.NET ">
+      <meta name="title" content="Namespace FlowtideDotNet.MiMalloc | Flowtide.NET ">
       
       
       <link rel="icon" href="../images/favicon.ico">
@@ -84,9 +84,9 @@
           <nav id="breadcrumb"></nav>
         </div>
 
-        <article data-uid="FlowtideDotNet.Storage.Mimalloc">
+        <article data-uid="FlowtideDotNet.MiMalloc">
 
-  <h1 id="FlowtideDotNet_Storage_Mimalloc" data-uid="FlowtideDotNet.Storage.Mimalloc" class="text-break">Namespace FlowtideDotNet.Storage.Mimalloc</h1>
+  <h1 id="FlowtideDotNet_MiMalloc" data-uid="FlowtideDotNet.MiMalloc" class="text-break">Namespace FlowtideDotNet.MiMalloc</h1>
   <div class="markdown level0 summary"></div>
   <div class="markdown level0 conceptual"></div>
   <div class="markdown level0 remarks"></div>
@@ -95,51 +95,15 @@
 Classes
 </h3>
     <dl class="jumplist">
-      <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.MiMalloc.html">MiMalloc</a></dt>
-      <dd><p><a href="https://github.com/microsoft/mimalloc">https://github.com/microsoft/mimalloc</a></p>
+      <dt><a class="xref" href="FlowtideDotNet.MiMalloc.MiMalloc.html">MiMalloc</a></dt>
+      <dd><p>Public entry points of the fully managed mimalloc port (v3.4.4).
+Names, argument order and semantics match the native mimalloc C API
+(<code>mimalloc.h</code>), so this class is a drop-in replacement for a
+P/Invoke binding. All functions are thread-safe; thread-local heaps are
+created on first use per thread and cleaned up automatically when a
+thread exits (pages with live blocks are abandoned and reclaimed by
+other threads, exactly as in native mimalloc).</p>
 </dd>
-    </dl>
-    <h3 id="structs">
-Structs
-</h3>
-    <dl class="jumplist">
-      <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t.html">mi_arena_id_t</a></dt>
-      <dd></dd>
-    </dl>
-    <dl class="jumplist">
-      <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_block_visit_fun.html">mi_block_visit_fun</a></dt>
-      <dd></dd>
-    </dl>
-    <dl class="jumplist">
-      <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_deferred_free_fun.html">mi_deferred_free_fun</a></dt>
-      <dd></dd>
-    </dl>
-    <dl class="jumplist">
-      <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_error_fun.html">mi_error_fun</a></dt>
-      <dd></dd>
-    </dl>
-    <dl class="jumplist">
-      <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_area_t_ptr.html">mi_heap_area_t_ptr</a></dt>
-      <dd></dd>
-    </dl>
-    <dl class="jumplist">
-      <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
-      <dd></dd>
-    </dl>
-    <dl class="jumplist">
-      <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_output_fun.html">mi_output_fun</a></dt>
-      <dd></dd>
-    </dl>
-    <dl class="jumplist">
-      <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t.html">mi_subproc_id_t</a></dt>
-      <dd></dd>
-    </dl>
-    <h3 id="enums">
-Enums
-</h3>
-    <dl class="jumplist">
-      <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_option_t.html">mi_option_t</a></dt>
-      <dd></dd>
     </dl>
 
 

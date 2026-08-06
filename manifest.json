@@ -6662,6 +6662,34 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.MiMalloc.MiMalloc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.MiMalloc.MiMalloc.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.MiMalloc.MiMalloc",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.MiMalloc.MiMalloc.yml\" sourcestartlinenumber=\"1\">Public entry points of the fully managed mimalloc port (v3.4.4).\nNames, argument order and semantics match the native mimalloc C API\n(<code>mimalloc.h</code>), so this class is a drop-in replacement for a\nP/Invoke binding. All functions are thread-safe; thread-local heaps are\ncreated on first use per thread and cleaned up automatically when a\nthread exits (pages with live blocks are abandoned and reclaimed by\nother threads, exactly as in native mimalloc).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.MiMalloc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.MiMalloc.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.MiMalloc",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.SqlServer.SqlServer.FilterResult.yml",
       "output": {
         ".html": {
@@ -7274,160 +7302,6 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "FlowtideDotNet.Storage.Memory",
-      "Summary": null
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Mimalloc.MiMalloc.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Mimalloc.MiMalloc.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Mimalloc.MiMalloc",
-      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Storage.Mimalloc.MiMalloc.yml\" sourcestartlinenumber=\"1\"><a href=\"https://github.com/microsoft/mimalloc\" sourcefile=\"api/FlowtideDotNet.Storage.Mimalloc.MiMalloc.yml\" sourcestartlinenumber=\"1\">https://github.com/microsoft/mimalloc</a></p>\n"
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t",
-      "Summary": null
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_block_visit_fun.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_block_visit_fun.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Mimalloc.mi_block_visit_fun",
-      "Summary": null
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_deferred_free_fun.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_deferred_free_fun.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Mimalloc.mi_deferred_free_fun",
-      "Summary": null
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_error_fun.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_error_fun.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Mimalloc.mi_error_fun",
-      "Summary": null
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_heap_area_t_ptr.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_heap_area_t_ptr.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Mimalloc.mi_heap_area_t_ptr",
-      "Summary": null
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr",
-      "Summary": null
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_option_t.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_option_t.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Mimalloc.mi_option_t",
-      "Summary": null
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_output_fun.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_output_fun.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Mimalloc.mi_output_fun",
-      "Summary": null
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t",
-      "Summary": null
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Mimalloc.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Mimalloc.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Mimalloc",
       "Summary": null
     },
     {

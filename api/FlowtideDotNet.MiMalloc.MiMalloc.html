@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class MiMalloc | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class MiMalloc | Flowtide.NET ">
+      
+      <meta name="description" content="Public entry points of the fully managed mimalloc port (v3.4.4). Names, argument order and semantics match the native mimalloc C API (mimalloc.h), so this class is a drop-in replacement for a P/Invoke binding. All functions are thread-safe; thread-local heaps are created on first use per thread and cleaned up automatically when a thread exits (pages with live blocks are abandoned and reclaimed by other threads, exactly as in native mimalloc).">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_MiMalloc_MiMalloc.md&amp;value=---%0Auid%3A%20FlowtideDotNet.MiMalloc.MiMalloc%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.MiMalloc.MiMalloc">
+
+
+
+  <h1 id="FlowtideDotNet_MiMalloc_MiMalloc" data-uid="FlowtideDotNet.MiMalloc.MiMalloc" class="text-break">
+Class MiMalloc  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.MiMalloc.html">MiMalloc</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.MiMalloc.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Public entry points of the fully managed mimalloc port (v3.4.4).
+Names, argument order and semantics match the native mimalloc C API
+(<code>mimalloc.h</code>), so this class is a drop-in replacement for a
+P/Invoke binding. All functions are thread-safe; thread-local heaps are
+created on first use per thread and cleaned up automatically when a
+thread exits (pages with live blocks are abandoned and reclaimed by
+other threads, exactly as in native mimalloc).</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class MiMalloc</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">MiMalloc</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_aligned_alloc_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_aligned_alloc*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_aligned_alloc_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_aligned_alloc(System.UIntPtr,System.UIntPtr)">
+  mi_aligned_alloc(nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L127"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>C11 <code>aligned_alloc</code> (posix argument order: alignment first).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_aligned_alloc(nuint alignment, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_calloc_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_calloc*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_calloc_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_calloc(System.UIntPtr,System.UIntPtr)">
+  mi_calloc(nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_calloc(nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_calloc_aligned_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_calloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_calloc_aligned_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_calloc_aligned(System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_calloc_aligned(nuint, nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L114"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_calloc_aligned(nuint count, nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_collect_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_collect*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_collect_System_Boolean_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_collect(System.Boolean)">
+  mi_collect(bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L141"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Eagerly free memory; with <code class="paramref">force</code> aggressively return memory to the OS.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void mi_collect(bool force)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>force</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_expand_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_expand*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_expand_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_expand(System.Void*,System.UIntPtr)">
+  mi_expand(void*, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L65"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_expand(void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_free_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_free*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_free_System_Void__" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_free(System.Void*)">
+  mi_free(void*)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L68"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void mi_free(void* p)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_free_aligned_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_free_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_free_aligned_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_free_aligned(System.Void*,System.UIntPtr)">
+  mi_free_aligned(void*, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L130"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void mi_free_aligned(void* p, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_free_size_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_free_size*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_free_size_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_free_size(System.Void*,System.UIntPtr)">
+  mi_free_size(void*, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L71"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void mi_free_size(void* p, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_free_size_aligned_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_free_size_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_free_size_aligned_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_free_size_aligned(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_free_size_aligned(void*, nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L133"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void mi_free_size_aligned(void* p, nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_good_size_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_good_size*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_good_size_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_good_size(System.UIntPtr)">
+  mi_good_size(nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static nuint mi_good_size(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_malloc_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_malloc*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_malloc_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_malloc(System.UIntPtr)">
+  mi_malloc(nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L38"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_malloc(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_malloc_aligned_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_malloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_malloc_aligned_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_malloc_aligned(System.UIntPtr,System.UIntPtr)">
+  mi_malloc_aligned(nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L102"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_malloc_aligned(nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_malloc_aligned_at_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_malloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_malloc_aligned_at_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_malloc_aligned_at(System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_malloc_aligned_at(nuint, nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L105"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_malloc_aligned_at(nuint size, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_malloc_small_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_malloc_small*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_malloc_small_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_malloc_small(System.UIntPtr)">
+  mi_malloc_small(nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_malloc_small(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_mallocn_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_mallocn*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_mallocn_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_mallocn(System.UIntPtr,System.UIntPtr)">
+  mi_mallocn(nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L47"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_mallocn(nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_realloc_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_realloc*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_realloc_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_realloc(System.Void*,System.UIntPtr)">
+  mi_realloc(void*, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L50"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_realloc(void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_realloc_aligned_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_realloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_realloc_aligned_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_realloc_aligned(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_realloc_aligned(void*, nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L117"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_realloc_aligned(void* p, nuint newsize, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_realloc_aligned_at_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_realloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_realloc_aligned_at_System_Void__System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_realloc_aligned_at(System.Void*,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_realloc_aligned_at(void*, nuint, nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L120"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_realloc_aligned_at(void* p, nuint newsize, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_reallocf_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_reallocf*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_reallocf_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_reallocf(System.Void*,System.UIntPtr)">
+  mi_reallocf(void*, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_reallocf(void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_reallocn_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_reallocn*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_reallocn_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_reallocn(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_reallocn(void*, nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L53"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_reallocn(void* p, nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_recalloc_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_recalloc*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_recalloc_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_recalloc(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_recalloc(void*, nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L62"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_recalloc(void* p, nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_rezalloc_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_rezalloc*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_rezalloc_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_rezalloc(System.Void*,System.UIntPtr)">
+  mi_rezalloc(void*, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L59"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_rezalloc(void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_rezalloc_aligned_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_rezalloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_rezalloc_aligned_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_rezalloc_aligned(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_rezalloc_aligned(void*, nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L123"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_rezalloc_aligned(void* p, nuint newsize, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_strdup_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_strdup*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_strdup_System_Byte__" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_strdup(System.Byte*)">
+  mi_strdup(byte*)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L80"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static byte* mi_strdup(byte* s)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>s</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_strndup_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_strndup*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_strndup_System_Byte__System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_strndup(System.Byte*,System.UIntPtr)">
+  mi_strndup(byte*, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L83"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static byte* mi_strndup(byte* s, nuint n)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>s</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+    <dt><code>n</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_thread_done_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_thread_done*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_thread_done" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_thread_done">
+  mi_thread_done()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L154"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Release the current thread's heaps (abandoning pages that still contain
+live blocks). Optional: a GC-driven sentinel runs this automatically after
+a thread exits; call it explicitly for deterministic cleanup.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void mi_thread_done()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_thread_init_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_thread_init*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_thread_init" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_thread_init">
+  mi_thread_init()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L147"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initialize the allocator on the current thread. Optional: this is done
+automatically on the first allocation from a thread.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void mi_thread_init()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_usable_size_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_usable_size*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_usable_size_System_Void__" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_usable_size(System.Void*)">
+  mi_usable_size(void*)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L90"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static nuint mi_usable_size(void* p)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_version_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_version*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_version" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_version">
+  mi_version()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L32"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The mimalloc version this port is based on, encoded as in <code>mimalloc.h</code>:
+major + 2 digits minor + 2 digits patch. v3.4.4 is <code>30404</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static int mi_version()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_zalloc_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_zalloc*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_zalloc_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_zalloc(System.UIntPtr)">
+  mi_zalloc(nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L41"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_zalloc(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_zalloc_aligned_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_zalloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_zalloc_aligned_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_zalloc_aligned(System.UIntPtr,System.UIntPtr)">
+  mi_zalloc_aligned(nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L108"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_zalloc_aligned(nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_zalloc_aligned_at_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_zalloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_zalloc_aligned_at_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_zalloc_aligned_at(System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_zalloc_aligned_at(nuint, nuint, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L111"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_zalloc_aligned_at(nuint size, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_zalloc_small_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_zalloc_small*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_zalloc_small_System_UIntPtr_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_zalloc_small(System.UIntPtr)">
+  mi_zalloc_small(nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L77"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void* mi_zalloc_small(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L26" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
