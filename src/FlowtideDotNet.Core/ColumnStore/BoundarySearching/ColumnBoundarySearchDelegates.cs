@@ -59,6 +59,17 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId.Int16, ArrowTypeId.Int16)] = BoundarySearchPrimitiveNoNullWithInputOffsets<short, DescendingBoundaryOrder<short>>;
             _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId.Int32, ArrowTypeId.Int32)] = BoundarySearchPrimitiveNoNullWithInputOffsets<int, DescendingBoundaryOrder<int>>;
             _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId.Int64, ArrowTypeId.Int64)] = BoundarySearchPrimitiveNoNullWithInputOffsets<long, DescendingBoundaryOrder<long>>;
+
+            // The same offset delegates for a view that carries nulls, it already handles a -1 offset.
+            // Without these the left join case gains a state bit and silently drops to the fallback.
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int8, ArrowTypeId.Int8, true)] = BoundarySearchPrimitiveNoNullWithInputOffsets<sbyte, AscendingBoundaryOrder<sbyte>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int16, ArrowTypeId.Int16, true)] = BoundarySearchPrimitiveNoNullWithInputOffsets<short, AscendingBoundaryOrder<short>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int32, ArrowTypeId.Int32, true)] = BoundarySearchPrimitiveNoNullWithInputOffsets<int, AscendingBoundaryOrder<int>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int64, ArrowTypeId.Int64, true)] = BoundarySearchPrimitiveNoNullWithInputOffsets<long, AscendingBoundaryOrder<long>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId.Int8, ArrowTypeId.Int8, true)] = BoundarySearchPrimitiveNoNullWithInputOffsets<sbyte, DescendingBoundaryOrder<sbyte>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId.Int16, ArrowTypeId.Int16, true)] = BoundarySearchPrimitiveNoNullWithInputOffsets<short, DescendingBoundaryOrder<short>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId.Int32, ArrowTypeId.Int32, true)] = BoundarySearchPrimitiveNoNullWithInputOffsets<int, DescendingBoundaryOrder<int>>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId.Int64, ArrowTypeId.Int64, true)] = BoundarySearchPrimitiveNoNullWithInputOffsets<long, DescendingBoundaryOrder<long>>;
         }
 
         private static int GetKeyFromTypeNoNull(ArrowTypeId key1, ArrowTypeId key2)
@@ -71,18 +82,26 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             return GetKey(CompareColumnStateBuilder.Create(key1) | CompareColumnState.SortDescending, CompareColumnStateBuilder.Create(key2));
         }
 
-        private static int GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId key1, ArrowTypeId key2)
+        private static int GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId key1, ArrowTypeId key2, bool offsetContainsNull = false)
         {
             var inputCol = CompareColumnStateBuilder.Create(key2);
             inputCol |= CompareColumnState.IsIndirectView;
+            if (offsetContainsNull)
+            {
+                inputCol |= CompareColumnState.OffsetContainsNull;
+            }
             var key = GetKey(CompareColumnStateBuilder.Create(key1), inputCol);
             return key;
         }
 
-        private static int GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId key1, ArrowTypeId key2)
+        private static int GetKeyFromTypeTreeNoNullInputWithOffsetDescending(ArrowTypeId key1, ArrowTypeId key2, bool offsetContainsNull = false)
         {
             var inputCol = CompareColumnStateBuilder.Create(key2);
             inputCol |= CompareColumnState.IsIndirectView;
+            if (offsetContainsNull)
+            {
+                inputCol |= CompareColumnState.OffsetContainsNull;
+            }
             var key = GetKey(CompareColumnStateBuilder.Create(key1) | CompareColumnState.SortDescending, inputCol);
             return key;
         }

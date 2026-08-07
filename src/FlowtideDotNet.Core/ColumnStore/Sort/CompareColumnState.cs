@@ -69,9 +69,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         /// </summary>
         public static bool CanContainNull(CompareColumnState state)
         {
-            if ((state & (CompareColumnState.HasValidityBitmap | CompareColumnState.OffsetContainsNull | CompareColumnState.IsIndirectView)) != 0)
+            // An indirect view encodes its nulls as negative offsets, not as a bitmap, so it
+            // reports OffsetContainsNull. IsIndirectView alone only means the indirection exists.
+            if ((state & (CompareColumnState.HasValidityBitmap | CompareColumnState.OffsetContainsNull)) != 0)
             {
-                // An indirect view encodes its nulls as negative offsets, not as a bitmap.
                 return true;
             }
             // A null typed column carries no flag, and a union keeps its nulls in a child.

@@ -19,6 +19,7 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using System.Diagnostics;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -30,6 +31,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     {
         private readonly IColumn innerColumn;
         private readonly PrimitiveList<int> offsets;
+        private bool? _containsNull;
 
         public const int NullValueIndex = -1;
 
@@ -334,12 +336,29 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 var state = c.GetColumnState();
                 state |= CompareColumnState.IsIndirectView;
+                if (ContainsNull())
+                {
+                    state |= CompareColumnState.OffsetContainsNull;
+                }
                 return state;
             }
             else
             {
                 throw new NotSupportedException();
             }
+        }
+
+        /// <summary>
+        /// A null is the only negative offset. The offsets are complete at construction, so the
+        /// answer is cached, a column reported null free skips the null placement handling.
+        /// </summary>
+        private bool ContainsNull()
+        {
+            _containsNull ??= offsets.Span.ContainsAnyExceptInRange(0, int.MaxValue);
+            // Appending after the state was read would leave this stale and misplace nulls
+            Debug.Assert(_containsNull == offsets.Span.ContainsAnyExceptInRange(0, int.MaxValue),
+                "Offsets changed after the column state was read");
+            return _containsNull.Value;
         }
 
         public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
