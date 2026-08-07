@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             var stateClient = await CreateStateClient<IBPlusTreeNode, FlowtideQueueMetadata>(name, new FlowtideQueueSerializer<V, TValueContainer>(options.ValueSerializer), options.MemoryAllocator);
             if (options.PageSizeBytes == null)
             {
-                options.PageSizeBytes = stateClient.BPlusTreePageSize;
+                options.PageSizeBytes = stateClient.BPlusTreePageSizeBytes;
             }
             var queue = new FlowtideQueue<V, TValueContainer>(stateClient, options);
             await queue.InitializeAsync();
