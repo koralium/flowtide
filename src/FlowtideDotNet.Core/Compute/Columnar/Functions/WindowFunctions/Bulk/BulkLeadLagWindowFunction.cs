@@ -201,6 +201,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+            _ring?.Dispose();
+            _ring = null;
+        }
     }
 
     /// <summary>
@@ -313,6 +319,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _lookahead?.Dispose();
+            _lookahead = null;
         }
     }
 
@@ -457,6 +469,21 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _reader?.Dispose();
+            _reader = null;
+            if (_anchorColumns != null)
+            {
+                // The anchor batch is only a view over these columns.
+                for (int c = 0; c < _anchorColumns.Length; c++)
+                {
+                    _anchorColumns[c].Dispose();
+                }
+                _anchorColumns = null;
+            }
         }
     }
 }

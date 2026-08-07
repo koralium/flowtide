@@ -204,5 +204,29 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 _entryLoaded = false;
             }
         }
+
+        public void Dispose()
+        {
+            if (_partitionKeyColumns != null)
+            {
+                for (int i = 0; i < _partitionKeyColumns.Length; i++)
+                {
+                    _partitionKeyColumns[i].Dispose();
+                }
+                _partitionKeyColumns = null;
+            }
+            if (_fullRowColumns != null)
+            {
+                for (int i = 0; i < _fullRowColumns.Length; i++)
+                {
+                    _fullRowColumns[i].Dispose();
+                }
+                _fullRowColumns = null;
+            }
+            _currentValueColumn?.Dispose();
+            _currentValueColumn = null;
+            _emptyCheckReader?.Dispose();
+            _emptyCheckReader = null;
+        }
     }
 }

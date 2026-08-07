@@ -352,6 +352,14 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             _emitter?.Dispose();
             _emitter = null;
 
+            _scanIterator?.Dispose();
+            _scanIterator = null;
+
+            for (int i = 0; i < _functions.Length; i++)
+            {
+                _functions[i].Dispose();
+            }
+
             return base.DisposeAsync();
         }
 

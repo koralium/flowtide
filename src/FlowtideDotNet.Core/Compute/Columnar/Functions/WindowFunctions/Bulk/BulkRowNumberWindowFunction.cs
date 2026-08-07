@@ -117,5 +117,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+        }
     }
 }

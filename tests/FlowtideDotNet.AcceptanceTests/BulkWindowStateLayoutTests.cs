@@ -82,6 +82,8 @@ namespace FlowtideDotNet.AcceptanceTests
             }
 
             public ValueTask EndScan() => _inner.EndScan();
+
+            public void Dispose() => _inner.Dispose();
         }
 
         private sealed class ExtraAuxDefinition : BulkWindowFunctionDefinition

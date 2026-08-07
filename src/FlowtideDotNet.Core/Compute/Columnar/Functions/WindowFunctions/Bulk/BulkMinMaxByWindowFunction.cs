@@ -313,6 +313,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+            _bestCompareColumn?.Dispose();
+            _bestCompareColumn = null;
+            _bestValueColumn?.Dispose();
+            _bestValueColumn = null;
+            _rescanReader?.Dispose();
+            _rescanReader = null;
+        }
     }
 
     /// <summary>
@@ -430,6 +440,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+            _bestCompareColumn?.Dispose();
+            _bestCompareColumn = null;
+            _bestValueColumn?.Dispose();
+            _bestValueColumn = null;
+        }
     }
 
     /// <summary>
@@ -534,6 +552,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _bestCompareColumn?.Dispose();
+            _bestCompareColumn = null;
+            _bestValueColumn?.Dispose();
+            _bestValueColumn = null;
+            _reader?.Dispose();
+            _reader = null;
         }
     }
 
@@ -787,6 +815,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+            _pendingCompare?.Dispose();
+            _pendingCompare = null;
+            _pendingValue?.Dispose();
+            _pendingValue = null;
+            _frame?.Dispose();
+            _frame = null;
+        }
     }
 
     /// <summary>
@@ -913,6 +951,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _frame?.Dispose();
+            _frame = null;
+            _lookahead?.Dispose();
+            _lookahead = null;
         }
     }
 
@@ -1075,6 +1121,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+            _pendingCompare?.Dispose();
+            _pendingCompare = null;
+            _pendingValue?.Dispose();
+            _pendingValue = null;
+            _bestCompareColumn?.Dispose();
+            _bestCompareColumn = null;
+            _bestValueColumn?.Dispose();
+            _bestValueColumn = null;
+        }
     }
 
     /// <summary>
@@ -1233,6 +1291,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _bestCompareColumn?.Dispose();
+            _bestCompareColumn = null;
+            _bestValueColumn?.Dispose();
+            _bestValueColumn = null;
+            _lookahead?.Dispose();
+            _lookahead = null;
         }
     }
 
@@ -1398,6 +1466,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 _stackPositions = new PrimitiveList<long>(_memoryAllocator);
             }
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _stackCompareColumn?.Dispose();
+            _stackCompareColumn = null;
+            _stackValueColumn?.Dispose();
+            _stackValueColumn = null;
+            _stackPositions?.Dispose();
+            _stackPositions = null;
+            _reader?.Dispose();
+            _reader = null;
         }
     }
 }

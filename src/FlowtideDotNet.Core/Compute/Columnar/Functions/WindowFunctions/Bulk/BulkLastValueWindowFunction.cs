@@ -157,6 +157,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+            _pending?.Dispose();
+            _pending = null;
+        }
     }
 
     /// <summary>
@@ -274,6 +280,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _lastValueColumn?.Dispose();
+            _lastValueColumn = null;
+            _lookahead?.Dispose();
+            _lookahead = null;
         }
     }
 
@@ -429,6 +443,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _pending?.Dispose();
+            _pending = null;
+            _candidateColumn?.Dispose();
+            _candidateColumn = null;
         }
     }
 
@@ -593,6 +615,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+            _candidateColumn?.Dispose();
+            _candidateColumn = null;
+            _lookahead?.Dispose();
+            _lookahead = null;
+        }
     }
 
     /// <summary>
@@ -687,6 +717,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _lastValueColumn?.Dispose();
+            _lastValueColumn = null;
+            _reader?.Dispose();
+            _reader = null;
         }
     }
 
@@ -785,6 +823,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _lastValueColumn?.Dispose();
+            _lastValueColumn = null;
+            _reader?.Dispose();
+            _reader = null;
         }
     }
 }

@@ -236,6 +236,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+            _pending?.Dispose();
+            _frame?.Dispose();
+            _pending = null;
+            _frame = null;
+        }
     }
 
     /// <summary>
@@ -331,6 +339,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _pending?.Dispose();
+            _pending = null;
         }
     }
 
@@ -486,6 +500,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+            _frame?.Dispose();
+            _frame = null;
+            _lookahead?.Dispose();
+            _lookahead = null;
+        }
     }
 
     /// <summary>
@@ -595,6 +617,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+            _lookahead?.Dispose();
+            _lookahead = null;
+        }
     }
 
     /// <summary>
@@ -700,6 +728,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _recentValues?.Dispose();
+            _recentValues = null;
+            _reader?.Dispose();
+            _reader = null;
         }
     }
 
@@ -839,6 +875,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             return ValueTask.CompletedTask;
         }
+
+        public void Dispose()
+        {
+            _reader?.Dispose();
+            _reader = null;
+            _lookahead?.Dispose();
+            _lookahead = null;
+        }
     }
 
     /// <summary>
@@ -904,6 +948,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public ValueTask EndScan()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _reader?.Dispose();
+            _reader = null;
         }
     }
 }

@@ -117,8 +117,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
     /// <summary>
     /// Computes values during a forward partition scan, seeded from earlier stored rows.
+    /// Dispose releases the rings, columns and readers allocated in <see cref="Initialize"/>.
     /// </summary>
-    internal interface IBulkWindowFunction
+    internal interface IBulkWindowFunction : IDisposable
     {
         /// <summary>
         /// Rows before a change it can affect, long.MaxValue means scan from the partition start.
