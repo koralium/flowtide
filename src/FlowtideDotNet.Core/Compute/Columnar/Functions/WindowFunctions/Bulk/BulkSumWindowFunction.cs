@@ -219,6 +219,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             Feed(_fetchValueFunction(context.Batch, context.RowIndex));
             if (_count == 0)
             {
+                // The frame holds no numeric value, drop the residue so a seeded rescan matches
+                _sumState._type = ArrowTypeId.Null;
                 result._type = ArrowTypeId.Null;
                 return true;
             }

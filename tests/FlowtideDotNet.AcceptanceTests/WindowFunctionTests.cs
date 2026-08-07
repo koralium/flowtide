@@ -2019,7 +2019,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public record JoinResult(string? companyId, int userkey, decimal? money);
 
-        public record StabilityRow(string? firstName, double windowValue);
+        public record StabilityRow(string? firstName, double? windowValue);
 
         private void AddUser(int userKey)
         {
@@ -2500,8 +2500,8 @@ namespace FlowtideDotNet.AcceptanceTests
             {
                 var userKey = (int)rows.Columns[1].GetValueAt(i, default).AsLong;
                 var firstName = rows.Columns[2].GetValueAt(i, default).AsString.ToString();
-                var windowValue = rows.Columns[3].GetValueAt(i, default).AsDouble;
-                result[userKey] = new StabilityRow(firstName, windowValue);
+                var value = rows.Columns[3].GetValueAt(i, default);
+                result[userKey] = new StabilityRow(firstName, value.IsNull ? null : value.AsDouble);
             }
             return result;
         }
@@ -2540,6 +2540,41 @@ namespace FlowtideDotNet.AcceptanceTests
 
             // Guards against a vacuous pass where the update never reached the window
             Assert.Equal("renamed", after[3].firstName);
+            AssertWindowValuesUnchanged(before, after);
+        }
+
+        /// <summary>
+        /// Two nulls empty the frame, so the accumulator holds only float residue at that row and
+        /// its output is null. A rescan seeded from that null must land on the same value.
+        /// </summary>
+        [Fact]
+        public async Task BoundedSumValueIsStableAfterAnEmptyFrame()
+        {
+            AddNamedUser(10, 6.7, "original");
+            AddNamedUser(20, 1.4, "original");
+            AddNamedUser(30, 9.9, "original");
+            AddNamedUser(40, 9.9, "original");
+            AddNamedUser(50, 5.2, "original");
+            AddNamedUser(60, 1.7, "original");
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                CompanyId,
+                UserKey,
+                FirstName,
+                SUM(CASE WHEN UserKey = 30 THEN NULL WHEN UserKey = 40 THEN NULL ELSE DoubleValue END)
+                    OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) as value
+            FROM users");
+            await WaitForUpdate();
+            var before = CurrentStabilityRows();
+
+            // Directly after the emptied frame, so its rescan seeds from the null output
+            AddNamedUser(50, 5.2, "renamed");
+            await WaitForUpdate();
+            var after = CurrentStabilityRows();
+
+            Assert.Equal("renamed", after[50].firstName);
             AssertWindowValuesUnchanged(before, after);
         }
 
