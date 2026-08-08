@@ -68,7 +68,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             if (m_hasModified)
             {
                 Logger.StartingDatabaseUpdate(StreamName, Name);
-                var iterator = m_modified.CreateIterator();
+                using var iterator = m_modified.CreateIterator();
 
                 await iterator.SeekFirst();
 

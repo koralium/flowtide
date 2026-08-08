@@ -993,6 +993,41 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         public override ValueTask DisposeAsync()
         {
             _defer.ReturnPending();
+
+            if (_retractIterations != null)
+            {
+                _retractIterations.Dispose();
+                _retractIterations = null;
+            }
+            
+            if (_retractWeights != null)
+            {
+                _retractWeights.Dispose();
+                _retractWeights = null;
+            }
+            
+            for (int i = 0; i < _retractColumns.Length; i++)
+            {
+                _retractColumns[i].Dispose();
+            }
+
+            if (weights != null)
+            {
+                weights.Dispose();
+                weights = null;
+            }
+
+            if (iterations != null)
+            {
+                iterations.Dispose();
+                iterations = null;
+            }
+
+            for (int i = 0; i < outputColumns.Length; i++)
+            {
+                outputColumns[i].Dispose();
+            }
+
             return base.DisposeAsync();
         }
 

@@ -195,7 +195,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             }
             else
             {
-                var iterator = _temporaryTree.CreateIterator();
+                using var iterator = _temporaryTree.CreateIterator();
                 await iterator.SeekFirst();
 
                 await foreach (var page in iterator)
