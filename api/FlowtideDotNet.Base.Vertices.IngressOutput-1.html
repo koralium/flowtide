@@ -210,7 +210,7 @@ mechanisms and any paused execution states within the ingress lifecycle.</p>
 
   <h3 id="FlowtideDotNet_Base_Vertices_IngressOutput_1_Dispose" data-uid="FlowtideDotNet.Base.Vertices.IngressOutput`1.Dispose">
   Dispose()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressOutput.cs/#L235"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressOutput.cs/#L285"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Disposes the <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput&lt;T&gt;</a>.</p>
@@ -237,7 +237,7 @@ mechanisms and any paused execution states within the ingress lifecycle.</p>
 
   <h3 id="FlowtideDotNet_Base_Vertices_IngressOutput_1_EnterCheckpointLock" data-uid="FlowtideDotNet.Base.Vertices.IngressOutput`1.EnterCheckpointLock">
   EnterCheckpointLock()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressOutput.cs/#L124"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressOutput.cs/#L174"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Asynchronously acquires the checkpoint lock.</p>
@@ -270,7 +270,7 @@ mechanisms and any paused execution states within the ingress lifecycle.</p>
 
   <h3 id="FlowtideDotNet_Base_Vertices_IngressOutput_1_ExitCheckpointLock" data-uid="FlowtideDotNet.Base.Vertices.IngressOutput`1.ExitCheckpointLock">
   ExitCheckpointLock()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressOutput.cs/#L134"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressOutput.cs/#L184"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Releases the previously acquired checkpoint lock.</p>
@@ -297,7 +297,7 @@ mechanisms and any paused execution states within the ingress lifecycle.</p>
 
   <h3 id="FlowtideDotNet_Base_Vertices_IngressOutput_1_SendAsync__0_" data-uid="FlowtideDotNet.Base.Vertices.IngressOutput`1.SendAsync(`0)">
   SendAsync(T)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressOutput.cs/#L57"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressOutput.cs/#L62"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Asynchronously sends a data payload into the dataflow stream.</p>
@@ -328,6 +328,11 @@ mechanisms and any paused execution states within the ingress lifecycle.</p>
 
 
 
+  <h4 class="section" id="FlowtideDotNet_Base_Vertices_IngressOutput_1_SendAsync__0__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If this throws, the payload is left at the reference count it had on entry and the
+caller still owns it. A cancelled send must give back the rent taken here, otherwise
+the payload never reaches zero and its buffers are only reclaimed by the finalizer.</p>
+</div>
 
 
 
@@ -336,7 +341,7 @@ mechanisms and any paused execution states within the ingress lifecycle.</p>
 
   <h3 id="FlowtideDotNet_Base_Vertices_IngressOutput_1_SendWatermark_FlowtideDotNet_Base_Watermark_" data-uid="FlowtideDotNet.Base.Vertices.IngressOutput`1.SendWatermark(FlowtideDotNet.Base.Watermark)">
   SendWatermark(Watermark)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressOutput.cs/#L194"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressOutput.cs/#L244"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Asynchronously emits a <a class="xref" href="FlowtideDotNet.Base.Watermark.html">Watermark</a> interval into the stream to advance the downstream logical time.</p>
