@@ -181,6 +181,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 {
                     pendingBatches[i].Return();
                 }
+                output.ExitCheckpointLock();
                 throw;
             }
 
