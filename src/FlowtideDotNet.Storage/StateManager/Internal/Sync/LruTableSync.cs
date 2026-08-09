@@ -158,8 +158,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 lock (m_nodes)
                 {
                     var toRemove = iteratorNode;
-                    iteratorNode = iteratorNode.Next;
-                    m_nodes.Remove(toRemove);
+                    if (toRemove.List != null)
+                    {
+                        m_nodes.Remove(toRemove);
+                    }
+                    iteratorNode = m_nodes.First;
                 }
             }
 
