@@ -136,7 +136,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 columns[i] = new Column(MemoryAllocator);
             }
 
-            var iterator = _tree.CreateIterator();
+            using var iterator = _tree.CreateIterator();
             await iterator.SeekFirst();
 
             long rowCount = 0;

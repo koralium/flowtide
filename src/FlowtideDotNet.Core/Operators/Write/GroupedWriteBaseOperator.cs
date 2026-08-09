@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.Operators.Write
 
         protected async ValueTask<(IReadOnlyList<RowEvent> rows, bool isDeleted)> GetGroup(RowEvent streamEvent)
         {
-            var iterator = _tree!.CreateIterator();
+            using var iterator = _tree!.CreateIterator();
             var seekEvent = new GroupedStreamEvent(1, streamEvent.RowData);
             await iterator.Seek(seekEvent);
 

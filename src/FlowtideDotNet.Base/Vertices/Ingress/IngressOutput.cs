@@ -52,12 +52,18 @@ namespace FlowtideDotNet.Base.Vertices
         /// <summary>
         /// Asynchronously sends a data payload into the dataflow stream.
         /// </summary>
+        /// <remarks>
+        /// If this throws, the payload is left at the reference count it had on entry and the
+        /// caller still owns it. A cancelled send must give back the rent taken here, otherwise
+        /// the payload never reaches zero and its buffers are only reclaimed by the finalizer.
+        /// </remarks>
         /// <param name="data">The structured data element to be emitted.</param>
         /// <returns>A <see cref="Task"/> that represents the asynchronous send operation.</returns>
         public Task SendAsync(T data)
         {
             if (_stopGate != null || _pauseGate != null)
             {
+                // Throws before renting, so there is nothing to give back here.
                 return SendAsync_WaitForResume(data);
             }
             if (data is IRentable rentable)
@@ -66,9 +72,37 @@ namespace FlowtideDotNet.Base.Vertices
             }
             if (_inLock)
             {
-                return _targetBlock.SendAsync(new StreamMessage<T>(data, _ingressState._currentTime), CancellationToken);
+                return SendToTarget(data);
             }
             return SendAsync_Slow(data);
+        }
+
+        private async Task SendToTarget(T data)
+        {
+            try
+            {
+                await _targetBlock.SendAsync(new StreamMessage<T>(data, _ingressState._currentTime), CancellationToken);
+            }
+            catch
+            {
+                ReleaseRent(data);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Undoes the rent taken in <see cref="SendAsync"/>. Return decrements by one, so a rent
+        /// of the link count needs that many returns.
+        /// </summary>
+        private void ReleaseRent(T data)
+        {
+            if (data is IRentable rentable)
+            {
+                for (int i = 0; i < _ingressState._linkCount; i++)
+                {
+                    rentable.Return();
+                }
+            }
         }
 
         /// <summary>
@@ -101,20 +135,36 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async Task SendAsync_Slow(T data)
         {
-            await EnterCheckpointLock();
-            while (_stopGate != null || _pauseGate != null)
+            // Every await below can throw on cancellation after the caller already rented,
+            // so all of them have to give the rent back.
+            try
             {
-                // A gate was set while this sender waited for the lock, for example the
-                // stop barrier that was injected under it. Sending now would deliver the
-                // data after the barrier, so the lock is released and the send parks. The
-                // data was already rented at the entry check, the send happens here once
-                // the gates open instead of re-dispatching.
-                ExitCheckpointLock();
-                await WaitForGatesAsync();
                 await EnterCheckpointLock();
+                while (_stopGate != null || _pauseGate != null)
+                {
+                    // A gate was set while this sender waited for the lock, for example the
+                    // stop barrier that was injected under it. Sending now would deliver the
+                    // data after the barrier, so the lock is released and the send parks. The
+                    // data was already rented at the entry check, the send happens here once
+                    // the gates open instead of re-dispatching.
+                    ExitCheckpointLock();
+                    await WaitForGatesAsync();
+                    await EnterCheckpointLock();
+                }
+                await _targetBlock.SendAsync(new StreamMessage<T>(data, _ingressState._currentTime), CancellationToken);
             }
-            await _targetBlock.SendAsync(new StreamMessage<T>(data, _ingressState._currentTime), CancellationToken);
-            ExitCheckpointLock();
+            catch
+            {
+                ReleaseRent(data);
+                throw;
+            }
+            finally
+            {
+                if (_inLock)
+                {
+                    ExitCheckpointLock();
+                }
+            }
         }
 
         /// <summary>

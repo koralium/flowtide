@@ -90,7 +90,7 @@ namespace FlowtideDotNet.TestFramework.Internal
                 columns[i] = new Column(MemoryAllocator);
             }
 
-            var iterator = _tree.CreateIterator();
+            using var iterator = _tree.CreateIterator();
             await iterator.SeekFirst();
 
             await foreach (var page in iterator)
