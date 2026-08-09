@@ -158,7 +158,13 @@ namespace FlowtideDotNet.Base.Vertices
                 ReleaseRent(data);
                 throw;
             }
-            ExitCheckpointLock();
+            finally
+            {
+                if (_inLock)
+                {
+                    ExitCheckpointLock();
+                }
+            }
         }
 
         /// <summary>
