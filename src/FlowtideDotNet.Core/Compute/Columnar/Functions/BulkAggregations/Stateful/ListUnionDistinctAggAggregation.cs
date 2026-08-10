@@ -277,6 +277,24 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
         }
 
+        /// <summary>
+        /// Clear only resets the length, the native capacity stays put, so these three held on to the
+        /// largest batch ever seen for the lifetime of the operator. Free them once the batch is applied
+        /// instead, StoreAsync already reallocates them lazily when they are null.
+        /// The offsets are the ones handed to ColumnWithOffset.CreateFlattened, which takes them by
+        /// reference without copying, so StoreFlattenedAsync deliberately leaves them alone. This is
+        /// their only owner.
+        /// </summary>
+        public void BatchDone()
+        {
+            _offsets?.Dispose();
+            _offsets = null;
+            _projectedDataColumn?.Dispose();
+            _projectedDataColumn = null;
+            _weightList?.Dispose();
+            _weightList = null;
+        }
+
         public async ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int length, Column outputColumn)
         {
             var batch = new EventBatchData(groupingValuesSorted);

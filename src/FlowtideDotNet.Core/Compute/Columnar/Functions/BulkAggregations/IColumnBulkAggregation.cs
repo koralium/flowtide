@@ -32,6 +32,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations
         void NewBatch(PrimitiveList<int> weights, EventBatchData batchData);
 
         /// <summary>
+        /// The batch is fully applied and nothing will read the projections again. Release any scratch
+        /// allocated in <see cref="NewBatch"/> here, otherwise the last batch of a stream keeps its
+        /// projected columns alive for as long as the operator lives.
+        /// Only implement this if the measure allocates per batch, the default does nothing.
+        /// </summary>
+        void BatchDone() { }
+
+        /// <summary>
         /// If the measure needs to store any data to its own state handling, if stateless this can return just a ValueTask.CompletedTask
         /// </summary>
         /// <param name="weights"></param>
