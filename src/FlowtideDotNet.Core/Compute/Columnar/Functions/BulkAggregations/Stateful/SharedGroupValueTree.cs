@@ -22,7 +22,7 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
 {
-    internal class SharedGroupValueTree
+    internal class SharedGroupValueTree : IDisposable
     {
         public string TreeName { get; }
         public Func<EventBatchData, int, IDataValue> ProjectionFunction { get; }
@@ -69,6 +69,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             {
                 _projectedDataColumn.Add(ProjectionFunction(batchData, i));
             }
+        }
+
+        /// <summary>
+        /// Releases the projected column. Each NewBatch disposes the previous one, so only the
+        /// last batch's column is left without a successor to free it.
+        /// </summary>
+        public void Dispose()
+        {
+            _projectedDataColumn?.Dispose();
+            _projectedDataColumn = null;
         }
 
         /// <summary>

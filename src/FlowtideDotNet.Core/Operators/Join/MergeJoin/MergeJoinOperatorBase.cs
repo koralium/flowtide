@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
 
             List<RowEvent> output = new List<RowEvent>();
-            var it = _rightTree.CreateIterator();
+            using var it = _rightTree.CreateIterator();
 
             foreach (var e in msg.Events)
             {
@@ -240,7 +240,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             List<RowEvent> output = new List<RowEvent>();
 
-            var it = _leftTree.CreateIterator();
+            using var it = _leftTree.CreateIterator();
 
             foreach (var e in msg.Events)
             {
