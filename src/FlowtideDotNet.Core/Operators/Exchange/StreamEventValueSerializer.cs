@@ -68,8 +68,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 throw new InvalidOperationException("Failed to read weights length");
             }
 
-            var weightsMemory = memoryAllocator.Allocate(weightsLength, 64);
-            if (!reader.TryCopyTo(weightsMemory.Memory.Span.Slice(0, weightsLength)))
+            var weightsMemory = memoryAllocator.AllocateMemory(weightsLength);
+            if (!reader.TryCopyTo(weightsMemory.Span.Slice(0, weightsLength)))
             {
                 throw new InvalidOperationException("Failed to read weights");
             }
@@ -79,8 +79,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 throw new InvalidOperationException("Failed to read iterations length");
             }
-            var iterationsMemory = memoryAllocator.Allocate(iterationsLength, 64);
-            if (!reader.TryCopyTo(iterationsMemory.Memory.Span.Slice(0, iterationsLength)))
+            var iterationsMemory = memoryAllocator.AllocateMemory(iterationsLength);
+            if (!reader.TryCopyTo(iterationsMemory.Span.Slice(0, iterationsLength)))
             {
                 throw new InvalidOperationException("Failed to read iterations");
             }
@@ -302,19 +302,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             destinationSpan[0] = StreamEventBatchType;
             BinaryPrimitives.WriteInt64LittleEndian(destinationSpan.Slice(1), batch.Time);
 
-            var weightsSpan = batch.Data.Data.Weights.SlicedMemory.Span;
+            var weightsSpan = batch.Data.Data.Weights.SlicedSpan;
 
             BinaryPrimitives.WriteInt32LittleEndian(destinationSpan.Slice(9), weightsSpan.Length);
             writer.Advance(13);
-            writer.Write(batch.Data.Data.Weights.SlicedMemory.Span);
+            writer.Write(batch.Data.Data.Weights.SlicedSpan);
 
             destinationSpan = writer.GetSpan(4);
 
-            var iterationsSpan = batch.Data.Data.Iterations.SlicedMemory.Span;
+            var iterationsSpan = batch.Data.Data.Iterations.SlicedSpan;
             BinaryPrimitives.WriteInt32LittleEndian(destinationSpan, iterationsSpan.Length);
             writer.Advance(4);
 
-            writer.Write(batch.Data.Data.Iterations.SlicedMemory.Span);
+            writer.Write(batch.Data.Data.Iterations.SlicedSpan);
 
             batchSerializer.Serialize(writer, batch.Data.Data.EventBatchData, batch.Data.Data.Count);
         }

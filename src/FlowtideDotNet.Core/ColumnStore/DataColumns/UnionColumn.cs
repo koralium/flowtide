@@ -127,7 +127,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        internal UnionColumn(List<IDataColumn> columns, IMemoryOwner<byte> typeListMemory, IMemoryOwner<byte> offsetMemory, int count, IMemoryAllocator memoryAllocator)
+        internal UnionColumn(List<IDataColumn> columns, FlowtideMemory typeListMemory, FlowtideMemory offsetMemory, int count, IMemoryAllocator memoryAllocator)
         {
             _memoryAllocator = memoryAllocator;
             _valueColumns = columns;
@@ -978,8 +978,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_typeList.SlicedMemory.Length);
-            arrowSerializer.AddBufferForward(_offsets.Memory.Length);
+            arrowSerializer.AddBufferForward(_typeList.SlicedSpan.Length);
+            arrowSerializer.AddBufferForward(_offsets.SlicedSpan.Length);
             for (int i = 1; i < _valueColumns.Count; i++) // We start at 1 since the first array is a null array which does not have any buffers
             {
                 if (_valueColumns[i] != null)
@@ -992,8 +992,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_typeList.SlicedMemory.Span);
-            dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
+            dataWriter.WriteArrowBuffer(_typeList.SlicedSpan);
+            dataWriter.WriteArrowBuffer(_offsets.SlicedSpan);
 
             for (int i = 1; i < _valueColumns.Count; i++) // We start at 1 since the first array is a null array which does not have any buffers
             {

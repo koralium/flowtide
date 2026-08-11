@@ -50,9 +50,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
                 throw new InvalidOperationException("Failed to read weights length");
             }
 
-            var weightsMemory = _memoryAllocator.Allocate(weightsLength, 64);
+            var weightsMemory = _memoryAllocator.AllocateMemory(weightsLength);
 
-            if (!reader.TryCopyTo(weightsMemory.Memory.Span.Slice(0, weightsLength)))
+            if (!reader.TryCopyTo(weightsMemory.Span.Slice(0, weightsLength)))
             {
                 throw new InvalidOperationException("Failed to copy weights memory");
             }
@@ -76,11 +76,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
         {
             _batchSerializer.Serialize(writer, new EventBatchData([values._column]), values.Count);
 
-            var weightsMemory = values._weights.SlicedMemory;
+            var weightsMemory = values._weights.SlicedSpan;
             var weightsSpan = writer.GetSpan(4 + weightsMemory.Length);
 
             BinaryPrimitives.WriteInt32LittleEndian(weightsSpan, weightsMemory.Length);
-            weightsMemory.Span.CopyTo(weightsSpan.Slice(4));
+            weightsMemory.CopyTo(weightsSpan.Slice(4));
             writer.Advance(weightsMemory.Length + 4);
         }
     }

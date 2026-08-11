@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         public int GetByteSize()
         {
-            return _weights.SlicedMemory.Length + _functionStates.Sum(x => x.GetByteSize()) + _previousValueSent.MemorySlice.Length;
+            return _weights.SlicedSpan.Length + _functionStates.Sum(x => x.GetByteSize()) + _previousValueSent.SlicedSpan.Length;
         }
 
         public int GetByteSize(int start, int end)

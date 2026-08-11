@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Storage.Tree
             _values = new PrimitiveList<T>(memoryAllocator);
         }
 
-        public PrimitiveListKeyContainer(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
+        public PrimitiveListKeyContainer(FlowtideMemory memory, int count, IMemoryAllocator memoryAllocator)
         {
             _values = new PrimitiveList<T>(memory, count, memoryAllocator);
         }

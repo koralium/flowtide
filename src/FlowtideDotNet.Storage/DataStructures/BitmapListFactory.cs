@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             return new BitmapList(memoryAllocator);
         }
 
-        public static BitmapList Get(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        public static BitmapList Get(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
         {
             return new BitmapList(memory, length, memoryAllocator);
         }

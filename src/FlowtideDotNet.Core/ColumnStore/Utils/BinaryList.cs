@@ -42,9 +42,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     internal unsafe class BinaryList : IDisposable
     {
         // Memory objects
-        private void* _data;
-        private int _dataLength;
-        private IMemoryOwner<byte>? _memoryOwner;
+        private FlowtideMemory _memory;
+        // Cached since GetMemory backs StringValue/BinaryValue creation on every value read.
+        private NativeMemoryView? _memoryView;
 
         // List specific members
         private IntList _offsets;
@@ -56,17 +56,30 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> OffsetMemory => _offsets.Memory;
 
-        public Memory<byte> DataMemory => _memoryOwner?.Memory.Slice(0, _length) ?? new Memory<byte>();
+        public Span<byte> OffsetSpan => _offsets.SlicedSpan;
+
+        public Memory<byte> DataMemory => GetViewMemory().Slice(0, _length);
+
+        public Span<byte> DataSpan => new Span<byte>(_memory.Pointer, _length);
 
         public int Count => _offsets.Count - 1;
 
-        private Span<byte> AccessSpan => new Span<byte>(_data, _dataLength);
+        private Span<byte> AccessSpan => _memory.Span;
+
+        private Memory<byte> GetViewMemory()
+        {
+            if (_memory.IsNull)
+            {
+                return new Memory<byte>();
+            }
+            _memoryView ??= new NativeMemoryView(_memory.Pointer, _memory.Length);
+            return _memoryView.Memory;
+        }
 
         public BinaryList(IMemoryAllocator memoryAllocator)
         {
             _offsets = new IntList(memoryAllocator);
             _offsets.Add(0);
-            _data = null;
             _memoryAllocator = memoryAllocator;
         }
 
@@ -75,9 +88,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _memoryAllocator = memoryAllocator;
             _offsets = new IntList(memoryAllocator, initialRowCapacity + 1);
             _offsets.Add(0);
-            _memoryOwner = _memoryAllocator.Allocate(initialDataCapacity, 64);
-            _data = _memoryOwner.Memory.Pin().Pointer;
-            _dataLength = initialDataCapacity;
+            _memory = _memoryAllocator.AllocateMemory(initialDataCapacity);
         }
 
         /// <summary>
@@ -88,21 +99,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="offsetLength"></param>
         /// <param name="dataMemory"></param>
         /// <param name="memoryAllocator"></param>
-        public BinaryList(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
+        public BinaryList(FlowtideMemory offsetMemory, int offsetLength, FlowtideMemory dataMemory, IMemoryAllocator memoryAllocator)
         {
             _offsets = new IntList(offsetMemory, offsetLength, memoryAllocator);
-            if (dataMemory != null)
-            {
-                _data = dataMemory.Memory.Pin().Pointer;
-                _dataLength = dataMemory.Memory.Length;
-            }
-            else
-            {
-                _data = null;
-                _dataLength = 0;
-            }
+            _memory = dataMemory;
             _memoryAllocator = memoryAllocator;
-            _memoryOwner = dataMemory;
             var lastoffset = _offsets.Get(offsetLength - 1);
             _length = lastoffset;
 
@@ -110,7 +111,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void* GetDataPointer_Unsafe()
         {
-            return _data;
+            return _memory.Pointer;
         }
 
         public void* GetOffsetPointer_Unsafe()
@@ -120,36 +121,26 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         private void EnsureCapacity(int length)
         {
-            if (_dataLength < length)
+            if (_memory.Length < length)
             {
                 var allocLength = length * 2;
                 if (allocLength < 64)
                 {
                     allocLength = 64;
                 }
-                if (_memoryOwner == null)
-                {
-                    _memoryOwner = _memoryAllocator.Allocate(allocLength, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                }
-                else
-                {
-                    _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, allocLength, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                }
-                _dataLength = _memoryOwner.Memory.Length;
+                _memoryAllocator.Realloc(ref _memory, allocLength);
+                _memoryView?.Update(_memory.Pointer, _memory.Length);
             }
         }
 
         private void CheckSizeReduction()
         {
             var multipleid = (_length << 1) + (_length >> 1);
-            if (multipleid < _dataLength && _dataLength > 256)
+            if (multipleid < _memory.Length && _memory.Length > 256)
             {
-                Debug.Assert(_memoryOwner != null);
-                _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length, 64);
-                _data = _memoryOwner.Memory.Pin().Pointer;
-                _dataLength = _memoryOwner.Memory.Length;
+                Debug.Assert(!_memory.IsNull);
+                _memoryAllocator.Realloc(ref _memory, _length);
+                _memoryView?.Update(_memory.Pointer, _memory.Length);
             }
         }
 
@@ -289,12 +280,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> GetMemory(in int index)
         {
-            if (_memoryOwner == null)
+            if (_memory.IsNull)
             {
                 return Memory<byte>.Empty;
             }
             var offset = _offsets.Get(index);
-            return _memoryOwner.Memory.Slice(offset, _offsets.Get(index + 1) - offset);
+            return GetViewMemory().Slice(offset, _offsets.Get(index + 1) - offset);
         }
 
         /// <summary>
@@ -305,7 +296,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public BinaryInfo GetBinaryInfo(in int index)
         {
             var offset = _offsets.Get(index);
-            return new BinaryInfo(((byte*)_data) + offset, _offsets.Get(index + 1) - offset);
+            return new BinaryInfo(((byte*)_memory.Pointer) + offset, _offsets.Get(index + 1) - offset);
         }
 
         protected virtual void Dispose(bool disposing)
@@ -314,17 +305,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects)
                     _offsets.Dispose();
-                    if (_memoryOwner != null)
-                    {
-                        _memoryOwner.Dispose();
-                        _memoryOwner = null;
-                        _data = null;
-                    }
                 }
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
+                if (!_memory.IsNull)
+                {
+                    _memoryAllocator.Free(ref _memory);
+                    _memoryView?.Update(null, 0);
+                }
                 disposedValue = true;
             }
         }
@@ -406,10 +393,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public BinaryList Copy(IMemoryAllocator memoryAllocator)
         {
-            var dataMemoryCopy = memoryAllocator.Allocate(DataMemory.Length, 64);
-            DataMemory.Span.CopyTo(dataMemoryCopy.Memory.Span);
-            var offsetMemoryCopy = memoryAllocator.Allocate(OffsetMemory.Length, 64);
-            OffsetMemory.Span.CopyTo(offsetMemoryCopy.Memory.Span);
+            var dataSpan = DataSpan;
+            var dataMemoryCopy = memoryAllocator.AllocateMemory(dataSpan.Length);
+            dataSpan.CopyTo(dataMemoryCopy.Span);
+            var offsetSpan = OffsetSpan;
+            var offsetMemoryCopy = memoryAllocator.AllocateMemory(offsetSpan.Length);
+            offsetSpan.CopyTo(offsetMemoryCopy.Span);
 
             return new BinaryList(offsetMemoryCopy, _offsets.Count, dataMemoryCopy, memoryAllocator);
         }

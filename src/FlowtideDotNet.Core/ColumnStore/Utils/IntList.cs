@@ -25,52 +25,61 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     /// </summary>
     internal unsafe class IntList : IDisposable
     {
-        private int* _data;
-        IMemoryOwner<byte>? _memoryOwner;
-        private int _dataLength;
+        private FlowtideMemory _memory;
         private int _length;
         private bool disposedValue;
         private readonly IMemoryAllocator memoryAllocator;
 
-        internal Span<int> AccessSpan => new Span<int>(_data, _dataLength);
+        // Capacity in elements, derived so the struct is the single source of truth.
+        private int DataLength => _memory.Length / sizeof(int);
 
-        public Memory<byte> Memory => _memoryOwner?.Memory.Slice(0, _length * sizeof(int)) ?? new Memory<byte>();
+        internal Span<int> AccessSpan => new Span<int>(_memory.Pointer, DataLength);
+
+        public Memory<byte> Memory => GetViewMemory().Slice(0, _length * sizeof(int));
+
+        public Span<byte> SlicedSpan => new Span<byte>(_memory.Pointer, _length * sizeof(int));
+
+        // Allocates a fresh non-owning view per call; only cold paths (Arrow interop, checkpoint
+        // writers) need Memory<byte>, and they re-fetch after list mutations.
+        private Memory<byte> GetViewMemory()
+        {
+            if (_memory.IsNull)
+            {
+                return new Memory<byte>();
+            }
+            return new NativeMemoryView(_memory.Pointer, _memory.Length).Memory;
+        }
 
         public IntList(IMemoryAllocator memoryAllocator)
         {
-            _data = null;
             this.memoryAllocator = memoryAllocator;
         }
 
         public IntList(IMemoryAllocator memoryAllocator, int initialCapacity)
         {
             this.memoryAllocator = memoryAllocator;
-            _memoryOwner = memoryAllocator.Allocate(initialCapacity * sizeof(int), 64);
-            _dataLength = initialCapacity;
-            _data = (int*)_memoryOwner.Memory.Pin().Pointer;
+            _memory = memoryAllocator.AllocateMemory(initialCapacity * sizeof(int));
         }
 
-        public IntList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        public IntList(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _memoryOwner = memory;
-            _data = (int*)memory.Memory.Pin().Pointer;
-            _dataLength = memory.Memory.Length / 4;
+            _memory = memory;
             _length = length;
             this.memoryAllocator = memoryAllocator;
         }
 
-        public ReadOnlySpan<int> Span => new ReadOnlySpan<int>(_data, _length);
+        public ReadOnlySpan<int> Span => new ReadOnlySpan<int>(_memory.Pointer, _length);
 
         public int Count => _length;
 
         public int* GetPointer_Unsafe()
         {
-            return _data;
+            return (int*)_memory.Pointer;
         }
 
         internal void EnsureCapacity(int length)
         {
-            if (_dataLength < length)
+            if (DataLength < length)
             {
                 var newLength = length * 2;
                 if (newLength < 64)
@@ -78,38 +87,25 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     newLength = 64;
                 }
 
-                var allocLength = newLength * sizeof(int);
-                if (_memoryOwner == null)
-                {
-                    _memoryOwner = memoryAllocator.Allocate(allocLength, 64);
-                    var newMemoryHandle = _memoryOwner.Memory.Pin();
-                    _data = (int*)newMemoryHandle.Pointer;
-                }
-                else
-                {
-                    _memoryOwner = memoryAllocator.Realloc(_memoryOwner, allocLength, 64);
-                    _data = (int*)_memoryOwner.Memory.Pin().Pointer;
-                }
-                _dataLength = _memoryOwner.Memory.Length / sizeof(int);
+                memoryAllocator.Realloc(ref _memory, newLength * sizeof(int));
             }
         }
 
         private void CheckSizeReduction()
         {
             var multipleid = (_length << 1) + (_length >> 1);
-            if (multipleid < _dataLength && _dataLength > 256)
+            var dataLength = DataLength;
+            if (multipleid < dataLength && dataLength > 256)
             {
-                Debug.Assert(_memoryOwner != null);
-                _memoryOwner = memoryAllocator.Realloc(_memoryOwner, _length * sizeof(int), 64);
-                _data = (int*)_memoryOwner.Memory.Pin().Pointer;
-                _dataLength = _memoryOwner.Memory.Length / sizeof(int);
+                Debug.Assert(!_memory.IsNull);
+                memoryAllocator.Realloc(ref _memory, _length * sizeof(int));
             }
         }
 
         public void Add(int item)
         {
             EnsureCapacity(_length + 1);
-            _data[_length++] = item;
+            ((int*)_memory.Pointer)[_length++] = item;
         }
 
         public void RemoveAt(int index)
@@ -291,7 +287,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void Update(int index, int item)
         {
-            _data[index] = item;
+            ((int*)_memory.Pointer)[index] = item;
         }
 
         /// <summary>
@@ -303,28 +299,23 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="additionOnAbove"></param>
         public void Update(int index, int item, int additionOnAbove)
         {
-            _data[index] = item;
+            ((int*)_memory.Pointer)[index] = item;
             AvxUtils.AddValueToElements(AccessSpan.Slice(index + 1, _length - index - 1), additionOnAbove);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Get(in int index)
         {
-            return _data[index];
+            return ((int*)_memory.Pointer)[index];
         }
 
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
-                if (disposing)
+                if (!_memory.IsNull)
                 {
-                    if (_memoryOwner != null)
-                    {
-                        _memoryOwner.Dispose();
-                        _memoryOwner = null;
-                        _data = null;
-                    }
+                    memoryAllocator.Free(ref _memory);
                 }
                 disposedValue = true;
             }
@@ -350,9 +341,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public IntList Copy(IMemoryAllocator memoryAllocator)
         {
-            var mem = Memory;
-            var newMemory = memoryAllocator.Allocate(mem.Length, 64);
-            mem.Span.CopyTo(newMemory.Memory.Span);
+            var slicedSpan = SlicedSpan;
+            var newMemory = memoryAllocator.AllocateMemory(slicedSpan.Length);
+            slicedSpan.CopyTo(newMemory.Span);
 
             return new IntList(newMemory, _length, memoryAllocator);
         }

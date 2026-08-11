@@ -26,13 +26,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
     /// </summary>
     internal static class EventArrowSerializer
     {
-        private static readonly FieldInfo _memoryOwnerField = GetMethodArrowBufferMemoryOwner();
-        private static FieldInfo GetMethodArrowBufferMemoryOwner()
-        {
-            var fieldInfo = typeof(RecordBatch).GetField("_memoryOwner", BindingFlags.NonPublic | BindingFlags.Instance);
-            return fieldInfo!;
-        }
-
         internal static Dictionary<string, string>? GetCustomMetadata(IArrowType type)
         {
             Dictionary<string, string>? customMetadata = default;
@@ -63,10 +56,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
         public static EventBatchData ArrowToBatch(RecordBatch recordBatch, IMemoryAllocator memoryAllocator)
         {
-            var memoryOwner = (IMemoryOwner<byte>?)_memoryOwnerField.GetValue(recordBatch);
-
             IColumn[] columns = new IColumn[recordBatch.ColumnCount];
-            var visitor = new ArrowToInternalVisitor(memoryOwner!, memoryAllocator);
+            var visitor = new ArrowToInternalVisitor(memoryAllocator);
             var schema = recordBatch.Schema;
             for (int i = 0; i < recordBatch.ColumnCount; i++)
             {
@@ -75,7 +66,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 recordBatch.Column(i).Accept(visitor);
                 columns[i] = visitor.Column!;
             }
-            visitor.Finish();
 
             return new EventBatchData(columns);
         }

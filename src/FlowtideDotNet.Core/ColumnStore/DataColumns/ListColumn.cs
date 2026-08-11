@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _offsets.Add(0);
         }
 
-        public ListColumn(Column internalColumn, IMemoryOwner<byte> offsetMemory, int offsetCount, IMemoryAllocator memoryAllocator)
+        public ListColumn(Column internalColumn, FlowtideMemory offsetMemory, int offsetCount, IMemoryAllocator memoryAllocator)
         {
             _offsets = new IntList(offsetMemory, offsetCount, memoryAllocator);
             _internalColumn = internalColumn;
@@ -586,13 +586,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_offsets.Memory.Length);
+            arrowSerializer.AddBufferForward(_offsets.SlicedSpan.Length);
             _internalColumn.AddBuffers(ref arrowSerializer);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
+            dataWriter.WriteArrowBuffer(_offsets.SlicedSpan);
 
             _internalColumn.WriteDataToBuffer(ref dataWriter);
         }

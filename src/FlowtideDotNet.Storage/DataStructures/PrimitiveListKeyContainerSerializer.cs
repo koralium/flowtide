@@ -48,9 +48,9 @@ namespace FlowtideDotNet.Storage.DataStructures
             {
                 throw new InvalidOperationException("Failed to read count");
             }
-            var nativeMemory = _memoryAllocator.Allocate(count, 64);
+            var nativeMemory = _memoryAllocator.AllocateMemory(count);
 
-            if (!reader.TryCopyTo(nativeMemory.Memory.Span.Slice(0, count)))
+            if (!reader.TryCopyTo(nativeMemory.Span.Slice(0, count)))
             {
                 throw new InvalidOperationException("Failed to read bytes");
             }
@@ -65,11 +65,11 @@ namespace FlowtideDotNet.Storage.DataStructures
 
         public void Serialize(in IBufferWriter<byte> writer, in PrimitiveListKeyContainer<K> values)
         {
-            var mem = values._list.SlicedMemory;
+            var dataSpan = values._list.SlicedSpan;
             var headerSpan = writer.GetSpan(4);
-            BinaryPrimitives.WriteInt32LittleEndian(headerSpan, mem.Length);
+            BinaryPrimitives.WriteInt32LittleEndian(headerSpan, dataSpan.Length);
             writer.Advance(4);
-            writer.Write(mem.Span);
+            writer.Write(dataSpan);
         }
     }
 }

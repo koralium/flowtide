@@ -43,9 +43,9 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             {
                 throw new InvalidOperationException("Failed to read count");
             }
-            var nativeMemory = memoryAllocator.Allocate(count, 64);
+            var nativeMemory = memoryAllocator.AllocateMemory(count);
 
-            if (!reader.TryCopyTo(nativeMemory.Memory.Span.Slice(0, count)))
+            if (!reader.TryCopyTo(nativeMemory.Span.Slice(0, count)))
             {
                 throw new InvalidOperationException("Failed to read bytes");
             }
@@ -60,12 +60,11 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         public void Serialize(in IBufferWriter<byte> writer, in DoubleValueContainer values)
         {
-            var mem = values._list.SlicedMemory;
+            var mem = values._list.SlicedSpan;
             var headerSpan = writer.GetSpan(4);
             BinaryPrimitives.WriteInt32LittleEndian(headerSpan, mem.Length);
             writer.Advance(4);
-            //writer.Write(mem.Length);
-            writer.Write(mem.Span);
+            writer.Write(mem);
         }
     }
 }

@@ -61,16 +61,16 @@ namespace FlowtideDotNet.Core.Operators.Window
                 throw new InvalidOperationException("Failed to read bitmap memory length");
             }
 
-            var weightsNativeMemory = _memoryAllocator.Allocate(weightsMemoryLength, 64);
-            var slice = weightsNativeMemory.Memory.Span.Slice(0, weightsMemoryLength);
+            var weightsNativeMemory = _memoryAllocator.AllocateMemory(weightsMemoryLength);
+            var slice = weightsNativeMemory.Span.Slice(0, weightsMemoryLength);
             if (!reader.TryCopyTo(slice))
             {
                 throw new InvalidOperationException("Failed to read weights memory");
             }
             reader.Advance(weightsMemoryLength);
 
-            var bitmapNativeMemory = _memoryAllocator.Allocate(bitmapMemoryLength, 64);
-            if (!reader.TryCopyTo(bitmapNativeMemory.Memory.Span.Slice(0, bitmapMemoryLength)))
+            var bitmapNativeMemory = _memoryAllocator.AllocateMemory(bitmapMemoryLength);
+            if (!reader.TryCopyTo(bitmapNativeMemory.Span.Slice(0, bitmapMemoryLength)))
             {
                 throw new InvalidOperationException("Failed to read bitmap memory");
             }
@@ -105,8 +105,8 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         public void Serialize(in IBufferWriter<byte> writer, in WindowValueContainer values)
         {
-            var weightsmemory = values._weights.SlicedMemory.Span;
-            var bitmapMemory = values._previousValueSent.MemorySlice.Span;
+            var weightsmemory = values._weights.SlicedSpan;
+            var bitmapMemory = values._previousValueSent.SlicedSpan;
 
             var writeSpan = writer.GetSpan(weightsmemory.Length + bitmapMemory.Length + 8);
 

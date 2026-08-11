@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data = new PrimitiveList<double>(memoryAllocator, columnSizeInfo.TotalRows);
         }
 
-        public DoubleColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
+        public DoubleColumn(FlowtideMemory memory, int count, IMemoryAllocator memoryAllocator)
         {
             _data = new PrimitiveList<double>(memory, count, memoryAllocator);
         }
@@ -274,12 +274,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_data.SlicedMemory.Length);
+            arrowSerializer.AddBufferForward(_data.SlicedSpan.Length);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
+            dataWriter.WriteArrowBuffer(_data.SlicedSpan);
         }
 
         public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)

@@ -1315,7 +1315,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (_type != ArrowTypeId.Union)
             {
                 // Union does not have a validity bitmap in apache arrow
-                arrowSerializer.AddBufferForward(_validityList!.MemorySlice.Length);
+                arrowSerializer.AddBufferForward(_validityList!.SlicedSpan.Length);
             }
 
             _dataColumn!.AddBuffers(ref arrowSerializer);
@@ -1343,7 +1343,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
                 else
                 {
-                    dataWriter.WriteArrowBuffer(_validityList!.MemorySlice.Span);
+                    dataWriter.WriteArrowBuffer(_validityList!.SlicedSpan);
                 }
             }
 

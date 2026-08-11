@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _offsets.Add(0);
         }
 
-        internal MapColumn(Column keyColumn, Column valueColumn, IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryAllocator memoryAllocator)
+        internal MapColumn(Column keyColumn, Column valueColumn, FlowtideMemory offsetMemory, int offsetLength, IMemoryAllocator memoryAllocator)
         {
             _keyColumn = keyColumn;
             _valueColumn = valueColumn;
@@ -725,7 +725,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <param name="arrowSerializer"></param>
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_offsets.Memory.Length);
+            arrowSerializer.AddBufferForward(_offsets.SlicedSpan.Length);
             arrowSerializer.AddBufferForward(0); // Struct validity, it is not used so we set it to 0
             _keyColumn.AddBuffers(ref arrowSerializer);
             _valueColumn.AddBuffers(ref arrowSerializer);
@@ -733,7 +733,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
+            dataWriter.WriteArrowBuffer(_offsets.SlicedSpan);
             dataWriter.WriteArrowBuffer(Span<byte>.Empty); // Empty validity buffer
             _keyColumn.WriteDataToBuffer(ref dataWriter);
             _valueColumn.WriteDataToBuffer(ref dataWriter);

@@ -48,8 +48,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
                 throw new InvalidOperationException("Failed to read weights memory length");
             }
 
-            var weightsNativeMemory = _memoryAllocator.Allocate(weightsMemoryLength, 64);
-            var slice = weightsNativeMemory.Memory.Span.Slice(0, weightsMemoryLength);
+            var weightsNativeMemory = _memoryAllocator.AllocateMemory(weightsMemoryLength);
+            var slice = weightsNativeMemory.Span.Slice(0, weightsMemoryLength);
 
             if (!reader.TryCopyTo(slice))
             {
@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
 
         public void Serialize(in IBufferWriter<byte> writer, in MinMaxByValueContainer values)
         {
-            var weightsmemory = values._weights.SlicedMemory.Span;
+            var weightsmemory = values._weights.SlicedSpan;
 
             var writeSpan = writer.GetSpan(weightsmemory.Length + 4);
 

@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -109,29 +109,37 @@ namespace FlowtideDotNet.Storage.DataStructures
         ];
         private IMemoryAllocator? memoryAllocator;
         private int _length;
-        private void* _data;
-        private int _dataLength;
-        private IMemoryOwner<byte>? _memoryOwner;
+        private FlowtideMemory _memory;
         private bool disposedValue;
+
+        // Capacity in words, derived so the struct is the single source of truth.
+        private int DataLength => _memory.Length / sizeof(int);
 
         /// <summary>
         /// The full backing memory buffer, including any capacity beyond the current bits, or empty when nothing is allocated.
         /// </summary>
-        public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
+        public Memory<byte> Memory => GetViewMemory();
 
         /// <summary>
         /// The portion of the backing memory that actually holds the current bits, rounded up to whole words.
-        /// Use this when serializing or copying the bitmap.
+        /// Use this when the consumer requires <see cref="Memory{T}"/>; prefer <see cref="SlicedSpan"/> otherwise.
         /// </summary>
-        public Memory<byte> MemorySlice => GetMemorySlice();
+        public Memory<byte> MemorySlice => GetViewMemory().Slice(0, ((_length + 31) / 32) * 4);
 
-        private Memory<byte> GetMemorySlice()
+        /// <summary>
+        /// The bytes holding the current bits rounded up to whole words, without materializing a <see cref="Memory{T}"/> view.
+        /// </summary>
+        public Span<byte> SlicedSpan => new Span<byte>(_memory.Pointer, ((_length + 31) / 32) * 4);
+
+        // Allocates a fresh non-owning view per call; only cold paths (Arrow interop, checkpoint
+        // writers) need Memory<byte>, and they re-fetch after list mutations.
+        private Memory<byte> GetViewMemory()
         {
-            if (_memoryOwner == null)
+            if (_memory.IsNull)
             {
                 return new Memory<byte>();
             }
-            return _memoryOwner.Memory.Slice(0, ((_length + 31) / 32) * 4);
+            return new NativeMemoryView(_memory.Pointer, _memory.Length).Memory;
         }
 
         /// <summary>
@@ -154,10 +162,8 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="memoryAllocator">The allocator used for backing memory.</param>
         public void Assign(IMemoryAllocator memoryAllocator)
         {
-            _data = null;
-            _dataLength = 0;
             _length = 0;
-            _memoryOwner = null;
+            _memory = default;
             this.memoryAllocator = memoryAllocator;
             disposedValue = false;
         }
@@ -168,12 +174,10 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="memory">The memory holding the packed bits.</param>
         /// <param name="length">The number of valid bits in <paramref name="memory"/>.</param>
-        /// <param name="memoryAllocator">The allocator used for any later growth.</param>
-        public void Assign(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        /// <param name="memoryAllocator">The allocator that produced <paramref name="memory"/>, used for growth and free.</param>
+        public void Assign(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _memoryOwner = memory;
-            _data = _memoryOwner.Memory.Pin().Pointer;
-            _dataLength = memory.Memory.Length / sizeof(int);
+            _memory = memory;
             _length = length;
             this.memoryAllocator = memoryAllocator;
             disposedValue = false;
@@ -185,7 +189,6 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="memoryAllocator">The allocator used for backing memory.</param>
         public BitmapList(IMemoryAllocator memoryAllocator)
         {
-            _data = null;
             this.memoryAllocator = memoryAllocator;
         }
 
@@ -203,19 +206,17 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <summary>
         /// Creates a list that wraps already populated memory, taking ownership of it.
         /// </summary>
-        /// <param name="memoryOwner">The memory holding the packed bits.</param>
-        /// <param name="length">The number of valid bits in <paramref name="memoryOwner"/>.</param>
-        /// <param name="memoryAllocator">The allocator used for any later growth.</param>
-        public BitmapList(IMemoryOwner<byte> memoryOwner, int length, IMemoryAllocator memoryAllocator)
+        /// <param name="memory">The memory holding the packed bits.</param>
+        /// <param name="length">The number of valid bits in <paramref name="memory"/>.</param>
+        /// <param name="memoryAllocator">The allocator that produced <paramref name="memory"/>, used for growth and free.</param>
+        public BitmapList(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _memoryOwner = memoryOwner;
-            _data = _memoryOwner.Memory.Pin().Pointer;
-            _dataLength = memoryOwner.Memory.Length / sizeof(int);
+            _memory = memory;
             _length = length;
             this.memoryAllocator = memoryAllocator;
         }
 
-        private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
+        private Span<int> AccessSpan => new Span<int>(_memory.Pointer, DataLength);
 
         /// <summary>
         /// Gets the bit at the given index.
@@ -226,29 +227,18 @@ namespace FlowtideDotNet.Storage.DataStructures
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void* GetPointer_Unsafe()
         {
-            return _data;
+            return _memory.Pointer;
         }
 
         private void EnsureSize(int length)
         {
             Debug.Assert(memoryAllocator != null);
-            if (length > _dataLength)
+            if (length > DataLength)
             {
                 int allocationSize = length * sizeof(int);
-                if (_memoryOwner == null)
-                {
-                    _memoryOwner = memoryAllocator.Allocate(allocationSize, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                    NativeMemory.Fill(_data, (nuint)_memoryOwner.Memory.Length, 0);
-                }
-                else
-                {
-                    int oldSize = _dataLength * sizeof(int);
-                    _memoryOwner = memoryAllocator.Realloc(_memoryOwner, allocationSize, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                    NativeMemory.Fill((byte*)(_data) + oldSize, (nuint)(_memoryOwner.Memory.Length - oldSize), 0);
-                }
-                _dataLength = _memoryOwner.Memory.Length / sizeof(int);
+                int oldSize = _memory.Length;
+                memoryAllocator.Realloc(ref _memory, allocationSize);
+                NativeMemory.Fill(((byte*)_memory.Pointer) + oldSize, (nuint)(_memory.Length - oldSize), 0);
             }
         }
 
@@ -300,7 +290,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         {
             var wordIndex = index >> 5;
             int bitIndex = 1 << index;
-            if (wordIndex >= _dataLength)
+            if (wordIndex >= DataLength)
             {
                 return false;
             }
@@ -391,9 +381,9 @@ namespace FlowtideDotNet.Storage.DataStructures
 
             var mod = index % 32;
             int bitIndex = 1 << index;
-            if ((_length / 32) >= _dataLength)
+            if ((_length / 32) >= DataLength)
             {
-                EnsureSize(_dataLength + 1);
+                EnsureSize(DataLength + 1);
             }
             var span = AccessSpan;
             if (mod > 0)
@@ -401,13 +391,13 @@ namespace FlowtideDotNet.Storage.DataStructures
                 var topBitsMask = topBitsSetMask[mod];
                 var bottomBitsMask = BitPatternArray[mod];
                 var val = span[toIndex] & bottomBitsMask;
-                ShiftLeft(toIndex, _dataLength - 1, 1);
+                ShiftLeft(toIndex, DataLength - 1, 1);
                 var newVal = span[toIndex] & topBitsMask;
                 span[toIndex] = (val | newVal);
             }
             else
             {
-                ShiftLeft(toIndex, _dataLength - 1, 1);
+                ShiftLeft(toIndex, DataLength - 1, 1);
             }
             if (value)
             {
@@ -452,9 +442,9 @@ namespace FlowtideDotNet.Storage.DataStructures
             var countRemainder = (index + count) & 31;
 
             var span = AccessSpan;
-            if ((_length / 32) >= _dataLength)
+            if ((_length / 32) >= DataLength)
             {
-                EnsureSize(_dataLength + 1);
+                EnsureSize(DataLength + 1);
             }
             span = AccessSpan;
 
@@ -466,7 +456,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                 // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
                 var val = span[toIndex] & bottomBitsMask;
                 // Shift the all bits to the left
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
 
                 if (countRemainder > 0)
                 {
@@ -530,7 +520,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             else
             {
                 // Shift left to open up space for new values
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
                 var previousEndShift = span[endShiftIndex];
 
                 if (countRemainder > 0)
@@ -617,7 +607,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                 // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
                 var val = span[toIndex] & bottomBitsMask;
                 // Shift the all bits to the left
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
 
                 // Check if the end is in the middle of an integer
                 if (endRemainder > 0)
@@ -654,7 +644,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             else
             {
                 // Starts at the beginning of an integer
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
 
                 // Check if the end is in the middle of an integer
                 if (endRemainder > 0)
@@ -716,7 +706,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                 // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
                 var val = span[toIndex] & bottomBitsMask;
                 // Shift the all bits to the left
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
 
                 // Check if the end is in the middle of an integer
                 if (endRemainder > 0)
@@ -753,7 +743,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             else
             {
                 // Starts at the beginning of an integer
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
 
                 // Check if the end is in the middle of an integer
                 if (endRemainder > 0)
@@ -951,7 +941,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="index">The zero based index of the bit to remove.</param>
         public void RemoveAt(int index)
         {
-            if (index < 0 || index >= _dataLength * 32)
+            if (index < 0 || index >= DataLength * 32)
             {
                 throw new ArgumentOutOfRangeException(nameof(index));
             }
@@ -964,13 +954,13 @@ namespace FlowtideDotNet.Storage.DataStructures
                 var beforeMask = BitPatternArray[mod - 1];
                 var clearMask = topBitsSetMask[mod - 1];
                 var val = span[fromIndex] & beforeMask;
-                ShiftRight(fromIndex, _dataLength - 1, 1);
+                ShiftRight(fromIndex, DataLength - 1, 1);
                 var newVal = span[fromIndex] & clearMask;
                 span[fromIndex] = (val | newVal);
             }
             else
             {
-                ShiftRight(fromIndex, _dataLength - 1, 1);
+                ShiftRight(fromIndex, DataLength - 1, 1);
             }
         }
 
@@ -990,14 +980,14 @@ namespace FlowtideDotNet.Storage.DataStructures
                 var beforeMask = BitPatternArray[mod - 1];
                 var clearMask = topBitsSetMask[mod - 1];
                 var val = span[fromIndex] & beforeMask;
-                ShiftRight(fromIndex, _dataLength - 1, count);
+                ShiftRight(fromIndex, DataLength - 1, count);
                 var newVal = span[fromIndex] & clearMask;
                 span[fromIndex] = (val | newVal);
                 var vv = span[fromIndex];
             }
             else
             {
-                ShiftRight(fromIndex, _dataLength - 1, count);
+                ShiftRight(fromIndex, DataLength - 1, count);
             }
         }
 
@@ -1471,11 +1461,10 @@ namespace FlowtideDotNet.Storage.DataStructures
             if (!Volatile.Read(ref disposedValue))
             {
                 Volatile.Write(ref disposedValue, true);
-                if (_memoryOwner != null)
+                if (!_memory.IsNull)
                 {
-                    _memoryOwner.Dispose();
-                    _memoryOwner = null;
-                    _data = null;
+                    Debug.Assert(memoryAllocator != null);
+                    memoryAllocator!.Free(ref _memory);
                 }
 
                 if (disposing)
@@ -1541,9 +1530,9 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <returns>A new list with the same bits.</returns>
         public BitmapList Copy(IMemoryAllocator memoryAllocator)
         {
-            var mem = MemorySlice;
-            var newMem = memoryAllocator.Allocate(mem.Length, 64);
-            mem.Span.CopyTo(newMem.Memory.Span);
+            var slicedSpan = SlicedSpan;
+            var newMem = memoryAllocator.AllocateMemory(slicedSpan.Length);
+            slicedSpan.CopyTo(newMem.Span);
             return new BitmapList(newMem, _length, memoryAllocator);
         }
     }

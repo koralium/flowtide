@@ -872,7 +872,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
         }
 
-        private bool TryReadNextBuffer(ref SequenceReader<byte> data, [NotNullWhen(true)] out IMemoryOwner<byte>? memory)
+        private bool TryReadNextBuffer(ref SequenceReader<byte> data, out FlowtideMemory memory)
         {
             var bufferInfoSpan = _recordBatchHeaderBytes.Slice(bufferStart + (bufferIndex * 16));
             var bufferOffset = (int)BinaryPrimitives.ReadInt64LittleEndian(bufferInfoSpan);
@@ -888,7 +888,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             if (bufferLength == 0)
             {
-                memory = null;
+                memory = default;
                 return false;
             }
 
@@ -900,28 +900,28 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 }
                 if (uncompressedLength == -1)
                 {
-                    memory = memoryAllocator.Allocate(bufferLength - 8, 64);
-                    data.TryCopyTo(memory.Memory.Span.Slice(0, bufferLength - 8));
+                    memory = memoryAllocator.AllocateMemory(bufferLength - 8);
+                    data.TryCopyTo(memory.Span.Slice(0, bufferLength - 8));
                     readDataIndex += bufferLength;
                     data.Advance(bufferLength - 8);
                 }
                 else
                 {
-                    memory = memoryAllocator.Allocate((int)uncompressedLength, 64);
+                    memory = memoryAllocator.AllocateMemory((int)uncompressedLength);
                     if (data.UnreadSpan.Length < (bufferLength - 8))
                     {
                         throw new InvalidOperationException("Not enough data to read compressed buffer");
                     }
                     var compressedData = data.UnreadSpan.Slice(0, bufferLength - 8);
-                    decompressor!.Unwrap(compressedData, memory.Memory.Span);
+                    decompressor!.Unwrap(compressedData, memory.Span);
                     readDataIndex += bufferLength;
                     data.Advance(bufferLength - 8);
                 }
             }
             else
             {
-                memory = memoryAllocator.Allocate(bufferLength, 64);
-                data.TryCopyTo(memory.Memory.Span.Slice(0, bufferLength));
+                memory = memoryAllocator.AllocateMemory(bufferLength);
+                data.TryCopyTo(memory.Span.Slice(0, bufferLength));
                 readDataIndex += bufferLength;
                 data.Advance(bufferLength);
             }

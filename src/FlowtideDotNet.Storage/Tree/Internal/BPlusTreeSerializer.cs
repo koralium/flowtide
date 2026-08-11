@@ -150,8 +150,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     throw new Exception("Could not read childrenByteLength");
                 }
 
-                var childrenMemory = _memoryAllocator.Allocate(childrenByteLength, 64);
-                if (!sequenceReader.TryCopyTo(childrenMemory.Memory.Span.Slice(0, childrenByteLength)))
+                var childrenMemory = _memoryAllocator.AllocateMemory(childrenByteLength);
+                if (!sequenceReader.TryCopyTo(childrenMemory.Span.Slice(0, childrenByteLength)))
                 {
                     throw new Exception("Could not read children data");
                 }
@@ -201,7 +201,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _keySerializer.Serialize(bufferWriter, parent.keys);
 
                 var childrenLengthSpan = bufferWriter.GetSpan(4);
-                var childrenSpan = parent.children.SlicedMemory.Span;
+                var childrenSpan = parent.children.SlicedSpan;
                 BinaryPrimitives.WriteInt32LittleEndian(childrenLengthSpan, childrenSpan.Length);
                 bufferWriter.Advance(4);
                 bufferWriter.Write(childrenSpan);

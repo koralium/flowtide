@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data = new BitmapList(memoryAllocator, columnSizeInfo.TotalRows);
         }
 
-        public BoolColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
+        public BoolColumn(FlowtideMemory memory, int count, IMemoryAllocator memoryAllocator)
         {
             _data = BitmapListFactory.Get(memory, count, memoryAllocator);
         }
@@ -267,9 +267,9 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
-            var mem = _data.MemorySlice;
-            var newMemory = memoryAllocator.Allocate(mem.Length, 64);
-            mem.Span.CopyTo(newMemory.Memory.Span);
+            var slicedSpan = _data.SlicedSpan;
+            var newMemory = memoryAllocator.AllocateMemory(slicedSpan.Length);
+            slicedSpan.CopyTo(newMemory.Span);
             return new BoolColumn(newMemory, Count, memoryAllocator);
         }
 
@@ -303,12 +303,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_data.MemorySlice.Length);
+            arrowSerializer.AddBufferForward(_data.SlicedSpan.Length);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_data.MemorySlice.Span);
+            dataWriter.WriteArrowBuffer(_data.SlicedSpan);
         }
 
         public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)

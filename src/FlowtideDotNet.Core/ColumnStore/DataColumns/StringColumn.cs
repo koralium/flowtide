@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _binaryList = new BinaryList(memoryAllocator, columnSizeInfo.TotalRows, columnSizeInfo.TotalVariableBytes);
         }
 
-        public StringColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
+        public StringColumn(FlowtideMemory offsetMemory, int offsetLength, FlowtideMemory dataMemory, IMemoryAllocator memoryAllocator)
         {
             _binaryList = new BinaryList(offsetMemory, offsetLength, dataMemory, memoryAllocator);
         }
@@ -284,15 +284,15 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_binaryList.OffsetMemory.Length);
-            arrowSerializer.AddBufferForward(_binaryList.DataMemory.Length);
+            arrowSerializer.AddBufferForward(_binaryList.OffsetSpan.Length);
+            arrowSerializer.AddBufferForward(_binaryList.DataSpan.Length);
 
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_binaryList.OffsetMemory.Span);
-            dataWriter.WriteArrowBuffer(_binaryList.DataMemory.Span);
+            dataWriter.WriteArrowBuffer(_binaryList.OffsetSpan);
+            dataWriter.WriteArrowBuffer(_binaryList.DataSpan);
         }
 
         public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
@@ -318,7 +318,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 DataType = ArrowTypeId.String,
                 TotalRows = Count,
-                TotalVariableBytes = _binaryList.DataMemory.Length
+                TotalVariableBytes = _binaryList.DataSpan.Length
             };
         }
 
