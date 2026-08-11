@@ -183,6 +183,104 @@ namespace FlowtideDotNet.MiMalloc.Tests
         }
 
         [Fact]
+        public void GetHeapUsage_CountsMultiSlicePagesOnce()
+        {
+            // A page larger than one 64 KiB slice occupies MANY page-map entries, one per slice.
+            // If the walk did not collapse those runs it would count the same page once per slice
+            // and every figure would be inflated several-fold, so pin that down explicitly.
+            const int size = 2 * 1024 * 1024;
+            const int count = 8;
+
+            var before = MiMalloc.GetHeapUsage();
+
+            var ptrs = new nint[count];
+            for (int i = 0; i < count; i++)
+            {
+                byte* p = (byte*)MiMalloc.mi_malloc(size);
+                Assert.True(p != null);
+                p[0] = 1;
+                p[size - 1] = 1;
+                ptrs[i] = (nint)p;
+            }
+
+            var during = MiMalloc.GetHeapUsage();
+            _output.WriteLine("during: " + during);
+
+            long allocated = count * (long)size;
+            long grew = during.LiveBytes - before.LiveBytes;
+            Assert.True(grew >= allocated, $"live grew by only {grew}, expected >= {allocated}");
+            // the real assertion: each 2 MiB block spans dozens of slices, so a walk that failed to
+            // dedup would report an order of magnitude more than was actually allocated
+            Assert.True(grew < 2 * allocated,
+                $"live grew by {grew} for {allocated} allocated -- pages are being counted more than once");
+
+            long pagesAdded = during.Pages - before.Pages;
+            Assert.True(pagesAdded <= 4 * count,
+                $"{pagesAdded} pages appeared for {count} blocks -- slices are being counted as pages");
+
+            foreach (var ptr in ptrs) { MiMalloc.mi_free((void*)ptr); }
+            MiMalloc.mi_collect(true);
+        }
+
+        [Fact]
+        public void GetHeapUsage_SeesPagesOwnedByAnotherThread()
+        {
+            // The walk enumerates the page map, so it must see another thread's live pages without
+            // that thread merging its statistics or collecting. This is exactly what the GetStats()
+            // live figures cannot do, and why they lag (or go negative) under cross-thread traffic.
+            const int size = 3 * 1024;
+            const int count = 500;
+
+            var before = MiMalloc.GetHeapUsage();
+
+            var ptrs = new nint[count];
+            using var allocated = new ManualResetEventSlim(false);
+            using var release = new ManualResetEventSlim(false);
+            var thread = new Thread(() =>
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    byte* p = (byte*)MiMalloc.mi_malloc(size);
+                    p[0] = 1;
+                    ptrs[i] = (nint)p;
+                }
+                allocated.Set();
+                release.Wait();
+                for (int i = 0; i < count; i++) { MiMalloc.mi_free((void*)ptrs[i]); }
+                MiMalloc.mi_collect(true);
+            });
+            thread.Start();
+            Assert.True(allocated.Wait(TimeSpan.FromSeconds(30)), "allocating thread did not finish");
+
+            // walked from THIS thread, while the owning thread is parked and has merged nothing
+            var during = MiMalloc.GetHeapUsage();
+            _output.WriteLine("during: " + during);
+
+            long grew = during.LiveBytes - before.LiveBytes;
+            Assert.True(grew >= count * (long)size,
+                $"another thread's live bytes were invisible to the walk: grew by {grew}");
+
+            release.Set();
+            Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "freeing thread did not finish");
+        }
+
+        [Fact]
+        public void GetHeapUsage_NonArenaFiguresAreASubsetOfTheTotals()
+        {
+            void* warm = MiMalloc.mi_malloc(64);
+            var u = MiMalloc.GetHeapUsage();
+            MiMalloc.mi_free(warm);
+
+            // non-arena pages are the ones an arena walk cannot reach while live; whatever their
+            // count, they are part of the totals and can never exceed them
+            Assert.True(u.NonArenaPages >= 0);
+            Assert.True(u.NonArenaPages <= u.Pages, $"non-arena pages {u.NonArenaPages} > total {u.Pages}");
+            Assert.True(u.NonArenaLiveBytes <= u.LiveBytes);
+            Assert.True(u.NonArenaCommittedBytes <= u.CommittedBytes);
+            _output.WriteLine($"non-arena: {u.NonArenaPages} pages, live {u.NonArenaLiveBytes}, committed {u.NonArenaCommittedBytes}");
+        }
+
+        [Fact]
         public void GetStats_DoesNotRequireMerge()
         {
             // the OS-level numbers must be readable without merging (the cheap polling path)

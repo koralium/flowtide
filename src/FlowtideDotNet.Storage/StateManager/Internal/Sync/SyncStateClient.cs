@@ -240,6 +240,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             await WriteMetadata();
             await session.Commit();
+
+            m_fileCache.ClearTemporaryAllocations();
+            options.ValueSerializer.ClearTemporaryAllocations();
         }
 
         private async Task WriteMetadata()
@@ -422,6 +425,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 var bytes = await session.Read(metadataId);
                 metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes, bytes.Length);
+            }
+            m_fileCache.ClearTemporaryAllocations();
+            if (options.ValueSerializer != null)
+            {
+                options.ValueSerializer.ClearTemporaryAllocations();
             }
         }
 

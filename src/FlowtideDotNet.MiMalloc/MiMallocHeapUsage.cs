@@ -52,6 +52,18 @@ namespace FlowtideDotNet.MiMalloc
         public long LiveBytes { get; init; }
         /// <summary>Total capacity of all pages.</summary>
         public long CapacityBytes { get; init; }
+
+        /// <summary>
+        /// How many of <see cref="Pages"/> did not come from an arena. These are invisible to a
+        /// heap/arena walk while they are live, so a non-zero value here is memory that arena-based
+        /// accounting under-reports. Normally zero or near it.
+        /// </summary>
+        public long NonArenaPages { get; init; }
+        /// <summary>Committed bytes held by the non-arena pages, included in <see cref="CommittedBytes"/>.</summary>
+        public long NonArenaCommittedBytes { get; init; }
+        /// <summary>Live bytes held by the non-arena pages, included in <see cref="LiveBytes"/>.</summary>
+        public long NonArenaLiveBytes { get; init; }
+
         /// <summary>Per size-class breakdown, only bins that hold at least one page, largest retained first.</summary>
         public IReadOnlyList<MiHeapBinUsage> Bins { get; init; }
 
@@ -69,6 +81,11 @@ namespace FlowtideDotNet.MiMalloc
             var sb = new StringBuilder();
             sb.Append($"heap: {Pages} pages, committed {MB(CommittedBytes)}, live {MB(LiveBytes)}, ")
               .Append($"retained {MB(RetainedBytes)}, utilization {Utilization:P1}");
+            if (NonArenaPages > 0)
+            {
+                sb.Append($" (of which non-arena: {NonArenaPages} pages, ")
+                  .Append($"committed {MB(NonArenaCommittedBytes)}, live {MB(NonArenaLiveBytes)})");
+            }
             if (Bins != null)
             {
                 foreach (var b in Bins)
@@ -93,53 +110,80 @@ namespace FlowtideDotNet.MiMalloc
             public fixed long Live[Mi.MI_BIN_COUNT];
             public fixed long Capacity[Mi.MI_BIN_COUNT];
             public fixed long BlockSize[Mi.MI_BIN_COUNT];
+            public long NonArenaPages;
+            public long NonArenaCommitted;
+            public long NonArenaLive;
         }
 
-        private static bool HeapUsageVisitor(mi_heap_t* heap, mi_heap_area_t* area, void* block, nuint block_size, void* arg)
+        private static bool HeapUsageVisitor(mi_page_t* page, void* arg)
         {
-            if (block != null) return true;   // area callbacks only (we pass visitBlocks: false)
-            var acc = (MiHeapUsageAcc*)arg;
-            mi_page_t* page = (mi_page_t*)area->reserved1;
             if (page == null) return true;
+            var acc = (MiHeapUsageAcc*)arg;
 
             nuint bsize = Mi.mi_page_block_size(page);
             if (bsize == 0) return true;
             int bin = (int)Mi._mi_page_stats_bin(page);
             if (bin < 0 || bin >= Mi.MI_BIN_COUNT) return true;
 
+            long committed = (long)Mi.mi_page_committed(page);
+            long live = (long)((nuint)page->used * bsize);
+
             acc->Pages[bin] += 1;
-            acc->Committed[bin] += (long)Mi.mi_page_committed(page);
-            acc->Live[bin] += (long)((nuint)page->used * bsize);
+            acc->Committed[bin] += committed;
+            acc->Live[bin] += live;
             acc->Capacity[bin] += (long)((nuint)page->capacity * bsize);
             acc->BlockSize[bin] = (long)bsize;
+
+            // pages that did not come from an arena are the ones a heap walk cannot reach while they
+            // are still live, so report them separately -- a non-zero figure here is exactly the amount
+            // the old arena-based walk was silently missing.
+            if (page->memid.memkind != mi_memkind_t.MI_MEM_ARENA)
+            {
+                acc->NonArenaPages += 1;
+                acc->NonArenaCommitted += committed;
+                acc->NonArenaLive += live;
+            }
             return true;
         }
 
         /// <summary>
-        /// Walk every page of the main heap and report committed-versus-live bytes, in total and
+        /// Walk every page in the process and report committed-versus-live bytes, in total and
         /// per size-class bin. This is the measurement to use when diagnosing "the allocator holds
         /// far more memory than my data" — a low <see cref="MiHeapUsage.Utilization"/> in a
         /// particular bin points straight at the size class responsible.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Cost is O(pages), so call this at checkpoint cadence rather than in a tight polling
-        /// loop. Use <see cref="GetStats"/> for cheap frequent sampling of OS-level totals.
+        /// This enumerates the page map, so it sees every page regardless of which heap or thread
+        /// owns it and regardless of whether it came from an arena or straight from the OS. An
+        /// earlier version walked the arena page bitmaps instead, which silently omitted live
+        /// non-arena pages and under-reported both live and committed bytes;
+        /// <see cref="MiHeapUsage.NonArenaPages"/> reports how much of the total is memory that
+        /// walk could not have seen.
+        /// </para>
+        /// <para>
+        /// It measures the allocator's PAGES. Arena slices that are committed but not currently
+        /// carved into any page are not counted here — for the true OS-level figure use
+        /// <see cref="MiMallocStats.CommittedBytes"/> from <see cref="GetStats"/>, which is
+        /// maintained atomically on commit/decommit and never lags.
+        /// </para>
+        /// <para>
+        /// Cost is O(address space touched), so call this at checkpoint cadence rather than in a
+        /// tight polling loop. Use <see cref="GetStats"/> for cheap frequent sampling.
         /// </para>
         /// <para>
         /// The walk reads page counters without synchronization (as the C does). Under concurrent
         /// allocation a page or two may be counted slightly stale, so treat the result as a gauge
-        /// rather than an exact invariant. It never blocks and never allocates from the heap it
-        /// is walking.
+        /// rather than an exact invariant. Note that <c>page->used</c> is only decremented when the
+        /// owning thread collects, so pending cross-thread frees make live read HIGH; collect on
+        /// the participating threads first if you need a tight figure. It never blocks and never
+        /// allocates.
         /// </para>
         /// </remarks>
         public static MiHeapUsage GetHeapUsage()
         {
             MiHeapUsageAcc acc = default;
-            mi_heap_t* heap = Mi.mi_heap_main();
-            Mi._mi_heap_visit_blocks(heap, false /* all pages, not just abandoned */,
-                                     false /* areas only, do not enumerate blocks */,
-                                     &HeapUsageVisitor, &acc);
+            Mi._mi_page_map_forall_pages(&HeapUsageVisitor, &acc);
 
             long pages = 0, committed = 0, live = 0, capacity = 0;
             var bins = new List<MiHeapBinUsage>();
@@ -169,6 +213,9 @@ namespace FlowtideDotNet.MiMalloc
                 CommittedBytes = committed,
                 LiveBytes = live,
                 CapacityBytes = capacity,
+                NonArenaPages = acc.NonArenaPages,
+                NonArenaCommittedBytes = acc.NonArenaCommitted,
+                NonArenaLiveBytes = acc.NonArenaLive,
                 Bins = bins,
             };
         }

@@ -140,7 +140,14 @@ namespace FlowtideDotNet.Storage.Memory
         {
             if (_useMimalloc)
             {
-                MiMalloc.mi_collect(true);
+                // Overallocate a bunch of work items to try and hit all threads in the thread pool to run the collection.
+                for (int i = 0; i < Environment.ProcessorCount * 8; i++)
+                {
+                    ThreadPool.QueueUserWorkItem<object?>((_) =>
+                    {
+                        MiMalloc.mi_collect(true);
+                    }, default, false);
+                }
             }
         }
     }
