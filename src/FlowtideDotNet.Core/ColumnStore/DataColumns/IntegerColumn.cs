@@ -1101,10 +1101,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
             Debug.Assert(_data != null);
-            if (validityList != null &&
+            if (!validityList.IsNull &&
                 !validityList.Get(index))
             {
                 if (value.Type == ArrowTypeId.Null)
@@ -1211,7 +1211,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _data.InsertNullRange(index, count);
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)
         {
             if (other is IntegerColumn integerColumn)
             {

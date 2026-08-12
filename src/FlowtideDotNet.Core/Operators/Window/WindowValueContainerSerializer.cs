@@ -77,7 +77,6 @@ namespace FlowtideDotNet.Core.Operators.Window
             reader.Advance(bitmapMemoryLength);
 
             var weights = new PrimitiveList<int>(weightsNativeMemory, weightsMemoryLength / sizeof(int), _memoryAllocator);
-            var bitmap = new BitmapList(bitmapNativeMemory, weights.Count, _memoryAllocator);
 
             var deserializer = new EventBatchDeserializer(_memoryAllocator);
             var functionStatesResult = deserializer.DeserializeDataColumns(ref reader);
@@ -95,7 +94,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                 }
             }
 
-            return new WindowValueContainer(weights, listColumns, bitmap);
+            return new WindowValueContainer(weights, listColumns, new BitmapList(bitmapNativeMemory, weights.Count), _memoryAllocator);
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)

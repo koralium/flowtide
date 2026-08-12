@@ -19,15 +19,15 @@ namespace FlowtideDotNet.Benchmarks
 {
     public class BitmapListBenchmark
     {
-        private BitmapList? _bitmapList;
-        private BitmapList? _otherBitmapList;
+        private BitmapList _bitmapList;
+        private BitmapList _otherBitmapList;
         private List<bool>? _list;
         private List<bool>? _otherList;
 
         [IterationSetup(Targets = [nameof(RemoveRange), nameof(RemoveRangeIterative), nameof(RemoveRangeSystemCollectionList)])]
         public void RemoveRangeIterationSetup()
         {
-            _bitmapList = new BitmapList(GlobalMemoryManager.Instance);
+            _bitmapList = default(BitmapList);
             _list = new List<bool>();
             Random r = new Random(123);
 
@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Benchmarks
                 {
                     val = false;
                 }
-                _bitmapList.Add(val);
+                _bitmapList.Add(val, GlobalMemoryManager.Instance);
                 _list.Add(val);
             }
         }
@@ -47,8 +47,8 @@ namespace FlowtideDotNet.Benchmarks
         [IterationSetup(Targets = [nameof(InsertRange), nameof(InsertRangeIterative), nameof(InsertRangeSystemCollectionList)])]
         public void InsertRangeIterationSetup()
         {
-            _bitmapList = new BitmapList(GlobalMemoryManager.Instance);
-            _otherBitmapList = new BitmapList(GlobalMemoryManager.Instance);
+            _bitmapList = default(BitmapList);
+            _otherBitmapList = default(BitmapList);
             _list = new List<bool>();
             _otherList = new List<bool>();
             Random r = new Random(123);
@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Benchmarks
                 {
                     val = false;
                 }
-                _bitmapList.Add(val);
+                _bitmapList.Add(val, GlobalMemoryManager.Instance);
                 _list.Add(val);
                 v = r.Next(0, 2);
                 val = true;
@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Benchmarks
                 {
                     val = false;
                 }
-                _otherBitmapList.Add(val);
+                _otherBitmapList.Add(val, GlobalMemoryManager.Instance);
                 _otherList.Add(val);
             }
         }
@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Benchmarks
         [IterationSetup(Targets = [nameof(CountTrueInRange), nameof(CountTrueInRangeSystemCollectionList)])]
         public void CountTrueInRangeIterationSetup()
         {
-            _bitmapList = new BitmapList(GlobalMemoryManager.Instance);
+            _bitmapList = default(BitmapList);
             _list = new List<bool>();
             Random r = new Random(123);
 
@@ -89,7 +89,7 @@ namespace FlowtideDotNet.Benchmarks
                 {
                     val = false;
                 }
-                _bitmapList.Add(val);
+                _bitmapList.Add(val, GlobalMemoryManager.Instance);
                 _list.Add(val);
             }
         }
@@ -97,38 +97,26 @@ namespace FlowtideDotNet.Benchmarks
         [IterationCleanup(Targets = [nameof(RemoveRange), nameof(RemoveRangeIterative)])]
         public void RemoveRangeCleanup()
         {
-            if (_bitmapList != null)
-            {
-                _bitmapList.Dispose();
-            }
+            _bitmapList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [IterationCleanup(Targets = [nameof(InsertRange), nameof(InsertRangeIterative)])]
         public void InsertRangeCleanup()
         {
-            if (_bitmapList != null)
-            {
-                _bitmapList.Dispose();
-            }
-            if (_otherBitmapList != null)
-            {
-                _otherBitmapList.Dispose();
-            }
+            _bitmapList.Dispose(GlobalMemoryManager.Instance);
+            _otherBitmapList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [IterationCleanup(Targets = [nameof(CountTrueInRange)])]
         public void CountTrueInRangeCleanup()
         {
-            if (_bitmapList != null)
-            {
-                _bitmapList.Dispose();
-            }
+            _bitmapList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Benchmark]
         public void RemoveRange()
         {
-            _bitmapList!.RemoveRange(100, 10000);
+            _bitmapList.RemoveRange(100, 10000);
         }
 
         [Benchmark]
@@ -137,7 +125,7 @@ namespace FlowtideDotNet.Benchmarks
             var end = 100 + 10000;
             for (int i = end; i >= 100; i--)
             {
-                _bitmapList!.RemoveAt(i);
+                _bitmapList.RemoveAt(i);
             }
         }
 
@@ -150,7 +138,7 @@ namespace FlowtideDotNet.Benchmarks
         [Benchmark]
         public void InsertRange()
         {
-            _bitmapList!.InsertRangeFrom(100, _otherBitmapList!, 100, 10000);
+            _bitmapList.InsertRangeFrom(100, _otherBitmapList, 100, 10000, GlobalMemoryManager.Instance);
         }
 
         [Benchmark]
@@ -159,7 +147,7 @@ namespace FlowtideDotNet.Benchmarks
             var end = 100 + 10000;
             for (int i = 100; i < end; i++)
             {
-                _bitmapList!.InsertAt(i, _otherBitmapList![i]);
+                _bitmapList.InsertAt(i, _otherBitmapList[i], GlobalMemoryManager.Instance);
             }
         }
 
@@ -172,7 +160,7 @@ namespace FlowtideDotNet.Benchmarks
         [Benchmark]
         public int CountTrueInRange()
         {
-            return _bitmapList!.CountTrueInRange(0, 1_000_000);
+            return _bitmapList.CountTrueInRange(0, 1_000_000);
         }
 
         [Benchmark]

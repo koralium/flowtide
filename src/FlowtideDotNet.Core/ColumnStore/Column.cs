@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// since a column could start as a null column without any data.
         /// The type of data that is stored is then unknown.
         /// </summary>
-        private BitmapList? _validityList;
+        private BitmapList _validityList;
 
         /// <summary>
         /// The type of data the column is storing, starts with null
@@ -77,7 +77,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             _nullCounter = 0;
             _type = ArrowTypeId.Null;
             _rentCounter = 0;
-            _validityList = BitmapListFactory.Get(memoryAllocator);
             disposedValue = false;
         }
 
@@ -85,7 +84,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _nullCounter = nullCounter;
             _dataColumn = dataColumn;
+            // Ownership transfer: the argument is always a fresh list that is never used again by the caller.
+#pragma warning disable RS0042
             _validityList = validityList;
+#pragma warning restore RS0042
             _type = type;
             _memoryAllocator = memoryAllocator;
             _rentCounter = 0;
@@ -99,19 +101,21 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public static Column Create(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
         {
+            // Ownership transfer: the list moves through the factory into the column.
+#pragma warning disable RS0042
             return ColumnFactory.Get(nullCounter, dataColumn, validityList, type, memoryAllocator);
+#pragma warning restore RS0042
         }
 
         public Column(IMemoryAllocator memoryAllocator)
         {
             _memoryAllocator = memoryAllocator;
-            _validityList = BitmapListFactory.Get(memoryAllocator);
         }
 
         public Column(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
         {
             _memoryAllocator = memoryAllocator;
-            _validityList = new BitmapList(memoryAllocator, columnSizeInfo.TotalRows);
+            _validityList = new BitmapList(columnSizeInfo.TotalRows, memoryAllocator);
             switch (columnSizeInfo.DataType)
             {
                 case ArrowTypeId.Binary:
@@ -171,7 +175,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _nullCounter = nullCounter;
             _dataColumn = dataColumn;
+            // Ownership transfer: the argument is always a fresh list that is never used again by the caller.
+#pragma warning disable RS0042
             _validityList = validityList;
+#pragma warning restore RS0042
             _type = type;
             _memoryAllocator = memoryAllocator;
         }
@@ -205,7 +212,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <returns></returns>
         internal int GetValidityListCount()
         {
-            Debug.Assert(_validityList != null);
             return _validityList.Count;
         }
 
@@ -270,7 +276,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void Add<T>(in T value)
             where T : IDataValue
         {
-            Debug.Assert(_validityList != null);
             if (!CompareValueType(value))
             {
                 if (_type == ArrowTypeId.Null)
@@ -285,7 +290,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         {
                             _dataColumn.Add(in NullValue.Instance);
                         }
-                        _validityList.Set(Count);
+                        _validityList.Set(Count, _memoryAllocator!);
                     }
 
                     _dataColumn.Add(value);
@@ -304,7 +309,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     // Increase null counter
                     _nullCounter++;
                     // Set null bit
-                    _validityList.Unset(index);
+                    _validityList.Unset(index, _memoryAllocator!);
                     // Add undefined value to value array
                     _dataColumn.Add(in NullValue.Instance);
                 }
@@ -333,7 +338,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     if (_nullCounter > 0)
                     {
-                        _validityList.Set(_dataColumn!.Count);
+                        _validityList.Set(_dataColumn!.Count, _memoryAllocator!);
                     }
                     _dataColumn!.Add(value);
                 }
@@ -342,11 +347,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         private void CheckNullInitialization()
         {
-            Debug.Assert(_validityList != null);
             if (_nullCounter == 0)
             {
                 _validityList.Clear();
-                _validityList.InsertTrueInRange(0, Count);
+                _validityList.InsertTrueInRange(0, Count, _memoryAllocator!);
             }
         }
 
@@ -366,7 +370,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void InsertAt<T>(in int index, in T value)
             where T : IDataValue
         {
-            Debug.Assert(_validityList != null);
             if (!CompareValueType(value))
             {
                 if (_type == ArrowTypeId.Null)
@@ -379,8 +382,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
                     if (_nullCounter > 0)
                     {
-                        _validityList.Unset(Count - 1);
-                        _validityList.InsertAt(index, true);
+                        _validityList.Unset(Count - 1, _memoryAllocator!);
+                        _validityList.InsertAt(index, true, _memoryAllocator!);
                     }
 
                     _dataColumn.InsertAt(index, value);
@@ -398,7 +401,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     // Increase null counter
                     _nullCounter++;
                     // Set null bit
-                    _validityList.InsertAt(index, false);
+                    _validityList.InsertAt(index, false, _memoryAllocator!);
                     // Add undefined value to value array
                     _dataColumn!.InsertAt(index, in NullValue.Instance);
                 }
@@ -430,7 +433,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     if (_nullCounter > 0)
                     {
-                        _validityList.InsertAt(index, true);
+                        _validityList.InsertAt(index, true, _memoryAllocator!);
                     }
                     _dataColumn!.InsertAt(index, value);
                 }
@@ -440,7 +443,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void UpdateAt<T>(in int index, in T value)
             where T : IDataValue
         {
-            Debug.Assert(_validityList != null);
             if (_type == ArrowTypeId.Union)
             {
                 _dataColumn!.Update<T>(index, value);
@@ -453,7 +455,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     CheckNullInitialization();
                     if (_validityList.Get(index))
                     {
-                        _validityList.Unset(index);
+                        _validityList.Unset(index, _memoryAllocator!);
                         _nullCounter++;
                     }
                 }
@@ -468,7 +470,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         _dataColumn.Add(in NullValue.Instance);
                     }
-                    _validityList.Unset(Count - 1);
+                    _validityList.Unset(Count - 1, _memoryAllocator!);
                 }
                 if (!CompareValueType(value))
                 {
@@ -492,7 +494,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     if (_nullCounter > 0 &&
                         !_validityList.Get(index))
                     {
-                        _validityList.Set(index);
+                        _validityList.Set(index, _memoryAllocator!);
                         _nullCounter--;
                     }
                 }
@@ -501,7 +503,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveAt(in int index)
         {
-            Debug.Assert(_validityList != null);
             if (_nullCounter > 0)
             {
                 if (_type == ArrowTypeId.Null)
@@ -525,7 +526,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveRange(in int index, in int count)
         {
-            Debug.Assert(_validityList != null);
             if (_nullCounter > 0)
             {
                 if (_type == ArrowTypeId.Null)
@@ -546,7 +546,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            Debug.Assert(_validityList != null);
             if (_nullCounter > 0)
             {
                 if (_type == ArrowTypeId.Null)
@@ -563,7 +562,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
-            Debug.Assert(_validityList != null);
             if (_type == ArrowTypeId.Union)
             {
                 return _dataColumn!.GetTypeAt(index, child);
@@ -584,7 +582,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
-            Debug.Assert(_validityList != null);
 
             if (_nullCounter > 0)
             {
@@ -613,7 +610,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     return 0;
                 }
-                return _dataColumn!.CompareTo(index, in dataValue, child, _nullCounter > 0 ? _validityList : default);
+                if (_nullCounter > 0)
+                {
+                    return _dataColumn!.CompareTo(index, in dataValue, child, in _validityList);
+                }
+                return _dataColumn!.CompareTo(index, in dataValue, child, in BitmapList.None);
             }
             else if (_type == ArrowTypeId.Union)
             {
@@ -623,7 +624,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 if (_nullCounter > 0 && dataValue.IsNull)
                 {
-                    if (_validityList!.Get(index))
+                    if (_validityList.Get(index))
                     {
                         return 1;
                     }
@@ -651,7 +652,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
                 if (_nullCounter > 0)
                 {
-                    thisIsNull = !_validityList!.Get(thisIndex);
+                    thisIsNull = !_validityList.Get(thisIndex);
                 }
 
                 int resolvedOtherIndex = otherIndex;
@@ -684,7 +685,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
                 if (!otherIsNull && resolvedOtherColumn != null && resolvedOtherColumn._nullCounter > 0)
                 {
-                    otherIsNull = !resolvedOtherColumn._validityList!.Get(resolvedOtherIndex);
+                    otherIsNull = !resolvedOtherColumn._validityList.Get(resolvedOtherIndex);
                 }
 
                 if (thisIsNull || otherIsNull)
@@ -781,7 +782,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray()
         {
-            Debug.Assert(_validityList != null);
             if (_type == ArrowTypeId.Null)
             {
                 return (new Apache.Arrow.NullArray(Count), NullType.Default);
@@ -793,20 +793,21 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         protected virtual void Dispose(bool disposing)
         {
-            Debug.Assert(_validityList != null);
             if (!disposedValue)
             {
+                // The validity struct has no finalizer of its own, so it must be freed here on both paths.
+                if (_memoryAllocator != null)
+                {
+                    _validityList.Dispose(_memoryAllocator);
+                }
                 if (disposing)
                 {
-                    _validityList.Dispose();
                     if (_dataColumn != null)
                     {
                         _dataColumn.Dispose();
                     }
                     ColumnFactory.Return(this);
                 }
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
                 disposedValue = true;
             }
         }
@@ -843,7 +844,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (_nullCounter > 0)
             {
-                Debug.Assert(_validityList != null);
                 _validityList.Clear();
                 _nullCounter = 0;
             }
@@ -886,10 +886,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     previousColumn.Dispose();
                 }
-                if (_validityList != null)
-                {
-                    _validityList.Clear();
-                }
+                _validityList.Clear();
                 _nullCounter = 0;
                 _dataColumn.AddToNewList(value);
             }
@@ -929,10 +926,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     previousColumn.Dispose();
                 }
-                if (_validityList != null)
-                {
-                    _validityList.Clear();
-                }
+                _validityList.Clear();
                 _nullCounter = 0;
                 return _dataColumn!.EndNewList();
             }
@@ -950,7 +944,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return 0;
             }
 
-            return _dataColumn!.GetByteSize(start, end) + _validityList!.GetByteSize(start, end);
+            return _dataColumn!.GetByteSize(start, end) + _validityList.GetByteSize(start, end);
         }
 
         public int GetByteSize()
@@ -959,7 +953,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return 0;
             }
-            return _dataColumn!.GetByteSize() + _validityList!.GetByteSize(0, Count - 1);
+            return _dataColumn!.GetByteSize() + _validityList.GetByteSize(0, Count - 1);
         }
 
         public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
@@ -969,7 +963,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return;
             }
             _dataColumn!.GetPrefixSumByteSizes(indices, sizes);
-            _validityList!.GetPrefixSumByteSizes(indices, sizes);
+            _validityList.GetPrefixSumByteSizes(indices, sizes);
         }
 
         private bool CompareOtherColumnType(Column otherColumn)
@@ -994,15 +988,13 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             if (_nullCounter > 0)
             {
-                Debug.Assert(_validityList != null);
-                _validityList.InsertFalseInRange(index, count);
+                _validityList.InsertFalseInRange(index, count, _memoryAllocator!);
                 _nullCounter += count;
             }
             else
             {
-                Debug.Assert(_validityList != null);
                 CheckNullInitialization();
-                _validityList.InsertFalseInRange(index, count);
+                _validityList.InsertFalseInRange(index, count, _memoryAllocator!);
                 _nullCounter += count;
             }
             if (_dataColumn != null)
@@ -1028,7 +1020,14 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         Debug.Assert(_dataColumn != null);
                         Debug.Assert(column._dataColumn != null);
-                        _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._nullCounter > 0 ? column._validityList : default);
+                        if (column._nullCounter > 0)
+                    {
+                        _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, in column._validityList);
+                    }
+                    else
+                    {
+                        _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, in BitmapList.None);
+                    }
                         return;
                     }
 
@@ -1036,29 +1035,24 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         if (_nullCounter > 0 && column._nullCounter > 0)
                         {
-                            Debug.Assert(_validityList != null);
-                            Debug.Assert(column._validityList != null);
 
-                            _validityList!.InsertRangeFrom(index, column._validityList!, start, count);
+                            _validityList.InsertRangeFrom(index, column._validityList, start, count, _memoryAllocator!);
                             _nullCounter += column._validityList.CountFalseInRange(start, count);
                         }
                         else if (_nullCounter > 0)
                         {
-                            Debug.Assert(_validityList != null);
 
                             // Set entire range as not null, no need to update null counter since nothing is null in the copy
-                            _validityList.InsertTrueInRange(index, count);
+                            _validityList.InsertTrueInRange(index, count, _memoryAllocator!);
                         }
                         else // Incoming contain null but this column does not
                         {
-                            Debug.Assert(column._validityList != null);
-                            Debug.Assert(_validityList != null);
 
                             // check so all existing values are set as not null
                             CheckNullInitialization();
 
                             // Insert the range from the other columns validity list
-                            _validityList.InsertRangeFrom(index, column._validityList!, start, count);
+                            _validityList.InsertRangeFrom(index, column._validityList, start, count, _memoryAllocator!);
                             // Count how many are null in the range
                             _nullCounter = column._validityList.CountFalseInRange(start, count);
                         }
@@ -1067,13 +1061,19 @@ namespace FlowtideDotNet.Core.ColumnStore
                     Debug.Assert(_dataColumn != null);
                     Debug.Assert(column._dataColumn != null);
                     // Insert the actual data
-                    _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._nullCounter > 0 ? column._validityList : default);
+                    if (column._nullCounter > 0)
+                    {
+                        _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, in column._validityList);
+                    }
+                    else
+                    {
+                        _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, in BitmapList.None);
+                    }
                 }
                 else
                 {
                     if (_type == ArrowTypeId.Null)
                     {
-                        Debug.Assert(_validityList != null);
                         if (otherColumn.Type == ArrowTypeId.Struct)
                         {
                             if (otherColumn.StructHeader == null)
@@ -1101,20 +1101,19 @@ namespace FlowtideDotNet.Core.ColumnStore
                         if (_nullCounter > 0)
                         {
                             _dataColumn.InsertNullRange(0, _nullCounter);
-                            _validityList.Unset(Count - 1);
+                            _validityList.Unset(Count - 1, _memoryAllocator!);
                         }
                         // Check if we need to copy over null values
                         if (column._nullCounter > 0 || _nullCounter > 0)
                         {
                             if (column._nullCounter > 0)
                             {
-                                Debug.Assert(column._validityList != null);
-                                _validityList.InsertRangeFrom(index, column._validityList!, start, count);
+                                _validityList.InsertRangeFrom(index, column._validityList, start, count, _memoryAllocator!);
                                 _nullCounter += column._validityList.CountFalseInRange(start, count);
                             }
                             else
                             {
-                                _validityList.InsertTrueInRange(index, count);
+                                _validityList.InsertTrueInRange(index, count, _memoryAllocator!);
                             }
                         }
                     }
@@ -1124,8 +1123,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         if (_type != ArrowTypeId.Union)
                         {
                             CheckNullInitialization();
-                            Debug.Assert(_validityList != null);
-                            _validityList.InsertFalseInRange(index, count);
+                            _validityList.InsertFalseInRange(index, count, _memoryAllocator!);
                             _nullCounter += count;
                         }
                         _dataColumn.InsertNullRange(index, count);
@@ -1133,7 +1131,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                     else if (_type != ArrowTypeId.Union)
                     {
-                        Debug.Assert(_validityList != null);
                         Debug.Assert(_dataColumn != null);
 
                         // Convert the column into a union column since the types differ and this is not a union column
@@ -1150,7 +1147,14 @@ namespace FlowtideDotNet.Core.ColumnStore
                     Debug.Assert(column._dataColumn != null);
 
                     // Insert the data into the union column
-                    _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._nullCounter > 0 ? column._validityList : default);
+                    if (column._nullCounter > 0)
+                    {
+                        _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, in column._validityList);
+                    }
+                    else
+                    {
+                        _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, in BitmapList.None);
+                    }
                 }
             }
             else if (otherColumn is ColumnWithOffset columnWithOffset)
@@ -1220,7 +1224,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
         {
-            Debug.Assert(_validityList != null);
 
             if (_nullCounter > 0)
             {
@@ -1241,12 +1244,11 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public Column Copy(IMemoryAllocator memoryAllocator)
         {
-            return new Column(_nullCounter, _dataColumn?.Copy(memoryAllocator), _validityList!.Copy(memoryAllocator), _type, memoryAllocator);
+            return new Column(_nullCounter, _dataColumn?.Copy(memoryAllocator), _validityList.Copy(memoryAllocator), _type, memoryAllocator);
         }
 
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
         {
-            Debug.Assert(_validityList != null);
             if (_nullCounter > 0)
             {
                 if (_type == ArrowTypeId.Null || !_validityList.Get(index))
@@ -1282,7 +1284,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             var estimate = _dataColumn!.GetSerializationEstimate();
-            return new SerializationEstimation(estimate.fieldNodeCount, 1 + estimate.bufferCount, estimate.bodyLength + _validityList!.GetByteSize(0, Count - 1));
+            return new SerializationEstimation(estimate.fieldNodeCount, 1 + estimate.bufferCount, estimate.bodyLength + _validityList.GetByteSize(0, Count - 1));
         }
 
         void IColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer)
@@ -1315,7 +1317,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (_type != ArrowTypeId.Union)
             {
                 // Union does not have a validity bitmap in apache arrow
-                arrowSerializer.AddBufferForward(_validityList!.SlicedSpan.Length);
+                arrowSerializer.AddBufferForward(_validityList.SlicedSpan.Length);
             }
 
             _dataColumn!.AddBuffers(ref arrowSerializer);
@@ -1343,7 +1345,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
                 else
                 {
-                    dataWriter.WriteArrowBuffer(_validityList!.SlicedSpan);
+                    dataWriter.WriteArrowBuffer(_validityList.SlicedSpan);
                 }
             }
 
@@ -1352,7 +1354,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertFrom(IColumn column, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
-            Debug.Assert(_validityList != null);
 
             if (column is Column other)
             {
@@ -1385,7 +1386,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         {
                             incomingNullCount++;
                         }
-                        else if (other._nullCounter > 0 && !other._validityList!.Get(idx))
+                        else if (other._nullCounter > 0 && !other._validityList.Get(idx))
                         {
                             incomingNullCount++;
                         }
@@ -1402,17 +1403,16 @@ namespace FlowtideDotNet.Core.ColumnStore
                         {
                             if (other._nullCounter > 0)
                             {
-                                Debug.Assert(other._validityList != null);
-                                _validityList.InsertFrom(in other._validityList!, in sortedLookup, in insertPositions, lookupNullIndex);
+                                _validityList.InsertFrom(in other._validityList, in sortedLookup, in insertPositions, lookupNullIndex, _memoryAllocator!);
                             }
                             else
                             {
-                                _validityList.InsertConstantFrom(true, insertPositions);
+                                _validityList.InsertConstantFrom(true, insertPositions, _memoryAllocator!);
                                 for (int i = 0; i < count; i++)
                                 {
                                     if (sortedLookup[i] == lookupNullIndex)
                                     {
-                                        _validityList.Unset(insertPositions[i] + i);
+                                        _validityList.Unset(insertPositions[i] + i, _memoryAllocator!);
                                     }
                                 }
                             }
@@ -1421,7 +1421,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         else
                         {
                             // This has nulls, other doesn't — insert all as valid
-                            _validityList.InsertConstantFrom(true, insertPositions);
+                            _validityList.InsertConstantFrom(true, insertPositions, _memoryAllocator!);
                         }
                     }
 
@@ -1433,7 +1433,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     if (_type == ArrowTypeId.Null)
                     {
-                        Debug.Assert(_validityList != null);
                         if (other.Type == ArrowTypeId.Struct)
                         {
                             if (column.StructHeader == null)
@@ -1461,7 +1460,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         if (_nullCounter > 0)
                         {
                             _dataColumn.InsertNullRange(0, _nullCounter);
-                            _validityList.Unset(Count - 1);
+                            _validityList.Unset(Count - 1, _memoryAllocator!);
                         }
 
                         // Handle validity bitmap for the inserted elements
@@ -1473,7 +1472,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                             {
                                 incomingNullCount++;
                             }
-                            else if (other._nullCounter > 0 && !other._validityList!.Get(idx))
+                            else if (other._nullCounter > 0 && !other._validityList.Get(idx))
                             {
                                 incomingNullCount++;
                             }
@@ -1485,17 +1484,16 @@ namespace FlowtideDotNet.Core.ColumnStore
                             {
                                 if (other._nullCounter > 0)
                                 {
-                                    Debug.Assert(other._validityList != null);
-                                    _validityList.InsertFrom(in other._validityList!, in sortedLookup, in insertPositions, lookupNullIndex);
+                                    _validityList.InsertFrom(in other._validityList, in sortedLookup, in insertPositions, lookupNullIndex, _memoryAllocator!);
                                 }
                                 else
                                 {
-                                    _validityList.InsertConstantFrom(true, insertPositions);
+                                    _validityList.InsertConstantFrom(true, insertPositions, _memoryAllocator!);
                                     for (int i = 0; i < count; i++)
                                     {
                                         if (sortedLookup[i] == lookupNullIndex)
                                         {
-                                            _validityList.Unset(insertPositions[i] + i);
+                                            _validityList.Unset(insertPositions[i] + i, _memoryAllocator!);
                                         }
                                     }
                                 }
@@ -1503,7 +1501,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                             }
                             else
                             {
-                                _validityList.InsertConstantFrom(true, insertPositions);
+                                _validityList.InsertConstantFrom(true, insertPositions, _memoryAllocator!);
                             }
                         }
                     }
@@ -1514,8 +1512,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         if (_type != ArrowTypeId.Union)
                         {
                             CheckNullInitialization();
-                            Debug.Assert(_validityList != null);
-                            _validityList.InsertConstantFrom(false, insertPositions);
+                            _validityList.InsertConstantFrom(false, insertPositions, _memoryAllocator!);
                             _nullCounter += count;
                         }
                         // Insert null placeholders into the data column element-by-element
@@ -1528,7 +1525,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                     else if (_type != ArrowTypeId.Union)
                     {
                         // Both are typed but different, convert this to union, then bulk insert
-                        Debug.Assert(_validityList != null);
                         Debug.Assert(_dataColumn != null);
 
                         var unionColumn = ConvertToUnion();
@@ -1566,7 +1562,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void DeleteBatch(ReadOnlySpan<int> targets)
         {
-            Debug.Assert(_validityList != null);
 
             if (targets.Length == 0) return;
 
@@ -1632,7 +1627,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _dataColumn.SetSelfComparePointers(ref selfComparePointers);
                 if (_nullCounter > 0)
                 {
-                    Debug.Assert(_validityList != null);
                     selfComparePointers.validityPointer = _validityList.GetPointer_Unsafe();
                 }
             }
@@ -1730,8 +1724,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return _dataColumn.SetRadixPrefix(items, insertBytePosition, selectionVector);
             }
-
-            Debug.Assert(_validityList != null);
             ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
             bool createdNullByte = false;
 

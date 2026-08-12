@@ -63,7 +63,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             {
                 customAlloc = customAlloc,
                 customFree = customFree,
+                // RS0042 tracks GCHandle as non-copyable, but ToIntPtr takes it by value by design.
+#pragma warning disable RS0042
                 opaque = (void*)GCHandle.ToIntPtr(_handle)
+#pragma warning restore RS0042
             };
             _dctx = Methods.ZSTD_createDCtx_advanced(customMem);
             _cctx = Methods.ZSTD_createCCtx_advanced(customMem);

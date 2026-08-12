@@ -38,23 +38,28 @@ namespace FlowtideDotNet.Core.Operators.Window
         internal PrimitiveList<int> _weights;
         internal ListColumn[] _functionStates;
         internal BitmapList _previousValueSent;
+        private readonly IMemoryAllocator _memoryAllocator;
 
         public WindowValueContainer(int numberOfFunctions, IMemoryAllocator memoryAllocator)
         {
+            _memoryAllocator = memoryAllocator;
             _weights = new PrimitiveList<int>(memoryAllocator);
             _functionStates = new ListColumn[numberOfFunctions];
-            _previousValueSent = new BitmapList(memoryAllocator);
             for (int i = 0; i < numberOfFunctions; i++)
             {
                 _functionStates[i] = new ListColumn(memoryAllocator);
             }
         }
 
-        internal WindowValueContainer(PrimitiveList<int> weights, ListColumn[] functionStates, BitmapList previousValueSent)
+        internal WindowValueContainer(PrimitiveList<int> weights, ListColumn[] functionStates, BitmapList previousValueSent, IMemoryAllocator memoryAllocator)
         {
+            _memoryAllocator = memoryAllocator;
             _weights = weights;
             _functionStates = functionStates;
+            // Ownership transfer: the argument is always a fresh list that is never used again by the caller.
+#pragma warning disable RS0042
             _previousValueSent = previousValueSent;
+#pragma warning restore RS0042
         }
 
         public int Count => _weights.Count;
@@ -68,7 +73,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                 {
                     _functionStates[i].InsertRangeFrom(_functionStates[i].Count, windowValueContainer._functionStates[i], start, count, default);
                 }
-                _previousValueSent.InsertRangeFrom(_previousValueSent.Count, windowValueContainer._previousValueSent, start, count);
+                _previousValueSent.InsertRangeFrom(_previousValueSent.Count, in windowValueContainer._previousValueSent, start, count, _memoryAllocator);
             }
             else
             {
@@ -88,7 +93,14 @@ namespace FlowtideDotNet.Core.Operators.Window
             {
                 _functionStates[i].Dispose();
             }
-            _previousValueSent.Dispose();
+            _previousValueSent.Dispose(_memoryAllocator);
+            GC.SuppressFinalize(this);
+        }
+
+        // The bitmap struct has no finalizer of its own; the sibling fields are classes with their own backstops.
+        ~WindowValueContainer()
+        {
+            _previousValueSent.Dispose(_memoryAllocator);
         }
 
         public WindowValue Get(int index)
@@ -124,7 +136,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             {
                 _functionStates[i].InsertAt(index, NullValue.Instance);
             }
-            _previousValueSent.InsertAt(index, false);
+            _previousValueSent.InsertAt(index, false, _memoryAllocator);
         }
 
         public void InsertFrom(WindowValue[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
@@ -155,6 +167,11 @@ namespace FlowtideDotNet.Core.Operators.Window
         public void Update(int index, WindowValue value)
         {
             _weights.Update(index, value.weight);
+        }
+
+        internal void SetPreviousValueSent(int index)
+        {
+            _previousValueSent.Set(index, _memoryAllocator);
         }
     }
 }

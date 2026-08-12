@@ -293,7 +293,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             throw new NotImplementedException();
         }
 
-        public int CompareTo_NoLock<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo_NoLock<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
             var typeIndex = _typeList[index];
             var type = (sbyte)_valueColumns[typeIndex].Type;
@@ -309,7 +309,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
             return CompareTo_NoLock(index, in value, in child, in validityList);
         }
@@ -656,9 +656,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return CheckArrayTypeExist(other.Type, typeIds, valueColumns);
         }
 
-        private void InsertRangeFromBasicColumn(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        private void InsertRangeFromBasicColumn(int index, IDataColumn other, int start, int count, in BitmapList validityList)
         {
-            if (validityList == null)
+            if (validityList.IsNull)
             {
                 var valueColumnIndex = CheckOtherDataColumnTypeExists(other, _typeIds, _valueColumns);
                 var valueColumn = _valueColumns[valueColumnIndex];
@@ -755,7 +755,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         }
 
         [SkipLocalsInit]
-        private unsafe void InsertRangeFromUnionColumn(int index, UnionColumn other, int start, int count, BitmapList? validityList)
+        private unsafe void InsertRangeFromUnionColumn(int index, UnionColumn other, int start, int count, in BitmapList validityList)
         {
             // Must find which types are missing, and also what index they exist on in other and also in this column.
             // After that they should be able to be copied over to this column by a value column basis.
@@ -849,7 +849,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _typeList.InsertRangeFrom(index, other._typeList, start, count, new Span<sbyte>(mappingTable, 127), _valueColumns.Count);
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)
         {
             // Check all column types since union column must be able to support all of them.
             if (other is UnionColumn unionColumn)

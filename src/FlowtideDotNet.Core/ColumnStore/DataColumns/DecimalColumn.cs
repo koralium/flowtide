@@ -91,9 +91,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
-            if (validityList != null &&
+            if (!validityList.IsNull &&
                 !validityList.Get(index))
             {
                 if (value.Type == ArrowTypeId.Null)
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _values.GetPrefixSumByteSizes(indices, sizes);
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)
         {
             if (other is DecimalColumn decimalColumn)
             {

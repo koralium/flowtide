@@ -320,7 +320,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                     if (!found)
                     {
                         SkipColumn(in field);
-                        columns[i] = new Column(batchLength, default, new BitmapList(memoryAllocator), ArrowTypeId.Null, memoryAllocator);
+                        columns[i] = new Column(batchLength, default, default(BitmapList), ArrowTypeId.Null, memoryAllocator);
                         continue;
                     }
                 }
@@ -490,33 +490,37 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         {
             var fieldNode = ReadNextFieldNode(in recordBatchStruct);
 
-            BitmapList? validityList;
+            BitmapList validityList = default;
 
             if (fieldStruct.TypeType == ArrowType.Null)
             {
-                return new Column((int)fieldNode.NullCount, default, new BitmapList(memoryAllocator), ArrowTypeId.Null, memoryAllocator);
+                return new Column((int)fieldNode.NullCount, default, default(BitmapList), ArrowTypeId.Null, memoryAllocator);
             }
 
             if (fieldStruct.TypeType != ArrowType.Union)
             {
                 if (TryReadNextBuffer(ref data, out var validityMemory))
                 {
-                    validityList = new BitmapList(validityMemory, (int)fieldNode.Length, memoryAllocator);
-                }
-                else
-                {
-                    validityList = new BitmapList(memoryAllocator);
+                    validityList = new BitmapList(validityMemory, (int)fieldNode.Length);
                 }
             }
-            else
+
+            try
             {
-                validityList = new BitmapList(memoryAllocator);
+                var dataColumnResult = DeserializeDataColumn(ref data, in fieldStruct, in recordBatchStruct, (int)fieldNode.Length);
+                // Ownership transfer: the local moves into the column.
+#pragma warning disable RS0042
+                var finalColumn = new Column((int)fieldNode.NullCount, dataColumnResult.dataColumn, validityList, dataColumnResult.arrowTypeId, memoryAllocator);
+#pragma warning restore RS0042
+
+                return finalColumn;
             }
-
-            var dataColumnResult = DeserializeDataColumn(ref data, in fieldStruct, in recordBatchStruct, (int)fieldNode.Length);
-            var finalColumn = new Column((int)fieldNode.NullCount, dataColumnResult.dataColumn, validityList, dataColumnResult.arrowTypeId, memoryAllocator);
-
-            return finalColumn;
+            catch
+            {
+                // The struct has no finalizer, so a failed deserialize must free the validity memory itself.
+                validityList.Dispose(memoryAllocator);
+                throw;
+            }
         }
 
         private struct DataColumnResult

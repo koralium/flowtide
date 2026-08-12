@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             in int index,
             in int end,
             in ReferenceSegment? child,
-            in BitmapList? validityList)
+            in BitmapList validityList)
             where T : IDataValue
         {
             int lo = index;
@@ -188,7 +188,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             in int index,
             in int end,
             in ReferenceSegment? child,
-            in BitmapList? validityList)
+            in BitmapList validityList)
             where T : IDataValue
         {
             int lo = index;
@@ -272,7 +272,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             in int index,
             in int end,
             in ReferenceSegment? child,
-            in BitmapList? validityList)
+            in BitmapList validityList)
             where T : IDataValue
         {
             int lo = index;
@@ -652,6 +652,86 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 int i = lo + ((hi - lo) >> 1);
 
                 int c = comparer.Compare(list[i], in value);
+                if (c <= 0)
+                {
+                    lo = i + 1;
+                }
+                else
+                {
+                    hi = i - 1;
+                }
+            }
+            int upperbound = lo - 1;
+            if (!found)
+            {
+                upperbound = ~upperbound;
+            }
+
+            return (lowerbound, upperbound);
+        }
+
+        /// <summary>
+        /// Concrete overload for <see cref="BitmapList"/>, which cannot be passed through the
+        /// <see cref="IReadOnlyList{T}"/> overload without boxing a copy of the struct.
+        /// </summary>
+        public static (int, int) SearchBoundries(in BitmapList list, in bool value, in int index, in int end, IColumnComparer<bool> comparer)
+        {
+            int lo = index;
+            int hi = end;
+            int maxNotFound = hi;
+
+            bool found = false;
+            while (lo <= hi)
+            {
+                int i = lo + ((hi - lo) >> 1);
+
+                int c = comparer.Compare(list.Get(i), in value);
+                if (c == 0)
+                {
+                    found = true;
+                    hi = i - 1;
+                }
+                else if (c < 0)
+                {
+                    lo = i + 1;
+                }
+                else
+                {
+                    hi = i - 1;
+                    maxNotFound = hi;
+                }
+            }
+            int lowerbound = lo;
+            if (!found)
+            {
+                lowerbound = ~lo;
+                // We did not find the value so this is the the bounds.
+                return (lowerbound, lowerbound);
+            }
+
+            if (lo < end)
+            {
+                // Check that the next value is the same, if not we are at the of the bounds.
+                int c = comparer.Compare(list.Get(lo + 1), in value);
+                if (c != 0)
+                {
+                    return (lowerbound, lowerbound);
+                }
+            }
+            else
+            {
+                // At the top of the array
+                return (lowerbound, lowerbound);
+            }
+
+            // There are duplicate values, binary search for the end.
+            hi = maxNotFound;
+
+            while (lo <= hi)
+            {
+                int i = lo + ((hi - lo) >> 1);
+
+                int c = comparer.Compare(list.Get(i), in value);
                 if (c <= 0)
                 {
                     lo = i + 1;

@@ -59,12 +59,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             IColumn[] columns = new IColumn[recordBatch.ColumnCount];
             var visitor = new ArrowToInternalVisitor(memoryAllocator);
             var schema = recordBatch.Schema;
-            for (int i = 0; i < recordBatch.ColumnCount; i++)
+            try
             {
-                var field = schema.GetFieldByIndex(i);
-                visitor.CurrentField = field;
-                recordBatch.Column(i).Accept(visitor);
-                columns[i] = visitor.Column!;
+                for (int i = 0; i < recordBatch.ColumnCount; i++)
+                {
+                    var field = schema.GetFieldByIndex(i);
+                    visitor.CurrentField = field;
+                    recordBatch.Column(i).Accept(visitor);
+                    columns[i] = visitor.Column!;
+                }
+            }
+            catch
+            {
+                visitor.DisposeUnconsumed();
+                foreach (var column in columns)
+                {
+                    column?.Dispose();
+                }
+                throw;
             }
 
             return new EventBatchData(columns);

@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return _count++;
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
             return 0;
         }
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return 0;
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)
         {
             _count += count;
         }
