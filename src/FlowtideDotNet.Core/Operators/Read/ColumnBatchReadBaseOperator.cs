@@ -48,6 +48,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         private List<int>? _primaryKeyColumns;
         private List<int>? _otherColumns;
         private List<int>? _emitList;
+        private List<int>? _sortedEmitList;
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _fullLoadTempTree;
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _persistentTree;
         private IBPlusTree<ColumnRowReference, int, NormalizeKeyStorage, PrimitiveListValueContainer<int>>? _deleteTree;
@@ -197,6 +198,8 @@ namespace FlowtideDotNet.Core.Operators.Read
             if (_readRelation.EmitSet)
             {
                 _emitList = _readRelation.Emit;
+                _sortedEmitList = new List<int>(_readRelation.Emit);
+                _sortedEmitList.Sort();
                 for (int i = 0; i < _readRelation.Emit.Count; i++)
                 {
                     if (!_primaryKeyColumns.Contains(_readRelation.Emit[i]))
@@ -423,6 +426,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                                 shouldDisposeOffsets = false;
                             }
                         }
+                        DisposeUnusedColumns(e.BatchData.EventBatchData);
                         if (shouldDisposeOffsets)
                         {
                             toEmitOffsets.Dispose();
@@ -495,6 +499,29 @@ namespace FlowtideDotNet.Core.Operators.Read
                 }
 
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            }
+        }
+
+        private void DisposeUnusedColumns(EventBatchData batchData)
+        {
+            // If we emit all columns (no EmitSet), there is nothing to dispose.
+            if (_sortedEmitList == null || _sortedEmitList.Count == batchData.Columns.Count)
+            {
+                return;
+            }
+
+            for (int k = 0, sortIndex = 0; k < batchData.Columns.Count; k++)
+            {
+                // Go through sorted emit list and check if the column is in the emit list, if not, we need to dispose it
+                // Since its sorted we do a merge check
+                if (sortIndex < _sortedEmitList.Count && _sortedEmitList[sortIndex] == k)
+                {
+                    sortIndex++;
+                }
+                else
+                {
+                    batchData.Columns[k].Dispose();
+                }
             }
         }
 
@@ -610,6 +637,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                             shouldDisposeOffsets = false;
                         }
                     }
+                    DisposeUnusedColumns(columnReadEvent.BatchData.EventBatchData);
                     if (shouldDisposeOffsets)
                     {
                         toEmitOffsets.Dispose();

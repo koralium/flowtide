@@ -713,7 +713,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var nextNodeObj = await m_stateClient.GetValue(leafNode.next);
             if (nextNodeObj is LeafNode<K, V, TKeyContainer, TValueContainer> nextNode)
             {
+                nextNode.EnterWriteLock();
                 nextNode.previous = leafNode.Id;
+                nextNode.ExitWriteLock();
                 isFull |= m_stateClient.AddOrUpdate(nextNode.Id, nextNode);
                 if (returnLeaf)
                 {
