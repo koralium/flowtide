@@ -99,14 +99,18 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             if (_rightNode.values.Count > _stateClient.Metadata.InsertIndex)
             {
                 // There are more values in the node, just update the value
+                _rightNode.EnterWriteLock();
                 _rightNode.values.Update(_stateClient.Metadata.InsertIndex, value);
+                _rightNode.ExitWriteLock();
                 _stateClient.Metadata.InsertIndex++;
             }
             else
             {
                 if (nodeSize < _pageSizeBytes)
                 {
+                    _rightNode.EnterWriteLock();
                     _rightNode.values.Insert(_stateClient.Metadata.InsertIndex, value);
+                    _rightNode.ExitWriteLock();
                     _stateClient.Metadata.InsertIndex++;
                 }
                 else
@@ -115,7 +119,9 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                     var emptyValues = _options.ValueSerializer.CreateEmpty();
                     var newNode = new QueueNode<V, TValueContainer>(newNodeId, emptyValues);
                     newNode.previous = _rightNode.Id;
+                    _rightNode.EnterWriteLock();
                     _rightNode.next = newNodeId;
+                    _rightNode.ExitWriteLock();
                     bool isFull = _stateClient.AddOrUpdate(_rightNode.Id, _rightNode);
                     if (_rightNode.Id != _leftNode.Id)
                     {
