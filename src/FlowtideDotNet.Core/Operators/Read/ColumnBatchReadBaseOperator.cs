@@ -504,7 +504,12 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         private void DisposeUnusedColumns(EventBatchData batchData)
         {
-            Debug.Assert(_sortedEmitList != null);
+            // If we emit all columns (no EmitSet), there is nothing to dispose.
+            if (_sortedEmitList == null || _sortedEmitList.Count == batchData.Columns.Count)
+            {
+                return;
+            }
+
             for (int k = 0, sortIndex = 0; k < batchData.Columns.Count; k++)
             {
                 // Go through sorted emit list and check if the column is in the emit list, if not, we need to dispose it
