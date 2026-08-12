@@ -413,6 +413,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     else
                     {
+                        if (m_sameCaheHitsCount >= 1000)
+                        {
+                            FlowtideMemoryAllocation.Collect();
+                            m_sameCaheHitsCount = 0;
+                        }
                         return;
                     }
                 }
