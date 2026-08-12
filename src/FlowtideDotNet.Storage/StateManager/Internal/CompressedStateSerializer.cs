@@ -38,12 +38,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         private GCHandle _handle;
         private bool _isInitialized;
 
+        // zstd's free callback is handed only a pointer, so the size has to come from somewhere.
+        // mimalloc can report it from the pointer alone; the NativeMemory fallback cannot, so on that
+        // platform we have to remember it. Null whenever the allocator can answer for itself, which
+        // keeps the 64-bit path free of both the dictionary and the lock.
+        private readonly Dictionary<nint, int>? _allocatedSizes;
+        private readonly object _sizesLock = new object();
+
         public FlowtideZstdCompressor(IMemoryAllocator memoryAllocator, int compressionLevel)
         {
             _memoryAllocator = memoryAllocator;
             this._compressionLevel = compressionLevel;
             _handle = GCHandle.Alloc(this);
             _isInitialized = false;
+            _allocatedSizes = FlowtideMemoryAllocation.CanQueryAllocationSize ? null : new Dictionary<nint, int>();
         }
 
         private void SetParameter(ZSTD_cParameter parameter, int value)
@@ -92,7 +100,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         // instead would put them on the C runtime heap while still reporting them to the metrics, which
         // makes the reported figure impossible to reconcile with what the allocator actually holds --
         // the workspaces are ~0.6 MiB per state client, so that gap is not small.
-        // The alignment is 16, mimalloc's natural maximum, so mi_usable_size matches what was asked for.
         private const int ZstdAllocAlignment = 16;
 
         private static void* CustomAlloc(void* opaque, nuint size)
@@ -100,9 +107,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             GCHandle handle = GCHandle.FromIntPtr((IntPtr)opaque);
             var instance = (FlowtideZstdCompressor)handle.Target!;
             var allocated = FlowtideMemoryAllocation.AllocateAligned((int)size, ZstdAllocAlignment);
-            // register what the allocator really handed over, and read it back the same way on the free
-            // path, so the two can never drift apart
-            instance._memoryAllocator.RegisterAllocationToMetrics((int)MiMalloc.mi_usable_size(allocated.ptr));
+
+            // register whatever the free path will be able to report, so the two can never drift apart
+            int registered = FlowtideMemoryAllocation.CanQueryAllocationSize
+                ? (int)FlowtideMemoryAllocation.GetAllocationSize(allocated.ptr)
+                : allocated.length;
+
+            if (instance._allocatedSizes != null)
+            {
+                lock (instance._sizesLock)
+                {
+                    instance._allocatedSizes[(nint)allocated.ptr] = registered;
+                }
+            }
+            instance._memoryAllocator.RegisterAllocationToMetrics(registered);
             return allocated.ptr;
         }
 
@@ -114,8 +132,29 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             }
             GCHandle handle = GCHandle.FromIntPtr((IntPtr)opaque);
             var instance = (FlowtideZstdCompressor)handle.Target!;
-            // size has to be read while the block is still ours
-            instance._memoryAllocator.RegisterFreeToMetrics((int)MiMalloc.mi_usable_size(ptr));
+
+            int size;
+            if (instance._allocatedSizes != null)
+            {
+                lock (instance._sizesLock)
+                {
+                    // a pointer we never handed out is not ours to account for
+                    if (!instance._allocatedSizes.Remove((nint)ptr, out size))
+                    {
+                        size = 0;
+                    }
+                }
+            }
+            else
+            {
+                // must be read while the block is still ours
+                size = (int)FlowtideMemoryAllocation.GetAllocationSize(ptr);
+            }
+
+            if (size > 0)
+            {
+                instance._memoryAllocator.RegisterFreeToMetrics(size);
+            }
             FlowtideMemoryAllocation.FreeAligned(ptr, ZstdAllocAlignment);
         }
 
