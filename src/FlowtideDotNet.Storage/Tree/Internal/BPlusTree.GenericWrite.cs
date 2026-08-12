@@ -836,9 +836,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         private void MergeLeafNodesIntoLeft(in LeafNode<K, V, TKeyContainer, TValueContainer> leftNode, in LeafNode<K, V, TKeyContainer, TValueContainer> rightNode)
         {
+            leftNode.EnterWriteLock();
             leftNode.keys.AddRangeFrom(rightNode.keys, 0, rightNode.keys.Count);
             leftNode.values.AddRangeFrom(rightNode.values, 0, rightNode.values.Count);
             leftNode.next = rightNode.next;
+            leftNode.ExitWriteLock();
         }
 
         internal (K, IDisposable) DistributeBetweenNodesInternal(InternalNode<K, V, TKeyContainer> leftNode, InternalNode<K, V, TKeyContainer> rightNode, K parentKey)
