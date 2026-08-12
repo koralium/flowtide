@@ -6662,6 +6662,34 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.MiMalloc.MiHeapBinUsage.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.MiMalloc.MiHeapBinUsage.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.MiMalloc.MiHeapBinUsage",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.MiMalloc.MiHeapBinUsage.yml\" sourcestartlinenumber=\"1\">Usage of one size-class bin, from <xref href=\"FlowtideDotNet.MiMalloc.MiMalloc.GetHeapUsage\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.MiMalloc.MiHeapUsage.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.MiMalloc.MiHeapUsage.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.MiMalloc.MiHeapUsage",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.MiMalloc.MiHeapUsage.yml\" sourcestartlinenumber=\"1\">Exact committed-versus-live accounting obtained by walking a heap's pages.\nUnlike <xref href=\"FlowtideDotNet.MiMalloc.MiMallocStats\" data-throw-if-not-resolved=\"false\"></xref> this does not depend on any thread merging its\nstatistics: the walk enumerates every page of the heap regardless of which thread\ncurrently owns it.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.MiMalloc.MiMalloc.yml",
       "output": {
         ".html": {
@@ -6673,6 +6701,20 @@
       "IsMRef": true,
       "Title": "FlowtideDotNet.MiMalloc.MiMalloc",
       "Summary": "<p sourcefile=\"api/FlowtideDotNet.MiMalloc.MiMalloc.yml\" sourcestartlinenumber=\"1\">Public entry points of the fully managed mimalloc port (v3.4.4).\nNames, argument order and semantics match the native mimalloc C API\n(<code>mimalloc.h</code>), so this class is a drop-in replacement for a\nP/Invoke binding. All functions are thread-safe; thread-local heaps are\ncreated on first use per thread and cleaned up automatically when a\nthread exits (pages with live blocks are abandoned and reclaimed by\nother threads, exactly as in native mimalloc).</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.MiMalloc.MiMallocStats.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.MiMalloc.MiMallocStats.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.MiMalloc.MiMallocStats",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.MiMalloc.MiMallocStats.yml\" sourcestartlinenumber=\"1\">A snapshot of the allocator's memory usage. Obtained from <xref href=\"FlowtideDotNet.MiMalloc.MiMalloc.GetStats(System.Boolean)\" data-throw-if-not-resolved=\"false\"></xref>.\nAll byte values are bytes.</p>\n"
     },
     {
       "type": "ManagedReference",

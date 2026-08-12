@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Struct MiMallocStats | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Struct MiMallocStats | Flowtide.NET ">
+      
+      <meta name="description" content="A snapshot of the allocator&#39;s memory usage. Obtained from . All byte values are bytes.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_MiMalloc_MiMallocStats.md&amp;value=---%0Auid%3A%20FlowtideDotNet.MiMalloc.MiMallocStats%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.MiMalloc.MiMallocStats">
+
+
+
+  <h1 id="FlowtideDotNet_MiMalloc_MiMallocStats" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats" class="text-break">
+Struct MiMallocStats  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L19"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.MiMalloc.html">MiMalloc</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.MiMalloc.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>A snapshot of the allocator's memory usage. Obtained from <a class="xref" href="FlowtideDotNet.MiMalloc.MiMalloc.html#FlowtideDotNet_MiMalloc_MiMalloc_GetStats_System_Boolean_">GetStats(bool)</a>.
+All byte values are bytes.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly struct MiMallocStats</code></pre>
+  </div>
+
+
+
+
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.equals">ValueType.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.gethashcode">ValueType.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_ArenaCount_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.ArenaCount*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_ArenaCount" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.ArenaCount">
+  ArenaCount
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L51"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Number of arenas created.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long ArenaCount { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_CommitCalls_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.CommitCalls*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_CommitCalls" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.CommitCalls">
+  CommitCalls
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L62"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>OS commit calls made.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long CommitCalls { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_CommittedBytes_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.CommittedBytes*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_CommittedBytes" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.CommittedBytes">
+  CommittedBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L30"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Bytes currently committed (backed by physical memory or page file). This is the number
+that tracks the process working set; <a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_ReservedBytes">ReservedBytes</a> is mostly address space.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long CommittedBytes { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_CommittedPeakBytes_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.CommittedPeakBytes*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_CommittedPeakBytes" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.CommittedPeakBytes">
+  CommittedPeakBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L32"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Peak committed bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long CommittedPeakBytes { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_Heaps_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.Heaps*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_Heaps" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.Heaps">
+  Heaps
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L55"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Heaps currently alive.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long Heaps { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_LiveHugeBytes_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.LiveHugeBytes*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_LiveHugeBytes" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.LiveHugeBytes">
+  LiveHugeBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L48"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Live allocated bytes in huge blocks, as of the last stats merge.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long LiveHugeBytes { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_LiveNormalBytes_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.LiveNormalBytes*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_LiveNormalBytes" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.LiveNormalBytes">
+  LiveNormalBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Live allocated bytes in normal (non-huge) blocks, as of the last stats merge.
+See the remarks on <a class="xref" href="FlowtideDotNet.MiMalloc.MiMalloc.html#FlowtideDotNet_MiMalloc_MiMalloc_GetStats_System_Boolean_">GetStats(bool)</a> about staleness.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long LiveNormalBytes { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_LiveStatsMerged_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.LiveStatsMerged*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_LiveStatsMerged" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.LiveStatsMerged">
+  LiveStatsMerged
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L73"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>True when the live-allocation figures were folded up from the thread-local heaps before
+this snapshot was taken. When false, <a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_LiveNormalBytes">LiveNormalBytes</a>,
+<a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_LiveHugeBytes">LiveHugeBytes</a> and <a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_Pages">Pages</a> only contain whatever threads
+happened to have merged already, and are typically near zero — they do NOT mean
+&quot;nothing is allocated&quot;.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool LiveStatsMerged { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_OsAllocCalls_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.OsAllocCalls*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_OsAllocCalls" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.OsAllocCalls">
+  OsAllocCalls
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L60"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>OS allocation calls (mmap / VirtualAlloc) made.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long OsAllocCalls { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_Pages_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.Pages*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_Pages" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.Pages">
+  Pages
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L38"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Number of mimalloc pages currently in use (across all merged heaps).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long Pages { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_PagesAbandoned_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.PagesAbandoned*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_PagesAbandoned" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.PagesAbandoned">
+  PagesAbandoned
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Pages currently abandoned (owned by no thread, awaiting reclaim).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long PagesAbandoned { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_PurgeCalls_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.PurgeCalls*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_PurgeCalls" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.PurgeCalls">
+  PurgeCalls
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>OS purge (decommit/reset) calls made.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long PurgeCalls { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_PurgedBytesTotal_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.PurgedBytesTotal*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_PurgedBytesTotal" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.PurgedBytesTotal">
+  PurgedBytesTotal
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Cumulative bytes purged (decommitted/reset) back to the OS since process start.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long PurgedBytesTotal { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_ReservedBytes_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.ReservedBytes*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_ReservedBytes" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.ReservedBytes">
+  ReservedBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L22"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Address space currently reserved from the OS (virtual, not necessarily backed).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long ReservedBytes { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_ReservedPeakBytes_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.ReservedPeakBytes*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_ReservedPeakBytes" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.ReservedPeakBytes">
+  ReservedPeakBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L24"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Peak reserved bytes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long ReservedPeakBytes { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_RetainedBytes_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.RetainedBytes*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_RetainedBytes" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.RetainedBytes">
+  RetainedBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L85"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Committed bytes not currently handed out as live blocks: free blocks inside pages plus
+committed-but-unused page space. A large and growing value relative to
+<a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_CommittedBytes">CommittedBytes</a> indicates fragmentation or retention.</p>
+<p>
+Null when <a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_LiveStatsMerged">LiveStatsMerged</a> is false, because it cannot be computed from
+unmerged live figures. For an exact value that never depends on merging, use
+<a class="xref" href="FlowtideDotNet.MiMalloc.MiMalloc.html#FlowtideDotNet_MiMalloc_MiMalloc_GetHeapUsage">GetHeapUsage()</a>.
+</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long? RetainedBytes { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>?</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_Theaps_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.Theaps*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_Theaps" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.Theaps">
+  Theaps
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L57"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Thread-local heaps (theaps) currently alive.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long Theaps { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_Threads_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.Threads*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_Threads" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.Threads">
+  Threads
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L53"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Threads currently registered with the allocator.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long Threads { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMallocStats_ToString_" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.ToString*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMallocStats_ToString" data-uid="FlowtideDotNet.MiMalloc.MiMallocStats.ToString">
+  ToString()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L88"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the fully qualified type name of this instance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string ToString()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The fully qualified type name.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L19" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

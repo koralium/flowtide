@@ -120,11 +120,41 @@ Interface IColumnBulkAggregation  <a class="header-action link-secondary" title=
 </h2>
 
 
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_BatchDone_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.BatchDone*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_BatchDone" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.BatchDone">
+  BatchDone()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The batch is fully applied and nothing will read the projections again. Release any scratch
+allocated in <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.html#FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_NewBatch_FlowtideDotNet_Storage_DataStructures_PrimitiveList_System_Int32__FlowtideDotNet_Core_ColumnStore_EventBatchData_">NewBatch(PrimitiveList&lt;int&gt;, EventBatchData)</a> here, otherwise the last batch of a stream keeps its
+projected columns alive for as long as the operator lives.
+Only implement this if the measure allocates per batch, the default does nothing.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void BatchDone()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_CommitAsync_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.CommitAsync*"></a>
 
   <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_CommitAsync" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.CommitAsync">
   CommitAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L82"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L90"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Called on checkpoint to allow the measurement to commit any of its own state handling.</p>
@@ -156,7 +186,7 @@ Interface IColumnBulkAggregation  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_Compute_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_DataStructures_PrimitiveList_System_Int32__FlowtideDotNet_Core_ColumnStore_EventBatchData_FlowtideDotNet_Core_ColumnStore_ColumnReference_System_Int32_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.Compute(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.DataStructures.PrimitiveList{System.Int32},FlowtideDotNet.Core.ColumnStore.EventBatchData,FlowtideDotNet.Core.ColumnStore.ColumnReference,System.Int32)">
   Compute(ReadOnlySpan&lt;int&gt;, PrimitiveList&lt;int&gt;, EventBatchData, ColumnReference, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L55"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L63"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Runs once per group, this is run in a hot path when data is RMW to state storage, so no complex I/O or anything in here.
@@ -203,7 +233,7 @@ a new value since it didnt change.</p>
 
   <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_FetchValuesAsync_FlowtideDotNet_Core_ColumnStore_IColumn___System_Int32_FlowtideDotNet_Core_ColumnStore_Column_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.FetchValuesAsync(FlowtideDotNet.Core.ColumnStore.IColumn[],System.Int32,FlowtideDotNet.Core.ColumnStore.Column)">
   FetchValuesAsync(IColumn[], int, Column)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L57"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L65"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -243,7 +273,7 @@ a new value since it didnt change.</p>
 
   <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_GetValuesAsync_FlowtideDotNet_Core_ColumnStore_IColumn___FlowtideDotNet_Core_ColumnStore_ColumnReference___System_Int32_System_Int32_FlowtideDotNet_Core_ColumnStore_Column_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.GetValuesAsync(FlowtideDotNet.Core.ColumnStore.IColumn[],FlowtideDotNet.Core.ColumnStore.ColumnReference[],System.Int32,System.Int32,FlowtideDotNet.Core.ColumnStore.Column)">
   GetValuesAsync(IColumn[], ColumnReference[], int, int, Column)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L67"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L75"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Fetches the current value, the grouping values are sorted by group key in ascending order.
@@ -289,7 +319,7 @@ Each row in the grouping values have its respective group state, each row should
 
   <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_InitializeAsync_System_Int32_FlowtideDotNet_Storage_StateManager_IStateManagerClient_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.InitializeAsync(System.Int32,FlowtideDotNet.Storage.StateManager.IStateManagerClient,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
   InitializeAsync(int, IStateManagerClient, IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L76"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L84"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Initializes the measurement, allows creating of custom state handling mechanisms.</p>
@@ -364,7 +394,7 @@ Each row in the grouping values have its respective group state, each row should
 
   <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_StoreAsync_FlowtideDotNet_Storage_DataStructures_PrimitiveList_System_Int32__FlowtideDotNet_Core_ColumnStore_IColumn___FlowtideDotNet_Core_ColumnStore_EventBatchData_System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.StoreAsync(FlowtideDotNet.Storage.DataStructures.PrimitiveList{System.Int32},FlowtideDotNet.Core.ColumnStore.IColumn[],FlowtideDotNet.Core.ColumnStore.EventBatchData,System.ReadOnlySpan{System.Int32})">
   StoreAsync(PrimitiveList&lt;int&gt;, IColumn[], EventBatchData, ReadOnlySpan&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/IColumnBulkAggregation.cs/#L50"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>If the measure needs to store any data to its own state handling, if stateless this can return just a ValueTask.CompletedTask</p>

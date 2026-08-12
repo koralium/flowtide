@@ -105,6 +105,28 @@ thread exits (pages with live blocks are abandoned and reclaimed by
 other threads, exactly as in native mimalloc).</p>
 </dd>
     </dl>
+    <h3 id="structs">
+Structs
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="FlowtideDotNet.MiMalloc.MiHeapBinUsage.html">MiHeapBinUsage</a></dt>
+      <dd><p>Usage of one size-class bin, from <a class="xref" href="FlowtideDotNet.MiMalloc.MiMalloc.html#FlowtideDotNet_MiMalloc_MiMalloc_GetHeapUsage">GetHeapUsage()</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="FlowtideDotNet.MiMalloc.MiHeapUsage.html">MiHeapUsage</a></dt>
+      <dd><p>Exact committed-versus-live accounting obtained by walking a heap's pages.
+Unlike <a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html">MiMallocStats</a> this does not depend on any thread merging its
+statistics: the walk enumerates every page of the heap regardless of which thread
+currently owns it.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html">MiMallocStats</a></dt>
+      <dd><p>A snapshot of the allocator's memory usage. Obtained from <a class="xref" href="FlowtideDotNet.MiMalloc.MiMalloc.html#FlowtideDotNet_MiMalloc_MiMalloc_GetStats_System_Boolean_">GetStats(bool)</a>.
+All byte values are bytes.</p>
+</dd>
+    </dl>
 
 
 </article>

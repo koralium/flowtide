@@ -89,7 +89,7 @@
 
 
   <h1 id="FlowtideDotNet_MiMalloc_MiMalloc" data-uid="FlowtideDotNet.MiMalloc.MiMalloc" class="text-break">
-Class MiMalloc  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L26"><i class="bi bi-code-slash"></i></a>
+Class MiMalloc  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L104"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -157,6 +157,125 @@ other threads, exactly as in native mimalloc).</p>
 
   <h2 class="section" id="methods">Methods
 </h2>
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_GetHeapUsage_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.GetHeapUsage*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_GetHeapUsage" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.GetHeapUsage">
+  GetHeapUsage()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocHeapUsage.cs/#L183"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Walk every page in the process and report committed-versus-live bytes, in total and
+per size-class bin. This is the measurement to use when diagnosing &quot;the allocator holds
+far more memory than my data&quot; — a low <a class="xref" href="FlowtideDotNet.MiMalloc.MiHeapUsage.html#FlowtideDotNet_MiMalloc_MiHeapUsage_Utilization">Utilization</a> in a
+particular bin points straight at the size class responsible.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static MiHeapUsage GetHeapUsage()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.MiMalloc.MiHeapUsage.html">MiHeapUsage</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_MiMalloc_MiMalloc_GetHeapUsage_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This enumerates the page map, so it sees every page regardless of which heap or thread
+owns it and regardless of whether it came from an arena or straight from the OS. An
+earlier version walked the arena page bitmaps instead, which silently omitted live
+non-arena pages and under-reported both live and committed bytes;
+<a class="xref" href="FlowtideDotNet.MiMalloc.MiHeapUsage.html#FlowtideDotNet_MiMalloc_MiHeapUsage_NonArenaPages">NonArenaPages</a> reports how much of the total is memory that
+walk could not have seen.
+</p>
+<p>
+It measures the allocator's PAGES. Arena slices that are committed but not currently
+carved into any page are not counted here — for the true OS-level figure use
+<a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_CommittedBytes">CommittedBytes</a> from <a class="xref" href="FlowtideDotNet.MiMalloc.MiMalloc.html#FlowtideDotNet_MiMalloc_MiMalloc_GetStats_System_Boolean_">GetStats(bool)</a>, which is
+maintained atomically on commit/decommit and never lags.
+</p>
+<p>
+Cost is O(address space touched), so call this at checkpoint cadence rather than in a
+tight polling loop. Use <a class="xref" href="FlowtideDotNet.MiMalloc.MiMalloc.html#FlowtideDotNet_MiMalloc_MiMalloc_GetStats_System_Boolean_">GetStats(bool)</a> for cheap frequent sampling.
+</p>
+<p>
+The walk reads page counters without synchronization (as the C does). Under concurrent
+allocation a page or two may be counted slightly stale, so treat the result as a gauge
+rather than an exact invariant. Note that <code>page-&gt;used</code> is only decremented when the
+owning thread collects, so pending cross-thread frees make live read HIGH; collect on
+the participating threads first if you need a tight figure. It never blocks and never
+allocates.
+</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_GetStats_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.GetStats*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_GetStats_System_Boolean_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.GetStats(System.Boolean)">
+  GetStats(bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L130"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Take a snapshot of allocator memory usage.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static MiMallocStats GetStats(bool mergeThreadStats = false)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>mergeThreadStats</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>Merge the calling thread's pending statistics before reading (calls <code>mi_collect(false)</code>).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html">MiMallocStats</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_MiMalloc_MiMalloc_GetStats_System_Boolean__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+The OS-level figures (<a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_ReservedBytes">ReservedBytes</a>,
+<a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_CommittedBytes">CommittedBytes</a>, <a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_PurgedBytesTotal">PurgedBytesTotal</a>
+and the call counts) are maintained with atomics on process-global state, so they are
+exact and current at the moment of the call. These are the numbers that answer
+"how much memory has mimalloc taken from the OS".
+</p>
+<p>
+The live-allocation figures (<a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_LiveNormalBytes">LiveNormalBytes</a>,
+<a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_LiveHugeBytes">LiveHugeBytes</a>, <a class="xref" href="FlowtideDotNet.MiMalloc.MiMallocStats.html#FlowtideDotNet_MiMalloc_MiMallocStats_Pages">Pages</a>) are
+accumulated per thread-local heap and only folded into the global totals when a thread
+collects or exits, so they lag. Pass <code class="paramref">mergeThreadStats</code> to fold in the
+CALLING thread's numbers first; other threads' contributions still lag until they
+collect. Use <a class="xref" href="FlowtideDotNet.MiMalloc.MiMalloc.html#FlowtideDotNet_MiMalloc_MiMalloc_mi_collect_System_Boolean_">mi_collect(bool)</a> on each participating thread for an
+exact figure.
+</p>
+</div>
+
+
 
 
   <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_aligned_alloc_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_aligned_alloc*"></a>
@@ -1096,7 +1215,7 @@ other threads, exactly as in native mimalloc).</p>
 
   <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_thread_done" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_thread_done">
   mi_thread_done()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L154"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L167"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Release the current thread's heaps (abandoning pages that still contain
@@ -1135,6 +1254,41 @@ automatically on the first allocation from a thread.</p>
 
   <div class="codewrapper">
     <pre><code class="lang-csharp hljs">public static void mi_thread_init()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_MiMalloc_MiMalloc_mi_thread_set_in_threadpool_" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_thread_set_in_threadpool*"></a>
+
+  <h3 id="FlowtideDotNet_MiMalloc_MiMalloc_mi_thread_set_in_threadpool" data-uid="FlowtideDotNet.MiMalloc.MiMalloc.mi_thread_set_in_threadpool">
+  mi_thread_set_in_threadpool()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L160"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Mark the current thread as belonging to a thread pool, which makes it shed pages
+aggressively rather than retain them for reuse (it stops retaining full pages and
+declines cross-thread page reclaim).</p>
+<p>
+Only appropriate for threads that park for long periods while holding allocations.
+Do NOT call this for ordinary .NET ThreadPool / TPL worker threads that carry the
+application's main work: shedding pages there leaves mostly-full pages abandoned and
+pins their memory.
+</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void mi_thread_set_in_threadpool()</code></pre>
   </div>
 
 
@@ -1372,7 +1526,7 @@ major + 2 digits minor + 2 digits patch. v3.4.4 is <code>30404</code>.</p>
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocApi.cs/#L26" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.MiMalloc/MiMallocStats.cs/#L104" class="edit-link">Edit this page</a>
         </div>
 
 
