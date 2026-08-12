@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -22,9 +22,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         {
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e2));
@@ -36,10 +36,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Insert(1, e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Insert(1, e3, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(2).SequenceEqual(e2));
@@ -52,10 +52,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Insert(0, e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Insert(0, e3, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(1).SequenceEqual(e1));
             Assert.True(binaryList.Get(2).SequenceEqual(e2));
@@ -68,10 +68,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Insert(2, e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Insert(2, e3, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e2));
@@ -84,12 +84,12 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
 
-            binaryList.RemoveAt(0);
+            binaryList.RemoveAt(0, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(0).SequenceEqual(e2));
             Assert.True(binaryList.Get(1).SequenceEqual(e3));
@@ -101,12 +101,12 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
 
-            binaryList.RemoveAt(1);
+            binaryList.RemoveAt(1, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e3));
@@ -118,28 +118,26 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
 
-            binaryList.RemoveAt(2);
+            binaryList.RemoveAt(2, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e2));
         }
 
         [Fact]
-        public void TestGetMemory()
+        public void TestGetReturnsAddedData()
         {
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
 
-            var index1Mem = binaryList.GetMemory(0);
-            var index2Mem = binaryList.GetMemory(1);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e2));
         }
@@ -149,9 +147,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         {
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Insert(0, e1);
-            binaryList.UpdateAt(0, e2);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Insert(0, e1, GlobalMemoryManager.Instance);
+            binaryList.UpdateAt(0, e2, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(0).SequenceEqual(e2));
         }
@@ -161,10 +159,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         {
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Insert(0, e1);
-            binaryList.UpdateAt(0, e2);
-            binaryList.UpdateAt(0, e1);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Insert(0, e1, GlobalMemoryManager.Instance);
+            binaryList.UpdateAt(0, e2, GlobalMemoryManager.Instance);
+            binaryList.UpdateAt(0, e1, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
         }
@@ -175,11 +173,11 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Insert(0, e1);
-            binaryList.Insert(1, e3);
-            binaryList.UpdateAt(0, e2);
-            binaryList.UpdateAt(0, e1);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Insert(0, e1, GlobalMemoryManager.Instance);
+            binaryList.Insert(1, e3, GlobalMemoryManager.Instance);
+            binaryList.UpdateAt(0, e2, GlobalMemoryManager.Instance);
+            binaryList.UpdateAt(0, e1, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e3));
@@ -191,10 +189,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Insert(0, e1);
-            binaryList.Insert(1, e2);
-            binaryList.UpdateAt(1, e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Insert(0, e1, GlobalMemoryManager.Instance);
+            binaryList.Insert(1, e2, GlobalMemoryManager.Instance);
+            binaryList.UpdateAt(1, e3, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e3));
@@ -207,14 +205,14 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
             var e4 = new byte[] { 1, 2, 3, 4, 5, 6 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Insert(0, e1);
-            binaryList.Insert(1, e2);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Insert(0, e1, GlobalMemoryManager.Instance);
+            binaryList.Insert(1, e2, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(e3);
-            other.Add(e4);
-            binaryList.InsertRangeFrom(1, other, 0, 2);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(e3, GlobalMemoryManager.Instance);
+            other.Add(e4, GlobalMemoryManager.Instance);
+            binaryList.InsertRangeFrom(1, other, 0, 2, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e3));
@@ -226,15 +224,15 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         public void TestInsertFromEmptyLookup()
         {
             var e1 = new byte[] { 1, 2, 3 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(new byte[] { 4, 5 });
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(new byte[] { 4, 5 }, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[0];
             ReadOnlySpan<int> insertPositions = stackalloc int[0];
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(1, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -247,16 +245,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e2 = new byte[] { 4, 5, 6, 7 };
             var eNew = new byte[] { 10, 11 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(eNew);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eNew, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 0 };
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eNew));
@@ -271,16 +269,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e2 = new byte[] { 4, 5, 6, 7 };
             var eNew = new byte[] { 10, 11 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(eNew);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eNew, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 2 };
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -295,16 +293,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e2 = new byte[] { 4, 5, 6, 7 };
             var eNew = new byte[] { 10, 11 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(eNew);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eNew, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 1 };
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -322,19 +320,19 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var eB = new byte[] { 20, 21, 22 };
             var eC = new byte[] { 30 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(eA);
-            other.Add(eB);
-            other.Add(eC);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eA, GlobalMemoryManager.Instance);
+            other.Add(eB, GlobalMemoryManager.Instance);
+            other.Add(eC, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1, 2 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 1, 3 };
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(6, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eA));
@@ -351,15 +349,15 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var eA = new byte[] { 10, 11 };
             var eB = new byte[] { 20, 21, 22 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(eA);
-            other.Add(eB);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eA, GlobalMemoryManager.Instance);
+            other.Add(eB, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 0 };
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eA));
@@ -373,16 +371,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var eA = new byte[] { 10, 11 };
             var eB = new byte[] { 20, 21, 22 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(eA);
-            other.Add(eB);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eA, GlobalMemoryManager.Instance);
+            other.Add(eB, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 1, 1 };
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -398,17 +396,17 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var eA = new byte[] { 10, 11 };
             var eB = new byte[] { 20, 21, 22 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(eA);
-            other.Add(eB);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eA, GlobalMemoryManager.Instance);
+            other.Add(eB, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 0 };
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(4, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eA));
@@ -425,17 +423,17 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var eA = new byte[] { };
             var eB = new byte[] { 100, 101, 102, 103, 104, 105, 106, 107 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(eA);
-            other.Add(eB);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eA, GlobalMemoryManager.Instance);
+            other.Add(eB, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 2 };
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(4, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eA));
@@ -454,19 +452,19 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var eB = new byte[] { 20, 21 };
             var eC = new byte[] { 30, 31 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(eA);
-            other.Add(eB);
-            other.Add(eC);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eA, GlobalMemoryManager.Instance);
+            other.Add(eB, GlobalMemoryManager.Instance);
+            other.Add(eC, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1, 2 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 1, 2 };
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(6, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eA));
@@ -485,17 +483,17 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var eB = new byte[] { 20, 21 };
             var eC = new byte[] { 30, 31, 32 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(eA);
-            other.Add(eB);
-            other.Add(eC);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eA, GlobalMemoryManager.Instance);
+            other.Add(eB, GlobalMemoryManager.Instance);
+            other.Add(eC, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 2, 1, 0 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 0, 1 };
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(4, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eC));
@@ -507,14 +505,14 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInsertFromLargeBatchAvx()
         {
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
 
             List<byte[]> expected = new List<byte[]>();
             for (int i = 0; i < 100; i++)
             {
                 var data = new byte[] { (byte)i, (byte)(i + 1) };
-                binaryList.Add(data);
+                binaryList.Add(data, GlobalMemoryManager.Instance);
                 expected.Add(data);
             }
 
@@ -522,7 +520,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             for (int i = 0; i < 35; i++)
             {
                 var data = new byte[] { 255, (byte)i };
-                other.Add(data);
+                other.Add(data, GlobalMemoryManager.Instance);
                 toInsert.Add(data);
             }
 
@@ -536,7 +534,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 
             ReadOnlySpan<int> sortedLookupRO = sortedLookup;
             ReadOnlySpan<int> insertPositionsRO = insertPositions;
-            binaryList.InsertFrom(in other, in sortedLookupRO, in insertPositionsRO, -1);
+            binaryList.InsertFrom(in other, in sortedLookupRO, in insertPositionsRO, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(135, binaryList.Count);
 
@@ -549,7 +547,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             for (int i = 0; i < 50; i++)
                 Assert.True(binaryList.Get(85 + i).SequenceEqual(expected[50 + i]));
 
-            binaryList.Add(new byte[] { 1, 2, 3 });
+            binaryList.Add(new byte[] { 1, 2, 3 }, GlobalMemoryManager.Instance);
 
             Assert.True(binaryList.Get(135).SequenceEqual(new byte[] { 1, 2, 3 }));
         }
@@ -557,17 +555,17 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInsertFromExceedingCapacity()
         {
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
 
             var e1 = new byte[] { 1, 1, 1 };
             var e2 = new byte[] { 2, 2, 2 };
-            binaryList.Add(e1);
-            binaryList.Add(e2);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
             for (int i = 0; i < 100; i++)
             {
-                other.Add(new byte[] { (byte)(10 + i) });
+                other.Add(new byte[] { (byte)(10 + i) }, GlobalMemoryManager.Instance);
             }
 
             Span<int> sortedLookup = stackalloc int[100];
@@ -580,7 +578,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 
             ReadOnlySpan<int> sortedLookupRO = sortedLookup;
             ReadOnlySpan<int> insertPositionsRO = insertPositions;
-            binaryList.InsertFrom(in other, in sortedLookupRO, in insertPositionsRO, -1);
+            binaryList.InsertFrom(in other, in sortedLookupRO, in insertPositionsRO, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(102, binaryList.Count);
 
@@ -601,17 +599,17 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e2 = new byte[] { 3, 4 };
             var eNew = new byte[] { 10, 11 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
 
-            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
-            other.Add(eNew);
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eNew, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { -1, 0, -1 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 1, 3 };
 
-            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(5, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(Span<byte>.Empty));
@@ -626,12 +624,12 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         {
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 4, 5, 6, 7 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> targets = stackalloc int[0];
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -645,13 +643,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e2 = new byte[] { 4, 5, 6, 7 };
             var e3 = new byte[] { 8, 9 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> targets = stackalloc int[] { 0 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e2));
@@ -665,13 +663,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e2 = new byte[] { 4, 5, 6, 7 };
             var e3 = new byte[] { 8, 9 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> targets = stackalloc int[] { 1 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -685,13 +683,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e2 = new byte[] { 4, 5, 6, 7 };
             var e3 = new byte[] { 8, 9 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> targets = stackalloc int[] { 2 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -707,16 +705,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e4 = new byte[] { 10, 11, 12 };
             var e5 = new byte[] { 13, 14 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
-            binaryList.Add(e4);
-            binaryList.Add(e5);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
+            binaryList.Add(e4, GlobalMemoryManager.Instance);
+            binaryList.Add(e5, GlobalMemoryManager.Instance);
 
             // Delete first, middle, and last
             ReadOnlySpan<int> targets = stackalloc int[] { 0, 2, 4 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e2));
@@ -732,16 +730,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e4 = new byte[] { 10, 11, 12 };
             var e5 = new byte[] { 13, 14 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
-            binaryList.Add(e4);
-            binaryList.Add(e5);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
+            binaryList.Add(e4, GlobalMemoryManager.Instance);
+            binaryList.Add(e5, GlobalMemoryManager.Instance);
 
             // Delete consecutive elements in the middle
             ReadOnlySpan<int> targets = stackalloc int[] { 1, 2, 3 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -755,13 +753,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e2 = new byte[] { 4, 5, 6, 7 };
             var e3 = new byte[] { 8, 9 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> targets = stackalloc int[] { 0, 1, 2 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(0, binaryList.Count);
         }
@@ -774,15 +772,15 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e3 = new byte[] { };
             var e4 = new byte[] { 100, 101, 102, 103, 104, 105, 106, 107 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
-            binaryList.Add(e4);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
+            binaryList.Add(e4, GlobalMemoryManager.Instance);
 
             // Delete the empty element and the large element
             ReadOnlySpan<int> targets = stackalloc int[] { 2, 3 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -799,17 +797,17 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e5 = new byte[] { 9, 10 };
             var e6 = new byte[] { 11, 12 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
-            binaryList.Add(e4);
-            binaryList.Add(e5);
-            binaryList.Add(e6);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
+            binaryList.Add(e4, GlobalMemoryManager.Instance);
+            binaryList.Add(e5, GlobalMemoryManager.Instance);
+            binaryList.Add(e6, GlobalMemoryManager.Instance);
 
             // Delete every other element
             ReadOnlySpan<int> targets = stackalloc int[] { 0, 2, 4 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e2));
@@ -820,13 +818,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestDeleteBatchLargeBatchAvx()
         {
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
 
             List<byte[]> allData = new List<byte[]>();
             for (int i = 0; i < 100; i++)
             {
                 var data = new byte[] { (byte)i, (byte)(i + 1) };
-                binaryList.Add(data);
+                binaryList.Add(data, GlobalMemoryManager.Instance);
                 allData.Add(data);
             }
 
@@ -838,7 +836,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             }
 
             ReadOnlySpan<int> targets = targetList.ToArray().AsSpan();
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             int expectedCount = 100 - targetList.Count;
             Assert.Equal(expectedCount, binaryList.Count);
@@ -860,7 +858,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             }
 
             // Verify list is still usable after batch delete
-            binaryList.Add(new byte[] { 1, 2, 3 });
+            binaryList.Add(new byte[] { 1, 2, 3 }, GlobalMemoryManager.Instance);
             Assert.True(binaryList.Get(binaryList.Count - 1).SequenceEqual(new byte[] { 1, 2, 3 }));
         }
 
@@ -868,11 +866,11 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         public void TestDeleteBatchSingleElementList()
         {
             var e1 = new byte[] { 1, 2, 3 };
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> targets = stackalloc int[] { 0 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(0, binaryList.Count);
         }
@@ -885,13 +883,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e3 = new byte[] { 8, 9 };
             var eNew = new byte[] { 100, 101 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
 
             ReadOnlySpan<int> targets = stackalloc int[] { 1 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             // Verify state after delete
             Assert.Equal(2, binaryList.Count);
@@ -899,7 +897,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             Assert.True(binaryList.Get(1).SequenceEqual(e3));
 
             // Verify the list is still usable for add and insert operations
-            binaryList.Add(eNew);
+            binaryList.Add(eNew, GlobalMemoryManager.Instance);
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(2).SequenceEqual(eNew));
         }
@@ -913,16 +911,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e4 = new byte[] { };
             var e5 = new byte[] { 6, 7, 8 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
-            binaryList.Add(e4);
-            binaryList.Add(e5);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
+            binaryList.Add(e4, GlobalMemoryManager.Instance);
+            binaryList.Add(e5, GlobalMemoryManager.Instance);
 
             // Delete the empty elements
             ReadOnlySpan<int> targets = stackalloc int[] { 1, 3 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -939,16 +937,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e4 = new byte[] { 10, 11, 12 };
             var e5 = new byte[] { 13, 14 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
-            binaryList.Add(e4);
-            binaryList.Add(e5);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
+            binaryList.Add(e4, GlobalMemoryManager.Instance);
+            binaryList.Add(e5, GlobalMemoryManager.Instance);
 
             // Keep only the middle element
             ReadOnlySpan<int> targets = stackalloc int[] { 0, 1, 3, 4 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(1, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e3));
@@ -963,16 +961,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e4 = new byte[] { 10, 11, 12 };
             var e5 = new byte[] { 13, 14 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
-            binaryList.Add(e4);
-            binaryList.Add(e5);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
+            binaryList.Add(e4, GlobalMemoryManager.Instance);
+            binaryList.Add(e5, GlobalMemoryManager.Instance);
 
             // First batch: delete indices 1 and 3 -> leaves [e1, e3, e5]
             ReadOnlySpan<int> targets1 = stackalloc int[] { 1, 3 };
-            binaryList.DeleteBatch(targets1);
+            binaryList.DeleteBatch(targets1, GlobalMemoryManager.Instance);
 
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -981,7 +979,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 
             // Second batch: delete index 1 from the remaining list -> leaves [e1, e5]
             ReadOnlySpan<int> targets2 = stackalloc int[] { 1 };
-            binaryList.DeleteBatch(targets2);
+            binaryList.DeleteBatch(targets2, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -997,16 +995,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e4 = new byte[] { 10, 11, 12 };
             var e5 = new byte[] { 13, 14 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
-            binaryList.Add(e4);
-            binaryList.Add(e5);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
+            binaryList.Add(e4, GlobalMemoryManager.Instance);
+            binaryList.Add(e5, GlobalMemoryManager.Instance);
 
             // Delete the first three elements
             ReadOnlySpan<int> targets = stackalloc int[] { 0, 1, 2 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e4));
@@ -1022,16 +1020,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e4 = new byte[] { 10, 11, 12 };
             var e5 = new byte[] { 13, 14 };
 
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.Add(e1);
-            binaryList.Add(e2);
-            binaryList.Add(e3);
-            binaryList.Add(e4);
-            binaryList.Add(e5);
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1, GlobalMemoryManager.Instance);
+            binaryList.Add(e2, GlobalMemoryManager.Instance);
+            binaryList.Add(e3, GlobalMemoryManager.Instance);
+            binaryList.Add(e4, GlobalMemoryManager.Instance);
+            binaryList.Add(e5, GlobalMemoryManager.Instance);
 
             // Delete the last three elements
             ReadOnlySpan<int> targets = stackalloc int[] { 2, 3, 4 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -1041,15 +1039,15 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestDeleteBatchAllEmptyElements()
         {
-            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
-            binaryList.AddEmpty();
-            binaryList.AddEmpty();
-            binaryList.AddEmpty();
-            binaryList.AddEmpty();
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.AddEmpty(GlobalMemoryManager.Instance);
+            binaryList.AddEmpty(GlobalMemoryManager.Instance);
+            binaryList.AddEmpty(GlobalMemoryManager.Instance);
+            binaryList.AddEmpty(GlobalMemoryManager.Instance);
 
             // Delete every other empty element
             ReadOnlySpan<int> targets = stackalloc int[] { 0, 2 };
-            binaryList.DeleteBatch(targets);
+            binaryList.DeleteBatch(targets, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(Array.Empty<byte>()));

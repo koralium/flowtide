@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Memory;
-using System.Buffers;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
@@ -24,12 +23,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     /// This data structure is useful when storing offsets for instance since it can change offset locations during removal.
     /// Mutable struct: hold it in exactly one field, mutate only through that field or a ref local,
     /// and never copy it — a realloc in a copy frees the memory the original still points at.
+    /// The struct does not store an allocator; every call that can allocate or free takes the owner's
+    /// allocator, and all calls for a given list must use the same one.
     /// </summary>
+    [NonCopyable]
     internal unsafe struct IntList
     {
         private FlowtideMemory _memory;
         private int _length;
-        private readonly IMemoryAllocator memoryAllocator;
 
         // Capacity in elements, derived so the struct is the single source of truth.
         private readonly int DataLength => _memory.Length / sizeof(int);
@@ -51,22 +52,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             return new NativeMemoryView(_memory.Pointer, _memory.Length).Memory;
         }
 
-        public IntList(IMemoryAllocator memoryAllocator)
+        public IntList(int initialCapacity, IMemoryAllocator memoryAllocator)
         {
-            this.memoryAllocator = memoryAllocator;
-        }
-
-        public IntList(IMemoryAllocator memoryAllocator, int initialCapacity)
-        {
-            this.memoryAllocator = memoryAllocator;
             _memory = memoryAllocator.AllocateMemory(initialCapacity * sizeof(int));
         }
 
-        public IntList(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
+        public IntList(FlowtideMemory memory, int length)
         {
             _memory = memory;
             _length = length;
-            this.memoryAllocator = memoryAllocator;
         }
 
         public readonly ReadOnlySpan<int> Span => new ReadOnlySpan<int>(_memory.Pointer, _length);
@@ -78,7 +72,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             return (int*)_memory.Pointer;
         }
 
-        internal void EnsureCapacity(int length)
+        internal void EnsureCapacity(int length, IMemoryAllocator memoryAllocator)
         {
             if (DataLength < length)
             {
@@ -92,7 +86,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
-        private void CheckSizeReduction()
+        private void CheckSizeReduction(IMemoryAllocator memoryAllocator)
         {
             var multipleid = (_length << 1) + (_length >> 1);
             var dataLength = DataLength;
@@ -103,17 +97,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
-        public void Add(int item)
+        public void Add(int item, IMemoryAllocator memoryAllocator)
         {
-            EnsureCapacity(_length + 1);
+            EnsureCapacity(_length + 1, memoryAllocator);
             ((int*)_memory.Pointer)[_length++] = item;
         }
 
-        public void RemoveAt(int index)
+        public void RemoveAt(int index, IMemoryAllocator memoryAllocator)
         {
             AccessSpan.Slice(index + 1, _length - index - 1).CopyTo(AccessSpan.Slice(index));
             _length--;
-            CheckSizeReduction();
+            CheckSizeReduction(memoryAllocator);
         }
 
         /// <summary>
@@ -122,53 +116,54 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// </summary>
         /// <param name="index"></param>
         /// <param name="additionOnMoved"></param>
-        public void RemoveAt(int index, int additionOnMoved)
+        /// <param name="memoryAllocator"></param>
+        public void RemoveAt(int index, int additionOnMoved, IMemoryAllocator memoryAllocator)
         {
             AvxUtils.InPlaceMemCopyWithAddition(AccessSpan, index + 1, index, _length - index - 1, additionOnMoved);
             _length--;
-            CheckSizeReduction();
+            CheckSizeReduction(memoryAllocator);
         }
 
-        public void RemoveRange(int index, int count, int additionOnMoved)
+        public void RemoveRange(int index, int count, int additionOnMoved, IMemoryAllocator memoryAllocator)
         {
             AvxUtils.InPlaceMemCopyWithAddition(AccessSpan, index + count, index, _length - index - count, additionOnMoved);
             _length -= count;
-            CheckSizeReduction();
+            CheckSizeReduction(memoryAllocator);
         }
 
-        public void RemoveRange(int index, int count)
+        public void RemoveRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
             AccessSpan.Slice(index + count, _length - index - count).CopyTo(AccessSpan.Slice(index));
             _length -= count;
-            CheckSizeReduction();
+            CheckSizeReduction(memoryAllocator);
         }
 
-        public void RemoveAtConditionalAddition(int index, Span<sbyte> conditionalValues, sbyte conditionalValue, int additionOnMoved)
+        public void RemoveAtConditionalAddition(int index, Span<sbyte> conditionalValues, sbyte conditionalValue, int additionOnMoved, IMemoryAllocator memoryAllocator)
         {
             AvxUtils.InPlaceMemCopyConditionalAddition(AccessSpan, conditionalValues, index + 1, index, _length - index - 1, additionOnMoved, conditionalValue);
             _length--;
-            CheckSizeReduction();
+            CheckSizeReduction(memoryAllocator);
         }
 
-        public void RemoveRangeTypeBasedAddition(int index, int count, Span<sbyte> typeIds, Span<int> toAdd, int typeCount)
+        public void RemoveRangeTypeBasedAddition(int index, int count, Span<sbyte> typeIds, Span<int> toAdd, int typeCount, IMemoryAllocator memoryAllocator)
         {
             AvxUtils.InPlaceMemCopyAdditionByType(AccessSpan, typeIds, index + count, index, _length - index - count, toAdd, typeCount);
             _length -= count;
-            CheckSizeReduction();
+            CheckSizeReduction(memoryAllocator);
         }
 
-        public void InsertAt(int index, int item)
+        public void InsertAt(int index, int item, IMemoryAllocator memoryAllocator)
         {
-            EnsureCapacity(_length + 1);
+            EnsureCapacity(_length + 1, memoryAllocator);
             var span = AccessSpan;
             span.Slice(index, _length - index).CopyTo(span.Slice(index + 1));
             span[index] = item;
             _length++;
         }
 
-        public void InsertAt(int index, int item, int additionOnMoved)
+        public void InsertAt(int index, int item, int additionOnMoved, IMemoryAllocator memoryAllocator)
         {
-            EnsureCapacity(_length + 1);
+            EnsureCapacity(_length + 1, memoryAllocator);
             var span = AccessSpan;
             AvxUtils.InPlaceMemCopyWithAddition(span, index, index + 1, _length - index, additionOnMoved);
             span[index] = item;
@@ -185,9 +180,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             AvxUtils.InPlaceMemCopyWithAddition(span, index, index + moveIndiceCount, count, additionOnMoved);
         }
 
-        public void InsertRangeFrom(int index, in IntList other, int start, int count, int additionOnMovedExisting, int additionOnCopied)
+        public void InsertRangeFrom(int index, in IntList other, int start, int count, int additionOnMovedExisting, int additionOnCopied, IMemoryAllocator memoryAllocator)
         {
-            EnsureCapacity(_length + count);
+            EnsureCapacity(_length + count, memoryAllocator);
             var span = AccessSpan;
             var sourceSpan = other.AccessSpan;
             AvxUtils.InPlaceMemCopyWithAddition(span, index, index + count, _length - index, additionOnMovedExisting);
@@ -195,9 +190,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length += count;
         }
 
-        public void InsertRangeStaticValue(int index, int count, int staticValue)
+        public void InsertRangeStaticValue(int index, int count, int staticValue, IMemoryAllocator memoryAllocator)
         {
-            EnsureCapacity(_length + count);
+            EnsureCapacity(_length + count, memoryAllocator);
             var span = AccessSpan;
 
             // Move data
@@ -221,9 +216,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             Span<int> thisToAdd,
             Span<sbyte> otherTypeIds,
             Span<int> otherToAdd,
-            int typeCount)
+            int typeCount,
+            IMemoryAllocator memoryAllocator)
         {
-            EnsureCapacity(_length + count);
+            EnsureCapacity(_length + count, memoryAllocator);
             var span = AccessSpan;
             var sourceSpan = other.AccessSpan;
             AvxUtils.InPlaceMemCopyAdditionByType(span, thisTypeIds, index, index + count, _length - index, thisToAdd, typeCount);
@@ -237,9 +233,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             int count,
             Span<sbyte> conditionalValues,
             sbyte conditionalValue,
-            int additionOnMovedExisting)
+            int additionOnMovedExisting,
+            IMemoryAllocator memoryAllocator)
         {
-            EnsureCapacity(_length + count);
+            EnsureCapacity(_length + count, memoryAllocator);
             var span = AccessSpan;
             AvxUtils.InPlaceMemCopyConditionalAddition(span, conditionalValues, index, index + count, _length - index, additionOnMovedExisting, conditionalValue);
 
@@ -277,9 +274,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="conditionalValues"></param>
         /// <param name="conditionalValue"></param>
         /// <param name="additionOnMoved"></param>
-        public void InsertAtConditionalAddition(int index, int item, Span<sbyte> conditionalValues, sbyte conditionalValue, int additionOnMoved)
+        /// <param name="memoryAllocator"></param>
+        public void InsertAtConditionalAddition(int index, int item, Span<sbyte> conditionalValues, sbyte conditionalValue, int additionOnMoved, IMemoryAllocator memoryAllocator)
         {
-            EnsureCapacity(_length + 1);
+            EnsureCapacity(_length + 1, memoryAllocator);
             var span = AccessSpan;
             AvxUtils.InPlaceMemCopyConditionalAddition(span, conditionalValues, index, index + 1, _length - index, additionOnMoved, conditionalValue);
             span[index] = item;
@@ -312,7 +310,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         // No IDisposable: a using-declared struct variable is read-only and mutating calls on it
         // would run on defensive copies. Free zeroes _memory, so double dispose is a no-op.
-        public void Dispose()
+        public void Dispose(IMemoryAllocator memoryAllocator)
         {
             if (!_memory.IsNull)
             {
@@ -331,7 +329,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var newMemory = memoryAllocator.AllocateMemory(slicedSpan.Length);
             slicedSpan.CopyTo(newMemory.Span);
 
-            return new IntList(newMemory, _length, memoryAllocator);
+            return new IntList(newMemory, _length);
         }
     }
 }

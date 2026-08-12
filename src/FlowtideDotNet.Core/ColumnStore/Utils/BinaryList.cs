@@ -38,57 +38,50 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     /// This follows apache arrow on how to store binary data.
     /// This means that it does not store references to the binary data, but instead stores them directly in the array.
     /// This list allows inserting data and removing data where it correctly recalculates offsets.
+    /// Mutable struct: hold it in exactly one field, mutate only through that field or a ref local,
+    /// and never copy it — a realloc in a copy frees the memory the original still points at.
+    /// Memory views over the data are minted by the owning column, which is the MemoryManager.
+    /// The struct does not store an allocator; every call that can allocate or free takes the owner's
+    /// allocator, and all calls for a given list must use the same one.
     /// </summary>
-    internal unsafe class BinaryList : IDisposable
+    [NonCopyable]
+    internal unsafe struct BinaryList
     {
         // Memory objects
         private FlowtideMemory _memory;
-        // Cached since GetMemory backs StringValue/BinaryValue creation on every value read.
-        private NativeMemoryView? _memoryView;
 
         // List specific members
         private IntList _offsets;
-        private int _length;
 
-        // Dispose value
-        private bool disposedValue;
-        private readonly IMemoryAllocator _memoryAllocator;
+        // Used bytes in the data buffer; the arrow layout keeps this equal to the last offset,
+        // so it is derived instead of mirrored. Zero when unallocated or disposed.
+        private readonly int DataByteLength => _offsets.Count == 0 ? 0 : _offsets.Get(_offsets.Count - 1);
 
-        public Memory<byte> OffsetMemory => _offsets.Memory;
+        public readonly Memory<byte> OffsetMemory => _offsets.Memory;
 
-        public Span<byte> OffsetSpan => _offsets.SlicedSpan;
+        public readonly Span<byte> OffsetSpan => _offsets.SlicedSpan;
 
-        public Memory<byte> DataMemory => GetViewMemory().Slice(0, _length);
+        public readonly Span<byte> DataSpan => new Span<byte>(_memory.Pointer, DataByteLength);
 
-        public Span<byte> DataSpan => new Span<byte>(_memory.Pointer, _length);
+        /// <summary>
+        /// The full data buffer including unused capacity, used by the owning column's GetSpan.
+        /// </summary>
+        internal readonly Span<byte> CapacitySpan => _memory.Span;
 
-        public int Count => _offsets.Count - 1;
+        public readonly int Count => _offsets.Count - 1;
 
-        private Span<byte> AccessSpan => _memory.Span;
-
-        private Memory<byte> GetViewMemory()
-        {
-            if (_memory.IsNull)
-            {
-                return new Memory<byte>();
-            }
-            _memoryView ??= new NativeMemoryView(_memory.Pointer, _memory.Length);
-            return _memoryView.Memory;
-        }
+        private readonly Span<byte> AccessSpan => _memory.Span;
 
         public BinaryList(IMemoryAllocator memoryAllocator)
         {
-            _offsets = new IntList(memoryAllocator);
-            _offsets.Add(0);
-            _memoryAllocator = memoryAllocator;
+            _offsets.Add(0, memoryAllocator);
         }
 
         public BinaryList(IMemoryAllocator memoryAllocator, int initialRowCapacity, int initialDataCapacity)
         {
-            _memoryAllocator = memoryAllocator;
-            _offsets = new IntList(memoryAllocator, initialRowCapacity + 1);
-            _offsets.Add(0);
-            _memory = _memoryAllocator.AllocateMemory(initialDataCapacity);
+            _offsets = new IntList(initialRowCapacity + 1, memoryAllocator);
+            _offsets.Add(0, memoryAllocator);
+            _memory = memoryAllocator.AllocateMemory(initialDataCapacity);
         }
 
         /// <summary>
@@ -99,27 +92,32 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="offsetLength"></param>
         /// <param name="dataMemory"></param>
         /// <param name="memoryAllocator"></param>
-        public BinaryList(FlowtideMemory offsetMemory, int offsetLength, FlowtideMemory dataMemory, IMemoryAllocator memoryAllocator)
+        public BinaryList(FlowtideMemory offsetMemory, int offsetLength, FlowtideMemory dataMemory)
         {
-            _offsets = new IntList(offsetMemory, offsetLength, memoryAllocator);
+            _offsets = new IntList(offsetMemory, offsetLength);
             _memory = dataMemory;
-            _memoryAllocator = memoryAllocator;
-            var lastoffset = _offsets.Get(offsetLength - 1);
-            _length = lastoffset;
-
         }
 
-        public void* GetDataPointer_Unsafe()
+        public readonly void* GetDataPointer_Unsafe()
         {
             return _memory.Pointer;
         }
 
-        public void* GetOffsetPointer_Unsafe()
+        public readonly void* GetOffsetPointer_Unsafe()
         {
             return _offsets.GetPointer_Unsafe();
         }
 
-        private void EnsureCapacity(int length)
+        /// <summary>
+        /// Gets the data buffer position of an element, for the owning column to mint a Memory view from.
+        /// </summary>
+        internal readonly (int offset, int length) GetOffsetAndLength(in int index)
+        {
+            var offset = _offsets.Get(index);
+            return (offset, _offsets.Get(index + 1) - offset);
+        }
+
+        private void EnsureCapacity(int length, IMemoryAllocator memoryAllocator)
         {
             if (_memory.Length < length)
             {
@@ -128,19 +126,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 {
                     allocLength = 64;
                 }
-                _memoryAllocator.Realloc(ref _memory, allocLength);
-                _memoryView?.Update(_memory.Pointer, _memory.Length);
+                memoryAllocator.Realloc(ref _memory, allocLength);
             }
         }
 
-        private void CheckSizeReduction()
+        private void CheckSizeReduction(IMemoryAllocator memoryAllocator)
         {
-            var multipleid = (_length << 1) + (_length >> 1);
+            var length = DataByteLength;
+            var multipleid = (length << 1) + (length >> 1);
             if (multipleid < _memory.Length && _memory.Length > 256)
             {
                 Debug.Assert(!_memory.IsNull);
-                _memoryAllocator.Realloc(ref _memory, _length);
-                _memoryView?.Update(_memory.Pointer, _memory.Length);
+                memoryAllocator.Realloc(ref _memory, length);
             }
         }
 
@@ -148,21 +145,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// Add binary data as an element to the list.
         /// </summary>
         /// <param name="data"></param>
-        public void Add(ReadOnlySpan<byte> data)
+        public void Add(ReadOnlySpan<byte> data, IMemoryAllocator memoryAllocator)
         {
-            EnsureCapacity(_length + data.Length);
-            data.CopyTo(AccessSpan.Slice(_length));
-            _length += data.Length;
-            _offsets.Add(_length);
+            var totalBytes = DataByteLength;
+            EnsureCapacity(totalBytes + data.Length, memoryAllocator);
+            data.CopyTo(AccessSpan.Slice(totalBytes));
+            _offsets.Add(totalBytes + data.Length, memoryAllocator);
         }
 
-        public void AddEmpty()
+        public void AddEmpty(IMemoryAllocator memoryAllocator)
         {
-            var currentOffset = _length;
-            _offsets.Add(currentOffset);
+            _offsets.Add(DataByteLength, memoryAllocator);
         }
 
-        public void UpdateAt(int index, ReadOnlySpan<byte> data)
+        public void UpdateAt(int index, ReadOnlySpan<byte> data, IMemoryAllocator memoryAllocator)
         {
             var offset = _offsets.Get(index);
             var endOffset = _offsets.Get(index + 1);
@@ -174,11 +170,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             else
             {
                 var difference = data.Length - length;
-                EnsureCapacity(_length + difference);
+                var totalBytes = DataByteLength;
+                EnsureCapacity(totalBytes + difference, memoryAllocator);
                 var span = AccessSpan;
-                span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset + data.Length));
+                span.Slice(offset + length, totalBytes - offset - length).CopyTo(span.Slice(offset + data.Length));
                 data.CopyTo(span.Slice(offset));
-                _length += difference;
                 _offsets.Update(index + 1, offset + data.Length, difference);
             }
         }
@@ -189,15 +185,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// </summary>
         /// <param name="index"></param>
         /// <param name="data"></param>
-        public void Insert(int index, ReadOnlySpan<byte> data)
+        public void Insert(int index, ReadOnlySpan<byte> data, IMemoryAllocator memoryAllocator)
         {
             if (index == Count)
             {
-                Add(data);
+                Add(data, memoryAllocator);
                 return;
             }
 
-            EnsureCapacity(_length + data.Length);
+            var totalBytes = DataByteLength;
+            EnsureCapacity(totalBytes + data.Length, memoryAllocator);
             // Get the offset of the current element at the location
             var offset = _offsets.Get(index);
 
@@ -206,86 +203,71 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var span = AccessSpan;
 
             // Move all elements after the index
-            span.Slice(offset, _length - offset).CopyTo(span.Slice(offset + toMove));
+            span.Slice(offset, totalBytes - offset).CopyTo(span.Slice(offset + toMove));
 
             // Insert data of the new element
             data.CopyTo(span.Slice(offset));
 
             // Add the offset and add the size to all offsets above this one.
-            _offsets.InsertAt(index, offset, toMove);
-
-            _length += data.Length;
+            _offsets.InsertAt(index, offset, toMove, memoryAllocator);
         }
 
-        public void InsertEmpty(in int index)
+        public void InsertEmpty(in int index, IMemoryAllocator memoryAllocator)
         {
             if (index == Count)
             {
-                AddEmpty();
+                AddEmpty(memoryAllocator);
                 return;
             }
 
             var offset = _offsets.Get(index);
-            _offsets.InsertAt(index, offset);
+            _offsets.InsertAt(index, offset, memoryAllocator);
         }
 
-        public void RemoveAt(int index)
+        public void RemoveAt(int index, IMemoryAllocator memoryAllocator)
         {
             // Check if are removing the last element
             if (index == _offsets.Count - 1)
             {
-                var offset = _offsets.Get(index);
-                var length = _length - offset;
-                _offsets.RemoveAt(index);
-                _length -= length;
-                CheckSizeReduction();
+                _offsets.RemoveAt(index, memoryAllocator);
+                CheckSizeReduction(memoryAllocator);
                 return;
             }
             else
             {
+                var totalBytes = DataByteLength;
                 var offset = _offsets.Get(index);
                 var length = _offsets.Get(index + 1) - offset;
                 // Remove the offset and negate the length of all elements above this index.
-                _offsets.RemoveAt(index, -length);
+                _offsets.RemoveAt(index, -length, memoryAllocator);
 
                 var span = AccessSpan;
 
                 // Move all elements after the index
-                span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset));
-                _length -= length;
-                CheckSizeReduction();
+                span.Slice(offset + length, totalBytes - offset - length).CopyTo(span.Slice(offset));
+                CheckSizeReduction(memoryAllocator);
             }
         }
 
-        public void RemoveRange(int index, int count)
+        public void RemoveRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
+            var totalBytes = DataByteLength;
             var offset = _offsets.Get(index);
             var length = _offsets.Get(index + count) - offset;
 
-            _offsets.RemoveRange(index, count, -length);
+            _offsets.RemoveRange(index, count, -length, memoryAllocator);
 
             var span = AccessSpan;
 
             // Move all elements after the index
-            span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset));
-            _length -= length;
-            CheckSizeReduction();
+            span.Slice(offset + length, totalBytes - offset - length).CopyTo(span.Slice(offset));
+            CheckSizeReduction(memoryAllocator);
         }
 
-        public Span<byte> Get(in int index)
+        public readonly Span<byte> Get(in int index)
         {
             var offset = _offsets.Get(index);
             return AccessSpan.Slice(offset, _offsets.Get(index + 1) - offset);
-        }
-
-        public Memory<byte> GetMemory(in int index)
-        {
-            if (_memory.IsNull)
-            {
-                return Memory<byte>.Empty;
-            }
-            var offset = _offsets.Get(index);
-            return GetViewMemory().Slice(offset, _offsets.Get(index + 1) - offset);
         }
 
         /// <summary>
@@ -293,48 +275,30 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// </summary>
         /// <param name="index"></param>
         /// <returns></returns>
-        public BinaryInfo GetBinaryInfo(in int index)
+        public readonly BinaryInfo GetBinaryInfo(in int index)
         {
             var offset = _offsets.Get(index);
             return new BinaryInfo(((byte*)_memory.Pointer) + offset, _offsets.Get(index + 1) - offset);
         }
 
-        protected virtual void Dispose(bool disposing)
+        // No IDisposable: a using-declared struct variable is read-only and mutating calls on it
+        // would run on defensive copies. Free zeroes _memory, so double dispose is a no-op.
+        public void Dispose(IMemoryAllocator memoryAllocator)
         {
-            if (!disposedValue)
+            _offsets.Dispose(memoryAllocator);
+            if (!_memory.IsNull)
             {
-                // The offsets struct has no finalizer of its own, so it must be freed here on both paths.
-                _offsets.Dispose();
-                if (!_memory.IsNull)
-                {
-                    _memoryAllocator.Free(ref _memory);
-                    _memoryView?.Update(null, 0);
-                }
-                disposedValue = true;
+                memoryAllocator.Free(ref _memory);
             }
         }
 
-        ~BinaryList()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: false);
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        public void Clear()
+        public void Clear(IMemoryAllocator memoryAllocator)
         {
             _offsets.Clear();
-            _offsets.Add(0);
-            _length = 0;
+            _offsets.Add(0, memoryAllocator);
         }
 
-        public int GetByteSize(int start, int end)
+        public readonly int GetByteSize(int start, int end)
         {
             var startOffset = _offsets.Get(start);
             var endOffset = _offsets.Get(end + 1);
@@ -348,7 +312,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// </summary>
         /// <param name="indices"></param>
         /// <param name="sizes"></param>
-        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        public readonly void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
         {
             int length = indices.Length;
 
@@ -366,30 +330,30 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
-        public void InsertRangeFrom(int index, BinaryList binaryList, int start, int count)
+        public void InsertRangeFrom(int index, in BinaryList binaryList, int start, int count, IMemoryAllocator memoryAllocator)
         {
+            var totalBytes = DataByteLength;
             var offsetToInsertAt = _offsets.Get(index);
             var offsetToCopyStart = binaryList._offsets.Get(start);
             var offsetToCopyEnd = binaryList._offsets.Get(start + count);
             var toCopyLength = offsetToCopyEnd - offsetToCopyStart;
-            EnsureCapacity(_length + toCopyLength);
+            EnsureCapacity(totalBytes + toCopyLength, memoryAllocator);
             var span = AccessSpan;
             // Move all data up to free space for the insert
-            span.Slice(offsetToInsertAt, _length - offsetToInsertAt).CopyTo(span.Slice(offsetToInsertAt + toCopyLength));
+            span.Slice(offsetToInsertAt, totalBytes - offsetToInsertAt).CopyTo(span.Slice(offsetToInsertAt + toCopyLength));
             // Copy the data
             binaryList.AccessSpan.Slice(offsetToCopyStart, toCopyLength).CopyTo(span.Slice(offsetToInsertAt));
-            _length += toCopyLength;
             var offsetDifference = offsetToInsertAt - offsetToCopyStart;
-            _offsets.InsertRangeFrom(index, binaryList._offsets, start, count, toCopyLength, offsetDifference);
+            _offsets.InsertRangeFrom(index, binaryList._offsets, start, count, toCopyLength, offsetDifference, memoryAllocator);
         }
 
-        public void InsertNullRange(int index, int count)
+        public void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
             var offsetToInsertAt = _offsets.Get(index);
-            _offsets.InsertRangeStaticValue(index, count, offsetToInsertAt);
+            _offsets.InsertRangeStaticValue(index, count, offsetToInsertAt, memoryAllocator);
         }
 
-        public BinaryList Copy(IMemoryAllocator memoryAllocator)
+        public readonly BinaryList Copy(IMemoryAllocator memoryAllocator)
         {
             var dataSpan = DataSpan;
             var dataMemoryCopy = memoryAllocator.AllocateMemory(dataSpan.Length);
@@ -398,7 +362,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var offsetMemoryCopy = memoryAllocator.AllocateMemory(offsetSpan.Length);
             offsetSpan.CopyTo(offsetMemoryCopy.Span);
 
-            return new BinaryList(offsetMemoryCopy, _offsets.Count, dataMemoryCopy, memoryAllocator);
+            return new BinaryList(offsetMemoryCopy, _offsets.Count, dataMemoryCopy);
         }
 
         /// <summary>
@@ -408,7 +372,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="other">The other binary list to insert data from.</param>
         /// <param name="sortedLookup">A span containing the sorted indices of the elements to insert from the other list.</param>
         /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list.</param>
-        public void InsertFrom(ref readonly BinaryList other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        public void InsertFrom(ref readonly BinaryList other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             Debug.Assert(sortedLookup.Length == insertPositions.Length);
             int otherCount = sortedLookup.Length;
@@ -427,13 +391,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
 
             int oldDataCount = Count;
-            int oldTotalBytes = _length;
+            int oldTotalBytes = DataByteLength;
 
             // Ensure we have enough binary data capacity for the new total size after insertion
-            this.EnsureCapacity(oldTotalBytes + totalNewBytes);
+            this.EnsureCapacity(oldTotalBytes + totalNewBytes, memoryAllocator);
 
             // Ensure the offsets have enough capacity for the new total count after insertion (old count + new count)
-            this._offsets.EnsureCapacity(oldDataCount + otherCount + 1);
+            this._offsets.EnsureCapacity(oldDataCount + otherCount + 1, memoryAllocator);
             this._offsets.IncreaseLength(otherCount);
 
             // Fetch out spans to not have to access properties multiple times in the loop
@@ -490,7 +454,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 currentReadRow = targetInsertIdx;
             }
 
-            _length += totalNewBytes;
             selfOffsets[oldDataCount + otherCount] = oldTotalBytes + totalNewBytes;
         }
 
@@ -500,7 +463,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// contiguous blocks of retained data in a single left-to-right sweep.
         /// </summary>
         /// <param name="targets">A span of sorted indices (ascending) of elements to delete.</param>
-        public void DeleteBatch(ReadOnlySpan<int> targets)
+        public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
         {
             int deleteCount = targets.Length;
             if (deleteCount == 0) return;
@@ -574,9 +537,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 selfOffsets[oldCount - deleteCount] = writeDataPtr;
             }
 
-            _length = writeDataPtr;
-            _offsets.RemoveRange(oldCount + 1 - deleteCount, deleteCount);
-            CheckSizeReduction();
+            _offsets.RemoveRange(oldCount + 1 - deleteCount, deleteCount, memoryAllocator);
+            CheckSizeReduction(memoryAllocator);
         }
     }
 }

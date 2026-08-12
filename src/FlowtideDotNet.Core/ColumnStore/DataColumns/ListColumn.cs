@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -36,6 +36,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         private readonly Column _internalColumn;
         // Not readonly: mutating calls on a readonly struct field would run on defensive copies.
         private IntList _offsets;
+        private readonly IMemoryAllocator _memoryAllocator;
         private bool disposedValue;
 
         public int Count => _offsets.Count - 1;
@@ -46,9 +47,9 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ListColumn(IMemoryAllocator memoryAllocator)
         {
+            _memoryAllocator = memoryAllocator;
             _internalColumn = Column.Create(memoryAllocator);
-            _offsets = new IntList(memoryAllocator);
-            _offsets.Add(0);
+            _offsets.Add(0, memoryAllocator);
         }
 
         public ListColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
@@ -57,21 +58,27 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 throw new ArgumentException("Column size info did not contain child information");
             }
+            _memoryAllocator = memoryAllocator;
             _internalColumn = new Column(memoryAllocator, columnSizeInfo.Children[0]);
-            _offsets = new IntList(memoryAllocator, columnSizeInfo.TotalRows + 1);
-            _offsets.Add(0);
+            _offsets = new IntList(columnSizeInfo.TotalRows + 1, memoryAllocator);
+            _offsets.Add(0, memoryAllocator);
         }
 
         public ListColumn(Column internalColumn, FlowtideMemory offsetMemory, int offsetCount, IMemoryAllocator memoryAllocator)
         {
-            _offsets = new IntList(offsetMemory, offsetCount, memoryAllocator);
+            _memoryAllocator = memoryAllocator;
+            _offsets = new IntList(offsetMemory, offsetCount);
             _internalColumn = internalColumn;
         }
 
-        internal ListColumn(Column internalColumn, IntList offsets)
+        internal ListColumn(Column internalColumn, IntList offsets, IMemoryAllocator memoryAllocator)
         {
+            _memoryAllocator = memoryAllocator;
             _internalColumn = internalColumn;
+            // Ownership transfer: the argument is always a fresh Copy() temp that is never used again.
+#pragma warning disable RS0042
             _offsets = offsets;
+#pragma warning restore RS0042
         }
 
         public int Add(in IDataValue value)
@@ -84,7 +91,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 _internalColumn.Add(list.GetAt(i));
             }
-            _offsets.Add(_internalColumn.Count);
+            _offsets.Add(_internalColumn.Count, _memoryAllocator);
 
             return currentOffset;
         }
@@ -94,7 +101,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             var currentOffset = Count;
             if (value.Type == ArrowTypeId.Null)
             {
-                _offsets.Add(_internalColumn.Count);
+                _offsets.Add(_internalColumn.Count, _memoryAllocator);
                 return currentOffset;
             }
 
@@ -113,7 +120,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     _internalColumn.Add(list.GetAt(i));
                 }
             }
-            _offsets.Add(_internalColumn.Count);
+            _offsets.Add(_internalColumn.Count, _memoryAllocator);
 
             return currentOffset;
         }
@@ -269,7 +276,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
             }
 
-            _offsets.RemoveAt(index + 1, startOffset - endOffset);
+            _offsets.RemoveAt(index + 1, startOffset - endOffset, _memoryAllocator);
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
@@ -277,7 +284,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (value.Type == ArrowTypeId.Null)
             {
                 var endOffset = _offsets.Get(index);
-                _offsets.InsertAt(index, endOffset);
+                _offsets.InsertAt(index, endOffset, _memoryAllocator);
                 return;
             }
             var list = value.AsList;
@@ -290,7 +297,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     _internalColumn.InsertRangeFrom(startOffset, referenceListVal.column, referenceListVal.start, referenceListVal.Count);
                 }
-                _offsets.InsertAt(index + 1, startOffset + referenceListVal.Count, referenceListVal.Count);
+                _offsets.InsertAt(index + 1, startOffset + referenceListVal.Count, referenceListVal.Count, _memoryAllocator);
             }
             else
             {
@@ -299,7 +306,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     _internalColumn.InsertAt(startOffset + i, list.GetAt(i));
                 }
 
-                _offsets.InsertAt(index + 1, startOffset + list.Count, list.Count);
+                _offsets.InsertAt(index + 1, startOffset + list.Count, list.Count, _memoryAllocator);
             }
         }
 
@@ -367,7 +374,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (!disposedValue)
             {
                 // The offsets struct has no finalizer of its own, so it must be freed here on both paths.
-                _offsets.Dispose();
+                _offsets.Dispose(_memoryAllocator);
                 if (disposing)
                 {
                     _internalColumn.Dispose();
@@ -397,7 +404,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void Clear()
         {
             _offsets.Clear();
-            _offsets.Add(0);
+            _offsets.Add(0, _memoryAllocator);
             _internalColumn.Clear();
         }
 
@@ -419,7 +426,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             var currentOffset = _offsets.Count - 1;
-            _offsets.Add(_internalColumn.Count);
+            _offsets.Add(_internalColumn.Count, _memoryAllocator);
             return currentOffset;
         }
 
@@ -458,7 +465,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             var endOffset = _offsets.Get(start + count);
 
             // Remove the offsets
-            _offsets.RemoveRange(start, count, startOffset - endOffset);
+            _offsets.RemoveRange(start, count, startOffset - endOffset, _memoryAllocator);
 
             if (endOffset > startOffset)
             {
@@ -525,7 +532,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
 
                 // Insert the offsets
-                _offsets.InsertRangeFrom(index + 1, listColumn._offsets, start + 1, count, otherEndOffset - otherStartOffset, startOffset - otherStartOffset);
+                _offsets.InsertRangeFrom(index + 1, listColumn._offsets, start + 1, count, otherEndOffset - otherStartOffset, startOffset - otherStartOffset, _memoryAllocator);
             }
             else
             {
@@ -536,7 +543,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void InsertNullRange(int index, int count)
         {
             var startOffset = _offsets.Get(index);
-            _offsets.InsertRangeStaticValue(index, count, startOffset);
+            _offsets.InsertRangeStaticValue(index, count, startOffset, _memoryAllocator);
         }
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
@@ -556,7 +563,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
-            return new ListColumn(_internalColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator));
+            return new ListColumn(_internalColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator), memoryAllocator);
         }
 
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
