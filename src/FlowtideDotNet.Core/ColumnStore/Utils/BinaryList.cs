@@ -303,10 +303,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             if (!disposedValue)
             {
-                if (disposing)
-                {
-                    _offsets.Dispose();
-                }
+                // The offsets struct has no finalizer of its own, so it must be freed here on both paths.
+                _offsets.Dispose();
                 if (!_memory.IsNull)
                 {
                     _memoryAllocator.Free(ref _memory);

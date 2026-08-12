@@ -22,26 +22,27 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     /// <summary>
     /// Special list data structure that stores integers only
     /// This data structure is useful when storing offsets for instance since it can change offset locations during removal.
+    /// Mutable struct: hold it in exactly one field, mutate only through that field or a ref local,
+    /// and never copy it — a realloc in a copy frees the memory the original still points at.
     /// </summary>
-    internal unsafe class IntList : IDisposable
+    internal unsafe struct IntList
     {
         private FlowtideMemory _memory;
         private int _length;
-        private bool disposedValue;
         private readonly IMemoryAllocator memoryAllocator;
 
         // Capacity in elements, derived so the struct is the single source of truth.
-        private int DataLength => _memory.Length / sizeof(int);
+        private readonly int DataLength => _memory.Length / sizeof(int);
 
-        internal Span<int> AccessSpan => new Span<int>(_memory.Pointer, DataLength);
+        internal readonly Span<int> AccessSpan => new Span<int>(_memory.Pointer, DataLength);
 
-        public Memory<byte> Memory => GetViewMemory().Slice(0, _length * sizeof(int));
+        public readonly Memory<byte> Memory => GetViewMemory().Slice(0, _length * sizeof(int));
 
-        public Span<byte> SlicedSpan => new Span<byte>(_memory.Pointer, _length * sizeof(int));
+        public readonly Span<byte> SlicedSpan => new Span<byte>(_memory.Pointer, _length * sizeof(int));
 
         // Allocates a fresh non-owning view per call; only cold paths (Arrow interop, checkpoint
         // writers) need Memory<byte>, and they re-fetch after list mutations.
-        private Memory<byte> GetViewMemory()
+        private readonly Memory<byte> GetViewMemory()
         {
             if (_memory.IsNull)
             {
@@ -68,11 +69,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             this.memoryAllocator = memoryAllocator;
         }
 
-        public ReadOnlySpan<int> Span => new ReadOnlySpan<int>(_memory.Pointer, _length);
+        public readonly ReadOnlySpan<int> Span => new ReadOnlySpan<int>(_memory.Pointer, _length);
 
-        public int Count => _length;
+        public readonly int Count => _length;
 
-        public int* GetPointer_Unsafe()
+        public readonly int* GetPointer_Unsafe()
         {
             return (int*)_memory.Pointer;
         }
@@ -184,7 +185,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             AvxUtils.InPlaceMemCopyWithAddition(span, index, index + moveIndiceCount, count, additionOnMoved);
         }
 
-        public void InsertRangeFrom(int index, IntList other, int start, int count, int additionOnMovedExisting, int additionOnCopied)
+        public void InsertRangeFrom(int index, in IntList other, int start, int count, int additionOnMovedExisting, int additionOnCopied)
         {
             EnsureCapacity(_length + count);
             var span = AccessSpan;
@@ -213,7 +214,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void InsertRangeFromTypeBasedAddition(
             int index,
-            IntList other,
+            in IntList other,
             int start,
             int count,
             Span<sbyte> thisTypeIds,
@@ -304,34 +305,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int Get(in int index)
+        public readonly int Get(in int index)
         {
             return ((int*)_memory.Pointer)[index];
         }
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (!_memory.IsNull)
-                {
-                    memoryAllocator.Free(ref _memory);
-                }
-                disposedValue = true;
-            }
-        }
-
-        ~IntList()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: false);
-        }
-
+        // No IDisposable: a using-declared struct variable is read-only and mutating calls on it
+        // would run on defensive copies. Free zeroes _memory, so double dispose is a no-op.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            if (!_memory.IsNull)
+            {
+                memoryAllocator.Free(ref _memory);
+            }
         }
 
         public void Clear()
@@ -339,7 +325,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length = 0;
         }
 
-        public IntList Copy(IMemoryAllocator memoryAllocator)
+        public readonly IntList Copy(IMemoryAllocator memoryAllocator)
         {
             var slicedSpan = SlicedSpan;
             var newMemory = memoryAllocator.AllocateMemory(slicedSpan.Length);

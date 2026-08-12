@@ -453,10 +453,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (!disposedValue)
             {
+                // The offsets struct has no finalizer of its own, so it must be freed here on both paths.
+                _offsets.Dispose();
                 if (disposing)
                 {
                     _typeList.Dispose();
-                    _offsets.Dispose();
                     foreach (var column in _valueColumns)
                     {
                         column.Dispose();
@@ -466,6 +467,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
                 disposedValue = true;
             }
+        }
+
+        ~UnionColumn()
+        {
+            Dispose(disposing: false);
         }
 
         public void Dispose()

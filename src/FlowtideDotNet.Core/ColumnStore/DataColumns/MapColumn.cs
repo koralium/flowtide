@@ -477,15 +477,21 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (!disposedValue)
             {
+                // The offsets struct has no finalizer of its own, so it must be freed here on both paths.
+                _offsets.Dispose();
                 if (disposing)
                 {
                     _keyColumn.Dispose();
                     _valueColumn.Dispose();
-                    _offsets.Dispose();
                 }
 
                 disposedValue = true;
             }
+        }
+
+        ~MapColumn()
+        {
+            Dispose(disposing: false);
         }
 
         public void Dispose()

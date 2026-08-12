@@ -34,7 +34,8 @@ namespace FlowtideDotNet.Core.ColumnStore
     public class ListColumn : IDataColumn, IEnumerable<IEnumerable<IDataValue>>
     {
         private readonly Column _internalColumn;
-        private readonly IntList _offsets;
+        // Not readonly: mutating calls on a readonly struct field would run on defensive copies.
+        private IntList _offsets;
         private bool disposedValue;
 
         public int Count => _offsets.Count - 1;
@@ -365,14 +366,20 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (!disposedValue)
             {
+                // The offsets struct has no finalizer of its own, so it must be freed here on both paths.
+                _offsets.Dispose();
                 if (disposing)
                 {
                     _internalColumn.Dispose();
-                    _offsets.Dispose();
                 }
 
                 disposedValue = true;
             }
+        }
+
+        ~ListColumn()
+        {
+            Dispose(disposing: false);
         }
 
         public void Dispose()
