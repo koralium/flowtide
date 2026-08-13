@@ -23,7 +23,7 @@ namespace FlowtideDotNet.MiMalloc
     /// thread exits (pages with live blocks are abandoned and reclaimed by
     /// other threads, exactly as in native mimalloc).
     /// </summary>
-    public static unsafe class MiMalloc
+    public static unsafe partial class MiMalloc
     {
         /// <summary>
         /// The mimalloc version this port is based on, encoded as in <c>mimalloc.h</c>:
@@ -145,6 +145,19 @@ namespace FlowtideDotNet.MiMalloc
         /// automatically on the first allocation from a thread.
         /// </summary>
         public static void mi_thread_init() => Mi.mi_thread_init();
+
+        /// <summary>
+        /// Mark the current thread as belonging to a thread pool, which makes it shed pages
+        /// aggressively rather than retain them for reuse (it stops retaining full pages and
+        /// declines cross-thread page reclaim).
+        /// <para>
+        /// Only appropriate for threads that park for long periods while holding allocations.
+        /// Do NOT call this for ordinary .NET ThreadPool / TPL worker threads that carry the
+        /// application's main work: shedding pages there leaves mostly-full pages abandoned and
+        /// pins their memory.
+        /// </para>
+        /// </summary>
+        public static void mi_thread_set_in_threadpool() => Mi.mi_thread_set_in_threadpool();
 
         /// <summary>
         /// Release the current thread's heaps (abandoning pages that still contain

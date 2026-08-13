@@ -731,6 +731,39 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         private async IAsyncEnumerable<StreamEventBatch> ProcessBatch(StreamEventBatch msg, long time)
         {
+            try
+            {
+                await foreach (var batch in ProcessBatchCore(msg, time))
+                {
+                    yield return batch;
+                }
+            }
+            finally
+            {
+                BatchDone();
+            }
+        }
+
+        /// <summary>
+        /// Releases the per batch projections that the measures and shared trees allocate in NewBatch.
+        /// Without this the last batch keeps its columns until the operator is disposed, and since the
+        /// column finalizer does not free anything that memory is gone for good.
+        /// Runs in a finally so it also happens if the consumer stops enumerating early.
+        /// </summary>
+        private void BatchDone()
+        {
+            for (int i = 0; i < _measures.Length; i++)
+            {
+                _measures[i].BatchDone();
+            }
+            foreach (var sharedTree in _sharedTrees.Values)
+            {
+                sharedTree.BatchDone();
+            }
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> ProcessBatchCore(StreamEventBatch msg, long time)
+        {
             if (msg.Data.Count > 0)
             {
                 // Take first iteration

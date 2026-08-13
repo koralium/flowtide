@@ -20,6 +20,10 @@ using ZstdSharp.Unsafe;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
+    // note: alias inside the namespace, the FlowtideDotNet.MiMalloc NAMESPACE otherwise
+    // shadows the type name when resolving from FlowtideDotNet.* namespaces
+    using MiMalloc = FlowtideDotNet.MiMalloc.MiMalloc;
+
     /// <summary>
     /// Implementation of both compressor and decompressor from zstdsharp, only to use own memory allocation
     /// to get that memory to metrics correctly.
@@ -31,18 +35,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         private bool _disposedValue;
         private readonly IMemoryAllocator _memoryAllocator;
         private readonly int _compressionLevel;
-        private SortedList<IntPtr, int> _allocatedMemory;
         private GCHandle _handle;
-        private readonly object _lock = new object();
         private bool _isInitialized;
+
+        // zstd's free callback is handed only a pointer, so the size has to come from somewhere.
+        // mimalloc can report it from the pointer alone; the NativeMemory fallback cannot, so on that
+        // platform we have to remember it. Null whenever the allocator can answer for itself, which
+        // keeps the 64-bit path free of both the dictionary and the lock.
+        private readonly Dictionary<nint, int>? _allocatedSizes;
+        private readonly object _sizesLock = new object();
 
         public FlowtideZstdCompressor(IMemoryAllocator memoryAllocator, int compressionLevel)
         {
             _memoryAllocator = memoryAllocator;
             this._compressionLevel = compressionLevel;
-            _allocatedMemory = new SortedList<nint, int>();
             _handle = GCHandle.Alloc(this);
             _isInitialized = false;
+            _allocatedSizes = FlowtideMemoryAllocation.CanQueryAllocationSize ? null : new Dictionary<nint, int>();
         }
 
         private void SetParameter(ZSTD_cParameter parameter, int value)
@@ -90,34 +99,66 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         }
 
 
+        // zstd's workspaces go through the same allocator as everything else. Using NativeMemory here
+        // instead would put them on the C runtime heap while still reporting them to the metrics, which
+        // makes the reported figure impossible to reconcile with what the allocator actually holds --
+        // the workspaces are ~0.6 MiB per state client, so that gap is not small.
+        private const int ZstdAllocAlignment = 16;
+
         private static void* CustomAlloc(void* opaque, nuint size)
         {
             GCHandle handle = GCHandle.FromIntPtr((IntPtr)opaque);
             var instance = (FlowtideZstdCompressor)handle.Target!;
-            // Register the allocated memory to metrics
-            instance._memoryAllocator.RegisterAllocationToMetrics((int)size);
-            var ptr = NativeMemory.Alloc(size);
-            lock (instance._lock)
+            var allocated = FlowtideMemoryAllocation.AllocateAligned((int)size, ZstdAllocAlignment);
+
+            // register whatever the free path will be able to report, so the two can never drift apart
+            int registered = FlowtideMemoryAllocation.CanQueryAllocationSize
+                ? (int)FlowtideMemoryAllocation.GetAllocationSize(allocated.ptr)
+                : allocated.length;
+
+            if (instance._allocatedSizes != null)
             {
-                instance._allocatedMemory.Add(new nint(ptr), (int)size);
+                lock (instance._sizesLock)
+                {
+                    instance._allocatedSizes[(nint)allocated.ptr] = registered;
+                }
             }
-            return ptr;
+            instance._memoryAllocator.RegisterAllocationToMetrics(registered);
+            return allocated.ptr;
         }
 
         private static void CustomFree(void* opaque, void* ptr)
         {
+            if (ptr == null)
+            {
+                return;
+            }
             GCHandle handle = GCHandle.FromIntPtr((IntPtr)opaque);
             var instance = (FlowtideZstdCompressor)handle.Target!;
-            lock (instance._lock)
+
+            int size;
+            if (instance._allocatedSizes != null)
             {
-                if (instance._allocatedMemory.TryGetValue(new nint(ptr), out var size))
+                lock (instance._sizesLock)
                 {
-                    // Remove allocated memory from metrics
-                    instance._memoryAllocator.RegisterFreeToMetrics(size);
-                    instance._allocatedMemory.Remove(new nint(ptr));
+                    // a pointer we never handed out is not ours to account for
+                    if (!instance._allocatedSizes.Remove((nint)ptr, out size))
+                    {
+                        size = 0;
+                    }
                 }
             }
-            NativeMemory.Free(ptr);
+            else
+            {
+                // must be read while the block is still ours
+                size = (int)FlowtideMemoryAllocation.GetAllocationSize(ptr);
+            }
+
+            if (size > 0)
+            {
+                instance._memoryAllocator.RegisterFreeToMetrics(size);
+            }
+            FlowtideMemoryAllocation.FreeAligned(ptr, ZstdAllocAlignment);
         }
 
         public int Wrap(ReadOnlySpan<byte> src, Span<byte> dest)
@@ -203,9 +244,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             _compressor = new FlowtideZstdCompressor(memoryAllocator, compressionLevel);
         }
 
-        public Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
+        public async Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
         {
-            return _serializer.CheckpointAsync(checkpointWriter, metadata);
+            await _serializer.CheckpointAsync(checkpointWriter, metadata);
+            ClearTemporaryAllocations();
         }
 
         public void ClearTemporaryAllocations()
