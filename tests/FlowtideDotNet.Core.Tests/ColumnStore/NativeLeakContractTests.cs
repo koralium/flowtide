@@ -135,16 +135,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var floatField = new Field("2", FloatType.Default, true);
             var unionType = new UnionType(new[] { nullField, stringField, floatField }, new[] { 0, 1, 2 }, UnionMode.Dense);
 
-            var nullArray = new NullArray(1);
-            var stringArray = new StringArray.Builder().Append("a").Build();
-            var floatArray = new FloatArray.Builder().Append(1.5f).Build();
+            using var nullArray = new NullArray(1);
+            using var stringArray = new StringArray.Builder().Append("a").Build();
+            using var floatArray = new FloatArray.Builder().Append(1.5f).Build();
 
-            var typeIds = new ArrowBuffer.Builder<byte>().Append(1).Append(2).Build();
-            var offsets = new ArrowBuffer.Builder<int>().Append(0).Append(0).Build();
-            var unionArray = new DenseUnionArray(unionType, 2, new IArrowArray[] { nullArray, stringArray, floatArray }, typeIds, offsets);
+            using var typeIds = new ArrowBuffer.Builder<byte>().Append(1).Append(2).Build();
+            using var offsets = new ArrowBuffer.Builder<int>().Append(0).Append(0).Build();
+            using var unionArray = new DenseUnionArray(unionType, 2, new IArrowArray[] { nullArray, stringArray, floatArray }, typeIds, offsets);
 
             var schema = new Schema.Builder().Field(new Field("u", unionType, true)).Build();
-            var recordBatch = new RecordBatch(schema, new IArrowArray[] { unionArray }, 2);
+            using var recordBatch = new RecordBatch(schema, new IArrowArray[] { unionArray }, 2);
 
             var allocator = new CountingAllocator();
             Assert.ThrowsAny<Exception>(() => EventArrowSerializer.ArrowToBatch(recordBatch, allocator));
