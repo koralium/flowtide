@@ -31,7 +31,9 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal class DoubleColumn : IDataColumn
     {
-        private readonly PrimitiveList<double> _data;
+        // Not readonly, mutations would run on a copy.
+        private NativeList<double> _data;
+        private readonly IMemoryAllocator _memoryAllocator;
         private bool disposedValue;
 
         public int Count => _data.Count;
@@ -42,46 +44,48 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public DoubleColumn(IMemoryAllocator memoryAllocator)
         {
-            _data = new PrimitiveList<double>(memoryAllocator);
+            _memoryAllocator = memoryAllocator;
         }
 
         public DoubleColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
         {
-            _data = new PrimitiveList<double>(memoryAllocator, columnSizeInfo.TotalRows);
+            _memoryAllocator = memoryAllocator;
+            _data.EnsureCapacity(columnSizeInfo.TotalRows, memoryAllocator);
         }
 
         public DoubleColumn(FlowtideMemory memory, int count, IMemoryAllocator memoryAllocator)
         {
-            _data = new PrimitiveList<double>(memory, count, memoryAllocator);
+            _data = new NativeList<double>(memory, count);
+            _memoryAllocator = memoryAllocator;
         }
 
-        internal DoubleColumn(PrimitiveList<double> data)
+#pragma warning disable RS0042 // The list moves into the column and is not used again.
+        internal DoubleColumn(NativeList<double> data, IMemoryAllocator memoryAllocator)
         {
             _data = data;
+            _memoryAllocator = memoryAllocator;
         }
+#pragma warning restore RS0042
 
         public int Add<T>(in T value) where T : IDataValue
         {
             var index = _data.Count;
             if (value.Type == ArrowTypeId.Null)
             {
-                _data.Add(0);
+                _data.Add(0, _memoryAllocator);
                 return index;
             }
             else
             {
-                _data.Add(value.AsDouble);
+                _data.Add(value.AsDouble, _memoryAllocator);
                 return index;
             }
         }
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            Debug.Assert(_data != null);
-
             if (otherColumn is DoubleColumn doubleColumn)
             {
-                Debug.Assert(doubleColumn._data != null);
                 return _data.Get(thisIndex).CompareTo(doubleColumn._data.Get(otherIndex));
             }
             throw new NotImplementedException();
@@ -122,9 +126,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             var val = dataValue.AsDouble;
             if (desc)
             {
-                return BoundarySearch.SearchBoundries<double>(_data, val, start, end, DoubleComparerDesc.Instance);
+                return BoundarySearch.SearchBoundries(in _data, val, start, end, DoubleComparerDesc.Instance);
             }
-            return BoundarySearch.SearchBoundries<double>(_data, val, start, end, DoubleComparer.Instance);
+            return BoundarySearch.SearchBoundries(in _data, val, start, end, DoubleComparer.Instance);
         }
 
         public int Update(in int index, in IDataValue value)
@@ -141,18 +145,18 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveAt(in int index)
         {
-            _data.RemoveAt(index);
+            _data.RemoveAt(index, _memoryAllocator);
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                _data.InsertAt(index, default);
+                _data.InsertAt(index, default, _memoryAllocator);
             }
             else
             {
-                _data.InsertAt(index, value.AsDouble);
+                _data.InsertAt(index, value.AsDouble, _memoryAllocator);
             }
         }
 
@@ -167,12 +171,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (!disposedValue)
             {
-                if (disposing)
-                {
-                    _data.Dispose();
-                }
+                // The struct has no finalizer so we free it here.
+                _data.Dispose(_memoryAllocator);
                 disposedValue = true;
             }
+        }
+
+        ~DoubleColumn()
+        {
+            Dispose(disposing: false);
         }
 
         public void Dispose()
@@ -204,7 +211,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveRange(int start, int count)
         {
-            _data.RemoveRange(start, count);
+            _data.RemoveRange(start, count, _memoryAllocator);
         }
 
         public int GetByteSize(int start, int end)
@@ -226,7 +233,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (other is DoubleColumn doubleColumn)
             {
-                _data.InsertRangeFrom(index, doubleColumn._data, start, count);
+                _data.InsertRangeFrom(index, in doubleColumn._data, start, count, _memoryAllocator);
             }
             else
             {
@@ -236,7 +243,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertNullRange(int index, int count)
         {
-            _data.InsertStaticRange(index, 0, count);
+            _data.InsertStaticRange(index, 0, count, _memoryAllocator);
         }
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
@@ -246,7 +253,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
-            return new DoubleColumn(_data.Copy(memoryAllocator));
+            return new DoubleColumn(_data.Copy(memoryAllocator), memoryAllocator);
         }
 
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
@@ -286,7 +293,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (other is DoubleColumn doubleColumn)
             {
-                _data.InsertFrom(in doubleColumn._data, in sortedLookup, in insertPositions, lookupNullIndex);
+                _data.InsertFrom(in doubleColumn._data, in sortedLookup, in insertPositions, lookupNullIndex, _memoryAllocator);
             }
             else
             {
@@ -296,7 +303,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void DeleteBatch(ReadOnlySpan<int> targets)
         {
-            _data.DeleteBatch(targets);
+            _data.DeleteBatch(targets, _memoryAllocator);
         }
 
         public ColumnSizeInfo GetColumnSizeInfo()
