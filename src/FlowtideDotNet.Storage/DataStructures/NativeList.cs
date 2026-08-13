@@ -41,6 +41,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         public NativeList(int initialCapacity, IMemoryAllocator memoryAllocator)
         {
             _memory = memoryAllocator.AllocateMemory(initialCapacity * sizeof(T));
+            _length = 0;
         }
 
         /// <summary>
