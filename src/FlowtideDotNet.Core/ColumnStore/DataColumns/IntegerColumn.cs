@@ -95,22 +95,28 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         private sealed class Int8Data : IIntData
         {
-            private PrimitiveList<sbyte> _list;
+            // Not readonly, mutations would run on a copy.
+            private NativeList<sbyte> _list;
+            private readonly IMemoryAllocator _memoryAllocator;
 
             public Int8Data(IMemoryAllocator memoryAllocator)
             {
-                _list = new PrimitiveList<sbyte>(memoryAllocator);
+                _memoryAllocator = memoryAllocator;
             }
 
             public Int8Data(IMemoryAllocator memoryAllocator, int initialCapacity)
             {
-                _list = new PrimitiveList<sbyte>(memoryAllocator, initialCapacity);
+                _memoryAllocator = memoryAllocator;
+                _list.EnsureCapacity(initialCapacity, memoryAllocator);
             }
 
-            public Int8Data(PrimitiveList<sbyte> list)
+#pragma warning disable RS0042 // The list moves into this instance and is not used again.
+            public Int8Data(NativeList<sbyte> list, IMemoryAllocator memoryAllocator)
             {
                 _list = list;
+                _memoryAllocator = memoryAllocator;
             }
+#pragma warning restore RS0042
 
             public long MaxSize => sbyte.MaxValue;
 
@@ -125,7 +131,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public int Add(in long value)
             {
                 var index = _list.Count;
-                _list.Add((sbyte)value);
+                _list.Add((sbyte)value, _memoryAllocator);
                 return index;
             }
 
@@ -136,12 +142,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public IIntData Copy(IMemoryAllocator memoryAllocator)
             {
-                return new Int8Data(_list.Copy(memoryAllocator));
+                return new Int8Data(_list.Copy(memoryAllocator), memoryAllocator);
             }
 
             public void Dispose()
             {
-                _list.Dispose();
+                // The struct has no finalizer so we free it here.
+                _list.Dispose(_memoryAllocator);
+                GC.SuppressFinalize(this);
+            }
+
+            ~Int8Data()
+            {
+                _list.Dispose(_memoryAllocator);
             }
 
             public long Get(in int index)
@@ -156,19 +169,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void InsertAt(in int index, in long value)
             {
-                _list.InsertAt(index, (sbyte)value);
+                _list.InsertAt(index, (sbyte)value, _memoryAllocator);
             }
 
             public void InsertNullRange(int index, int count)
             {
-                _list.InsertStaticRange(index, 0, count);
+                _list.InsertStaticRange(index, 0, count, _memoryAllocator);
             }
 
             public void InsertRangeFrom(int index, IIntData other, int start, int count)
             {
                 if (other is Int8Data int8data)
                 {
-                    _list.InsertRangeFrom(index, int8data._list, start, count);
+                    _list.InsertRangeFrom(index, in int8data._list, start, count, _memoryAllocator);
                     return;
                 }
                 throw new NotImplementedException();
@@ -176,17 +189,17 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void MoveRangeAt(int index, int count)
             {
-                _list.MoveAtIndex(index, count);
+                _list.MoveAtIndex(index, count, _memoryAllocator);
             }
 
             public void RemoveAt(in int index)
             {
-                _list.RemoveAt(index);
+                _list.RemoveAt(index, _memoryAllocator);
             }
 
             public void RemoveRange(int start, int count)
             {
-                _list.RemoveRange(start, count);
+                _list.RemoveRange(start, count, _memoryAllocator);
             }
 
             public (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
@@ -202,7 +215,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     {
                         return (~start, ~start);
                     }
-                    return BoundarySearch.SearchBoundries(_list, (sbyte)dataValue, start, end, Int8ComparerDesc.Instance);
+                    return BoundarySearch.SearchBoundries(in _list, (sbyte)dataValue, start, end, Int8ComparerDesc.Instance);
                 }
                 else
                 {
@@ -215,7 +228,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         var index = ~(end + 1);
                         return (index, index);
                     }
-                    return BoundarySearch.SearchBoundries(_list, (sbyte)dataValue, start, end, Int8Comparer.Instance);
+                    return BoundarySearch.SearchBoundries(in _list, (sbyte)dataValue, start, end, Int8Comparer.Instance);
                 }
             }
 
@@ -235,7 +248,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 if (other is Int8Data int8data)
                 {
-                    _list.InsertFrom(in int8data._list, in sortedLookup, in targetPositions, lookupNullIndex);
+                    _list.InsertFrom(in int8data._list, in sortedLookup, in targetPositions, lookupNullIndex, _memoryAllocator);
                     return;
                 }
                 throw new NotImplementedException();
@@ -243,7 +256,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void DeleteBatch(ReadOnlySpan<int> targets)
             {
-                _list.DeleteBatch(targets);
+                _list.DeleteBatch(targets, _memoryAllocator);
             }
 
             public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
@@ -304,22 +317,28 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         private sealed class Int16Data : IIntData
         {
-            private PrimitiveList<short> _list;
+            // Not readonly, mutations would run on a copy.
+            private NativeList<short> _list;
+            private readonly IMemoryAllocator _memoryAllocator;
 
             public Int16Data(IMemoryAllocator memoryAllocator)
             {
-                _list = new PrimitiveList<short>(memoryAllocator);
+                _memoryAllocator = memoryAllocator;
             }
 
             public Int16Data(IMemoryAllocator memoryAllocator, int initialCapacity)
             {
-                _list = new PrimitiveList<short>(memoryAllocator, initialCapacity);
+                _memoryAllocator = memoryAllocator;
+                _list.EnsureCapacity(initialCapacity, memoryAllocator);
             }
 
-            public Int16Data(PrimitiveList<short> list)
+#pragma warning disable RS0042 // The list moves into this instance and is not used again.
+            public Int16Data(NativeList<short> list, IMemoryAllocator memoryAllocator)
             {
                 _list = list;
+                _memoryAllocator = memoryAllocator;
             }
+#pragma warning restore RS0042
 
             public long MaxSize => short.MaxValue;
 
@@ -334,13 +353,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public int Add(in long value)
             {
                 var index = _list.Count;
-                _list.Add((short)value);
+                _list.Add((short)value, _memoryAllocator);
                 return index;
             }
 
             public void InsertAt(in int index, in long value)
             {
-                _list.InsertAt(index, (short)value);
+                _list.InsertAt(index, (short)value, _memoryAllocator);
             }
 
             public int Update(in int index, in long value)
@@ -356,12 +375,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void Dispose()
             {
-                _list.Dispose();
+                // The struct has no finalizer so we free it here.
+                _list.Dispose(_memoryAllocator);
+                GC.SuppressFinalize(this);
+            }
+
+            ~Int16Data()
+            {
+                _list.Dispose(_memoryAllocator);
             }
 
             public void RemoveAt(in int index)
             {
-                _list.RemoveAt(index);
+                _list.RemoveAt(index, _memoryAllocator);
             }
 
             public void Clear()
@@ -371,12 +397,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void RemoveRange(int start, int count)
             {
-                _list.RemoveRange(start, count);
+                _list.RemoveRange(start, count, _memoryAllocator);
             }
 
             public void InsertNullRange(int index, int count)
             {
-                _list.InsertStaticRange(index, 0, count);
+                _list.InsertStaticRange(index, 0, count, _memoryAllocator);
             }
 
             public (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
@@ -392,7 +418,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     {
                         return (~start, ~start);
                     }
-                    return BoundarySearch.SearchBoundries(_list, (short)dataValue, start, end, Int16ComparerDesc.Instance);
+                    return BoundarySearch.SearchBoundries(in _list, (short)dataValue, start, end, Int16ComparerDesc.Instance);
                 }
                 else
                 {
@@ -405,7 +431,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         var index = ~(end + 1);
                         return (index, index);
                     }
-                    return BoundarySearch.SearchBoundries(_list, (short)dataValue, start, end, Int16Comparer.Instance);
+                    return BoundarySearch.SearchBoundries(in _list, (short)dataValue, start, end, Int16Comparer.Instance);
                 }
             }
 
@@ -416,19 +442,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public IIntData Copy(IMemoryAllocator memoryAllocator)
             {
-                return new Int16Data(_list.Copy(memoryAllocator));
+                return new Int16Data(_list.Copy(memoryAllocator), memoryAllocator);
             }
 
             public void MoveRangeAt(int index, int count)
             {
-                _list.MoveAtIndex(index, count);
+                _list.MoveAtIndex(index, count, _memoryAllocator);
             }
 
             public void InsertRangeFrom(int index, IIntData other, int start, int count)
             {
                 if (other is Int16Data int16Data)
                 {
-                    _list.InsertRangeFrom(index, int16Data._list, start, count);
+                    _list.InsertRangeFrom(index, in int16Data._list, start, count, _memoryAllocator);
                     return;
                 }
                 throw new NotImplementedException();
@@ -444,7 +470,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 if (other is Int16Data int16Data)
                 {
-                    _list.InsertFrom(in int16Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
+                    _list.InsertFrom(in int16Data._list, in sortedLookup, in targetPositions, lookupNullIndex, _memoryAllocator);
                     return;
                 }
                 throw new NotImplementedException();
@@ -452,7 +478,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void DeleteBatch(ReadOnlySpan<int> targets)
             {
-                _list.DeleteBatch(targets);
+                _list.DeleteBatch(targets, _memoryAllocator);
             }
 
             public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
@@ -515,23 +541,28 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         private sealed class Int32Data : IIntData
         {
-            private PrimitiveList<int> _list;
-
+            // Not readonly, mutations would run on a copy.
+            private NativeList<int> _list;
+            private readonly IMemoryAllocator _memoryAllocator;
 
             public Int32Data(IMemoryAllocator memoryAllocator)
             {
-                _list = new PrimitiveList<int>(memoryAllocator);
+                _memoryAllocator = memoryAllocator;
             }
 
             public Int32Data(IMemoryAllocator memoryAllocator, int initialCapacity)
             {
-                _list = new PrimitiveList<int>(memoryAllocator);
+                _memoryAllocator = memoryAllocator;
+                _list.EnsureCapacity(initialCapacity, memoryAllocator);
             }
 
-            public Int32Data(PrimitiveList<int> list)
+#pragma warning disable RS0042 // The list moves into this instance and is not used again.
+            public Int32Data(NativeList<int> list, IMemoryAllocator memoryAllocator)
             {
                 _list = list;
+                _memoryAllocator = memoryAllocator;
             }
+#pragma warning restore RS0042
 
             public long MaxSize => int.MaxValue;
 
@@ -546,13 +577,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public int Add(in long value)
             {
                 var index = _list.Count;
-                _list.Add((int)value);
+                _list.Add((int)value, _memoryAllocator);
                 return index;
             }
 
             public void InsertAt(in int index, in long value)
             {
-                _list.InsertAt(index, (int)value);
+                _list.InsertAt(index, (int)value, _memoryAllocator);
             }
 
             public int Update(in int index, in long value)
@@ -568,12 +599,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void Dispose()
             {
-                _list.Dispose();
+                // The struct has no finalizer so we free it here.
+                _list.Dispose(_memoryAllocator);
+                GC.SuppressFinalize(this);
+            }
+
+            ~Int32Data()
+            {
+                _list.Dispose(_memoryAllocator);
             }
 
             public void RemoveAt(in int index)
             {
-                _list.RemoveAt(index);
+                _list.RemoveAt(index, _memoryAllocator);
             }
 
             public void Clear()
@@ -583,12 +621,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void RemoveRange(int start, int count)
             {
-                _list.RemoveRange(start, count);
+                _list.RemoveRange(start, count, _memoryAllocator);
             }
 
             public void InsertNullRange(int index, int count)
             {
-                _list.InsertStaticRange(index, 0, count);
+                _list.InsertStaticRange(index, 0, count, _memoryAllocator);
             }
 
             public unsafe (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
@@ -604,7 +642,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     {
                         return (~start, ~start);
                     }
-                    return BoundarySearch.SearchBoundries(_list, (int)dataValue, start, end, Int32ComparerDesc.Instance);
+                    return BoundarySearch.SearchBoundries(in _list, (int)dataValue, start, end, Int32ComparerDesc.Instance);
                 }
                 else
                 {
@@ -628,19 +666,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public IIntData Copy(IMemoryAllocator memoryAllocator)
             {
-                return new Int32Data(_list.Copy(memoryAllocator));
+                return new Int32Data(_list.Copy(memoryAllocator), memoryAllocator);
             }
 
             public void MoveRangeAt(int index, int count)
             {
-                _list.MoveAtIndex(index, count);
+                _list.MoveAtIndex(index, count, _memoryAllocator);
             }
 
             public void InsertRangeFrom(int index, IIntData other, int start, int count)
             {
                 if (other is Int32Data int32Data)
                 {
-                    _list.InsertRangeFrom(index, int32Data._list, start, count);
+                    _list.InsertRangeFrom(index, in int32Data._list, start, count, _memoryAllocator);
                     return;
                 }
                 throw new NotImplementedException();
@@ -656,7 +694,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 if (other is Int32Data int32Data)
                 {
-                    _list.InsertFrom(in int32Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
+                    _list.InsertFrom(in int32Data._list, in sortedLookup, in targetPositions, lookupNullIndex, _memoryAllocator);
                     return;
                 }
                 throw new NotImplementedException();
@@ -664,7 +702,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void DeleteBatch(ReadOnlySpan<int> targets)
             {
-                _list.DeleteBatch(targets);
+                _list.DeleteBatch(targets, _memoryAllocator);
             }
 
             public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
@@ -728,22 +766,28 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         private sealed class Int64Data : IIntData
         {
-            private PrimitiveList<long> _list;
+            // Not readonly, mutations would run on a copy.
+            private NativeList<long> _list;
+            private readonly IMemoryAllocator _memoryAllocator;
 
             public Int64Data(IMemoryAllocator memoryAllocator)
             {
-                _list = new PrimitiveList<long>(memoryAllocator);
+                _memoryAllocator = memoryAllocator;
             }
 
             public Int64Data(IMemoryAllocator memoryAllocator, int initialCapacity)
             {
-                _list = new PrimitiveList<long>(memoryAllocator, initialCapacity);
+                _memoryAllocator = memoryAllocator;
+                _list.EnsureCapacity(initialCapacity, memoryAllocator);
             }
 
-            public Int64Data(PrimitiveList<long> list)
+#pragma warning disable RS0042 // The list moves into this instance and is not used again.
+            public Int64Data(NativeList<long> list, IMemoryAllocator memoryAllocator)
             {
                 _list = list;
+                _memoryAllocator = memoryAllocator;
             }
+#pragma warning restore RS0042
 
             public long MaxSize => long.MaxValue;
 
@@ -758,13 +802,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public int Add(in long value)
             {
                 var index = _list.Count;
-                _list.Add(value);
+                _list.Add(value, _memoryAllocator);
                 return index;
             }
 
             public void InsertAt(in int index, in long value)
             {
-                _list.InsertAt(index, value);
+                _list.InsertAt(index, value, _memoryAllocator);
             }
 
             public int Update(in int index, in long value)
@@ -780,12 +824,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void Dispose()
             {
-                _list.Dispose();
+                // The struct has no finalizer so we free it here.
+                _list.Dispose(_memoryAllocator);
+                GC.SuppressFinalize(this);
+            }
+
+            ~Int64Data()
+            {
+                _list.Dispose(_memoryAllocator);
             }
 
             public void RemoveAt(in int index)
             {
-                _list.RemoveAt(index);
+                _list.RemoveAt(index, _memoryAllocator);
             }
 
             public void Clear()
@@ -795,12 +846,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void RemoveRange(int start, int count)
             {
-                _list.RemoveRange(start, count);
+                _list.RemoveRange(start, count, _memoryAllocator);
             }
 
             public void InsertNullRange(int index, int count)
             {
-                _list.InsertStaticRange(index, 0, count);
+                _list.InsertStaticRange(index, 0, count, _memoryAllocator);
             }
 
             public (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
@@ -816,7 +867,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     {
                         return (~start, ~start);
                     }
-                    return BoundarySearch.SearchBoundries(_list, dataValue, start, end, Int64ComparerDesc.Instance);
+                    return BoundarySearch.SearchBoundries(in _list, dataValue, start, end, Int64ComparerDesc.Instance);
                 }
                 else
                 {
@@ -829,7 +880,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         var index = ~(end + 1);
                         return (index, index);
                     }
-                    return BoundarySearch.SearchBoundries(_list, dataValue, start, end, Int64Comparer.Instance);
+                    return BoundarySearch.SearchBoundries(in _list, dataValue, start, end, Int64Comparer.Instance);
                 }
             }
 
@@ -840,19 +891,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public IIntData Copy(IMemoryAllocator memoryAllocator)
             {
-                return new Int64Data(_list.Copy(memoryAllocator));
+                return new Int64Data(_list.Copy(memoryAllocator), memoryAllocator);
             }
 
             public void MoveRangeAt(int index, int count)
             {
-                _list.MoveAtIndex(index, count);
+                _list.MoveAtIndex(index, count, _memoryAllocator);
             }
 
             public void InsertRangeFrom(int index, IIntData other, int start, int count)
             {
                 if (other is Int64Data int64Data)
                 {
-                    _list.InsertRangeFrom(index, int64Data._list, start, count);
+                    _list.InsertRangeFrom(index, in int64Data._list, start, count, _memoryAllocator);
                     return;
                 }
                 throw new NotImplementedException();
@@ -868,7 +919,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 if (other is Int64Data int64Data)
                 {
-                    _list.InsertFrom(in int64Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
+                    _list.InsertFrom(in int64Data._list, in sortedLookup, in targetPositions, lookupNullIndex, _memoryAllocator);
                     return;
                 }
                 throw new NotImplementedException();
@@ -876,7 +927,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public void DeleteBatch(ReadOnlySpan<int> targets)
             {
-                _list.DeleteBatch(targets);
+                _list.DeleteBatch(targets, _memoryAllocator);
             }
 
             public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
@@ -975,16 +1026,16 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             switch (bitWidth)
             {
                 case 8:
-                    _data = new Int8Data(new PrimitiveList<sbyte>(memory, length, memoryAllocator));
+                    _data = new Int8Data(new NativeList<sbyte>(memory, length), memoryAllocator);
                     break;
                 case 16:
-                    _data = new Int16Data(new PrimitiveList<short>(memory, length, memoryAllocator));
+                    _data = new Int16Data(new NativeList<short>(memory, length), memoryAllocator);
                     break;
                 case 32:
-                    _data = new Int32Data(new PrimitiveList<int>(memory, length, memoryAllocator));
+                    _data = new Int32Data(new NativeList<int>(memory, length), memoryAllocator);
                     break;
                 case 64:
-                    _data = new Int64Data(new PrimitiveList<long>(memory, length, memoryAllocator));
+                    _data = new Int64Data(new NativeList<long>(memory, length), memoryAllocator);
                     break;
                 default:
                     // Nothing owns the memory yet so we free it here.

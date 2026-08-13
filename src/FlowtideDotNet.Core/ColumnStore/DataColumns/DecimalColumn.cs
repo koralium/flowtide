@@ -36,7 +36,9 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal class DecimalColumn : IDataColumn
     {
-        private PrimitiveList<decimal> _values;
+        // Not readonly, mutations would run on a copy.
+        private NativeList<decimal> _values;
+        private readonly IMemoryAllocator _memoryAllocator;
         private bool disposedValue;
 
         public int Count => _values.Count;
@@ -47,45 +49,47 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public DecimalColumn(IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<decimal>(memoryAllocator);
+            _memoryAllocator = memoryAllocator;
         }
 
         public DecimalColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
         {
-            _values = new PrimitiveList<decimal>(memoryAllocator, columnSizeInfo.TotalRows);
+            _memoryAllocator = memoryAllocator;
+            _values.EnsureCapacity(columnSizeInfo.TotalRows, memoryAllocator);
         }
 
         public DecimalColumn(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);
+            _values = new NativeList<decimal>(memory, length);
+            _memoryAllocator = memoryAllocator;
         }
 
-        internal DecimalColumn(PrimitiveList<decimal> values)
+#pragma warning disable RS0042 // The list moves into the column and is not used again.
+        internal DecimalColumn(NativeList<decimal> values, IMemoryAllocator memoryAllocator)
         {
             _values = values;
+            _memoryAllocator = memoryAllocator;
         }
+#pragma warning restore RS0042
 
         public int Add<T>(in T value) where T : IDataValue
         {
             var index = _values.Count;
             if (value.Type == ArrowTypeId.Null)
             {
-                _values.Add(0);
+                _values.Add(0, _memoryAllocator);
             }
             else
             {
-                _values.Add(value.AsDecimal);
+                _values.Add(value.AsDecimal, _memoryAllocator);
             }
             return index;
         }
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            Debug.Assert(_values != null);
-
             if (otherColumn is DecimalColumn decimalColumn)
             {
-                Debug.Assert(decimalColumn._values != null);
                 return _values.Get(thisIndex).CompareTo(decimalColumn._values.Get(otherIndex));
             }
             throw new NotImplementedException();
@@ -125,9 +129,9 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (desc)
             {
-                return BoundarySearch.SearchBoundries(_values, dataValue.AsDecimal, start, end, DecimalComparerDesc.Instance);
+                return BoundarySearch.SearchBoundries(in _values, dataValue.AsDecimal, start, end, DecimalComparerDesc.Instance);
             }
-            return BoundarySearch.SearchBoundries(_values, dataValue.AsDecimal, start, end, DecimalComparer.Instance);
+            return BoundarySearch.SearchBoundries(in _values, dataValue.AsDecimal, start, end, DecimalComparer.Instance);
         }
 
         public int Update<T>(in int index, in T value) where T : IDataValue
@@ -138,18 +142,18 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveAt(in int index)
         {
-            _values.RemoveAt(index);
+            _values.RemoveAt(index, _memoryAllocator);
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                _values.InsertAt(index, 0);
+                _values.InsertAt(index, 0, _memoryAllocator);
             }
             else
             {
-                _values.InsertAt(index, value.AsDecimal);
+                _values.InsertAt(index, value.AsDecimal, _memoryAllocator);
             }
         }
 
@@ -168,12 +172,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (!disposedValue)
             {
-                if (disposing)
-                {
-                    _values.Dispose();
-                }
+                // The struct has no finalizer so we free it here.
+                _values.Dispose(_memoryAllocator);
                 disposedValue = true;
             }
+        }
+
+        ~DecimalColumn()
+        {
+            Dispose(disposing: false);
         }
 
         public void Dispose()
@@ -205,7 +212,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveRange(int start, int count)
         {
-            _values.RemoveRange(start, count);
+            _values.RemoveRange(start, count, _memoryAllocator);
         }
 
         public int GetByteSize(int start, int end)
@@ -227,7 +234,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (other is DecimalColumn decimalColumn)
             {
-                _values.InsertRangeFrom(index, decimalColumn._values, start, count);
+                _values.InsertRangeFrom(index, in decimalColumn._values, start, count, _memoryAllocator);
             }
             else
             {
@@ -237,7 +244,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertNullRange(int index, int count)
         {
-            _values.InsertStaticRange(index, 0, count);
+            _values.InsertStaticRange(index, 0, count, _memoryAllocator);
         }
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
@@ -247,7 +254,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
-            return new DecimalColumn(_values.Copy(memoryAllocator));
+            return new DecimalColumn(_values.Copy(memoryAllocator), memoryAllocator);
         }
 
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
@@ -292,7 +299,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (other is DecimalColumn decimalColumn)
             {
-                _values.InsertFrom(in decimalColumn._values, in sortedLookup, in insertPositions, lookupNullIndex);
+                _values.InsertFrom(in decimalColumn._values, in sortedLookup, in insertPositions, lookupNullIndex, _memoryAllocator);
             }
             else
             {
@@ -302,7 +309,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void DeleteBatch(ReadOnlySpan<int> targets)
         {
-            _values.DeleteBatch(targets);
+            _values.DeleteBatch(targets, _memoryAllocator);
         }
 
         public ColumnSizeInfo GetColumnSizeInfo()
