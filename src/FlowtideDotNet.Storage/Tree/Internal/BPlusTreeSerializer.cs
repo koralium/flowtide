@@ -168,6 +168,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     }
 
                     var childrenMemory = _memoryAllocator.AllocateMemory(childrenByteLength);
+                     if (!sequenceReader.TryCopyTo(childrenMemory.Span.Slice(0, childrenByteLength)))
+                    {
                         _memoryAllocator.Free(ref childrenMemory);
                         throw new Exception("Could not read children data");
                     }

@@ -194,7 +194,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
+#pragma warning disable CA2015 // Do not define finalizers for types derived from MemoryManager<T>
         ~BinaryColumn()
+#pragma warning restore CA2015 // Do not define finalizers for types derived from MemoryManager<T>
         {
             Dispose(disposing: false);
         }
