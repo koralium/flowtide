@@ -160,5 +160,41 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             IntegerList list = default;
             list.Dispose(GlobalMemoryManager.Instance);
         }
+
+        [Theory]
+        [InlineData(sbyte.MaxValue, 8)]
+        [InlineData(sbyte.MinValue, 8)]
+        [InlineData(sbyte.MaxValue + 1, 16)]
+        [InlineData(short.MaxValue, 16)]
+        [InlineData(short.MinValue, 16)]
+        [InlineData(short.MaxValue + 1, 32)]
+        [InlineData(int.MaxValue, 32)]
+        [InlineData(int.MinValue, 32)]
+        [InlineData((long)int.MaxValue + 1, 64)]
+        [InlineData(long.MaxValue, 64)]
+        [InlineData(long.MinValue, 64)]
+        public void BoundaryValuesKeepTheSmallestWidth(long value, int expectedBitWidth)
+        {
+            using var column = FlowtideDotNet.Core.ColumnStore.Column.Create(GlobalMemoryManager.Instance);
+            column.Add(new FlowtideDotNet.Core.ColumnStore.Int64Value(value));
+
+            Assert.Equal(expectedBitWidth, column.GetColumnSizeInfo().BitWidth);
+            Assert.Equal(value, column.GetValueAt(0, default).AsLong);
+        }
+
+        [Fact]
+        public void WidthDoesNotDependOnInsertionOrder()
+        {
+            using var first = FlowtideDotNet.Core.ColumnStore.Column.Create(GlobalMemoryManager.Instance);
+            first.Add(new FlowtideDotNet.Core.ColumnStore.Int64Value(sbyte.MaxValue));
+            first.Add(new FlowtideDotNet.Core.ColumnStore.Int64Value(0));
+
+            using var second = FlowtideDotNet.Core.ColumnStore.Column.Create(GlobalMemoryManager.Instance);
+            second.Add(new FlowtideDotNet.Core.ColumnStore.Int64Value(0));
+            second.Add(new FlowtideDotNet.Core.ColumnStore.Int64Value(sbyte.MaxValue));
+
+            Assert.Equal(first.GetColumnSizeInfo().BitWidth, second.GetColumnSizeInfo().BitWidth);
+            Assert.Equal(8, first.GetColumnSizeInfo().BitWidth);
+        }
     }
 }

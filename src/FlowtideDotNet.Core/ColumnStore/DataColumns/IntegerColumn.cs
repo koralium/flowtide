@@ -98,15 +98,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         private static byte ElementSizeFor(in long value)
         {
-            if (value < sbyte.MaxValue && value > sbyte.MinValue)
+            if (value <= sbyte.MaxValue && value >= sbyte.MinValue)
             {
                 return 1;
             }
-            else if (value < short.MaxValue && value > short.MinValue)
+            else if (value <= short.MaxValue && value >= short.MinValue)
             {
                 return 2;
             }
-            else if (value < int.MaxValue && value > int.MinValue)
+            else if (value <= int.MaxValue && value >= int.MinValue)
             {
                 return 4;
             }
