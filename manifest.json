@@ -3088,7 +3088,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "FlowtideDotNet.Core.ColumnStore.BinaryColumn",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.yml\" sourcestartlinenumber=\"1\">Binary column that is also the MemoryManager over its data.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -4082,7 +4082,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "FlowtideDotNet.Core.ColumnStore.StringColumn",
-      "Summary": null
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.ColumnStore.StringColumn.yml\" sourcestartlinenumber=\"1\">String column that is also the MemoryManager over its data.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -6938,7 +6938,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "FlowtideDotNet.Storage.DataStructures.BitmapList",
-      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Storage.DataStructures.BitmapList.yml\" sourcestartlinenumber=\"1\">A growable list of bits packed into 32-bit words and backed by unmanaged memory allocated from an\n<xref href=\"FlowtideDotNet.Storage.Memory.IMemoryAllocator\" data-throw-if-not-resolved=\"false\"></xref>. It supports the usual list operations (add, get, set, insert and remove)\nas well as range and batch variants that shift large blocks of bits at once, using vectorized shifts where\navailable. It is commonly used as a validity (null) mask for columnar data.\nInstances own native memory and must be disposed; <xref href=\"FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose\" data-throw-if-not-resolved=\"false\"></xref> releases the buffer and returns the\ninstance to <xref href=\"FlowtideDotNet.Storage.DataStructures.BitmapListFactory\" data-throw-if-not-resolved=\"false\"></xref> for reuse.</p>\n"
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Storage.DataStructures.BitmapList.yml\" sourcestartlinenumber=\"1\">A growable list of bits packed into 32-bit words and backed by unmanaged memory allocated from an\n<xref href=\"FlowtideDotNet.Storage.Memory.IMemoryAllocator\" data-throw-if-not-resolved=\"false\"></xref>. It supports the usual list operations (add, get, set, insert and remove)\nas well as range and batch variants that shift large blocks of bits at once, using vectorized shifts where\navailable. It is commonly used as a validity (null) mask for columnar data.\nMutable struct, keep it in one field and never copy it.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -7208,6 +7208,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Storage.Memory.FlowtideMemory.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Storage.Memory.FlowtideMemory.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Storage.Memory.FlowtideMemory",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Storage.Memory.FlowtideMemory.yml\" sourcestartlinenumber=\"1\">A 64 byte aligned block of unmanaged memory.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Storage.Memory.GlobalMemoryManager.yml",
       "output": {
         ".html": {
@@ -7292,31 +7306,17 @@
     },
     {
       "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.yml",
+      "source_relative_path": "api/FlowtideDotNet.Storage.Memory.NativeMemoryView.yml",
       "output": {
         ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html"
+          "relative_path": "api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html"
         }
       },
       "version": "",
       "Uid": null,
       "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager",
-      "Summary": null
-    },
-    {
-      "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.yml",
-      "output": {
-        ".html": {
-          "relative_path": "api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html"
-        }
-      },
-      "version": "",
-      "Uid": null,
-      "IsMRef": true,
-      "Title": "FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner",
-      "Summary": null
+      "Title": "FlowtideDotNet.Storage.Memory.NativeMemoryView",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Storage.Memory.NativeMemoryView.yml\" sourcestartlinenumber=\"1\">Exposes a memory block as Memory without owning it.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -11854,11 +11854,11 @@
       "type": "Toc",
       "source_relative_path": "api/toc.yml",
       "output": {
-        ".html": {
-          "relative_path": "api/toc.html"
-        },
         ".json": {
           "relative_path": "api/toc.json"
+        },
+        ".html": {
+          "relative_path": "api/toc.html"
         }
       },
       "version": ""
@@ -12677,11 +12677,11 @@
       "type": "Toc",
       "source_relative_path": "docs/toc.yml",
       "output": {
-        ".html": {
-          "relative_path": "docs/toc.html"
-        },
         ".json": {
           "relative_path": "docs/toc.json"
+        },
+        ".html": {
+          "relative_path": "docs/toc.html"
         }
       },
       "version": ""
@@ -12790,11 +12790,11 @@
       "type": "Toc",
       "source_relative_path": "releasenotes/toc.yml",
       "output": {
-        ".html": {
-          "relative_path": "releasenotes/toc.html"
-        },
         ".json": {
           "relative_path": "releasenotes/toc.json"
+        },
+        ".html": {
+          "relative_path": "releasenotes/toc.html"
         }
       },
       "version": ""
@@ -12803,11 +12803,11 @@
       "type": "Toc",
       "source_relative_path": "toc.yml",
       "output": {
-        ".html": {
-          "relative_path": "toc.html"
-        },
         ".json": {
           "relative_path": "toc.json"
+        },
+        ".html": {
+          "relative_path": "toc.html"
         }
       },
       "version": ""

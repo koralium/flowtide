@@ -166,20 +166,24 @@ Class PrimitiveListValueContainer&lt;T&gt;  <a class="header-action link-seconda
 
   <a id="FlowtideDotNet_Storage_Tree_PrimitiveListValueContainer_1__ctor_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListValueContainer_1__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
-  PrimitiveListValueContainer(IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListValueContainer.cs/#L28"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListValueContainer_1__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  PrimitiveListValueContainer(FlowtideMemory, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListValueContainer.cs/#L33"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public PrimitiveListValueContainer(IMemoryAllocator memoryAllocator)</code></pre>
+    <pre><code class="lang-csharp hljs">public PrimitiveListValueContainer(FlowtideMemory memory, int count, IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
+    <dt><code>memory</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.FlowtideMemory.html">FlowtideMemory</a></dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
     <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
     <dd></dd>
   </dl>
@@ -197,24 +201,20 @@ Class PrimitiveListValueContainer&lt;T&gt;  <a class="header-action link-seconda
 
   <a id="FlowtideDotNet_Storage_Tree_PrimitiveListValueContainer_1__ctor_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListValueContainer_1__ctor_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
-  PrimitiveListValueContainer(IMemoryOwner&lt;byte&gt;, int, IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListValueContainer.cs/#L33"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListValueContainer_1__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  PrimitiveListValueContainer(IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListValueContainer.cs/#L28"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public PrimitiveListValueContainer(IMemoryOwner&lt;byte&gt; memory, int count, IMemoryAllocator memoryAllocator)</code></pre>
+    <pre><code class="lang-csharp hljs">public PrimitiveListValueContainer(IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>memory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.imemoryowner-1">IMemoryOwner</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
-    <dd></dd>
-    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
-    <dd></dd>
     <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
     <dd></dd>
   </dl>

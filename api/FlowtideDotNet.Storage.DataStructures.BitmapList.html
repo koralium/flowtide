@@ -2,11 +2,11 @@
 <html>
   <head>
     <meta charset="utf-8">
-      <title>Class BitmapList | Flowtide.NET </title>
+      <title>Struct BitmapList | Flowtide.NET </title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <meta name="title" content="Class BitmapList | Flowtide.NET ">
+      <meta name="title" content="Struct BitmapList | Flowtide.NET ">
       
-      <meta name="description" content="A growable list of bits packed into 32-bit words and backed by unmanaged memory allocated from an . It supports the usual list operations (add, get, set, insert and remove) as well as range and batch variants that shift large blocks of bits at once, using vectorized shifts where available. It is commonly used as a validity (null) mask for columnar data. Instances own native memory and must be disposed;  releases the buffer and returns the instance to  for reuse.">
+      <meta name="description" content="A growable list of bits packed into 32-bit words and backed by unmanaged memory allocated from an . It supports the usual list operations (add, get, set, insert and remove) as well as range and batch variants that shift large blocks of bits at once, using vectorized shifts where available. It is commonly used as a validity (null) mask for columnar data. Mutable struct, keep it in one field and never copy it.">
       <link rel="icon" href="../images/favicon.ico">
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
@@ -89,7 +89,7 @@
 
 
   <h1 id="FlowtideDotNet_Storage_DataStructures_BitmapList" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList" class="text-break">
-Class BitmapList  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L34"><i class="bi bi-code-slash"></i></a>
+Struct BitmapList  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L33"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -101,61 +101,40 @@ Class BitmapList  <a class="header-action link-secondary" title="View source" hr
 <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a>. It supports the usual list operations (add, get, set, insert and remove)
 as well as range and batch variants that shift large blocks of bits at once, using vectorized shifts where
 available. It is commonly used as a validity (null) mask for columnar data.
-Instances own native memory and must be disposed; <a class="xref" href="FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Dispose">Dispose()</a> releases the buffer and returns the
-instance to <span class="xref">FlowtideDotNet.Storage.DataStructures.BitmapListFactory</span> for reuse.</p>
+Mutable struct, keep it in one field and never copy it.</p>
 </div>
   <div class="markdown conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public class BitmapList : IReadOnlyList&lt;bool&gt;, IReadOnlyCollection&lt;bool&gt;, IEnumerable&lt;bool&gt;, IEnumerable, IDisposable</code></pre>
+    <pre><code class="lang-csharp hljs">public struct BitmapList</code></pre>
   </div>
 
 
 
 
-  <dl class="typelist inheritance">
-    <dt>Inheritance</dt>
-    <dd>
-      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
-      <div><span class="xref">BitmapList</span></div>
-    </dd>
-  </dl>
 
-  <dl class="typelist implements">
-    <dt>Implements</dt>
-    <dd>
-      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</div>
-      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlycollection-1">IReadOnlyCollection</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</div>
-      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</div>
-      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.ienumerable">IEnumerable</a></div>
-      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
-    </dd>
-  </dl>
 
 
   <dl class="typelist inheritedMembers">
     <dt>Inherited Members</dt>
     <dd>
     <div>
-      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.equals">ValueType.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.gethashcode">ValueType.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.tostring">ValueType.ToString()</a>
     </div>
     <div>
       <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
     </div>
     <div>
-      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
-    </div>
-    <div>
       <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
     </div>
     <div>
-      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
-    </div>
-    <div>
       <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
-    </div>
-    <div>
-      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
     </div>
   </dd></dl>
 
@@ -170,106 +149,9 @@ instance to <span class="xref">FlowtideDotNet.Storage.DataStructures.BitmapListF
 
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList__ctor" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor">
-  BitmapList()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L146"><i class="bi bi-code-slash"></i></a>
-  </h3>
-
-  <div class="markdown level1 summary"><p>Creates an unassigned instance. <a class="xref" href="FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Assign_FlowtideDotNet_Storage_Memory_IMemoryAllocator_">Assign(IMemoryAllocator)</a> must be called before use.
-Used together with pooling so an instance can be reused.</p>
-</div>
-  <div class="markdown level1 conceptual"></div>
-
-  <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public BitmapList()</code></pre>
-  </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-  <a id="FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor*"></a>
-
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
-  BitmapList(IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L186"><i class="bi bi-code-slash"></i></a>
-  </h3>
-
-  <div class="markdown level1 summary"><p>Creates an empty list that allocates backing memory from the given allocator on demand.</p>
-</div>
-  <div class="markdown level1 conceptual"></div>
-
-  <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public BitmapList(IMemoryAllocator memoryAllocator)</code></pre>
-  </div>
-
-  <h4 class="section">Parameters</h4>
-  <dl class="parameters">
-    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
-    <dd><p>The allocator used for backing memory.</p>
-</dd>
-  </dl>
-
-
-
-
-
-
-
-
-
-
-
-
-  <a id="FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor*"></a>
-
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator,System.Int32)">
-  BitmapList(IMemoryAllocator, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L197"><i class="bi bi-code-slash"></i></a>
-  </h3>
-
-  <div class="markdown level1 summary"><p>Creates an empty list with backing memory pre-allocated for at least <code class="paramref">initialCapacity</code> bits.</p>
-</div>
-  <div class="markdown level1 conceptual"></div>
-
-  <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public BitmapList(IMemoryAllocator memoryAllocator, int initialCapacity)</code></pre>
-  </div>
-
-  <h4 class="section">Parameters</h4>
-  <dl class="parameters">
-    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
-    <dd><p>The allocator used for backing memory.</p>
-</dd>
-    <dt><code>initialCapacity</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
-    <dd><p>The number of bits to reserve capacity for up front.</p>
-</dd>
-  </dl>
-
-
-
-
-
-
-
-
-
-
-
-
-  <a id="FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor*"></a>
-
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
-  BitmapList(IMemoryOwner&lt;byte&gt;, int, IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L209"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32)">
+  BitmapList(FlowtideMemory, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L171"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Creates a list that wraps already populated memory, taking ownership of it.</p>
@@ -277,24 +159,92 @@ Used together with pooling so an instance can be reused.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public BitmapList(IMemoryOwner&lt;byte&gt; memoryOwner, int length, IMemoryAllocator memoryAllocator)</code></pre>
+    <pre><code class="lang-csharp hljs">public BitmapList(FlowtideMemory memory, int length)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>memoryOwner</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.imemoryowner-1">IMemoryOwner</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dt><code>memory</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.FlowtideMemory.html">FlowtideMemory</a></dt>
     <dd><p>The memory holding the packed bits.</p>
 </dd>
     <dt><code>length</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
-    <dd><p>The number of valid bits in <code class="paramref">memoryOwner</code>.</p>
-</dd>
-    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
-    <dd><p>The allocator used for any later growth.</p>
+    <dd><p>The number of valid bits in <code class="paramref">memory</code>.</p>
 </dd>
   </dl>
 
 
 
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  BitmapList(int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L161"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates an empty list with backing memory pre-allocated for at least <code class="paramref">initialCapacity</code> bits.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public BitmapList(int initialCapacity, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>initialCapacity</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of bits to reserve capacity for up front.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The allocator used for backing memory.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="fields">Fields
+</h2>
+
+
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_None" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.None">
+  None
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L116"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Passed by callers with no validity information.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static readonly BitmapList None</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.DataStructures.BitmapList.html">BitmapList</a></dt>
+    <dd></dd>
+  </dl>
 
 
 
@@ -312,7 +262,7 @@ Used together with pooling so an instance can be reused.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Count" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Count">
   Count
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L140"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L154"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The number of bits in the list.</p>
@@ -320,7 +270,7 @@ Used together with pooling so an instance can be reused.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public int Count { get; }</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly int Count { get; }</code></pre>
   </div>
 
 
@@ -340,11 +290,43 @@ Used together with pooling so an instance can be reused.</p>
 
 
 
+  <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_IsNull_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.IsNull*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_IsNull" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.IsNull">
+  IsNull
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L121"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>True when no memory is attached.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly bool IsNull { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_Item_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Item*"></a>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Item_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Item(System.Int32)">
   this[int]
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L224"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L183"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets the bit at the given index.</p>
@@ -352,7 +334,7 @@ Used together with pooling so an instance can be reused.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public bool this[int index] { get; }</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly bool this[int index] { get; }</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -382,15 +364,15 @@ Used together with pooling so an instance can be reused.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Memory" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Memory">
   Memory
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L120"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L129"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>The full backing memory buffer, including any capacity beyond the current bits, or empty when nothing is allocated.</p>
+  <div class="markdown level1 summary"><p>The full backing buffer, empty when nothing is allocated.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public Memory&lt;byte&gt; Memory { get; }</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly Memory&lt;byte&gt; Memory { get; }</code></pre>
   </div>
 
 
@@ -414,16 +396,15 @@ Used together with pooling so an instance can be reused.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_MemorySlice" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.MemorySlice">
   MemorySlice
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L126"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L134"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>The portion of the backing memory that actually holds the current bits, rounded up to whole words.
-Use this when serializing or copying the bitmap.</p>
+  <div class="markdown level1 summary"><p>The current bits for consumers that need Memory.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public Memory&lt;byte&gt; MemorySlice { get; }</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly Memory&lt;byte&gt; MemorySlice { get; }</code></pre>
   </div>
 
 
@@ -443,15 +424,47 @@ Use this when serializing or copying the bitmap.</p>
 
 
 
+  <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_SlicedSpan_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.SlicedSpan*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_SlicedSpan" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.SlicedSpan">
+  SlicedSpan
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L139"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The current bits, without a Memory view.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly Span&lt;byte&gt; SlicedSpan { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <h2 class="section" id="methods">Methods
 </h2>
 
 
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_Add_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Add*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Add_System_Boolean_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Add(System.Boolean)">
-  Add(bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L259"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Add_System_Boolean_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Add(System.Boolean,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  Add(bool, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L206"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Appends a bit to the end of the list, growing it by one.</p>
@@ -459,7 +472,7 @@ Use this when serializing or copying the bitmap.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void Add(bool value)</code></pre>
+    <pre><code class="lang-csharp hljs">public void Add(bool value, IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -467,79 +480,8 @@ Use this when serializing or copying the bitmap.</p>
     <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
     <dd><p>The bit value to append.</p>
 </dd>
-  </dl>
-
-
-
-
-
-
-
-
-
-
-
-
-  <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_Assign_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Assign*"></a>
-
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Assign_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Assign(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
-  Assign(IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L155"><i class="bi bi-code-slash"></i></a>
-  </h3>
-
-  <div class="markdown level1 summary"><p>Resets the list to empty and assigns the allocator it should use, without allocating any memory yet.</p>
-</div>
-  <div class="markdown level1 conceptual"></div>
-
-  <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void Assign(IMemoryAllocator memoryAllocator)</code></pre>
-  </div>
-
-  <h4 class="section">Parameters</h4>
-  <dl class="parameters">
     <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
-    <dd><p>The allocator used for backing memory.</p>
-</dd>
-  </dl>
-
-
-
-
-
-
-
-
-
-
-
-
-  <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_Assign_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Assign*"></a>
-
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Assign_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Assign(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
-  Assign(IMemoryOwner&lt;byte&gt;, int, IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L172"><i class="bi bi-code-slash"></i></a>
-  </h3>
-
-  <div class="markdown level1 summary"><p>Resets the list to wrap already populated memory, taking ownership of it.
-Used together with pooling so an instance can be reused.</p>
-</div>
-  <div class="markdown level1 conceptual"></div>
-
-  <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void Assign(IMemoryOwner&lt;byte&gt; memory, int length, IMemoryAllocator memoryAllocator)</code></pre>
-  </div>
-
-  <h4 class="section">Parameters</h4>
-  <dl class="parameters">
-    <dt><code>memory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.imemoryowner-1">IMemoryOwner</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
-    <dd><p>The memory holding the packed bits.</p>
-</dd>
-    <dt><code>length</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
-    <dd><p>The number of valid bits in <code class="paramref">memory</code>.</p>
-</dd>
-    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
-    <dd><p>The allocator used for any later growth.</p>
-</dd>
+    <dd></dd>
   </dl>
 
 
@@ -557,7 +499,7 @@ Used together with pooling so an instance can be reused.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Clear" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Clear">
   Clear()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1504"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1408"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Resets the count to zero, keeping the backing memory for reuse.</p>
@@ -584,7 +526,7 @@ Used together with pooling so an instance can be reused.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Copy_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
   Copy(IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1542"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1446"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Creates a deep copy of the list, allocating new backing memory from the given allocator.</p>
@@ -592,7 +534,7 @@ Used together with pooling so an instance can be reused.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public BitmapList Copy(IMemoryAllocator memoryAllocator)</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly BitmapList Copy(IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -623,7 +565,7 @@ Used together with pooling so an instance can be reused.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_CountFalseInRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.CountFalseInRange(System.Int32,System.Int32)">
   CountFalseInRange(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L358"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L305"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Counts how many bits are set to false in the range starting at <code class="paramref">index</code>.</p>
@@ -631,7 +573,7 @@ Used together with pooling so an instance can be reused.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public int CountFalseInRange(int index, int count)</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly int CountFalseInRange(int index, int count)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -665,7 +607,7 @@ Used together with pooling so an instance can be reused.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_CountTrueInRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.CountTrueInRange(System.Int32,System.Int32)">
   CountTrueInRange(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L316"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L263"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Counts how many bits are set to true in the range starting at <code class="paramref">index</code>.</p>
@@ -673,7 +615,7 @@ Used together with pooling so an instance can be reused.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public int CountTrueInRange(int index, int count)</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly int CountTrueInRange(int index, int count)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -707,7 +649,7 @@ Used together with pooling so an instance can be reused.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_DeleteBatch_System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.DeleteBatch(System.ReadOnlySpan{System.Int32})">
   DeleteBatch(ReadOnlySpan&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1204"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1151"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Batch delete bits at the specified sorted indices.
@@ -740,76 +682,23 @@ contiguous blocks of retained bits in a single left-to-right sweep.</p>
 
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_Dispose_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Dispose" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose">
-  Dispose()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1494"><i class="bi bi-code-slash"></i></a>
-  </h3>
-
-  <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
-</div>
-  <div class="markdown level1 conceptual"></div>
-
-  <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
-  </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-  <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_Dispose_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose*"></a>
-
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Dispose_System_Boolean_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose(System.Boolean)">
-  Dispose(bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1469"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Dispose_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  Dispose(IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1396"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">protected virtual void Dispose(bool disposing)</code></pre>
+    <pre><code class="lang-csharp hljs">public void Dispose(IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>disposing</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
     <dd></dd>
   </dl>
-
-
-
-
-
-
-
-
-
-
-
-
-  <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_Finalize_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Finalize*"></a>
-
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Finalize" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Finalize">
-  ~BitmapList()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1488"><i class="bi bi-code-slash"></i></a>
-  </h3>
-
-  <div class="markdown level1 summary"></div>
-  <div class="markdown level1 conceptual"></div>
-
-  <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">protected ~BitmapList()</code></pre>
-  </div>
-
 
 
 
@@ -826,7 +715,7 @@ contiguous blocks of retained bits in a single left-to-right sweep.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_FindNextFalseIndex_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.FindNextFalseIndex(System.Int32)">
   FindNextFalseIndex(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L797"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L744"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Finds the index of the next false bit at or after <code class="paramref">start</code>.</p>
@@ -834,7 +723,7 @@ contiguous blocks of retained bits in a single left-to-right sweep.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public int FindNextFalseIndex(int start)</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly int FindNextFalseIndex(int start)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -865,7 +754,7 @@ contiguous blocks of retained bits in a single left-to-right sweep.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_FindNextTrueIndex_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.FindNextTrueIndex(System.Int32)">
   FindNextTrueIndex(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L864"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L811"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Finds the index of the next true bit at or after <code class="paramref">start</code>.</p>
@@ -873,7 +762,7 @@ contiguous blocks of retained bits in a single left-to-right sweep.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public int FindNextTrueIndex(int start)</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly int FindNextTrueIndex(int start)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -904,7 +793,7 @@ contiguous blocks of retained bits in a single left-to-right sweep.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Get_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Get(System.Int32)">
   Get(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L299"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L246"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets the bit at the given index, returning false when the index is outside the allocated range.</p>
@@ -912,7 +801,7 @@ contiguous blocks of retained bits in a single left-to-right sweep.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public bool Get(int index)</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly bool Get(int index)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -942,7 +831,7 @@ contiguous blocks of retained bits in a single left-to-right sweep.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_GetByteSize_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.GetByteSize(System.Int32,System.Int32)">
   GetByteSize(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1515"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1419"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Returns the number of bytes needed to store the bits in the range as packed words.</p>
@@ -950,7 +839,7 @@ contiguous blocks of retained bits in a single left-to-right sweep.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public int GetByteSize(int start, int end)</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly int GetByteSize(int start, int end)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -980,43 +869,11 @@ contiguous blocks of retained bits in a single left-to-right sweep.</p>
 
 
 
-  <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_GetEnumerator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.GetEnumerator*"></a>
-
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_GetEnumerator" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.GetEnumerator">
-  GetEnumerator()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1459"><i class="bi bi-code-slash"></i></a>
-  </h3>
-
-  <div class="markdown level1 summary"><p>Enumerates the bits in order from index 0 to <a class="xref" href="FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Count">Count</a>.</p>
-</div>
-  <div class="markdown level1 conceptual"></div>
-
-  <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public IEnumerator&lt;bool&gt; GetEnumerator()</code></pre>
-  </div>
-
-
-  <h4 class="section">Returns</h4>
-  <dl class="parameters">
-    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1">IEnumerator</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
-    <dd></dd>
-  </dl>
-
-
-
-
-
-
-
-
-
-
-
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_GetPrefixSumByteSizes_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.GetPrefixSumByteSizes*"></a>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_GetPrefixSumByteSizes_System_ReadOnlySpan_System_Int32__System_Span_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.GetPrefixSumByteSizes(System.ReadOnlySpan{System.Int32},System.Span{System.Int32})">
   GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt;, Span&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1526"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1430"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Adds this bitmap's per-index byte size contribution to the running totals in <code class="paramref">sizes</code>.
@@ -1025,7 +882,7 @@ Used together with the other containers to build prefix-sum sizes when computing
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt; indices, Span&lt;int&gt; sizes)</code></pre>
+    <pre><code class="lang-csharp hljs">public readonly void GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt; indices, Span&lt;int&gt; sizes)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -1051,9 +908,9 @@ Used together with the other containers to build prefix-sum sizes when computing
 
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertAt_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertAt_System_Int32_System_Boolean_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt(System.Int32,System.Boolean)">
-  InsertAt(int, bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L386"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertAt_System_Int32_System_Boolean_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt(System.Int32,System.Boolean,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  InsertAt(int, bool, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L333"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Inserts a bit at the given index, shifting every bit at or after that index up by one.</p>
@@ -1061,7 +918,7 @@ Used together with the other containers to build prefix-sum sizes when computing
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void InsertAt(int index, bool value)</code></pre>
+    <pre><code class="lang-csharp hljs">public void InsertAt(int index, bool value, IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -1072,6 +929,8 @@ Used together with the other containers to build prefix-sum sizes when computing
     <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
     <dd><p>The bit value to insert.</p>
 </dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
   </dl>
 
 
@@ -1087,9 +946,9 @@ Used together with the other containers to build prefix-sum sizes when computing
 
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertConstantFrom_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertConstantFrom_System_Boolean_System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom(System.Boolean,System.ReadOnlySpan{System.Int32})">
-  InsertConstantFrom(bool, ReadOnlySpan&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1104"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertConstantFrom_System_Boolean_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom(System.Boolean,System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  InsertConstantFrom(bool, ReadOnlySpan&lt;int&gt;, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1051"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Inserts a constant bit value at scattered insert positions.
@@ -1099,7 +958,7 @@ instead of reading from another BitmapList.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void InsertConstantFrom(bool value, ReadOnlySpan&lt;int&gt; insertPositions)</code></pre>
+    <pre><code class="lang-csharp hljs">public void InsertConstantFrom(bool value, ReadOnlySpan&lt;int&gt; insertPositions, IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -1110,6 +969,8 @@ instead of reading from another BitmapList.</p>
     <dt><code>insertPositions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
     <dd><p>Sorted insert positions (ascending, in pre-insert coordinate space).</p>
 </dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
   </dl>
 
 
@@ -1125,9 +986,9 @@ instead of reading from another BitmapList.</p>
 
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFalseInRange_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFalseInRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange(System.Int32,System.Int32)">
-  InsertFalseInRange(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L698"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFalseInRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  InsertFalseInRange(int, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L645"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Inserts <code class="paramref">count</code> false bits at the given index, shifting existing bits up to make room.</p>
@@ -1135,7 +996,7 @@ instead of reading from another BitmapList.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void InsertFalseInRange(int index, int count)</code></pre>
+    <pre><code class="lang-csharp hljs">public void InsertFalseInRange(int index, int count, IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -1146,6 +1007,8 @@ instead of reading from another BitmapList.</p>
     <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
     <dd><p>The number of false bits to insert.</p>
 </dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
   </dl>
 
 
@@ -1161,18 +1024,18 @@ instead of reading from another BitmapList.</p>
 
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFrom_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFrom_FlowtideDotNet_Storage_DataStructures_BitmapList__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom(FlowtideDotNet.Storage.DataStructures.BitmapList@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)">
-  InsertFrom(ref readonly BitmapList, ref readonly ReadOnlySpan&lt;int&gt;, ref readonly ReadOnlySpan&lt;int&gt;, in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L1040"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFrom_FlowtideDotNet_Storage_DataStructures_BitmapList__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom(FlowtideDotNet.Storage.DataStructures.BitmapList@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  InsertFrom(ref readonly BitmapList, ref readonly ReadOnlySpan&lt;int&gt;, ref readonly ReadOnlySpan&lt;int&gt;, in int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L987"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Inserts bits read from another list at scattered positions in a single backward sweep, which is more
-efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertAt_System_Int32_System_Boolean_">InsertAt(int, bool)</a> repeatedly.</p>
+efficient than calling InsertAt(int, bool) repeatedly.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void InsertFrom(ref readonly BitmapList other, ref readonly ReadOnlySpan&lt;int&gt; sortedLookup, ref readonly ReadOnlySpan&lt;int&gt; insertPositions, in int lookupNullIndex)</code></pre>
+    <pre><code class="lang-csharp hljs">public void InsertFrom(ref readonly BitmapList other, ref readonly ReadOnlySpan&lt;int&gt; sortedLookup, ref readonly ReadOnlySpan&lt;int&gt; insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -1189,6 +1052,8 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
     <dt><code>lookupNullIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
     <dd><p>A sentinel value in <code class="paramref">sortedLookup</code> that inserts a false bit instead of reading from <code class="paramref">other</code>.</p>
 </dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
   </dl>
 
 
@@ -1204,9 +1069,9 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
 
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertRangeFrom_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertRangeFrom_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom(System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList,System.Int32,System.Int32)">
-  InsertRangeFrom(int, BitmapList, int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L437"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertRangeFrom_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom(System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  InsertRangeFrom(int, in BitmapList, int, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L384"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Inserts a run of bits copied from another list, shifting existing bits up to make room.</p>
@@ -1214,7 +1079,7 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void InsertRangeFrom(int index, BitmapList other, int start, int count)</code></pre>
+    <pre><code class="lang-csharp hljs">public void InsertRangeFrom(int index, in BitmapList other, int start, int count, IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -1231,6 +1096,8 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
     <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
     <dd><p>The number of bits to copy.</p>
 </dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
   </dl>
 
 
@@ -1246,9 +1113,9 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
 
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertTrueInRange_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertTrueInRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange(System.Int32,System.Int32)">
-  InsertTrueInRange(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L599"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_InsertTrueInRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  InsertTrueInRange(int, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L546"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Inserts <code class="paramref">count</code> true bits at the given index, shifting existing bits up to make room.</p>
@@ -1256,7 +1123,7 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void InsertTrueInRange(int index, int count)</code></pre>
+    <pre><code class="lang-csharp hljs">public void InsertTrueInRange(int index, int count, IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -1267,6 +1134,8 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
     <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
     <dd><p>The number of true bits to insert.</p>
 </dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
   </dl>
 
 
@@ -1284,7 +1153,7 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_RemoveAt_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.RemoveAt(System.Int32)">
   RemoveAt(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L952"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L899"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Removes the bit at this index and shifts all bits above it down.</p>
@@ -1317,7 +1186,7 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_RemoveRange_System_Int32__System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.RemoveRange(System.Int32@,System.Int32@)">
   RemoveRange(in int, in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L982"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L929"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Removes a run of bits starting at the given index and shifts all bits above the range down.</p>
@@ -1351,9 +1220,9 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
 
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_Set_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Set*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Set_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Set(System.Int32)">
-  Set(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L281"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Set_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Set(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  Set(int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L228"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Sets the bit at the given index to true. If the index is beyond the current count the list grows to include it.</p>
@@ -1361,7 +1230,7 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void Set(int index)</code></pre>
+    <pre><code class="lang-csharp hljs">public void Set(int index, IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -1369,6 +1238,8 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
     <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
     <dd><p>The zero based bit index to set.</p>
 </dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
   </dl>
 
 
@@ -1384,9 +1255,9 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
 
   <a id="FlowtideDotNet_Storage_DataStructures_BitmapList_Unset_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Unset*"></a>
 
-  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Unset_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Unset(System.Int32)">
-  Unset(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L367"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Storage_DataStructures_BitmapList_Unset_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.BitmapList.Unset(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  Unset(int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L314"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Sets the bit at the given index to false. If the index is beyond the current count the list grows to include it.</p>
@@ -1394,7 +1265,7 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void Unset(int index)</code></pre>
+    <pre><code class="lang-csharp hljs">public void Unset(int index, IMemoryAllocator memoryAllocator)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -1402,6 +1273,8 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
     <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
     <dd><p>The zero based bit index to clear.</p>
 </dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
   </dl>
 
 
@@ -1419,7 +1292,7 @@ efficient than calling <a class="xref" href="FlowtideDotNet.Storage.DataStructur
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L34" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/BitmapList.cs/#L33" class="edit-link">Edit this page</a>
         </div>
 
 

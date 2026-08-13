@@ -15329,6 +15329,15 @@ references:
   commentId: T:FlowtideDotNet.Core.ColumnStore.BinaryColumn
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn
   nameWithType: BinaryColumn
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.FlowtideMemory,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: BinaryColumn(FlowtideMemory, int, FlowtideMemory, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_FlowtideDotNet_Storage_Memory_FlowtideMemory_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.FlowtideMemory,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: New(FlowtideMemory, Integer, FlowtideMemory, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.BinaryColumn(FlowtideDotNet.Storage.Memory.FlowtideMemory, int, FlowtideDotNet.Storage.Memory.FlowtideMemory, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.New(FlowtideDotNet.Storage.Memory.FlowtideMemory, Integer, FlowtideDotNet.Storage.Memory.FlowtideMemory, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.BinaryColumn(FlowtideMemory, int, FlowtideMemory, IMemoryAllocator)
+  nameWithType.vb: BinaryColumn.New(FlowtideMemory, Integer, FlowtideMemory, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: BinaryColumn(IMemoryAllocator)
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
@@ -15347,15 +15356,6 @@ references:
   fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.New(FlowtideDotNet.Storage.Memory.IMemoryAllocator, FlowtideDotNet.Core.ColumnStore.ColumnSizeInfo)
   nameWithType: BinaryColumn.BinaryColumn(IMemoryAllocator, ColumnSizeInfo)
   nameWithType.vb: BinaryColumn.New(IMemoryAllocator, ColumnSizeInfo)
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,System.Buffers.IMemoryOwner{System.Byte},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name: BinaryColumn(IMemoryOwner<byte>, int, IMemoryOwner<byte>?, IMemoryAllocator)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn__ctor_System_Buffers_IMemoryOwner_System_Byte__System_Int32_System_Buffers_IMemoryOwner_System_Byte__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,System.Buffers.IMemoryOwner{System.Byte},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name.vb: New(IMemoryOwner(Of Byte), Integer, IMemoryOwner(Of Byte), IMemoryAllocator)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.BinaryColumn(System.Buffers.IMemoryOwner<byte>, int, System.Buffers.IMemoryOwner<byte>?, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.New(System.Buffers.IMemoryOwner(Of Byte), Integer, System.Buffers.IMemoryOwner(Of Byte), FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  nameWithType: BinaryColumn.BinaryColumn(IMemoryOwner<byte>, int, IMemoryOwner<byte>?, IMemoryAllocator)
-  nameWithType.vb: BinaryColumn.New(IMemoryOwner(Of Byte), Integer, IMemoryOwner(Of Byte), IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor*
   name: BinaryColumn
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn__ctor_
@@ -15444,13 +15444,13 @@ references:
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.CompareTo
   nameWithType: BinaryColumn.CompareTo
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name: CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList?)
+  name: CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList)
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_CompareTo__1_System_Int32____0__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__FlowtideDotNet_Storage_DataStructures_BitmapList__
   commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)
   name.vb: CompareTo(Of T)(Integer, T, ReferenceSegment, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.CompareTo<T>(in int, in T, in FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, in FlowtideDotNet.Storage.DataStructures.BitmapList?)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.CompareTo<T>(in int, in T, in FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, in FlowtideDotNet.Storage.DataStructures.BitmapList)
   fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.CompareTo(Of T)(Integer, T, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: BinaryColumn.CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList?)
+  nameWithType: BinaryColumn.CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList)
   nameWithType.vb: BinaryColumn.CompareTo(Of T)(Integer, T, ReferenceSegment, BitmapList)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: Copy(IMemoryAllocator)
@@ -15529,6 +15529,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.EndNewList
   nameWithType: BinaryColumn.EndNewList
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Finalize
+  name: ~BinaryColumn()
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Finalize
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Finalize
+  name.vb: ''
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.~BinaryColumn()
+  fullName.vb: ''
+  nameWithType: BinaryColumn.~BinaryColumn()
+  nameWithType.vb: ''
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Finalize*
+  name: ~BinaryColumn
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Finalize_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Finalize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.~BinaryColumn
+  nameWithType: BinaryColumn.~BinaryColumn
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetByteSize
   name: GetByteSize()
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetByteSize
@@ -15606,6 +15622,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetSerializationEstimate
   nameWithType: BinaryColumn.GetSerializationEstimate
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetSpan
+  name: GetSpan()
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetSpan
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetSpan
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetSpan()
+  nameWithType: BinaryColumn.GetSpan()
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetSpan*
+  name: GetSpan
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetSpan_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetSpan
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetSpan
+  nameWithType: BinaryColumn.GetSpan
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetTypeAt(System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)
   name: GetTypeAt(in int, in ReferenceSegment?)
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetTypeAt_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__
@@ -15695,14 +15724,14 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange
   nameWithType: BinaryColumn.InsertNullRange
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)
-  name: InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
+  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
   name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, FlowtideDotNet.Storage.DataStructures.BitmapList?)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList)
   fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: BinaryColumn.InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
+  nameWithType: BinaryColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
   nameWithType.vb: BinaryColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom*
   name: InsertRangeFrom
@@ -15711,6 +15740,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom
   nameWithType: BinaryColumn.InsertRangeFrom
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Pin(System.Int32)
+  name: Pin(int)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Pin_System_Int32_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Pin(System.Int32)
+  name.vb: Pin(Integer)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Pin(int)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Pin(Integer)
+  nameWithType: BinaryColumn.Pin(int)
+  nameWithType.vb: BinaryColumn.Pin(Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Pin*
+  name: Pin
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Pin_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Pin
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Pin
+  nameWithType: BinaryColumn.Pin
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt(System.Int32@)
   name: RemoveAt(in int)
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_RemoveAt_System_Int32__
@@ -15801,6 +15846,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Type
   nameWithType: BinaryColumn.Type
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Unpin
+  name: Unpin()
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Unpin
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Unpin
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Unpin()
+  nameWithType: BinaryColumn.Unpin()
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Unpin*
+  name: Unpin
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Unpin_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Unpin
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Unpin
+  nameWithType: BinaryColumn.Unpin
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update*
   name: Update
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Update_
@@ -20772,13 +20830,13 @@ references:
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.CompareTo
   nameWithType: IDataColumn.CompareTo
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name: CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList?)
+  name: CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList)
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_CompareTo__1_System_Int32____0__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__FlowtideDotNet_Storage_DataStructures_BitmapList__
   commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)
   name.vb: CompareTo(Of T)(Integer, T, ReferenceSegment, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.CompareTo<T>(in int, in T, in FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, in FlowtideDotNet.Storage.DataStructures.BitmapList?)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.CompareTo<T>(in int, in T, in FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, in FlowtideDotNet.Storage.DataStructures.BitmapList)
   fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.CompareTo(Of T)(Integer, T, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: IDataColumn.CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList?)
+  nameWithType: IDataColumn.CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList)
   nameWithType.vb: IDataColumn.CompareTo(Of T)(Integer, T, ReferenceSegment, BitmapList)
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: Copy(IMemoryAllocator)
@@ -21014,14 +21072,14 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertNullRange
   nameWithType: IDataColumn.InsertNullRange
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)
-  name: InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
+  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
   name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, FlowtideDotNet.Storage.DataStructures.BitmapList?)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList)
   fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: IDataColumn.InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
+  nameWithType: IDataColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
   nameWithType.vb: IDataColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom*
   name: InsertRangeFrom
@@ -22044,15 +22102,15 @@ references:
   commentId: T:FlowtideDotNet.Core.ColumnStore.ListColumn
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn
   nameWithType: ListColumn
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.#ctor(FlowtideDotNet.Core.ColumnStore.Column,System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name: ListColumn(Column, IMemoryOwner<byte>, int, IMemoryAllocator)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn__ctor_FlowtideDotNet_Core_ColumnStore_Column_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.#ctor(FlowtideDotNet.Core.ColumnStore.Column,System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name.vb: New(Column, IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.ListColumn(FlowtideDotNet.Core.ColumnStore.Column, System.Buffers.IMemoryOwner<byte>, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.New(FlowtideDotNet.Core.ColumnStore.Column, System.Buffers.IMemoryOwner(Of Byte), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  nameWithType: ListColumn.ListColumn(Column, IMemoryOwner<byte>, int, IMemoryAllocator)
-  nameWithType.vb: ListColumn.New(Column, IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.#ctor(FlowtideDotNet.Core.ColumnStore.Column,FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: ListColumn(Column, FlowtideMemory, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn__ctor_FlowtideDotNet_Core_ColumnStore_Column_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.#ctor(FlowtideDotNet.Core.ColumnStore.Column,FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: New(Column, FlowtideMemory, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.ListColumn(FlowtideDotNet.Core.ColumnStore.Column, FlowtideDotNet.Storage.Memory.FlowtideMemory, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.New(FlowtideDotNet.Core.ColumnStore.Column, FlowtideDotNet.Storage.Memory.FlowtideMemory, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.ListColumn(Column, FlowtideMemory, int, IMemoryAllocator)
+  nameWithType.vb: ListColumn.New(Column, FlowtideMemory, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: ListColumn(IMemoryAllocator)
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
@@ -22184,13 +22242,13 @@ references:
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.CompareTo
   nameWithType: ListColumn.CompareTo
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name: CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList?)
+  name: CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList)
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_CompareTo__1_System_Int32____0__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__FlowtideDotNet_Storage_DataStructures_BitmapList__
   commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)
   name.vb: CompareTo(Of T)(Integer, T, ReferenceSegment, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.CompareTo<T>(in int, in T, in FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, in FlowtideDotNet.Storage.DataStructures.BitmapList?)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.CompareTo<T>(in int, in T, in FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, in FlowtideDotNet.Storage.DataStructures.BitmapList)
   fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.CompareTo(Of T)(Integer, T, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: ListColumn.CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList?)
+  nameWithType: ListColumn.CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList)
   nameWithType.vb: ListColumn.CompareTo(Of T)(Integer, T, ReferenceSegment, BitmapList)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: Copy(IMemoryAllocator)
@@ -22269,6 +22327,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.EndNewList
   nameWithType: ListColumn.EndNewList
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Finalize
+  name: ~ListColumn()
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Finalize
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Finalize
+  name.vb: ''
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.~ListColumn()
+  fullName.vb: ''
+  nameWithType: ListColumn.~ListColumn()
+  nameWithType.vb: ''
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Finalize*
+  name: ~ListColumn
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Finalize_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.ListColumn.Finalize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.~ListColumn
+  nameWithType: ListColumn.~ListColumn
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.GetByteSize
   name: GetByteSize()
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_GetByteSize
@@ -22489,14 +22563,14 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange
   nameWithType: ListColumn.InsertNullRange
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)
-  name: InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
+  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
   name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, FlowtideDotNet.Storage.DataStructures.BitmapList?)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList)
   fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: ListColumn.InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
+  nameWithType: ListColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
   nameWithType.vb: ListColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom*
   name: InsertRangeFrom
@@ -22771,13 +22845,13 @@ references:
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.CompareTo
   nameWithType: MapColumn.CompareTo
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name: CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList?)
+  name: CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList)
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_CompareTo__1_System_Int32____0__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__FlowtideDotNet_Storage_DataStructures_BitmapList__
   commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)
   name.vb: CompareTo(Of T)(Integer, T, ReferenceSegment, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.CompareTo<T>(in int, in T, in FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, in FlowtideDotNet.Storage.DataStructures.BitmapList?)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.CompareTo<T>(in int, in T, in FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, in FlowtideDotNet.Storage.DataStructures.BitmapList)
   fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.CompareTo(Of T)(Integer, T, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: MapColumn.CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList?)
+  nameWithType: MapColumn.CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList)
   nameWithType.vb: MapColumn.CompareTo(Of T)(Integer, T, ReferenceSegment, BitmapList)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: Copy(IMemoryAllocator)
@@ -22856,6 +22930,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.EndNewList
   nameWithType: MapColumn.EndNewList
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Finalize
+  name: ~MapColumn()
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Finalize
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.Finalize
+  name.vb: ''
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.~MapColumn()
+  fullName.vb: ''
+  nameWithType: MapColumn.~MapColumn()
+  nameWithType.vb: ''
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Finalize*
+  name: ~MapColumn
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Finalize_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.MapColumn.Finalize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.~MapColumn
+  nameWithType: MapColumn.~MapColumn
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.GetByteSize
   name: GetByteSize()
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_GetByteSize
@@ -23104,14 +23194,14 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertNullRange
   nameWithType: MapColumn.InsertNullRange
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)
-  name: InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
+  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
   name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, FlowtideDotNet.Storage.DataStructures.BitmapList?)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList)
   fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: MapColumn.InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
+  nameWithType: MapColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
   nameWithType.vb: MapColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom*
   name: InsertRangeFrom
@@ -25747,6 +25837,15 @@ references:
   commentId: T:FlowtideDotNet.Core.ColumnStore.StringColumn
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn
   nameWithType: StringColumn
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.FlowtideMemory,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: StringColumn(FlowtideMemory, int, FlowtideMemory, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_FlowtideDotNet_Storage_Memory_FlowtideMemory_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.FlowtideMemory,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: New(FlowtideMemory, Integer, FlowtideMemory, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.StringColumn(FlowtideDotNet.Storage.Memory.FlowtideMemory, int, FlowtideDotNet.Storage.Memory.FlowtideMemory, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.New(FlowtideDotNet.Storage.Memory.FlowtideMemory, Integer, FlowtideDotNet.Storage.Memory.FlowtideMemory, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.StringColumn(FlowtideMemory, int, FlowtideMemory, IMemoryAllocator)
+  nameWithType.vb: StringColumn.New(FlowtideMemory, Integer, FlowtideMemory, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: StringColumn(IMemoryAllocator)
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
@@ -25765,15 +25864,6 @@ references:
   fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.New(FlowtideDotNet.Storage.Memory.IMemoryAllocator, FlowtideDotNet.Core.ColumnStore.ColumnSizeInfo)
   nameWithType: StringColumn.StringColumn(IMemoryAllocator, ColumnSizeInfo)
   nameWithType.vb: StringColumn.New(IMemoryAllocator, ColumnSizeInfo)
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,System.Buffers.IMemoryOwner{System.Byte},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name: StringColumn(IMemoryOwner<byte>, int, IMemoryOwner<byte>?, IMemoryAllocator)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn__ctor_System_Buffers_IMemoryOwner_System_Byte__System_Int32_System_Buffers_IMemoryOwner_System_Byte__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,System.Buffers.IMemoryOwner{System.Byte},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name.vb: New(IMemoryOwner(Of Byte), Integer, IMemoryOwner(Of Byte), IMemoryAllocator)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.StringColumn(System.Buffers.IMemoryOwner<byte>, int, System.Buffers.IMemoryOwner<byte>?, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.New(System.Buffers.IMemoryOwner(Of Byte), Integer, System.Buffers.IMemoryOwner(Of Byte), FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  nameWithType: StringColumn.StringColumn(IMemoryOwner<byte>, int, IMemoryOwner<byte>?, IMemoryAllocator)
-  nameWithType.vb: StringColumn.New(IMemoryOwner(Of Byte), Integer, IMemoryOwner(Of Byte), IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.#ctor*
   name: StringColumn
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn__ctor_
@@ -25862,13 +25952,13 @@ references:
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.CompareTo
   nameWithType: StringColumn.CompareTo
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name: CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList?)
+  name: CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList)
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_CompareTo__1_System_Int32____0__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__FlowtideDotNet_Storage_DataStructures_BitmapList__
   commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)
   name.vb: CompareTo(Of T)(Integer, T, ReferenceSegment, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.CompareTo<T>(in int, in T, in FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, in FlowtideDotNet.Storage.DataStructures.BitmapList?)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.CompareTo<T>(in int, in T, in FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, in FlowtideDotNet.Storage.DataStructures.BitmapList)
   fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.CompareTo(Of T)(Integer, T, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: StringColumn.CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList?)
+  nameWithType: StringColumn.CompareTo<T>(in int, in T, in ReferenceSegment?, in BitmapList)
   nameWithType.vb: StringColumn.CompareTo(Of T)(Integer, T, ReferenceSegment, BitmapList)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: Copy(IMemoryAllocator)
@@ -25947,6 +26037,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.EndNewList
   nameWithType: StringColumn.EndNewList
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Finalize
+  name: ~StringColumn()
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Finalize
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Finalize
+  name.vb: ''
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.~StringColumn()
+  fullName.vb: ''
+  nameWithType: StringColumn.~StringColumn()
+  nameWithType.vb: ''
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Finalize*
+  name: ~StringColumn
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Finalize_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.StringColumn.Finalize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.~StringColumn
+  nameWithType: StringColumn.~StringColumn
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.GetByteSize
   name: GetByteSize()
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_GetByteSize
@@ -26037,6 +26143,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.GetSerializationEstimate
   nameWithType: StringColumn.GetSerializationEstimate
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.GetSpan
+  name: GetSpan()
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_GetSpan
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.GetSpan
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.GetSpan()
+  nameWithType: StringColumn.GetSpan()
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.GetSpan*
+  name: GetSpan
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_GetSpan_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.StringColumn.GetSpan
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.GetSpan
+  nameWithType: StringColumn.GetSpan
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.GetTypeAt(System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)
   name: GetTypeAt(in int, in ReferenceSegment?)
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_GetTypeAt_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__
@@ -26126,14 +26245,14 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertNullRange
   nameWithType: StringColumn.InsertNullRange
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)
-  name: InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
+  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
   name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, FlowtideDotNet.Storage.DataStructures.BitmapList?)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList)
   fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: StringColumn.InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
+  nameWithType: StringColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
   nameWithType.vb: StringColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom*
   name: InsertRangeFrom
@@ -26142,6 +26261,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom
   nameWithType: StringColumn.InsertRangeFrom
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Pin(System.Int32)
+  name: Pin(int)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Pin_System_Int32_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Pin(System.Int32)
+  name.vb: Pin(Integer)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Pin(int)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.Pin(Integer)
+  nameWithType: StringColumn.Pin(int)
+  nameWithType.vb: StringColumn.Pin(Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Pin*
+  name: Pin
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Pin_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.StringColumn.Pin
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Pin
+  nameWithType: StringColumn.Pin
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveAt(System.Int32@)
   name: RemoveAt(in int)
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_RemoveAt_System_Int32__
@@ -26232,6 +26367,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Type
   nameWithType: StringColumn.Type
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Unpin
+  name: Unpin()
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Unpin
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Unpin
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Unpin()
+  nameWithType: StringColumn.Unpin()
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Unpin*
+  name: Unpin
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Unpin_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.StringColumn.Unpin
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Unpin
+  nameWithType: StringColumn.Unpin
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Update*
   name: Update
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Update_
@@ -38566,42 +38714,24 @@ references:
   commentId: T:FlowtideDotNet.Storage.DataStructures.BitmapList
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList
   nameWithType: BitmapList
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor
-  name: BitmapList()
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList__ctor
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor
-  name.vb: New()
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.BitmapList()
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.New()
-  nameWithType: BitmapList.BitmapList()
-  nameWithType.vb: BitmapList.New()
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name: BitmapList(IMemoryAllocator)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name.vb: New(IMemoryAllocator)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.BitmapList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.New(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  nameWithType: BitmapList.BitmapList(IMemoryAllocator)
-  nameWithType.vb: BitmapList.New(IMemoryAllocator)
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator,System.Int32)
-  name: BitmapList(IMemoryAllocator, int)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_System_Int32_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator,System.Int32)
-  name.vb: New(IMemoryAllocator, Integer)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.BitmapList(FlowtideDotNet.Storage.Memory.IMemoryAllocator, int)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.New(FlowtideDotNet.Storage.Memory.IMemoryAllocator, Integer)
-  nameWithType: BitmapList.BitmapList(IMemoryAllocator, int)
-  nameWithType.vb: BitmapList.New(IMemoryAllocator, Integer)
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name: BitmapList(IMemoryOwner<byte>, int, IMemoryAllocator)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name.vb: New(IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.BitmapList(System.Buffers.IMemoryOwner<byte>, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.New(System.Buffers.IMemoryOwner(Of Byte), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  nameWithType: BitmapList.BitmapList(IMemoryOwner<byte>, int, IMemoryAllocator)
-  nameWithType.vb: BitmapList.New(IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32)
+  name: BitmapList(FlowtideMemory, int)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32)
+  name.vb: New(FlowtideMemory, Integer)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.BitmapList(FlowtideDotNet.Storage.Memory.FlowtideMemory, int)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.New(FlowtideDotNet.Storage.Memory.FlowtideMemory, Integer)
+  nameWithType: BitmapList.BitmapList(FlowtideMemory, int)
+  nameWithType.vb: BitmapList.New(FlowtideMemory, Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: BitmapList(int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: New(Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.BitmapList(int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.New(Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BitmapList.BitmapList(int, IMemoryAllocator)
+  nameWithType.vb: BitmapList.New(Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.#ctor*
   name: BitmapList
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList__ctor_
@@ -38612,15 +38742,15 @@ references:
   fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.New
   nameWithType: BitmapList.BitmapList
   nameWithType.vb: BitmapList.New
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Add(System.Boolean)
-  name: Add(bool)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Add_System_Boolean_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Add(System.Boolean)
-  name.vb: Add(Boolean)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Add(bool)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.Add(Boolean)
-  nameWithType: BitmapList.Add(bool)
-  nameWithType.vb: BitmapList.Add(Boolean)
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Add(System.Boolean,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Add(bool, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Add_System_Boolean_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Add(System.Boolean,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Add(Boolean, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Add(bool, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.Add(Boolean, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BitmapList.Add(bool, IMemoryAllocator)
+  nameWithType.vb: BitmapList.Add(Boolean, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Add*
   name: Add
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Add_
@@ -38628,28 +38758,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Add
   nameWithType: BitmapList.Add
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Assign(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name: Assign(IMemoryAllocator)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Assign_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Assign(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Assign(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  nameWithType: BitmapList.Assign(IMemoryAllocator)
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Assign(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name: Assign(IMemoryOwner<byte>, int, IMemoryAllocator)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Assign_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Assign(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name.vb: Assign(IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Assign(System.Buffers.IMemoryOwner<byte>, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.Assign(System.Buffers.IMemoryOwner(Of Byte), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  nameWithType: BitmapList.Assign(IMemoryOwner<byte>, int, IMemoryAllocator)
-  nameWithType.vb: BitmapList.Assign(IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Assign*
-  name: Assign
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Assign_
-  commentId: Overload:FlowtideDotNet.Storage.DataStructures.BitmapList.Assign
-  isSpec: "True"
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Assign
-  nameWithType: BitmapList.Assign
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Clear
   name: Clear()
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Clear
@@ -38737,21 +38845,12 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.DeleteBatch
   nameWithType: BitmapList.DeleteBatch
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose
-  name: Dispose()
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Dispose
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose()
-  nameWithType: BitmapList.Dispose()
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose(System.Boolean)
-  name: Dispose(bool)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Dispose_System_Boolean_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose(System.Boolean)
-  name.vb: Dispose(Boolean)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose(bool)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose(Boolean)
-  nameWithType: BitmapList.Dispose(bool)
-  nameWithType.vb: BitmapList.Dispose(Boolean)
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Dispose(IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Dispose_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BitmapList.Dispose(IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose*
   name: Dispose
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Dispose_
@@ -38759,22 +38858,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Dispose
   nameWithType: BitmapList.Dispose
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Finalize
-  name: ~BitmapList()
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Finalize
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Finalize
-  name.vb: ''
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.~BitmapList()
-  fullName.vb: ''
-  nameWithType: BitmapList.~BitmapList()
-  nameWithType.vb: ''
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Finalize*
-  name: ~BitmapList
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Finalize_
-  commentId: Overload:FlowtideDotNet.Storage.DataStructures.BitmapList.Finalize
-  isSpec: "True"
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.~BitmapList
-  nameWithType: BitmapList.~BitmapList
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.FindNextFalseIndex(System.Int32)
   name: FindNextFalseIndex(int)
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_FindNextFalseIndex_System_Int32_
@@ -38839,19 +38922,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.GetByteSize
   nameWithType: BitmapList.GetByteSize
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.GetEnumerator
-  name: GetEnumerator()
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_GetEnumerator
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.GetEnumerator
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.GetEnumerator()
-  nameWithType: BitmapList.GetEnumerator()
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.GetEnumerator*
-  name: GetEnumerator
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_GetEnumerator_
-  commentId: Overload:FlowtideDotNet.Storage.DataStructures.BitmapList.GetEnumerator
-  isSpec: "True"
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.GetEnumerator
-  nameWithType: BitmapList.GetEnumerator
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.GetPrefixSumByteSizes(System.ReadOnlySpan{System.Int32},System.Span{System.Int32})
   name: GetPrefixSumByteSizes(ReadOnlySpan<int>, Span<int>)
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_GetPrefixSumByteSizes_System_ReadOnlySpan_System_Int32__System_Span_System_Int32__
@@ -38868,15 +38938,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.GetPrefixSumByteSizes
   nameWithType: BitmapList.GetPrefixSumByteSizes
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt(System.Int32,System.Boolean)
-  name: InsertAt(int, bool)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertAt_System_Int32_System_Boolean_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt(System.Int32,System.Boolean)
-  name.vb: InsertAt(Integer, Boolean)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt(int, bool)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt(Integer, Boolean)
-  nameWithType: BitmapList.InsertAt(int, bool)
-  nameWithType.vb: BitmapList.InsertAt(Integer, Boolean)
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt(System.Int32,System.Boolean,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertAt(int, bool, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertAt_System_Int32_System_Boolean_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt(System.Int32,System.Boolean,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertAt(Integer, Boolean, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt(int, bool, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt(Integer, Boolean, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BitmapList.InsertAt(int, bool, IMemoryAllocator)
+  nameWithType.vb: BitmapList.InsertAt(Integer, Boolean, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt*
   name: InsertAt
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertAt_
@@ -38884,15 +38954,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertAt
   nameWithType: BitmapList.InsertAt
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom(System.Boolean,System.ReadOnlySpan{System.Int32})
-  name: InsertConstantFrom(bool, ReadOnlySpan<int>)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertConstantFrom_System_Boolean_System_ReadOnlySpan_System_Int32__
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom(System.Boolean,System.ReadOnlySpan{System.Int32})
-  name.vb: InsertConstantFrom(Boolean, ReadOnlySpan(Of Integer))
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom(bool, System.ReadOnlySpan<int>)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom(Boolean, System.ReadOnlySpan(Of Integer))
-  nameWithType: BitmapList.InsertConstantFrom(bool, ReadOnlySpan<int>)
-  nameWithType.vb: BitmapList.InsertConstantFrom(Boolean, ReadOnlySpan(Of Integer))
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom(System.Boolean,System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertConstantFrom(bool, ReadOnlySpan<int>, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertConstantFrom_System_Boolean_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom(System.Boolean,System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertConstantFrom(Boolean, ReadOnlySpan(Of Integer), IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom(bool, System.ReadOnlySpan<int>, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom(Boolean, System.ReadOnlySpan(Of Integer), FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BitmapList.InsertConstantFrom(bool, ReadOnlySpan<int>, IMemoryAllocator)
+  nameWithType.vb: BitmapList.InsertConstantFrom(Boolean, ReadOnlySpan(Of Integer), IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom*
   name: InsertConstantFrom
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertConstantFrom_
@@ -38900,15 +38970,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertConstantFrom
   nameWithType: BitmapList.InsertConstantFrom
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange(System.Int32,System.Int32)
-  name: InsertFalseInRange(int, int)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFalseInRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange(System.Int32,System.Int32)
-  name.vb: InsertFalseInRange(Integer, Integer)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange(int, int)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange(Integer, Integer)
-  nameWithType: BitmapList.InsertFalseInRange(int, int)
-  nameWithType.vb: BitmapList.InsertFalseInRange(Integer, Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertFalseInRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFalseInRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertFalseInRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BitmapList.InsertFalseInRange(int, int, IMemoryAllocator)
+  nameWithType.vb: BitmapList.InsertFalseInRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange*
   name: InsertFalseInRange
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFalseInRange_
@@ -38916,15 +38986,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFalseInRange
   nameWithType: BitmapList.InsertFalseInRange
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom(FlowtideDotNet.Storage.DataStructures.BitmapList@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name: InsertFrom(ref readonly BitmapList, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFrom_FlowtideDotNet_Storage_DataStructures_BitmapList__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom(FlowtideDotNet.Storage.DataStructures.BitmapList@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name.vb: InsertFrom(BitmapList, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom(ref readonly FlowtideDotNet.Storage.DataStructures.BitmapList, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom(FlowtideDotNet.Storage.DataStructures.BitmapList, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer)
-  nameWithType: BitmapList.InsertFrom(ref readonly BitmapList, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  nameWithType.vb: BitmapList.InsertFrom(BitmapList, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom(FlowtideDotNet.Storage.DataStructures.BitmapList@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertFrom(ref readonly BitmapList, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFrom_FlowtideDotNet_Storage_DataStructures_BitmapList__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom(FlowtideDotNet.Storage.DataStructures.BitmapList@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertFrom(BitmapList, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom(ref readonly FlowtideDotNet.Storage.DataStructures.BitmapList, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom(FlowtideDotNet.Storage.DataStructures.BitmapList, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BitmapList.InsertFrom(ref readonly BitmapList, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  nameWithType.vb: BitmapList.InsertFrom(BitmapList, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom*
   name: InsertFrom
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertFrom_
@@ -38932,15 +39002,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertFrom
   nameWithType: BitmapList.InsertFrom
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom(System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList,System.Int32,System.Int32)
-  name: InsertRangeFrom(int, BitmapList, int, int)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertRangeFrom_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom(System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList,System.Int32,System.Int32)
-  name.vb: InsertRangeFrom(Integer, BitmapList, Integer, Integer)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom(int, FlowtideDotNet.Storage.DataStructures.BitmapList, int, int)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom(Integer, FlowtideDotNet.Storage.DataStructures.BitmapList, Integer, Integer)
-  nameWithType: BitmapList.InsertRangeFrom(int, BitmapList, int, int)
-  nameWithType.vb: BitmapList.InsertRangeFrom(Integer, BitmapList, Integer, Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom(System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertRangeFrom(int, in BitmapList, int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertRangeFrom_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom(System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertRangeFrom(Integer, BitmapList, Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom(int, in FlowtideDotNet.Storage.DataStructures.BitmapList, int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom(Integer, FlowtideDotNet.Storage.DataStructures.BitmapList, Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BitmapList.InsertRangeFrom(int, in BitmapList, int, int, IMemoryAllocator)
+  nameWithType.vb: BitmapList.InsertRangeFrom(Integer, BitmapList, Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom*
   name: InsertRangeFrom
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertRangeFrom_
@@ -38948,15 +39018,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertRangeFrom
   nameWithType: BitmapList.InsertRangeFrom
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange(System.Int32,System.Int32)
-  name: InsertTrueInRange(int, int)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertTrueInRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange(System.Int32,System.Int32)
-  name.vb: InsertTrueInRange(Integer, Integer)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange(int, int)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange(Integer, Integer)
-  nameWithType: BitmapList.InsertTrueInRange(int, int)
-  nameWithType.vb: BitmapList.InsertTrueInRange(Integer, Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertTrueInRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertTrueInRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertTrueInRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BitmapList.InsertTrueInRange(int, int, IMemoryAllocator)
+  nameWithType.vb: BitmapList.InsertTrueInRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange*
   name: InsertTrueInRange
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_InsertTrueInRange_
@@ -38964,6 +39034,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.InsertTrueInRange
   nameWithType: BitmapList.InsertTrueInRange
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.IsNull
+  name: IsNull
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_IsNull
+  commentId: P:FlowtideDotNet.Storage.DataStructures.BitmapList.IsNull
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.IsNull
+  nameWithType: BitmapList.IsNull
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.IsNull*
+  name: IsNull
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_IsNull_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.BitmapList.IsNull
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.IsNull
+  nameWithType: BitmapList.IsNull
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Item(System.Int32)
   name: this[int]
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Item_System_Int32_
@@ -39009,6 +39092,12 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.MemorySlice
   nameWithType: BitmapList.MemorySlice
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.None
+  name: None
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_None
+  commentId: F:FlowtideDotNet.Storage.DataStructures.BitmapList.None
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.None
+  nameWithType: BitmapList.None
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.RemoveAt(System.Int32)
   name: RemoveAt(int)
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_RemoveAt_System_Int32_
@@ -39041,15 +39130,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.RemoveRange
   nameWithType: BitmapList.RemoveRange
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Set(System.Int32)
-  name: Set(int)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Set_System_Int32_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Set(System.Int32)
-  name.vb: Set(Integer)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Set(int)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.Set(Integer)
-  nameWithType: BitmapList.Set(int)
-  nameWithType.vb: BitmapList.Set(Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Set(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Set(int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Set_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Set(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Set(Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Set(int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.Set(Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BitmapList.Set(int, IMemoryAllocator)
+  nameWithType.vb: BitmapList.Set(Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Set*
   name: Set
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Set_
@@ -39057,15 +39146,28 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Set
   nameWithType: BitmapList.Set
-- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Unset(System.Int32)
-  name: Unset(int)
-  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Unset_System_Int32_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Unset(System.Int32)
-  name.vb: Unset(Integer)
-  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Unset(int)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.Unset(Integer)
-  nameWithType: BitmapList.Unset(int)
-  nameWithType.vb: BitmapList.Unset(Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.SlicedSpan
+  name: SlicedSpan
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_SlicedSpan
+  commentId: P:FlowtideDotNet.Storage.DataStructures.BitmapList.SlicedSpan
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.SlicedSpan
+  nameWithType: BitmapList.SlicedSpan
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.SlicedSpan*
+  name: SlicedSpan
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_SlicedSpan_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.BitmapList.SlicedSpan
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.SlicedSpan
+  nameWithType: BitmapList.SlicedSpan
+- uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Unset(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Unset(int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Unset_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.BitmapList.Unset(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Unset(Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Unset(int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.BitmapList.Unset(Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BitmapList.Unset(int, IMemoryAllocator)
+  nameWithType.vb: BitmapList.Unset(Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.BitmapList.Unset*
   name: Unset
   href: api/FlowtideDotNet.Storage.DataStructures.BitmapList.html#FlowtideDotNet_Storage_DataStructures_BitmapList_Unset_
@@ -39082,6 +39184,15 @@ references:
   fullName.vb: FlowtideDotNet.Storage.DataStructures.PrimitiveList(Of T)
   nameWithType: PrimitiveList<T>
   nameWithType.vb: PrimitiveList(Of T)
+- uid: FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: PrimitiveList(FlowtideMemory, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: New(FlowtideMemory, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.PrimitiveList<T>.PrimitiveList(FlowtideDotNet.Storage.Memory.FlowtideMemory, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.PrimitiveList(Of T).New(FlowtideDotNet.Storage.Memory.FlowtideMemory, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: PrimitiveList<T>.PrimitiveList(FlowtideMemory, int, IMemoryAllocator)
+  nameWithType.vb: PrimitiveList(Of T).New(FlowtideMemory, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: PrimitiveList(IMemoryAllocator)
   href: api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
@@ -39100,24 +39211,6 @@ references:
   fullName.vb: FlowtideDotNet.Storage.DataStructures.PrimitiveList(Of T).New(FlowtideDotNet.Storage.Memory.IMemoryAllocator, Integer)
   nameWithType: PrimitiveList<T>.PrimitiveList(IMemoryAllocator, int)
   nameWithType.vb: PrimitiveList(Of T).New(IMemoryAllocator, Integer)
-- uid: FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name: PrimitiveList(IMemoryOwner<byte>, int, IMemoryAllocator)
-  href: api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name.vb: New(IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
-  fullName: FlowtideDotNet.Storage.DataStructures.PrimitiveList<T>.PrimitiveList(System.Buffers.IMemoryOwner<byte>, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.PrimitiveList(Of T).New(System.Buffers.IMemoryOwner(Of Byte), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  nameWithType: PrimitiveList<T>.PrimitiveList(IMemoryOwner<byte>, int, IMemoryAllocator)
-  nameWithType.vb: PrimitiveList(Of T).New(IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
-- uid: FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(System.Void*,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name: PrimitiveList(void*, int, int, IMemoryAllocator)
-  href: api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_System_Void__System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
-  commentId: M:FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(System.Void*,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name.vb: New(Void*, Integer, Integer, IMemoryAllocator)
-  fullName: FlowtideDotNet.Storage.DataStructures.PrimitiveList<T>.PrimitiveList(void*, int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  fullName.vb: FlowtideDotNet.Storage.DataStructures.PrimitiveList(Of T).New(Void*, Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  nameWithType: PrimitiveList<T>.PrimitiveList(void*, int, int, IMemoryAllocator)
-  nameWithType.vb: PrimitiveList(Of T).New(Void*, Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor*
   name: PrimitiveList
   href: api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_
@@ -39604,6 +39697,23 @@ references:
   fullName.vb: FlowtideDotNet.Storage.DataStructures.PrimitiveList(Of T).SlicedMemory
   nameWithType: PrimitiveList<T>.SlicedMemory
   nameWithType.vb: PrimitiveList(Of T).SlicedMemory
+- uid: FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.SlicedSpan
+  name: SlicedSpan
+  href: api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_SlicedSpan
+  commentId: P:FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.SlicedSpan
+  fullName: FlowtideDotNet.Storage.DataStructures.PrimitiveList<T>.SlicedSpan
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.PrimitiveList(Of T).SlicedSpan
+  nameWithType: PrimitiveList<T>.SlicedSpan
+  nameWithType.vb: PrimitiveList(Of T).SlicedSpan
+- uid: FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.SlicedSpan*
+  name: SlicedSpan
+  href: api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_SlicedSpan_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.SlicedSpan
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.PrimitiveList<T>.SlicedSpan
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.PrimitiveList(Of T).SlicedSpan
+  nameWithType: PrimitiveList<T>.SlicedSpan
+  nameWithType.vb: PrimitiveList(Of T).SlicedSpan
 - uid: FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Span
   name: Span
   href: api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Span
@@ -40516,6 +40626,50 @@ references:
   commentId: N:FlowtideDotNet.Storage.Memory
   fullName: FlowtideDotNet.Storage.Memory
   nameWithType: FlowtideDotNet.Storage.Memory
+- uid: FlowtideDotNet.Storage.Memory.FlowtideMemory
+  name: FlowtideMemory
+  href: api/FlowtideDotNet.Storage.Memory.FlowtideMemory.html
+  commentId: T:FlowtideDotNet.Storage.Memory.FlowtideMemory
+  fullName: FlowtideDotNet.Storage.Memory.FlowtideMemory
+  nameWithType: FlowtideMemory
+- uid: FlowtideDotNet.Storage.Memory.FlowtideMemory.IsNull
+  name: IsNull
+  href: api/FlowtideDotNet.Storage.Memory.FlowtideMemory.html#FlowtideDotNet_Storage_Memory_FlowtideMemory_IsNull
+  commentId: P:FlowtideDotNet.Storage.Memory.FlowtideMemory.IsNull
+  fullName: FlowtideDotNet.Storage.Memory.FlowtideMemory.IsNull
+  nameWithType: FlowtideMemory.IsNull
+- uid: FlowtideDotNet.Storage.Memory.FlowtideMemory.IsNull*
+  name: IsNull
+  href: api/FlowtideDotNet.Storage.Memory.FlowtideMemory.html#FlowtideDotNet_Storage_Memory_FlowtideMemory_IsNull_
+  commentId: Overload:FlowtideDotNet.Storage.Memory.FlowtideMemory.IsNull
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.Memory.FlowtideMemory.IsNull
+  nameWithType: FlowtideMemory.IsNull
+- uid: FlowtideDotNet.Storage.Memory.FlowtideMemory.Length
+  name: Length
+  href: api/FlowtideDotNet.Storage.Memory.FlowtideMemory.html#FlowtideDotNet_Storage_Memory_FlowtideMemory_Length
+  commentId: F:FlowtideDotNet.Storage.Memory.FlowtideMemory.Length
+  fullName: FlowtideDotNet.Storage.Memory.FlowtideMemory.Length
+  nameWithType: FlowtideMemory.Length
+- uid: FlowtideDotNet.Storage.Memory.FlowtideMemory.Pointer
+  name: Pointer
+  href: api/FlowtideDotNet.Storage.Memory.FlowtideMemory.html#FlowtideDotNet_Storage_Memory_FlowtideMemory_Pointer
+  commentId: F:FlowtideDotNet.Storage.Memory.FlowtideMemory.Pointer
+  fullName: FlowtideDotNet.Storage.Memory.FlowtideMemory.Pointer
+  nameWithType: FlowtideMemory.Pointer
+- uid: FlowtideDotNet.Storage.Memory.FlowtideMemory.Span
+  name: Span
+  href: api/FlowtideDotNet.Storage.Memory.FlowtideMemory.html#FlowtideDotNet_Storage_Memory_FlowtideMemory_Span
+  commentId: P:FlowtideDotNet.Storage.Memory.FlowtideMemory.Span
+  fullName: FlowtideDotNet.Storage.Memory.FlowtideMemory.Span
+  nameWithType: FlowtideMemory.Span
+- uid: FlowtideDotNet.Storage.Memory.FlowtideMemory.Span*
+  name: Span
+  href: api/FlowtideDotNet.Storage.Memory.FlowtideMemory.html#FlowtideDotNet_Storage_Memory_FlowtideMemory_Span_
+  commentId: Overload:FlowtideDotNet.Storage.Memory.FlowtideMemory.Span
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.Memory.FlowtideMemory.Span
+  nameWithType: FlowtideMemory.Span
 - uid: FlowtideDotNet.Storage.Memory.GlobalMemoryManager
   name: GlobalMemoryManager
   href: api/FlowtideDotNet.Storage.Memory.GlobalMemoryManager.html
@@ -40675,6 +40829,53 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.Memory.IMemoryAllocator.Allocate
   nameWithType: IMemoryAllocator.Allocate
+- uid: FlowtideDotNet.Storage.Memory.IMemoryAllocator.AllocateMemory(System.Int32)
+  name: AllocateMemory(int)
+  href: api/FlowtideDotNet.Storage.Memory.IMemoryAllocator.html#FlowtideDotNet_Storage_Memory_IMemoryAllocator_AllocateMemory_System_Int32_
+  commentId: M:FlowtideDotNet.Storage.Memory.IMemoryAllocator.AllocateMemory(System.Int32)
+  name.vb: AllocateMemory(Integer)
+  fullName: FlowtideDotNet.Storage.Memory.IMemoryAllocator.AllocateMemory(int)
+  fullName.vb: FlowtideDotNet.Storage.Memory.IMemoryAllocator.AllocateMemory(Integer)
+  nameWithType: IMemoryAllocator.AllocateMemory(int)
+  nameWithType.vb: IMemoryAllocator.AllocateMemory(Integer)
+- uid: FlowtideDotNet.Storage.Memory.IMemoryAllocator.AllocateMemory*
+  name: AllocateMemory
+  href: api/FlowtideDotNet.Storage.Memory.IMemoryAllocator.html#FlowtideDotNet_Storage_Memory_IMemoryAllocator_AllocateMemory_
+  commentId: Overload:FlowtideDotNet.Storage.Memory.IMemoryAllocator.AllocateMemory
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.Memory.IMemoryAllocator.AllocateMemory
+  nameWithType: IMemoryAllocator.AllocateMemory
+- uid: FlowtideDotNet.Storage.Memory.IMemoryAllocator.FlowtideMemoryAlignment
+  name: FlowtideMemoryAlignment
+  href: api/FlowtideDotNet.Storage.Memory.IMemoryAllocator.html#FlowtideDotNet_Storage_Memory_IMemoryAllocator_FlowtideMemoryAlignment
+  commentId: F:FlowtideDotNet.Storage.Memory.IMemoryAllocator.FlowtideMemoryAlignment
+  fullName: FlowtideDotNet.Storage.Memory.IMemoryAllocator.FlowtideMemoryAlignment
+  nameWithType: IMemoryAllocator.FlowtideMemoryAlignment
+- uid: FlowtideDotNet.Storage.Memory.IMemoryAllocator.Free(FlowtideDotNet.Storage.Memory.FlowtideMemory@)
+  name: Free(ref FlowtideMemory)
+  href: api/FlowtideDotNet.Storage.Memory.IMemoryAllocator.html#FlowtideDotNet_Storage_Memory_IMemoryAllocator_Free_FlowtideDotNet_Storage_Memory_FlowtideMemory__
+  commentId: M:FlowtideDotNet.Storage.Memory.IMemoryAllocator.Free(FlowtideDotNet.Storage.Memory.FlowtideMemory@)
+  name.vb: Free(FlowtideMemory)
+  fullName: FlowtideDotNet.Storage.Memory.IMemoryAllocator.Free(ref FlowtideDotNet.Storage.Memory.FlowtideMemory)
+  fullName.vb: FlowtideDotNet.Storage.Memory.IMemoryAllocator.Free(FlowtideDotNet.Storage.Memory.FlowtideMemory)
+  nameWithType: IMemoryAllocator.Free(ref FlowtideMemory)
+  nameWithType.vb: IMemoryAllocator.Free(FlowtideMemory)
+- uid: FlowtideDotNet.Storage.Memory.IMemoryAllocator.Free*
+  name: Free
+  href: api/FlowtideDotNet.Storage.Memory.IMemoryAllocator.html#FlowtideDotNet_Storage_Memory_IMemoryAllocator_Free_
+  commentId: Overload:FlowtideDotNet.Storage.Memory.IMemoryAllocator.Free
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.Memory.IMemoryAllocator.Free
+  nameWithType: IMemoryAllocator.Free
+- uid: FlowtideDotNet.Storage.Memory.IMemoryAllocator.Realloc(FlowtideDotNet.Storage.Memory.FlowtideMemory@,System.Int32)
+  name: Realloc(ref FlowtideMemory, int)
+  href: api/FlowtideDotNet.Storage.Memory.IMemoryAllocator.html#FlowtideDotNet_Storage_Memory_IMemoryAllocator_Realloc_FlowtideDotNet_Storage_Memory_FlowtideMemory__System_Int32_
+  commentId: M:FlowtideDotNet.Storage.Memory.IMemoryAllocator.Realloc(FlowtideDotNet.Storage.Memory.FlowtideMemory@,System.Int32)
+  name.vb: Realloc(FlowtideMemory, Integer)
+  fullName: FlowtideDotNet.Storage.Memory.IMemoryAllocator.Realloc(ref FlowtideDotNet.Storage.Memory.FlowtideMemory, int)
+  fullName.vb: FlowtideDotNet.Storage.Memory.IMemoryAllocator.Realloc(FlowtideDotNet.Storage.Memory.FlowtideMemory, Integer)
+  nameWithType: IMemoryAllocator.Realloc(ref FlowtideMemory, int)
+  nameWithType.vb: IMemoryAllocator.Realloc(FlowtideMemory, Integer)
 - uid: FlowtideDotNet.Storage.Memory.IMemoryAllocator.Realloc(System.Buffers.IMemoryOwner{System.Byte},System.Int32,System.Int32)
   name: Realloc(IMemoryOwner<byte>, int, int)
   href: api/FlowtideDotNet.Storage.Memory.IMemoryAllocator.html#FlowtideDotNet_Storage_Memory_IMemoryAllocator_Realloc_System_Buffers_IMemoryOwner_System_Byte__System_Int32_System_Int32_
@@ -40901,245 +41102,105 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.Memory.NativeBufferWriter.WrittenSpan
   nameWithType: NativeBufferWriter.WrittenSpan
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager
-  name: PreAllocatedMemoryManager
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html
-  commentId: T:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager
-  nameWithType: PreAllocatedMemoryManager
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator,System.Buffers.MemoryHandle)
-  name: PreAllocatedMemoryManager(IMemoryAllocator, MemoryHandle)
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_System_Buffers_MemoryHandle_
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator,System.Buffers.MemoryHandle)
-  name.vb: New(IMemoryAllocator, MemoryHandle)
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.PreAllocatedMemoryManager(FlowtideDotNet.Storage.Memory.IMemoryAllocator, System.Buffers.MemoryHandle)
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.New(FlowtideDotNet.Storage.Memory.IMemoryAllocator, System.Buffers.MemoryHandle)
-  nameWithType: PreAllocatedMemoryManager.PreAllocatedMemoryManager(IMemoryAllocator, MemoryHandle)
-  nameWithType.vb: PreAllocatedMemoryManager.New(IMemoryAllocator, MemoryHandle)
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.#ctor*
-  name: PreAllocatedMemoryManager
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager__ctor_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.#ctor
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView
+  name: NativeMemoryView
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html
+  commentId: T:FlowtideDotNet.Storage.Memory.NativeMemoryView
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView
+  nameWithType: NativeMemoryView
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.#ctor(System.Void*,System.Int32)
+  name: NativeMemoryView(void*, int)
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView__ctor_System_Void__System_Int32_
+  commentId: M:FlowtideDotNet.Storage.Memory.NativeMemoryView.#ctor(System.Void*,System.Int32)
+  name.vb: New(Void*, Integer)
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.NativeMemoryView(void*, int)
+  fullName.vb: FlowtideDotNet.Storage.Memory.NativeMemoryView.New(Void*, Integer)
+  nameWithType: NativeMemoryView.NativeMemoryView(void*, int)
+  nameWithType.vb: NativeMemoryView.New(Void*, Integer)
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.#ctor*
+  name: NativeMemoryView
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView__ctor_
+  commentId: Overload:FlowtideDotNet.Storage.Memory.NativeMemoryView.#ctor
   isSpec: "True"
   name.vb: New
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.PreAllocatedMemoryManager
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.New
-  nameWithType: PreAllocatedMemoryManager.PreAllocatedMemoryManager
-  nameWithType.vb: PreAllocatedMemoryManager.New
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Allocate(System.Int32,System.Int32)
-  name: Allocate(int, int)
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Allocate_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Allocate(System.Int32,System.Int32)
-  name.vb: Allocate(Integer, Integer)
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Allocate(int, int)
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Allocate(Integer, Integer)
-  nameWithType: PreAllocatedMemoryManager.Allocate(int, int)
-  nameWithType.vb: PreAllocatedMemoryManager.Allocate(Integer, Integer)
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Allocate*
-  name: Allocate
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Allocate_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Allocate
-  isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Allocate
-  nameWithType: PreAllocatedMemoryManager.Allocate
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Dispose
-  name: Dispose()
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Dispose
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Dispose
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Dispose()
-  nameWithType: PreAllocatedMemoryManager.Dispose()
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Dispose(System.Boolean)
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.NativeMemoryView
+  fullName.vb: FlowtideDotNet.Storage.Memory.NativeMemoryView.New
+  nameWithType: NativeMemoryView.NativeMemoryView
+  nameWithType.vb: NativeMemoryView.New
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.Dispose(System.Boolean)
   name: Dispose(bool)
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Dispose_System_Boolean_
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Dispose(System.Boolean)
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView_Dispose_System_Boolean_
+  commentId: M:FlowtideDotNet.Storage.Memory.NativeMemoryView.Dispose(System.Boolean)
   name.vb: Dispose(Boolean)
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Dispose(bool)
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Dispose(Boolean)
-  nameWithType: PreAllocatedMemoryManager.Dispose(bool)
-  nameWithType.vb: PreAllocatedMemoryManager.Dispose(Boolean)
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Dispose*
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.Dispose(bool)
+  fullName.vb: FlowtideDotNet.Storage.Memory.NativeMemoryView.Dispose(Boolean)
+  nameWithType: NativeMemoryView.Dispose(bool)
+  nameWithType.vb: NativeMemoryView.Dispose(Boolean)
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.Dispose*
   name: Dispose
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Dispose_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Dispose
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView_Dispose_
+  commentId: Overload:FlowtideDotNet.Storage.Memory.NativeMemoryView.Dispose
   isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Dispose
-  nameWithType: PreAllocatedMemoryManager.Dispose
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Finalize
-  name: ~PreAllocatedMemoryManager()
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Finalize
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Finalize
-  name.vb: ''
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.~PreAllocatedMemoryManager()
-  fullName.vb: ''
-  nameWithType: PreAllocatedMemoryManager.~PreAllocatedMemoryManager()
-  nameWithType.vb: ''
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Finalize*
-  name: ~PreAllocatedMemoryManager
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Finalize_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Finalize
-  isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.~PreAllocatedMemoryManager
-  nameWithType: PreAllocatedMemoryManager.~PreAllocatedMemoryManager
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Free
-  name: Free()
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Free
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Free
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Free()
-  nameWithType: PreAllocatedMemoryManager.Free()
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Free*
-  name: Free
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Free_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Free
-  isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Free
-  nameWithType: PreAllocatedMemoryManager.Free
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Initialize(System.Buffers.IMemoryOwner{System.Byte},System.Int32)
-  name: Initialize(IMemoryOwner<byte>, int)
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Initialize_System_Buffers_IMemoryOwner_System_Byte__System_Int32_
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Initialize(System.Buffers.IMemoryOwner{System.Byte},System.Int32)
-  name.vb: Initialize(IMemoryOwner(Of Byte), Integer)
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Initialize(System.Buffers.IMemoryOwner<byte>, int)
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Initialize(System.Buffers.IMemoryOwner(Of Byte), Integer)
-  nameWithType: PreAllocatedMemoryManager.Initialize(IMemoryOwner<byte>, int)
-  nameWithType.vb: PreAllocatedMemoryManager.Initialize(IMemoryOwner(Of Byte), Integer)
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Initialize*
-  name: Initialize
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Initialize_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Initialize
-  isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Initialize
-  nameWithType: PreAllocatedMemoryManager.Initialize
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Realloc(System.Buffers.IMemoryOwner{System.Byte},System.Int32,System.Int32)
-  name: Realloc(IMemoryOwner<byte>, int, int)
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Realloc_System_Buffers_IMemoryOwner_System_Byte__System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Realloc(System.Buffers.IMemoryOwner{System.Byte},System.Int32,System.Int32)
-  name.vb: Realloc(IMemoryOwner(Of Byte), Integer, Integer)
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Realloc(System.Buffers.IMemoryOwner<byte>, int, int)
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Realloc(System.Buffers.IMemoryOwner(Of Byte), Integer, Integer)
-  nameWithType: PreAllocatedMemoryManager.Realloc(IMemoryOwner<byte>, int, int)
-  nameWithType.vb: PreAllocatedMemoryManager.Realloc(IMemoryOwner(Of Byte), Integer, Integer)
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Realloc*
-  name: Realloc
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_Realloc_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Realloc
-  isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.Realloc
-  nameWithType: PreAllocatedMemoryManager.Realloc
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterAllocationToMetrics(System.Int32)
-  name: RegisterAllocationToMetrics(int)
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_RegisterAllocationToMetrics_System_Int32_
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterAllocationToMetrics(System.Int32)
-  name.vb: RegisterAllocationToMetrics(Integer)
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterAllocationToMetrics(int)
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterAllocationToMetrics(Integer)
-  nameWithType: PreAllocatedMemoryManager.RegisterAllocationToMetrics(int)
-  nameWithType.vb: PreAllocatedMemoryManager.RegisterAllocationToMetrics(Integer)
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterAllocationToMetrics*
-  name: RegisterAllocationToMetrics
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_RegisterAllocationToMetrics_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterAllocationToMetrics
-  isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterAllocationToMetrics
-  nameWithType: PreAllocatedMemoryManager.RegisterAllocationToMetrics
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterFreeToMetrics(System.Int32)
-  name: RegisterFreeToMetrics(int)
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_RegisterFreeToMetrics_System_Int32_
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterFreeToMetrics(System.Int32)
-  name.vb: RegisterFreeToMetrics(Integer)
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterFreeToMetrics(int)
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterFreeToMetrics(Integer)
-  nameWithType: PreAllocatedMemoryManager.RegisterFreeToMetrics(int)
-  nameWithType.vb: PreAllocatedMemoryManager.RegisterFreeToMetrics(Integer)
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterFreeToMetrics*
-  name: RegisterFreeToMetrics
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_RegisterFreeToMetrics_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterFreeToMetrics
-  isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager.RegisterFreeToMetrics
-  nameWithType: PreAllocatedMemoryManager.RegisterFreeToMetrics
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner
-  name: PreAllocatedMemoryOwner
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html
-  commentId: T:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner
-  nameWithType: PreAllocatedMemoryOwner
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.#ctor(FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager,System.Void*,System.Int32)
-  name: PreAllocatedMemoryOwner(PreAllocatedMemoryManager, void*, int)
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryOwner__ctor_FlowtideDotNet_Storage_Memory_PreAllocatedMemoryManager_System_Void__System_Int32_
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.#ctor(FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager,System.Void*,System.Int32)
-  name.vb: New(PreAllocatedMemoryManager, Void*, Integer)
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.PreAllocatedMemoryOwner(FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager, void*, int)
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.New(FlowtideDotNet.Storage.Memory.PreAllocatedMemoryManager, Void*, Integer)
-  nameWithType: PreAllocatedMemoryOwner.PreAllocatedMemoryOwner(PreAllocatedMemoryManager, void*, int)
-  nameWithType.vb: PreAllocatedMemoryOwner.New(PreAllocatedMemoryManager, Void*, Integer)
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.#ctor*
-  name: PreAllocatedMemoryOwner
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryOwner__ctor_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.#ctor
-  isSpec: "True"
-  name.vb: New
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.PreAllocatedMemoryOwner
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.New
-  nameWithType: PreAllocatedMemoryOwner.PreAllocatedMemoryOwner
-  nameWithType.vb: PreAllocatedMemoryOwner.New
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Dispose(System.Boolean)
-  name: Dispose(bool)
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryOwner_Dispose_System_Boolean_
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Dispose(System.Boolean)
-  name.vb: Dispose(Boolean)
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Dispose(bool)
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Dispose(Boolean)
-  nameWithType: PreAllocatedMemoryOwner.Dispose(bool)
-  nameWithType.vb: PreAllocatedMemoryOwner.Dispose(Boolean)
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Dispose*
-  name: Dispose
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryOwner_Dispose_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Dispose
-  isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Dispose
-  nameWithType: PreAllocatedMemoryOwner.Dispose
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.GetSpan
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.Dispose
+  nameWithType: NativeMemoryView.Dispose
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.GetSpan
   name: GetSpan()
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryOwner_GetSpan
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.GetSpan
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.GetSpan()
-  nameWithType: PreAllocatedMemoryOwner.GetSpan()
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.GetSpan*
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView_GetSpan
+  commentId: M:FlowtideDotNet.Storage.Memory.NativeMemoryView.GetSpan
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.GetSpan()
+  nameWithType: NativeMemoryView.GetSpan()
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.GetSpan*
   name: GetSpan
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryOwner_GetSpan_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.GetSpan
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView_GetSpan_
+  commentId: Overload:FlowtideDotNet.Storage.Memory.NativeMemoryView.GetSpan
   isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.GetSpan
-  nameWithType: PreAllocatedMemoryOwner.GetSpan
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Pin(System.Int32)
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.GetSpan
+  nameWithType: NativeMemoryView.GetSpan
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.Pin(System.Int32)
   name: Pin(int)
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryOwner_Pin_System_Int32_
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Pin(System.Int32)
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView_Pin_System_Int32_
+  commentId: M:FlowtideDotNet.Storage.Memory.NativeMemoryView.Pin(System.Int32)
   name.vb: Pin(Integer)
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Pin(int)
-  fullName.vb: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Pin(Integer)
-  nameWithType: PreAllocatedMemoryOwner.Pin(int)
-  nameWithType.vb: PreAllocatedMemoryOwner.Pin(Integer)
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Pin*
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.Pin(int)
+  fullName.vb: FlowtideDotNet.Storage.Memory.NativeMemoryView.Pin(Integer)
+  nameWithType: NativeMemoryView.Pin(int)
+  nameWithType.vb: NativeMemoryView.Pin(Integer)
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.Pin*
   name: Pin
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryOwner_Pin_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Pin
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView_Pin_
+  commentId: Overload:FlowtideDotNet.Storage.Memory.NativeMemoryView.Pin
   isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Pin
-  nameWithType: PreAllocatedMemoryOwner.Pin
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Unpin
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.Pin
+  nameWithType: NativeMemoryView.Pin
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.Unpin
   name: Unpin()
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryOwner_Unpin
-  commentId: M:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Unpin
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Unpin()
-  nameWithType: PreAllocatedMemoryOwner.Unpin()
-- uid: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Unpin*
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView_Unpin
+  commentId: M:FlowtideDotNet.Storage.Memory.NativeMemoryView.Unpin
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.Unpin()
+  nameWithType: NativeMemoryView.Unpin()
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.Unpin*
   name: Unpin
-  href: api/FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.html#FlowtideDotNet_Storage_Memory_PreAllocatedMemoryOwner_Unpin_
-  commentId: Overload:FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Unpin
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView_Unpin_
+  commentId: Overload:FlowtideDotNet.Storage.Memory.NativeMemoryView.Unpin
   isSpec: "True"
-  fullName: FlowtideDotNet.Storage.Memory.PreAllocatedMemoryOwner.Unpin
-  nameWithType: PreAllocatedMemoryOwner.Unpin
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.Unpin
+  nameWithType: NativeMemoryView.Unpin
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.Update(System.Void*,System.Int32)
+  name: Update(void*, int)
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView_Update_System_Void__System_Int32_
+  commentId: M:FlowtideDotNet.Storage.Memory.NativeMemoryView.Update(System.Void*,System.Int32)
+  name.vb: Update(Void*, Integer)
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.Update(void*, int)
+  fullName.vb: FlowtideDotNet.Storage.Memory.NativeMemoryView.Update(Void*, Integer)
+  nameWithType: NativeMemoryView.Update(void*, int)
+  nameWithType.vb: NativeMemoryView.Update(Void*, Integer)
+- uid: FlowtideDotNet.Storage.Memory.NativeMemoryView.Update*
+  name: Update
+  href: api/FlowtideDotNet.Storage.Memory.NativeMemoryView.html#FlowtideDotNet_Storage_Memory_NativeMemoryView_Update_
+  commentId: Overload:FlowtideDotNet.Storage.Memory.NativeMemoryView.Update
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.Memory.NativeMemoryView.Update
+  nameWithType: NativeMemoryView.Update
 - uid: FlowtideDotNet.Storage.Memory.StreamMemoryManager
   name: StreamMemoryManager
   href: api/FlowtideDotNet.Storage.Memory.StreamMemoryManager.html
@@ -49847,6 +49908,15 @@ references:
   fullName.vb: FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer(Of T)
   nameWithType: PrimitiveListKeyContainer<T>
   nameWithType.vb: PrimitiveListKeyContainer(Of T)
+- uid: FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: PrimitiveListKeyContainer(FlowtideMemory, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer-1.html#FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: New(FlowtideMemory, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer<T>.PrimitiveListKeyContainer(FlowtideDotNet.Storage.Memory.FlowtideMemory, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer(Of T).New(FlowtideDotNet.Storage.Memory.FlowtideMemory, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: PrimitiveListKeyContainer<T>.PrimitiveListKeyContainer(FlowtideMemory, int, IMemoryAllocator)
+  nameWithType.vb: PrimitiveListKeyContainer(Of T).New(FlowtideMemory, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: PrimitiveListKeyContainer(IMemoryAllocator)
   href: api/FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer-1.html#FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
@@ -49856,15 +49926,6 @@ references:
   fullName.vb: FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer(Of T).New(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   nameWithType: PrimitiveListKeyContainer<T>.PrimitiveListKeyContainer(IMemoryAllocator)
   nameWithType.vb: PrimitiveListKeyContainer(Of T).New(IMemoryAllocator)
-- uid: FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name: PrimitiveListKeyContainer(IMemoryOwner<byte>, int, IMemoryAllocator)
-  href: api/FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer-1.html#FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1__ctor_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
-  commentId: M:FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name.vb: New(IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
-  fullName: FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer<T>.PrimitiveListKeyContainer(System.Buffers.IMemoryOwner<byte>, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  fullName.vb: FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer(Of T).New(System.Buffers.IMemoryOwner(Of Byte), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  nameWithType: PrimitiveListKeyContainer<T>.PrimitiveListKeyContainer(IMemoryOwner<byte>, int, IMemoryAllocator)
-  nameWithType.vb: PrimitiveListKeyContainer(Of T).New(IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.#ctor*
   name: PrimitiveListKeyContainer
   href: api/FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer-1.html#FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1__ctor_
@@ -50158,6 +50219,15 @@ references:
   fullName.vb: FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer(Of T)
   nameWithType: PrimitiveListValueContainer<T>
   nameWithType.vb: PrimitiveListValueContainer(Of T)
+- uid: FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: PrimitiveListValueContainer(FlowtideMemory, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer-1.html#FlowtideDotNet_Storage_Tree_PrimitiveListValueContainer_1__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: New(FlowtideMemory, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer<T>.PrimitiveListValueContainer(FlowtideDotNet.Storage.Memory.FlowtideMemory, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer(Of T).New(FlowtideDotNet.Storage.Memory.FlowtideMemory, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: PrimitiveListValueContainer<T>.PrimitiveListValueContainer(FlowtideMemory, int, IMemoryAllocator)
+  nameWithType.vb: PrimitiveListValueContainer(Of T).New(FlowtideMemory, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: PrimitiveListValueContainer(IMemoryAllocator)
   href: api/FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer-1.html#FlowtideDotNet_Storage_Tree_PrimitiveListValueContainer_1__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
@@ -50167,15 +50237,6 @@ references:
   fullName.vb: FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer(Of T).New(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   nameWithType: PrimitiveListValueContainer<T>.PrimitiveListValueContainer(IMemoryAllocator)
   nameWithType.vb: PrimitiveListValueContainer(Of T).New(IMemoryAllocator)
-- uid: FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name: PrimitiveListValueContainer(IMemoryOwner<byte>, int, IMemoryAllocator)
-  href: api/FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer-1.html#FlowtideDotNet_Storage_Tree_PrimitiveListValueContainer_1__ctor_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
-  commentId: M:FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  name.vb: New(IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
-  fullName: FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer<T>.PrimitiveListValueContainer(System.Buffers.IMemoryOwner<byte>, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  fullName.vb: FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer(Of T).New(System.Buffers.IMemoryOwner(Of Byte), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
-  nameWithType: PrimitiveListValueContainer<T>.PrimitiveListValueContainer(IMemoryOwner<byte>, int, IMemoryAllocator)
-  nameWithType.vb: PrimitiveListValueContainer(Of T).New(IMemoryOwner(Of Byte), Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer`1.#ctor*
   name: PrimitiveListValueContainer
   href: api/FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer-1.html#FlowtideDotNet_Storage_Tree_PrimitiveListValueContainer_1__ctor_

@@ -6,7 +6,7 @@
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta name="title" content="Class BinaryColumn | Flowtide.NET ">
       
-      
+      <meta name="description" content="Binary column that is also the MemoryManager over its data.">
       <link rel="icon" href="../images/favicon.ico">
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
@@ -89,7 +89,7 @@
 
 
   <h1 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn" class="text-break">
-Class BinaryColumn  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L35"><i class="bi bi-code-slash"></i></a>
+Class BinaryColumn  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L38"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -97,11 +97,12 @@ Class BinaryColumn  <a class="header-action link-secondary" title="View source" 
   <dl><dt>Assembly</dt><dd>FlowtideDotNet.Core.dll</dd></dl>
   </div>
 
-  <div class="markdown summary"></div>
+  <div class="markdown summary"><p>Binary column that is also the MemoryManager over its data.</p>
+</div>
   <div class="markdown conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public class BinaryColumn : IDataColumn, IDisposable</code></pre>
+    <pre><code class="lang-csharp hljs">public class BinaryColumn : MemoryManager&lt;byte&gt;, IMemoryOwner&lt;byte&gt;, IPinnable, IDataColumn, IDisposable</code></pre>
   </div>
 
 
@@ -111,6 +112,7 @@ Class BinaryColumn  <a class="header-action link-secondary" title="View source" 
     <dt>Inheritance</dt>
     <dd>
       <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.memorymanager-1">MemoryManager</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</div>
       <div><span class="xref">BinaryColumn</span></div>
     </dd>
   </dl>
@@ -118,6 +120,8 @@ Class BinaryColumn  <a class="header-action link-secondary" title="View source" 
   <dl class="typelist implements">
     <dt>Implements</dt>
     <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.imemoryowner-1">IMemoryOwner</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.ipinnable">IPinnable</a></div>
       <div><a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataColumn.html">IDataColumn</a></div>
       <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
     </dd>
@@ -127,6 +131,18 @@ Class BinaryColumn  <a class="header-action link-secondary" title="View source" 
   <dl class="typelist inheritedMembers">
     <dt>Inherited Members</dt>
     <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.memorymanager-1.creatememory#system-buffers-memorymanager-1-creatememory(system-int32)">MemoryManager&lt;byte&gt;.CreateMemory(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.memorymanager-1.creatememory#system-buffers-memorymanager-1-creatememory(system-int32-system-int32)">MemoryManager&lt;byte&gt;.CreateMemory(int, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.memorymanager-1.trygetarray">MemoryManager&lt;byte&gt;.TryGetArray(out ArraySegment&lt;byte&gt;)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.memorymanager-1.memory">MemoryManager&lt;byte&gt;.Memory</a>
+    </div>
     <div>
       <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
     </div>
@@ -161,9 +177,46 @@ Class BinaryColumn  <a class="header-action link-secondary" title="View source" 
 
   <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn__ctor_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor*"></a>
 
+  <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_FlowtideDotNet_Storage_Memory_FlowtideMemory_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.FlowtideMemory,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  BinaryColumn(FlowtideMemory, int, FlowtideMemory, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L71"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public BinaryColumn(FlowtideMemory offsetMemory, int offsetLength, FlowtideMemory dataMemory, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>offsetMemory</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.FlowtideMemory.html">FlowtideMemory</a></dt>
+    <dd></dd>
+    <dt><code>offsetLength</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>dataMemory</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.FlowtideMemory.html">FlowtideMemory</a></dt>
+    <dd></dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn__ctor_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor*"></a>
+
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
   BinaryColumn(IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L59"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -194,7 +247,7 @@ Class BinaryColumn  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_FlowtideDotNet_Core_ColumnStore_ColumnSizeInfo_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator,FlowtideDotNet.Core.ColumnStore.ColumnSizeInfo)">
   BinaryColumn(IMemoryAllocator, ColumnSizeInfo)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L45"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L65"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -223,43 +276,6 @@ Class BinaryColumn  <a class="header-action link-secondary" title="View source" 
 
 
 
-  <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn__ctor_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor*"></a>
-
-  <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn__ctor_System_Buffers_IMemoryOwner_System_Byte__System_Int32_System_Buffers_IMemoryOwner_System_Byte__FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,System.Buffers.IMemoryOwner{System.Byte},FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
-  BinaryColumn(IMemoryOwner&lt;byte&gt;, int, IMemoryOwner&lt;byte&gt;?, IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L50"><i class="bi bi-code-slash"></i></a>
-  </h3>
-
-  <div class="markdown level1 summary"></div>
-  <div class="markdown level1 conceptual"></div>
-
-  <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public BinaryColumn(IMemoryOwner&lt;byte&gt; offsetMemory, int offsetLength, IMemoryOwner&lt;byte&gt;? dataMemory, IMemoryAllocator memoryAllocator)</code></pre>
-  </div>
-
-  <h4 class="section">Parameters</h4>
-  <dl class="parameters">
-    <dt><code>offsetMemory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.imemoryowner-1">IMemoryOwner</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
-    <dd></dd>
-    <dt><code>offsetLength</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
-    <dd></dd>
-    <dt><code>dataMemory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.imemoryowner-1">IMemoryOwner</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
-    <dd></dd>
-    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
-    <dd></dd>
-  </dl>
-
-
-
-
-
-
-
-
-
-
-
-
   <h2 class="section" id="properties">Properties
 </h2>
 
@@ -268,7 +284,7 @@ Class BinaryColumn  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Count" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Count">
   Count
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L60"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L86"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -299,7 +315,7 @@ Class BinaryColumn  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_StructHeader" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.StructHeader">
   StructHeader
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L90"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Only used for struct column, added for ease of access.
@@ -332,7 +348,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Type" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Type">
   Type
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L62"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L88"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -367,7 +383,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_AddToHash_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_IO_Hashing_NonCryptographicHashAlgorithm_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.AddToHash(System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.IO.Hashing.NonCryptographicHashAlgorithm)">
   AddToHash(in int, ReferenceSegment?, NonCryptographicHashAlgorithm)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L248"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L278"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -402,7 +418,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_AddToNewList__1___0__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.AddToNewList``1(``0@)">
   AddToNewList&lt;T&gt;(in T)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L191"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L221"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -438,7 +454,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Add__1___0__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Add``1(``0@)">
   Add&lt;T&gt;(in T)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L66"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L92"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -479,7 +495,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Clear" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Clear">
   Clear()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L186"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L216"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -505,7 +521,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_CompareTo_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_Int32__System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.CompareTo(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.Int32@,System.Int32@)">
   CompareTo(in IDataColumn, in int, in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L99"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L125"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -544,15 +560,15 @@ Returns the header of a struct (column names).</p>
   <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_CompareTo_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.CompareTo*"></a>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_CompareTo__1_System_Int32____0__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__FlowtideDotNet_Storage_DataStructures_BitmapList__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)">
-  CompareTo&lt;T&gt;(in int, in T, in ReferenceSegment?, in BitmapList?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  CompareTo&lt;T&gt;(in int, in T, in ReferenceSegment?, in BitmapList)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L107"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public int CompareTo&lt;T&gt;(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue</code></pre>
+    <pre><code class="lang-csharp hljs">public int CompareTo&lt;T&gt;(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -592,7 +608,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Copy_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
   Copy(IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L243"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L273"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -628,7 +644,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})">
   DeleteBatch(ReadOnlySpan&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L297"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L327"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -659,7 +675,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Dispose" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Dispose">
   Dispose()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L174"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L204"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
@@ -686,20 +702,22 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Dispose_System_Boolean_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Dispose(System.Boolean)">
   Dispose(bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L162"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L187"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 summary"><p>Releases all resources used by the current memory manager.</p>
+</div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">protected virtual void Dispose(bool disposing)</code></pre>
+    <pre><code class="lang-csharp hljs">protected override void Dispose(bool disposing)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>disposing</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
-    <dd></dd>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> to release both managed and unmanaged resources; <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a> to release only unmanaged resources.</p>
+</dd>
   </dl>
 
 
@@ -717,7 +735,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_EndNewList" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.EndNewList">
   EndNewList()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L196"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L226"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -744,11 +762,37 @@ Returns the header of a struct (column names).</p>
 
 
 
+  <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Finalize_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Finalize*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Finalize" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Finalize">
+  ~BinaryColumn()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L198"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected ~BinaryColumn()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetByteSize_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetByteSize*"></a>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetByteSize" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetByteSize">
   GetByteSize()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L211"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L241"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -779,7 +823,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetByteSize_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetByteSize(System.Int32,System.Int32)">
   GetByteSize(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L206"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L236"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -817,7 +861,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetColumnSizeInfo" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetColumnSizeInfo">
   GetColumnSizeInfo()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L302"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L332"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -848,7 +892,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetColumnState" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetColumnState">
   GetColumnState()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L312"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L342"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -879,7 +923,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetPrefixSumByteSizes_System_ReadOnlySpan_System_Int32__System_Span_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetPrefixSumByteSizes(System.ReadOnlySpan{System.Int32},System.Span{System.Int32})">
   GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt;, Span&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L216"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L246"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -912,7 +956,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetSerializationEstimate" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetSerializationEstimate">
   GetSerializationEstimate()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L259"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L289"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -939,11 +983,44 @@ Returns the header of a struct (column names).</p>
 
 
 
+  <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetSpan_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetSpan*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetSpan" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetSpan">
+  GetSpan()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L45"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a memory span that wraps the underlying memory buffer.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Span&lt;byte&gt; GetSpan()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>A memory span that wraps the underlying memory buffer.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetTypeAt_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetTypeAt*"></a>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetTypeAt_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetTypeAt(System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)">
   GetTypeAt(in int, in ReferenceSegment?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L181"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L211"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -981,7 +1058,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetValueAt_System_Int32__FlowtideDotNet_Core_ColumnStore_DataValueContainer__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetValueAt(System.Int32@,FlowtideDotNet.Core.ColumnStore.DataValueContainer@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)">
   GetValueAt(in int, in DataValueContainer, in ReferenceSegment?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L116"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L140"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1016,7 +1093,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetValueAt_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetValueAt(System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)">
   GetValueAt(in int, in ReferenceSegment?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L111"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L134"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1054,7 +1131,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertAt__1_System_Int32____0__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertAt``1(System.Int32@,``0@)">
   InsertAt&lt;T&gt;(in int, in T)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L122"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L147"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1092,7 +1169,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)">
   InsertFrom(in IDataColumn, ref readonly ReadOnlySpan&lt;int&gt;, ref readonly ReadOnlySpan&lt;int&gt;, in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L285"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L315"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1129,7 +1206,7 @@ Returns the header of a struct (column names).</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertNullRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange(System.Int32,System.Int32)">
   InsertNullRange(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L233"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L263"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Inserts null on all elements in the range.
@@ -1162,16 +1239,16 @@ Used as an optimization to not have to insert nulls one by one.</p>
 
   <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertRangeFrom_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom*"></a>
 
-  <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)">
-  InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L221"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)">
+  InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L251"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)</code></pre>
+    <pre><code class="lang-csharp hljs">public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -1199,11 +1276,50 @@ Used as an optimization to not have to insert nulls one by one.</p>
 
 
 
+  <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Pin_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Pin*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Pin_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Pin(System.Int32)">
+  Pin(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L50"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a handle to the memory that has been pinned and whose address can be taken.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override MemoryHandle Pin(int elementIndex = 0)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>elementIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The offset to the element in the memory buffer at which the returned <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.memoryhandle">MemoryHandle</a> points.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.memoryhandle">MemoryHandle</a></dt>
+    <dd><p>A handle to the memory that has been pinned.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_RemoveAt_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt*"></a>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_RemoveAt_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt(System.Int32@)">
   RemoveAt(in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L134"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L159"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1234,7 +1350,7 @@ Used as an optimization to not have to insert nulls one by one.</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_RemoveRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveRange(System.Int32,System.Int32)">
   RemoveRange(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L201"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L231"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1267,7 +1383,7 @@ Used as an optimization to not have to insert nulls one by one.</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_SearchBoundries__1___0__System_Int32__System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__System_Boolean_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.SearchBoundries``1(``0@,System.Int32@,System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,System.Boolean)">
   SearchBoundries&lt;T&gt;(in T, in int, in int, in ReferenceSegment?, bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L139"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L164"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1316,7 +1432,7 @@ Used as an optimization to not have to insert nulls one by one.</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_ToArrowArray_Apache_Arrow_ArrowBuffer_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.ToArrowArray(Apache.Arrow.ArrowBuffer,System.Int32)">
   ToArrowArray(ArrowBuffer, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L148"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L173"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1350,11 +1466,38 @@ Used as an optimization to not have to insert nulls one by one.</p>
 
 
 
+  <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Unpin_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Unpin*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Unpin" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Unpin">
+  Unpin()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L55"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Unpins pinned memory so that the garbage collector is free to move it.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override void Unpin()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Update_" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update*"></a>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_Update__1_System_Int32____0__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update``1(System.Int32@,``0@)">
   Update&lt;T&gt;(in int, in T)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L156"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L181"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1397,7 +1540,7 @@ Used as an optimization to not have to insert nulls one by one.</p>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_BinaryColumn_WriteToJson_System_Text_Json_Utf8JsonWriter__System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.BinaryColumn.WriteToJson(System.Text.Json.Utf8JsonWriter@,System.Int32@)">
   WriteToJson(ref readonly Utf8JsonWriter, in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L238"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L268"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1430,7 +1573,7 @@ Used as an optimization to not have to insert nulls one by one.</p>
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L35" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/BinaryColumn.cs/#L38" class="edit-link">Edit this page</a>
         </div>
 
 

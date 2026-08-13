@@ -438,7 +438,7 @@ Returns the header of a struct (column names).</p>
   <a id="FlowtideDotNet_Core_ColumnStore_IDataColumn_CompareTo_" data-uid="FlowtideDotNet.Core.ColumnStore.IDataColumn.CompareTo*"></a>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IDataColumn_CompareTo__1_System_Int32____0__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__FlowtideDotNet_Storage_DataStructures_BitmapList__" data-uid="FlowtideDotNet.Core.ColumnStore.IDataColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)">
-  CompareTo&lt;T&gt;(in int, in T, in ReferenceSegment?, in BitmapList?)
+  CompareTo&lt;T&gt;(in int, in T, in ReferenceSegment?, in BitmapList)
   <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/IDataColumn.cs/#L33"><i class="bi bi-code-slash"></i></a>
   </h3>
 
@@ -446,7 +446,7 @@ Returns the header of a struct (column names).</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">int CompareTo&lt;T&gt;(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue</code></pre>
+    <pre><code class="lang-csharp hljs">int CompareTo&lt;T&gt;(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -1038,8 +1038,8 @@ Used as an optimization to not have to insert nulls one by one.</p>
 
   <a id="FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertRangeFrom_" data-uid="FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom*"></a>
 
-  <h3 id="FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList_" data-uid="FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)">
-  InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
+  <h3 id="FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__" data-uid="FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)">
+  InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
   <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/IDataColumn.cs/#L74"><i class="bi bi-code-slash"></i></a>
   </h3>
 
@@ -1047,7 +1047,7 @@ Used as an optimization to not have to insert nulls one by one.</p>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)</code></pre>
+    <pre><code class="lang-csharp hljs">void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>

@@ -116,6 +116,41 @@ Interface IMemoryAllocator  <a class="header-action link-secondary" title="View 
 
 
 
+  <h2 class="section" id="fields">Fields
+</h2>
+
+
+
+  <h3 id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_FlowtideMemoryAlignment" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.FlowtideMemoryAlignment">
+  FlowtideMemoryAlignment
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L22"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Alignment used for all <a class="xref" href="FlowtideDotNet.Storage.Memory.FlowtideMemory.html">FlowtideMemory</a> allocations.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const int FlowtideMemoryAlignment = 64</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
   <h2 class="section" id="methods">Methods
 </h2>
 
@@ -124,7 +159,7 @@ Interface IMemoryAllocator  <a class="header-action link-secondary" title="View 
 
   <h3 id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_Allocate_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.Allocate(System.Int32,System.Int32)">
   Allocate(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L19"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L24"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -158,11 +193,114 @@ Interface IMemoryAllocator  <a class="header-action link-secondary" title="View 
 
 
 
+  <a id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_AllocateMemory_" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.AllocateMemory*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_AllocateMemory_System_Int32_" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.AllocateMemory(System.Int32)">
+  AllocateMemory(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Allocates a 64 byte aligned block.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">FlowtideMemory AllocateMemory(int size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Memory.FlowtideMemory.html">FlowtideMemory</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_Free_" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.Free*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_Free_FlowtideDotNet_Storage_Memory_FlowtideMemory__" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.Free(FlowtideDotNet.Storage.Memory.FlowtideMemory@)">
+  Free(ref FlowtideMemory)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L77"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Frees a block and resets it to default.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void Free(ref FlowtideMemory memory)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memory</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.FlowtideMemory.html">FlowtideMemory</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_Realloc_" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.Realloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_Realloc_FlowtideDotNet_Storage_Memory_FlowtideMemory__System_Int32_" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.Realloc(FlowtideDotNet.Storage.Memory.FlowtideMemory@,System.Int32)">
+  Realloc(ref FlowtideMemory, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Grows or shrinks a block in place.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void Realloc(ref FlowtideMemory memory, int size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memory</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.FlowtideMemory.html">FlowtideMemory</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_Realloc_" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.Realloc*"></a>
 
   <h3 id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_Realloc_System_Buffers_IMemoryOwner_System_Byte__System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.Realloc(System.Buffers.IMemoryOwner{System.Byte},System.Int32,System.Int32)">
   Realloc(IMemoryOwner&lt;byte&gt;, int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L21"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L26"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -202,7 +340,7 @@ Interface IMemoryAllocator  <a class="header-action link-secondary" title="View 
 
   <h3 id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_RegisterAllocationToMetrics_System_Int32_" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.RegisterAllocationToMetrics(System.Int32)">
   RegisterAllocationToMetrics(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L23"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L88"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -233,7 +371,7 @@ Interface IMemoryAllocator  <a class="header-action link-secondary" title="View 
 
   <h3 id="FlowtideDotNet_Storage_Memory_IMemoryAllocator_RegisterFreeToMetrics_System_Int32_" data-uid="FlowtideDotNet.Storage.Memory.IMemoryAllocator.RegisterFreeToMetrics(System.Int32)">
   RegisterFreeToMetrics(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L25"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Memory/IMemoryAllocator.cs/#L90"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
