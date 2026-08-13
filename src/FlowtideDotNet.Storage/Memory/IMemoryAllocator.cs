@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Storage.Memory
         IMemoryOwner<byte> Realloc(IMemoryOwner<byte> memory, int size, int alignment);
 
         /// <summary>
-        /// Allocates a 64 byte aligned block without creating a heap object; free it with <see cref="Free"/>.
+        /// Allocates a 64 byte aligned block.
         /// </summary>
         FlowtideMemory AllocateMemory(int size)
         {
@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Storage.Memory
         }
 
         /// <summary>
-        /// Grows or shrinks a block, updating it in place; a default value is treated as an empty block and allocated fresh.
+        /// Grows or shrinks a block in place.
         /// </summary>
         void Realloc(ref FlowtideMemory memory, int size)
         {
@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Storage.Memory
         }
 
         /// <summary>
-        /// Frees a block allocated with <see cref="AllocateMemory"/> and resets it to the default value.
+        /// Frees a block and resets it to default.
         /// </summary>
         void Free(ref FlowtideMemory memory)
         {

@@ -53,21 +53,31 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
 
             if (!reader.TryCopyTo(slice))
             {
+                _memoryAllocator.Free(ref weightsNativeMemory);
                 throw new InvalidOperationException("Failed to read weights memory");
             }
             reader.Advance(weightsMemoryLength);
 
             var weights = new PrimitiveList<int>(weightsNativeMemory, weightsMemoryLength / sizeof(int), _memoryAllocator);
 
-            var deserializer = new EventBatchDeserializer(_memoryAllocator);
-            var batch = deserializer.DeserializeBatch(ref reader);
-
-            if (batch.EventBatch.Columns[0] is not Column column)
+            try
             {
-                throw new InvalidOperationException("Failed to deserialize column");
-            }
+                var deserializer = new EventBatchDeserializer(_memoryAllocator);
+                var batch = deserializer.DeserializeBatch(ref reader);
 
-            return new MinMaxByValueContainer(column, weights);
+                if (batch.EventBatch.Columns[0] is not Column column)
+                {
+                    batch.EventBatch.Dispose();
+                    throw new InvalidOperationException("Failed to deserialize column");
+                }
+
+                return new MinMaxByValueContainer(column, weights);
+            }
+            catch
+            {
+                weights.Dispose();
+                throw;
+            }
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)

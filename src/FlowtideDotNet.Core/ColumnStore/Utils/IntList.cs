@@ -21,10 +21,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     /// <summary>
     /// Special list data structure that stores integers only
     /// This data structure is useful when storing offsets for instance since it can change offset locations during removal.
-    /// Mutable struct: hold it in exactly one field, mutate only through that field or a ref local,
-    /// and never copy it — a realloc in a copy frees the memory the original still points at.
-    /// The struct does not store an allocator; every call that can allocate or free takes the owner's
-    /// allocator, and all calls for a given list must use the same one.
+    /// Mutable struct, keep it in one field and never copy it.
     /// </summary>
     [NonCopyable]
     internal unsafe struct IntList
@@ -32,7 +29,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private FlowtideMemory _memory;
         private int _length;
 
-        // Capacity in elements, derived so the struct is the single source of truth.
+        // Capacity in elements, derived from the block.
         private readonly int DataLength => _memory.Length / sizeof(int);
 
         internal readonly Span<int> AccessSpan => new Span<int>(_memory.Pointer, DataLength);
@@ -41,8 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public readonly Span<byte> SlicedSpan => new Span<byte>(_memory.Pointer, _length * sizeof(int));
 
-        // Allocates a fresh non-owning view per call; only cold paths (Arrow interop, checkpoint
-        // writers) need Memory<byte>, and they re-fetch after list mutations.
+        // We create a new view per call, only cold paths need it.
         private readonly Memory<byte> GetViewMemory()
         {
             if (_memory.IsNull)
@@ -308,14 +304,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             return ((int*)_memory.Pointer)[index];
         }
 
-        // No IDisposable: a using-declared struct variable is read-only and mutating calls on it
-        // would run on defensive copies. Free zeroes _memory, so double dispose is a no-op.
+        // No IDisposable since a using local is read only.
         public void Dispose(IMemoryAllocator memoryAllocator)
         {
             if (!_memory.IsNull)
             {
                 memoryAllocator.Free(ref _memory);
             }
+            _length = 0;
         }
 
         public void Clear()

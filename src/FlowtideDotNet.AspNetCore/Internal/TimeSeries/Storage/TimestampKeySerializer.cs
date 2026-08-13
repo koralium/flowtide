@@ -47,6 +47,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
             if (!reader.TryCopyTo(nativeMemory.Span.Slice(0, count)))
             {
+                memoryAllocator.Free(ref nativeMemory);
                 throw new InvalidOperationException("Failed to read bytes");
             }
             reader.Advance(count);

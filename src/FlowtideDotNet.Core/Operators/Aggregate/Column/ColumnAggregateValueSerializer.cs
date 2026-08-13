@@ -49,25 +49,36 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 throw new InvalidOperationException("Failed to read previous value length");
             }
             var previousValueNativeMemory = memoryAllocator.AllocateMemory(previousValueLength);
-            var slice = previousValueNativeMemory.Span.Slice(0, previousValueLength);
-            if (!reader.TryCopyTo(slice))
+            FlowtideMemory weightNativeMemory = default;
+            EventBatchDeserializeResult eventBatchResult;
+            try
             {
-                throw new InvalidOperationException("Failed to read previous value");
-            }
-            reader.Advance(previousValueLength);
+                var slice = previousValueNativeMemory.Span.Slice(0, previousValueLength);
+                if (!reader.TryCopyTo(slice))
+                {
+                    throw new InvalidOperationException("Failed to read previous value");
+                }
+                reader.Advance(previousValueLength);
 
-            if (!reader.TryReadLittleEndian(out int weightLength))
-            {
-                throw new InvalidOperationException("Failed to read weight length");
-            }
-            var weightNativeMemory = memoryAllocator.AllocateMemory(weightLength);
-            if (!reader.TryCopyTo(weightNativeMemory.Span.Slice(0, weightLength)))
-            {
-                throw new InvalidOperationException("Failed to read weight");
-            }
-            reader.Advance(weightLength);
+                if (!reader.TryReadLittleEndian(out int weightLength))
+                {
+                    throw new InvalidOperationException("Failed to read weight length");
+                }
+                weightNativeMemory = memoryAllocator.AllocateMemory(weightLength);
+                if (!reader.TryCopyTo(weightNativeMemory.Span.Slice(0, weightLength)))
+                {
+                    throw new InvalidOperationException("Failed to read weight");
+                }
+                reader.Advance(weightLength);
 
-            var eventBatchResult = _batchSerializer.Deserialize(ref reader, memoryAllocator);
+                eventBatchResult = _batchSerializer.Deserialize(ref reader, memoryAllocator);
+            }
+            catch
+            {
+                memoryAllocator.Free(ref previousValueNativeMemory);
+                memoryAllocator.Free(ref weightNativeMemory);
+                throw;
+            }
             var previousValueList = new PrimitiveList<bool>(previousValueNativeMemory, eventBatchResult.Count, memoryAllocator);
             var weightsList = new PrimitiveList<int>(weightNativeMemory, eventBatchResult.Count, memoryAllocator);
 

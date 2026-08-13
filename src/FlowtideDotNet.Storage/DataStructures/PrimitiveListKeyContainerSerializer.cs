@@ -52,6 +52,7 @@ namespace FlowtideDotNet.Storage.DataStructures
 
             if (!reader.TryCopyTo(nativeMemory.Span.Slice(0, count)))
             {
+                _memoryAllocator.Free(ref nativeMemory);
                 throw new InvalidOperationException("Failed to read bytes");
             }
             reader.Advance(count);

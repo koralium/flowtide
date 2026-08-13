@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         private FlowtideMemory _memory;
         private int _rentCounter;
 
-        // Capacity in elements, derived so the struct is the single source of truth.
+        // Capacity in elements, derived from the block.
         private int DataLength => _memory.Length / sizeof(T);
 
         /// <summary>
@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="memory">The memory holding the elements.</param>
         /// <param name="length">The number of valid elements in <paramref name="memory"/>.</param>
-        /// <param name="memoryAllocator">The allocator that produced <paramref name="memory"/>, used for growth and free.</param>
+        /// <param name="memoryAllocator">The allocator that produced the memory.</param>
         public PrimitiveList(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memory = memory;
@@ -83,18 +83,16 @@ namespace FlowtideDotNet.Storage.DataStructures
         public Memory<byte> Memory => GetViewMemory();
 
         /// <summary>
-        /// The portion of the backing memory in bytes that actually holds the current elements.
-        /// Use this when the consumer requires <see cref="Memory{T}"/>; prefer <see cref="SlicedSpan"/> otherwise.
+        /// The current elements for consumers that need Memory.
         /// </summary>
         public Memory<byte> SlicedMemory => GetViewMemory().Slice(0, _length * sizeof(T));
 
         /// <summary>
-        /// The bytes of the current elements, without materializing a <see cref="Memory{T}"/> view.
+        /// The bytes of the current elements.
         /// </summary>
         public Span<byte> SlicedSpan => new Span<byte>(_memory.Pointer, _length * sizeof(T));
 
-        // Allocates a fresh non-owning view per call; only cold paths (Arrow interop, checkpoint
-        // writers) need Memory<byte>, and they re-fetch after list mutations.
+        // We create a new view per call, only cold paths need it.
         private Memory<byte> GetViewMemory()
         {
             if (_memory.IsNull)

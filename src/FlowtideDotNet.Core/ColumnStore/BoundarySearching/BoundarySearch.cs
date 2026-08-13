@@ -671,8 +671,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         }
 
         /// <summary>
-        /// Concrete overload for <see cref="BitmapList"/>, which cannot be passed through the
-        /// <see cref="IReadOnlyList{T}"/> overload without boxing a copy of the struct.
+        /// Concrete overload that avoids boxing the struct.
         /// </summary>
         public static (int, int) SearchBoundries(in BitmapList list, in bool value, in int index, in int end, IColumnComparer<bool> comparer)
         {

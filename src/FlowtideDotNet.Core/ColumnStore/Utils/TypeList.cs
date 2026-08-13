@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private FlowtideMemory _memory;
         private int _rentCounter;
 
-        // Capacity in elements, derived so the struct is the single source of truth.
+        // Capacity in elements, derived from the block.
         private int DataLength => _memory.Length;
 
         public TypeList(IMemoryAllocator memoryAllocator)
@@ -55,8 +55,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Span<byte> SlicedSpan => new Span<byte>(_memory.Pointer, _length * sizeof(sbyte));
 
-        // Allocates a fresh non-owning view per call; only cold paths (Arrow interop, checkpoint
-        // writers) need Memory<byte>, and they re-fetch after list mutations.
+        // We create a new view per call, only cold paths need it.
         private Memory<byte> GetViewMemory()
         {
             if (_memory.IsNull)

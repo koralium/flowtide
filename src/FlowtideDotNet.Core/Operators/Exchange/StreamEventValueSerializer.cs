@@ -69,24 +69,35 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
 
             var weightsMemory = memoryAllocator.AllocateMemory(weightsLength);
-            if (!reader.TryCopyTo(weightsMemory.Span.Slice(0, weightsLength)))
+            FlowtideMemory iterationsMemory = default;
+            EventBatchDeserializeResult eventBatchData;
+            try
             {
-                throw new InvalidOperationException("Failed to read weights");
-            }
-            reader.Advance(weightsLength);
+                if (!reader.TryCopyTo(weightsMemory.Span.Slice(0, weightsLength)))
+                {
+                    throw new InvalidOperationException("Failed to read weights");
+                }
+                reader.Advance(weightsLength);
 
-            if (!reader.TryReadLittleEndian(out int iterationsLength))
-            {
-                throw new InvalidOperationException("Failed to read iterations length");
-            }
-            var iterationsMemory = memoryAllocator.AllocateMemory(iterationsLength);
-            if (!reader.TryCopyTo(iterationsMemory.Span.Slice(0, iterationsLength)))
-            {
-                throw new InvalidOperationException("Failed to read iterations");
-            }
-            reader.Advance(iterationsLength);
+                if (!reader.TryReadLittleEndian(out int iterationsLength))
+                {
+                    throw new InvalidOperationException("Failed to read iterations length");
+                }
+                iterationsMemory = memoryAllocator.AllocateMemory(iterationsLength);
+                if (!reader.TryCopyTo(iterationsMemory.Span.Slice(0, iterationsLength)))
+                {
+                    throw new InvalidOperationException("Failed to read iterations");
+                }
+                reader.Advance(iterationsLength);
 
-            var eventBatchData = batchSerializer.Deserialize(ref reader, memoryAllocator);
+                eventBatchData = batchSerializer.Deserialize(ref reader, memoryAllocator);
+            }
+            catch
+            {
+                memoryAllocator.Free(ref weightsMemory);
+                memoryAllocator.Free(ref iterationsMemory);
+                throw;
+            }
 
             var weights = new PrimitiveList<int>(weightsMemory, eventBatchData.Count, memoryAllocator);
             var iterations = new PrimitiveList<uint>(iterationsMemory, eventBatchData.Count, memoryAllocator);
@@ -250,9 +261,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             var container = new StreamEventValueContainer(memoryAllocator);
 
-            for (int i = 0; i < count; i++)
+            try
             {
-                container.Add(DeserializeEvent(ref reader, memoryAllocator, _eventBatchBPlusTreeSerializer));
+                for (int i = 0; i < count; i++)
+                {
+                    container.Add(DeserializeEvent(ref reader, memoryAllocator, _eventBatchBPlusTreeSerializer));
+                }
+            }
+            catch
+            {
+                // The events we already read own native memory.
+                container.Dispose();
+                throw;
             }
             return container;
         }

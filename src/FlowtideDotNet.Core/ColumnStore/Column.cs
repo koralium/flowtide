@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _nullCounter = nullCounter;
             _dataColumn = dataColumn;
-            // Ownership transfer: the argument is always a fresh list that is never used again by the caller.
+            // The list is fresh and never used again by the caller.
 #pragma warning disable RS0042
             _validityList = validityList;
 #pragma warning restore RS0042
@@ -101,7 +101,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public static Column Create(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
         {
-            // Ownership transfer: the list moves through the factory into the column.
+            // The factory passes the list on to the column.
 #pragma warning disable RS0042
             return ColumnFactory.Get(nullCounter, dataColumn, validityList, type, memoryAllocator);
 #pragma warning restore RS0042
@@ -175,7 +175,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _nullCounter = nullCounter;
             _dataColumn = dataColumn;
-            // Ownership transfer: the argument is always a fresh list that is never used again by the caller.
+            // The list is fresh and never used again by the caller.
 #pragma warning disable RS0042
             _validityList = validityList;
 #pragma warning restore RS0042
@@ -795,7 +795,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (!disposedValue)
             {
-                // The validity struct has no finalizer of its own, so it must be freed here on both paths.
+                // The struct has no finalizer so we free it here.
                 if (_memoryAllocator != null)
                 {
                     _validityList.Dispose(_memoryAllocator);

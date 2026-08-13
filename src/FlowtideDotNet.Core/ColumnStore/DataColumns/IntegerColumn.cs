@@ -987,6 +987,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     _data = new Int64Data(new PrimitiveList<long>(memory, length, memoryAllocator));
                     break;
                 default:
+                    // Nothing owns the memory yet so we free it here.
+                    memoryAllocator.Free(ref memory);
                     throw new NotImplementedException();
             }
         }

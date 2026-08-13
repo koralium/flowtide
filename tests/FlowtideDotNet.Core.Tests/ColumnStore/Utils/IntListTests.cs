@@ -44,5 +44,24 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 
             intList.Dispose(GlobalMemoryManager.Instance);
         }
+
+        [Fact]
+        public void DisposeTwiceIsSafe()
+        {
+            IntList intList = default;
+            intList.Add(1, GlobalMemoryManager.Instance);
+
+            intList.Dispose(GlobalMemoryManager.Instance);
+            intList.Dispose(GlobalMemoryManager.Instance);
+
+            Assert.Equal(0, intList.Count);
+        }
+
+        [Fact]
+        public void DisposeOfDefaultIsSafe()
+        {
+            IntList intList = default;
+            intList.Dispose(GlobalMemoryManager.Instance);
+        }
     }
 }

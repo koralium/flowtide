@@ -124,11 +124,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
 
                 var keyContainer = _keySerializer.Deserialize(ref sequenceReader);
-                var valueContainer = _valueSerializer.Deserialize(ref sequenceReader);
-
-                if (sequenceReader.UnreadSpan.Length > 0)
+                TValueContainer valueContainer;
+                try
                 {
-                    throw new Exception("Did not read all bytes");
+                    valueContainer = _valueSerializer.Deserialize(ref sequenceReader);
+                    if (sequenceReader.UnreadSpan.Length > 0)
+                    {
+                        valueContainer.Dispose();
+                        throw new Exception("Did not read all bytes");
+                    }
+                }
+                catch
+                {
+                    keyContainer.Dispose();
+                    throw;
                 }
 
                 var leaf = new LeafNode<K, V, TKeyContainer, TValueContainer>(id, keyContainer, valueContainer);
@@ -144,29 +153,38 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
 
                 var keyContainer = _keySerializer.Deserialize(ref sequenceReader);
-
-                if (!sequenceReader.TryReadLittleEndian(out int childrenByteLength))
+                try
                 {
-                    throw new Exception("Could not read childrenByteLength");
-                }
+                    if (!sequenceReader.TryReadLittleEndian(out int childrenByteLength))
+                    {
+                        throw new Exception("Could not read childrenByteLength");
+                    }
 
-                var childrenMemory = _memoryAllocator.AllocateMemory(childrenByteLength);
-                if (!sequenceReader.TryCopyTo(childrenMemory.Span.Slice(0, childrenByteLength)))
+                    var childrenMemory = _memoryAllocator.AllocateMemory(childrenByteLength);
+                    if (!sequenceReader.TryCopyTo(childrenMemory.Span.Slice(0, childrenByteLength)))
+                    {
+                        _memoryAllocator.Free(ref childrenMemory);
+                        throw new Exception("Could not read children data");
+                    }
+                    sequenceReader.Advance(childrenByteLength);
+
+                    if (sequenceReader.UnreadSpan.Length > 0)
+                    {
+                        _memoryAllocator.Free(ref childrenMemory);
+                        throw new Exception("Did not read all bytes");
+                    }
+
+                    var childrenList = new PrimitiveList<long>(childrenMemory, childrenByteLength / sizeof(long), _memoryAllocator);
+
+                    var parent = new InternalNode<K, V, TKeyContainer>(id, keyContainer, childrenList);
+
+                    return parent;
+                }
+                catch
                 {
-                    throw new Exception("Could not read children data");
+                    keyContainer.Dispose();
+                    throw;
                 }
-                sequenceReader.Advance(childrenByteLength);
-
-                if (sequenceReader.UnreadSpan.Length > 0)
-                {
-                    throw new Exception("Did not read all bytes");
-                }
-
-                var childrenList = new PrimitiveList<long>(childrenMemory, childrenByteLength / sizeof(long), _memoryAllocator);
-
-                var parent = new InternalNode<K, V, TKeyContainer>(id, keyContainer, childrenList);
-
-                return parent;
             }
             throw new NotImplementedException();
         }

@@ -28,10 +28,7 @@ namespace FlowtideDotNet.Storage.DataStructures
     /// <see cref="IMemoryAllocator"/>. It supports the usual list operations (add, get, set, insert and remove)
     /// as well as range and batch variants that shift large blocks of bits at once, using vectorized shifts where
     /// available. It is commonly used as a validity (null) mask for columnar data.
-    /// Mutable struct: hold it in exactly one field, mutate only through that field or a ref local,
-    /// and never copy it — a realloc in a copy frees the memory the original still points at.
-    /// The struct does not store an allocator; every call that can allocate or free takes the owner's
-    /// allocator, and all calls for a given list must use the same one.
+    /// Mutable struct, keep it in one field and never copy it.
     /// </summary>
     [NonCopyable]
     public unsafe struct BitmapList
@@ -114,37 +111,34 @@ namespace FlowtideDotNet.Storage.DataStructures
         private FlowtideMemory _memory;
 
         /// <summary>
-        /// Passed by callers that have no validity information; <see cref="IsNull"/> is true on it.
-        /// Never mutate it — mutating calls on a readonly field run on defensive copies.
+        /// Passed by callers with no validity information.
         /// </summary>
         public static readonly BitmapList None;
 
         /// <summary>
-        /// True when no memory is attached; used as the "no validity information" signal in column compares.
+        /// True when no memory is attached.
         /// </summary>
         public readonly bool IsNull => _memory.IsNull;
 
-        // Capacity in words, derived so the struct is the single source of truth.
+        // Capacity in words, derived from the block.
         private readonly int DataLength => _memory.Length / sizeof(int);
 
         /// <summary>
-        /// The full backing memory buffer, including any capacity beyond the current bits, or empty when nothing is allocated.
+        /// The full backing buffer, empty when nothing is allocated.
         /// </summary>
         public readonly Memory<byte> Memory => GetViewMemory();
 
         /// <summary>
-        /// The portion of the backing memory that actually holds the current bits, rounded up to whole words.
-        /// Use this when the consumer requires <see cref="Memory{T}"/>; prefer <see cref="SlicedSpan"/> otherwise.
+        /// The current bits for consumers that need Memory.
         /// </summary>
         public readonly Memory<byte> MemorySlice => GetViewMemory().Slice(0, ((_length + 31) / 32) * 4);
 
         /// <summary>
-        /// The bytes holding the current bits rounded up to whole words, without materializing a <see cref="Memory{T}"/> view.
+        /// The current bits, without a Memory view.
         /// </summary>
         public readonly Span<byte> SlicedSpan => new Span<byte>(_memory.Pointer, ((_length + 31) / 32) * 4);
 
-        // Allocates a fresh non-owning view per call; only cold paths (Arrow interop, checkpoint
-        // writers) need Memory<byte>, and they re-fetch after list mutations.
+        // We create a new view per call, only cold paths need it.
         private readonly Memory<byte> GetViewMemory()
         {
             if (_memory.IsNull)
@@ -1398,14 +1392,14 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
         }
 
-        // No IDisposable: a using-declared struct variable is read-only and mutating calls on it
-        // would run on defensive copies. Free zeroes _memory, so double dispose is a no-op.
+        // No IDisposable since a using local is read only.
         public void Dispose(IMemoryAllocator memoryAllocator)
         {
             if (!_memory.IsNull)
             {
                 memoryAllocator.Free(ref _memory);
             }
+            _length = 0;
         }
 
         /// <summary>

@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _end = _headerData;
             endIndex = HeaderSize;
             _versions = versions;
-            // Ownership transfer: the arguments are fresh lists that are never used again by the caller.
+            // The lists are fresh and never used again by the caller.
 #pragma warning disable RS0042
             _isSnapshots = isSnapshots;
             _isBundle = isBundle;
@@ -418,7 +418,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     throw new InvalidDataException("Invalid checkpoint registry file: unable to read checkpoint versions.");
                 }
                 var checkpointVersions = new PrimitiveList<long>(checkpointsVersionMemory, checkpointCount, memoryAllocator);
-                // Owned by the list from here; must not be freed again in the catch below.
+                // Owned by the list from here.
                 checkpointsVersionMemory = default;
                 reader.Advance(checkpointVersionMemorySize);
 
@@ -462,7 +462,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
             catch
             {
-                // The structs have no finalizers, so a failed deserialize must free the raw buffers itself.
+                // The structs have no finalizers so we free them here.
                 memoryAllocator.Free(ref checkpointsVersionMemory);
                 memoryAllocator.Free(ref isSnapshotsMemory);
                 memoryAllocator.Free(ref isBundleMemory);

@@ -1053,5 +1053,22 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             Assert.True(binaryList.Get(0).SequenceEqual(Array.Empty<byte>()));
             Assert.True(binaryList.Get(1).SequenceEqual(Array.Empty<byte>()));
         }
+
+        [Fact]
+        public void DisposeTwiceIsSafe()
+        {
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(new byte[] { 1, 2, 3 }, GlobalMemoryManager.Instance);
+
+            binaryList.Dispose(GlobalMemoryManager.Instance);
+            binaryList.Dispose(GlobalMemoryManager.Instance);
+        }
+
+        [Fact]
+        public void DisposeOfDefaultIsSafe()
+        {
+            BinaryList binaryList = default;
+            binaryList.Dispose(GlobalMemoryManager.Instance);
+        }
     }
 }

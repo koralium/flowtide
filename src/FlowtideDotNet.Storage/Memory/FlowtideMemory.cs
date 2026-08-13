@@ -13,8 +13,7 @@
 namespace FlowtideDotNet.Storage.Memory
 {
     /// <summary>
-    /// A 64 byte aligned block of unmanaged memory handed out by <see cref="IMemoryAllocator.AllocateMemory(int)"/>.
-    /// Being a struct it costs no heap allocation; the holder must free it through the allocator that produced it.
+    /// A 64 byte aligned block of unmanaged memory.
     /// </summary>
     public readonly unsafe struct FlowtideMemory
     {
@@ -24,7 +23,7 @@ namespace FlowtideDotNet.Storage.Memory
         public readonly void* Pointer;
 
         /// <summary>
-        /// The allocated size in bytes, which may be larger than what was requested.
+        /// The allocated size, can be larger than requested.
         /// </summary>
         public readonly int Length;
 
@@ -35,7 +34,7 @@ namespace FlowtideDotNet.Storage.Memory
         }
 
         /// <summary>
-        /// True when no memory is attached, either the default value or after <see cref="IMemoryAllocator.Free"/>.
+        /// True when no memory is attached.
         /// </summary>
         public bool IsNull => Pointer == null;
 

@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             _memoryAllocator = memoryAllocator;
             _weights = weights;
             _functionStates = functionStates;
-            // Ownership transfer: the argument is always a fresh list that is never used again by the caller.
+            // The list is fresh and never used again by the caller.
 #pragma warning disable RS0042
             _previousValueSent = previousValueSent;
 #pragma warning restore RS0042
@@ -97,7 +97,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             GC.SuppressFinalize(this);
         }
 
-        // The bitmap struct has no finalizer of its own; the sibling fields are classes with their own backstops.
+        // The bitmap struct has no finalizer so we free it here.
         ~WindowValueContainer()
         {
             _previousValueSent.Dispose(_memoryAllocator);

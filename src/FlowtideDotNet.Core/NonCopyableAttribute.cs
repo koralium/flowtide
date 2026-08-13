@@ -13,8 +13,7 @@
 namespace FlowtideDotNet.Core
 {
     /// <summary>
-    /// Marks a mutable struct that owns native memory as non-copyable; RS0042 turns any copy into a build error,
-    /// since a realloc in a copy frees the memory the original still points at.
+    /// Marks a mutable struct that owns native memory as non-copyable.
     /// </summary>
     [AttributeUsage(AttributeTargets.Struct)]
     internal sealed class NonCopyableAttribute : Attribute

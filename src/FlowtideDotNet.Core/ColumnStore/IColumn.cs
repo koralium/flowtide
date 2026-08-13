@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T : IDataValue;
 
         /// <summary>
-        /// Wraps the column's buffers in an arrow array without copying; the result is a snapshot that is only valid until the column is mutated or disposed.
+        /// Wraps the buffers in an arrow array without copying.
         /// </summary>
         (IArrowArray, IArrowType) ToArrowArray();
 

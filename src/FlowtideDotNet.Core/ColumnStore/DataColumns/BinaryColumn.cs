@@ -33,12 +33,11 @@ using static SqlParser.Ast.MatchRecognizeSymbol;
 namespace FlowtideDotNet.Core.ColumnStore
 {
     /// <summary>
-    /// Binary column that is also the <see cref="MemoryManager{T}"/> over its data buffer, so handing out
-    /// <see cref="BinaryValue"/> costs no view object and the produced Memory keeps the column alive.
+    /// Binary column that is also the MemoryManager over its data.
     /// </summary>
     public class BinaryColumn : MemoryManager<byte>, IDataColumn
     {
-        // Not readonly: mutating calls on a readonly struct field would run on defensive copies.
+        // Not readonly, mutations would run on a copy.
         private BinaryList _data;
         private readonly IMemoryAllocator _memoryAllocator;
         private bool disposedValue;
@@ -78,7 +77,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         internal BinaryColumn(BinaryList data, IMemoryAllocator memoryAllocator)
         {
             _memoryAllocator = memoryAllocator;
-            // Ownership transfer: the argument is always a fresh Copy() temp that is never used again.
+            // The argument is a fresh copy that is never used again.
 #pragma warning disable RS0042
             _data = data;
 #pragma warning restore RS0042
@@ -189,7 +188,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (!disposedValue)
             {
-                // The list struct has no finalizer of its own, so it must be freed here on both paths.
+                // The struct has no finalizer so we free it here.
                 _data.Dispose(_memoryAllocator);
                 disposedValue = true;
             }

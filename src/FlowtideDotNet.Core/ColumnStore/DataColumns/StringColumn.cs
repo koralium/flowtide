@@ -31,8 +31,7 @@ using System.Text.Json;
 namespace FlowtideDotNet.Core.ColumnStore
 {
     /// <summary>
-    /// String column that is also the <see cref="MemoryManager{T}"/> over its data buffer, so handing out
-    /// <see cref="StringValue"/> costs no view object and the produced Memory keeps the column alive.
+    /// String column that is also the MemoryManager over its data.
     /// </summary>
     public class StringColumn : MemoryManager<byte>, IDataColumn, IEnumerable<string>
     {
@@ -81,7 +80,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         private StringColumn(BinaryList binaryList, IMemoryAllocator memoryAllocator)
         {
             _memoryAllocator = memoryAllocator;
-            // Ownership transfer: the argument is always a fresh Copy() temp that is never used again.
+            // The argument is a fresh copy that is never used again.
 #pragma warning disable RS0042
             _binaryList = binaryList;
 #pragma warning restore RS0042
@@ -207,7 +206,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (!disposedValue)
             {
-                // The list struct has no finalizer of its own, so it must be freed here on both paths.
+                // The struct has no finalizer so we free it here.
                 _binaryList.Dispose(_memoryAllocator);
                 disposedValue = true;
             }

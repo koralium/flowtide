@@ -55,6 +55,7 @@ namespace FlowtideDotNet.Storage.Serializers
 
             if (!reader.TryCopyTo(memory.Span.Slice(0, length)))
             {
+                memoryAllocator.Free(ref memory);
                 throw new InvalidOperationException("Failed to read bytes");
             }
             reader.Advance(length);

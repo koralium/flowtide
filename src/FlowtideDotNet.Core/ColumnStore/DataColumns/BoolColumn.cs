@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal class BoolColumn : IDataColumn
     {
-        // Not readonly: mutating calls on a readonly struct field would run on defensive copies.
+        // Not readonly, mutations would run on a copy.
         private BitmapList _data;
         private readonly IMemoryAllocator _memoryAllocator;
         private bool disposedValue;
@@ -188,7 +188,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (!disposedValue)
             {
-                // The list struct has no finalizer of its own, so it must be freed here on both paths.
+                // The struct has no finalizer so we free it here.
                 _data.Dispose(_memoryAllocator);
                 disposedValue = true;
             }

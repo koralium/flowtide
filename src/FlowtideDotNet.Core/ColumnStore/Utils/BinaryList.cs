@@ -38,11 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     /// This follows apache arrow on how to store binary data.
     /// This means that it does not store references to the binary data, but instead stores them directly in the array.
     /// This list allows inserting data and removing data where it correctly recalculates offsets.
-    /// Mutable struct: hold it in exactly one field, mutate only through that field or a ref local,
-    /// and never copy it — a realloc in a copy frees the memory the original still points at.
-    /// Memory views over the data are minted by the owning column, which is the MemoryManager.
-    /// The struct does not store an allocator; every call that can allocate or free takes the owner's
-    /// allocator, and all calls for a given list must use the same one.
+    /// Mutable struct, keep it in one field and never copy it.
     /// </summary>
     [NonCopyable]
     internal unsafe struct BinaryList
@@ -53,8 +49,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         // List specific members
         private IntList _offsets;
 
-        // Used bytes in the data buffer; the arrow layout keeps this equal to the last offset,
-        // so it is derived instead of mirrored. Zero when unallocated or disposed.
+        // Used bytes, derived from the last offset.
         private readonly int DataByteLength => _offsets.Count == 0 ? 0 : _offsets.Get(_offsets.Count - 1);
 
         public readonly Memory<byte> OffsetMemory => _offsets.Memory;
@@ -64,7 +59,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public readonly Span<byte> DataSpan => new Span<byte>(_memory.Pointer, DataByteLength);
 
         /// <summary>
-        /// The full data buffer including unused capacity, used by the owning column's GetSpan.
+        /// The full data buffer including unused capacity.
         /// </summary>
         internal readonly Span<byte> CapacitySpan => _memory.Span;
 
@@ -81,7 +76,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             _offsets = new IntList(initialRowCapacity + 1, memoryAllocator);
             _offsets.Add(0, memoryAllocator);
-            _memory = memoryAllocator.AllocateMemory(initialDataCapacity);
+            try
+            {
+                _memory = memoryAllocator.AllocateMemory(initialDataCapacity);
+            }
+            catch
+            {
+                _offsets.Dispose(memoryAllocator);
+                throw;
+            }
         }
 
         /// <summary>
@@ -109,7 +112,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         }
 
         /// <summary>
-        /// Gets the data buffer position of an element, for the owning column to mint a Memory view from.
+        /// Gets the data buffer position of an element.
         /// </summary>
         internal readonly (int offset, int length) GetOffsetAndLength(in int index)
         {
@@ -281,8 +284,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             return new BinaryInfo(((byte*)_memory.Pointer) + offset, _offsets.Get(index + 1) - offset);
         }
 
-        // No IDisposable: a using-declared struct variable is read-only and mutating calls on it
-        // would run on defensive copies. Free zeroes _memory, so double dispose is a no-op.
+        // No IDisposable since a using local is read only.
         public void Dispose(IMemoryAllocator memoryAllocator)
         {
             _offsets.Dispose(memoryAllocator);
@@ -359,7 +361,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var dataMemoryCopy = memoryAllocator.AllocateMemory(dataSpan.Length);
             dataSpan.CopyTo(dataMemoryCopy.Span);
             var offsetSpan = OffsetSpan;
-            var offsetMemoryCopy = memoryAllocator.AllocateMemory(offsetSpan.Length);
+            FlowtideMemory offsetMemoryCopy;
+            try
+            {
+                offsetMemoryCopy = memoryAllocator.AllocateMemory(offsetSpan.Length);
+            }
+            catch
+            {
+                memoryAllocator.Free(ref dataMemoryCopy);
+                throw;
+            }
             offsetSpan.CopyTo(offsetMemoryCopy.Span);
 
             return new BinaryList(offsetMemoryCopy, _offsets.Count, dataMemoryCopy);

@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     public class ListColumn : IDataColumn, IEnumerable<IEnumerable<IDataValue>>
     {
         private readonly Column _internalColumn;
-        // Not readonly: mutating calls on a readonly struct field would run on defensive copies.
+        // Not readonly, mutations would run on a copy.
         private IntList _offsets;
         private readonly IMemoryAllocator _memoryAllocator;
         private bool disposedValue;
@@ -75,7 +75,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _memoryAllocator = memoryAllocator;
             _internalColumn = internalColumn;
-            // Ownership transfer: the argument is always a fresh Copy() temp that is never used again.
+            // The argument is a fresh copy that is never used again.
 #pragma warning disable RS0042
             _offsets = offsets;
 #pragma warning restore RS0042
@@ -373,7 +373,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (!disposedValue)
             {
-                // The offsets struct has no finalizer of its own, so it must be freed here on both paths.
+                // The struct has no finalizer so we free it here.
                 _offsets.Dispose(_memoryAllocator);
                 if (disposing)
                 {

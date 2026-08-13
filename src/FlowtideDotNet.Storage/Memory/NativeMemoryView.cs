@@ -15,10 +15,7 @@ using System.Buffers;
 namespace FlowtideDotNet.Storage.Memory
 {
     /// <summary>
-    /// A non-owning <see cref="MemoryManager{T}"/> that exposes a <see cref="FlowtideMemory"/> block as
-    /// <see cref="Memory{T}"/> for APIs that require it, such as ArrowBuffer and ReadOnlySequenceSegment.
-    /// Disposing the view does not free the memory; the holder must keep the block alive and re-point the
-    /// view with <see cref="Update"/> after a realloc.
+    /// Exposes a memory block as Memory without owning it.
     /// </summary>
     public sealed unsafe class NativeMemoryView : MemoryManager<byte>
     {
@@ -32,8 +29,7 @@ namespace FlowtideDotNet.Storage.Memory
         }
 
         /// <summary>
-        /// Re-points the view after the underlying memory was reallocated.
-        /// Memory values produced earlier keep their old length but follow the new pointer.
+        /// Re-points the view after a realloc.
         /// </summary>
         public void Update(void* ptr, int length)
         {

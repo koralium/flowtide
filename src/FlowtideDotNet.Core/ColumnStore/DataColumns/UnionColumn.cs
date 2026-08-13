@@ -162,7 +162,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _valueColumns = columns;
             _typeIds = typeIds;
             _typeList = typeList;
-            // Ownership transfer: the argument is always a fresh Copy() temp that is never used again.
+            // The argument is a fresh copy that is never used again.
 #pragma warning disable RS0042
             _offsets = offsets;
 #pragma warning restore RS0042
@@ -455,7 +455,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (!disposedValue)
             {
-                // The offsets struct has no finalizer of its own, so it must be freed here on both paths.
+                // The struct has no finalizer so we free it here.
                 _offsets.Dispose(_memoryAllocator);
                 if (disposing)
                 {

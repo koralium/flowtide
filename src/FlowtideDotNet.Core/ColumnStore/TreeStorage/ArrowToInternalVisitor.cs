@@ -24,10 +24,7 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
     /// <summary>
-    /// Converts an Arrow array to an internal column.
-    ///
-    /// Every arrow buffer is copied into a fresh allocation, so the produced columns own their
-    /// memory and the source record batch can be disposed independently.
+    /// Converts an Arrow array to an internal column, copying every buffer.
     /// </summary>
     internal unsafe class ArrowToInternalVisitor :
         IArrowArrayVisitor<Int64Array>,
@@ -57,7 +54,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             get
             {
-                // Ownership transfer: the field is cleared right after so the column is the only owner.
+                // We clear the field right after so the column owns it.
 #pragma warning disable RS0042
                 var column = Column.Create(_nullCount, _dataColumn, _bitmapList, _typeId, _memoryAllocator);
 #pragma warning restore RS0042
@@ -85,7 +82,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         }
 
         /// <summary>
-        /// Frees state left behind when a visit throws; the bitmap struct has no finalizer to reclaim it.
+        /// Frees state left behind when a visit throws.
         /// </summary>
         internal void DisposeUnconsumed()
         {
@@ -180,24 +177,41 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             var offsetMemory = CopyBuffer(array.ValueOffsetBuffer);
 
             List<IDataColumn> columns = new List<IDataColumn>();
-            for (int i = 0; i < array.Fields.Count; i++)
+            try
             {
-                var previousField = CurrentField;
-                CurrentField = type.Fields[i];
-                array.Fields[i].Accept(this);
-                CurrentField = previousField;
-                if (_typeId == ArrowTypeId.Null)
+                for (int i = 0; i < array.Fields.Count; i++)
                 {
-                    _dataColumn = new NullColumn(_nullCount);
-                }
-                if (_nullCount > 0 && _typeId != ArrowTypeId.Null)
-                {
-                    throw new InvalidOperationException("Inner columns in a union should not have null values, they should be on the union level");
-                }
+                    var previousField = CurrentField;
+                    CurrentField = type.Fields[i];
+                    array.Fields[i].Accept(this);
+                    CurrentField = previousField;
+                    if (_typeId == ArrowTypeId.Null)
+                    {
+                        _dataColumn = new NullColumn(_nullCount);
+                    }
+                    if (_nullCount > 0 && _typeId != ArrowTypeId.Null)
+                    {
+                        throw new InvalidOperationException("Inner columns in a union should not have null values, they should be on the union level");
+                    }
 
-                columns.Add(_dataColumn ?? throw new InvalidOperationException("Internal column is null"));
-                // Reset null counter
-                _nullCount = 0;
+                    columns.Add(_dataColumn ?? throw new InvalidOperationException("Internal column is null"));
+                    // Reset null counter
+                    _nullCount = 0;
+                }
+            }
+            catch
+            {
+                _memoryAllocator.Free(ref typeMemory);
+                _memoryAllocator.Free(ref offsetMemory);
+                foreach (var column in columns)
+                {
+                    // DisposeUnconsumed disposes _dataColumn.
+                    if (!ReferenceEquals(column, _dataColumn))
+                    {
+                        column.Dispose();
+                    }
+                }
+                throw;
             }
 
             _dataColumn = new UnionColumn(columns, typeMemory, offsetMemory, array.Length, _memoryAllocator);
@@ -231,9 +245,18 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             CurrentField = structType.Fields[0];
             array.Keys.Accept(this);
             var keyColumn = Column;
-            CurrentField = structType.Fields[1];
-            array.Values.Accept(this);
-            var valueColumn = Column;
+            Column? valueColumn;
+            try
+            {
+                CurrentField = structType.Fields[1];
+                array.Values.Accept(this);
+                valueColumn = Column;
+            }
+            catch
+            {
+                keyColumn?.Dispose();
+                throw;
+            }
             CurrentField = previousField;
 
             _nullCount = array.NullCount;
@@ -402,18 +425,29 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
             string[] columnNames = new string[array.Fields.Count];
             Column[] columns = new Column[array.Fields.Count];
-            for (int i = 0; i < array.Fields.Count; i++)
+            try
             {
-                var field = type.Fields[i];
-                CurrentField = field;
-                columnNames[i] = CurrentField.Name;
-                array.Fields[i].Accept(this);
-                var createdColumn = Column;
-                if (createdColumn == null)
+                for (int i = 0; i < array.Fields.Count; i++)
                 {
-                    throw new InvalidOperationException("Internal column is null");
+                    var field = type.Fields[i];
+                    CurrentField = field;
+                    columnNames[i] = CurrentField.Name;
+                    array.Fields[i].Accept(this);
+                    var createdColumn = Column;
+                    if (createdColumn == null)
+                    {
+                        throw new InvalidOperationException("Internal column is null");
+                    }
+                    columns[i] = createdColumn;
                 }
-                columns[i] = createdColumn;
+            }
+            catch
+            {
+                foreach (var column in columns)
+                {
+                    column?.Dispose();
+                }
+                throw;
             }
             CurrentField = previousField;
 
