@@ -94,7 +94,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         public int GetByteSize()
         {
-            return _list.SlicedMemory.Length;
+            return _list.SlicedSpan.Length;
         }
 
         public int GetByteSize(int start, int end)

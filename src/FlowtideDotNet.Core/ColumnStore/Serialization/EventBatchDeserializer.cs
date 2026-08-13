@@ -39,6 +39,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         private int bufferStart;
         private bool isCompressed;
         private bool _schemaRead;
+        private int _buffersLength;
+
+        private static void ValidateFieldCount(int fieldsLength, int nodesLength)
+        {
+            if (fieldsLength < 0 || fieldsLength > nodesLength)
+            {
+                throw new InvalidOperationException($"Schema declares {fieldsLength} fields but the record batch only carries {nodesLength} field nodes.");
+            }
+        }
 
         public EventBatchDeserializer(IMemoryAllocator memoryAllocator, IBatchDecompressor? decompressor = default)
         {
@@ -298,57 +307,74 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             var batchLength = (int)recordBatchHeader.Length;
             bufferStart = recordBatchHeader.BuffersStartIndex;
+            _buffersLength = recordBatchHeader.BuffersLength;
+            // We size an array from this before reading anything.
+            ValidateFieldCount(fieldsLength, recordBatchHeader.NodesLength);
             IColumn[] columns = new IColumn[fieldsLength];
-            for (int i = 0; i < fieldsLength; i++)
+            int builtColumns = 0;
+            try
             {
-                var field = new FieldStruct(_schemaBytes, schema.FieldPosition(i));
-                if (decompressor != null)
+                for (int i = 0; i < fieldsLength; i++)
                 {
-                    decompressor.ColumnChange(i);
-                }
-                if (includeColumns != null)
-                {
-                    bool found = false;
-                    for (int k = 0; k < includeColumns.Count; k++)
+                    var field = new FieldStruct(_schemaBytes, schema.FieldPosition(i));
+                    if (decompressor != null)
                     {
-                        if (includeColumns[k] == i)
+                        decompressor.ColumnChange(i);
+                    }
+                    if (includeColumns != null)
+                    {
+                        bool found = false;
+                        for (int k = 0; k < includeColumns.Count; k++)
                         {
-                            found = true;
-                            break;
+                            if (includeColumns[k] == i)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            SkipColumn(in field);
+                            columns[i] = new Column(batchLength, default, default(BitmapList), ArrowTypeId.Null, memoryAllocator);
+                            builtColumns = i + 1;
+                            continue;
                         }
                     }
-                    if (!found)
+                    columns[i] = DeserializeColumn(ref data, in field, in recordBatchHeader);
+                    builtColumns = i + 1;
+                }
+
+                if (readDataIndex < recordBatchMessage.BodyLength)
+                {
+                    // Padding at the end of the record batch, advance past the padding
+                    var padding = recordBatchMessage.BodyLength - readDataIndex;
+                    if (data.Remaining >= padding)
                     {
-                        SkipColumn(in field);
-                        columns[i] = new Column(batchLength, default, new BitmapList(memoryAllocator), ArrowTypeId.Null, memoryAllocator);
-                        continue;
+                        data.Advance(padding);
+                        readDataIndex += (int)padding;
+                    }
+                    else
+                    {
+                        readDataIndex += (int)data.Remaining;
+                        data.Advance(data.Remaining);
                     }
                 }
-                columns[i] = DeserializeColumn(ref data, in field, in recordBatchHeader);
-            }
-
-            if (readDataIndex < recordBatchMessage.BodyLength)
-            {
-                // Padding at the end of the record batch, advance past the padding
-                var padding = recordBatchMessage.BodyLength - readDataIndex;
-                if (data.Remaining >= padding)
+                if (readDataIndex > recordBatchMessage.BodyLength)
                 {
-                    data.Advance(padding);
-                    readDataIndex += (int)padding;
+                    throw new Exception("Read past the end of the record batch");
                 }
-                else
+                if (fieldNodeIndex < recordBatchHeader.NodesLength)
                 {
-                    readDataIndex += (int)data.Remaining;
-                    data.Advance(data.Remaining);
+                    throw new Exception("Not all field nodes were read");
                 }
             }
-            if (readDataIndex > recordBatchMessage.BodyLength)
+            catch
             {
-                throw new Exception("Read past the end of the record batch");
-            }
-            if (fieldNodeIndex < recordBatchHeader.NodesLength)
-            {
-                throw new Exception("Not all field nodes were read");
+                for (int i = 0; i < builtColumns; i++)
+                {
+                    columns[i]?.Dispose();
+                }
+                throw;
             }
 
             if (_rentedHeaderBytes != null)
@@ -406,62 +432,81 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
 
             bufferStart = recordBatchHeader.BuffersStartIndex;
+            _buffersLength = recordBatchHeader.BuffersLength;
+            ValidateFieldCount(fieldsLength, recordBatchHeader.NodesLength);
             IDataColumn[] columns = new IDataColumn[fieldsLength];
-            for (int i = 0; i < fieldsLength; i++)
+            int builtColumns = 0;
+            int batchLength;
+            try
             {
-                var field = new FieldStruct(_schemaBytes, schema.FieldPosition(i));
-                if (decompressor != null)
+                for (int i = 0; i < fieldsLength; i++)
                 {
-                    decompressor.ColumnChange(i);
-                }
-                if (includeColumns != null)
-                {
-                    bool found = false;
-                    for (int k = 0; k < includeColumns.Count; k++)
+                    var field = new FieldStruct(_schemaBytes, schema.FieldPosition(i));
+                    if (decompressor != null)
                     {
-                        if (includeColumns[k] == i)
+                        decompressor.ColumnChange(i);
+                    }
+                    if (includeColumns != null)
+                    {
+                        bool found = false;
+                        for (int k = 0; k < includeColumns.Count; k++)
                         {
-                            found = true;
-                            break;
+                            if (includeColumns[k] == i)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            SkipColumn(in field);
+                            columns[i] = new NullColumn(0); // Dummy column for data columns
+                            builtColumns = i + 1;
+                            continue;
                         }
                     }
-                    if (!found)
+                    var fieldNode = ReadNextFieldNode(in recordBatchHeader);
+                    var dataColumnResult = DeserializeDataColumn(ref data, in field, in recordBatchHeader, (int)fieldNode.Length);
+                    columns[i] = dataColumnResult.dataColumn;
+                    builtColumns = i + 1;
+                }
+
+                if (readDataIndex < recordBatchMessage.BodyLength)
+                {
+                    // Padding at the end of the record batch, advance past the padding
+                    var padding = recordBatchMessage.BodyLength - readDataIndex;
+                    if (data.Remaining >= padding)
                     {
-                        SkipColumn(in field);
-                        columns[i] = new NullColumn(0); // Dummy column for data columns
-                        continue;
+                        data.Advance(padding);
+                        readDataIndex += (int)padding;
+                    }
+                    else
+                    {
+                        readDataIndex += (int)data.Remaining;
+                        data.Advance(data.Remaining);
                     }
                 }
-                var fieldNode = ReadNextFieldNode(in recordBatchHeader);
-                var dataColumnResult = DeserializeDataColumn(ref data, in field, in recordBatchHeader, (int)fieldNode.Length);
-                columns[i] = dataColumnResult.dataColumn;
+                if (readDataIndex > recordBatchMessage.BodyLength)
+                {
+                    throw new Exception("Read past the end of the record batch");
+                }
+                if (fieldNodeIndex < recordBatchHeader.NodesLength)
+                {
+                    throw new Exception("Not all field nodes were read");
+                }
+
+                // This read can throw on a corrupt header.
+                batchLength = (int)recordBatchHeader.Length;
+            }
+            catch
+            {
+                for (int i = 0; i < builtColumns; i++)
+                {
+                    columns[i]?.Dispose();
+                }
+                throw;
             }
 
-            if (readDataIndex < recordBatchMessage.BodyLength)
-            {
-                // Padding at the end of the record batch, advance past the padding
-                var padding = recordBatchMessage.BodyLength - readDataIndex;
-                if (data.Remaining >= padding)
-                {
-                    data.Advance(padding);
-                    readDataIndex += (int)padding;
-                }
-                else
-                {
-                    readDataIndex += (int)data.Remaining;
-                    data.Advance(data.Remaining);
-                }
-            }
-            if (readDataIndex > recordBatchMessage.BodyLength)
-            {
-                throw new Exception("Read past the end of the record batch");
-            }
-            if (fieldNodeIndex < recordBatchHeader.NodesLength)
-            {
-                throw new Exception("Not all field nodes were read");
-            }
-
-            var batchLength = (int)recordBatchHeader.Length;
             if (_rentedHeaderBytes != null)
             {
                 ArrayPool<byte>.Shared.Return(_rentedHeaderBytes);
@@ -490,33 +535,43 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         {
             var fieldNode = ReadNextFieldNode(in recordBatchStruct);
 
-            BitmapList? validityList;
+            // We read this before allocating, it can throw.
+            var nodeLength = (int)fieldNode.Length;
+            var nodeNullCount = (int)fieldNode.NullCount;
+
+            BitmapList validityList = default;
 
             if (fieldStruct.TypeType == ArrowType.Null)
             {
-                return new Column((int)fieldNode.NullCount, default, new BitmapList(memoryAllocator), ArrowTypeId.Null, memoryAllocator);
+                return new Column(nodeNullCount, default, default(BitmapList), ArrowTypeId.Null, memoryAllocator);
             }
 
             if (fieldStruct.TypeType != ArrowType.Union)
             {
                 if (TryReadNextBuffer(ref data, out var validityMemory))
                 {
-                    validityList = new BitmapList(validityMemory, (int)fieldNode.Length, memoryAllocator);
-                }
-                else
-                {
-                    validityList = new BitmapList(memoryAllocator);
+                    validityList = new BitmapList(validityMemory, nodeLength);
                 }
             }
-            else
+
+            DataColumnResult dataColumnResult = default;
+            try
             {
-                validityList = new BitmapList(memoryAllocator);
+                dataColumnResult = DeserializeDataColumn(ref data, in fieldStruct, in recordBatchStruct, nodeLength);
+                // The local moves into the column and is not used again.
+#pragma warning disable RS0042
+                var finalColumn = new Column(nodeNullCount, dataColumnResult.dataColumn, validityList, dataColumnResult.arrowTypeId, memoryAllocator);
+#pragma warning restore RS0042
+
+                return finalColumn;
             }
-
-            var dataColumnResult = DeserializeDataColumn(ref data, in fieldStruct, in recordBatchStruct, (int)fieldNode.Length);
-            var finalColumn = new Column((int)fieldNode.NullCount, dataColumnResult.dataColumn, validityList, dataColumnResult.arrowTypeId, memoryAllocator);
-
-            return finalColumn;
+            catch
+            {
+                // The struct has no finalizer so we free it here.
+                validityList.Dispose(memoryAllocator);
+                dataColumnResult.dataColumn?.Dispose();
+                throw;
+            }
         }
 
         private struct DataColumnResult
@@ -578,40 +633,53 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             int length)
         {
             bool hasTypeMemory = TryReadNextBuffer(ref data, out var typeMemory);
-            bool hasOffsetMemory = TryReadNextBuffer(ref data, out var offsetMemory);
-
-            var childrenCount = fieldStruct.ChildrenLength;
+            bool hasOffsetMemory = false;
+            FlowtideMemory offsetMemory = default;
 
             List<IDataColumn> children = new List<IDataColumn>();
-
-            var nullFieldNode = ReadNextFieldNode(in recordBatchStruct);
-            children.Add(new NullColumn((int)nullFieldNode.Length));
-
-            for (int i = 1; i < childrenCount; i++)
+            try
             {
-                var child = fieldStruct.Children(i);
-                var fieldNode = ReadNextFieldNode(in recordBatchStruct);
-                ExceptEmptyBuffer(ref data);
-                children.Add(DeserializeDataColumn(ref data, in child, in recordBatchStruct, (int)fieldNode.Length).dataColumn);
-            }
+                hasOffsetMemory = TryReadNextBuffer(ref data, out offsetMemory);
 
-            if (hasTypeMemory && hasOffsetMemory)
-            {
-                return new UnionColumn(children, typeMemory!, offsetMemory!, length, memoryAllocator);
-            }
-            else
-            {
-                if (hasTypeMemory || hasOffsetMemory)
+                var childrenCount = fieldStruct.ChildrenLength;
+
+                var nullFieldNode = ReadNextFieldNode(in recordBatchStruct);
+                children.Add(new NullColumn((int)nullFieldNode.Length));
+
+                for (int i = 1; i < childrenCount; i++)
+                {
+                    var child = fieldStruct.Children(i);
+                    var fieldNode = ReadNextFieldNode(in recordBatchStruct);
+                    ExceptEmptyBuffer(ref data);
+                    children.Add(DeserializeDataColumn(ref data, in child, in recordBatchStruct, (int)fieldNode.Length).dataColumn);
+                }
+
+                if (hasTypeMemory != hasOffsetMemory)
                 {
                     throw new InvalidOperationException("Union column must have both type and offset memory");
                 }
-                // Dispose the children
+            }
+            catch
+            {
+                memoryAllocator.Free(ref typeMemory);
+                memoryAllocator.Free(ref offsetMemory);
                 for (int i = 0; i < children.Count; i++)
                 {
                     children[i].Dispose();
                 }
-                return new UnionColumn(memoryAllocator);
+                throw;
             }
+
+            if (hasTypeMemory)
+            {
+                return new UnionColumn(children, typeMemory, offsetMemory, length, memoryAllocator);
+            }
+            // Dispose the children
+            for (int i = 0; i < children.Count; i++)
+            {
+                children[i].Dispose();
+            }
+            return new UnionColumn(memoryAllocator);
         }
 
         private MapColumn DeserializeMapColumn(
@@ -639,15 +707,26 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             bool readOffsets = TryReadNextBuffer(ref data, out var offsetMemory);
 
-            // Read validity buffer, skipped here
-            ExceptEmptyBuffer(ref data);
+            Column? keyColumn = null;
+            Column valueColumn;
+            try
+            {
+                // Read validity buffer, skipped here
+                ExceptEmptyBuffer(ref data);
 
-            var keyColumn = DeserializeColumn(ref data, in keyField, in recordBatchStruct);
-            var valueColumn = DeserializeColumn(ref data, in valueField, in recordBatchStruct);
+                keyColumn = DeserializeColumn(ref data, in keyField, in recordBatchStruct);
+                valueColumn = DeserializeColumn(ref data, in valueField, in recordBatchStruct);
+            }
+            catch
+            {
+                memoryAllocator.Free(ref offsetMemory);
+                keyColumn?.Dispose();
+                throw;
+            }
 
             if (readOffsets)
             {
-                return new MapColumn(keyColumn, valueColumn, offsetMemory!, length + 1, memoryAllocator);
+                return new MapColumn(keyColumn, valueColumn, offsetMemory, length + 1, memoryAllocator);
             }
 
             // This should not happen normally
@@ -672,11 +751,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             bool readOffsets = TryReadNextBuffer(ref data, out var offsetMemory);
 
-            var internalColumn = DeserializeColumn(ref data, in child, in recordBatchStruct);
+            Column internalColumn;
+            try
+            {
+                internalColumn = DeserializeColumn(ref data, in child, in recordBatchStruct);
+            }
+            catch
+            {
+                memoryAllocator.Free(ref offsetMemory);
+                throw;
+            }
 
             if (readOffsets)
             {
-                return new ListColumn(internalColumn, offsetMemory!, length + 1, memoryAllocator);
+                return new ListColumn(internalColumn, offsetMemory, length + 1, memoryAllocator);
             }
             // If there was no offsets, ignore the read internal column since the column is empty
             // This should not happen normally
@@ -771,16 +859,27 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             int length)
         {
             bool haveOffsetBuffer = TryReadNextBuffer(ref data, out var offsetMemory);
-            bool haveDataBuffer = TryReadNextBuffer(ref data, out var dataMemory);
-            if (haveDataBuffer && !haveOffsetBuffer)
+            bool haveDataBuffer;
+            FlowtideMemory dataMemory;
+            try
             {
-                throw new InvalidOperationException("Data buffer found without offset buffer");
+                haveDataBuffer = TryReadNextBuffer(ref data, out dataMemory);
+                if (haveDataBuffer && !haveOffsetBuffer)
+                {
+                    memoryAllocator.Free(ref dataMemory);
+                    throw new InvalidOperationException("Data buffer found without offset buffer");
+                }
+            }
+            catch
+            {
+                memoryAllocator.Free(ref offsetMemory);
+                throw;
             }
             if (!haveOffsetBuffer)
             {
                 return new BinaryColumn(memoryAllocator);
             }
-            return new BinaryColumn(offsetMemory!, length + 1, dataMemory, memoryAllocator);
+            return new BinaryColumn(offsetMemory, length + 1, dataMemory, memoryAllocator);
         }
 
         private IntegerColumn DeserializeIntegerColumn(
@@ -790,9 +889,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             int length)
         {
             var intType = fieldStruct.TypeAsInt();
+            // We read this before allocating, it can throw.
+            var bitWidth = intType.BitWidth;
             if (TryReadNextBuffer(ref data, out var memory))
             {
-                return new IntegerColumn(memoryAllocator, memory, length, intType.BitWidth);
+                return new IntegerColumn(memoryAllocator, memory, length, bitWidth);
             }
             return new IntegerColumn(memoryAllocator);
         }
@@ -817,16 +918,27 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             int length)
         {
             bool haveOffsetBuffer = TryReadNextBuffer(ref data, out var offsetMemory);
-            bool haveDataBuffer = TryReadNextBuffer(ref data, out var dataMemory);
-            if (haveDataBuffer && !haveOffsetBuffer)
+            bool haveDataBuffer;
+            FlowtideMemory dataMemory;
+            try
             {
-                throw new InvalidOperationException("Data buffer found without offset buffer");
+                haveDataBuffer = TryReadNextBuffer(ref data, out dataMemory);
+                if (haveDataBuffer && !haveOffsetBuffer)
+                {
+                    memoryAllocator.Free(ref dataMemory);
+                    throw new InvalidOperationException("Data buffer found without offset buffer");
+                }
+            }
+            catch
+            {
+                memoryAllocator.Free(ref offsetMemory);
+                throw;
             }
             if (!haveOffsetBuffer)
             {
                 return new StringColumn(memoryAllocator);
             }
-            return new StringColumn(offsetMemory!, length + 1, dataMemory, memoryAllocator);
+            return new StringColumn(offsetMemory, length + 1, dataMemory, memoryAllocator);
         }
 
         private StructColumn DeserializeStructColumn(
@@ -836,16 +948,31 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             int length)
         {
             var childLength = fieldStruct.ChildrenLength;
+            // We size two arrays from this before reading children.
+            ValidateFieldCount(childLength, recordBatchStruct.NodesLength);
 
             Column[] children = new Column[childLength];
 
             // This array might be able to be improved
             string[] fieldNames = new string[childLength];
-            for (int i = 0; i < childLength; i++)
+            int builtChildren = 0;
+            try
             {
-                var field = fieldStruct.Children(i);
-                fieldNames[i] = Encoding.UTF8.GetString(field.GetNameBytes());
-                children[i] = DeserializeColumn(ref data, ref field, in recordBatchStruct);
+                for (int i = 0; i < childLength; i++)
+                {
+                    var field = fieldStruct.Children(i);
+                    fieldNames[i] = Encoding.UTF8.GetString(field.GetNameBytes());
+                    children[i] = DeserializeColumn(ref data, ref field, in recordBatchStruct);
+                    builtChildren = i + 1;
+                }
+            }
+            catch
+            {
+                for (int i = 0; i < builtChildren; i++)
+                {
+                    children[i]?.Dispose();
+                }
+                throw;
             }
 
             StructHeader structHeader = StructHeader.Create(fieldNames);
@@ -872,12 +999,26 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
         }
 
-        private bool TryReadNextBuffer(ref SequenceReader<byte> data, [NotNullWhen(true)] out IMemoryOwner<byte>? memory)
+        /// <summary>
+        /// Must not throw after allocating, the caller cannot free it.
+        /// </summary>
+        private bool TryReadNextBuffer(ref SequenceReader<byte> data, out FlowtideMemory memory)
         {
+            // Without this we walk past the buffer table.
+            if (bufferIndex >= _buffersLength)
+            {
+                throw new InvalidOperationException("Record batch does not contain the requested buffer");
+            }
             var bufferInfoSpan = _recordBatchHeaderBytes.Slice(bufferStart + (bufferIndex * 16));
             var bufferOffset = (int)BinaryPrimitives.ReadInt64LittleEndian(bufferInfoSpan);
             var bufferLength = (int)BinaryPrimitives.ReadInt64LittleEndian(bufferInfoSpan.Slice(8));
             bufferIndex++;
+
+            // A negative length makes the guards below always false.
+            if (bufferLength < 0)
+            {
+                throw new InvalidOperationException("Negative buffer length in record batch header");
+            }
 
             var difference = bufferOffset - readDataIndex;
             if (difference != 0)
@@ -888,40 +1029,66 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             if (bufferLength == 0)
             {
-                memory = null;
+                memory = default;
                 return false;
             }
 
             if (isCompressed)
             {
+                // The 8 byte length prefix is inside bufferLength.
+                if (bufferLength < 8)
+                {
+                    throw new InvalidOperationException("Compressed buffer is too small to contain the uncompressed length");
+                }
                 if (!data.TryReadLittleEndian(out long uncompressedLength))
                 {
                     throw new InvalidOperationException("Failed to read uncompressed length");
                 }
                 if (uncompressedLength == -1)
                 {
-                    memory = memoryAllocator.Allocate(bufferLength - 8, 64);
-                    data.TryCopyTo(memory.Memory.Span.Slice(0, bufferLength - 8));
+                    if (data.Remaining < bufferLength - 8)
+                    {
+                        throw new InvalidOperationException("Not enough data to read buffer");
+                    }
+                    memory = memoryAllocator.AllocateMemory(bufferLength - 8);
+                    data.TryCopyTo(memory.Span.Slice(0, bufferLength - 8));
                     readDataIndex += bufferLength;
                     data.Advance(bufferLength - 8);
                 }
                 else
                 {
-                    memory = memoryAllocator.Allocate((int)uncompressedLength, 64);
+                    if (uncompressedLength < 0 || uncompressedLength > int.MaxValue)
+                    {
+                        throw new InvalidOperationException("Invalid uncompressed buffer length");
+                    }
                     if (data.UnreadSpan.Length < (bufferLength - 8))
                     {
                         throw new InvalidOperationException("Not enough data to read compressed buffer");
                     }
+                    // We slice before allocating.
                     var compressedData = data.UnreadSpan.Slice(0, bufferLength - 8);
-                    decompressor!.Unwrap(compressedData, memory.Memory.Span);
+                    memory = memoryAllocator.AllocateMemory((int)uncompressedLength);
+                    try
+                    {
+                        decompressor!.Unwrap(compressedData, memory.Span);
+                    }
+                    catch
+                    {
+                        memoryAllocator.Free(ref memory);
+                        throw;
+                    }
                     readDataIndex += bufferLength;
                     data.Advance(bufferLength - 8);
                 }
             }
             else
             {
-                memory = memoryAllocator.Allocate(bufferLength, 64);
-                data.TryCopyTo(memory.Memory.Span.Slice(0, bufferLength));
+                if (data.Remaining < bufferLength)
+                {
+                    throw new InvalidOperationException("Not enough data to read buffer");
+                }
+                memory = memoryAllocator.AllocateMemory(bufferLength);
+                data.TryCopyTo(memory.Span.Slice(0, bufferLength));
                 readDataIndex += bufferLength;
                 data.Advance(bufferLength);
             }

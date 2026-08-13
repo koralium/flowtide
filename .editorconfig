@@ -1,0 +1,13 @@
+root = true
+
+[*.cs]
+# Roslyn.Diagnostics.Analyzers is referenced only for RS0042 (do not copy [NonCopyable] structs);
+# its other rule families are meant for the Roslyn repo itself and are disabled wholesale.
+dotnet_analyzer_diagnostic.category-ApiDesign.severity = none
+dotnet_analyzer_diagnostic.category-RoslynDiagnosticsDesign.severity = none
+dotnet_analyzer_diagnostic.category-RoslynDiagnosticsMaintainability.severity = none
+dotnet_analyzer_diagnostic.category-RoslynDiagnosticsPerformance.severity = none
+dotnet_analyzer_diagnostic.category-RoslynDiagnosticsReliability.severity = none
+
+# Copying a [NonCopyable] struct is memory corruption (realloc in the copy frees the original's memory).
+dotnet_diagnostic.RS0042.severity = error

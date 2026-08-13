@@ -40,6 +40,8 @@
     <!-- Fody -->
     <PackageVersion Include="Fody" Version="6.9.2" />
     <PackageVersion Include="InlineIL.Fody" Version="1.10.1" />
+    <!-- Analyzers -->
+    <PackageVersion Include="Roslyn.Diagnostics.Analyzers" Version="5.6.0" />
     <!-- Others -->
     <PackageVersion Include="ZstdSharp.Port" Version="0.8.5" />
     <PackageVersion Include="SqlParserCS" Version="0.6.5" />

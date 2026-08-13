@@ -20,76 +20,65 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
     internal unsafe class TypeList : IDisposable, IReadOnlyList<sbyte>
     {
-        private void* _data;
-        private int _dataLength;
         private int _length;
         private bool _disposedValue;
         private readonly IMemoryAllocator _memoryAllocator;
-        private IMemoryOwner<byte>? _memoryOwner;
+        private FlowtideMemory _memory;
         private int _rentCounter;
+
+        // Capacity in elements, derived from the block.
+        private int DataLength => _memory.Length;
 
         public TypeList(IMemoryAllocator memoryAllocator)
         {
-            _data = null;
             _memoryAllocator = memoryAllocator;
         }
 
         public TypeList(IMemoryAllocator memoryAllocator, int initialCapacity)
         {
-            _data = null;
             _memoryAllocator = memoryAllocator;
             EnsureCapacity(initialCapacity);
         }
 
-        public TypeList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        public TypeList(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _memoryOwner = memory;
-            _data = _memoryOwner.Memory.Pin().Pointer;
-            _dataLength = memory.Memory.Length / sizeof(sbyte);
+            _memory = memory;
             _length = length;
             _memoryAllocator = memoryAllocator;
         }
 
-        public Span<sbyte> Span => new Span<sbyte>(_data, _length);
+        public Span<sbyte> Span => new Span<sbyte>(_memory.Pointer, _length);
 
-        public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
+        public Memory<byte> Memory => GetViewMemory();
 
-        public Memory<byte> SlicedMemory => _memoryOwner?.Memory.Slice(0, _length * sizeof(sbyte)) ?? new Memory<byte>();
+        public Memory<byte> SlicedMemory => GetViewMemory().Slice(0, _length * sizeof(sbyte));
 
-        public TypeList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
+        public Span<byte> SlicedSpan => new Span<byte>(_memory.Pointer, _length * sizeof(sbyte));
+
+        // We create a new view per call, only cold paths need it.
+        private Memory<byte> GetViewMemory()
         {
-            _data = data;
-            _dataLength = dataLength;
-            _length = length;
-            _memoryAllocator = memoryAllocator;
+            if (_memory.IsNull)
+            {
+                return new Memory<byte>();
+            }
+            return new NativeMemoryView(_memory.Pointer, _memory.Length).Memory;
         }
 
         private void EnsureCapacity(int length)
         {
-            if (_dataLength < length)
+            if (DataLength < length)
             {
                 var newLength = length * 2;
                 if (newLength < 64)
                 {
                     newLength = 64;
                 }
-                var allocSize = newLength * sizeof(sbyte);
-
-                if (_memoryOwner == null)
-                {
-                    _memoryOwner = _memoryAllocator.Allocate(allocSize, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                }
-                else
-                {
-                    _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, allocSize, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                }
-                _dataLength = _memoryOwner.Memory.Length / sizeof(sbyte);
+                _memoryAllocator.Realloc(ref _memory, newLength * sizeof(sbyte));
             }
         }
 
-        private Span<sbyte> AccessSpan => new Span<sbyte>(_data, _dataLength);
+        private Span<sbyte> AccessSpan => new Span<sbyte>(_memory.Pointer, DataLength);
 
         public void Add(sbyte value)
         {
@@ -232,14 +221,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             if (!_disposedValue)
             {
-                if (disposing)
+                if (!_memory.IsNull)
                 {
-                    if (_memoryOwner != null)
-                    {
-                        _memoryOwner.Dispose();
-                        _memoryOwner = null;
-                        _data = null;
-                    }
+                    _memoryAllocator.Free(ref _memory);
                 }
 
                 _disposedValue = true;
@@ -296,9 +280,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public TypeList Copy(IMemoryAllocator memoryAllocator)
         {
-            var mem = SlicedMemory;
-            var newMem = memoryAllocator.Allocate(mem.Length, 64);
-            mem.Span.CopyTo(newMem.Memory.Span);
+            var slicedSpan = SlicedSpan;
+            var newMem = memoryAllocator.AllocateMemory(slicedSpan.Length);
+            slicedSpan.CopyTo(newMem.Span);
 
             return new TypeList(newMem, _length, memoryAllocator);
         }

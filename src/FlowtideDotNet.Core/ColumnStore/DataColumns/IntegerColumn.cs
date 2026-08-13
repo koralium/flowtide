@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             int GetByteSize(int start, int end);
 
-            Memory<byte> SlicedMemory { get; }
+            Span<byte> SlicedSpan { get; }
 
             IIntData Copy(IMemoryAllocator memoryAllocator);
 
@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public int BitWidth => 8;
 
-            public Memory<byte> SlicedMemory => _list.SlicedMemory;
+            public Span<byte> SlicedSpan => _list.SlicedSpan;
 
             public int Add(in long value)
             {
@@ -329,7 +329,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public int BitWidth => 16;
 
-            public Memory<byte> SlicedMemory => _list.SlicedMemory;
+            public Span<byte> SlicedSpan => _list.SlicedSpan;
 
             public int Add(in long value)
             {
@@ -541,7 +541,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public int BitWidth => 32;
 
-            public Memory<byte> SlicedMemory => _list.SlicedMemory;
+            public Span<byte> SlicedSpan => _list.SlicedSpan;
 
             public int Add(in long value)
             {
@@ -753,7 +753,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             public int BitWidth => 64;
 
-            public Memory<byte> SlicedMemory => _list.SlicedMemory;
+            public Span<byte> SlicedSpan => _list.SlicedSpan;
 
             public int Add(in long value)
             {
@@ -968,7 +968,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public IntegerColumn(IMemoryAllocator memoryAllocator, IMemoryOwner<byte> memory, int length, int bitWidth)
+        public IntegerColumn(IMemoryAllocator memoryAllocator, FlowtideMemory memory, int length, int bitWidth)
         {
             this._memoryAllocator = memoryAllocator;
 
@@ -987,6 +987,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     _data = new Int64Data(new PrimitiveList<long>(memory, length, memoryAllocator));
                     break;
                 default:
+                    // Nothing owns the memory yet so we free it here.
+                    memoryAllocator.Free(ref memory);
                     throw new NotImplementedException();
             }
         }
@@ -1101,10 +1103,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
             Debug.Assert(_data != null);
-            if (validityList != null &&
+            if (!validityList.IsNull &&
                 !validityList.Get(index))
             {
                 if (value.Type == ArrowTypeId.Null)
@@ -1211,7 +1213,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _data.InsertNullRange(index, count);
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)
         {
             if (other is IntegerColumn integerColumn)
             {
@@ -1304,7 +1306,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            var memoryLength = _data?.SlicedMemory.Length ?? 0;
+            var memoryLength = _data != null ? _data.SlicedSpan.Length : 0;
             arrowSerializer.AddBufferForward(memoryLength);
         }
 
@@ -1330,7 +1332,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (_data != null)
             {
-                dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
+                dataWriter.WriteArrowBuffer(_data.SlicedSpan);
             }
             else
             {

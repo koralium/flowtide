@@ -1,9 +1,9 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,27 +14,37 @@ using System.Buffers;
 
 namespace FlowtideDotNet.Storage.Memory
 {
-    public unsafe class PreAllocatedMemoryOwner : MemoryManager<byte>
+    /// <summary>
+    /// Exposes a memory block as Memory without owning it.
+    /// </summary>
+    public sealed unsafe class NativeMemoryView : MemoryManager<byte>
     {
-        private readonly PreAllocatedMemoryManager _manager;
-        private readonly void* ptr;
-        private readonly int length;
+        private void* _ptr;
+        private int _length;
 
-        public PreAllocatedMemoryOwner(PreAllocatedMemoryManager memoryManager, void* ptr, int length)
+        public NativeMemoryView(void* ptr, int length)
         {
-            _manager = memoryManager;
-            this.ptr = ptr;
-            this.length = length;
+            _ptr = ptr;
+            _length = length;
+        }
+
+        /// <summary>
+        /// Re-points the view after a realloc.
+        /// </summary>
+        public void Update(void* ptr, int length)
+        {
+            _ptr = ptr;
+            _length = length;
         }
 
         public override Span<byte> GetSpan()
         {
-            return new Span<byte>(ptr, length);
+            return new Span<byte>(_ptr, _length);
         }
 
         public override MemoryHandle Pin(int elementIndex = 0)
         {
-            return new MemoryHandle(((byte*)ptr) + elementIndex, default, default);
+            return new MemoryHandle(((byte*)_ptr) + elementIndex, default, default);
         }
 
         public override void Unpin()
@@ -43,7 +53,6 @@ namespace FlowtideDotNet.Storage.Memory
 
         protected override void Dispose(bool disposing)
         {
-            _manager.Free();
         }
     }
 }

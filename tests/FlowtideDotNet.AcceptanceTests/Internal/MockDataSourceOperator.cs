@@ -32,7 +32,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     internal class MockDataSourceOperator : ReadBaseOperator
     {
 #if DEBUG_WRITE
-        private StreamWriter? allOutput;
+        private TextWriter? allOutput;
 #endif
 
         private readonly ReadRelation readRelation;
@@ -280,7 +280,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             if (allOutput == null)
             {
-                allOutput = File.CreateText($"debugwrite/{StreamName}_{Name}_mock.alloutput.txt");
+                allOutput = TextWriter.Synchronized(File.CreateText($"debugwrite/{StreamName}_{Name}_mock.alloutput.txt"));
             }
             else
             {

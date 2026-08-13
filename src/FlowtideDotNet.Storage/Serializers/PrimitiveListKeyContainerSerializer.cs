@@ -51,10 +51,11 @@ namespace FlowtideDotNet.Storage.Serializers
             {
                 throw new InvalidOperationException("Failed to read length");
             }
-            var memory = memoryAllocator.Allocate(length, 64);
+            var memory = memoryAllocator.AllocateMemory(length);
 
-            if (!reader.TryCopyTo(memory.Memory.Span.Slice(0, length)))
+            if (!reader.TryCopyTo(memory.Span.Slice(0, length)))
             {
+                memoryAllocator.Free(ref memory);
                 throw new InvalidOperationException("Failed to read bytes");
             }
             reader.Advance(length);
@@ -68,11 +69,12 @@ namespace FlowtideDotNet.Storage.Serializers
 
         public void Serialize(in IBufferWriter<byte> writer, in PrimitiveListKeyContainer<T> values)
         {
-            var span = writer.GetSpan(values.Memory.Length + 8);
+            var dataSpan = values._values.SlicedSpan;
+            var span = writer.GetSpan(dataSpan.Length + 8);
             BinaryPrimitives.WriteInt32LittleEndian(span, values.Count);
-            BinaryPrimitives.WriteInt32LittleEndian(span.Slice(4), values.Memory.Length);
-            values.Memory.Span.CopyTo(span.Slice(8));
-            writer.Advance(values.Memory.Length + 8);
+            BinaryPrimitives.WriteInt32LittleEndian(span.Slice(4), dataSpan.Length);
+            dataSpan.CopyTo(span.Slice(8));
+            writer.Advance(dataSpan.Length + 8);
         }
     }
 }

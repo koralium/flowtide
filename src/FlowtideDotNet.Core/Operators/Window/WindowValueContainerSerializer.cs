@@ -61,41 +61,64 @@ namespace FlowtideDotNet.Core.Operators.Window
                 throw new InvalidOperationException("Failed to read bitmap memory length");
             }
 
-            var weightsNativeMemory = _memoryAllocator.Allocate(weightsMemoryLength, 64);
-            var slice = weightsNativeMemory.Memory.Span.Slice(0, weightsMemoryLength);
-            if (!reader.TryCopyTo(slice))
+            var weightsNativeMemory = _memoryAllocator.AllocateMemory(weightsMemoryLength);
+            FlowtideMemory bitmapNativeMemory = default;
+            try
             {
-                throw new InvalidOperationException("Failed to read weights memory");
-            }
-            reader.Advance(weightsMemoryLength);
+                var slice = weightsNativeMemory.Span.Slice(0, weightsMemoryLength);
+                if (!reader.TryCopyTo(slice))
+                {
+                    throw new InvalidOperationException("Failed to read weights memory");
+                }
+                reader.Advance(weightsMemoryLength);
 
-            var bitmapNativeMemory = _memoryAllocator.Allocate(bitmapMemoryLength, 64);
-            if (!reader.TryCopyTo(bitmapNativeMemory.Memory.Span.Slice(0, bitmapMemoryLength)))
-            {
-                throw new InvalidOperationException("Failed to read bitmap memory");
+                bitmapNativeMemory = _memoryAllocator.AllocateMemory(bitmapMemoryLength);
+                if (!reader.TryCopyTo(bitmapNativeMemory.Span.Slice(0, bitmapMemoryLength)))
+                {
+                    throw new InvalidOperationException("Failed to read bitmap memory");
+                }
+                reader.Advance(bitmapMemoryLength);
             }
-            reader.Advance(bitmapMemoryLength);
+            catch
+            {
+                _memoryAllocator.Free(ref weightsNativeMemory);
+                _memoryAllocator.Free(ref bitmapNativeMemory);
+                throw;
+            }
 
             var weights = new PrimitiveList<int>(weightsNativeMemory, weightsMemoryLength / sizeof(int), _memoryAllocator);
-            var bitmap = new BitmapList(bitmapNativeMemory, weights.Count, _memoryAllocator);
 
-            var deserializer = new EventBatchDeserializer(_memoryAllocator);
-            var functionStatesResult = deserializer.DeserializeDataColumns(ref reader);
-
-            ListColumn[] listColumns = new ListColumn[functionStatesResult.DataColumns.Length];
-            for (int i = 0; i < functionStatesResult.DataColumns.Length; i++)
+            ListColumn[] listColumns;
+            try
             {
-                if (functionStatesResult.DataColumns[i] is ListColumn listColumn)
+                var deserializer = new EventBatchDeserializer(_memoryAllocator);
+                var functionStatesResult = deserializer.DeserializeDataColumns(ref reader);
+
+                listColumns = new ListColumn[functionStatesResult.DataColumns.Length];
+                for (int i = 0; i < functionStatesResult.DataColumns.Length; i++)
                 {
-                    listColumns[i] = listColumn;
-                }
-                else
-                {
-                    throw new InvalidOperationException("Invalid data column type");
+                    if (functionStatesResult.DataColumns[i] is ListColumn listColumn)
+                    {
+                        listColumns[i] = listColumn;
+                    }
+                    else
+                    {
+                        for (int k = 0; k < functionStatesResult.DataColumns.Length; k++)
+                        {
+                            functionStatesResult.DataColumns[k].Dispose();
+                        }
+                        throw new InvalidOperationException("Invalid data column type");
+                    }
                 }
             }
+            catch
+            {
+                weights.Dispose();
+                _memoryAllocator.Free(ref bitmapNativeMemory);
+                throw;
+            }
 
-            return new WindowValueContainer(weights, listColumns, bitmap);
+            return new WindowValueContainer(weights, listColumns, new BitmapList(bitmapNativeMemory, weights.Count), _memoryAllocator);
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -105,8 +128,8 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         public void Serialize(in IBufferWriter<byte> writer, in WindowValueContainer values)
         {
-            var weightsmemory = values._weights.SlicedMemory.Span;
-            var bitmapMemory = values._previousValueSent.MemorySlice.Span;
+            var weightsmemory = values._weights.SlicedSpan;
+            var bitmapMemory = values._previousValueSent.SlicedSpan;
 
             var writeSpan = writer.GetSpan(weightsmemory.Length + bitmapMemory.Length + 8);
 

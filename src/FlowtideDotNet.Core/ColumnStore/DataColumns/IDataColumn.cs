@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         ArrowTypeId Type { get; }
 
-        int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList)
+        int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList)
             where T : IDataValue;
 
         int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes);
 
-        void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList);
+        void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList);
 
         /// <summary>
         /// Inserts null on all elements in the range.

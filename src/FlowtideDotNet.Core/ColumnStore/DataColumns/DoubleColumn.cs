@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data = new PrimitiveList<double>(memoryAllocator, columnSizeInfo.TotalRows);
         }
 
-        public DoubleColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
+        public DoubleColumn(FlowtideMemory memory, int count, IMemoryAllocator memoryAllocator)
         {
             _data = new PrimitiveList<double>(memory, count, memoryAllocator);
         }
@@ -87,9 +87,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
-            if (validityList != null &&
+            if (!validityList.IsNull &&
                 !validityList.Get(index))
             {
                 if (value.Type == ArrowTypeId.Null)
@@ -222,7 +222,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data.GetPrefixSumByteSizes(indices, sizes);
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)
         {
             if (other is DoubleColumn doubleColumn)
             {
@@ -274,12 +274,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_data.SlicedMemory.Length);
+            arrowSerializer.AddBufferForward(_data.SlicedSpan.Length);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
+            dataWriter.WriteArrowBuffer(_data.SlicedSpan);
         }
 
         public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)

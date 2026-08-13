@@ -24,10 +24,7 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
     /// <summary>
-    /// Converts an Arrow array to an internal column.
-    /// 
-    /// This causes alot of pinning of memory, so it is important to dispose of the column when done.
-    /// A converted arrow array should be shortlived and not stored for long periods of time.
+    /// Converts an Arrow array to an internal column, copying every buffer.
     /// </summary>
     internal unsafe class ArrowToInternalVisitor :
         IArrowArrayVisitor<Int64Array>,
@@ -46,13 +43,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         IArrowArrayVisitor<Int32Array>,
         IArrowArrayVisitor<StructArray>
     {
-        private readonly IMemoryOwner<byte> recordBatchMemoryOwner;
-        private readonly PreAllocatedMemoryManager preAllocatedMemoryManager;
-        private readonly void* _rootPtr;
-        private int _rootUsageCount;
+        private readonly IMemoryAllocator _memoryAllocator;
 
         private IDataColumn? _dataColumn;
-        private BitmapList? _bitmapList;
+        private BitmapList _bitmapList;
         private int _nullCount;
         private ArrowTypeId _typeId;
 
@@ -60,42 +54,41 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             get
             {
-                BitmapList? bitmapList = _bitmapList;
-                if (bitmapList == null)
-                {
-                    bitmapList = BitmapListFactory.Get(preAllocatedMemoryManager);
-                }
-                return Column.Create(_nullCount, _dataColumn, bitmapList, _typeId, preAllocatedMemoryManager);
+                // We clear the field right after so the column owns it.
+#pragma warning disable RS0042
+                var column = Column.Create(_nullCount, _dataColumn, _bitmapList, _typeId, _memoryAllocator);
+#pragma warning restore RS0042
+                _bitmapList = default;
+                return column;
             }
         }
 
         public Field? CurrentField { get; set; }
 
-        public ArrowToInternalVisitor(IMemoryOwner<byte> recordBatchMemoryOwner, IMemoryAllocator memoryManager)
+        public ArrowToInternalVisitor(IMemoryAllocator memoryManager)
         {
-            this.recordBatchMemoryOwner = recordBatchMemoryOwner;
-            var pin = recordBatchMemoryOwner.Memory.Pin();
-            preAllocatedMemoryManager = new PreAllocatedMemoryManager(memoryManager, pin);
-            _rootPtr = pin.Pointer;
+            _memoryAllocator = memoryManager;
         }
 
-        private IMemoryOwner<byte> GetMemoryOwner(ArrowBuffer buffer)
+        private FlowtideMemory CopyBuffer(ArrowBuffer buffer)
         {
-            var memoryHandle = buffer.Memory.Pin();
-            _rootUsageCount++;
-            IMemoryOwner<byte> bitmapMemoryOwner = new PreAllocatedMemoryOwner(preAllocatedMemoryManager, memoryHandle.Pointer, buffer.Memory.Length); //new PreAllocatedMemoryOwner(batchMemoryManager, _rootPtr, memoryHandle.Pointer, buffer.Memory.Length);
-            memoryHandle.Dispose();
-            return bitmapMemoryOwner;
-        }
-
-        public void Finish()
-        {
-            if (_rootUsageCount == 0)
+            if (buffer.Length == 0)
             {
-                preAllocatedMemoryManager.Dispose();
-                return;
+                return default;
             }
-            preAllocatedMemoryManager.Initialize(recordBatchMemoryOwner, _rootUsageCount);
+            var memory = _memoryAllocator.AllocateMemory(buffer.Length);
+            buffer.Span.CopyTo(memory.Span);
+            return memory;
+        }
+
+        /// <summary>
+        /// Frees state left behind when a visit throws.
+        /// </summary>
+        internal void DisposeUnconsumed()
+        {
+            _bitmapList.Dispose(_memoryAllocator);
+            _dataColumn?.Dispose();
+            _dataColumn = null;
         }
 
         public void Visit(Int64Array array)
@@ -103,15 +96,15 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
 
-            _dataColumn = new IntegerColumn(preAllocatedMemoryManager, GetMemoryOwner(array.ValueBuffer), array.Length, 64);
+            _dataColumn = new IntegerColumn(_memoryAllocator, CopyBuffer(array.ValueBuffer), array.Length, 64);
             _typeId = ArrowTypeId.Int64;
         }
 
@@ -125,17 +118,17 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
 
-            var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
-            var dataMemoryOwner = GetMemoryOwner(array.ValueBuffer);
-            var stringColumn = new StringColumn(offsetMemoryOwner, array.ValueOffsets.Length, dataMemoryOwner, preAllocatedMemoryManager);
+            var offsetMemoryOwner = CopyBuffer(array.ValueOffsetsBuffer);
+            var dataMemoryOwner = CopyBuffer(array.ValueBuffer);
+            var stringColumn = new StringColumn(offsetMemoryOwner, array.ValueOffsets.Length, dataMemoryOwner, _memoryAllocator);
 
             _dataColumn = stringColumn;
             _typeId = ArrowTypeId.String;
@@ -158,17 +151,17 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
 
-            var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
+            var offsetMemoryOwner = CopyBuffer(array.ValueOffsetsBuffer);
 
-            _dataColumn = new ListColumn(column, offsetMemoryOwner, array.ValueOffsets.Length, preAllocatedMemoryManager);
+            _dataColumn = new ListColumn(column, offsetMemoryOwner, array.ValueOffsets.Length, _memoryAllocator);
             _typeId = ArrowTypeId.List;
         }
 
@@ -176,35 +169,52 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             Debug.Assert(CurrentField != null);
             _nullCount = 0;
-            _bitmapList = null;
+            _bitmapList = default;
 
             var type = (UnionType)CurrentField.DataType;
 
-            var typeMemory = GetMemoryOwner(array.TypeBuffer);
-            var offsetMemory = GetMemoryOwner(array.ValueOffsetBuffer);
+            var typeMemory = CopyBuffer(array.TypeBuffer);
+            var offsetMemory = CopyBuffer(array.ValueOffsetBuffer);
 
             List<IDataColumn> columns = new List<IDataColumn>();
-            for (int i = 0; i < array.Fields.Count; i++)
+            try
             {
-                var previousField = CurrentField;
-                CurrentField = type.Fields[i];
-                array.Fields[i].Accept(this);
-                CurrentField = previousField;
-                if (_typeId == ArrowTypeId.Null)
+                for (int i = 0; i < array.Fields.Count; i++)
                 {
-                    _dataColumn = new NullColumn(_nullCount);
-                }
-                if (_nullCount > 0 && _typeId != ArrowTypeId.Null)
-                {
-                    throw new InvalidOperationException("Inner columns in a union should not have null values, they should be on the union level");
-                }
+                    var previousField = CurrentField;
+                    CurrentField = type.Fields[i];
+                    array.Fields[i].Accept(this);
+                    CurrentField = previousField;
+                    if (_typeId == ArrowTypeId.Null)
+                    {
+                        _dataColumn = new NullColumn(_nullCount);
+                    }
+                    if (_nullCount > 0 && _typeId != ArrowTypeId.Null)
+                    {
+                        throw new InvalidOperationException("Inner columns in a union should not have null values, they should be on the union level");
+                    }
 
-                columns.Add(_dataColumn ?? throw new InvalidOperationException("Internal column is null"));
-                // Reset null counter
-                _nullCount = 0;
+                    columns.Add(_dataColumn ?? throw new InvalidOperationException("Internal column is null"));
+                    // Reset null counter
+                    _nullCount = 0;
+                }
+            }
+            catch
+            {
+                _memoryAllocator.Free(ref typeMemory);
+                _memoryAllocator.Free(ref offsetMemory);
+                foreach (var column in columns)
+                {
+                    // DisposeUnconsumed disposes _dataColumn.
+                    if (!ReferenceEquals(column, _dataColumn))
+                    {
+                        column.Dispose();
+                    }
+                }
+                throw;
             }
 
-            _dataColumn = new UnionColumn(columns, typeMemory, offsetMemory, array.Length, preAllocatedMemoryManager);
+            _dataColumn = new UnionColumn(columns, typeMemory, offsetMemory, array.Length, _memoryAllocator);
             _typeId = ArrowTypeId.Union;
         }
 
@@ -222,7 +232,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             _dataColumn = null;
             _typeId = ArrowTypeId.Null;
-            _bitmapList = null;
+            _bitmapList = default;
             _nullCount = array.NullCount;
         }
 
@@ -235,25 +245,34 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             CurrentField = structType.Fields[0];
             array.Keys.Accept(this);
             var keyColumn = Column;
-            CurrentField = structType.Fields[1];
-            array.Values.Accept(this);
-            var valueColumn = Column;
+            Column? valueColumn;
+            try
+            {
+                CurrentField = structType.Fields[1];
+                array.Values.Accept(this);
+                valueColumn = Column;
+            }
+            catch
+            {
+                keyColumn?.Dispose();
+                throw;
+            }
             CurrentField = previousField;
 
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
 
-            var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
+            var offsetMemoryOwner = CopyBuffer(array.ValueOffsetsBuffer);
 
-            _dataColumn = new MapColumn(keyColumn!, valueColumn!, offsetMemoryOwner, array.ValueOffsets.Length, preAllocatedMemoryManager);
+            _dataColumn = new MapColumn(keyColumn!, valueColumn!, offsetMemoryOwner, array.ValueOffsets.Length, _memoryAllocator);
             _typeId = ArrowTypeId.Map;
         }
 
@@ -262,16 +281,16 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
 
-            var valueMemoryOwner = GetMemoryOwner(array.ValueBuffer);
-            _dataColumn = new BoolColumn(valueMemoryOwner, array.Length, preAllocatedMemoryManager);
+            var valueMemoryOwner = CopyBuffer(array.ValueBuffer);
+            _dataColumn = new BoolColumn(valueMemoryOwner, array.Length, _memoryAllocator);
             _typeId = ArrowTypeId.Boolean;
         }
 
@@ -280,16 +299,16 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
 
-            var valueBuffer = GetMemoryOwner(array.ValueBuffer);
-            _dataColumn = new DoubleColumn(valueBuffer, array.Length, preAllocatedMemoryManager);
+            var valueBuffer = CopyBuffer(array.ValueBuffer);
+            _dataColumn = new DoubleColumn(valueBuffer, array.Length, _memoryAllocator);
             _typeId = ArrowTypeId.Double;
         }
 
@@ -298,17 +317,17 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
-            var offsetBuffer = GetMemoryOwner(array.ValueOffsetsBuffer);
-            var dataBuffer = GetMemoryOwner(array.ValueBuffer);
+            var offsetBuffer = CopyBuffer(array.ValueOffsetsBuffer);
+            var dataBuffer = CopyBuffer(array.ValueBuffer);
 
-            _dataColumn = new BinaryColumn(offsetBuffer, array.ValueOffsets.Length, dataBuffer, preAllocatedMemoryManager);
+            _dataColumn = new BinaryColumn(offsetBuffer, array.ValueOffsets.Length, dataBuffer, _memoryAllocator);
             _typeId = ArrowTypeId.Binary;
         }
 
@@ -317,12 +336,12 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
 
             if (CurrentField != null && CurrentField.HasMetadata &&
@@ -331,13 +350,13 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 switch (typeName)
                 {
                     case FloatingPointDecimalType.ExtensionName:
-                        var dataMemory = GetMemoryOwner(array.ValueBuffer);
-                        _dataColumn = new DecimalColumn(dataMemory, array.Length, preAllocatedMemoryManager);
+                        var dataMemory = CopyBuffer(array.ValueBuffer);
+                        _dataColumn = new DecimalColumn(dataMemory, array.Length, _memoryAllocator);
                         _typeId = ArrowTypeId.Decimal128;
                         break;
                     case TimestampTzType.ExtensionName:
-                        var timestampMemory = GetMemoryOwner(array.ValueBuffer);
-                        _dataColumn = new TimestampTzColumn(timestampMemory, array.Length, preAllocatedMemoryManager);
+                        var timestampMemory = CopyBuffer(array.ValueBuffer);
+                        _dataColumn = new TimestampTzColumn(timestampMemory, array.Length, _memoryAllocator);
                         _typeId = ArrowTypeId.Timestamp;
                         break;
                     default:
@@ -353,15 +372,15 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
 
-            _dataColumn = new IntegerColumn(preAllocatedMemoryManager, GetMemoryOwner(array.ValueBuffer), array.Length, 8);
+            _dataColumn = new IntegerColumn(_memoryAllocator, CopyBuffer(array.ValueBuffer), array.Length, 8);
             _typeId = ArrowTypeId.Int64;
         }
 
@@ -370,15 +389,15 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
 
-            _dataColumn = new IntegerColumn(preAllocatedMemoryManager, GetMemoryOwner(array.ValueBuffer), array.Length, 16);
+            _dataColumn = new IntegerColumn(_memoryAllocator, CopyBuffer(array.ValueBuffer), array.Length, 16);
             _typeId = ArrowTypeId.Int64;
         }
 
@@ -387,15 +406,15 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
 
-            _dataColumn = new IntegerColumn(preAllocatedMemoryManager, GetMemoryOwner(array.ValueBuffer), array.Length, 32);
+            _dataColumn = new IntegerColumn(_memoryAllocator, CopyBuffer(array.ValueBuffer), array.Length, 32);
             _typeId = ArrowTypeId.Int64;
         }
 
@@ -406,30 +425,41 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
             string[] columnNames = new string[array.Fields.Count];
             Column[] columns = new Column[array.Fields.Count];
-            for (int i = 0; i < array.Fields.Count; i++)
+            try
             {
-                var field = type.Fields[i];
-                CurrentField = field;
-                columnNames[i] = CurrentField.Name;
-                array.Fields[i].Accept(this);
-                var createdColumn = Column;
-                if (createdColumn == null)
+                for (int i = 0; i < array.Fields.Count; i++)
                 {
-                    throw new InvalidOperationException("Internal column is null");
+                    var field = type.Fields[i];
+                    CurrentField = field;
+                    columnNames[i] = CurrentField.Name;
+                    array.Fields[i].Accept(this);
+                    var createdColumn = Column;
+                    if (createdColumn == null)
+                    {
+                        throw new InvalidOperationException("Internal column is null");
+                    }
+                    columns[i] = createdColumn;
                 }
-                columns[i] = createdColumn;
+            }
+            catch
+            {
+                foreach (var column in columns)
+                {
+                    column?.Dispose();
+                }
+                throw;
             }
             CurrentField = previousField;
 
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
-                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                var bitmapMemoryOwner = CopyBuffer(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length);
             }
             else
             {
-                _bitmapList = null;
+                _bitmapList = default;
             }
             var header = StructHeader.Create(columnNames);
 

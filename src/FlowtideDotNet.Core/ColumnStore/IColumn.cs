@@ -56,6 +56,9 @@ namespace FlowtideDotNet.Core.ColumnStore
         (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child, bool desc = false)
             where T : IDataValue;
 
+        /// <summary>
+        /// Wraps the buffers in an arrow array without copying.
+        /// </summary>
         (IArrowArray, IArrowType) ToArrowArray();
 
         SerializationEstimation GetSerializationEstimate();

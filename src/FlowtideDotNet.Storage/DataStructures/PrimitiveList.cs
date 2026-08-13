@@ -30,13 +30,14 @@ namespace FlowtideDotNet.Storage.DataStructures
     public unsafe class PrimitiveList<T> : IDisposable, IReadOnlyList<T>
         where T : unmanaged
     {
-        private void* _data;
-        private int _dataLength;
         private int _length;
         private bool _disposedValue;
         private readonly IMemoryAllocator _memoryAllocator;
-        private IMemoryOwner<byte>? _memoryOwner;
+        private FlowtideMemory _memory;
         private int _rentCounter;
+
+        // Capacity in elements, derived from the block.
+        private int DataLength => _memory.Length / sizeof(T);
 
         /// <summary>
         /// Creates an empty list that allocates backing memory from the given allocator on demand.
@@ -44,7 +45,6 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="memoryAllocator">The allocator used for backing memory.</param>
         public PrimitiveList(IMemoryAllocator memoryAllocator)
         {
-            _data = null;
             _memoryAllocator = memoryAllocator;
         }
 
@@ -64,12 +64,10 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="memory">The memory holding the elements.</param>
         /// <param name="length">The number of valid elements in <paramref name="memory"/>.</param>
-        /// <param name="memoryAllocator">The allocator used for any later growth.</param>
-        public PrimitiveList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        /// <param name="memoryAllocator">The allocator that produced the memory.</param>
+        public PrimitiveList(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _memoryOwner = memory;
-            _data = _memoryOwner.Memory.Pin().Pointer;
-            _dataLength = memory.Memory.Length / sizeof(T);
+            _memory = memory;
             _length = length;
             _memoryAllocator = memoryAllocator;
         }
@@ -77,32 +75,31 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <summary>
         /// A span over the current elements of the list.
         /// </summary>
-        public Span<T> Span => new Span<T>(_data, _length);
+        public Span<T> Span => new Span<T>(_memory.Pointer, _length);
 
         /// <summary>
         /// The full backing memory buffer in bytes, including any capacity beyond the current elements, or empty when nothing is allocated.
         /// </summary>
-        public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
+        public Memory<byte> Memory => GetViewMemory();
 
         /// <summary>
-        /// The portion of the backing memory in bytes that actually holds the current elements.
-        /// Use this when serializing or copying the list.
+        /// The current elements for consumers that need Memory.
         /// </summary>
-        public Memory<byte> SlicedMemory => _memoryOwner?.Memory.Slice(0, _length * sizeof(T)) ?? new Memory<byte>();
+        public Memory<byte> SlicedMemory => GetViewMemory().Slice(0, _length * sizeof(T));
 
         /// <summary>
-        /// Creates a list over an existing raw memory pointer. The caller is responsible for keeping the memory alive.
+        /// The bytes of the current elements.
         /// </summary>
-        /// <param name="data">Pointer to the element data.</param>
-        /// <param name="dataLength">The capacity, in elements, of the buffer at <paramref name="data"/>.</param>
-        /// <param name="length">The number of valid elements.</param>
-        /// <param name="memoryAllocator">The allocator used for any later growth.</param>
-        public PrimitiveList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
+        public Span<byte> SlicedSpan => new Span<byte>(_memory.Pointer, _length * sizeof(T));
+
+        // We create a new view per call, only cold paths need it.
+        private Memory<byte> GetViewMemory()
         {
-            _data = data;
-            _dataLength = dataLength;
-            _length = length;
-            _memoryAllocator = memoryAllocator;
+            if (_memory.IsNull)
+            {
+                return new Memory<byte>();
+            }
+            return new NativeMemoryView(_memory.Pointer, _memory.Length).Memory;
         }
 
         /// <summary>
@@ -112,48 +109,35 @@ namespace FlowtideDotNet.Storage.DataStructures
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal T* GetPointer_Unsafe()
         {
-            return (T*)_data;
+            return (T*)_memory.Pointer;
         }
 
         internal void EnsureCapacity(int length)
         {
-            if (_dataLength < length)
+            if (DataLength < length)
             {
                 var newLength = length * 2;
                 if (newLength < 64)
                 {
                     newLength = 64;
                 }
-                var allocSize = newLength * sizeof(T);
-
-                if (_memoryOwner == null)
-                {
-                    _memoryOwner = _memoryAllocator.Allocate(allocSize, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                }
-                else
-                {
-                    _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, allocSize, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                }
-                _dataLength = _memoryOwner.Memory.Length / sizeof(T);
+                _memoryAllocator.Realloc(ref _memory, newLength * sizeof(T));
             }
         }
 
         private void CheckSizeReduction()
         {
             var multipleid = (_length << 1) + (_length >> 1);
-            if (multipleid < _dataLength && _dataLength > 256)
+            var dataLength = DataLength;
+            if (multipleid < dataLength && dataLength > 256)
             {
                 Debug.Assert(_memoryAllocator != null);
-                Debug.Assert(_memoryOwner != null);
-                _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length * sizeof(T), 64);
-                _data = _memoryOwner.Memory.Pin().Pointer;
-                _dataLength = _memoryOwner.Memory.Length / sizeof(T);
+                Debug.Assert(!_memory.IsNull);
+                _memoryAllocator.Realloc(ref _memory, _length * sizeof(T));
             }
         }
 
-        private Span<T> AccessSpan => new Span<T>(_data, _dataLength);
+        private Span<T> AccessSpan => new Span<T>(_memory.Pointer, DataLength);
 
         /// <summary>
         /// Appends a value to the end of the list, growing it by one.
@@ -438,7 +422,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         public T Get(int index)
         {
             Debug.Assert(index >= 0 && index < _length);
-            return ((T*)_data)[index];
+            return ((T*)_memory.Pointer)[index];
         }
 
         /// <summary>
@@ -486,11 +470,9 @@ namespace FlowtideDotNet.Storage.DataStructures
         {
             if (!_disposedValue)
             {
-                if (_memoryOwner != null)
+                if (!_memory.IsNull)
                 {
-                    _memoryOwner.Dispose();
-                    _memoryOwner = null;
-                    _data = null;
+                    _memoryAllocator.Free(ref _memory);
                 }
 
                 _disposedValue = true;
@@ -566,9 +548,8 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <returns>A new list with the same elements.</returns>
         public PrimitiveList<T> Copy(IMemoryAllocator memoryAllocator)
         {
-            var slicedMem = SlicedMemory;
-            var newMemory = memoryAllocator.Allocate(slicedMem.Length, 64);
-            slicedMem.Span.CopyTo(newMemory.Memory.Span);
+            var newMemory = memoryAllocator.AllocateMemory(_length * sizeof(T));
+            SlicedSpan.CopyTo(newMemory.Span);
 
             return new PrimitiveList<T>(newMemory, _length, memoryAllocator);
         }

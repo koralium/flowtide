@@ -321,9 +321,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 new StringValue("world")
             };
 
-            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Set(0);
-            validityList.Set(1);
+            BitmapList validityList = default;
+            validityList.Set(0, GlobalMemoryManager.Instance);
+            validityList.Set(1, GlobalMemoryManager.Instance);
 
             unionColumn.InsertRangeFrom(1, stringColumn, 0, 2, validityList);
 
@@ -332,6 +332,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("hello", unionColumn.GetValueAt(1, default).AsString.ToString());
             Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
@@ -350,9 +351,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 new StringValue("world")
             };
 
-            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Set(0);
-            validityList.Set(2);
+            BitmapList validityList = default;
+            validityList.Set(0, GlobalMemoryManager.Instance);
+            validityList.Set(2, GlobalMemoryManager.Instance);
 
             unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
 
@@ -362,6 +363,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(unionColumn.GetValueAt(2, default).IsNull);
             Assert.Equal("world", unionColumn.GetValueAt(3, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
@@ -380,9 +382,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 new StringValue("world")
             };
 
-            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Set(1);
-            validityList.Set(2);
+            BitmapList validityList = default;
+            validityList.Set(1, GlobalMemoryManager.Instance);
+            validityList.Set(2, GlobalMemoryManager.Instance);
 
             unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
 
@@ -392,6 +394,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("hello", unionColumn.GetValueAt(2, default).AsString.ToString());
             Assert.Equal("world", unionColumn.GetValueAt(3, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
@@ -410,10 +413,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 NullValue.Instance
             };
 
-            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Set(0);
-            validityList.Set(1);
-            validityList.Unset(2);
+            BitmapList validityList = default;
+            validityList.Set(0, GlobalMemoryManager.Instance);
+            validityList.Set(1, GlobalMemoryManager.Instance);
+            validityList.Unset(2, GlobalMemoryManager.Instance);
 
             unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
 
@@ -423,6 +426,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
             Assert.True(unionColumn.GetValueAt(3, default).IsNull);
             Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
         }
 
         // Test with all values set to null in the range
@@ -442,10 +446,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 NullValue.Instance
             };
 
-            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Unset(0);
-            validityList.Unset(1);
-            validityList.Unset(2);
+            BitmapList validityList = default;
+            validityList.Unset(0, GlobalMemoryManager.Instance);
+            validityList.Unset(1, GlobalMemoryManager.Instance);
+            validityList.Unset(2, GlobalMemoryManager.Instance);
 
             unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
 
@@ -455,6 +459,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(unionColumn.GetValueAt(2, default).IsNull);
             Assert.True(unionColumn.GetValueAt(3, default).IsNull);
             Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
@@ -473,10 +478,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 NullValue.Instance
             };
 
-            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Set(0);
-            validityList.Set(1);
-            validityList.Unset(2);
+            BitmapList validityList = default;
+            validityList.Set(0, GlobalMemoryManager.Instance);
+            validityList.Set(1, GlobalMemoryManager.Instance);
+            validityList.Unset(2, GlobalMemoryManager.Instance);
 
             unionColumn.InsertRangeFrom(1, stringColumn, 1, 2, validityList);
 
@@ -485,6 +490,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("world", unionColumn.GetValueAt(1, default).AsString.ToString());
             Assert.True(unionColumn.GetValueAt(2, default).IsNull);
             Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
