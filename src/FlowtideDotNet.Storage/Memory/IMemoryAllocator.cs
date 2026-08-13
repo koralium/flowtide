@@ -30,6 +30,11 @@ namespace FlowtideDotNet.Storage.Memory
         /// </summary>
         FlowtideMemory AllocateMemory(int size)
         {
+            if (size < 0)
+            {
+                throw new global::System.ArgumentOutOfRangeException(nameof(size));
+            }
+
             var allocated = FlowtideMemoryAllocation.AllocateAligned(size, FlowtideMemoryAlignment);
             RegisterAllocationToMetrics(allocated.length);
             return new FlowtideMemory(allocated.ptr, allocated.length);
