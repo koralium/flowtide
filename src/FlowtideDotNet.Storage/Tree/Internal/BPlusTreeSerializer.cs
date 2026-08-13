@@ -160,9 +160,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         throw new Exception("Could not read childrenByteLength");
                     }
 
-                    var childrenMemory = _memoryAllocator.AllocateMemory(childrenByteLength);
-                    if (!sequenceReader.TryCopyTo(childrenMemory.Span.Slice(0, childrenByteLength)))
+                    if (childrenByteLength < 0 ||
+                        (childrenByteLength % sizeof(long)) != 0 ||
+                        childrenByteLength > sequenceReader.Remaining)
                     {
+                        throw new Exception("Invalid childrenByteLength");
+                    }
+
+                    var childrenMemory = _memoryAllocator.AllocateMemory(childrenByteLength);
                         _memoryAllocator.Free(ref childrenMemory);
                         throw new Exception("Could not read children data");
                     }
