@@ -6,7 +6,7 @@
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta name="title" content="Class PrimitiveList&lt;T&gt; | Flowtide.NET ">
       
-      <meta name="description" content="A growable list of unmanaged values stored in native memory allocated from an . It behaves like a list (add, insert, remove, index) but keeps its elements in a contiguous unmanaged buffer, which can be exposed as a  or  and serialized without copying element by element. Ownership is reference counted through  and , and the buffer is released when the list is disposed or the last reference is returned.">
+      <meta name="description" content="A growable list of unmanaged values stored in native memory allocated from an . It behaves like a list (add, insert, remove, index) but keeps its elements in a contiguous unmanaged buffer, which can be exposed as a  or  and serialized without copying element by element. Ownership is reference counted through  and , and the buffer is released when the list is disposed or the last reference is returned. The list logic lives in , this class adds shared ownership on top of it.">
       <link rel="icon" href="../images/favicon.ico">
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
@@ -89,7 +89,7 @@
 
 
   <h1 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1" class="text-break">
-Class PrimitiveList&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L30"><i class="bi bi-code-slash"></i></a>
+Class PrimitiveList&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L28"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -101,7 +101,8 @@ Class PrimitiveList&lt;T&gt;  <a class="header-action link-secondary" title="Vie
 It behaves like a list (add, insert, remove, index) but keeps its elements in a contiguous unmanaged buffer,
 which can be exposed as a <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Span">Span</a> or <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Memory">Memory</a> and serialized without copying element by element.
 Ownership is reference counted through <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Rent_System_Int32_">Rent(int)</a> and <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Return">Return()</a>, and the buffer is
-released when the list is disposed or the last reference is returned.</p>
+released when the list is disposed or the last reference is returned.
+The list logic lives in <a class="xref" href="FlowtideDotNet.Storage.DataStructures.NativeList-1.html">NativeList&lt;T&gt;</a>, this class adds shared ownership on top of it.</p>
 </div>
   <div class="markdown conceptual"></div>
 
@@ -175,9 +176,45 @@ released when the list is disposed or the last reference is returned.</p>
 
   <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor*"></a>
 
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_FlowtideDotNet_Storage_DataStructures_NativeList__0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.DataStructures.NativeList{`0},FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  PrimitiveList(NativeList&lt;T&gt;, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L75"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a list that takes over an existing native list.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PrimitiveList(NativeList&lt;T&gt; list, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>list</code> <a class="xref" href="FlowtideDotNet.Storage.DataStructures.NativeList-1.html">NativeList</a>&lt;T&gt;</dt>
+    <dd><p>The list to take ownership of, it must not be used again by the caller.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The allocator that produced the list.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor*"></a>
+
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
   PrimitiveList(FlowtideMemory, int, IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L68"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L63"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Creates a list that wraps already populated memory, taking ownership of it.</p>
@@ -216,7 +253,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
   PrimitiveList(IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L41"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Creates an empty list that allocates backing memory from the given allocator on demand.</p>
@@ -249,7 +286,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator,System.Int32)">
   PrimitiveList(IMemoryAllocator, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L51"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Creates an empty list with backing memory pre-allocated for at least <code class="paramref">initialCapacity</code> elements.</p>
@@ -289,7 +326,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Count" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Count">
   Count
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L467"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L290"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The number of elements in the list.</p>
@@ -321,7 +358,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Item_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Item(System.Int32)">
   this[int]
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L452"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L275"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets or sets the element at the given index.</p>
@@ -359,7 +396,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Memory" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Memory">
   Memory
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L83"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L90"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The full backing memory buffer in bytes, including any capacity beyond the current elements, or empty when nothing is allocated.</p>
@@ -391,7 +428,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_SlicedMemory" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.SlicedMemory">
   SlicedMemory
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L88"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L95"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The current elements for consumers that need Memory.</p>
@@ -423,7 +460,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_SlicedSpan" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.SlicedSpan">
   SlicedSpan
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L100"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The bytes of the current elements.</p>
@@ -455,7 +492,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Span" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Span">
   Span
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L78"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L85"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>A span over the current elements of the list.</p>
@@ -491,7 +528,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Add__0_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Add(`0)">
   Add(T)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L146"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L121"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Appends a value to the end of the list, growing it by one.</p>
@@ -524,7 +561,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_AddRangeFrom_FlowtideDotNet_Storage_DataStructures_PrimitiveList__0__System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.AddRangeFrom(FlowtideDotNet.Storage.DataStructures.PrimitiveList{`0},System.Int32,System.Int32)">
   AddRangeFrom(PrimitiveList&lt;T&gt;, int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L158"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L132"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Appends a run of elements copied from another list to the end of this one.</p>
@@ -563,7 +600,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_BinarySearch__1___0_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.BinarySearch``1(``0)">
   BinarySearch&lt;TComp&gt;(TComp)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L565"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L381"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Performs a binary search over the elements. The list must be sorted with respect to <code class="paramref">value</code>.</p>
@@ -608,7 +645,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Clear" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Clear">
   Clear()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L539"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L358"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Resets the count to zero, keeping the backing memory for reuse.</p>
@@ -635,7 +672,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Copy_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
   Copy(IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L549"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L368"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Creates a deep copy of the list, allocating new backing memory from the given allocator.</p>
@@ -674,7 +711,7 @@ released when the list is disposed or the last reference is returned.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_DeleteBatch_System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.DeleteBatch(System.ReadOnlySpan{System.Int32})">
   DeleteBatch(ReadOnlySpan&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L282"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L192"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Batch delete elements at the specified sorted indices.
@@ -709,7 +746,7 @@ contiguous blocks of retained data in a single left-to-right sweep.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Dispose" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Dispose">
   Dispose()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L487"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L306"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
@@ -736,7 +773,7 @@ contiguous blocks of retained data in a single left-to-right sweep.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Dispose_System_Boolean_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Dispose(System.Boolean)">
   Dispose(bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L469"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L292"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -767,7 +804,7 @@ contiguous blocks of retained data in a single left-to-right sweep.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Finalize" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Finalize">
   ~PrimitiveList()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L482"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L301"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -793,7 +830,7 @@ contiguous blocks of retained data in a single left-to-right sweep.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Get_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Get(System.Int32)">
   Get(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L421"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L246"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets the element at the given index.</p>
@@ -831,7 +868,7 @@ contiguous blocks of retained data in a single left-to-right sweep.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_GetEnumerator" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.GetEnumerator">
   GetEnumerator()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L504"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L323"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Enumerates the elements in order from index 0 to <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Count">Count</a>.</p>
@@ -863,7 +900,7 @@ contiguous blocks of retained data in a single left-to-right sweep.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_GetPrefixSumByteSizes_System_ReadOnlySpan_System_Int32__System_Span_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.GetPrefixSumByteSizes(System.ReadOnlySpan{System.Int32},System.Span{System.Int32})">
   GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt;, Span&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L588"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L404"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Adds this list's per-index byte size contribution to the running totals in <code class="paramref">sizes</code>, where each
@@ -901,7 +938,7 @@ when computing serialized batch sizes.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_GetRef_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.GetRef(System.Int32@)">
   GetRef(scoped in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L432"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L256"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets a reference to the element at the given index, allowing it to be read or modified in place.</p>
@@ -939,7 +976,7 @@ when computing serialized batch sizes.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertAt_System_Int32__0_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertAt(System.Int32,`0)">
   InsertAt(int, T)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L172"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L142"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Inserts a value at the given index, shifting every element at or after that index up by one.</p>
@@ -975,7 +1012,7 @@ when computing serialized batch sizes.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertFrom_FlowtideDotNet_Storage_DataStructures_PrimitiveList__0___System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertFrom(FlowtideDotNet.Storage.DataStructures.PrimitiveList{`0}@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)">
   InsertFrom(ref readonly PrimitiveList&lt;T&gt;, ref readonly ReadOnlySpan&lt;int&gt;, ref readonly ReadOnlySpan&lt;int&gt;, in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L233"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L181"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Special case insert that allows inserting a subset of elements from another primitive list at specific positions.
@@ -1021,7 +1058,7 @@ Conceptually, this behaves like inserting the selected elements in order using <
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertFrom__0___System_ReadOnlySpan_System_Int32__System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertFrom(`0[],System.ReadOnlySpan{System.Int32},System.ReadOnlySpan{System.Int32})">
   InsertFrom(T[], ReadOnlySpan&lt;int&gt;, ReadOnlySpan&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L337"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L207"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Special case insert that allows inserting a subset of elements from an array at specific positions.
@@ -1064,7 +1101,7 @@ Conceptually, this behaves like inserting the selected elements in order using <
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertRangeFrom_System_Int32_FlowtideDotNet_Storage_DataStructures_PrimitiveList__0__System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertRangeFrom(System.Int32,FlowtideDotNet.Storage.DataStructures.PrimitiveList{`0},System.Int32,System.Int32)">
   InsertRangeFrom(int, PrimitiveList&lt;T&gt;, int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L194"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L154"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Inserts a run of elements copied from another list, shifting existing elements up to make room.</p>
@@ -1106,7 +1143,7 @@ Conceptually, this behaves like inserting the selected elements in order using <
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertStaticRange_System_Int32__0_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertStaticRange(System.Int32,`0,System.Int32)">
   InsertStaticRange(int, T, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L210"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L165"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Inserts the same value <code class="paramref">count</code> times at the given index, shifting existing elements up to make room.</p>
@@ -1145,7 +1182,7 @@ Conceptually, this behaves like inserting the selected elements in order using <
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_MoveAtIndex_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.MoveAtIndex(System.Int32,System.Int32)">
   MoveAtIndex(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L383"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L218"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Opens a gap of <code class="paramref">count</code> elements at the given index by shifting the elements at or after it up,
@@ -1182,7 +1219,7 @@ without writing any values into the gap. The list grows by <code class="paramref
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_RemoveAt_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.RemoveAt(System.Int32)">
   RemoveAt(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L395"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L227"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Removes the element at the given index and shifts all elements above it down.</p>
@@ -1215,7 +1252,7 @@ without writing any values into the gap. The list grows by <code class="paramref
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_RemoveRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.RemoveRange(System.Int32,System.Int32)">
   RemoveRange(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L408"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L237"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Removes a run of elements starting at the given index and shifts all elements above the range down.</p>
@@ -1251,7 +1288,7 @@ without writing any values into the gap. The list grows by <code class="paramref
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Rent_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Rent(System.Int32)">
   Rent(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L519"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L338"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Increases the reference count by <code class="paramref">count</code> to share ownership of the list.
@@ -1285,7 +1322,7 @@ Each rent must be matched by a <a class="xref" href="FlowtideDotNet.Storage.Data
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Return" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Return">
   Return()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L527"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L346"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Releases one reference. When the reference count reaches zero the list is disposed and its memory freed.</p>
@@ -1312,7 +1349,7 @@ Each rent must be matched by a <a class="xref" href="FlowtideDotNet.Storage.Data
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_SetLength_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.SetLength(System.Int32)">
   SetLength(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L576"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L392"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Sets the element count directly, without allocating or clearing memory. The caller must ensure the backing
@@ -1346,7 +1383,7 @@ memory already holds that many valid elements.</p>
 
   <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Update_System_Int32___0__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Update(System.Int32@,`0@)">
   Update(in int, in T)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L443"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L266"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Overwrites the element at the given index.</p>
@@ -1382,7 +1419,7 @@ memory already holds that many valid elements.</p>
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L30" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L28" class="edit-link">Edit this page</a>
         </div>
 
 

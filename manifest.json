@@ -6942,6 +6942,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Storage.DataStructures.NativeList-1.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Storage.DataStructures.NativeList<T>",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Storage.DataStructures.NativeList-1.yml\" sourcestartlinenumber=\"1\">A growable list of unmanaged values stored in native memory, without a heap object.\nMutable struct, keep it in one field and never copy it.\nThe struct does not store an allocator, calls that can allocate or free take the owner's allocator.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.yml",
       "output": {
         ".html": {
@@ -6952,7 +6966,7 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "FlowtideDotNet.Storage.DataStructures.PrimitiveList<T>",
-      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.yml\" sourcestartlinenumber=\"1\">A growable list of unmanaged values stored in native memory allocated from an <xref href=\"FlowtideDotNet.Storage.Memory.IMemoryAllocator\" data-throw-if-not-resolved=\"false\"></xref>.\nIt behaves like a list (add, insert, remove, index) but keeps its elements in a contiguous unmanaged buffer,\nwhich can be exposed as a <xref href=\"FlowtideDotNet.Storage.DataStructures.PrimitiveList%601.Span\" data-throw-if-not-resolved=\"false\"></xref> or <xref href=\"FlowtideDotNet.Storage.DataStructures.PrimitiveList%601.Memory\" data-throw-if-not-resolved=\"false\"></xref> and serialized without copying element by element.\nOwnership is reference counted through <xref href=\"FlowtideDotNet.Storage.DataStructures.PrimitiveList%601.Rent(System.Int32)\" data-throw-if-not-resolved=\"false\"></xref> and <xref href=\"FlowtideDotNet.Storage.DataStructures.PrimitiveList%601.Return\" data-throw-if-not-resolved=\"false\"></xref>, and the buffer is\nreleased when the list is disposed or the last reference is returned.</p>\n"
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.yml\" sourcestartlinenumber=\"1\">A growable list of unmanaged values stored in native memory allocated from an <xref href=\"FlowtideDotNet.Storage.Memory.IMemoryAllocator\" data-throw-if-not-resolved=\"false\"></xref>.\nIt behaves like a list (add, insert, remove, index) but keeps its elements in a contiguous unmanaged buffer,\nwhich can be exposed as a <xref href=\"FlowtideDotNet.Storage.DataStructures.PrimitiveList%601.Span\" data-throw-if-not-resolved=\"false\"></xref> or <xref href=\"FlowtideDotNet.Storage.DataStructures.PrimitiveList%601.Memory\" data-throw-if-not-resolved=\"false\"></xref> and serialized without copying element by element.\nOwnership is reference counted through <xref href=\"FlowtideDotNet.Storage.DataStructures.PrimitiveList%601.Rent(System.Int32)\" data-throw-if-not-resolved=\"false\"></xref> and <xref href=\"FlowtideDotNet.Storage.DataStructures.PrimitiveList%601.Return\" data-throw-if-not-resolved=\"false\"></xref>, and the buffer is\nreleased when the list is disposed or the last reference is returned.\nThe list logic lives in <xref href=\"FlowtideDotNet.Storage.DataStructures.NativeList%601\" data-throw-if-not-resolved=\"false\"></xref>, this class adds shared ownership on top of it.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -11854,11 +11868,11 @@
       "type": "Toc",
       "source_relative_path": "api/toc.yml",
       "output": {
-        ".json": {
-          "relative_path": "api/toc.json"
-        },
         ".html": {
           "relative_path": "api/toc.html"
+        },
+        ".json": {
+          "relative_path": "api/toc.json"
         }
       },
       "version": ""
@@ -12677,11 +12691,11 @@
       "type": "Toc",
       "source_relative_path": "docs/toc.yml",
       "output": {
-        ".json": {
-          "relative_path": "docs/toc.json"
-        },
         ".html": {
           "relative_path": "docs/toc.html"
+        },
+        ".json": {
+          "relative_path": "docs/toc.json"
         }
       },
       "version": ""
@@ -12790,11 +12804,11 @@
       "type": "Toc",
       "source_relative_path": "releasenotes/toc.yml",
       "output": {
-        ".json": {
-          "relative_path": "releasenotes/toc.json"
-        },
         ".html": {
           "relative_path": "releasenotes/toc.html"
+        },
+        ".json": {
+          "relative_path": "releasenotes/toc.json"
         }
       },
       "version": ""
@@ -12803,11 +12817,11 @@
       "type": "Toc",
       "source_relative_path": "toc.yml",
       "output": {
-        ".json": {
-          "relative_path": "toc.json"
-        },
         ".html": {
           "relative_path": "toc.html"
+        },
+        ".json": {
+          "relative_path": "toc.json"
         }
       },
       "version": ""

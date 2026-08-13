@@ -39175,6 +39175,529 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.DataStructures.BitmapList.Unset
   nameWithType: BitmapList.Unset
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1
+  name: NativeList<T>
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html
+  commentId: T:FlowtideDotNet.Storage.DataStructures.NativeList`1
+  name.vb: NativeList(Of T)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T)
+  nameWithType: NativeList<T>
+  nameWithType.vb: NativeList(Of T)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32)
+  name: NativeList(FlowtideMemory, int)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32)
+  name.vb: New(FlowtideMemory, Integer)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.NativeList(FlowtideDotNet.Storage.Memory.FlowtideMemory, int)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).New(FlowtideDotNet.Storage.Memory.FlowtideMemory, Integer)
+  nameWithType: NativeList<T>.NativeList(FlowtideMemory, int)
+  nameWithType.vb: NativeList(Of T).New(FlowtideMemory, Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.#ctor(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: NativeList(int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1__ctor_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.#ctor(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: New(Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.NativeList(int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).New(Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.NativeList(int, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).New(Integer, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.#ctor*
+  name: NativeList
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1__ctor_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.NativeList
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).New
+  nameWithType: NativeList<T>.NativeList
+  nameWithType.vb: NativeList(Of T).New
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Add(`0,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Add(T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Add__0_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.Add(`0,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Add(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Add(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.Add(T, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).Add(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Add*
+  name: Add
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Add_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.Add
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Add
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Add
+  nameWithType: NativeList<T>.Add
+  nameWithType.vb: NativeList(Of T).Add
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.AddRangeFrom(FlowtideDotNet.Storage.DataStructures.NativeList{`0}@,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: AddRangeFrom(in NativeList<T>, int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_AddRangeFrom_FlowtideDotNet_Storage_DataStructures_NativeList__0___System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.AddRangeFrom(FlowtideDotNet.Storage.DataStructures.NativeList{`0}@,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: AddRangeFrom(NativeList(Of T), Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.AddRangeFrom(in FlowtideDotNet.Storage.DataStructures.NativeList<T>, int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).AddRangeFrom(FlowtideDotNet.Storage.DataStructures.NativeList(Of T), Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.AddRangeFrom(in NativeList<T>, int, int, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).AddRangeFrom(NativeList(Of T), Integer, Integer, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.AddRangeFrom*
+  name: AddRangeFrom
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_AddRangeFrom_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.AddRangeFrom
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.AddRangeFrom
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).AddRangeFrom
+  nameWithType: NativeList<T>.AddRangeFrom
+  nameWithType.vb: NativeList(Of T).AddRangeFrom
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.BinarySearch*
+  name: BinarySearch
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_BinarySearch_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.BinarySearch
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.BinarySearch
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).BinarySearch
+  nameWithType: NativeList<T>.BinarySearch
+  nameWithType.vb: NativeList(Of T).BinarySearch
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.BinarySearch``1(``0)
+  name: BinarySearch<TComp>(TComp)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_BinarySearch__1___0_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.BinarySearch``1(``0)
+  name.vb: BinarySearch(Of TComp)(TComp)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.BinarySearch<TComp>(TComp)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).BinarySearch(Of TComp)(TComp)
+  nameWithType: NativeList<T>.BinarySearch<TComp>(TComp)
+  nameWithType.vb: NativeList(Of T).BinarySearch(Of TComp)(TComp)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Clear
+  name: Clear()
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Clear
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.Clear
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Clear()
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Clear()
+  nameWithType: NativeList<T>.Clear()
+  nameWithType.vb: NativeList(Of T).Clear()
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Clear*
+  name: Clear
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Clear_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.Clear
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Clear
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Clear
+  nameWithType: NativeList<T>.Clear
+  nameWithType.vb: NativeList(Of T).Clear
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Copy(IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Copy_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.Copy(IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).Copy(IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Copy*
+  name: Copy
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Copy_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.Copy
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Copy
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Copy
+  nameWithType: NativeList<T>.Copy
+  nameWithType.vb: NativeList(Of T).Copy
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Count
+  name: Count
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Count
+  commentId: P:FlowtideDotNet.Storage.DataStructures.NativeList`1.Count
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Count
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Count
+  nameWithType: NativeList<T>.Count
+  nameWithType.vb: NativeList(Of T).Count
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Count*
+  name: Count
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Count_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.Count
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Count
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Count
+  nameWithType: NativeList<T>.Count
+  nameWithType.vb: NativeList(Of T).Count
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_DeleteBatch_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.DeleteBatch(System.ReadOnlySpan<int>, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).DeleteBatch(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.DeleteBatch*
+  name: DeleteBatch
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_DeleteBatch_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.DeleteBatch
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.DeleteBatch
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).DeleteBatch
+  nameWithType: NativeList<T>.DeleteBatch
+  nameWithType.vb: NativeList(Of T).DeleteBatch
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Dispose(IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Dispose_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.Dispose(IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).Dispose(IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Dispose*
+  name: Dispose
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Dispose_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.Dispose
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Dispose
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Dispose
+  nameWithType: NativeList<T>.Dispose
+  nameWithType.vb: NativeList(Of T).Dispose
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.EnsureCapacity(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: EnsureCapacity(int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_EnsureCapacity_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.EnsureCapacity(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: EnsureCapacity(Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.EnsureCapacity(int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).EnsureCapacity(Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.EnsureCapacity(int, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).EnsureCapacity(Integer, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.EnsureCapacity*
+  name: EnsureCapacity
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_EnsureCapacity_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.EnsureCapacity
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.EnsureCapacity
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).EnsureCapacity
+  nameWithType: NativeList<T>.EnsureCapacity
+  nameWithType.vb: NativeList(Of T).EnsureCapacity
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Get(System.Int32)
+  name: Get(int)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Get_System_Int32_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.Get(System.Int32)
+  name.vb: Get(Integer)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Get(int)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Get(Integer)
+  nameWithType: NativeList<T>.Get(int)
+  nameWithType.vb: NativeList(Of T).Get(Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Get*
+  name: Get
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Get_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.Get
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Get
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Get
+  nameWithType: NativeList<T>.Get
+  nameWithType.vb: NativeList(Of T).Get
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPointer_Unsafe
+  name: GetPointer_Unsafe()
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_GetPointer_Unsafe
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPointer_Unsafe
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.GetPointer_Unsafe()
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).GetPointer_Unsafe()
+  nameWithType: NativeList<T>.GetPointer_Unsafe()
+  nameWithType.vb: NativeList(Of T).GetPointer_Unsafe()
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPointer_Unsafe*
+  name: GetPointer_Unsafe
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_GetPointer_Unsafe_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPointer_Unsafe
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.GetPointer_Unsafe
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).GetPointer_Unsafe
+  nameWithType: NativeList<T>.GetPointer_Unsafe
+  nameWithType.vb: NativeList(Of T).GetPointer_Unsafe
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPrefixSumByteSizes(System.ReadOnlySpan{System.Int32},System.Span{System.Int32})
+  name: GetPrefixSumByteSizes(ReadOnlySpan<int>, Span<int>)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_GetPrefixSumByteSizes_System_ReadOnlySpan_System_Int32__System_Span_System_Int32__
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPrefixSumByteSizes(System.ReadOnlySpan{System.Int32},System.Span{System.Int32})
+  name.vb: GetPrefixSumByteSizes(ReadOnlySpan(Of Integer), Span(Of Integer))
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.GetPrefixSumByteSizes(System.ReadOnlySpan<int>, System.Span<int>)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).GetPrefixSumByteSizes(System.ReadOnlySpan(Of Integer), System.Span(Of Integer))
+  nameWithType: NativeList<T>.GetPrefixSumByteSizes(ReadOnlySpan<int>, Span<int>)
+  nameWithType.vb: NativeList(Of T).GetPrefixSumByteSizes(ReadOnlySpan(Of Integer), Span(Of Integer))
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPrefixSumByteSizes*
+  name: GetPrefixSumByteSizes
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_GetPrefixSumByteSizes_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPrefixSumByteSizes
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.GetPrefixSumByteSizes
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).GetPrefixSumByteSizes
+  nameWithType: NativeList<T>.GetPrefixSumByteSizes
+  nameWithType.vb: NativeList(Of T).GetPrefixSumByteSizes
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.GetRef(System.Int32@)
+  name: GetRef(scoped in int)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_GetRef_System_Int32__
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.GetRef(System.Int32@)
+  name.vb: GetRef(Integer)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.GetRef(scoped in int)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).GetRef(Integer)
+  nameWithType: NativeList<T>.GetRef(scoped in int)
+  nameWithType.vb: NativeList(Of T).GetRef(Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.GetRef*
+  name: GetRef
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_GetRef_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.GetRef
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.GetRef
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).GetRef
+  nameWithType: NativeList<T>.GetRef
+  nameWithType.vb: NativeList(Of T).GetRef
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertAt(System.Int32,`0,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertAt(int, T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertAt_System_Int32__0_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertAt(System.Int32,`0,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertAt(Integer, T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.InsertAt(int, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).InsertAt(Integer, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.InsertAt(int, T, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).InsertAt(Integer, T, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertAt*
+  name: InsertAt
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertAt_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertAt
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.InsertAt
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).InsertAt
+  nameWithType: NativeList<T>.InsertAt
+  nameWithType.vb: NativeList(Of T).InsertAt
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertFrom(FlowtideDotNet.Storage.DataStructures.NativeList{`0}@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertFrom(ref readonly NativeList<T>, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertFrom_FlowtideDotNet_Storage_DataStructures_NativeList__0___System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertFrom(FlowtideDotNet.Storage.DataStructures.NativeList{`0}@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertFrom(NativeList(Of T), ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.InsertFrom(ref readonly FlowtideDotNet.Storage.DataStructures.NativeList<T>, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).InsertFrom(FlowtideDotNet.Storage.DataStructures.NativeList(Of T), System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.InsertFrom(ref readonly NativeList<T>, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).InsertFrom(NativeList(Of T), ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertFrom(`0[],System.ReadOnlySpan{System.Int32},System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertFrom(T[], ReadOnlySpan<int>, ReadOnlySpan<int>, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertFrom__0___System_ReadOnlySpan_System_Int32__System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertFrom(`0[],System.ReadOnlySpan{System.Int32},System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertFrom(T(), ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.InsertFrom(T[], System.ReadOnlySpan<int>, System.ReadOnlySpan<int>, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).InsertFrom(T(), System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.InsertFrom(T[], ReadOnlySpan<int>, ReadOnlySpan<int>, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).InsertFrom(T(), ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertFrom*
+  name: InsertFrom
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertFrom_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertFrom
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.InsertFrom
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).InsertFrom
+  nameWithType: NativeList<T>.InsertFrom
+  nameWithType.vb: NativeList(Of T).InsertFrom
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertRangeFrom(System.Int32,FlowtideDotNet.Storage.DataStructures.NativeList{`0}@,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertRangeFrom(int, in NativeList<T>, int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertRangeFrom_System_Int32_FlowtideDotNet_Storage_DataStructures_NativeList__0___System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertRangeFrom(System.Int32,FlowtideDotNet.Storage.DataStructures.NativeList{`0}@,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertRangeFrom(Integer, NativeList(Of T), Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.InsertRangeFrom(int, in FlowtideDotNet.Storage.DataStructures.NativeList<T>, int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).InsertRangeFrom(Integer, FlowtideDotNet.Storage.DataStructures.NativeList(Of T), Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.InsertRangeFrom(int, in NativeList<T>, int, int, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).InsertRangeFrom(Integer, NativeList(Of T), Integer, Integer, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertRangeFrom*
+  name: InsertRangeFrom
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertRangeFrom_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertRangeFrom
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.InsertRangeFrom
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).InsertRangeFrom
+  nameWithType: NativeList<T>.InsertRangeFrom
+  nameWithType.vb: NativeList(Of T).InsertRangeFrom
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertStaticRange(System.Int32,`0,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertStaticRange(int, T, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertStaticRange_System_Int32__0_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertStaticRange(System.Int32,`0,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertStaticRange(Integer, T, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.InsertStaticRange(int, T, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).InsertStaticRange(Integer, T, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.InsertStaticRange(int, T, int, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).InsertStaticRange(Integer, T, Integer, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertStaticRange*
+  name: InsertStaticRange
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertStaticRange_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertStaticRange
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.InsertStaticRange
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).InsertStaticRange
+  nameWithType: NativeList<T>.InsertStaticRange
+  nameWithType.vb: NativeList(Of T).InsertStaticRange
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Item(System.Int32)
+  name: this[int]
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Item_System_Int32_
+  commentId: P:FlowtideDotNet.Storage.DataStructures.NativeList`1.Item(System.Int32)
+  name.vb: this[](Integer)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.this[int]
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).this[](Integer)
+  nameWithType: NativeList<T>.this[int]
+  nameWithType.vb: NativeList(Of T).this[](Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Item*
+  name: this
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Item_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.Item
+  isSpec: "True"
+  name.vb: this[]
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.this
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).this[]
+  nameWithType: NativeList<T>.this
+  nameWithType.vb: NativeList(Of T).this[]
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Memory
+  name: Memory
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Memory
+  commentId: P:FlowtideDotNet.Storage.DataStructures.NativeList`1.Memory
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Memory
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Memory
+  nameWithType: NativeList<T>.Memory
+  nameWithType.vb: NativeList(Of T).Memory
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Memory*
+  name: Memory
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Memory_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.Memory
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Memory
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Memory
+  nameWithType: NativeList<T>.Memory
+  nameWithType.vb: NativeList(Of T).Memory
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.MoveAtIndex(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: MoveAtIndex(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_MoveAtIndex_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.MoveAtIndex(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: MoveAtIndex(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.MoveAtIndex(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).MoveAtIndex(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.MoveAtIndex(int, int, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).MoveAtIndex(Integer, Integer, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.MoveAtIndex*
+  name: MoveAtIndex
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_MoveAtIndex_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.MoveAtIndex
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.MoveAtIndex
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).MoveAtIndex
+  nameWithType: NativeList<T>.MoveAtIndex
+  nameWithType.vb: NativeList(Of T).MoveAtIndex
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveAt(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveAt(int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_RemoveAt_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveAt(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveAt(Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.RemoveAt(int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).RemoveAt(Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.RemoveAt(int, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).RemoveAt(Integer, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveAt*
+  name: RemoveAt
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_RemoveAt_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveAt
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.RemoveAt
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).RemoveAt
+  nameWithType: NativeList<T>.RemoveAt
+  nameWithType.vb: NativeList(Of T).RemoveAt
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_RemoveRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.RemoveRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).RemoveRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: NativeList<T>.RemoveRange(int, int, IMemoryAllocator)
+  nameWithType.vb: NativeList(Of T).RemoveRange(Integer, Integer, IMemoryAllocator)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveRange*
+  name: RemoveRange
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_RemoveRange_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveRange
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.RemoveRange
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).RemoveRange
+  nameWithType: NativeList<T>.RemoveRange
+  nameWithType.vb: NativeList(Of T).RemoveRange
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.SetLength(System.Int32)
+  name: SetLength(int)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_SetLength_System_Int32_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.SetLength(System.Int32)
+  name.vb: SetLength(Integer)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.SetLength(int)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).SetLength(Integer)
+  nameWithType: NativeList<T>.SetLength(int)
+  nameWithType.vb: NativeList(Of T).SetLength(Integer)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.SetLength*
+  name: SetLength
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_SetLength_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.SetLength
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.SetLength
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).SetLength
+  nameWithType: NativeList<T>.SetLength
+  nameWithType.vb: NativeList(Of T).SetLength
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedMemory
+  name: SlicedMemory
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_SlicedMemory
+  commentId: P:FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedMemory
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.SlicedMemory
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).SlicedMemory
+  nameWithType: NativeList<T>.SlicedMemory
+  nameWithType.vb: NativeList(Of T).SlicedMemory
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedMemory*
+  name: SlicedMemory
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_SlicedMemory_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedMemory
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.SlicedMemory
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).SlicedMemory
+  nameWithType: NativeList<T>.SlicedMemory
+  nameWithType.vb: NativeList(Of T).SlicedMemory
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedSpan
+  name: SlicedSpan
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_SlicedSpan
+  commentId: P:FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedSpan
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.SlicedSpan
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).SlicedSpan
+  nameWithType: NativeList<T>.SlicedSpan
+  nameWithType.vb: NativeList(Of T).SlicedSpan
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedSpan*
+  name: SlicedSpan
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_SlicedSpan_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedSpan
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.SlicedSpan
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).SlicedSpan
+  nameWithType: NativeList<T>.SlicedSpan
+  nameWithType.vb: NativeList(Of T).SlicedSpan
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Span
+  name: Span
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Span
+  commentId: P:FlowtideDotNet.Storage.DataStructures.NativeList`1.Span
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Span
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Span
+  nameWithType: NativeList<T>.Span
+  nameWithType.vb: NativeList(Of T).Span
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Span*
+  name: Span
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Span_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.Span
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Span
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Span
+  nameWithType: NativeList<T>.Span
+  nameWithType.vb: NativeList(Of T).Span
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Update(System.Int32@,`0@)
+  name: Update(in int, in T)
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Update_System_Int32___0__
+  commentId: M:FlowtideDotNet.Storage.DataStructures.NativeList`1.Update(System.Int32@,`0@)
+  name.vb: Update(Integer, T)
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Update(in int, in T)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Update(Integer, T)
+  nameWithType: NativeList<T>.Update(in int, in T)
+  nameWithType.vb: NativeList(Of T).Update(Integer, T)
+- uid: FlowtideDotNet.Storage.DataStructures.NativeList`1.Update*
+  name: Update
+  href: api/FlowtideDotNet.Storage.DataStructures.NativeList-1.html#FlowtideDotNet_Storage_DataStructures_NativeList_1_Update_
+  commentId: Overload:FlowtideDotNet.Storage.DataStructures.NativeList`1.Update
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.DataStructures.NativeList<T>.Update
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.NativeList(Of T).Update
+  nameWithType: NativeList<T>.Update
+  nameWithType.vb: NativeList(Of T).Update
 - uid: FlowtideDotNet.Storage.DataStructures.PrimitiveList`1
   name: PrimitiveList<T>
   href: api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html
@@ -39184,6 +39707,15 @@ references:
   fullName.vb: FlowtideDotNet.Storage.DataStructures.PrimitiveList(Of T)
   nameWithType: PrimitiveList<T>
   nameWithType.vb: PrimitiveList(Of T)
+- uid: FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.DataStructures.NativeList{`0},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: PrimitiveList(NativeList<T>, IMemoryAllocator)
+  href: api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_FlowtideDotNet_Storage_DataStructures_NativeList__0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.DataStructures.NativeList{`0},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: New(NativeList(Of T), IMemoryAllocator)
+  fullName: FlowtideDotNet.Storage.DataStructures.PrimitiveList<T>.PrimitiveList(FlowtideDotNet.Storage.DataStructures.NativeList<T>, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Storage.DataStructures.PrimitiveList(Of T).New(FlowtideDotNet.Storage.DataStructures.NativeList(Of T), FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: PrimitiveList<T>.PrimitiveList(NativeList<T>, IMemoryAllocator)
+  nameWithType.vb: PrimitiveList(Of T).New(NativeList(Of T), IMemoryAllocator)
 - uid: FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: PrimitiveList(FlowtideMemory, int, IMemoryAllocator)
   href: api/FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_

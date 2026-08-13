@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Struct NativeList&lt;T&gt; | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Struct NativeList&lt;T&gt; | Flowtide.NET ">
+      
+      <meta name="description" content="A growable list of unmanaged values stored in native memory, without a heap object. Mutable struct, keep it in one field and never copy it. The struct does not store an allocator, calls that can allocate or free take the owner&#39;s allocator.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Storage_DataStructures_NativeList_1.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Storage.DataStructures.NativeList%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1">
+
+
+
+  <h1 id="FlowtideDotNet_Storage_DataStructures_NativeList_1" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1" class="text-break">
+Struct NativeList&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Storage.html">Storage</a>.<a class="xref" href="FlowtideDotNet.Storage.DataStructures.html">DataStructures</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Storage.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>A growable list of unmanaged values stored in native memory, without a heap object.
+Mutable struct, keep it in one field and never copy it.
+The struct does not store an allocator, calls that can allocate or free take the owner's allocator.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public struct NativeList&lt;T&gt; where T : unmanaged</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The unmanaged element type.</p>
+</dd>
+  </dl>
+
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.equals">ValueType.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.gethashcode">ValueType.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.tostring">ValueType.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1__ctor_FlowtideDotNet_Storage_Memory_FlowtideMemory_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.#ctor(FlowtideDotNet.Storage.Memory.FlowtideMemory,System.Int32)">
+  NativeList(FlowtideMemory, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a list that wraps already populated memory, taking ownership of it.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public NativeList(FlowtideMemory memory, int length)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memory</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.FlowtideMemory.html">FlowtideMemory</a></dt>
+    <dd><p>The memory holding the elements.</p>
+</dd>
+    <dt><code>length</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of valid elements in <code class="paramref">memory</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1__ctor_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.#ctor(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  NativeList(int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L41"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a list with backing memory pre-allocated for at least <code class="paramref">initialCapacity</code> elements.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public NativeList(int initialCapacity, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>initialCapacity</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of elements to reserve capacity for up front.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The allocator used for backing memory.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Count_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Count*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Count" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Count">
+  Count
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L465"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The number of elements in the list.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly int Count { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Item_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Item*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Item_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Item(System.Int32)">
+  this[int]
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L450"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the element at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly T this[int index] { get; set; }</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index.</p>
+</dd>
+  </dl>
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Memory_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Memory*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Memory" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Memory">
+  Memory
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L66"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The full backing memory buffer in bytes, or empty when nothing is allocated.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly Memory&lt;byte&gt; Memory { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.memory-1">Memory</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_SlicedMemory_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedMemory*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_SlicedMemory" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedMemory">
+  SlicedMemory
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L71"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The current elements for consumers that need Memory.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly Memory&lt;byte&gt; SlicedMemory { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.memory-1">Memory</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_SlicedSpan_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedSpan*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_SlicedSpan" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.SlicedSpan">
+  SlicedSpan
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L76"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The bytes of the current elements.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly Span&lt;byte&gt; SlicedSpan { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Span_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Span*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Span" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Span">
+  Span
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L61"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>A span over the current elements of the list.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly Span&lt;T&gt; Span { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;T&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Add_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Add*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Add__0_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Add(`0,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  Add(T, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L134"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Appends a value to the end of the list, growing it by one.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Add(T value, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to append.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_AddRangeFrom_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.AddRangeFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_AddRangeFrom_FlowtideDotNet_Storage_DataStructures_NativeList__0___System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.AddRangeFrom(FlowtideDotNet.Storage.DataStructures.NativeList{`0}@,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  AddRangeFrom(in NativeList&lt;T&gt;, int, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L147"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Appends a run of elements copied from another list to the end of this one.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void AddRangeFrom(in NativeList&lt;T&gt; list, int index, int count, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>list</code> <a class="xref" href="FlowtideDotNet.Storage.DataStructures.NativeList-1.html">NativeList</a>&lt;T&gt;</dt>
+    <dd><p>The list to copy elements from.</p>
+</dd>
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index in <code class="paramref">list</code> to start copying from.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of elements to copy.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_BinarySearch_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.BinarySearch*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_BinarySearch__1___0_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.BinarySearch``1(``0)">
+  BinarySearch&lt;TComp&gt;(TComp)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L509"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs a binary search over the elements. The list must be sorted with respect to <code class="paramref">value</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly int BinarySearch&lt;TComp&gt;(TComp value) where TComp : IComparable&lt;T&gt;</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">TComp</span></dt>
+    <dd><p>The comparable to search for.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the matching element, or the bitwise complement of the index of the next larger element when no match is found.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TComp</code></dt>
+    <dd><p>A comparable that defines the ordering against the elements.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Clear_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Clear*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Clear" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Clear">
+  Clear()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L483"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Resets the count to zero, keeping the backing memory for reuse.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Clear()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Copy_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Copy*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Copy_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  Copy(IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L493"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a deep copy of the list, allocating new backing memory from the given allocator.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly NativeList&lt;T&gt; Copy(IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The allocator used for the copy's backing memory.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.DataStructures.NativeList-1.html">NativeList</a>&lt;T&gt;</dt>
+    <dd><p>A new list with the same elements.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_DeleteBatch_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.DeleteBatch*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_DeleteBatch_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  DeleteBatch(ReadOnlySpan&lt;int&gt;, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L276"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Batch delete elements at the specified sorted indices.
+This is more efficient than calling RemoveAt repeatedly because it processes
+contiguous blocks of retained data in a single left-to-right sweep.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void DeleteBatch(ReadOnlySpan&lt;int&gt; targets, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>targets</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A span of sorted indices (ascending) of elements to delete.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Dispose_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Dispose*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Dispose_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  Dispose(IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L471"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Frees the backing memory and resets the list to the default value, dispose twice is safe.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose(IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_EnsureCapacity_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.EnsureCapacity*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_EnsureCapacity_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.EnsureCapacity(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  EnsureCapacity(int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L103"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Grows the backing memory so it can hold at least <code class="paramref">length</code> elements.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void EnsureCapacity(int length, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>length</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of elements to reserve capacity for.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Get_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Get*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Get_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Get(System.Int32)">
+  Get(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L419"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the element at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly T Get(int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_GetPointer_Unsafe_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPointer_Unsafe*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_GetPointer_Unsafe" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPointer_Unsafe">
+  GetPointer_Unsafe()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L92"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>UNSAFE: Gets the raw pointer to do operations without boundary checks</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly T* GetPointer_Unsafe()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_GetPrefixSumByteSizes_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPrefixSumByteSizes*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_GetPrefixSumByteSizes_System_ReadOnlySpan_System_Int32__System_Span_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.GetPrefixSumByteSizes(System.ReadOnlySpan{System.Int32},System.Span{System.Int32})">
+  GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt;, Span&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L532"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds this list's per-index byte size contribution to the running totals in <code class="paramref">sizes</code>, where each
+element contributes <code>sizeof(T)</code> bytes. Used together with the other containers to build prefix-sum sizes
+when computing serialized batch sizes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly void GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt; indices, Span&lt;int&gt; sizes)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>indices</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The indices the sizes are being accumulated for.</p>
+</dd>
+    <dt><code>sizes</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The running per-index byte size totals to add to.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_GetRef_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.GetRef*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_GetRef_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.GetRef(System.Int32@)">
+  GetRef(scoped in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L430"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a reference to the element at the given index, allowing it to be read or modified in place.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly ref T GetRef(scoped in int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertAt_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertAt*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertAt_System_Int32__0_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertAt(System.Int32,`0,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  InsertAt(int, T, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L162"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts a value at the given index, shifting every element at or after that index up by one.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertAt(int index, T value, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index to insert at.</p>
+</dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to insert.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertFrom_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertFrom_FlowtideDotNet_Storage_DataStructures_NativeList__0___System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertFrom(FlowtideDotNet.Storage.DataStructures.NativeList{`0}@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  InsertFrom(ref readonly NativeList&lt;T&gt;, ref readonly ReadOnlySpan&lt;int&gt;, ref readonly ReadOnlySpan&lt;int&gt;, in int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L226"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Special case insert that allows inserting a subset of elements from another list at specific positions.
+This is used when merging two lists together more memory efficiently than inserting each element one by one.
+The sortedLookup and insertPositions spans must have the same length, but do not need to cover every element in the other list.
+The positions in <code class="paramref">insertPositions</code> are interpreted relative to the original contents of the current list before any elements are inserted.
+Conceptually, this behaves like inserting the selected elements in order using <code>InsertAt(insertPositions[i] + i, ...)</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertFrom(ref readonly NativeList&lt;T&gt; other, ref readonly ReadOnlySpan&lt;int&gt; sortedLookup, ref readonly ReadOnlySpan&lt;int&gt; insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="FlowtideDotNet.Storage.DataStructures.NativeList-1.html">NativeList</a>&lt;T&gt;</dt>
+    <dd><p>The other list to insert data from.</p>
+</dd>
+    <dt><code>sortedLookup</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A span containing the indices of the elements to insert from the other list.</p>
+</dd>
+    <dt><code>insertPositions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</p>
+</dd>
+    <dt><code>lookupNullIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>A sentinel value in <code class="paramref">sortedLookup</code> that inserts a default element instead of reading from <code class="paramref">other</code>.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertFrom_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertFrom__0___System_ReadOnlySpan_System_Int32__System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertFrom(`0[],System.ReadOnlySpan{System.Int32},System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  InsertFrom(T[], ReadOnlySpan&lt;int&gt;, ReadOnlySpan&lt;int&gt;, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L332"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Special case insert that allows inserting a subset of elements from an array at specific positions.
+This is used when merging two lists together more memory efficiently than inserting each element one by one.
+The sortedLookup and insertPositions spans must have the same length, but do not need to cover every element in the array.
+The positions in <code class="paramref">insertPositions</code> are interpreted relative to the original contents of the current list before any elements are inserted.
+Conceptually, this behaves like inserting the selected elements in order using <code>InsertAt(insertPositions[i] + i, ...)</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertFrom(T[] keys, ReadOnlySpan&lt;int&gt; sortedLookup, ReadOnlySpan&lt;int&gt; insertPositions, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>keys</code> T[]</dt>
+    <dd><p>The array to insert data from.</p>
+</dd>
+    <dt><code>sortedLookup</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A span containing the indices of the elements to insert from the array.</p>
+</dd>
+    <dt><code>insertPositions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertRangeFrom_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertRangeFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertRangeFrom_System_Int32_FlowtideDotNet_Storage_DataStructures_NativeList__0___System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertRangeFrom(System.Int32,FlowtideDotNet.Storage.DataStructures.NativeList{`0}@,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  InsertRangeFrom(int, in NativeList&lt;T&gt;, int, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L185"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts a run of elements copied from another list, shifting existing elements up to make room.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertRangeFrom(int index, in NativeList&lt;T&gt; other, int start, int count, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index in this list to insert at.</p>
+</dd>
+    <dt><code>other</code> <a class="xref" href="FlowtideDotNet.Storage.DataStructures.NativeList-1.html">NativeList</a>&lt;T&gt;</dt>
+    <dd><p>The list to copy elements from.</p>
+</dd>
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index in <code class="paramref">other</code> to start copying from.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of elements to copy.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertStaticRange_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertStaticRange*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_InsertStaticRange_System_Int32__0_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.InsertStaticRange(System.Int32,`0,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  InsertStaticRange(int, T, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L202"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts the same value <code class="paramref">count</code> times at the given index, shifting existing elements up to make room.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertStaticRange(int index, T value, int count, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index to insert at.</p>
+</dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to insert repeatedly.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of copies to insert.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_MoveAtIndex_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.MoveAtIndex*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_MoveAtIndex_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.MoveAtIndex(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  MoveAtIndex(int, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L379"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Opens a gap of <code class="paramref">count</code> elements at the given index by shifting the elements at or after it up,
+without writing any values into the gap. The list grows by <code class="paramref">count</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void MoveAtIndex(int index, int count, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index at which to open the gap.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of element slots to open.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_RemoveAt_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveAt*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_RemoveAt_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveAt(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  RemoveAt(int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L392"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes the element at the given index and shifts all elements above it down.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveAt(int index, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index of the element to remove.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_RemoveRange_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveRange*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_RemoveRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  RemoveRange(int, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L406"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes a run of elements starting at the given index and shifts all elements above the range down.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveRange(int index, int count, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index of the first element to remove.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of elements to remove.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The owner's allocator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_SetLength_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.SetLength*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_SetLength_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.SetLength(System.Int32)">
+  SetLength(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L520"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the element count directly, without allocating or clearing memory. The caller must ensure the backing
+memory already holds that many valid elements.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void SetLength(int newLength)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>newLength</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The new element count.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Update_" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Update*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_NativeList_1_Update_System_Int32___0__" data-uid="FlowtideDotNet.Storage.DataStructures.NativeList`1.Update(System.Int32@,`0@)">
+  Update(in int, in T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L441"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Overwrites the element at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly void Update(in int index, in T value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index.</p>
+</dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The new value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/NativeList.cs/#L26" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

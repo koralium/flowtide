@@ -100,7 +100,8 @@ Classes
 It behaves like a list (add, insert, remove, index) but keeps its elements in a contiguous unmanaged buffer,
 which can be exposed as a <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Span">Span</a> or <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Memory">Memory</a> and serialized without copying element by element.
 Ownership is reference counted through <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Rent_System_Int32_">Rent(int)</a> and <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Return">Return()</a>, and the buffer is
-released when the list is disposed or the last reference is returned.</p>
+released when the list is disposed or the last reference is returned.
+The list logic lives in <a class="xref" href="FlowtideDotNet.Storage.DataStructures.NativeList-1.html">NativeList&lt;T&gt;</a>, this class adds shared ownership on top of it.</p>
 </dd>
     </dl>
     <h3 id="structs">
@@ -113,6 +114,13 @@ Structs
 as well as range and batch variants that shift large blocks of bits at once, using vectorized shifts where
 available. It is commonly used as a validity (null) mask for columnar data.
 Mutable struct, keep it in one field and never copy it.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="FlowtideDotNet.Storage.DataStructures.NativeList-1.html">NativeList&lt;T&gt;</a></dt>
+      <dd><p>A growable list of unmanaged values stored in native memory, without a heap object.
+Mutable struct, keep it in one field and never copy it.
+The struct does not store an allocator, calls that can allocate or free take the owner's allocator.</p>
 </dd>
     </dl>
 
