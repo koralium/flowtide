@@ -15396,30 +15396,30 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AddToNewList
   nameWithType: BinaryColumn.AddToNewList
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AddToNewList``1(``0@)
-  name: AddToNewList<T>(in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_AddToNewList__1___0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.AddToNewList``1(``0@)
-  name.vb: AddToNewList(Of T)(T)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AddToNewList<T>(in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AddToNewList(Of T)(T)
-  nameWithType: BinaryColumn.AddToNewList<T>(in T)
-  nameWithType.vb: BinaryColumn.AddToNewList(Of T)(T)
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Add``1(``0@)
-  name: Add<T>(in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Add__1___0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Add``1(``0@)
-  name.vb: Add(Of T)(T)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Add<T>(in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Add(Of T)(T)
-  nameWithType: BinaryColumn.Add<T>(in T)
-  nameWithType.vb: BinaryColumn.Add(Of T)(T)
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Clear
-  name: Clear()
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Clear
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Clear
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Clear()
-  nameWithType: BinaryColumn.Clear()
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AddToNewList``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: AddToNewList<T>(in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_AddToNewList__1___0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.AddToNewList``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: AddToNewList(Of T)(T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AddToNewList<T>(in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AddToNewList(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.AddToNewList<T>(in T, IMemoryAllocator)
+  nameWithType.vb: BinaryColumn.AddToNewList(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Add``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Add<T>(in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Add__1___0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Add``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Add(Of T)(T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Add<T>(in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Add(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.Add<T>(in T, IMemoryAllocator)
+  nameWithType.vb: BinaryColumn.Add(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Clear(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Clear_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.Clear(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Clear*
   name: Clear
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Clear_
@@ -15478,15 +15478,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Count
   nameWithType: BinaryColumn.Count
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})
-  name: DeleteBatch(ReadOnlySpan<int>)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})
-  name.vb: DeleteBatch(ReadOnlySpan(Of Integer))
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.DeleteBatch(System.ReadOnlySpan<int>)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.DeleteBatch(System.ReadOnlySpan(Of Integer))
-  nameWithType: BinaryColumn.DeleteBatch(ReadOnlySpan<int>)
-  nameWithType.vb: BinaryColumn.DeleteBatch(ReadOnlySpan(Of Integer))
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.DeleteBatch(System.ReadOnlySpan<int>, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.DeleteBatch(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  nameWithType.vb: BinaryColumn.DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.DeleteBatch*
   name: DeleteBatch
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_DeleteBatch_
@@ -15494,12 +15494,12 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.DeleteBatch
   nameWithType: BinaryColumn.DeleteBatch
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Dispose
-  name: Dispose()
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Dispose
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Dispose
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Dispose()
-  nameWithType: BinaryColumn.Dispose()
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Dispose(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Dispose_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.Dispose(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Dispose(System.Boolean)
   name: Dispose(bool)
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Dispose_System_Boolean_
@@ -15516,12 +15516,12 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Dispose
   nameWithType: BinaryColumn.Dispose
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.EndNewList
-  name: EndNewList()
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_EndNewList
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.EndNewList
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.EndNewList()
-  nameWithType: BinaryColumn.EndNewList()
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: EndNewList(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_EndNewList_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.EndNewList(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.EndNewList*
   name: EndNewList
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_EndNewList_
@@ -15529,22 +15529,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.EndNewList
   nameWithType: BinaryColumn.EndNewList
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Finalize
-  name: ~BinaryColumn()
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Finalize
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Finalize
-  name.vb: ''
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.~BinaryColumn()
-  fullName.vb: ''
-  nameWithType: BinaryColumn.~BinaryColumn()
-  nameWithType.vb: ''
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Finalize*
-  name: ~BinaryColumn
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Finalize_
-  commentId: Overload:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Finalize
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.~BinaryColumn
-  nameWithType: BinaryColumn.~BinaryColumn
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.GetByteSize
   name: GetByteSize()
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_GetByteSize
@@ -15683,24 +15667,24 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertAt
   nameWithType: BinaryColumn.InsertAt
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertAt``1(System.Int32@,``0@)
-  name: InsertAt<T>(in int, in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertAt__1_System_Int32____0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertAt``1(System.Int32@,``0@)
-  name.vb: InsertAt(Of T)(Integer, T)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertAt<T>(in int, in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertAt(Of T)(Integer, T)
-  nameWithType: BinaryColumn.InsertAt<T>(in int, in T)
-  nameWithType.vb: BinaryColumn.InsertAt(Of T)(Integer, T)
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name: InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name.vb: InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertFrom(in FlowtideDotNet.Core.ColumnStore.IDataColumn, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer)
-  nameWithType: BinaryColumn.InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  nameWithType.vb: BinaryColumn.InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertAt``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertAt<T>(in int, in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertAt__1_System_Int32____0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertAt``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertAt(Of T)(Integer, T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertAt<T>(in int, in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertAt(Of T)(Integer, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.InsertAt<T>(in int, in T, IMemoryAllocator)
+  nameWithType.vb: BinaryColumn.InsertAt(Of T)(Integer, T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertFrom(in FlowtideDotNet.Core.ColumnStore.IDataColumn, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  nameWithType.vb: BinaryColumn.InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertFrom*
   name: InsertFrom
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertFrom_
@@ -15708,15 +15692,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertFrom
   nameWithType: BinaryColumn.InsertFrom
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange(System.Int32,System.Int32)
-  name: InsertNullRange(int, int)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertNullRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange(System.Int32,System.Int32)
-  name.vb: InsertNullRange(Integer, Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange(int, int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange(Integer, Integer)
-  nameWithType: BinaryColumn.InsertNullRange(int, int)
-  nameWithType.vb: BinaryColumn.InsertNullRange(Integer, Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertNullRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertNullRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertNullRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.InsertNullRange(int, int, IMemoryAllocator)
+  nameWithType.vb: BinaryColumn.InsertNullRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange*
   name: InsertNullRange
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertNullRange_
@@ -15724,15 +15708,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertNullRange
   nameWithType: BinaryColumn.InsertNullRange
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: BinaryColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
-  nameWithType.vb: BinaryColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList, IMemoryAllocator)
+  nameWithType.vb: BinaryColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.InsertRangeFrom*
   name: InsertRangeFrom
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_InsertRangeFrom_
@@ -15756,15 +15740,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Pin
   nameWithType: BinaryColumn.Pin
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt(System.Int32@)
-  name: RemoveAt(in int)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_RemoveAt_System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt(System.Int32@)
-  name.vb: RemoveAt(Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt(in int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt(Integer)
-  nameWithType: BinaryColumn.RemoveAt(in int)
-  nameWithType.vb: BinaryColumn.RemoveAt(Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt(System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveAt(in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_RemoveAt_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt(System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveAt(Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt(in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt(Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.RemoveAt(in int, IMemoryAllocator)
+  nameWithType.vb: BinaryColumn.RemoveAt(Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt*
   name: RemoveAt
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_RemoveAt_
@@ -15772,15 +15756,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveAt
   nameWithType: BinaryColumn.RemoveAt
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveRange(System.Int32,System.Int32)
-  name: RemoveRange(int, int)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_RemoveRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveRange(System.Int32,System.Int32)
-  name.vb: RemoveRange(Integer, Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveRange(int, int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveRange(Integer, Integer)
-  nameWithType: BinaryColumn.RemoveRange(int, int)
-  nameWithType.vb: BinaryColumn.RemoveRange(Integer, Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_RemoveRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.RemoveRange(int, int, IMemoryAllocator)
+  nameWithType.vb: BinaryColumn.RemoveRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.RemoveRange*
   name: RemoveRange
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_RemoveRange_
@@ -15866,15 +15850,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update
   nameWithType: BinaryColumn.Update
-- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update``1(System.Int32@,``0@)
-  name: Update<T>(in int, in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Update__1_System_Int32____0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update``1(System.Int32@,``0@)
-  name.vb: Update(Of T)(Integer, T)
-  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update<T>(in int, in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update(Of T)(Integer, T)
-  nameWithType: BinaryColumn.Update<T>(in int, in T)
-  nameWithType.vb: BinaryColumn.Update(Of T)(Integer, T)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Update<T>(in int, in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Update__1_System_Int32____0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Update(Of T)(Integer, T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update<T>(in int, in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Update(Of T)(Integer, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: BinaryColumn.Update<T>(in int, in T, IMemoryAllocator)
+  nameWithType.vb: BinaryColumn.Update(Of T)(Integer, T, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.WriteToJson(System.Text.Json.Utf8JsonWriter@,System.Int32@)
   name: WriteToJson(ref readonly Utf8JsonWriter, in int)
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_WriteToJson_System_Text_Json_Utf8JsonWriter__System_Int32__
@@ -20782,30 +20766,30 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.AddToNewList
   nameWithType: IDataColumn.AddToNewList
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.AddToNewList``1(``0@)
-  name: AddToNewList<T>(in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_AddToNewList__1___0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.AddToNewList``1(``0@)
-  name.vb: AddToNewList(Of T)(T)
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.AddToNewList<T>(in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.AddToNewList(Of T)(T)
-  nameWithType: IDataColumn.AddToNewList<T>(in T)
-  nameWithType.vb: IDataColumn.AddToNewList(Of T)(T)
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Add``1(``0@)
-  name: Add<T>(in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_Add__1___0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.Add``1(``0@)
-  name.vb: Add(Of T)(T)
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.Add<T>(in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.Add(Of T)(T)
-  nameWithType: IDataColumn.Add<T>(in T)
-  nameWithType.vb: IDataColumn.Add(Of T)(T)
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Clear
-  name: Clear()
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_Clear
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.Clear
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.Clear()
-  nameWithType: IDataColumn.Clear()
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.AddToNewList``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: AddToNewList<T>(in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_AddToNewList__1___0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.AddToNewList``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: AddToNewList(Of T)(T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.AddToNewList<T>(in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.AddToNewList(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.AddToNewList<T>(in T, IMemoryAllocator)
+  nameWithType.vb: IDataColumn.AddToNewList(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Add``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Add<T>(in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_Add__1___0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.Add``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Add(Of T)(T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.Add<T>(in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.Add(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.Add<T>(in T, IMemoryAllocator)
+  nameWithType.vb: IDataColumn.Add(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Clear(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_Clear_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.Clear(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Clear*
   name: Clear
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_Clear_
@@ -20877,15 +20861,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.CreateSelfCompareExpression
   nameWithType: IDataColumn.CreateSelfCompareExpression
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})
-  name: DeleteBatch(ReadOnlySpan<int>)
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})
-  name.vb: DeleteBatch(ReadOnlySpan(Of Integer))
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.DeleteBatch(System.ReadOnlySpan<int>)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.DeleteBatch(System.ReadOnlySpan(Of Integer))
-  nameWithType: IDataColumn.DeleteBatch(ReadOnlySpan<int>)
-  nameWithType.vb: IDataColumn.DeleteBatch(ReadOnlySpan(Of Integer))
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.DeleteBatch(System.ReadOnlySpan<int>, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.DeleteBatch(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  nameWithType.vb: IDataColumn.DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.DeleteBatch*
   name: DeleteBatch
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_DeleteBatch_
@@ -20893,12 +20877,25 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.DeleteBatch
   nameWithType: IDataColumn.DeleteBatch
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.EndNewList
-  name: EndNewList()
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_EndNewList
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.EndNewList
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.EndNewList()
-  nameWithType: IDataColumn.EndNewList()
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Dispose(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_Dispose_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.Dispose(IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Dispose*
+  name: Dispose
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_Dispose_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.IDataColumn.Dispose
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.Dispose
+  nameWithType: IDataColumn.Dispose
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: EndNewList(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_EndNewList_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.EndNewList(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.EndNewList*
   name: EndNewList
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_EndNewList_
@@ -21031,24 +21028,24 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertAt
   nameWithType: IDataColumn.InsertAt
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertAt``1(System.Int32@,``0@)
-  name: InsertAt<T>(in int, in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertAt__1_System_Int32____0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertAt``1(System.Int32@,``0@)
-  name.vb: InsertAt(Of T)(Integer, T)
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertAt<T>(in int, in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertAt(Of T)(Integer, T)
-  nameWithType: IDataColumn.InsertAt<T>(in int, in T)
-  nameWithType.vb: IDataColumn.InsertAt(Of T)(Integer, T)
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name: InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name.vb: InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertFrom(in FlowtideDotNet.Core.ColumnStore.IDataColumn, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer)
-  nameWithType: IDataColumn.InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  nameWithType.vb: IDataColumn.InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertAt``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertAt<T>(in int, in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertAt__1_System_Int32____0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertAt``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertAt(Of T)(Integer, T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertAt<T>(in int, in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertAt(Of T)(Integer, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.InsertAt<T>(in int, in T, IMemoryAllocator)
+  nameWithType.vb: IDataColumn.InsertAt(Of T)(Integer, T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertFrom(in FlowtideDotNet.Core.ColumnStore.IDataColumn, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  nameWithType.vb: IDataColumn.InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertFrom*
   name: InsertFrom
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertFrom_
@@ -21056,15 +21053,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertFrom
   nameWithType: IDataColumn.InsertFrom
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertNullRange(System.Int32,System.Int32)
-  name: InsertNullRange(int, int)
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertNullRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertNullRange(System.Int32,System.Int32)
-  name.vb: InsertNullRange(Integer, Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertNullRange(int, int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertNullRange(Integer, Integer)
-  nameWithType: IDataColumn.InsertNullRange(int, int)
-  nameWithType.vb: IDataColumn.InsertNullRange(Integer, Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertNullRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertNullRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertNullRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertNullRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertNullRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertNullRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertNullRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.InsertNullRange(int, int, IMemoryAllocator)
+  nameWithType.vb: IDataColumn.InsertNullRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertNullRange*
   name: InsertNullRange
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertNullRange_
@@ -21072,15 +21069,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertNullRange
   nameWithType: IDataColumn.InsertNullRange
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: IDataColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
-  nameWithType.vb: IDataColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList, IMemoryAllocator)
+  nameWithType.vb: IDataColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom*
   name: InsertRangeFrom
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_InsertRangeFrom_
@@ -21088,15 +21085,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.InsertRangeFrom
   nameWithType: IDataColumn.InsertRangeFrom
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveAt(System.Int32@)
-  name: RemoveAt(in int)
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_RemoveAt_System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveAt(System.Int32@)
-  name.vb: RemoveAt(Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveAt(in int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveAt(Integer)
-  nameWithType: IDataColumn.RemoveAt(in int)
-  nameWithType.vb: IDataColumn.RemoveAt(Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveAt(System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveAt(in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_RemoveAt_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveAt(System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveAt(Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveAt(in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveAt(Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.RemoveAt(in int, IMemoryAllocator)
+  nameWithType.vb: IDataColumn.RemoveAt(Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveAt*
   name: RemoveAt
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_RemoveAt_
@@ -21104,15 +21101,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveAt
   nameWithType: IDataColumn.RemoveAt
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveRange(System.Int32,System.Int32)
-  name: RemoveRange(int, int)
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_RemoveRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveRange(System.Int32,System.Int32)
-  name.vb: RemoveRange(Integer, Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveRange(int, int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveRange(Integer, Integer)
-  nameWithType: IDataColumn.RemoveRange(int, int)
-  nameWithType.vb: IDataColumn.RemoveRange(Integer, Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_RemoveRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.RemoveRange(int, int, IMemoryAllocator)
+  nameWithType.vb: IDataColumn.RemoveRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.RemoveRange*
   name: RemoveRange
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_RemoveRange_
@@ -21246,15 +21243,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.Update
   nameWithType: IDataColumn.Update
-- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Update``1(System.Int32@,``0@)
-  name: Update<T>(in int, in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_Update__1_System_Int32____0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.Update``1(System.Int32@,``0@)
-  name.vb: Update(Of T)(Integer, T)
-  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.Update<T>(in int, in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.Update(Of T)(Integer, T)
-  nameWithType: IDataColumn.Update<T>(in int, in T)
-  nameWithType.vb: IDataColumn.Update(Of T)(Integer, T)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Update``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Update<T>(in int, in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_Update__1_System_Int32____0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.Update``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Update(Of T)(Integer, T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.Update<T>(in int, in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.Update(Of T)(Integer, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: IDataColumn.Update<T>(in int, in T, IMemoryAllocator)
+  nameWithType.vb: IDataColumn.Update(Of T)(Integer, T, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.WriteToJson(System.Text.Json.Utf8JsonWriter@,System.Int32@)
   name: WriteToJson(ref readonly Utf8JsonWriter, in int)
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_WriteToJson_System_Text_Json_Utf8JsonWriter__System_Int32__
@@ -22139,15 +22136,15 @@ references:
   fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.New
   nameWithType: ListColumn.ListColumn
   nameWithType.vb: ListColumn.New
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Add(FlowtideDotNet.Core.ColumnStore.IDataValue@)
-  name: Add(in IDataValue)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Add_FlowtideDotNet_Core_ColumnStore_IDataValue__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Add(FlowtideDotNet.Core.ColumnStore.IDataValue@)
-  name.vb: Add(IDataValue)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Add(in FlowtideDotNet.Core.ColumnStore.IDataValue)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.Add(FlowtideDotNet.Core.ColumnStore.IDataValue)
-  nameWithType: ListColumn.Add(in IDataValue)
-  nameWithType.vb: ListColumn.Add(IDataValue)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Add(FlowtideDotNet.Core.ColumnStore.IDataValue@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Add(in IDataValue, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Add_FlowtideDotNet_Core_ColumnStore_IDataValue__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Add(FlowtideDotNet.Core.ColumnStore.IDataValue@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Add(IDataValue, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Add(in FlowtideDotNet.Core.ColumnStore.IDataValue, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.Add(FlowtideDotNet.Core.ColumnStore.IDataValue, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.Add(in IDataValue, IMemoryAllocator)
+  nameWithType.vb: ListColumn.Add(IDataValue, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Add*
   name: Add
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Add_
@@ -22178,24 +22175,24 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.AddToNewList
   nameWithType: ListColumn.AddToNewList
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.AddToNewList``1(``0@)
-  name: AddToNewList<T>(in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_AddToNewList__1___0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.AddToNewList``1(``0@)
-  name.vb: AddToNewList(Of T)(T)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.AddToNewList<T>(in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.AddToNewList(Of T)(T)
-  nameWithType: ListColumn.AddToNewList<T>(in T)
-  nameWithType.vb: ListColumn.AddToNewList(Of T)(T)
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Add``1(``0@)
-  name: Add<T>(in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Add__1___0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Add``1(``0@)
-  name.vb: Add(Of T)(T)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Add<T>(in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.Add(Of T)(T)
-  nameWithType: ListColumn.Add<T>(in T)
-  nameWithType.vb: ListColumn.Add(Of T)(T)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.AddToNewList``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: AddToNewList<T>(in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_AddToNewList__1___0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.AddToNewList``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: AddToNewList(Of T)(T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.AddToNewList<T>(in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.AddToNewList(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.AddToNewList<T>(in T, IMemoryAllocator)
+  nameWithType.vb: ListColumn.AddToNewList(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Add``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Add<T>(in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Add__1___0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Add``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Add(Of T)(T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Add<T>(in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.Add(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.Add<T>(in T, IMemoryAllocator)
+  nameWithType.vb: ListColumn.Add(Of T)(T, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToList*
   name: AppendToList
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_AppendToList_
@@ -22212,12 +22209,12 @@ references:
   fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToList(Of T)(Integer, T)
   nameWithType: ListColumn.AppendToList<T>(in int, in T)
   nameWithType.vb: ListColumn.AppendToList(Of T)(Integer, T)
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Clear
-  name: Clear()
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Clear
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Clear
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Clear()
-  nameWithType: ListColumn.Clear()
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Clear(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Clear_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.Clear(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Clear*
   name: Clear
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Clear_
@@ -22276,15 +22273,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Count
   nameWithType: ListColumn.Count
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})
-  name: DeleteBatch(ReadOnlySpan<int>)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})
-  name.vb: DeleteBatch(ReadOnlySpan(Of Integer))
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch(System.ReadOnlySpan<int>)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch(System.ReadOnlySpan(Of Integer))
-  nameWithType: ListColumn.DeleteBatch(ReadOnlySpan<int>)
-  nameWithType.vb: ListColumn.DeleteBatch(ReadOnlySpan(Of Integer))
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch(System.ReadOnlySpan<int>, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  nameWithType.vb: ListColumn.DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch*
   name: DeleteBatch
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_DeleteBatch_
@@ -22292,21 +22289,12 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch
   nameWithType: ListColumn.DeleteBatch
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose
-  name: Dispose()
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Dispose
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose()
-  nameWithType: ListColumn.Dispose()
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose(System.Boolean)
-  name: Dispose(bool)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Dispose_System_Boolean_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose(System.Boolean)
-  name.vb: Dispose(Boolean)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose(bool)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose(Boolean)
-  nameWithType: ListColumn.Dispose(bool)
-  nameWithType.vb: ListColumn.Dispose(Boolean)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Dispose(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Dispose_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.Dispose(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose*
   name: Dispose
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Dispose_
@@ -22314,12 +22302,12 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose
   nameWithType: ListColumn.Dispose
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.EndNewList
-  name: EndNewList()
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_EndNewList
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.EndNewList
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.EndNewList()
-  nameWithType: ListColumn.EndNewList()
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: EndNewList(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_EndNewList_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.EndNewList(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.EndNewList*
   name: EndNewList
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_EndNewList_
@@ -22327,22 +22315,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.EndNewList
   nameWithType: ListColumn.EndNewList
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Finalize
-  name: ~ListColumn()
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Finalize
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Finalize
-  name.vb: ''
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.~ListColumn()
-  fullName.vb: ''
-  nameWithType: ListColumn.~ListColumn()
-  nameWithType.vb: ''
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Finalize*
-  name: ~ListColumn
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Finalize_
-  commentId: Overload:FlowtideDotNet.Core.ColumnStore.ListColumn.Finalize
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.~ListColumn
-  nameWithType: ListColumn.~ListColumn
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.GetByteSize
   name: GetByteSize()
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_GetByteSize
@@ -22522,24 +22494,24 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertAt
   nameWithType: ListColumn.InsertAt
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertAt``1(System.Int32@,``0@)
-  name: InsertAt<T>(in int, in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertAt__1_System_Int32____0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.InsertAt``1(System.Int32@,``0@)
-  name.vb: InsertAt(Of T)(Integer, T)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertAt<T>(in int, in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertAt(Of T)(Integer, T)
-  nameWithType: ListColumn.InsertAt<T>(in int, in T)
-  nameWithType.vb: ListColumn.InsertAt(Of T)(Integer, T)
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name: InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name.vb: InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom(in FlowtideDotNet.Core.ColumnStore.IDataColumn, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer)
-  nameWithType: ListColumn.InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  nameWithType.vb: ListColumn.InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertAt``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertAt<T>(in int, in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertAt__1_System_Int32____0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.InsertAt``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertAt(Of T)(Integer, T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertAt<T>(in int, in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertAt(Of T)(Integer, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.InsertAt<T>(in int, in T, IMemoryAllocator)
+  nameWithType.vb: ListColumn.InsertAt(Of T)(Integer, T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom(in FlowtideDotNet.Core.ColumnStore.IDataColumn, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  nameWithType.vb: ListColumn.InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom*
   name: InsertFrom
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertFrom_
@@ -22547,15 +22519,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom
   nameWithType: ListColumn.InsertFrom
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange(System.Int32,System.Int32)
-  name: InsertNullRange(int, int)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertNullRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange(System.Int32,System.Int32)
-  name.vb: InsertNullRange(Integer, Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange(int, int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange(Integer, Integer)
-  nameWithType: ListColumn.InsertNullRange(int, int)
-  nameWithType.vb: ListColumn.InsertNullRange(Integer, Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertNullRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertNullRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertNullRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.InsertNullRange(int, int, IMemoryAllocator)
+  nameWithType.vb: ListColumn.InsertNullRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange*
   name: InsertNullRange
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertNullRange_
@@ -22563,15 +22535,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange
   nameWithType: ListColumn.InsertNullRange
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: ListColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
-  nameWithType.vb: ListColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList, IMemoryAllocator)
+  nameWithType.vb: ListColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom*
   name: InsertRangeFrom
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_InsertRangeFrom_
@@ -22579,15 +22551,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom
   nameWithType: ListColumn.InsertRangeFrom
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveAt(System.Int32@)
-  name: RemoveAt(in int)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveAt_System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveAt(System.Int32@)
-  name.vb: RemoveAt(Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveAt(in int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveAt(Integer)
-  nameWithType: ListColumn.RemoveAt(in int)
-  nameWithType.vb: ListColumn.RemoveAt(Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveAt(System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveAt(in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveAt_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveAt(System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveAt(Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveAt(in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveAt(Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.RemoveAt(in int, IMemoryAllocator)
+  nameWithType.vb: ListColumn.RemoveAt(Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveAt*
   name: RemoveAt
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveAt_
@@ -22611,15 +22583,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveListElement
   nameWithType: ListColumn.RemoveListElement
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveRange(System.Int32,System.Int32)
-  name: RemoveRange(int, int)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveRange(System.Int32,System.Int32)
-  name.vb: RemoveRange(Integer, Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveRange(int, int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveRange(Integer, Integer)
-  nameWithType: ListColumn.RemoveRange(int, int)
-  nameWithType.vb: ListColumn.RemoveRange(Integer, Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.RemoveRange(int, int, IMemoryAllocator)
+  nameWithType.vb: ListColumn.RemoveRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveRange*
   name: RemoveRange
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveRange_
@@ -22708,15 +22680,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.UpdateListElement
   nameWithType: ListColumn.UpdateListElement
-- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Update``1(System.Int32@,``0@)
-  name: Update<T>(in int, in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Update__1_System_Int32____0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Update``1(System.Int32@,``0@)
-  name.vb: Update(Of T)(Integer, T)
-  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Update<T>(in int, in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.Update(Of T)(Integer, T)
-  nameWithType: ListColumn.Update<T>(in int, in T)
-  nameWithType.vb: ListColumn.Update(Of T)(Integer, T)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Update``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Update<T>(in int, in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Update__1_System_Int32____0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.Update``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Update(Of T)(Integer, T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.Update<T>(in int, in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.Update(Of T)(Integer, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: ListColumn.Update<T>(in int, in T, IMemoryAllocator)
+  nameWithType.vb: ListColumn.Update(Of T)(Integer, T, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.WriteToJson(System.Text.Json.Utf8JsonWriter@,System.Int32@)
   name: WriteToJson(ref readonly Utf8JsonWriter, in int)
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_WriteToJson_System_Text_Json_Utf8JsonWriter__System_Int32__
@@ -22797,30 +22769,30 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.AddToNewList
   nameWithType: MapColumn.AddToNewList
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.AddToNewList``1(``0@)
-  name: AddToNewList<T>(in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_AddToNewList__1___0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.AddToNewList``1(``0@)
-  name.vb: AddToNewList(Of T)(T)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.AddToNewList<T>(in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.AddToNewList(Of T)(T)
-  nameWithType: MapColumn.AddToNewList<T>(in T)
-  nameWithType.vb: MapColumn.AddToNewList(Of T)(T)
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Add``1(``0@)
-  name: Add<T>(in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Add__1___0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.Add``1(``0@)
-  name.vb: Add(Of T)(T)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Add<T>(in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.Add(Of T)(T)
-  nameWithType: MapColumn.Add<T>(in T)
-  nameWithType.vb: MapColumn.Add(Of T)(T)
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Clear
-  name: Clear()
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Clear
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.Clear
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Clear()
-  nameWithType: MapColumn.Clear()
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.AddToNewList``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: AddToNewList<T>(in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_AddToNewList__1___0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.AddToNewList``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: AddToNewList(Of T)(T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.AddToNewList<T>(in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.AddToNewList(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.AddToNewList<T>(in T, IMemoryAllocator)
+  nameWithType.vb: MapColumn.AddToNewList(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Add``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Add<T>(in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Add__1___0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.Add``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Add(Of T)(T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Add<T>(in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.Add(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.Add<T>(in T, IMemoryAllocator)
+  nameWithType.vb: MapColumn.Add(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Clear(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Clear_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.Clear(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Clear*
   name: Clear
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Clear_
@@ -22879,15 +22851,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Count
   nameWithType: MapColumn.Count
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})
-  name: DeleteBatch(ReadOnlySpan<int>)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})
-  name.vb: DeleteBatch(ReadOnlySpan(Of Integer))
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.DeleteBatch(System.ReadOnlySpan<int>)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.DeleteBatch(System.ReadOnlySpan(Of Integer))
-  nameWithType: MapColumn.DeleteBatch(ReadOnlySpan<int>)
-  nameWithType.vb: MapColumn.DeleteBatch(ReadOnlySpan(Of Integer))
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.DeleteBatch(System.ReadOnlySpan<int>, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.DeleteBatch(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  nameWithType.vb: MapColumn.DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.DeleteBatch*
   name: DeleteBatch
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_DeleteBatch_
@@ -22895,21 +22867,12 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.DeleteBatch
   nameWithType: MapColumn.DeleteBatch
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose
-  name: Dispose()
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Dispose
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose()
-  nameWithType: MapColumn.Dispose()
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose(System.Boolean)
-  name: Dispose(bool)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Dispose_System_Boolean_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose(System.Boolean)
-  name.vb: Dispose(Boolean)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose(bool)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose(Boolean)
-  nameWithType: MapColumn.Dispose(bool)
-  nameWithType.vb: MapColumn.Dispose(Boolean)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Dispose(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Dispose_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.Dispose(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose*
   name: Dispose
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Dispose_
@@ -22917,12 +22880,12 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Dispose
   nameWithType: MapColumn.Dispose
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.EndNewList
-  name: EndNewList()
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_EndNewList
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.EndNewList
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.EndNewList()
-  nameWithType: MapColumn.EndNewList()
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: EndNewList(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_EndNewList_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.EndNewList(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.EndNewList*
   name: EndNewList
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_EndNewList_
@@ -22930,22 +22893,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.EndNewList
   nameWithType: MapColumn.EndNewList
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Finalize
-  name: ~MapColumn()
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Finalize
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.Finalize
-  name.vb: ''
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.~MapColumn()
-  fullName.vb: ''
-  nameWithType: MapColumn.~MapColumn()
-  nameWithType.vb: ''
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Finalize*
-  name: ~MapColumn
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Finalize_
-  commentId: Overload:FlowtideDotNet.Core.ColumnStore.MapColumn.Finalize
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.~MapColumn
-  nameWithType: MapColumn.~MapColumn
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.GetByteSize
   name: GetByteSize()
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_GetByteSize
@@ -23153,24 +23100,24 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertAt
   nameWithType: MapColumn.InsertAt
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertAt``1(System.Int32@,``0@)
-  name: InsertAt<T>(in int, in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertAt__1_System_Int32____0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.InsertAt``1(System.Int32@,``0@)
-  name.vb: InsertAt(Of T)(Integer, T)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertAt<T>(in int, in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertAt(Of T)(Integer, T)
-  nameWithType: MapColumn.InsertAt<T>(in int, in T)
-  nameWithType.vb: MapColumn.InsertAt(Of T)(Integer, T)
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name: InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name.vb: InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertFrom(in FlowtideDotNet.Core.ColumnStore.IDataColumn, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer)
-  nameWithType: MapColumn.InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  nameWithType.vb: MapColumn.InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertAt``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertAt<T>(in int, in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertAt__1_System_Int32____0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.InsertAt``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertAt(Of T)(Integer, T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertAt<T>(in int, in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertAt(Of T)(Integer, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.InsertAt<T>(in int, in T, IMemoryAllocator)
+  nameWithType.vb: MapColumn.InsertAt(Of T)(Integer, T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertFrom(in FlowtideDotNet.Core.ColumnStore.IDataColumn, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  nameWithType.vb: MapColumn.InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertFrom*
   name: InsertFrom
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertFrom_
@@ -23178,15 +23125,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertFrom
   nameWithType: MapColumn.InsertFrom
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertNullRange(System.Int32,System.Int32)
-  name: InsertNullRange(int, int)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertNullRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.InsertNullRange(System.Int32,System.Int32)
-  name.vb: InsertNullRange(Integer, Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertNullRange(int, int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertNullRange(Integer, Integer)
-  nameWithType: MapColumn.InsertNullRange(int, int)
-  nameWithType.vb: MapColumn.InsertNullRange(Integer, Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertNullRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertNullRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertNullRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.InsertNullRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertNullRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertNullRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertNullRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.InsertNullRange(int, int, IMemoryAllocator)
+  nameWithType.vb: MapColumn.InsertNullRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertNullRange*
   name: InsertNullRange
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertNullRange_
@@ -23194,15 +23141,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertNullRange
   nameWithType: MapColumn.InsertNullRange
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: MapColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
-  nameWithType.vb: MapColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList, IMemoryAllocator)
+  nameWithType.vb: MapColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom*
   name: InsertRangeFrom
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_InsertRangeFrom_
@@ -23210,15 +23157,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.InsertRangeFrom
   nameWithType: MapColumn.InsertRangeFrom
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveAt(System.Int32@)
-  name: RemoveAt(in int)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_RemoveAt_System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveAt(System.Int32@)
-  name.vb: RemoveAt(Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveAt(in int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveAt(Integer)
-  nameWithType: MapColumn.RemoveAt(in int)
-  nameWithType.vb: MapColumn.RemoveAt(Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveAt(System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveAt(in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_RemoveAt_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveAt(System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveAt(Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveAt(in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveAt(Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.RemoveAt(in int, IMemoryAllocator)
+  nameWithType.vb: MapColumn.RemoveAt(Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveAt*
   name: RemoveAt
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_RemoveAt_
@@ -23226,15 +23173,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveAt
   nameWithType: MapColumn.RemoveAt
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveRange(System.Int32,System.Int32)
-  name: RemoveRange(int, int)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_RemoveRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveRange(System.Int32,System.Int32)
-  name.vb: RemoveRange(Integer, Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveRange(int, int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveRange(Integer, Integer)
-  nameWithType: MapColumn.RemoveRange(int, int)
-  nameWithType.vb: MapColumn.RemoveRange(Integer, Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_RemoveRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.RemoveRange(int, int, IMemoryAllocator)
+  nameWithType.vb: MapColumn.RemoveRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.RemoveRange*
   name: RemoveRange
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_RemoveRange_
@@ -23307,15 +23254,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Update
   nameWithType: MapColumn.Update
-- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Update``1(System.Int32@,``0@)
-  name: Update<T>(in int, in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Update__1_System_Int32____0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.Update``1(System.Int32@,``0@)
-  name.vb: Update(Of T)(Integer, T)
-  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Update<T>(in int, in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.Update(Of T)(Integer, T)
-  nameWithType: MapColumn.Update<T>(in int, in T)
-  nameWithType.vb: MapColumn.Update(Of T)(Integer, T)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Update``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Update<T>(in int, in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Update__1_System_Int32____0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.Update``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Update(Of T)(Integer, T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.Update<T>(in int, in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.Update(Of T)(Integer, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: MapColumn.Update<T>(in int, in T, IMemoryAllocator)
+  nameWithType.vb: MapColumn.Update(Of T)(Integer, T, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.WriteToJson(System.Text.Json.Utf8JsonWriter@,System.Int32@)
   name: WriteToJson(ref readonly Utf8JsonWriter, in int)
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_WriteToJson_System_Text_Json_Utf8JsonWriter__System_Int32__
@@ -25904,30 +25851,30 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.AddToNewList
   nameWithType: StringColumn.AddToNewList
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.AddToNewList``1(``0@)
-  name: AddToNewList<T>(in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_AddToNewList__1___0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.AddToNewList``1(``0@)
-  name.vb: AddToNewList(Of T)(T)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.AddToNewList<T>(in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.AddToNewList(Of T)(T)
-  nameWithType: StringColumn.AddToNewList<T>(in T)
-  nameWithType.vb: StringColumn.AddToNewList(Of T)(T)
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Add``1(``0@)
-  name: Add<T>(in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Add__1___0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Add``1(``0@)
-  name.vb: Add(Of T)(T)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Add<T>(in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.Add(Of T)(T)
-  nameWithType: StringColumn.Add<T>(in T)
-  nameWithType.vb: StringColumn.Add(Of T)(T)
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Clear
-  name: Clear()
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Clear
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Clear
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Clear()
-  nameWithType: StringColumn.Clear()
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.AddToNewList``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: AddToNewList<T>(in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_AddToNewList__1___0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.AddToNewList``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: AddToNewList(Of T)(T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.AddToNewList<T>(in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.AddToNewList(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.AddToNewList<T>(in T, IMemoryAllocator)
+  nameWithType.vb: StringColumn.AddToNewList(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Add``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Add<T>(in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Add__1___0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Add``1(``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Add(Of T)(T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Add<T>(in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.Add(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.Add<T>(in T, IMemoryAllocator)
+  nameWithType.vb: StringColumn.Add(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Clear(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Clear_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.Clear(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Clear*
   name: Clear
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Clear_
@@ -25986,15 +25933,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Count
   nameWithType: StringColumn.Count
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})
-  name: DeleteBatch(ReadOnlySpan<int>)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})
-  name.vb: DeleteBatch(ReadOnlySpan(Of Integer))
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.DeleteBatch(System.ReadOnlySpan<int>)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.DeleteBatch(System.ReadOnlySpan(Of Integer))
-  nameWithType: StringColumn.DeleteBatch(ReadOnlySpan<int>)
-  nameWithType.vb: StringColumn.DeleteBatch(ReadOnlySpan(Of Integer))
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.DeleteBatch(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.DeleteBatch(System.ReadOnlySpan<int>, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.DeleteBatch(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.DeleteBatch(ReadOnlySpan<int>, IMemoryAllocator)
+  nameWithType.vb: StringColumn.DeleteBatch(ReadOnlySpan(Of Integer), IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.DeleteBatch*
   name: DeleteBatch
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_DeleteBatch_
@@ -26002,12 +25949,12 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.DeleteBatch
   nameWithType: StringColumn.DeleteBatch
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Dispose
-  name: Dispose()
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Dispose
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Dispose
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Dispose()
-  nameWithType: StringColumn.Dispose()
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Dispose(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Dispose_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Dispose(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.Dispose(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Dispose(System.Boolean)
   name: Dispose(bool)
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Dispose_System_Boolean_
@@ -26024,12 +25971,12 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Dispose
   nameWithType: StringColumn.Dispose
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.EndNewList
-  name: EndNewList()
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_EndNewList
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.EndNewList
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.EndNewList()
-  nameWithType: StringColumn.EndNewList()
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: EndNewList(IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_EndNewList_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.EndNewList(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.EndNewList(IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.EndNewList*
   name: EndNewList
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_EndNewList_
@@ -26037,22 +25984,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.EndNewList
   nameWithType: StringColumn.EndNewList
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Finalize
-  name: ~StringColumn()
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Finalize
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Finalize
-  name.vb: ''
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.~StringColumn()
-  fullName.vb: ''
-  nameWithType: StringColumn.~StringColumn()
-  nameWithType.vb: ''
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Finalize*
-  name: ~StringColumn
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Finalize_
-  commentId: Overload:FlowtideDotNet.Core.ColumnStore.StringColumn.Finalize
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.~StringColumn
-  nameWithType: StringColumn.~StringColumn
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.GetByteSize
   name: GetByteSize()
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_GetByteSize
@@ -26204,24 +26135,24 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertAt
   nameWithType: StringColumn.InsertAt
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertAt``1(System.Int32@,``0@)
-  name: InsertAt<T>(in int, in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertAt__1_System_Int32____0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.InsertAt``1(System.Int32@,``0@)
-  name.vb: InsertAt(Of T)(Integer, T)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertAt<T>(in int, in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertAt(Of T)(Integer, T)
-  nameWithType: StringColumn.InsertAt<T>(in int, in T)
-  nameWithType.vb: StringColumn.InsertAt(Of T)(Integer, T)
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name: InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)
-  name.vb: InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertFrom(in FlowtideDotNet.Core.ColumnStore.IDataColumn, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer)
-  nameWithType: StringColumn.InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int)
-  nameWithType.vb: StringColumn.InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertAt``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertAt<T>(in int, in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertAt__1_System_Int32____0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.InsertAt``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertAt(Of T)(Integer, T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertAt<T>(in int, in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertAt(Of T)(Integer, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.InsertAt<T>(in int, in T, IMemoryAllocator)
+  nameWithType.vb: StringColumn.InsertAt(Of T)(Integer, T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertFrom(in FlowtideDotNet.Core.ColumnStore.IDataColumn, ref readonly System.ReadOnlySpan<int>, ref readonly System.ReadOnlySpan<int>, in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn, System.ReadOnlySpan(Of Integer), System.ReadOnlySpan(Of Integer), Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.InsertFrom(in IDataColumn, ref readonly ReadOnlySpan<int>, ref readonly ReadOnlySpan<int>, in int, IMemoryAllocator)
+  nameWithType.vb: StringColumn.InsertFrom(IDataColumn, ReadOnlySpan(Of Integer), ReadOnlySpan(Of Integer), Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertFrom*
   name: InsertFrom
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertFrom_
@@ -26229,15 +26160,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertFrom
   nameWithType: StringColumn.InsertFrom
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertNullRange(System.Int32,System.Int32)
-  name: InsertNullRange(int, int)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertNullRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.InsertNullRange(System.Int32,System.Int32)
-  name.vb: InsertNullRange(Integer, Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertNullRange(int, int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertNullRange(Integer, Integer)
-  nameWithType: StringColumn.InsertNullRange(int, int)
-  nameWithType.vb: StringColumn.InsertNullRange(Integer, Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertNullRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertNullRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertNullRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.InsertNullRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertNullRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertNullRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertNullRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.InsertNullRange(int, int, IMemoryAllocator)
+  nameWithType.vb: StringColumn.InsertNullRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertNullRange*
   name: InsertNullRange
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertNullRange_
@@ -26245,15 +26176,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertNullRange
   nameWithType: StringColumn.InsertNullRange
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@)
-  name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList)
-  nameWithType: StringColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList)
-  nameWithType.vb: StringColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: InsertRangeFrom(int, IDataColumn, int, int, in BitmapList, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(int, FlowtideDotNet.Core.ColumnStore.IDataColumn, int, int, in FlowtideDotNet.Storage.DataStructures.BitmapList, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom(Integer, FlowtideDotNet.Core.ColumnStore.IDataColumn, Integer, Integer, FlowtideDotNet.Storage.DataStructures.BitmapList, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.InsertRangeFrom(int, IDataColumn, int, int, in BitmapList, IMemoryAllocator)
+  nameWithType.vb: StringColumn.InsertRangeFrom(Integer, IDataColumn, Integer, Integer, BitmapList, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.InsertRangeFrom*
   name: InsertRangeFrom
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_InsertRangeFrom_
@@ -26277,15 +26208,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Pin
   nameWithType: StringColumn.Pin
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveAt(System.Int32@)
-  name: RemoveAt(in int)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_RemoveAt_System_Int32__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveAt(System.Int32@)
-  name.vb: RemoveAt(Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveAt(in int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveAt(Integer)
-  nameWithType: StringColumn.RemoveAt(in int)
-  nameWithType.vb: StringColumn.RemoveAt(Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveAt(System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveAt(in int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_RemoveAt_System_Int32__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveAt(System.Int32@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveAt(Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveAt(in int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveAt(Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.RemoveAt(in int, IMemoryAllocator)
+  nameWithType.vb: StringColumn.RemoveAt(Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveAt*
   name: RemoveAt
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_RemoveAt_
@@ -26293,15 +26224,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveAt
   nameWithType: StringColumn.RemoveAt
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveRange(System.Int32,System.Int32)
-  name: RemoveRange(int, int)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_RemoveRange_System_Int32_System_Int32_
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveRange(System.Int32,System.Int32)
-  name.vb: RemoveRange(Integer, Integer)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveRange(int, int)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveRange(Integer, Integer)
-  nameWithType: StringColumn.RemoveRange(int, int)
-  nameWithType.vb: StringColumn.RemoveRange(Integer, Integer)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: RemoveRange(int, int, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_RemoveRange_System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveRange(System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: RemoveRange(Integer, Integer, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveRange(int, int, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveRange(Integer, Integer, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.RemoveRange(int, int, IMemoryAllocator)
+  nameWithType.vb: StringColumn.RemoveRange(Integer, Integer, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.RemoveRange*
   name: RemoveRange
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_RemoveRange_
@@ -26387,15 +26318,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Update
   nameWithType: StringColumn.Update
-- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Update``1(System.Int32@,``0@)
-  name: Update<T>(in int, in T)
-  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Update__1_System_Int32____0__
-  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Update``1(System.Int32@,``0@)
-  name.vb: Update(Of T)(Integer, T)
-  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Update<T>(in int, in T)
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.Update(Of T)(Integer, T)
-  nameWithType: StringColumn.Update<T>(in int, in T)
-  nameWithType.vb: StringColumn.Update(Of T)(Integer, T)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Update``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name: Update<T>(in int, in T, IMemoryAllocator)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Update__1_System_Int32____0__FlowtideDotNet_Storage_Memory_IMemoryAllocator_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.Update``1(System.Int32@,``0@,FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  name.vb: Update(Of T)(Integer, T, IMemoryAllocator)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.Update<T>(in int, in T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.Update(Of T)(Integer, T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
+  nameWithType: StringColumn.Update<T>(in int, in T, IMemoryAllocator)
+  nameWithType.vb: StringColumn.Update(Of T)(Integer, T, IMemoryAllocator)
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.WriteToJson(System.Text.Json.Utf8JsonWriter@,System.Int32@)
   name: WriteToJson(ref readonly Utf8JsonWriter, in int)
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_WriteToJson_System_Text_Json_Utf8JsonWriter__System_Int32__
