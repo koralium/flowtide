@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -46,8 +45,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
                         throw new ArgumentException("hopping_window function requires two output columns");
                     }
 
-                    var hopTicks = ResolveTicks(tableFunc.Arguments[1], tableFunc.Arguments[2], "hop");
-                    var sizeTicks = ResolveTicks(tableFunc.Arguments[3], tableFunc.Arguments[4], "size");
+                    var hopTicks = WindowTickResolver.ResolveTicks(tableFunc.Arguments[1], tableFunc.Arguments[2], "hopping_window", "hop");
+                    var sizeTicks = WindowTickResolver.ResolveTicks(tableFunc.Arguments[3], tableFunc.Arguments[4], "hopping_window", "size");
 
                     // Floor division, the real count is at most one higher, but this avoids overflow
                     var maxWindowsPerRow = sizeTicks / hopTicks;
@@ -71,46 +70,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
 
                     return new TableFunctionResult(call);
                 });
-        }
-
-        private static long ResolveTicks(Substrait.Expressions.Expression amountArg, Substrait.Expressions.Expression unitArg, string which)
-        {
-            if (amountArg is not NumericLiteral amount)
-            {
-                throw new ArgumentException($"hopping_window {which} amount must be a numeric literal");
-            }
-            if (unitArg is not StringLiteral unit)
-            {
-                throw new ArgumentException($"hopping_window {which} unit must be a string literal");
-            }
-
-            long ticksPerUnit = unit.Value.ToUpperInvariant() switch
-            {
-                "WEEK" => TimeSpan.TicksPerDay * 7,
-                "DAY" => TimeSpan.TicksPerDay,
-                "HOUR" => TimeSpan.TicksPerHour,
-                "MINUTE" => TimeSpan.TicksPerMinute,
-                "SECOND" => TimeSpan.TicksPerSecond,
-                "MILLISECOND" => TimeSpan.TicksPerMillisecond,
-                "MICROSECOND" => TimeSpan.TicksPerMicrosecond,
-                _ => throw new ArgumentException($"hopping_window {which} unit '{unit.Value}' is not supported. Use WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND.")
-            };
-
-            // A fraction can always be written with a smaller unit, so reject it instead of truncating
-            if (amount.Value != decimal.Truncate(amount.Value))
-            {
-                throw new ArgumentException($"hopping_window {which} amount must be a whole number, use a smaller unit instead");
-            }
-            if (amount.Value <= 0)
-            {
-                throw new ArgumentException($"hopping_window {which} must be a positive duration");
-            }
-            // Check the range before multiplying, the multiplication would otherwise overflow silently
-            if (amount.Value > long.MaxValue / ticksPerUnit)
-            {
-                throw new ArgumentException($"hopping_window {which} is too large");
-            }
-            return (long)amount.Value * ticksPerUnit;
         }
 
         public static void DoHopping(IDataValue timestamp, long hopTicks, long sizeTicks, ITableFunctionOutput output)

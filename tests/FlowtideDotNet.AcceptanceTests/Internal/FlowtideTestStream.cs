@@ -85,6 +85,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public int CachePageCount { get; set; } = 100_000;
 
         /// <summary>
+        /// The floor the cache is never evicted below. Set to 0 to let the cache empty completely.
+        /// </summary>
+        public int MinCachePageCount { get; set; } = 1000;
+
+        /// <summary>
         /// Enables the stream option that takes a checkpoint right after initial data, which
         /// installs a checkpoint placeholder during startup. Set before starting the stream.
         /// </summary>
@@ -351,6 +356,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
                     CachePageCount = CachePageCount,
+                    MinCachePageCount = MinCachePageCount,
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _persistentStorage,
                     DefaultBPlusTreePageSize = pageSize,
@@ -604,6 +610,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             var expectedBatch = BatchConverter.ConvertToBatchSorted(data, GlobalMemoryManager.Instance);
             EventBatchAssertion.Equal(expectedBatch, _actualData!);
+            expectedBatch.Dispose();
         }
 
         public EventBatchData GetActualRowsAsVectors()

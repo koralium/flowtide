@@ -27,8 +27,11 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         private sealed class TrackingAllocator : IMemoryAllocator
         {
             private int _active;
+            private long _outstandingBytes;
 
             public int Active => Volatile.Read(ref _active);
+
+            public long OutstandingBytes => Interlocked.Read(ref _outstandingBytes);
 
             public IMemoryOwner<byte> Allocate(int size, int alignment)
             {
@@ -47,9 +50,11 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 return new Owner(inner, this);
             }
 
-            public void RegisterAllocationToMetrics(int size) { }
+            // FlowtideMemory is allocated by the default interface methods, which report every
+            // block here, so the outstanding total is what tracks the native path
+            public void RegisterAllocationToMetrics(int size) => Interlocked.Add(ref _outstandingBytes, size);
 
-            public void RegisterFreeToMetrics(int size) { }
+            public void RegisterFreeToMetrics(int size) => Interlocked.Add(ref _outstandingBytes, -size);
 
             private void Released() => Interlocked.Decrement(ref _active);
 
@@ -103,7 +108,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var allocator = new TrackingAllocator();
 
             BuildAndDrop(allocator, fill);
-            Assert.True(allocator.Active > 0, "The column never allocated, the test proves nothing");
+            Assert.True(allocator.Active > 0 || allocator.OutstandingBytes > 0, "The column never allocated, the test proves nothing");
 
             for (int i = 0; i < 3; i++)
             {
@@ -112,6 +117,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             }
 
             Assert.Equal(0, allocator.Active);
+            Assert.Equal(0, allocator.OutstandingBytes);
         }
 
         [Fact]

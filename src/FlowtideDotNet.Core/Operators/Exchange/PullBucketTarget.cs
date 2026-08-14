@@ -190,7 +190,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             await _lockSemaphore.WaitAsync();
             try
             {
-                var iterator = _events.CreateIterator();
+                using var iterator = _events.CreateIterator();
                 await iterator.Seek(message.FromEventId);
 
                 List<IStreamEvent> outputData = new List<IStreamEvent>();

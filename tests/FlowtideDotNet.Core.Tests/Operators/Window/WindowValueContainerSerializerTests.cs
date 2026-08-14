@@ -26,6 +26,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
         private sealed class TrackingMemoryAllocator : IMemoryAllocator
         {
             public int ActiveAllocations;
+            public long OutstandingBytes;
 
             public IMemoryOwner<byte> Allocate(int size, int alignment)
             {
@@ -39,9 +40,11 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
                 throw new NotSupportedException("A deserialize failure path must not reallocate");
             }
 
-            public void RegisterAllocationToMetrics(int size) { }
+            // FlowtideMemory is allocated by the default interface methods, which report
+            // every block through these hooks, so a balanced total is the leak check
+            public void RegisterAllocationToMetrics(int size) => OutstandingBytes += size;
 
-            public void RegisterFreeToMetrics(int size) { }
+            public void RegisterFreeToMetrics(int size) => OutstandingBytes -= size;
 
             private sealed class TrackingOwner : IMemoryOwner<byte>
             {
@@ -99,6 +102,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
 
             Assert.True(threw, "The invalid payload was not rejected");
             Assert.Equal(0, allocator.ActiveAllocations);
+            Assert.Equal(0, allocator.OutstandingBytes);
         }
 
         [Fact]

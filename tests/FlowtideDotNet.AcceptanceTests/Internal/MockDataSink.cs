@@ -39,7 +39,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
 #if DEBUG_WRITE
         // Debug data
-        private StreamWriter? allInput;
+        private TextWriter? allInput;
 #endif
 
         private int _deleteFailCount;
@@ -89,7 +89,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             else
             {
-                allInput = File.CreateText($"debugwrite/{StreamName}-{Name}.sink.txt");
+                allInput = TextWriter.Synchronized(File.CreateText($"debugwrite/{StreamName}-{Name}.sink.txt"));
             }
 #endif
             _tree = await stateManagerClient.GetOrCreateTree("sink", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
@@ -136,7 +136,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 columns[i] = new Column(MemoryAllocator);
             }
 
-            var iterator = _tree.CreateIterator();
+            using var iterator = _tree.CreateIterator();
             await iterator.SeekFirst();
 
             long rowCount = 0;

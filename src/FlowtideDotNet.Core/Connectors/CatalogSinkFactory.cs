@@ -29,6 +29,8 @@ namespace FlowtideDotNet.Core.Connectors
             _inner = inner;
         }
 
+        public bool SupportsPrimaryKeyDeclaration => _inner.SupportsPrimaryKeyDeclaration;
+
         public bool CanHandle(WriteRelation writeRelation)
         {
             var copy = writeRelation.ShallowCopy();

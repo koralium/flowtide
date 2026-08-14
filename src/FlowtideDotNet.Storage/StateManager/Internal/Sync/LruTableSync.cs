@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Storage.Mimalloc;
 using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -132,6 +131,41 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public void Clear()
         {
+            LinkedListNode<LinkedListValue>? iteratorNode;
+            lock (m_nodes)
+            {
+                iteratorNode = m_nodes.First;
+            }
+
+            // The cache holds one rent per entry. Dropping the entries without returning it leaves
+            // every page above zero, so its key and value containers are never disposed and their
+            // columns are only reclaimed by the finalizer. The locks are taken one at a time, the
+            // other removal paths take the node lock before the list lock.
+            while (iteratorNode != null)
+            {
+                lock (iteratorNode)
+                {
+                    if (!iteratorNode.ValueRef.removed)
+                    {
+                        iteratorNode.ValueRef.removed = true;
+                        if (cache.TryRemove(iteratorNode.ValueRef.key, out _))
+                        {
+                            iteratorNode.ValueRef.value.RemovedFromCache = true;
+                            iteratorNode.ValueRef.value.Return();
+                        }
+                    }
+                }
+                lock (m_nodes)
+                {
+                    var toRemove = iteratorNode;
+                    if (toRemove.List != null)
+                    {
+                        m_nodes.Remove(toRemove);
+                    }
+                    iteratorNode = m_nodes.First;
+                }
+            }
+
             lock (m_nodes)
             {
                 cache.Clear();
@@ -379,6 +413,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     else
                     {
+                        if (m_sameCaheHitsCount >= 1000)
+                        {
+                            FlowtideMemoryAllocation.Collect();
+                            m_sameCaheHitsCount = 0;
+                        }
                         return;
                     }
                 }

@@ -22,7 +22,7 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
 {
-    internal class SharedGroupValueTree
+    internal class SharedGroupValueTree : IDisposable
     {
         public string TreeName { get; }
         public Func<EventBatchData, int, IDataValue> ProjectionFunction { get; }
@@ -69,6 +69,27 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             {
                 _projectedDataColumn.Add(ProjectionFunction(batchData, i));
             }
+        }
+
+        /// <summary>
+        /// Releases the projected column. Each NewBatch disposes the previous one, so only the
+        /// last batch's column is left without a successor to free it.
+        /// </summary>
+        public void Dispose()
+        {
+            _projectedDataColumn?.Dispose();
+            _projectedDataColumn = null;
+        }
+
+        /// <summary>
+        /// The batch is done, the key container copies out of the projected column during ApplyBatch so
+        /// nothing references it after that. Null it out as well so a read after this point throws
+        /// instead of touching freed memory.
+        /// </summary>
+        public void BatchDone()
+        {
+            _projectedDataColumn?.Dispose();
+            _projectedDataColumn = null;
         }
 
         public ValueTask StoreAsync(PrimitiveList<int> weights, IColumn[] groupValueColumns, ReadOnlySpan<int> sortedByGroupIndices, EventBatchData incoming)

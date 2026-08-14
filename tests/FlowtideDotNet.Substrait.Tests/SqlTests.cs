@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
@@ -2518,6 +2519,242 @@ namespace FlowtideDotNet.Substrait.Tests
             };
 
             Assert.Equal(expected, plan);
+        }
+
+        [Fact]
+        public void InsertIntoWithPrimaryKeyDeclaration()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any,
+                    c3 any
+                );
+
+                INSERT INTO output PRIMARY KEY (c2, c1)
+                SELECT c1, c2, c3 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var writeRelation = Assert.IsType<WriteRelation>(plan.Relations[0]);
+            Assert.Equal(new List<string>() { "c2", "c1" }, writeRelation.PrimaryKeyNames);
+        }
+
+        [Fact]
+        public void InsertIntoWithPrimaryKeyDeclarationAndColumnList()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                INSERT INTO output (a, b) PRIMARY KEY (b)
+                SELECT c1, c2 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var writeRelation = Assert.IsType<WriteRelation>(plan.Relations[0]);
+            Assert.Equal(new List<string>() { "b" }, writeRelation.PrimaryKeyNames);
+        }
+
+        [Fact]
+        public void InsertIntoWithPrimaryKeyDeclarationUsesTableSchemaCasing()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    MyColumn any,
+                    c2 any
+                );
+
+                INSERT INTO output PRIMARY KEY (mycolumn)
+                SELECT MyColumn, c2 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var writeRelation = Assert.IsType<WriteRelation>(plan.Relations[0]);
+            Assert.Equal(new List<string>() { "MyColumn" }, writeRelation.PrimaryKeyNames);
+        }
+
+        [Fact]
+        public void InsertIntoWithPrimaryKeyDeclarationOnDelimitedIdentifier()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    ""my col"" any,
+                    c2 any
+                );
+
+                INSERT INTO output PRIMARY KEY ([my col])
+                SELECT ""my col"", c2 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var writeRelation = Assert.IsType<WriteRelation>(plan.Relations[0]);
+            Assert.Equal(new List<string>() { "my col" }, writeRelation.PrimaryKeyNames);
+        }
+
+        [Fact]
+        public void InsertIntoWithPrimaryKeyDeclarationBeforeCommonTableExpression()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                INSERT INTO output PRIMARY KEY (c1)
+                WITH cte AS (SELECT c1, c2 FROM testtable)
+                SELECT c1, c2 FROM cte;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var writeRelation = Assert.Single(plan.Relations.OfType<WriteRelation>());
+            Assert.Equal(new List<string>() { "c1" }, writeRelation.PrimaryKeyNames);
+        }
+
+        [Fact]
+        public void InsertOverwriteWithPrimaryKeyDeclaration()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                INSERT OVERWRITE output PRIMARY KEY (c1)
+                SELECT c1, c2 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var writeRelation = Assert.IsType<WriteRelation>(plan.Relations[0]);
+            Assert.True(writeRelation.Overwrite);
+            Assert.Equal(new List<string>() { "c1" }, writeRelation.PrimaryKeyNames);
+        }
+
+        /// <summary>
+        /// TABLE can precede the destination name or start a query.
+        /// </summary>
+        [Theory]
+        [InlineData("INSERT OVERWRITE TABLE output PRIMARY KEY (c1)", true)]
+        [InlineData("INSERT INTO TABLE output PRIMARY KEY (c1)", false)]
+        public void InsertIntoTableWithPrimaryKeyDeclaration(string insertStatement, bool expectedOverwrite)
+        {
+            builder.Sql(@$"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                {insertStatement}
+                SELECT c1, c2 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var writeRelation = Assert.IsType<WriteRelation>(plan.Relations[0]);
+            Assert.Equal(expectedOverwrite, writeRelation.Overwrite);
+            Assert.Equal(new List<string>() { "output" }, writeRelation.NamedObject.Names);
+            Assert.Equal(new List<string>() { "c1" }, writeRelation.PrimaryKeyNames);
+        }
+
+        [Fact]
+        public void InsertOverwriteTableWithoutPrimaryKeyDeclarationHasNoPrimaryKeys()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                INSERT OVERWRITE TABLE output
+                SELECT c1, c2 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var writeRelation = Assert.IsType<WriteRelation>(plan.Relations[0]);
+            Assert.True(writeRelation.Overwrite);
+            Assert.Null(writeRelation.PrimaryKeyNames);
+        }
+
+        [Fact]
+        public void InsertIntoWithoutPrimaryKeyDeclarationHasNoPrimaryKeys()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                INSERT INTO output
+                SELECT c1, c2 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var writeRelation = Assert.IsType<WriteRelation>(plan.Relations[0]);
+            Assert.Null(writeRelation.PrimaryKeyNames);
+        }
+
+        [Fact]
+        public void InsertIntoWithPrimaryKeyDeclarationOnColumnThatIsNotWritten()
+        {
+            var ex = Assert.Throws<SubstraitParseException>(() =>
+            {
+                builder.Sql(@"
+                    CREATE TABLE testtable (
+                        c1 any,
+                        c2 any
+                    );
+
+                    INSERT INTO output PRIMARY KEY (c3)
+                    SELECT c1, c2 FROM testtable;
+                ");
+            });
+
+            Assert.Equal("Primary key column 'c3' is not written to table 'output', all declared primary keys must be part of the insert.", ex.Message);
+        }
+
+        [Fact]
+        public void InsertIntoWithPrimaryKeyDeclarationOnDuplicateColumn()
+        {
+            var ex = Assert.Throws<SubstraitParseException>(() =>
+            {
+                builder.Sql(@"
+                    CREATE TABLE testtable (
+                        c1 any,
+                        c2 any
+                    );
+
+                    INSERT INTO output PRIMARY KEY (c1, C1)
+                    SELECT c1, c2 FROM testtable;
+                ");
+            });
+
+            Assert.Equal("Primary key column 'C1' is declared more than once for table 'output'.", ex.Message);
+        }
+
+        [Fact]
+        public void InsertIntoWithEmptyPrimaryKeyDeclaration()
+        {
+            Assert.ThrowsAny<Exception>(() =>
+            {
+                builder.Sql(@"
+                    CREATE TABLE testtable (
+                        c1 any
+                    );
+
+                    INSERT INTO output PRIMARY KEY ()
+                    SELECT c1 FROM testtable;
+                ");
+            });
         }
     }
 }

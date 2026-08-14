@@ -72,6 +72,12 @@ namespace FlowtideDotNet.Core.Optimizer
                 plan.Relations[i] = relation;
             }
 
+            // Runs after merge joins are found since it rewrites merge join keys
+            if (settings.WindowJoinKeyOptimization)
+            {
+                plan = WindowJoin.TumblingWindowJoinKeyOptimizer.Optimize(plan);
+            }
+
             // Try and remove any direct field references if possible
             if (settings.SimplifyProjection)
             {

@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -28,10 +28,10 @@ namespace FlowtideDotNet.Storage.DataStructures
     /// <see cref="IMemoryAllocator"/>. It supports the usual list operations (add, get, set, insert and remove)
     /// as well as range and batch variants that shift large blocks of bits at once, using vectorized shifts where
     /// available. It is commonly used as a validity (null) mask for columnar data.
-    /// Instances own native memory and must be disposed; <see cref="Dispose()"/> releases the buffer and returns the
-    /// instance to <see cref="BitmapListFactory"/> for reuse.
+    /// Mutable struct, keep it in one field and never copy it.
     /// </summary>
-    public unsafe class BitmapList : IReadOnlyList<bool>, IEnumerable<bool>, IDisposable
+    [NonCopyable]
+    public unsafe struct BitmapList
     {
         private const int firstBitMask = 1 << 31;
         private const int lastBitMask = int.MinValue;
@@ -107,148 +107,95 @@ namespace FlowtideDotNet.Storage.DataStructures
             -2147483648, // 30th element with all bits except the lowest 31 bits set
             0
         ];
-        private IMemoryAllocator? memoryAllocator;
         private int _length;
-        private void* _data;
-        private int _dataLength;
-        private IMemoryOwner<byte>? _memoryOwner;
-        private bool disposedValue;
+        private FlowtideMemory _memory;
 
         /// <summary>
-        /// The full backing memory buffer, including any capacity beyond the current bits, or empty when nothing is allocated.
+        /// Passed by callers with no validity information.
         /// </summary>
-        public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
+        public static readonly BitmapList None;
 
         /// <summary>
-        /// The portion of the backing memory that actually holds the current bits, rounded up to whole words.
-        /// Use this when serializing or copying the bitmap.
+        /// True when no memory is attached.
         /// </summary>
-        public Memory<byte> MemorySlice => GetMemorySlice();
+        public readonly bool IsNull => _memory.IsNull;
 
-        private Memory<byte> GetMemorySlice()
+        // Capacity in words, derived from the block.
+        private readonly int DataLength => _memory.Length / sizeof(int);
+
+        /// <summary>
+        /// The full backing buffer, empty when nothing is allocated.
+        /// </summary>
+        public readonly Memory<byte> Memory => GetViewMemory();
+
+        /// <summary>
+        /// The current bits for consumers that need Memory.
+        /// </summary>
+        public readonly Memory<byte> MemorySlice => GetViewMemory().Slice(0, ((_length + 31) / 32) * 4);
+
+        /// <summary>
+        /// The current bits, without a Memory view.
+        /// </summary>
+        public readonly Span<byte> SlicedSpan => new Span<byte>(_memory.Pointer, ((_length + 31) / 32) * 4);
+
+        // We create a new view per call, only cold paths need it.
+        private readonly Memory<byte> GetViewMemory()
         {
-            if (_memoryOwner == null)
+            if (_memory.IsNull)
             {
                 return new Memory<byte>();
             }
-            return _memoryOwner.Memory.Slice(0, ((_length + 31) / 32) * 4);
+            return new NativeMemoryView(_memory.Pointer, _memory.Length).Memory;
         }
 
         /// <summary>
         /// The number of bits in the list.
         /// </summary>
-        public int Count => _length;
-
-        /// <summary>
-        /// Creates an unassigned instance. <see cref="Assign(IMemoryAllocator)"/> must be called before use.
-        /// Used together with pooling so an instance can be reused.
-        /// </summary>
-        public BitmapList()
-        {
-
-        }
-
-        /// <summary>
-        /// Resets the list to empty and assigns the allocator it should use, without allocating any memory yet.
-        /// </summary>
-        /// <param name="memoryAllocator">The allocator used for backing memory.</param>
-        public void Assign(IMemoryAllocator memoryAllocator)
-        {
-            _data = null;
-            _dataLength = 0;
-            _length = 0;
-            _memoryOwner = null;
-            this.memoryAllocator = memoryAllocator;
-            disposedValue = false;
-        }
-
-        /// <summary>
-        /// Resets the list to wrap already populated memory, taking ownership of it.
-        /// Used together with pooling so an instance can be reused.
-        /// </summary>
-        /// <param name="memory">The memory holding the packed bits.</param>
-        /// <param name="length">The number of valid bits in <paramref name="memory"/>.</param>
-        /// <param name="memoryAllocator">The allocator used for any later growth.</param>
-        public void Assign(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
-        {
-            _memoryOwner = memory;
-            _data = _memoryOwner.Memory.Pin().Pointer;
-            _dataLength = memory.Memory.Length / sizeof(int);
-            _length = length;
-            this.memoryAllocator = memoryAllocator;
-            disposedValue = false;
-        }
-
-        /// <summary>
-        /// Creates an empty list that allocates backing memory from the given allocator on demand.
-        /// </summary>
-        /// <param name="memoryAllocator">The allocator used for backing memory.</param>
-        public BitmapList(IMemoryAllocator memoryAllocator)
-        {
-            _data = null;
-            this.memoryAllocator = memoryAllocator;
-        }
+        public readonly int Count => _length;
 
         /// <summary>
         /// Creates an empty list with backing memory pre-allocated for at least <paramref name="initialCapacity"/> bits.
         /// </summary>
-        /// <param name="memoryAllocator">The allocator used for backing memory.</param>
         /// <param name="initialCapacity">The number of bits to reserve capacity for up front.</param>
-        public BitmapList(IMemoryAllocator memoryAllocator, int initialCapacity)
+        /// <param name="memoryAllocator">The allocator used for backing memory.</param>
+        public BitmapList(int initialCapacity, IMemoryAllocator memoryAllocator)
         {
-            this.memoryAllocator = memoryAllocator;
-            EnsureSize((initialCapacity + 31) / 32);
+            EnsureSize((initialCapacity + 31) / 32, memoryAllocator);
         }
 
         /// <summary>
         /// Creates a list that wraps already populated memory, taking ownership of it.
         /// </summary>
-        /// <param name="memoryOwner">The memory holding the packed bits.</param>
-        /// <param name="length">The number of valid bits in <paramref name="memoryOwner"/>.</param>
-        /// <param name="memoryAllocator">The allocator used for any later growth.</param>
-        public BitmapList(IMemoryOwner<byte> memoryOwner, int length, IMemoryAllocator memoryAllocator)
+        /// <param name="memory">The memory holding the packed bits.</param>
+        /// <param name="length">The number of valid bits in <paramref name="memory"/>.</param>
+        public BitmapList(FlowtideMemory memory, int length)
         {
-            _memoryOwner = memoryOwner;
-            _data = _memoryOwner.Memory.Pin().Pointer;
-            _dataLength = memoryOwner.Memory.Length / sizeof(int);
+            _memory = memory;
             _length = length;
-            this.memoryAllocator = memoryAllocator;
         }
 
-        private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
+        private readonly Span<int> AccessSpan => new Span<int>(_memory.Pointer, DataLength);
 
         /// <summary>
         /// Gets the bit at the given index.
         /// </summary>
         /// <param name="index">The zero based bit index.</param>
-        public bool this[int index] => Get(index);
+        public readonly bool this[int index] => Get(index);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void* GetPointer_Unsafe()
+        internal readonly void* GetPointer_Unsafe()
         {
-            return _data;
+            return _memory.Pointer;
         }
 
-        private void EnsureSize(int length)
+        private void EnsureSize(int length, IMemoryAllocator memoryAllocator)
         {
-            Debug.Assert(memoryAllocator != null);
-            if (length > _dataLength)
+            if (length > DataLength)
             {
                 int allocationSize = length * sizeof(int);
-                if (_memoryOwner == null)
-                {
-                    _memoryOwner = memoryAllocator.Allocate(allocationSize, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                    NativeMemory.Fill(_data, (nuint)_memoryOwner.Memory.Length, 0);
-                }
-                else
-                {
-                    int oldSize = _dataLength * sizeof(int);
-                    _memoryOwner = memoryAllocator.Realloc(_memoryOwner, allocationSize, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                    NativeMemory.Fill((byte*)(_data) + oldSize, (nuint)(_memoryOwner.Memory.Length - oldSize), 0);
-                }
-                _dataLength = _memoryOwner.Memory.Length / sizeof(int);
+                int oldSize = _memory.Length;
+                memoryAllocator.Realloc(ref _memory, allocationSize);
+                NativeMemory.Fill(((byte*)_memory.Pointer) + oldSize, (nuint)(_memory.Length - oldSize), 0);
             }
         }
 
@@ -256,12 +203,12 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// Appends a bit to the end of the list, growing it by one.
         /// </summary>
         /// <param name="value">The bit value to append.</param>
-        public void Add(bool value)
+        public void Add(bool value, IMemoryAllocator memoryAllocator)
         {
             var index = _length;
             var wordIndex = index >> 5;
             int bitIndex = 1 << index;
-            EnsureSize(wordIndex + 1);
+            EnsureSize(wordIndex + 1, memoryAllocator);
 
             if (value)
             {
@@ -278,11 +225,11 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// Sets the bit at the given index to true. If the index is beyond the current count the list grows to include it.
         /// </summary>
         /// <param name="index">The zero based bit index to set.</param>
-        public void Set(int index)
+        public void Set(int index, IMemoryAllocator memoryAllocator)
         {
             var wordIndex = index >> 5;
             int bitIndex = 1 << index;
-            EnsureSize(wordIndex + 1);
+            EnsureSize(wordIndex + 1, memoryAllocator);
 
             AccessSpan[wordIndex] |= bitIndex;
 
@@ -296,11 +243,11 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// Gets the bit at the given index, returning false when the index is outside the allocated range.
         /// </summary>
         /// <param name="index">The zero based bit index.</param>
-        public bool Get(int index)
+        public readonly bool Get(int index)
         {
             var wordIndex = index >> 5;
             int bitIndex = 1 << index;
-            if (wordIndex >= _dataLength)
+            if (wordIndex >= DataLength)
             {
                 return false;
             }
@@ -313,7 +260,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="index">The zero based bit index to start counting from.</param>
         /// <param name="count">The number of bits to examine.</param>
         /// <returns>The number of true bits in the range.</returns>
-        public int CountTrueInRange(int index, int count)
+        public readonly int CountTrueInRange(int index, int count)
         {
             if (count == 0)
             {
@@ -355,7 +302,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="index">The zero based bit index to start counting from.</param>
         /// <param name="count">The number of bits to examine.</param>
         /// <returns>The number of false bits in the range.</returns>
-        public int CountFalseInRange(int index, int count)
+        public readonly int CountFalseInRange(int index, int count)
         {
             return count - CountTrueInRange(index, count);
         }
@@ -364,11 +311,11 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// Sets the bit at the given index to false. If the index is beyond the current count the list grows to include it.
         /// </summary>
         /// <param name="index">The zero based bit index to clear.</param>
-        public void Unset(int index)
+        public void Unset(int index, IMemoryAllocator memoryAllocator)
         {
             var wordIndex = index >> 5;
             int bitIndex = 1 << index;
-            EnsureSize(wordIndex + 1);
+            EnsureSize(wordIndex + 1, memoryAllocator);
 
             AccessSpan[wordIndex] &= ~bitIndex;
 
@@ -383,17 +330,17 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="index">The zero based index to insert at.</param>
         /// <param name="value">The bit value to insert.</param>
-        public void InsertAt(int index, bool value)
+        public void InsertAt(int index, bool value, IMemoryAllocator memoryAllocator)
         {
             var toIndex = index >> 5;
 
-            EnsureSize(toIndex + 1);
+            EnsureSize(toIndex + 1, memoryAllocator);
 
             var mod = index % 32;
             int bitIndex = 1 << index;
-            if ((_length / 32) >= _dataLength)
+            if ((_length / 32) >= DataLength)
             {
-                EnsureSize(_dataLength + 1);
+                EnsureSize(DataLength + 1, memoryAllocator);
             }
             var span = AccessSpan;
             if (mod > 0)
@@ -401,13 +348,13 @@ namespace FlowtideDotNet.Storage.DataStructures
                 var topBitsMask = topBitsSetMask[mod];
                 var bottomBitsMask = BitPatternArray[mod];
                 var val = span[toIndex] & bottomBitsMask;
-                ShiftLeft(toIndex, _dataLength - 1, 1);
+                ShiftLeft(toIndex, DataLength - 1, 1);
                 var newVal = span[toIndex] & topBitsMask;
                 span[toIndex] = (val | newVal);
             }
             else
             {
-                ShiftLeft(toIndex, _dataLength - 1, 1);
+                ShiftLeft(toIndex, DataLength - 1, 1);
             }
             if (value)
             {
@@ -434,7 +381,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="other">The list to copy bits from.</param>
         /// <param name="start">The zero based index in <paramref name="other"/> to start copying from.</param>
         /// <param name="count">The number of bits to copy.</param>
-        public void InsertRangeFrom(int index, BitmapList other, int start, int count)
+        public void InsertRangeFrom(int index, in BitmapList other, int start, int count, IMemoryAllocator memoryAllocator)
         {
             var toIndex = index >> 5;
 
@@ -443,7 +390,7 @@ namespace FlowtideDotNet.Storage.DataStructures
 
             var expectedNumberOfInts = ((_length + count + startMod32 + 31) / 32);
 
-            EnsureSize(expectedNumberOfInts + 1);
+            EnsureSize(expectedNumberOfInts + 1, memoryAllocator);
 
             var mod = index % 32;
             var modDifference = mod - startMod32;
@@ -452,9 +399,9 @@ namespace FlowtideDotNet.Storage.DataStructures
             var countRemainder = (index + count) & 31;
 
             var span = AccessSpan;
-            if ((_length / 32) >= _dataLength)
+            if ((_length / 32) >= DataLength)
             {
-                EnsureSize(_dataLength + 1);
+                EnsureSize(DataLength + 1, memoryAllocator);
             }
             span = AccessSpan;
 
@@ -466,7 +413,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                 // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
                 var val = span[toIndex] & bottomBitsMask;
                 // Shift the all bits to the left
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
 
                 if (countRemainder > 0)
                 {
@@ -530,7 +477,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             else
             {
                 // Shift left to open up space for new values
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
                 var previousEndShift = span[endShiftIndex];
 
                 if (countRemainder > 0)
@@ -596,7 +543,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="index">The zero based index to insert at.</param>
         /// <param name="count">The number of true bits to insert.</param>
-        public void InsertTrueInRange(int index, int count)
+        public void InsertTrueInRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
             var toIndex = index >> 5;
             var mod = index & 31;
@@ -604,7 +551,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             var endIndex = (index + count - 1) >> 5;
             var expectedNumberOfInts = ((_length + count + 31) / 32);
 
-            EnsureSize(expectedNumberOfInts + 1);
+            EnsureSize(expectedNumberOfInts + 1, memoryAllocator);
 
             var span = AccessSpan;
 
@@ -617,7 +564,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                 // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
                 var val = span[toIndex] & bottomBitsMask;
                 // Shift the all bits to the left
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
 
                 // Check if the end is in the middle of an integer
                 if (endRemainder > 0)
@@ -654,7 +601,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             else
             {
                 // Starts at the beginning of an integer
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
 
                 // Check if the end is in the middle of an integer
                 if (endRemainder > 0)
@@ -695,7 +642,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="index">The zero based index to insert at.</param>
         /// <param name="count">The number of false bits to insert.</param>
-        public void InsertFalseInRange(int index, int count)
+        public void InsertFalseInRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
             var toIndex = index >> 5;
             var mod = index & 31;
@@ -703,7 +650,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             var endIndex = (index + count - 1) >> 5;
             var expectedNumberOfInts = ((_length + count + 31) / 32);
 
-            EnsureSize(expectedNumberOfInts + 1);
+            EnsureSize(expectedNumberOfInts + 1, memoryAllocator);
 
             var span = AccessSpan;
 
@@ -716,7 +663,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                 // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
                 var val = span[toIndex] & bottomBitsMask;
                 // Shift the all bits to the left
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
 
                 // Check if the end is in the middle of an integer
                 if (endRemainder > 0)
@@ -753,7 +700,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             else
             {
                 // Starts at the beginning of an integer
-                ShiftLeft(toIndex, _dataLength - 1, count);
+                ShiftLeft(toIndex, DataLength - 1, count);
 
                 // Check if the end is in the middle of an integer
                 if (endRemainder > 0)
@@ -794,7 +741,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="start">The zero based index to start searching from.</param>
         /// <returns>The index of the next false bit, or -1 if there is none.</returns>
-        public int FindNextFalseIndex(int start)
+        public readonly int FindNextFalseIndex(int start)
         {
             if (start >= Count)
             {
@@ -861,7 +808,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="start">The zero based index to start searching from.</param>
         /// <returns>The index of the next true bit, or -1 if there is none.</returns>
-        public int FindNextTrueIndex(int start)
+        public readonly int FindNextTrueIndex(int start)
         {
             if (start >= Count)
             {
@@ -951,7 +898,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="index">The zero based index of the bit to remove.</param>
         public void RemoveAt(int index)
         {
-            if (index < 0 || index >= _dataLength * 32)
+            if (index < 0 || index >= DataLength * 32)
             {
                 throw new ArgumentOutOfRangeException(nameof(index));
             }
@@ -964,13 +911,13 @@ namespace FlowtideDotNet.Storage.DataStructures
                 var beforeMask = BitPatternArray[mod - 1];
                 var clearMask = topBitsSetMask[mod - 1];
                 var val = span[fromIndex] & beforeMask;
-                ShiftRight(fromIndex, _dataLength - 1, 1);
+                ShiftRight(fromIndex, DataLength - 1, 1);
                 var newVal = span[fromIndex] & clearMask;
                 span[fromIndex] = (val | newVal);
             }
             else
             {
-                ShiftRight(fromIndex, _dataLength - 1, 1);
+                ShiftRight(fromIndex, DataLength - 1, 1);
             }
         }
 
@@ -990,14 +937,14 @@ namespace FlowtideDotNet.Storage.DataStructures
                 var beforeMask = BitPatternArray[mod - 1];
                 var clearMask = topBitsSetMask[mod - 1];
                 var val = span[fromIndex] & beforeMask;
-                ShiftRight(fromIndex, _dataLength - 1, count);
+                ShiftRight(fromIndex, DataLength - 1, count);
                 var newVal = span[fromIndex] & clearMask;
                 span[fromIndex] = (val | newVal);
                 var vv = span[fromIndex];
             }
             else
             {
-                ShiftRight(fromIndex, _dataLength - 1, count);
+                ShiftRight(fromIndex, DataLength - 1, count);
             }
         }
 
@@ -1037,7 +984,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="sortedLookup">For each insert, the index in <paramref name="other"/> to read the bit from.</param>
         /// <param name="insertPositions">Sorted insert positions, ascending, in pre-insert coordinate space.</param>
         /// <param name="lookupNullIndex">A sentinel value in <paramref name="sortedLookup"/> that inserts a false bit instead of reading from <paramref name="other"/>.</param>
-        public void InsertFrom(ref readonly BitmapList other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        public void InsertFrom(ref readonly BitmapList other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             int otherCount = sortedLookup.Length;
             if (otherCount == 0) return;
@@ -1045,7 +992,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             int oldBitCount = _length;
             int newBitCount = oldBitCount + otherCount;
 
-            EnsureSize((newBitCount + 31) / 32);
+            EnsureSize((newBitCount + 31) / 32, memoryAllocator);
             var span = AccessSpan;
             var otherSpan = other.AccessSpan;
 
@@ -1101,7 +1048,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="value">The constant bit value to insert (true or false).</param>
         /// <param name="insertPositions">Sorted insert positions (ascending, in pre-insert coordinate space).</param>
-        public void InsertConstantFrom(bool value, ReadOnlySpan<int> insertPositions)
+        public void InsertConstantFrom(bool value, ReadOnlySpan<int> insertPositions, IMemoryAllocator memoryAllocator)
         {
             int otherCount = insertPositions.Length;
             if (otherCount == 0) return;
@@ -1109,7 +1056,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             int oldBitCount = _length;
             int newBitCount = oldBitCount + otherCount;
 
-            EnsureSize((newBitCount + 31) / 32);
+            EnsureSize((newBitCount + 31) / 32, memoryAllocator);
             var span = AccessSpan;
 
             int currentReadBit = oldBitCount;
@@ -1445,57 +1392,14 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
         }
 
-        private IEnumerable<bool> GetEnumerable()
+        // No IDisposable since a using local is read only.
+        public void Dispose(IMemoryAllocator memoryAllocator)
         {
-            for (int i = 0; i < _length; i++)
+            if (!_memory.IsNull)
             {
-                yield return Get(i);
+                memoryAllocator.Free(ref _memory);
             }
-        }
-
-        /// <summary>
-        /// Enumerates the bits in order from index 0 to <see cref="Count"/>.
-        /// </summary>
-        public IEnumerator<bool> GetEnumerator()
-        {
-            return GetEnumerable().GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerable().GetEnumerator();
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!Volatile.Read(ref disposedValue))
-            {
-                Volatile.Write(ref disposedValue, true);
-                if (_memoryOwner != null)
-                {
-                    _memoryOwner.Dispose();
-                    _memoryOwner = null;
-                    _data = null;
-                }
-
-                if (disposing)
-                {
-                    BitmapListFactory.Return(this);
-                }
-            }
-        }
-
-        ~BitmapList()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: false);
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            _length = 0;
         }
 
         /// <summary>
@@ -1512,7 +1416,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="start">The zero based index of the first bit in the range.</param>
         /// <param name="end">The exclusive zero based index of the end of the range.</param>
         /// <returns>The byte size of the range, rounded up to whole words.</returns>
-        public int GetByteSize(int start, int end)
+        public readonly int GetByteSize(int start, int end)
         {
             return (((end - start) + 31) / 32) * 4;
         }
@@ -1523,7 +1427,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="indices">The indices the sizes are being accumulated for.</param>
         /// <param name="sizes">The running per-index byte size totals to add to.</param>
-        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        public readonly void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
         {
             int length = indices.Length;
             ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
@@ -1539,12 +1443,12 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="memoryAllocator">The allocator used for the copy's backing memory.</param>
         /// <returns>A new list with the same bits.</returns>
-        public BitmapList Copy(IMemoryAllocator memoryAllocator)
+        public readonly BitmapList Copy(IMemoryAllocator memoryAllocator)
         {
-            var mem = MemorySlice;
-            var newMem = memoryAllocator.Allocate(mem.Length, 64);
-            mem.Span.CopyTo(newMem.Memory.Span);
-            return new BitmapList(newMem, _length, memoryAllocator);
+            var slicedSpan = SlicedSpan;
+            var newMem = memoryAllocator.AllocateMemory(slicedSpan.Length);
+            slicedSpan.CopyTo(newMem.Span);
+            return new BitmapList(newMem, _length);
         }
     }
 }

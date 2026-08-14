@@ -65,25 +65,34 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 throw new InvalidOperationException("Failed to read bitmap memory");
             }
 
-            var weightsNativeMemory = _memoryAllocator.Allocate(weightsMemoryLength, 64);
-            var slice = weightsNativeMemory.Memory.Span.Slice(0, weightsMemoryLength);
-            if (!reader.TryCopyTo(slice))
+            var weightsNativeMemory = _memoryAllocator.AllocateMemory(weightsMemoryLength);
+            FlowtideMemory bitmapNativeMemory = default;
+            try
             {
-                throw new InvalidOperationException("Failed to read weights memory");
-            }
-            reader.Advance(weightsMemoryLength);
+                var slice = weightsNativeMemory.Span.Slice(0, weightsMemoryLength);
+                if (!reader.TryCopyTo(slice))
+                {
+                    throw new InvalidOperationException("Failed to read weights memory");
+                }
+                reader.Advance(weightsMemoryLength);
 
-            var bitmapNativeMemory = _memoryAllocator.Allocate(bitmapMemoryLength, 64);
-            if (!reader.TryCopyTo(bitmapNativeMemory.Memory.Span.Slice(0, bitmapMemoryLength)))
-            {
-                throw new InvalidOperationException("Failed to read bitmap memory");
+                bitmapNativeMemory = _memoryAllocator.AllocateMemory(bitmapMemoryLength);
+                if (!reader.TryCopyTo(bitmapNativeMemory.Span.Slice(0, bitmapMemoryLength)))
+                {
+                    throw new InvalidOperationException("Failed to read bitmap memory");
+                }
+                reader.Advance(bitmapMemoryLength);
             }
-            reader.Advance(bitmapMemoryLength);
+            catch
+            {
+                _memoryAllocator.Free(ref weightsNativeMemory);
+                _memoryAllocator.Free(ref bitmapNativeMemory);
+                throw;
+            }
 
             var weights = new PrimitiveList<int>(weightsNativeMemory, weightsMemoryLength / sizeof(int), _memoryAllocator);
-            var bitmap = new BitmapList(bitmapNativeMemory, weights.Count, _memoryAllocator);
 
-            // The weights and bitmap own their memory from here, release it deterministically
+            // The weights and bitmap memory are owned from here, release them deterministically
             // rather than leaving it to the finalizers if the column stream is corrupt
             IDataColumn[]? dataColumns = null;
             try
@@ -104,17 +113,17 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     }
                 }
 
-                return new BulkWindowValueContainer(weights, listColumns, bitmap);
+                return new BulkWindowValueContainer(weights, listColumns, new BitmapList(bitmapNativeMemory, weights.Count), _memoryAllocator);
             }
             catch
             {
                 weights.Dispose();
-                bitmap.Dispose();
+                _memoryAllocator.Free(ref bitmapNativeMemory);
                 if (dataColumns != null)
                 {
                     for (int i = 0; i < dataColumns.Length; i++)
                     {
-                        dataColumns[i].Dispose();
+                        dataColumns[i].Dispose(_memoryAllocator);
                     }
                 }
                 throw;
@@ -128,8 +137,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
         public void Serialize(in IBufferWriter<byte> writer, in BulkWindowValueContainer values)
         {
-            var weightsmemory = values._weights.SlicedMemory.Span;
-            var bitmapMemory = values._previousValueSent.MemorySlice.Span;
+            var weightsmemory = values._weights.SlicedSpan;
+            var bitmapMemory = values._previousValueSent.SlicedSpan;
 
             var writeSpan = writer.GetSpan(weightsmemory.Length + bitmapMemory.Length + 8);
 

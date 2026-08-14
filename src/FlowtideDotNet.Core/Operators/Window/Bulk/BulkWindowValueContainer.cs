@@ -35,23 +35,28 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         internal PrimitiveList<int> _weights;
         internal ListColumn[] _functionStates;
         internal BitmapList _previousValueSent;
+        private readonly IMemoryAllocator _memoryAllocator;
 
         public BulkWindowValueContainer(int numberOfColumns, IMemoryAllocator memoryAllocator)
         {
+            _memoryAllocator = memoryAllocator;
             _weights = new PrimitiveList<int>(memoryAllocator);
             _functionStates = new ListColumn[numberOfColumns];
-            _previousValueSent = new BitmapList(memoryAllocator);
             for (int i = 0; i < numberOfColumns; i++)
             {
                 _functionStates[i] = new ListColumn(memoryAllocator);
             }
         }
 
-        internal BulkWindowValueContainer(PrimitiveList<int> weights, ListColumn[] functionStates, BitmapList previousValueSent)
+        internal BulkWindowValueContainer(PrimitiveList<int> weights, ListColumn[] functionStates, BitmapList previousValueSent, IMemoryAllocator memoryAllocator)
         {
+            _memoryAllocator = memoryAllocator;
             _weights = weights;
             _functionStates = functionStates;
+            // The list is fresh and never used again by the caller.
+#pragma warning disable RS0042
             _previousValueSent = previousValueSent;
+#pragma warning restore RS0042
         }
 
         public int Count => _weights.Count;
@@ -63,9 +68,9 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 _weights.InsertRangeFrom(_weights.Count, other._weights, start, count);
                 for (int i = 0; i < _functionStates.Length; i++)
                 {
-                    _functionStates[i].InsertRangeFrom(_functionStates[i].Count, other._functionStates[i], start, count, default);
+                    _functionStates[i].InsertRangeFrom(_functionStates[i].Count, other._functionStates[i], start, count, default, _memoryAllocator);
                 }
-                _previousValueSent.InsertRangeFrom(_previousValueSent.Count, other._previousValueSent, start, count);
+                _previousValueSent.InsertRangeFrom(_previousValueSent.Count, in other._previousValueSent, start, count, _memoryAllocator);
             }
             else
             {
@@ -78,7 +83,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             _weights.DeleteBatch(positions);
             for (int i = 0; i < _functionStates.Length; i++)
             {
-                _functionStates[i].DeleteBatch(positions);
+                _functionStates[i].DeleteBatch(positions, _memoryAllocator);
             }
             _previousValueSent.DeleteBatch(positions);
         }
@@ -88,9 +93,23 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             _weights.Dispose();
             for (int i = 0; i < _functionStates.Length; i++)
             {
-                _functionStates[i].Dispose();
+                _functionStates[i].Dispose(_memoryAllocator);
             }
-            _previousValueSent.Dispose();
+            _previousValueSent.Dispose(_memoryAllocator);
+            GC.SuppressFinalize(this);
+        }
+
+        // The bitmap struct and the list columns have no finalizers so we free them here.
+        ~BulkWindowValueContainer()
+        {
+            if (_functionStates != null)
+            {
+                for (int i = 0; i < _functionStates.Length; i++)
+                {
+                    _functionStates[i]?.Dispose(_memoryAllocator);
+                }
+            }
+            _previousValueSent.Dispose(_memoryAllocator);
         }
 
         public BulkWindowValue Get(int index)
@@ -105,7 +124,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
         public int GetByteSize()
         {
-            var size = _weights.SlicedMemory.Length + _previousValueSent.MemorySlice.Length;
+            var size = _weights.SlicedSpan.Length + _previousValueSent.SlicedSpan.Length;
             for (int i = 0; i < _functionStates.Length; i++)
             {
                 size += _functionStates[i].GetByteSize();
@@ -134,9 +153,9 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             _weights.InsertAt(index, value.weight);
             for (int i = 0; i < _functionStates.Length; i++)
             {
-                _functionStates[i].InsertAt(index, NullValue.Instance);
+                _functionStates[i].InsertAt(index, NullValue.Instance, _memoryAllocator);
             }
-            _previousValueSent.InsertAt(index, false);
+            _previousValueSent.InsertAt(index, false, _memoryAllocator);
         }
 
         public void InsertFrom(BulkWindowValue[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
@@ -148,9 +167,9 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 _weights.InsertAt(position, values[sortedLookup[i]].weight);
                 for (int f = 0; f < _functionStates.Length; f++)
                 {
-                    _functionStates[f].InsertAt(position, NullValue.Instance);
+                    _functionStates[f].InsertAt(position, NullValue.Instance, _memoryAllocator);
                 }
-                _previousValueSent.InsertAt(position, false);
+                _previousValueSent.InsertAt(position, false, _memoryAllocator);
             }
         }
 
@@ -159,7 +178,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             _weights.RemoveAt(index);
             for (int i = 0; i < _functionStates.Length; i++)
             {
-                _functionStates[i].RemoveAt(index);
+                _functionStates[i].RemoveAt(index, _memoryAllocator);
             }
             _previousValueSent.RemoveAt(index);
         }
@@ -169,7 +188,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             _weights.RemoveRange(start, count);
             for (int i = 0; i < _functionStates.Length; i++)
             {
-                _functionStates[i].RemoveRange(start, count);
+                _functionStates[i].RemoveRange(start, count, _memoryAllocator);
             }
             _previousValueSent.RemoveRange(start, count);
         }
@@ -177,6 +196,16 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         public void Update(int index, BulkWindowValue value)
         {
             _weights.Update(index, value.weight);
+        }
+
+        internal void SetPreviousValueSent(int index)
+        {
+            _previousValueSent.Set(index, _memoryAllocator);
+        }
+
+        internal void UnsetPreviousValueSent(int index)
+        {
+            _previousValueSent.Unset(index, _memoryAllocator);
         }
     }
 }

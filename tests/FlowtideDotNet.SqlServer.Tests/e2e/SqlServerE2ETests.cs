@@ -803,5 +803,175 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             });
             Assert.Equal(1000, result);
         }
+
+        /// <summary>
+        /// Keys declared in the statement replace the table metadata.
+        /// The destination identity primary key is never written.
+        /// </summary>
+        [Fact]
+        public async Task PrimaryKeysDeclaredInStatement()
+        {
+            var testName = "PrimaryKeysDeclaredInStatement";
+
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-table8] (
+                [id] [int] primary key,
+                [name] [nvarchar](50) NOT NULL,
+                [guid-dash] [uniqueidentifier] NOT NULL
+            )");
+            await _fixture.RunCommand("ALTER TABLE [test-db].[dbo].[test-table8] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-dest8] (
+                [id] [int] IDENTITY(1,1) PRIMARY KEY,
+                [name] [nvarchar](50) NOT NULL,
+                [guid-dash] [uniqueidentifier] NOT NULL
+            )");
+
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[test-table8] ([id], [name], [guid-dash]) VALUES (1, 'test1', '57f20bbe-3a17-45a7-bacc-614d89bde120');
+            ");
+
+            var testStream = new SqlServerTestStream(testName, _fixture.ConnectionString);
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+            await testStream.StartStream(@"
+                INSERT INTO [test-db].[dbo].[test-dest8] PRIMARY KEY ([name])
+                SELECT
+                    [guid-dash],
+                    [name]
+                FROM [test-db].[dbo].[test-table8]
+            ");
+
+            var count = 0;
+            while (true)
+            {
+                await testStream.SchedulerTick();
+                count = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[test-dest8]", (reader) =>
+                {
+                    reader.Read();
+                    return reader.GetInt32(0);
+                });
+                if (count > 0)
+                {
+                    break;
+                }
+            }
+            Assert.Equal(1, count);
+
+            // An update must land on the existing row.
+            await _fixture.RunCommand(@"
+            UPDATE [test-db].[dbo].[test-table8] SET [guid-dash] = '57f20bbe-3a17-45a7-bacc-614d89bde121' WHERE name = 'test1';
+            ");
+
+            var expectedGuid = Guid.Parse("57f20bbe-3a17-45a7-bacc-614d89bde121");
+
+            while (true)
+            {
+                await testStream.SchedulerTick();
+                var g = await _fixture.ExecuteReader("SELECT [guid-dash] from [test-db].[dbo].[test-dest8] WHERE name = 'test1'", (reader) =>
+                {
+                    reader.Read();
+                    return reader.GetGuid(0);
+                });
+                if (g.Equals(expectedGuid))
+                {
+                    break;
+                }
+            }
+
+            count = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[test-dest8]", (reader) =>
+            {
+                reader.Read();
+                return reader.GetInt32(0);
+            });
+            Assert.Equal(1, count);
+        }
+
+        /// <summary>
+        /// Declaration, source and destination all use different casing.
+        /// The merge statement itself is covered by SinkTests.
+        /// </summary>
+        [Fact]
+        public async Task PrimaryKeysDeclaredInStatementWithOtherCasing()
+        {
+            var testName = "PrimaryKeysDeclaredInStatementWithOtherCasing";
+
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-table9] (
+                [id] [int] primary key,
+                [name] [nvarchar](50) NOT NULL,
+                [guid-dash] [uniqueidentifier] NOT NULL
+            )");
+            await _fixture.RunCommand("ALTER TABLE [test-db].[dbo].[test-table9] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-dest9] (
+                [id] [int] IDENTITY(1,1) PRIMARY KEY,
+                [Name] [nvarchar](50) NOT NULL,
+                [guid-dash] [uniqueidentifier] NOT NULL
+            )");
+
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[test-table9] ([id], [name], [guid-dash]) VALUES (1, 'test1', '57f20bbe-3a17-45a7-bacc-614d89bde120');
+            ");
+
+            var testStream = new SqlServerTestStream(testName, _fixture.ConnectionString);
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+            await testStream.StartStream(@"
+                INSERT INTO [test-db].[dbo].[test-dest9] PRIMARY KEY ([NAME])
+                SELECT
+                    [guid-dash],
+                    [name]
+                FROM [test-db].[dbo].[test-table9]
+            ");
+
+            var count = 0;
+            while (true)
+            {
+                await testStream.SchedulerTick();
+                count = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[test-dest9]", (reader) =>
+                {
+                    reader.Read();
+                    return reader.GetInt32(0);
+                });
+                if (count > 0)
+                {
+                    break;
+                }
+            }
+            Assert.Equal(1, count);
+
+            // Forces the merge to take the matched branch.
+            await _fixture.RunCommand(@"
+            UPDATE [test-db].[dbo].[test-table9] SET [guid-dash] = '57f20bbe-3a17-45a7-bacc-614d89bde121' WHERE name = 'test1';
+            ");
+
+            var expectedGuid = Guid.Parse("57f20bbe-3a17-45a7-bacc-614d89bde121");
+
+            while (true)
+            {
+                await testStream.SchedulerTick();
+                var g = await _fixture.ExecuteReader("SELECT [guid-dash] from [test-db].[dbo].[test-dest9] WHERE [Name] = 'test1'", (reader) =>
+                {
+                    reader.Read();
+                    return reader.GetGuid(0);
+                });
+                if (g.Equals(expectedGuid))
+                {
+                    break;
+                }
+            }
+
+            count = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[test-dest9]", (reader) =>
+            {
+                reader.Read();
+                return reader.GetInt32(0);
+            });
+            Assert.Equal(1, count);
+        }
     }
 }

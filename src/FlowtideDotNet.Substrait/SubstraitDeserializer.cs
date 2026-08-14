@@ -1193,13 +1193,29 @@ namespace FlowtideDotNet.Substrait
                     overwrite = true;
                 }
 
+                List<string>? primaryKeyNames = null;
+                if (writeRel.AdvancedExtension?.Enhancement != null)
+                {
+                    var typeName = Google.Protobuf.WellKnownTypes.Any.GetTypeName(writeRel.AdvancedExtension.Enhancement.TypeUrl);
+                    if (typeName == CustomProtobuf.WriteRelationPrimaryKeys.Descriptor.FullName)
+                    {
+                        var primaryKeys = writeRel.AdvancedExtension.Enhancement.Unpack<CustomProtobuf.WriteRelationPrimaryKeys>();
+                        primaryKeyNames = primaryKeys.Names.ToList();
+                    }
+                    else
+                    {
+                        throw new NotImplementedException($"Write relation enhancement '{typeName}' is not supported by deserialization");
+                    }
+                }
+
                 var writeRelation = new WriteRelation()
                 {
                     Input = input,
                     NamedObject = namedTableObj,
                     TableSchema = namedStruct,
                     Emit = emitData,
-                    Overwrite = overwrite
+                    Overwrite = overwrite,
+                    PrimaryKeyNames = primaryKeyNames
                 };
 
                 return writeRelation;
@@ -1599,10 +1615,7 @@ namespace FlowtideDotNet.Substrait
 
         public Plan Deserialize(string json)
         {
-            var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
-                    CustomProtobuf.IterationReferenceReadRelation.Descriptor,
-                    CustomProtobuf.IterationRelation.Descriptor);
-            var parser = new Google.Protobuf.JsonParser(new Google.Protobuf.JsonParser.Settings(300, typeRegistry));
+            var parser = new Google.Protobuf.JsonParser(new Google.Protobuf.JsonParser.Settings(300, CustomProtoTypeRegistry.Instance));
             var plan = parser.Parse<Protobuf.Plan>(json);
             return Deserialize(plan);
         }

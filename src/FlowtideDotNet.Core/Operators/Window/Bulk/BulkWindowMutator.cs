@@ -115,7 +115,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
             if (newWeight == 0)
             {
-                container._previousValueSent.Unset(index);
+                container.UnsetPreviousValueSent(index);
                 return GenericWriteOperation.Delete;
             }
 

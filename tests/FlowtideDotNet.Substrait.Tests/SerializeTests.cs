@@ -963,6 +963,47 @@ namespace FlowtideDotNet.Substrait.Tests
             AssertPlanCanSerializeDeserialize(plan);
         }
 
+        [Fact]
+        public void InsertWithPrimaryKeyDeclaration()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO outputtable PRIMARY KEY (b, a)
+                SELECT * FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+
+            var json = SubstraitSerializer.SerializeToJson(plan);
+            var deserializedPlan = SubstraitDeserializer.DeserializeFromJson(json);
+            var writeRelation = Assert.IsType<WriteRelation>(deserializedPlan.Relations[0]);
+            Assert.Equal(new List<string>() { "b", "a" }, writeRelation.PrimaryKeyNames);
+        }
+
+        /// <summary>
+        /// The json is hashed, existing plans must keep their hash.
+        /// </summary>
+        [Fact]
+        public void InsertWithoutPrimaryKeyDeclarationDoesNotChangeJson()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO outputtable
+                SELECT * FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            var json = SubstraitSerializer.SerializeToJson(plan);
+
+            Assert.DoesNotContain("WriteRelationPrimaryKeys", json);
+            Assert.DoesNotContain("advancedExtension", json);
+
+            var writeRelation = Assert.IsType<WriteRelation>(SubstraitDeserializer.DeserializeFromJson(json).Relations[0]);
+            Assert.Null(writeRelation.PrimaryKeyNames);
+        }
+
         private void AssertPlanCanSerializeDeserialize(Plan plan)
         {
             var json = SubstraitSerializer.SerializeToJson(plan);

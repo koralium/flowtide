@@ -1061,7 +1061,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
                 if (anyChanged)
                 {
-                    values._previousValueSent.Set(rowIndex);
+                    values.SetPreviousValueSent(rowIndex);
                     pageDirty = true;
                 }
             }

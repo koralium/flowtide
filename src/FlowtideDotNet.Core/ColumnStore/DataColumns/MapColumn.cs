@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -44,7 +44,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         private Column _valueColumn;
 
         private IntList _offsets;
-        private bool disposedValue;
 
         public int Count => _offsets.Count - 1;
 
@@ -56,8 +55,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _keyColumn = Column.Create(memoryAllocator);
             _valueColumn = Column.Create(memoryAllocator);
-            _offsets = new IntList(memoryAllocator);
-            _offsets.Add(0);
+            _offsets.Add(0, memoryAllocator);
         }
 
         public MapColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
@@ -68,22 +66,25 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             _keyColumn = new Column(memoryAllocator, columnSizeInfo.Children[0]);
             _valueColumn = new Column(memoryAllocator, columnSizeInfo.Children[1]);
-            _offsets = new IntList(memoryAllocator, columnSizeInfo.TotalRows + 1);
-            _offsets.Add(0);
+            _offsets = new IntList(columnSizeInfo.TotalRows + 1, memoryAllocator);
+            _offsets.Add(0, memoryAllocator);
         }
 
-        internal MapColumn(Column keyColumn, Column valueColumn, IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryAllocator memoryAllocator)
+        internal MapColumn(Column keyColumn, Column valueColumn, FlowtideMemory offsetMemory, int offsetLength, IMemoryAllocator memoryAllocator)
         {
             _keyColumn = keyColumn;
             _valueColumn = valueColumn;
-            _offsets = new IntList(offsetMemory, offsetLength, memoryAllocator);
+            _offsets = new IntList(offsetMemory, offsetLength);
         }
 
         internal MapColumn(Column keyColumn, Column valueColumn, IntList offset)
         {
             _keyColumn = keyColumn;
             _valueColumn = valueColumn;
+            // The argument is a fresh copy that is never used again.
+#pragma warning disable RS0042
             _offsets = offset;
+#pragma warning restore RS0042
         }
 
         private (int, int) GetOffsets(in int index)
@@ -210,9 +211,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             return new ReferenceMapValue(this, index);
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
-            if (validityList != null &&
+            if (!validityList.IsNull &&
                 !validityList.Get(index))
             {
                 if (value.Type == ArrowTypeId.Null)
@@ -314,12 +315,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public int Add<T>(in T value) where T : IDataValue
+        public int Add<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             var startOffset = _offsets.Count - 1;
             if (value.Type == ArrowTypeId.Null)
             {
-                _offsets.Add(_valueColumn.Count);
+                _offsets.Add(_valueColumn.Count, memoryAllocator);
                 return startOffset;
             }
             var map = value.AsMap;
@@ -335,7 +336,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _valueColumn.Add(dataValueContainer);
             }
 
-            _offsets.Add(_valueColumn.Count);
+            _offsets.Add(_valueColumn.Count, memoryAllocator);
 
             return startOffset;
         }
@@ -362,7 +363,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._mapValue = new ReferenceMapValue(this, index);
         }
 
-        public int Update<T>(in int index, in T value) where T : IDataValue
+        public int Update<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             var (startOffset, endOffset) = GetOffsets(in index);
 
@@ -407,22 +408,22 @@ namespace FlowtideDotNet.Core.ColumnStore
             return BoundarySearch.SearchBoundriesForDataColumn(this, dataValue, start, end, child, default);
         }
 
-        public void RemoveAt(in int index)
+        public void RemoveAt(in int index, IMemoryAllocator memoryAllocator)
         {
             var (startOffset, endOffset) = GetOffsets(index);
 
             _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
             _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
             // Remove the offset and shift all the offsets after it
-            _offsets.RemoveAt(index, startOffset - endOffset);
+            _offsets.RemoveAt(index, startOffset - endOffset, memoryAllocator);
         }
 
-        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        public void InsertAt<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             var currentOffset = _offsets.Get(index);
             if (value.Type == ArrowTypeId.Null)
             {
-                _offsets.InsertAt(index, currentOffset);
+                _offsets.InsertAt(index, currentOffset, memoryAllocator);
                 return;
             }
             var map = value.AsMap;
@@ -447,7 +448,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
             }
 
-            _offsets.InsertAt(index, currentOffset, mapLength);
+            _offsets.InsertAt(index, currentOffset, mapLength, memoryAllocator);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)
@@ -473,26 +474,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             return (mapArr, mapType);
         }
 
-        protected virtual void Dispose(bool disposing)
+        public void Dispose(IMemoryAllocator memoryAllocator)
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    _keyColumn.Dispose();
-                    _valueColumn.Dispose();
-                    _offsets.Dispose();
-                }
-
-                disposedValue = true;
-            }
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            _offsets.Dispose(memoryAllocator);
+            _keyColumn.Dispose();
+            _valueColumn.Dispose();
         }
 
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
@@ -500,20 +486,20 @@ namespace FlowtideDotNet.Core.ColumnStore
             return ArrowTypeId.Map;
         }
 
-        public void Clear()
+        public void Clear(IMemoryAllocator memoryAllocator)
         {
             _offsets.Clear();
-            _offsets.Add(0);
+            _offsets.Add(0, memoryAllocator);
             _keyColumn.Clear();
             _valueColumn.Clear();
         }
 
-        public void AddToNewList<T>(in T value) where T : IDataValue
+        public void AddToNewList<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             throw new NotImplementedException();
         }
 
-        public int EndNewList()
+        public int EndNewList(IMemoryAllocator memoryAllocator)
         {
             throw new NotImplementedException();
         }
@@ -545,13 +531,13 @@ namespace FlowtideDotNet.Core.ColumnStore
             return GetEnumerable().GetEnumerator();
         }
 
-        public void RemoveRange(int start, int count)
+        public void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
         {
             var startOffset = _offsets.Get(start);
             var endOffset = _offsets.Get(start + count);
 
             // Remove offsets
-            _offsets.RemoveRange(start, count, startOffset - endOffset);
+            _offsets.RemoveRange(start, count, startOffset - endOffset, memoryAllocator);
 
             if (endOffset > startOffset)
             {
@@ -605,7 +591,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList, IMemoryAllocator memoryAllocator)
         {
             if (other is MapColumn mapColumn)
             {
@@ -622,7 +608,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
 
                 // Insert the offsets
-                _offsets.InsertRangeFrom(index, mapColumn._offsets, start, count, otherEndOffset - otherStartOffset, startOffset - otherStartOffset);
+                _offsets.InsertRangeFrom(index, mapColumn._offsets, start, count, otherEndOffset - otherStartOffset, startOffset - otherStartOffset, memoryAllocator);
             }
             else
             {
@@ -630,10 +616,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public void InsertNullRange(int index, int count)
+        public void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
             var offset = _offsets.Get(index);
-            _offsets.InsertRangeStaticValue(index, count, offset);
+            _offsets.InsertRangeStaticValue(index, count, offset, memoryAllocator);
         }
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
@@ -725,7 +711,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <param name="arrowSerializer"></param>
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_offsets.Memory.Length);
+            arrowSerializer.AddBufferForward(_offsets.SlicedSpan.Length);
             arrowSerializer.AddBufferForward(0); // Struct validity, it is not used so we set it to 0
             _keyColumn.AddBuffers(ref arrowSerializer);
             _valueColumn.AddBuffers(ref arrowSerializer);
@@ -733,13 +719,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
+            dataWriter.WriteArrowBuffer(_offsets.SlicedSpan);
             dataWriter.WriteArrowBuffer(Span<byte>.Empty); // Empty validity buffer
             _keyColumn.WriteDataToBuffer(ref dataWriter);
             _valueColumn.WriteDataToBuffer(ref dataWriter);
         }
 
-        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             if (other is MapColumn otherMap)
             {
@@ -748,12 +734,12 @@ namespace FlowtideDotNet.Core.ColumnStore
                     int oIdx = sortedLookup[i];
                     if (oIdx == lookupNullIndex)
                     {
-                        InsertAt(insertPositions[i], NullValue.Instance);
+                        InsertAt(insertPositions[i], NullValue.Instance, memoryAllocator);
                     }
                     else
                     {
                         var value = otherMap.GetValueAt(oIdx, default);
-                        InsertAt(insertPositions[i], value);
+                        InsertAt(insertPositions[i], value, memoryAllocator);
                     }
                 }
                 return;
@@ -761,11 +747,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public void DeleteBatch(ReadOnlySpan<int> targets)
+        public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
         {
             for (int i = targets.Length - 1; i >= 0; i--)
             {
-                RemoveAt(targets[i]);
+                RemoveAt(targets[i], memoryAllocator);
             }
         }
 

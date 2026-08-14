@@ -133,12 +133,19 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 };
             }
 
+            List<string>? primaryKeyNames = null;
+            if (insert.InsertOperation is FlowtideInsertOperation flowtideInsertOperation)
+            {
+                primaryKeyNames = ResolvePrimaryKeyNames(flowtideInsertOperation, tableSchema);
+            }
+
             var writeRelation = new WriteRelation()
             {
                 Input = source.Relation,
                 NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.InsertOperation.Name.Values.Select(x => x.Value).ToList() },
                 TableSchema = tableSchema,
-                Overwrite = insert.InsertOperation.Overwrite
+                Overwrite = insert.InsertOperation.Overwrite,
+                PrimaryKeyNames = primaryKeyNames
             };
 
             Relation relation = writeRelation;
@@ -152,6 +159,39 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
 
             return new RelationData(relation, source.EmitData);
+        }
+
+        /// <summary>
+        /// Matches declared primary keys against the written columns.
+        /// Returns the names with table schema casing.
+        /// </summary>
+        private static List<string> ResolvePrimaryKeyNames(FlowtideInsertOperation insertOperation, NamedStruct tableSchema)
+        {
+            var primaryKeyNames = new List<string>();
+            foreach (var primaryKey in insertOperation.PrimaryKeys)
+            {
+                var nameIndex = -1;
+                for (int i = 0; i < tableSchema.Names.Count; i++)
+                {
+                    if (tableSchema.Names[i].Equals(primaryKey.Value, StringComparison.OrdinalIgnoreCase))
+                    {
+                        nameIndex = i;
+                        break;
+                    }
+                }
+                if (nameIndex < 0)
+                {
+                    throw new SubstraitParseException($"Primary key column '{primaryKey.Value}' is not written to table '{insertOperation.Name.ToSql()}', all declared primary keys must be part of the insert.");
+                }
+
+                var name = tableSchema.Names[nameIndex];
+                if (primaryKeyNames.Contains(name))
+                {
+                    throw new SubstraitParseException($"Primary key column '{primaryKey.Value}' is declared more than once for table '{insertOperation.Name.ToSql()}'.");
+                }
+                primaryKeyNames.Add(name);
+            }
+            return primaryKeyNames;
         }
 
         protected override RelationData? VisitCreateView(Statement.CreateView createView, object? state)

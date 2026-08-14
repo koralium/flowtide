@@ -24,46 +24,46 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public interface IDataColumn : IDisposable
+    public interface IDataColumn
     {
         int Count { get; }
 
         ArrowTypeId Type { get; }
 
-        int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList)
+        int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList)
             where T : IDataValue;
 
         int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
 
-        int Add<T>(in T value)
+        int Add<T>(in T value, IMemoryAllocator memoryAllocator)
             where T : IDataValue;
 
         IDataValue GetValueAt(in int index, in ReferenceSegment? child);
 
         void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child);
 
-        int Update<T>(in int index, in T value)
+        int Update<T>(in int index, in T value, IMemoryAllocator memoryAllocator)
             where T : IDataValue;
 
         (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue;
 
-        void RemoveAt(in int index);
+        void RemoveAt(in int index, IMemoryAllocator memoryAllocator);
 
-        void InsertAt<T>(in int index, in T value)
+        void InsertAt<T>(in int index, in T value, IMemoryAllocator memoryAllocator)
             where T : IDataValue;
 
         (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount);
 
         ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child);
 
-        void Clear();
+        void Clear(IMemoryAllocator memoryAllocator);
 
-        void AddToNewList<T>(in T value) where T : IDataValue;
+        void AddToNewList<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue;
 
-        int EndNewList();
+        int EndNewList(IMemoryAllocator memoryAllocator);
 
-        void RemoveRange(int start, int count);
+        void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator);
 
         int GetByteSize(int start, int end);
 
@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes);
 
-        void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList);
+        void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList, IMemoryAllocator memoryAllocator);
 
         /// <summary>
         /// Inserts null on all elements in the range.
@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// </summary>
         /// <param name="index"></param>
         /// <param name="count"></param>
-        void InsertNullRange(int index, int count);
+        void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator);
 
         void WriteToJson(ref readonly Utf8JsonWriter writer, in int index);
 
@@ -103,11 +103,13 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// </summary>
         StructHeader StructHeader { get; }
 
-        void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex);
+        void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator);
 
-        void DeleteBatch(ReadOnlySpan<int> targets);
+        void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator);
 
         ColumnSizeInfo GetColumnSizeInfo();
+
+        void Dispose(IMemoryAllocator memoryAllocator);
 
         bool SupportSelfCompareExpression => false;
 

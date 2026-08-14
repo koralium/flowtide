@@ -54,31 +54,42 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.MinMax
                 throw new InvalidOperationException("Failed to read weights memory length");
             }
 
-            var indicesNativeMemory = _memoryAllocator.Allocate(indicesMemoryLength, 64);
-            var slice = indicesNativeMemory.Memory.Span.Slice(0, indicesMemoryLength);
+            var indicesNativeMemory = _memoryAllocator.AllocateMemory(indicesMemoryLength);
+            var slice = indicesNativeMemory.Span.Slice(0, indicesMemoryLength);
 
             if (!reader.TryCopyTo(slice))
             {
+                _memoryAllocator.Free(ref indicesNativeMemory);
                 throw new InvalidOperationException("Failed to read weights memory");
             }
             reader.Advance(indicesMemoryLength);
 
             var indices = new PrimitiveList<long>(indicesNativeMemory, indicesMemoryLength / sizeof(long), _memoryAllocator);
 
-            var deserializer = new EventBatchDeserializer(_memoryAllocator);
-            var batch = deserializer.DeserializeBatch(ref reader);
-
-            if (batch.EventBatch.Columns[0] is not Column column)
+            try
             {
-                throw new InvalidOperationException("Failed to deserialize column");
-            }
+                var deserializer = new EventBatchDeserializer(_memoryAllocator);
+                var batch = deserializer.DeserializeBatch(ref reader);
 
-            if (batch.EventBatch.Columns[1] is not Column compareColumn)
+                if (batch.EventBatch.Columns[0] is not Column column)
+                {
+                    batch.EventBatch.Dispose();
+                    throw new InvalidOperationException("Failed to deserialize column");
+                }
+
+                if (batch.EventBatch.Columns[1] is not Column compareColumn)
+                {
+                    batch.EventBatch.Dispose();
+                    throw new InvalidOperationException("Failed to deserialize column");
+                }
+
+                return new MinMaxByIndexValueContainer(column, compareColumn, indices);
+            }
+            catch
             {
-                throw new InvalidOperationException("Failed to deserialize column");
+                indices.Dispose();
+                throw;
             }
-
-            return new MinMaxByIndexValueContainer(column, compareColumn, indices);
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -88,7 +99,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.MinMax
 
         public void Serialize(in IBufferWriter<byte> writer, in MinMaxByIndexValueContainer values)
         {
-            var indicesmemory = values._indices.SlicedMemory.Span;
+            var indicesmemory = values._indices.SlicedSpan;
 
             var writeSpan = writer.GetSpan(indicesmemory.Length + 4);
 

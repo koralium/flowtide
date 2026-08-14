@@ -167,7 +167,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
                 v.AddNull();
             });
             var row = new RowEvent(0, 0, new CompactRowData(vector, FlxValue.FromMemory(vector).AsVector));
-            var iterator = singleton.Tree.CreateIterator();
+            using var iterator = singleton.Tree.CreateIterator();
             await iterator.Seek(row);
 
             singleton.OutputBuilder.NewObject();
