@@ -23,6 +23,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Buffers;
 using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {
@@ -927,6 +928,82 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 Assert.Equal(i.ToString(), unionColumn.GetValueAt(i - 1, default).AsString.ToString());
             }
             Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+        }
+
+        [Fact]
+        public void InsertRangeFromUnionWithTypeIdsAbove15IntoNarrowUnion()
+        {
+            UnionColumn source = new UnionColumn(GlobalMemoryManager.Instance);
+
+            // Claim type ids 1..17 with distinct struct headers so the copied range uses an id above 15.
+            var headers = new StructHeader[17];
+            for (int i = 0; i < 17; i++)
+            {
+                headers[i] = StructHeader.Create("col" + i);
+                source.Add(new StructValue(headers[i], new Int64Value(i)), GlobalMemoryManager.Instance);
+            }
+            var wideHeader = headers[16];
+            for (int i = 0; i < 16; i++)
+            {
+                source.Add(new StructValue(wideHeader, new Int64Value(100 + i)), GlobalMemoryManager.Instance);
+            }
+
+            UnionColumn target = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
+            };
+
+            target.InsertRangeFrom(1, source, 17, 16, default, GlobalMemoryManager.Instance);
+
+            Assert.Equal(18, target.Count);
+            Assert.Equal(1, target.GetValueAt(0, default).AsLong);
+            for (int i = 0; i < 16; i++)
+            {
+                var expected = new StructValue(wideHeader, new Int64Value(100 + i));
+                Assert.Equal(0, DataValueComparer.CompareTo(expected, target.GetValueAt(1 + i, default)));
+            }
+            Assert.Equal(3, target.GetValueAt(17, default).AsDecimal);
+            target.Dispose(GlobalMemoryManager.Instance);
+            source.Dispose(GlobalMemoryManager.Instance);
+        }
+
+        [Fact]
+        public void InsertRangeFromUnionWithTypeIdsAbove7IntoNarrowUnion()
+        {
+            UnionColumn source = new UnionColumn(GlobalMemoryManager.Instance);
+
+            // Claim type ids 1..9 so the copied range uses an id above 7 with a non-zero start offset.
+            var headers = new StructHeader[9];
+            for (int i = 0; i < 9; i++)
+            {
+                headers[i] = StructHeader.Create("col" + i);
+                source.Add(new StructValue(headers[i], new Int64Value(i)), GlobalMemoryManager.Instance);
+            }
+            var wideHeader = headers[8];
+            for (int i = 0; i < 8; i++)
+            {
+                source.Add(new StructValue(wideHeader, new Int64Value(100 + i)), GlobalMemoryManager.Instance);
+            }
+
+            UnionColumn target = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
+            };
+
+            target.InsertRangeFrom(1, source, 9, 8, default, GlobalMemoryManager.Instance);
+
+            Assert.Equal(10, target.Count);
+            Assert.Equal(1, target.GetValueAt(0, default).AsLong);
+            for (int i = 0; i < 8; i++)
+            {
+                var expected = new StructValue(wideHeader, new Int64Value(100 + i));
+                Assert.Equal(0, DataValueComparer.CompareTo(expected, target.GetValueAt(1 + i, default)));
+            }
+            Assert.Equal(3, target.GetValueAt(9, default).AsDecimal);
+            target.Dispose(GlobalMemoryManager.Instance);
+            source.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]

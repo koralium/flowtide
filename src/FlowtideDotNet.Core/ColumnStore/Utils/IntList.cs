@@ -212,14 +212,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             Span<int> thisToAdd,
             Span<sbyte> otherTypeIds,
             Span<int> otherToAdd,
-            int typeCount,
+            int thisTypeCount,
+            int otherTypeCount,
             IMemoryAllocator memoryAllocator)
         {
             EnsureCapacity(_length + count, memoryAllocator);
             var span = AccessSpan;
             var sourceSpan = other.AccessSpan;
-            AvxUtils.InPlaceMemCopyAdditionByType(span, thisTypeIds, index, index + count, _length - index, thisToAdd, typeCount);
-            AvxUtils.MemCopyAdditionByType(sourceSpan, span, otherTypeIds, start, index, count, otherToAdd, typeCount);
+            AvxUtils.InPlaceMemCopyAdditionByType(span, thisTypeIds, index, index + count, _length - index, thisToAdd, thisTypeCount);
+            AvxUtils.MemCopyAdditionByType(sourceSpan, span, otherTypeIds, start, index, count, otherToAdd, otherTypeCount);
             _length += count;
         }
 

@@ -820,14 +820,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
             // Add offsets and types, these can have changed values
             // Require offset insert type based addition
-            _offsets.InsertRangeFromTypeBasedAddition(index, other._offsets, start, count, _typeList.Span, new Span<int>(thisDifference, 127), other._typeList.Span, new Span<int>(otherDifference, 127), _valueColumns.Count, memoryAllocator);
-            InsertTypeRangeFromMapped(index, in other._typeList, start, count, new Span<sbyte>(mappingTable, 127), memoryAllocator);
+            // The vector paths index the difference and mapping tables by SOURCE type id, so they must be gated on the source's type count.
+            _offsets.InsertRangeFromTypeBasedAddition(index, other._offsets, start, count, _typeList.Span, new Span<int>(thisDifference, 127), other._typeList.Span, new Span<int>(otherDifference, 127), _valueColumns.Count, other._valueColumns.Count, memoryAllocator);
+            InsertTypeRangeFromMapped(index, in other._typeList, start, count, new Span<sbyte>(mappingTable, 127), other._valueColumns.Count, memoryAllocator);
         }
 
         /// <summary>
         /// Inserts type ids from another list, remapped through the mapping table.
         /// </summary>
-        private unsafe void InsertTypeRangeFromMapped(int index, in NativeList<sbyte> other, int start, int count, Span<sbyte> mapping, IMemoryAllocator memoryAllocator)
+        private unsafe void InsertTypeRangeFromMapped(int index, in NativeList<sbyte> other, int start, int count, Span<sbyte> mapping, int sourceTypeCount, IMemoryAllocator memoryAllocator)
         {
             // Opens the gap and increases the count.
             _typeList.MoveAtIndex(index, count, memoryAllocator);
@@ -835,7 +836,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             var sourceSpan = other.Span;
 
             int i = 0;
-            if (Avx2.IsSupported && _valueColumns.Count <= 8)
+            // The shuffle indexes the 16 byte mapping vector by the low 4 bits of each source id, so every source id must be at most 15.
+            if (Avx2.IsSupported && sourceTypeCount <= 16)
             {
                 fixed (sbyte* pDest = span)
                 fixed (sbyte* pSource = sourceSpan)
