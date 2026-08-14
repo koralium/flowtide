@@ -27,6 +27,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
@@ -40,7 +42,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
     /// </summary>
     internal class UnionColumn : IDataColumn, IReadOnlyList<IDataValue>
     {
-        private readonly TypeList _typeList;
+        // Not readonly, mutations would run on a copy.
+        private NativeList<sbyte> _typeList;
         private IntList _offsets;
         private List<IDataColumn> _valueColumns;
         private readonly sbyte[] _typeIds;
@@ -60,7 +63,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             _memoryAllocator = memoryAllocator;
             _typeIds = new sbyte[35]; //35 types exist
-            _typeList = new TypeList(memoryAllocator);
             _valueColumns = new List<IDataColumn>()
             {
                 new NullColumn()
@@ -75,7 +77,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
             _memoryAllocator = memoryAllocator;
             _typeIds = new sbyte[35]; //35 types exist
-            _typeList = new TypeList(memoryAllocator, columnSizeInfo.TotalRows);
+            _typeList.EnsureCapacity(columnSizeInfo.TotalRows, memoryAllocator);
             _offsets = new IntList(columnSizeInfo.TotalRows, memoryAllocator);
             _valueColumns = new List<IDataColumn>()
             {
@@ -131,7 +133,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _memoryAllocator = memoryAllocator;
             _valueColumns = columns;
             _typeIds = new sbyte[35]; //35 types exist
-            _typeList = new TypeList(typeListMemory, count, memoryAllocator);
+            _typeList = new NativeList<sbyte>(typeListMemory, count);
             _offsets = new IntList(offsetMemory, count);
             for (int i = 0; i < _valueColumns.Count; i++)
             {
@@ -156,14 +158,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        internal UnionColumn(List<IDataColumn> columns, TypeList typeList, IntList offsets, sbyte[] typeIds, IMemoryAllocator memoryAllocator)
+        internal UnionColumn(List<IDataColumn> columns, NativeList<sbyte> typeList, IntList offsets, sbyte[] typeIds, IMemoryAllocator memoryAllocator)
         {
             _memoryAllocator = memoryAllocator;
             _valueColumns = columns;
             _typeIds = typeIds;
-            _typeList = typeList;
-            // The argument is a fresh copy that is never used again.
+            // The arguments are fresh copies that are never used again.
 #pragma warning disable RS0042
+            _typeList = typeList;
             _offsets = offsets;
 #pragma warning restore RS0042
         }
@@ -251,7 +253,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                _typeList.InsertAt(index, (sbyte)ArrowTypeId.Null);
+                _typeList.InsertAt(index, (sbyte)ArrowTypeId.Null, _memoryAllocator);
                 _valueColumns[0].InsertAt(index, value);
                 _offsets.InsertAt(index, 0, _memoryAllocator);
                 return;
@@ -278,7 +280,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             // Insert the offset and add 1 to the offset to all other offsets that are greater than the next occurence offset.
             _offsets.InsertAtConditionalAddition(index, nextOccurenceOffset, _typeList.Span, arrayIndex, 1, _memoryAllocator);
             // Type list must be added to last so the element count when adding to offsets are the same.
-            _typeList.InsertAt(index, arrayIndex);
+            _typeList.InsertAt(index, arrayIndex, _memoryAllocator);
         }
 
         public int Add<T>(in T value) where T : IDataValue
@@ -388,7 +390,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     _typeList.Update(index, 0);
                     return index;
                 }
-                _typeList.RemoveAt(index);
+                _typeList.RemoveAt(index, _memoryAllocator);
 
                 var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, newValueArrayIndex);
                 var valueColumn = _valueColumns[newValueArrayIndex];
@@ -408,7 +410,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _offsets.InsertAtConditionalAddition(index, nextOccurenceOffset, _typeList.Span, newValueArrayIndex, 1, _memoryAllocator);
 
                 // Type list must be added to last so the element count when adding to offsets are the same.
-                _typeList.InsertAt(index, newValueArrayIndex);
+                _typeList.InsertAt(index, newValueArrayIndex, _memoryAllocator);
             }
             else
             {
@@ -426,7 +428,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             var valueOffset = _offsets.Get(index);
             _valueColumns[arrayIndex].RemoveAt(valueOffset);
             _offsets.RemoveAtConditionalAddition(index, _typeList.Span, arrayIndex, -1, _memoryAllocator);
-            _typeList.RemoveAt(index);
+            _typeList.RemoveAt(index, _memoryAllocator);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
@@ -455,11 +457,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (!disposedValue)
             {
-                // The struct has no finalizer so we free it here.
+                // The structs have no finalizers so we free them here.
                 _offsets.Dispose(_memoryAllocator);
+                _typeList.Dispose(_memoryAllocator);
                 if (disposing)
                 {
-                    _typeList.Dispose();
                     foreach (var column in _valueColumns)
                     {
                         column.Dispose();
@@ -514,7 +516,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             var arrayIndex = CheckArrayTypeExist(ArrowTypeId.List, _typeIds, _valueColumns);
             var offset = _valueColumns[arrayIndex].EndNewList();
             int index = _typeList.Count;
-            _typeList.InsertAt(index, arrayIndex);
+            _typeList.InsertAt(index, arrayIndex, _memoryAllocator);
             _offsets.InsertAt(index, offset, _memoryAllocator);
             return index;
         }
@@ -591,7 +593,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
 
 
-            _typeList.RemoveRange(start, count);
+            _typeList.RemoveRange(start, count, _memoryAllocator);
         }
 
         public int GetByteSize(int start, int end)
@@ -678,7 +680,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 // Insert range to offsets, requires special method to only increase offset of the same type.
                 _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(index, nextOccurenceOffset, count, _typeList.Span, valueColumnIndex, count, _memoryAllocator);
                 // Need to insert the type in type list as well.
-                _typeList.InsertStaticRange(index, valueColumnIndex, count);
+                _typeList.InsertStaticRange(index, valueColumnIndex, count, _memoryAllocator);
             }
             else
             {
@@ -732,7 +734,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, toCopy, _typeList.Span, valueColumnIndex, toCopy, _memoryAllocator);
                         nextOccurenceOffset += toCopy;
                         // Type list must be added after so the offset is not incremented
-                        _typeList.InsertStaticRange(currentIndex, valueColumnIndex, toCopy);
+                        _typeList.InsertStaticRange(currentIndex, valueColumnIndex, toCopy, _memoryAllocator);
                         currentIndex += toCopy;
                     }
 
@@ -746,7 +748,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         // Add the null range to the null column
                         _valueColumns[0].InsertRangeFrom(currentStart, other, nextNullLocation, nextNotNullLocation - nextNullLocation, default);
                         _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextNullLocation, nextNotNullLocation - nextNullLocation, _typeList.Span, 0, nextNotNullLocation - nextNullLocation, _memoryAllocator);
-                        _typeList.InsertStaticRange(currentIndex, 0, nextNotNullLocation - nextNullLocation);
+                        _typeList.InsertStaticRange(currentIndex, 0, nextNotNullLocation - nextNullLocation, _memoryAllocator);
                         currentIndex += nextNotNullLocation - nextNullLocation;
                     }
                     currentStart = nextNotNullLocation;
@@ -846,7 +848,43 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             // Add offsets and types, these can have changed values
             // Require offset insert type based addition
             _offsets.InsertRangeFromTypeBasedAddition(index, other._offsets, start, count, _typeList.Span, new Span<int>(thisDifference, 127), other._typeList.Span, new Span<int>(otherDifference, 127), _valueColumns.Count, _memoryAllocator);
-            _typeList.InsertRangeFrom(index, other._typeList, start, count, new Span<sbyte>(mappingTable, 127), _valueColumns.Count);
+            InsertTypeRangeFromMapped(index, in other._typeList, start, count, new Span<sbyte>(mappingTable, 127));
+        }
+
+        /// <summary>
+        /// Inserts type ids from another list, remapped through the mapping table.
+        /// </summary>
+        private unsafe void InsertTypeRangeFromMapped(int index, in NativeList<sbyte> other, int start, int count, Span<sbyte> mapping)
+        {
+            // Opens the gap and increases the count.
+            _typeList.MoveAtIndex(index, count, _memoryAllocator);
+            var span = _typeList.Span;
+            var sourceSpan = other.Span;
+
+            int i = 0;
+            if (Avx2.IsSupported && _valueColumns.Count <= 8)
+            {
+                fixed (sbyte* pDest = span)
+                fixed (sbyte* pSource = sourceSpan)
+                fixed (sbyte* pMapping = mapping)
+                {
+                    Vector128<sbyte> mappingVector = Vector128.Load(pMapping);
+
+                    int vectorSize = Vector128<sbyte>.Count;
+
+                    for (; i <= count - vectorSize; i += vectorSize)
+                    {
+                        Vector128<sbyte> sourceVector = Vector128.Load(pSource + start + i);
+                        Vector128<sbyte> resultVector = Avx.Shuffle(mappingVector, sourceVector);
+                        Avx.Store(pDest + index + i, resultVector);
+                    }
+                }
+            }
+
+            for (; i < count; i++)
+            {
+                span[index + i] = mapping[sourceSpan[start + i]];
+            }
         }
 
         public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)
@@ -883,7 +921,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public void InsertNullRange(int index, int count)
         {
             // Insert null type
-            _typeList.InsertStaticRange(index, 0, count);
+            _typeList.InsertStaticRange(index, 0, count, _memoryAllocator);
             // Insert offsets
             _offsets.InsertRangeStaticValue(index, count, 0, _memoryAllocator);
             // Add to null column to increase its counter
