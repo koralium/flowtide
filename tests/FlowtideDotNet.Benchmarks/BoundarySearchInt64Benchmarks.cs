@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Benchmarks
             {
                 _column.Add(new Int64Value(item));
                 _nativeLongList.Add(item);
-                _int64Column.Add(new Int64Value(item));
+                _int64Column.Add(new Int64Value(item), GlobalMemoryManager.Instance);
             }
         }
 

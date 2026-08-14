@@ -105,7 +105,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                     {
                         for (int k = 0; k < functionStatesResult.DataColumns.Length; k++)
                         {
-                            functionStatesResult.DataColumns[k].Dispose();
+                            functionStatesResult.DataColumns[k].Dispose(_memoryAllocator);
                         }
                         throw new InvalidOperationException("Invalid data column type");
                     }

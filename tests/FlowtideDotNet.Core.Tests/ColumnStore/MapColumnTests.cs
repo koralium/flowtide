@@ -451,12 +451,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertNullAtStart()
         {
-            using MapColumn column = new MapColumn(GlobalMemoryManager.Instance);
+            MapColumn column = new MapColumn(GlobalMemoryManager.Instance);
 
-            column.InsertAt(0, new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), new StringValue("b"))));
-            column.InsertAt(0, NullValue.Instance);
+            column.InsertAt(0, new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), new StringValue("b"))), GlobalMemoryManager.Instance);
+            column.InsertAt(0, NullValue.Instance, GlobalMemoryManager.Instance);
             var val = column.GetValueAt(0, default);
             Assert.Equal(0, val.AsMap.GetLength());
+            column.Dispose(GlobalMemoryManager.Instance);
         }
     }
 }

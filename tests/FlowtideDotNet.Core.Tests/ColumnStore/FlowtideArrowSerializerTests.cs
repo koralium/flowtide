@@ -813,13 +813,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestSerializeDataColumnOnly()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
-            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance);
 
             for (int i = 0; i < 10; i++)
             {
-                listColumn.Add(new ListValue(new Int64Value(i)));
-                stringColumn.Add(new StringValue(i.ToString()));
+                listColumn.Add(new ListValue(new Int64Value(i)), GlobalMemoryManager.Instance);
+                stringColumn.Add(new StringValue(i.ToString()), GlobalMemoryManager.Instance);
             }
 
             var serializer = new EventBatchSerializer();
@@ -830,8 +830,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(bufferWriter.WrittenMemory));
             var deserializeResult = batchDeserializer.DeserializeDataColumns(ref sequenceReader);
-            using var deserializedColumn = deserializeResult.DataColumns[0] as ListColumn;
-            using var deserializedStringColumn = deserializeResult.DataColumns[1] as StringColumn;
+            var deserializedColumn = deserializeResult.DataColumns[0] as ListColumn;
+            var deserializedStringColumn = deserializeResult.DataColumns[1] as StringColumn;
 
             Assert.NotNull(deserializedColumn);
             Assert.NotNull(deserializedStringColumn);
@@ -840,6 +840,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 Assert.Equal(i, deserializedColumn.GetValueAt(i, default).AsList.GetAt(0).AsLong);
                 Assert.Equal(i.ToString(), deserializedStringColumn.GetValueAt(i, default).AsString.ToString());
             }
+            listColumn.Dispose(GlobalMemoryManager.Instance);
+            stringColumn.Dispose(GlobalMemoryManager.Instance);
+            deserializedColumn.Dispose(GlobalMemoryManager.Instance);
+            deserializedStringColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]

@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _count = count;
         }
 
-        public int Add<T>(in T value) where T : IDataValue
+        public int Add<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             return _count++;
         }
@@ -68,12 +68,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             dataValueContainer._type = ArrowTypeId.Null;
         }
 
-        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        public void InsertAt<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             _count++;
         }
 
-        public void RemoveAt(in int index)
+        public void RemoveAt(in int index, IMemoryAllocator memoryAllocator)
         {
             _count--;
         }
@@ -88,12 +88,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return (new Apache.Arrow.NullArray(_count), new NullType());
         }
 
-        public int Update<T>(in int index, in T value) where T : IDataValue
+        public int Update<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             return index;
         }
 
-        public void Dispose()
+        public void Dispose(IMemoryAllocator memoryAllocator)
         {
             // Not required for null column
         }
@@ -103,22 +103,22 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return ArrowTypeId.Null;
         }
 
-        public void Clear()
+        public void Clear(IMemoryAllocator memoryAllocator)
         {
             _count = 0;
         }
 
-        public void AddToNewList<T>(in T value) where T : IDataValue
+        public void AddToNewList<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             throw new NotImplementedException();
         }
 
-        public int EndNewList()
+        public int EndNewList(IMemoryAllocator memoryAllocator)
         {
             throw new NotImplementedException();
         }
 
-        public void RemoveRange(int start, int count)
+        public void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
         {
             _count -= count;
         }
@@ -133,12 +133,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return 0;
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList, IMemoryAllocator memoryAllocator)
         {
             _count += count;
         }
 
-        public void InsertNullRange(int index, int count)
+        public void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
             _count += count;
         }
@@ -182,12 +182,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
         }
 
-        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             _count += sortedLookup.Length;
         }
 
-        public void DeleteBatch(ReadOnlySpan<int> targets)
+        public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
         {
             _count -= targets.Length;
         }

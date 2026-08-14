@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void StringValueSurvivesColumnRealloc()
         {
             var column = new StringColumn(GlobalMemoryManager.Instance);
-            column.Add(new StringValue("hello world"));
+            column.Add(new StringValue("hello world"), GlobalMemoryManager.Instance);
 
             var memory = column.GetValueAt(0, default).AsString.Memory;
             Assert.Equal("hello world", Encoding.UTF8.GetString(memory.Span));
@@ -31,11 +31,11 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             // We grow far past the buffer so it moves.
             for (int i = 0; i < 2000; i++)
             {
-                column.Add(new StringValue($"padding string number {i} with some extra length"));
+                column.Add(new StringValue($"padding string number {i} with some extra length"), GlobalMemoryManager.Instance);
             }
 
             Assert.Equal("hello world", Encoding.UTF8.GetString(memory.Span));
-            ((IDisposable)column).Dispose();
+            column.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
@@ -43,27 +43,27 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             var column = new BinaryColumn(GlobalMemoryManager.Instance);
             var expected = new byte[] { 1, 2, 3, 4, 5 };
-            column.Add(new BinaryValue(expected));
+            column.Add(new BinaryValue(expected), GlobalMemoryManager.Instance);
 
             var value = column.GetValueAt(0, default);
 
             for (int i = 0; i < 2000; i++)
             {
-                column.Add(new BinaryValue(new byte[] { (byte)i, 42, 42, 42, 42, 42, 42, 42 }));
+                column.Add(new BinaryValue(new byte[] { (byte)i, 42, 42, 42, 42, 42, 42, 42 }), GlobalMemoryManager.Instance);
             }
 
             Assert.True(value.AsBinary.SequenceEqual(expected));
-            ((IDisposable)column).Dispose();
+            column.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void StringValueAfterColumnDisposeFailsFast()
         {
             var column = new StringColumn(GlobalMemoryManager.Instance);
-            column.Add(new StringValue("hello world"));
+            column.Add(new StringValue("hello world"), GlobalMemoryManager.Instance);
 
             var memory = column.GetValueAt(0, default).AsString.Memory;
-            ((IDisposable)column).Dispose();
+            column.Dispose(GlobalMemoryManager.Instance);
 
             // A disposed column gives an empty span.
             Assert.ThrowsAny<ArgumentOutOfRangeException>(() => memory.Span.Length);
@@ -73,12 +73,12 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void EmptyStringValueIsEmpty()
         {
             var column = new StringColumn(GlobalMemoryManager.Instance);
-            column.Add(new StringValue(""));
+            column.Add(new StringValue(""), GlobalMemoryManager.Instance);
 
             var value = column.GetValueAt(0, default);
             Assert.Equal(0, value.AsString.Memory.Length);
             Assert.Equal("", value.AsString.ToString());
-            ((IDisposable)column).Dispose();
+            column.Dispose(GlobalMemoryManager.Instance);
         }
     }
 }

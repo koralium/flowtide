@@ -32,10 +32,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             for (int i = 0; i < 1000; i++)
             {
-                column.Add(NullValue.Instance);
+                column.Add(NullValue.Instance, GlobalMemoryManager.Instance);
             }
 
-            column.RemoveRange(100, 100);
+            column.RemoveRange(100, 100, GlobalMemoryManager.Instance);
 
             Assert.Equal(900, column.Count);
         }
@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             for (int i = 0; i < 1000; i++)
             {
-                column.Add(NullValue.Instance);
+                column.Add(NullValue.Instance, GlobalMemoryManager.Instance);
             }
 
             IDataColumn copy = column.Copy(GlobalMemoryManager.Instance);

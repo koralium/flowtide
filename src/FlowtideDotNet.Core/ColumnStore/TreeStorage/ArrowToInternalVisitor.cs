@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         internal void DisposeUnconsumed()
         {
             _bitmapList.Dispose(_memoryAllocator);
-            _dataColumn?.Dispose();
+            _dataColumn?.Dispose(_memoryAllocator);
             _dataColumn = null;
         }
 
@@ -198,6 +198,9 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                     // Reset null counter
                     _nullCount = 0;
                 }
+
+                // The constructor can throw on corrupt input so it runs inside the try.
+                _dataColumn = new UnionColumn(columns, typeMemory, offsetMemory, array.Length, _memoryAllocator);
             }
             catch
             {
@@ -208,13 +211,12 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                     // DisposeUnconsumed disposes _dataColumn.
                     if (!ReferenceEquals(column, _dataColumn))
                     {
-                        column.Dispose();
+                        column.Dispose(_memoryAllocator);
                     }
                 }
                 throw;
             }
 
-            _dataColumn = new UnionColumn(columns, typeMemory, offsetMemory, array.Length, _memoryAllocator);
             _typeId = ArrowTypeId.Union;
         }
 

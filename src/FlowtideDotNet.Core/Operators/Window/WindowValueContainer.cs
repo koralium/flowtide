@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                 _weights.InsertRangeFrom(_weights.Count, windowValueContainer._weights, start, count);
                 for (int i = 0; i < _functionStates.Length; i++)
                 {
-                    _functionStates[i].InsertRangeFrom(_functionStates[i].Count, windowValueContainer._functionStates[i], start, count, default);
+                    _functionStates[i].InsertRangeFrom(_functionStates[i].Count, windowValueContainer._functionStates[i], start, count, default, _memoryAllocator);
                 }
                 _previousValueSent.InsertRangeFrom(_previousValueSent.Count, in windowValueContainer._previousValueSent, start, count, _memoryAllocator);
             }
@@ -91,15 +91,22 @@ namespace FlowtideDotNet.Core.Operators.Window
             _weights.Dispose();
             for (int i = 0; i < _functionStates.Length; i++)
             {
-                _functionStates[i].Dispose();
+                _functionStates[i].Dispose(_memoryAllocator);
             }
             _previousValueSent.Dispose(_memoryAllocator);
             GC.SuppressFinalize(this);
         }
 
-        // The bitmap struct has no finalizer so we free it here.
+        // The bitmap struct and the list columns have no finalizers so we free them here.
         ~WindowValueContainer()
         {
+            if (_functionStates != null)
+            {
+                for (int i = 0; i < _functionStates.Length; i++)
+                {
+                    _functionStates[i]?.Dispose(_memoryAllocator);
+                }
+            }
             _previousValueSent.Dispose(_memoryAllocator);
         }
 
@@ -134,7 +141,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             _weights.InsertAt(index, value.weight);
             for (int i = 0; i < _functionStates.Length; i++)
             {
-                _functionStates[i].InsertAt(index, NullValue.Instance);
+                _functionStates[i].InsertAt(index, NullValue.Instance, _memoryAllocator);
             }
             _previousValueSent.InsertAt(index, false, _memoryAllocator);
         }
@@ -149,7 +156,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             _weights.RemoveAt(index);
             for (int i = 0; i < _functionStates.Length; i++)
             {
-                _functionStates[i].RemoveAt(index);
+                _functionStates[i].RemoveAt(index, _memoryAllocator);
             }
             _previousValueSent.RemoveAt(index);
         }
@@ -159,7 +166,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             _weights.RemoveRange(start, count);
             for (int i = 0; i < _functionStates.Length; i++)
             {
-                _functionStates[i].RemoveRange(start, count);
+                _functionStates[i].RemoveRange(start, count, _memoryAllocator);
             }
             _previousValueSent.RemoveRange(start, count);
         }

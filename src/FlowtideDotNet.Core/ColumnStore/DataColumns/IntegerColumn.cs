@@ -35,16 +35,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
     {
         // Not readonly, mutations would run on a copy.
         private IntegerList _list;
-        private readonly IMemoryAllocator _memoryAllocator;
 
         public IntegerColumn(IMemoryAllocator memoryAllocator)
         {
-            this._memoryAllocator = memoryAllocator;
         }
 
         public IntegerColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
         {
-            this._memoryAllocator = memoryAllocator;
             switch (columnSizeInfo.BitWidth)
             {
                 case 8:
@@ -67,8 +64,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public IntegerColumn(IMemoryAllocator memoryAllocator, FlowtideMemory memory, int length, int bitWidth)
         {
-            this._memoryAllocator = memoryAllocator;
-
             switch (bitWidth)
             {
                 case 8:
@@ -113,7 +108,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return 8;
         }
 
-        private void WidenToBitWidth(int targetBitWidth)
+        private void WidenToBitWidth(int targetBitWidth, IMemoryAllocator memoryAllocator)
         {
             if (_list.ElementSize != 0 && targetBitWidth < _list.BitWidth)
             {
@@ -123,55 +118,55 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             switch (targetBitWidth)
             {
                 case 8:
-                    _list.Widen(1, _memoryAllocator);
+                    _list.Widen(1, memoryAllocator);
                     break;
                 case 16:
-                    _list.Widen(2, _memoryAllocator);
+                    _list.Widen(2, memoryAllocator);
                     break;
                 case 32:
-                    _list.Widen(4, _memoryAllocator);
+                    _list.Widen(4, memoryAllocator);
                     break;
                 case 64:
-                    _list.Widen(8, _memoryAllocator);
+                    _list.Widen(8, memoryAllocator);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(targetBitWidth), targetBitWidth, $"Unsupported bit width: {targetBitWidth}");
             }
         }
 
-        private void CheckSize(in long value)
+        private void CheckSize(in long value, IMemoryAllocator memoryAllocator)
         {
             if (_list.ElementSize == 0)
             {
-                _list.Widen(ElementSizeFor(in value), _memoryAllocator);
+                _list.Widen(ElementSizeFor(in value), memoryAllocator);
             }
             else if (value < _list.MinValue || value > _list.MaxValue)
             {
-                _list.Widen(ElementSizeFor(in value), _memoryAllocator);
+                _list.Widen(ElementSizeFor(in value), memoryAllocator);
             }
         }
 
-        public int Add<T>(in T value) where T : IDataValue
+        public int Add<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.IsNull)
             {
-                CheckSize(0);
-                return _list.Add(0, _memoryAllocator);
+                CheckSize(0, memoryAllocator);
+                return _list.Add(0, memoryAllocator);
             }
 
             var val = value.AsLong;
 
-            CheckSize(in val);
+            CheckSize(in val, memoryAllocator);
 
-            return _list.Add(val, _memoryAllocator);
+            return _list.Add(val, memoryAllocator);
         }
 
-        public void AddToNewList<T>(in T value) where T : IDataValue
+        public void AddToNewList<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             throw new NotImplementedException();
         }
 
-        public void Clear()
+        public void Clear(IMemoryAllocator memoryAllocator)
         {
             _list.Clear();
         }
@@ -213,19 +208,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return new IntegerColumn(memoryAllocator) { _list = _list.Copy(memoryAllocator) };
         }
 
-        public void Dispose()
+        public void Dispose(IMemoryAllocator memoryAllocator)
         {
-            // The struct has no finalizer so we free it here.
-            _list.Dispose(_memoryAllocator);
-            GC.SuppressFinalize(this);
+            _list.Dispose(memoryAllocator);
         }
 
-        ~IntegerColumn()
-        {
-            _list.Dispose(_memoryAllocator);
-        }
-
-        public int EndNewList()
+        public int EndNewList(IMemoryAllocator memoryAllocator)
         {
             throw new NotImplementedException();
         }
@@ -261,50 +249,50 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             dataValueContainer._int64Value = new Int64Value(_list.Get(index));
         }
 
-        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        public void InsertAt<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.IsNull)
             {
-                CheckSize(0);
-                _list.InsertAt(index, 0, _memoryAllocator);
+                CheckSize(0, memoryAllocator);
+                _list.InsertAt(index, 0, memoryAllocator);
                 return;
             }
 
             var val = value.AsLong;
 
-            CheckSize(val);
-            _list.InsertAt(index, val, _memoryAllocator);
+            CheckSize(val, memoryAllocator);
+            _list.InsertAt(index, val, memoryAllocator);
         }
 
-        public void InsertNullRange(int index, int count)
+        public void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
-            CheckSize(0);
-            _list.InsertNullRange(index, count, _memoryAllocator);
+            CheckSize(0, memoryAllocator);
+            _list.InsertNullRange(index, count, memoryAllocator);
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList, IMemoryAllocator memoryAllocator)
         {
             if (other is IntegerColumn integerColumn)
             {
                 Debug.Assert(integerColumn._list.ElementSize != 0 || count == 0);
                 // Check if we need to resize, this also sets a width if there is none
-                CheckSize(0);
+                CheckSize(0, memoryAllocator);
                 if (_list.ElementSize == integerColumn._list.ElementSize)
                 {
-                    _list.InsertRangeFrom(index, in integerColumn._list, start, count, _memoryAllocator);
+                    _list.InsertRangeFrom(index, in integerColumn._list, start, count, memoryAllocator);
                     return;
                 }
                 else
                 {
                     // Create space for the new values, this increases the count as well
-                    _list.MoveRangeAt(index, count, _memoryAllocator);
+                    _list.MoveRangeAt(index, count, memoryAllocator);
 
                     // Missmatch in bitwidth insert one by one to check if there is any size change
                     for (int i = 0; i < count; i++)
                     {
                         var val = integerColumn._list.Get(start + i);
                         // Check if we need to resize
-                        CheckSize(val);
+                        CheckSize(val, memoryAllocator);
                         // Update the value
                         _list.Update(index + i, val);
                     }
@@ -314,14 +302,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             throw new NotImplementedException();
         }
 
-        public void RemoveAt(in int index)
+        public void RemoveAt(in int index, IMemoryAllocator memoryAllocator)
         {
-            _list.RemoveAt(index, _memoryAllocator);
+            _list.RemoveAt(index, memoryAllocator);
         }
 
-        public void RemoveRange(int start, int count)
+        public void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
         {
-            _list.RemoveRange(start, count, _memoryAllocator);
+            _list.RemoveRange(start, count, memoryAllocator);
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
@@ -350,18 +338,18 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return _list.ToArrowArray(nullBuffer, nullCount);
         }
 
-        public int Update<T>(in int index, in T value) where T : IDataValue
+        public int Update<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.IsNull)
             {
-                CheckSize(0);
+                CheckSize(0, memoryAllocator);
                 _list.Update(index, 0);
                 return index;
             }
 
             var val = value.AsLong;
 
-            CheckSize(val);
+            CheckSize(val, memoryAllocator);
 
             _list.Update(index, val);
             return index;
@@ -401,7 +389,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             hashAlgorithm.Append(buffer);
         }
 
-        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             if (other is IntegerColumn integerColumn)
             {
@@ -412,30 +400,30 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     if (integerColumn._list.ElementSize > _list.ElementSize)
                     {
                         // Other is wider
-                        WidenToBitWidth(integerColumn._list.BitWidth);
+                        WidenToBitWidth(integerColumn._list.BitWidth, memoryAllocator);
                     }
                     else
                     {
-                        CheckSize(0);
+                        CheckSize(0, memoryAllocator);
                         // This is wider, for now to just inserts
                         for (int i = sortedLookup.Length - 1; i >= 0; i--)
                         {
-                            _list.InsertAt(insertPositions[i], integerColumn._list.Get(sortedLookup[i]), _memoryAllocator);
+                            _list.InsertAt(insertPositions[i], integerColumn._list.Get(sortedLookup[i]), memoryAllocator);
                         }
                         return;
                     }
                 }
-                _list.InsertFrom(in integerColumn._list, in sortedLookup, in insertPositions, lookupNullIndex, _memoryAllocator);
+                _list.InsertFrom(in integerColumn._list, in sortedLookup, in insertPositions, lookupNullIndex, memoryAllocator);
                 return;
             }
             throw new NotImplementedException();
         }
 
-        public void DeleteBatch(ReadOnlySpan<int> targets)
+        public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
         {
             if (_list.ElementSize != 0)
             {
-                _list.DeleteBatch(targets, _memoryAllocator);
+                _list.DeleteBatch(targets, memoryAllocator);
             }
         }
 

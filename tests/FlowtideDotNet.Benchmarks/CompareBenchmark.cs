@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Benchmarks
             for (int i = 0; i < 1_000_000; i++)
             {
                 var val = r.Next();
-                stringColumn.Add(new FlowtideDotNet.Core.ColumnStore.StringValue(val.ToString()));
+                stringColumn.Add(new FlowtideDotNet.Core.ColumnStore.StringValue(val.ToString()), GlobalMemoryManager.Instance);
             }
         }
 
