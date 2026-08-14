@@ -29,7 +29,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
     {
         internal readonly StructHeader _header;
         internal readonly Column[] _columns;
-        private bool disposedValue;
         private int _count;
 
         public StructColumn(StructHeader structHeader, IMemoryAllocator memoryAllocator)
@@ -72,7 +71,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public StructHeader StructHeader => _header;
 
-        public int Add<T>(in T value) where T : IDataValue
+        public int Add<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.IsNull)
             {
@@ -99,12 +98,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return Count - 1;
         }
 
-        public void AddToNewList<T>(in T value) where T : IDataValue
+        public void AddToNewList<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             throw new NotSupportedException("Add to new list is not supported in struct column");
         }
 
-        public void Clear()
+        public void Clear(IMemoryAllocator memoryAllocator)
         {
             _count = 0;
             for (int i = 0; i < _columns.Length; i++)
@@ -227,7 +226,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return new StructColumn(_header, copiedColumns, _count);
         }
 
-        public int EndNewList()
+        public int EndNewList(IMemoryAllocator memoryAllocator)
         {
             throw new NotSupportedException("End new list is not supported in struct column");
         }
@@ -337,7 +336,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             dataValueContainer._type = ArrowTypeId.Struct;
         }
 
-        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        public void InsertAt<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.IsNull)
             {
@@ -363,7 +362,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public void InsertNullRange(int index, int count)
+        public void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
             _count += count;
             for (int i = 0; i < _columns.Length; i++)
@@ -372,7 +371,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList, IMemoryAllocator memoryAllocator)
         {
             if (other is StructColumn otherStructColumn)
             {
@@ -389,7 +388,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public void RemoveAt(in int index)
+        public void RemoveAt(in int index, IMemoryAllocator memoryAllocator)
         {
             _count--;
             for (int i = 0; i < _columns.Length; i++)
@@ -398,7 +397,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public void RemoveRange(int start, int count)
+        public void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
         {
             _count -= count;
             for (int i = 0; i < _columns.Length; i++)
@@ -513,7 +512,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return (structArr, structType);
         }
 
-        public int Update<T>(in int index, in T value) where T : IDataValue
+        public int Update<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.Type == ArrowTypeId.Struct)
             {
@@ -578,35 +577,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        protected virtual void Dispose(bool disposing)
+        public void Dispose(IMemoryAllocator memoryAllocator)
         {
-            if (!disposedValue)
+            foreach (var column in _columns)
             {
-                if (disposing)
-                {
-                    foreach(var column in _columns)
-                    {
-                        column.Dispose();
-                    }
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
-                disposedValue = true;
+                column.Dispose();
             }
-        }
-
-        ~StructColumn()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: false);
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
         }
 
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
@@ -617,7 +593,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             if (other is StructColumn otherStruct)
             {
@@ -631,7 +607,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             throw new NotImplementedException();
         }
 
-        public void DeleteBatch(ReadOnlySpan<int> targets)
+        public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
         {
             for (int i = 0; i < _columns.Length; i++)
             {

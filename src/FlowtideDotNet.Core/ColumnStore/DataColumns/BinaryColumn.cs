@@ -39,8 +39,6 @@ namespace FlowtideDotNet.Core.ColumnStore
     {
         // Not readonly, mutations would run on a copy.
         private BinaryList _data;
-        private readonly IMemoryAllocator _memoryAllocator;
-        private bool disposedValue;
 
         public override Span<byte> GetSpan()
         {
@@ -58,25 +56,21 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public BinaryColumn(IMemoryAllocator memoryAllocator)
         {
-            _memoryAllocator = memoryAllocator;
             _data = new BinaryList(memoryAllocator);
         }
 
         public BinaryColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
         {
-            _memoryAllocator = memoryAllocator;
             _data = new BinaryList(memoryAllocator, columnSizeInfo.TotalRows, columnSizeInfo.TotalVariableBytes);
         }
 
         public BinaryColumn(FlowtideMemory offsetMemory, int offsetLength, FlowtideMemory dataMemory, IMemoryAllocator memoryAllocator)
         {
-            _memoryAllocator = memoryAllocator;
             _data = new BinaryList(offsetMemory, offsetLength, dataMemory);
         }
 
-        internal BinaryColumn(BinaryList data, IMemoryAllocator memoryAllocator)
+        internal BinaryColumn(BinaryList data)
         {
-            _memoryAllocator = memoryAllocator;
             // The argument is a fresh copy that is never used again.
 #pragma warning disable RS0042
             _data = data;
@@ -89,17 +83,17 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public StructHeader StructHeader => throw new NotImplementedException();
 
-        public int Add<T>(in T value) where T : IDataValue
+        public int Add<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             var index = _data.Count;
             if (value.Type == ArrowTypeId.Null)
             {
-                _data.Add(Span<byte>.Empty, _memoryAllocator);
+                _data.Add(Span<byte>.Empty, memoryAllocator);
                 return index;
             }
             else
             {
-                _data.Add(value.AsBinary, _memoryAllocator);
+                _data.Add(value.AsBinary, memoryAllocator);
                 return index;
             }
         }
@@ -144,21 +138,21 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._binaryValue = new BinaryValue(CreateMemory(offset, length));
         }
 
-        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        public void InsertAt<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                _data.Insert(index, Span<byte>.Empty, _memoryAllocator);
+                _data.Insert(index, Span<byte>.Empty, memoryAllocator);
             }
             else
             {
-                _data.Insert(index, value.AsBinary, _memoryAllocator);
+                _data.Insert(index, value.AsBinary, memoryAllocator);
             }
         }
 
-        public void RemoveAt(in int index)
+        public void RemoveAt(in int index, IMemoryAllocator memoryAllocator)
         {
-            _data.RemoveAt(index, _memoryAllocator);
+            _data.RemoveAt(index, memoryAllocator);
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
@@ -178,34 +172,20 @@ namespace FlowtideDotNet.Core.ColumnStore
             return (array, BinaryType.Default);
         }
 
-        public int Update<T>(in int index, in T value) where T : IDataValue
+        public int Update<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
-            _data.UpdateAt(index, value.AsBinary, _memoryAllocator);
+            _data.UpdateAt(index, value.AsBinary, memoryAllocator);
             return index;
+        }
+
+        public void Dispose(IMemoryAllocator memoryAllocator)
+        {
+            _data.Dispose(memoryAllocator);
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (!disposedValue)
-            {
-                // The struct has no finalizer so we free it here.
-                _data.Dispose(_memoryAllocator);
-                disposedValue = true;
-            }
-        }
-
-#pragma warning disable CA2015 // Do not define finalizers for types derived from MemoryManager<T>
-        ~BinaryColumn()
-#pragma warning restore CA2015 // Do not define finalizers for types derived from MemoryManager<T>
-        {
-            Dispose(disposing: false);
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            // Freeing needs the allocator, the owning column calls Dispose(IMemoryAllocator).
         }
 
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
@@ -213,24 +193,24 @@ namespace FlowtideDotNet.Core.ColumnStore
             return ArrowTypeId.Binary;
         }
 
-        public void Clear()
+        public void Clear(IMemoryAllocator memoryAllocator)
         {
-            _data.Clear(_memoryAllocator);
+            _data.Clear(memoryAllocator);
         }
 
-        public void AddToNewList<T>(in T value) where T : IDataValue
+        public void AddToNewList<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             throw new NotImplementedException();
         }
 
-        public int EndNewList()
+        public int EndNewList(IMemoryAllocator memoryAllocator)
         {
             throw new NotImplementedException();
         }
 
-        public void RemoveRange(int start, int count)
+        public void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
         {
-            _data.RemoveRange(start, count, _memoryAllocator);
+            _data.RemoveRange(start, count, memoryAllocator);
         }
 
         public int GetByteSize(int start, int end)
@@ -248,11 +228,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data.GetPrefixSumByteSizes(indices, sizes);
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList, IMemoryAllocator memoryAllocator)
         {
             if (other is BinaryColumn binaryColumn)
             {
-                _data.InsertRangeFrom(index, binaryColumn._data, start, count, _memoryAllocator);
+                _data.InsertRangeFrom(index, binaryColumn._data, start, count, memoryAllocator);
             }
             else
             {
@@ -260,9 +240,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public void InsertNullRange(int index, int count)
+        public void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
-            _data.InsertNullRange(index, count, _memoryAllocator);
+            _data.InsertNullRange(index, count, memoryAllocator);
         }
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
@@ -272,7 +252,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
-            return new BinaryColumn(_data.Copy(memoryAllocator), memoryAllocator);
+            return new BinaryColumn(_data.Copy(memoryAllocator));
         }
 
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
@@ -312,11 +292,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataWriter.WriteArrowBuffer(_data.DataSpan);
         }
 
-        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             if (other is BinaryColumn binaryColumn)
             {
-                _data.InsertFrom(in binaryColumn._data, in sortedLookup, in insertPositions, lookupNullIndex, _memoryAllocator);
+                _data.InsertFrom(in binaryColumn._data, in sortedLookup, in insertPositions, lookupNullIndex, memoryAllocator);
             }
             else
             {
@@ -324,9 +304,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public void DeleteBatch(ReadOnlySpan<int> targets)
+        public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
         {
-            _data.DeleteBatch(targets, _memoryAllocator);
+            _data.DeleteBatch(targets, memoryAllocator);
         }
 
         public ColumnSizeInfo GetColumnSizeInfo()

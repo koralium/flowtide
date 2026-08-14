@@ -502,7 +502,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 for (int i = 0; i < builtColumns; i++)
                 {
-                    columns[i]?.Dispose();
+                    columns[i]?.Dispose(memoryAllocator);
                 }
                 throw;
             }
@@ -569,7 +569,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 // The struct has no finalizer so we free it here.
                 validityList.Dispose(memoryAllocator);
-                dataColumnResult.dataColumn?.Dispose();
+                dataColumnResult.dataColumn?.Dispose(memoryAllocator);
                 throw;
             }
         }
@@ -658,6 +658,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 {
                     throw new InvalidOperationException("Union column must have both type and offset memory");
                 }
+
+                if (hasTypeMemory)
+                {
+                    // The constructor can throw on corrupt input so it runs inside the try.
+                    return new UnionColumn(children, typeMemory, offsetMemory, length, memoryAllocator);
+                }
             }
             catch
             {
@@ -665,19 +671,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 memoryAllocator.Free(ref offsetMemory);
                 for (int i = 0; i < children.Count; i++)
                 {
-                    children[i].Dispose();
+                    children[i].Dispose(memoryAllocator);
                 }
                 throw;
             }
 
-            if (hasTypeMemory)
-            {
-                return new UnionColumn(children, typeMemory, offsetMemory, length, memoryAllocator);
-            }
             // Dispose the children
             for (int i = 0; i < children.Count; i++)
             {
-                children[i].Dispose();
+                children[i].Dispose(memoryAllocator);
             }
             return new UnionColumn(memoryAllocator);
         }

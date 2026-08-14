@@ -284,6 +284,64 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Serialization
             }
         }
 
+        /// <summary>
+        /// Renaming a struct child in the schema forges a union with two equal
+        /// struct headers, which throws inside the union column constructor.
+        /// </summary>
+        [Fact]
+        public void DuplicateUnionStructHeadersDoNotLeakNativeMemory()
+        {
+            Column unionColumn = Column.Create(GlobalMemoryManager.Instance);
+            var firstHeader = StructHeader.Create("k1", "dup1");
+            var secondHeader = StructHeader.Create("k1", "dup2");
+            for (int i = 0; i < 10; i++)
+            {
+                if (i % 2 == 0)
+                {
+                    unionColumn.Add(new StructValue(firstHeader, new Int64Value(i), new Int64Value(i)));
+                }
+                else
+                {
+                    unionColumn.Add(new StructValue(secondHeader, new Int64Value(i), new Int64Value(i)));
+                }
+            }
+            using var batch = new EventBatchData([unionColumn]);
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+            serializer.SerializeEventBatch(bufferWriter, batch, batch.Count);
+            var serialized = bufferWriter.WrittenSpan.ToArray();
+
+            var sawDuplicateHeader = false;
+            ReadOnlySpan<byte> pattern = "dup2"u8;
+            for (int offset = 0; offset + pattern.Length <= serialized.Length; offset++)
+            {
+                if (!serialized.AsSpan(offset, pattern.Length).SequenceEqual(pattern))
+                {
+                    continue;
+                }
+                var corrupt = (byte[])serialized.Clone();
+                corrupt[offset + 3] = (byte)'1';
+
+                var allocator = new CountingAllocator();
+                var deserializer = new EventBatchDeserializer(allocator);
+                try
+                {
+                    var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(corrupt));
+                    var result = deserializer.DeserializeBatch(ref reader);
+                    result.EventBatch.Dispose();
+                }
+                catch (ArgumentException)
+                {
+                    sawDuplicateHeader = true;
+                }
+                catch
+                {
+                }
+                allocator.AssertClean($"dup2 renamed at offset {offset}");
+            }
+            Assert.True(sawDuplicateHeader, "no rename triggered the duplicate header path, the corpus no longer exercises it");
+        }
+
         private static byte[] SerializeSampleBatch(bool compress)
         {
             Column stringColumn = Column.Create(GlobalMemoryManager.Instance);
