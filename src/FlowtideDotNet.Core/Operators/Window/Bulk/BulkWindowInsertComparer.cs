@@ -30,6 +30,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private readonly IReadOnlyList<int> _partitionColumns;
         private readonly IReadOnlyList<int> _otherColumns;
         private readonly DataValueContainer _dataValueContainer = new DataValueContainer();
+        private readonly DataValueContainer _compareLeft = new DataValueContainer();
+        private readonly DataValueContainer _compareRight = new DataValueContainer();
         private readonly ColumnBoundarySearch? _bulkSearch;
 
         public BulkWindowInsertComparer(
@@ -105,12 +107,19 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
         public bool SeekNextPageForValue => false;
 
+        // Column compare reads left join padding as a real index
+        private int CompareColumn(in ColumnRowReference x, in ColumnRowReference y, int column)
+        {
+            x.referenceBatch.Columns[column].GetValueAt(x.RowIndex, _compareLeft, default);
+            y.referenceBatch.Columns[column].GetValueAt(y.RowIndex, _compareRight, default);
+            return DataValueComparer.CompareTo(_compareLeft, _compareRight);
+        }
+
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
         {
             for (int i = 0; i < _partitionColumns.Count; i++)
             {
-                var column = _partitionColumns[i];
-                var compareResult = x.referenceBatch.Columns[column].CompareTo(y.referenceBatch.Columns[column], x.RowIndex, y.RowIndex);
+                var compareResult = CompareColumn(in x, in y, _partitionColumns[i]);
                 if (compareResult != 0)
                 {
                     return compareResult;
@@ -126,8 +135,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             }
             for (int i = 0; i < _otherColumns.Count; i++)
             {
-                var column = _otherColumns[i];
-                var compareResult = x.referenceBatch.Columns[column].CompareTo(y.referenceBatch.Columns[column], x.RowIndex, y.RowIndex);
+                var compareResult = CompareColumn(in x, in y, _otherColumns[i]);
                 if (compareResult != 0)
                 {
                     return compareResult;

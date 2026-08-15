@@ -268,6 +268,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private long _lookaheadPosition;
         private bool _lookaheadStarted;
         private bool _lookaheadDone;
+        private int _auxStartIndex;
+        // Rows below this are already in the seeded sum
+        private long _accumulateFromPosition;
 
         public BulkAverageWindowFunctionBoundedFollowing(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from, long to)
         {
@@ -286,14 +289,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
         public long EqualityStableAfterRows => long.MaxValue;
 
-        public int AuxiliaryStateColumnCount => 0;
+        // Stored output is the average, it cannot rebuild the sum
+        public int AuxiliaryStateColumnCount => 1;
 
         public Task Initialize(BulkWindowFunctionContext context)
         {
             _memoryAllocator = context.MemoryAllocator;
+            _auxStartIndex = context.AuxiliaryColumnStartIndex;
             _lookahead = new BulkWindowForwardPartitionReader(context.PersistentTree, context.PartitionColumns, context.CreateInsertComparer());
-            // The first row loads positions 0..to before eviction, so size by to and the seeded rows.
-            _frame = new BulkWindowValueRing(_to + Math.Max(0, -_from) + 2, context.MemoryAllocator);
+            // Seeding holds one row more than the frame
+            _frame = new BulkWindowValueRing(_to + Math.Max(0, -_from) + 3, context.MemoryAllocator);
             return Task.CompletedTask;
         }
 
@@ -312,13 +317,31 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             _currentPosition = -1;
             _lookaheadStarted = false;
             _lookaheadDone = false;
+            _nextFeedPosition = 0;
+            _oldestFramePosition = 0;
+            // Nothing seeded yet, accumulate everything
+            _accumulateFromPosition = long.MinValue;
 
-            long seedRows = 0;
-            if (!fromPartitionStart && _from < 0)
+            if (fromPartitionStart)
             {
-                await seedReader.EnsureRows((int)Math.Min(-_from, int.MaxValue));
-                seedRows = Math.Min(-_from, seedReader.MaterializedRows);
+                return;
             }
+
+            // The previous row's frame starts one row further back
+            var lookback = (int)Math.Min(1 - _from, int.MaxValue);
+            await seedReader.EnsureRows(lookback);
+            if (seedReader.MaterializedRows == 0)
+            {
+                return;
+            }
+
+            // Continue the stored path, add then subtract is not associative
+            BulkSumUtils.CopySumValue(seedReader.GetState(1, _auxStartIndex), _sumState);
+
+            // The stored sum already covers rows below _to
+            _accumulateFromPosition = _to;
+
+            var seedRows = Math.Min(lookback, seedReader.MaterializedRows);
             _nextFeedPosition = -seedRows;
             _oldestFramePosition = -seedRows;
             for (int back = (int)seedRows; back >= 1; back--)
@@ -335,7 +358,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 _oldestFramePosition = _nextFeedPosition;
             }
-            SumWindowUtils.DoSum(value, _sumState, 1);
+            if (_nextFeedPosition >= _accumulateFromPosition)
+            {
+                SumWindowUtils.DoSum(value, _sumState, 1);
+            }
             AverageWindowUtils.ModifyCount(ref _count, 1, value.Type);
             _frame.Push(value);
             _nextFeedPosition++;
@@ -384,6 +410,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 _oldestFramePosition++;
             }
 
+            context.SetAuxValue(_auxStartIndex, _sumState);
             BulkAverageUtils.DivideToContainer(_sumState, _count, result);
         }
 

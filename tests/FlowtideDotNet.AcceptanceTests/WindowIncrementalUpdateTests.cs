@@ -2391,5 +2391,149 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Expected());
         }
+
+        // One huge value then ones, evicting it leaves zero
+        private void AddCancellationRows(int count)
+        {
+            AddUser("c1", 0, 1e16);
+            for (int i = 1; i < count; i++)
+            {
+                AddUser("c1", i, 1);
+            }
+        }
+
+        private const string BoundedFollowingSumSql = @"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+            SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)
+            FROM users";
+
+        private const string BoundedFollowingAverageSql = @"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+            AVG(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)
+            FROM users";
+
+        // What the accumulator gives walking from the partition start
+        private static List<AvgResult> BoundedFollowingSumExpected()
+        {
+            return new List<AvgResult>()
+            {
+                new AvgResult("c1", 0, 1e16),
+                new AvgResult("c1", 1, 1e16),
+                new AvgResult("c1", 2, 1e16),
+                new AvgResult("c1", 3, 0),
+                new AvgResult("c1", 4, 0),
+                new AvgResult("c1", 5, 0),
+                new AvgResult("c1", 6, 0),
+                new AvgResult("c1", 7, 0),
+                new AvgResult("c1", 8, -1),
+                new AvgResult("c1", 9, -2),
+            };
+        }
+
+        // The sums above divided by the frame row count
+        private static List<AvgResult> BoundedFollowingAverageExpected()
+        {
+            return new List<AvgResult>()
+            {
+                new AvgResult("c1", 0, 1e16 / 3),
+                new AvgResult("c1", 1, 1e16 / 4),
+                new AvgResult("c1", 2, 1e16 / 5),
+                new AvgResult("c1", 3, 0),
+                new AvgResult("c1", 4, 0),
+                new AvgResult("c1", 5, 0),
+                new AvgResult("c1", 6, 0),
+                new AvgResult("c1", 7, 0),
+                new AvgResult("c1", 8, -1.0 / 4),
+                new AvgResult("c1", 9, -2.0 / 3),
+            };
+        }
+
+        // Baseline, every row is present before the stream starts
+        [Fact]
+        public async Task BoundedFollowingSumFullComputeBaseline()
+        {
+            AddCancellationRows(10);
+            await StartStream(BoundedFollowingSumSql);
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(BoundedFollowingSumExpected());
+        }
+
+        // The same rows, but the last one arrives late
+        [Fact]
+        public async Task BoundedFollowingSumIsIndependentOfArrivalOrder()
+        {
+            AddCancellationRows(9);
+            await StartStream(BoundedFollowingSumSql);
+            await WaitForUpdate();
+
+            AddUser("c1", 9, 1);
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(BoundedFollowingSumExpected());
+        }
+
+        // Baseline, every row is present before the stream starts
+        [Fact]
+        public async Task BoundedFollowingAverageFullComputeBaseline()
+        {
+            AddCancellationRows(10);
+            await StartStream(BoundedFollowingAverageSql);
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(BoundedFollowingAverageExpected());
+        }
+
+        // Average stores the divided value, so it needs aux
+        [Fact]
+        public async Task BoundedFollowingAverageIsIndependentOfArrivalOrder()
+        {
+            AddCancellationRows(9);
+            await StartStream(BoundedFollowingAverageSql);
+            await WaitForUpdate();
+
+            AddUser("c1", 9, 1);
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(BoundedFollowingAverageExpected());
+        }
+
+        // Stale flags must not survive Dispose then Initialize
+        // Passes today, the interleaving is not forced
+        [Fact]
+        public async Task SurrogateKeySurvivesCrashWithoutDroppingLivePartition()
+        {
+            WaitForCheckpointAfterInitialData = false;
+
+            AddUser("c1", 1, 1);
+            AddUser("c1", 2, 2);
+            AddUser("c2", 3, 3);
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT CompanyId, UserKey,
+                surrogate_key_int64() OVER (PARTITION BY CompanyId ORDER BY UserKey) as key
+                FROM users");
+            await WaitForUpdate();
+
+            // Remove the last row in c1, the partition survives
+            DeleteUser(new User() { UserKey = 2, CompanyId = "c1" });
+            await WaitForUpdate();
+
+            await Crash();
+
+            AddUser("c2", 4, 4);
+            await WaitForUpdate();
+
+            // Every row keeps its partition key
+            AssertCurrentDataEqual(new List<SurrogateKeyResult>()
+            {
+                new SurrogateKeyResult("c1", 1, 0),
+                new SurrogateKeyResult("c2", 3, 1),
+                new SurrogateKeyResult("c2", 4, 1),
+            });
+        }
     }
 }

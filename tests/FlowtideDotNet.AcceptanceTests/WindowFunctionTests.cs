@@ -2602,5 +2602,100 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Equal("renamed", after[3].firstName);
             AssertWindowValuesUnchanged(before, after);
         }
+
+        public record JoinRowNumberResult(int orderkey, long rowNumber);
+        public record FrameSumResult(int userkey, double? value);
+        public record FrameMinByResult(int userkey, int? best);
+
+        // Unmatched rows arrive null padded, compare must stay reflexive
+        // Only reproduces under full suite load
+        [Fact]
+        public async Task LeftJoinNullPaddingDoesNotCorruptWindowSort()
+        {
+            AddOrUpdateUser(new User() { UserKey = 1, CompanyId = "c1" });
+            AddOrUpdateUser(new User() { UserKey = 2, CompanyId = "c1" });
+            AddOrUpdateUser(new User() { UserKey = 3, CompanyId = "c2" });
+
+            AddOrUpdateOrder(new Order() { OrderKey = 1, UserKey = 1 });
+            AddOrUpdateOrder(new Order() { OrderKey = 2, UserKey = 2 });
+            AddOrUpdateOrder(new Order() { OrderKey = 3, UserKey = 3 });
+
+            // No matching user, enough rows to force a reorder
+            var expected = new List<JoinRowNumberResult>()
+            {
+                new JoinRowNumberResult(1, 1),
+                new JoinRowNumberResult(2, 2),
+                new JoinRowNumberResult(3, 1),
+            };
+            for (int i = 0; i < 200; i++)
+            {
+                var orderKey = 100 + i;
+                AddOrUpdateOrder(new Order() { OrderKey = orderKey, UserKey = 999 });
+                expected.Add(new JoinRowNumberResult(orderKey, i + 1));
+            }
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT o.OrderKey,
+                ROW_NUMBER() OVER (PARTITION BY u.CompanyId ORDER BY o.OrderKey + 1)
+                FROM orders o
+                LEFT JOIN users u ON u.UserKey = o.UserKey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        // An unreachable frame is null, not a ring overflow
+        [Fact]
+        public async Task HugePrecedingUpperBoundProducesNullsInsteadOfCrashing()
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                AddUser("c1", i, i);
+            }
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT UserKey,
+                SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN UNBOUNDED PRECEDING AND 9223372036854775807 PRECEDING)
+                FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new List<FrameSumResult>()
+            {
+                new FrameSumResult(0, null),
+                new FrameSumResult(1, null),
+                new FrameSumResult(2, null),
+                new FrameSumResult(3, null),
+                new FrameSumResult(4, null),
+            });
+        }
+
+        // A huge offset means unbounded preceding
+        // Passes today, the cost is memory not results
+        [Fact]
+        public async Task MinByHugePrecedingOffsetBehavesAsUnbounded()
+        {
+            AddUser("c1", 0, 50);
+            AddUser("c1", 1, 10);
+            AddUser("c1", 2, 30);
+            AddUser("c1", 3, 20);
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT UserKey,
+                min_by(UserKey, DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 9223372036854775807 PRECEDING AND CURRENT ROW)
+                FROM users");
+            await WaitForUpdate();
+
+            // The smallest value over the whole prefix
+            AssertCurrentDataEqual(new List<FrameMinByResult>()
+            {
+                new FrameMinByResult(0, 0),
+                new FrameMinByResult(1, 1),
+                new FrameMinByResult(2, 1),
+                new FrameMinByResult(3, 1),
+            });
+        }
     }
 }
