@@ -52,7 +52,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             var compiledValue = ColumnProjectCompiler.CompileToValue(windowFunction.Arguments[0], functionsRegister);
             var compiledCompareValue = ColumnProjectCompiler.CompileToValue(windowFunction.Arguments[1], functionsRegister);
 
-            MinMaxBoundUtils.GetBoundInfo(windowFunction, out var isRowBounded, out var lowerBoundRowOffset, out var upperBoundRowOffset);
+            MinMaxBoundUtils.GetBoundInfo(windowFunction, out var isRowBounded, out _, out _);
+
+            // Parse saturates offsets that reach past any partition, GetBoundInfo hands them out raw.
+            var bounds = BulkWindowFrameBounds.Parse(windowFunction);
+            var lowerBoundRowOffset = bounds.From;
+            var upperBoundRowOffset = bounds.To;
 
             if (isRowBounded && lowerBoundRowOffset != long.MinValue)
             {

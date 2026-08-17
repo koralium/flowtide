@@ -82,6 +82,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             {
                 return new BulkWindowFrameBounds(BulkWindowFrameKind.WholePartition, long.MinValue, long.MaxValue);
             }
+            // Reaches past the partition the other way, so no row can ever fall inside the frame.
+            if (to < -int.MaxValue || from > int.MaxValue)
+            {
+                return new BulkWindowFrameBounds(BulkWindowFrameKind.BoundedRows, 1, 0);
+            }
             if (from == long.MinValue)
             {
                 return new BulkWindowFrameBounds(BulkWindowFrameKind.UnboundedPreceding, from, to);
