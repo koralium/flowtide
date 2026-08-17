@@ -210,12 +210,37 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
                 if (_leftOutputColumns.Count > 0)
                 {
                     bool shouldDisposeOffsets = true;
+                    bool isIdentity = true;
+                    if (inputWeights.Count == output.FoundOffsets.Count)
+                    {
+                        for (int i = 0; i < output.FoundOffsets.Count; i++)
+                        {
+                            if (i != output.FoundOffsets[i])
+                            {
+                                isIdentity = false;
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        isIdentity = false;
+                    }
+                    
                     for (int i = 0; i < _leftOutputColumns.Count; i++)
                     {
-                        emitColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], output.FoundOffsets, MemoryAllocator, out var offsetUsed);
-                        if (offsetUsed)
+                        if (isIdentity)
                         {
-                            shouldDisposeOffsets = false;
+                            // If found offsets are identity, just pass the column
+                            emitColumns[_leftOutputIndices[i]] = msg.Data.EventBatchData.Columns[_leftOutputColumns[i]];
+                        }
+                        else
+                        {
+                            emitColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], output.FoundOffsets, MemoryAllocator, out var offsetUsed);
+                            if (offsetUsed)
+                            {
+                                shouldDisposeOffsets = false;
+                            }
                         }
                     }
                     if (shouldDisposeOffsets)
