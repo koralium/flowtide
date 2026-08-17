@@ -13,8 +13,6 @@ using FlowtideDotNet.Nexmark.Internal.Builders;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using Microsoft.Win32.SafeHandles;
-using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Threading.Tasks.Dataflow;
@@ -29,12 +27,22 @@ internal class NexmarkDataSourceState
 public class NexmarkDataSourceOperator : ReadBaseOperator
 {
     private static readonly Meter meter = new Meter("FlowtideDotNet.Nexmark", "1.0");
+
+    /// <summary>
+    /// Mapping costs one page fault per touched page, copying costs one read per buffer.
+    /// Below this share of the batch the faults we skip are worth more than the copy.
+    /// </summary>
+    private const double MappedProjectionLimit = 0.3;
+
+    private const int ReadBufferSize = 4 * 1024 * 1024;
+
     private readonly ReadRelation _readRelation;
     private readonly string _fileName;
     private readonly List<int> _emitIndices;
     private IObjectState<NexmarkDataSourceState>? _state;
     private readonly HashSet<string> _watermarkNames;
     private readonly Counter<int> _rowCounter;
+    private bool? _useMappedFile;
 
     public NexmarkDataSourceOperator(ReadRelation readRelation, string fileName, List<int> emitIndices, DataflowBlockOptions options) : base(options)
     {
@@ -68,66 +76,62 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         
         bool sentData = false;
 
-        using SafeFileHandle handle = File.OpenHandle(_fileName, FileMode.Open, FileAccess.Read, FileShare.Read, FileOptions.Asynchronous);
-        var pipeReader = new FilePipeReader(handle, 16 * 1024 * 1024);
+        using var source = CreateByteSource();
 
-        try
+        int currentBatchIndex = 0;
+
+        while (true)
         {
-            int currentBatchIndex = 0;
+            var buffer = await source.ReadAsync();
 
-            while (true)
+            if (buffer.IsEmpty && source.IsCompleted)
             {
-                var result = await pipeReader.ReadAsync();
-                var buffer = result.Buffer;
+                break;
+            }
 
-                if (buffer.IsEmpty && result.IsCompleted)
+            EventBatchData? batchData = null;
+            if (!CheckAndDeserializeBatch(buffer, _emitIndices, out batchData, out int totalLength))
+            {
+                if (source.IsCompleted)
                 {
+                    // What is left is not a full batch
                     break;
                 }
-
-                EventBatchData? batchData = null;
-                if (!CheckAndDeserializeBatch(buffer, _emitIndices, out batchData, out int totalLength))
-                {
-                    pipeReader.AdvanceTo(buffer.Start, buffer.End);
-                    continue;
-                }
-
-                pipeReader.SkipForward(totalLength);
-
-                if (currentBatchIndex < _state.Value.SentBatches)
-                {
-                    currentBatchIndex++;
-                    continue;
-                }
-
-                int rowCount = batchData.Count;
-
-                IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
-                for (int i = 0; i < _emitIndices.Count; i++)
-                {
-                    selectedColumns[i] = batchData.Columns[_emitIndices[i]];
-                }
-
-                PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
-                PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
-
-                for (int i = 0; i < rowCount; i++)
-                {
-                    weights.Add(1);
-                    iterations.Add(1);
-                }
-
-                var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(selectedColumns)));
-                await output.SendAsync(outputBatch);
-                
-                _state.Value.SentBatches++;
-                currentBatchIndex++;
-                sentData = true;
+                source.NeedMoreData(buffer);
+                continue;
             }
-        }
-        finally
-        {
-            pipeReader.Complete();
+
+            source.Consume(totalLength);
+
+            if (currentBatchIndex < _state.Value.SentBatches)
+            {
+                currentBatchIndex++;
+                continue;
+            }
+
+            int rowCount = batchData.Count;
+
+            IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
+            for (int i = 0; i < _emitIndices.Count; i++)
+            {
+                selectedColumns[i] = batchData.Columns[_emitIndices[i]];
+            }
+
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+
+            for (int i = 0; i < rowCount; i++)
+            {
+                weights.Add(1);
+                iterations.Add(1);
+            }
+
+            var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(selectedColumns)));
+            await output.SendAsync(outputBatch);
+
+            _state.Value.SentBatches++;
+            currentBatchIndex++;
+            sentData = true;
         }
 
         if (sentData)
@@ -137,6 +141,54 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         }
 
         output.ExitCheckpointLock();
+    }
+
+    /// <summary>
+    /// A mapped file only reads the pages the projection touches, a copy always reads everything.
+    /// Wide projections are therefore faster to copy, so the first batch decides which one to use.
+    /// </summary>
+    private IBatchByteSource CreateByteSource()
+    {
+        if (!_useMappedFile.HasValue)
+        {
+            _useMappedFile = GetProjectionDensity() < MappedProjectionLimit;
+        }
+
+        if (_useMappedFile.Value)
+        {
+            return new MappedByteSource(_fileName);
+        }
+        return new PipeByteSource(_fileName, ReadBufferSize);
+    }
+
+    /// <summary>
+    /// The share of the first batch that the projection reads.
+    /// </summary>
+    private double GetProjectionDensity()
+    {
+        using var mappedFile = new MappedFileReader(_fileName);
+
+        EventBatchData? batchData = null;
+        if (!CheckAndDeserializeBatch(mappedFile.Sequence, _emitIndices, out batchData, out int totalLength) ||
+            totalLength <= 0)
+        {
+            // Nothing to measure, copying is the safe pick
+            return 1;
+        }
+
+        try
+        {
+            long projectedBytes = 0;
+            for (int i = 0; i < _emitIndices.Count; i++)
+            {
+                projectedBytes += batchData.Columns[_emitIndices[i]].GetByteSize();
+            }
+            return (double)projectedBytes / totalLength;
+        }
+        finally
+        {
+            batchData.Dispose();
+        }
     }
 
     private bool CheckAndDeserializeBatch(
@@ -198,18 +250,16 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
 
         bool sentData = false;
 
-        using SafeFileHandle handle = File.OpenHandle(_fileName, FileMode.Open, FileAccess.Read, FileShare.Read, FileOptions.Asynchronous);
-        var pipeReader = new FilePipeReader(handle, 4 * 1024 * 1024);
+        using var source = CreateByteSource();
         try
         {
             int currentBatchIndex = 0;
             int totalRowCount = 0;
             while (true)
             {
-                var result = await pipeReader.ReadAsync();
-                var buffer = result.Buffer;
+                var buffer = await source.ReadAsync();
 
-                if (buffer.IsEmpty && result.IsCompleted)
+                if (buffer.IsEmpty && source.IsCompleted)
                 {
                     break;
                 }
@@ -217,11 +267,16 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
                 EventBatchData? batchData = null;
                 if (!CheckAndDeserializeBatch(buffer, _emitIndices, out batchData, out int totalLength))
                 {
-                    pipeReader.AdvanceTo(buffer.Start, buffer.End);
+                    if (source.IsCompleted)
+                    {
+                        // What is left is not a full batch
+                        break;
+                    }
+                    source.NeedMoreData(buffer);
                     continue;
                 }
 
-                pipeReader.SkipForward(totalLength);
+                source.Consume(totalLength);
 
                 if (currentBatchIndex < _state.Value.SentBatches)
                 {
@@ -265,7 +320,6 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         }
         finally
         {
-            pipeReader.Complete();
             output.ExitCheckpointLock();
         }
     }
