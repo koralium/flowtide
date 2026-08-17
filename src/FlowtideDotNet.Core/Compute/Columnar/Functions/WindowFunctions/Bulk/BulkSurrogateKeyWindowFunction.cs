@@ -53,6 +53,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         private Column? _currentValueColumn;
         private bool _entryLoaded;
         private bool _rowFound;
+        private readonly DataValueContainer _compareLeft = new DataValueContainer();
+        private readonly DataValueContainer _compareRight = new DataValueContainer();
 
         public long AffectedRowsBefore => 0;
 
@@ -129,22 +131,48 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             }
 
             _rowFound = false;
+            // Created lazily on the first computed row so empty partitions do not allocate keys.
+            _entryLoaded = false;
             var partitionKey = new ColumnRowReference()
             {
                 referenceBatch = _partitionKeyBatch!,
                 RowIndex = 0
             };
-            var result = await _tree.GetValue(in partitionKey);
-            if (result.found)
+
+            // The iterator holds the leaf until dispose, so the value stays valid while copied out
+            using var iterator = _tree.CreateIterator();
+            await iterator.Seek(partitionKey);
+            await foreach (var page in iterator)
             {
-                _currentValueColumn.UpdateAt(0, result.value.Value);
-                _entryLoaded = true;
+                foreach (var kv in page)
+                {
+                    if (IsPartitionKey(kv.Key))
+                    {
+                        _currentValueColumn.UpdateAt(0, kv.Value.Value);
+                        _entryLoaded = true;
+                    }
+                    // Seek lands at or after the key, only the first entry can match
+                    return;
+                }
             }
-            else
+        }
+
+        // Both sides hold the partition columns in order, so index by position
+        private bool IsPartitionKey(in ColumnRowReference candidate)
+        {
+            Debug.Assert(_partitionColumns != null);
+            Debug.Assert(_partitionKeyBatch != null);
+
+            for (int i = 0; i < _partitionColumns.Count; i++)
             {
-                // Created lazily on the first computed row so empty partitions do not allocate keys.
-                _entryLoaded = false;
+                candidate.referenceBatch.Columns[i].GetValueAt(candidate.RowIndex, _compareLeft, default);
+                _partitionKeyBatch.Columns[i].GetValueAt(0, _compareRight, default);
+                if (ColumnStore.Comparers.DataValueComparer.CompareTo(_compareLeft, _compareRight) != 0)
+                {
+                    return false;
+                }
             }
+            return true;
         }
 
         public bool TryComputeRow(BulkWindowRowContext context, DataValueContainer result)

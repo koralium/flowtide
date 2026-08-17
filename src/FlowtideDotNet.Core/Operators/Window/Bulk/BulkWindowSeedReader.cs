@@ -34,6 +34,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private int _materializedRows;
         private bool _exhausted;
         private bool _active;
+        // Next duplicate owed by the row the reader sits on, -1 when it is spent
+        private int _pendingDuplicate = -1;
 
         public BulkWindowSeedReader(
             BulkWindowBackwardPartitionReader reader,
@@ -95,6 +97,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 _stateColumns[i].Clear();
             }
             _materializedRows = 0;
+            _pendingDuplicate = -1;
         }
 
         /// <summary>
@@ -105,30 +108,35 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             Debug.Assert(_active, "Reset must be called before EnsureRows");
             while (_materializedRows < logicalRows)
             {
-                if (_exhausted)
+                if (_pendingDuplicate < 0)
                 {
-                    return false;
+                    if (_exhausted)
+                    {
+                        return false;
+                    }
+                    if (!await _reader.MoveNextRow())
+                    {
+                        _exhausted = true;
+                        return _materializedRows >= logicalRows;
+                    }
+                    _pendingDuplicate = _reader.Weight - 1;
                 }
-                if (!await _reader.MoveNextRow())
-                {
-                    _exhausted = true;
-                    return _materializedRows >= logicalRows;
-                }
-                MaterializeCurrentRow();
+                MaterializeCurrentRow(logicalRows);
             }
             return true;
         }
 
-        private void MaterializeCurrentRow()
+        // Takes only the duplicates asked for, one tie group can be wider than any seed
+        private void MaterializeCurrentRow(int logicalRows)
         {
             var batch = _reader.Batch;
             var rowIndex = _reader.RowIndex;
-            var weight = _reader.Weight;
             var values = _reader.Values;
 
             // Duplicates are materialized newest first, the last duplicate is the closest logical row.
-            for (int dup = weight - 1; dup >= 0; dup--)
+            while (_pendingDuplicate >= 0 && _materializedRows < logicalRows)
             {
+                var dup = _pendingDuplicate--;
                 for (int c = 0; c < _keyColumnCount; c++)
                 {
                     _rowColumns[c].Add(batch.Columns[c].GetValueAt(rowIndex, default));
