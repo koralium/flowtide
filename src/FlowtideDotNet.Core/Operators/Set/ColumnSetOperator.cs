@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Set.Structs;
 using FlowtideDotNet.Storage.DataStructures;
@@ -21,6 +22,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Set
@@ -30,10 +32,19 @@ namespace FlowtideDotNet.Core.Operators.Set
     {
         private readonly SetRelation _setRelation;
         private IBPlusTree<ColumnRowReference, TStruct, ColumnKeyStorageContainer, PrimitiveListValueContainer<TStruct>>? _tree;
+        private IBPlusTreeBulkInserter<ColumnRowReference, TStruct, ColumnKeyStorageContainer, PrimitiveListValueContainer<TStruct>>? _bulkInserter;
         private Func<TStruct, int> _weightCalculator;
         private int[] _emit;
         private int _inputLength;
         private readonly string _displayName;
+
+        // Batch buffers, reused between batches
+        private readonly BatchSorter _batchSorter;
+        private readonly IColumn[] _sortColumns;
+        private int[] _sortedIndicesBuffer = Array.Empty<int>();
+        private int[] _duplicateTagsBuffer = Array.Empty<int>();
+        private ColumnRowReference[] _keyBuffer = Array.Empty<ColumnRowReference>();
+        private TStruct[] _valueBuffer = Array.Empty<TStruct>();
 
         // Metrics
         private ICounter<long>? _eventsCounter;
@@ -109,6 +120,9 @@ namespace FlowtideDotNet.Core.Operators.Set
                     _emit[i] = i;
                 }
             }
+
+            _batchSorter = new BatchSorter(_inputLength);
+            _sortColumns = new IColumn[_inputLength];
         }
 
         private static int UnionDistinctWeightFunction(TStruct weights)
@@ -189,59 +203,59 @@ namespace FlowtideDotNet.Core.Operators.Set
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
         {
-            Debug.Assert(_tree != null);
+            Debug.Assert(_bulkInserter != null);
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_eventsProcessed != null);
 
-            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(MemoryAllocator);
-            PrimitiveList<int> outputWeights = new PrimitiveList<int>(MemoryAllocator);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
-
             var weights = msg.Data.Weights;
-            _eventsCounter.Add(weights.Count);
-            for (int i = 0; i < weights.Count; i++)
+            var rowCount = weights.Count;
+            _eventsCounter.Add(rowCount);
+
+            if (rowCount == 0)
             {
+                yield break;
+            }
+
+            var batchData = msg.Data.EventBatchData;
+
+            if (_keyBuffer.Length < rowCount)
+            {
+                _keyBuffer = new ColumnRowReference[rowCount];
+                _valueBuffer = new TStruct[rowCount];
+            }
+            var keys = _keyBuffer;
+            var values = _valueBuffer;
+
+            // Row index is the key, required by the inserter
+            for (int i = 0; i < rowCount; i++)
+            {
+                keys[i] = new ColumnRowReference() { referenceBatch = batchData, RowIndex = i };
                 var inputWeight = new TStruct();
                 inputWeight.SetValue(targetId, weights[i]);
-                var rowRef = new ColumnRowReference() { referenceBatch = msg.Data.EventBatchData, RowIndex = i };
+                values[i] = inputWeight;
 
 #if DEBUG_WRITE
                 Debug.Assert(allInput != null);
-                allInput.WriteLine($"{targetId}, {weights[i]} {rowRef}");
+                allInput.WriteLine($"{targetId}, {weights[i]} {keys[i]}");
 #endif
-
-                await _tree.RMWNoResult(rowRef, inputWeight, (input, current, exists) =>
-                {
-                    if (exists)
-                    {
-                        var previousWeight = _weightCalculator(current);
-                        InputWeightExtensions.Add(ref current, input);
-                        var newWeight = _weightCalculator(current);
-
-                        var difference = newWeight - previousWeight;
-                        if (difference != 0)
-                        {
-                            outputWeights.Add(difference);
-                            foundOffsets.Add(i);
-                            iterations.Add(msg.Data.Iterations[i]);
-                        }
-
-                        if (current.IsAllZero())
-                        {
-                            return (current, GenericWriteOperation.Delete);
-                        }
-                        return (current, GenericWriteOperation.Upsert);
-                    }
-                    var weight = _weightCalculator(input);
-                    if (weight != 0)
-                    {
-                        iterations.Add(msg.Data.Iterations[i]);
-                        outputWeights.Add(weight);
-                        foundOffsets.Add(i);
-                    }
-                    return (input, GenericWriteOperation.Upsert);
-                });
             }
+
+            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(MemoryAllocator, rowCount);
+            PrimitiveList<int> outputWeights = new PrimitiveList<int>(MemoryAllocator, rowCount);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator, rowCount);
+
+            var sortedIndices = SortBatch(batchData, rowCount);
+            var batchByteSize = batchData.GetByteSize() + (rowCount * Unsafe.SizeOf<TStruct>());
+
+            // Apply the whole batch, mutator collects the output
+            await _bulkInserter.ApplyBatch(
+                keys,
+                values,
+                rowCount,
+                sortedIndices,
+                _duplicateTagsBuffer,
+                new SetWeightsMutator<TStruct>(_weightCalculator, msg.Data.Iterations, foundOffsets, outputWeights, iterations),
+                batchByteSize);
 
             if (outputWeights.Count > 0)
             {
@@ -249,7 +263,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 IColumn[] outputColumns = new IColumn[_emit.Length];
                 for (int i = 0; i < _emit.Length; i++)
                 {
-                    outputColumns[i] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_emit[i]], foundOffsets, MemoryAllocator, out var offsetUsed);
+                    outputColumns[i] = ColumnWithOffset.CreateFlattened(batchData.Columns[_emit[i]], foundOffsets, MemoryAllocator, out var offsetUsed);
                     if (offsetUsed)
                     {
                         shouldDisposeOffsets = false;
@@ -273,10 +287,48 @@ namespace FlowtideDotNet.Core.Operators.Set
 
                 yield return new StreamEventBatch(new EventBatchWeighted(outputWeights, iterations, batch));
             }
+            else
+            {
+                foundOffsets.Dispose();
+                outputWeights.Dispose();
+                iterations.Dispose();
+            }
 #if DEBUG_WRITE
             Debug.Assert(allInput != null);
             allInput.Flush();
 #endif
+        }
+
+        /// <summary>
+        /// Sort by the full row and tag duplicates.
+        /// </summary>
+        private int[] SortBatch(EventBatchData batchData, int rowCount)
+        {
+            if (_sortedIndicesBuffer.Length < rowCount)
+            {
+                _sortedIndicesBuffer = new int[rowCount];
+                _duplicateTagsBuffer = new int[rowCount];
+            }
+            for (int i = 0; i < rowCount; i++)
+            {
+                _sortedIndicesBuffer[i] = i;
+            }
+
+            if (_inputLength == 0)
+            {
+                // No columns to sort by, all rows are equal
+                Array.Clear(_duplicateTagsBuffer, 0, rowCount);
+                return _sortedIndicesBuffer;
+            }
+
+            for (int i = 0; i < _inputLength; i++)
+            {
+                _sortColumns[i] = batchData.Columns[i];
+            }
+            var indicesSpan = _sortedIndicesBuffer.AsSpan(0, rowCount);
+            var tagsSpan = _duplicateTagsBuffer.AsSpan(0, rowCount);
+            _batchSorter.SortDataWithTags(_sortColumns, ref indicesSpan, ref tagsSpan);
+            return _sortedIndicesBuffer;
         }
 
         protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
@@ -311,8 +363,10 @@ namespace FlowtideDotNet.Core.Operators.Set
                 Comparer = new ColumnComparer(_inputLength),
                 KeySerializer = new ColumnStoreSerializer(_inputLength, MemoryAllocator),
                 ValueSerializer = new PrimitiveListValueContainerSerializer<TStruct>(MemoryAllocator),
+                UseByteBasedPageSizes = true,
                 MemoryAllocator = MemoryAllocator
             });
+            _bulkInserter = _tree.CreateBulkInserter();
         }
     }
 }

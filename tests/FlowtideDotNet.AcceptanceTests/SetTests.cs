@@ -217,5 +217,172 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
         }
+
+        /// <summary>
+        /// Tiny pages so a batch hits many leaves.
+        /// </summary>
+        [Fact]
+        public async Task TestUnionDistinctMultipleLeaves()
+        {
+            SetPageSizeBytes(256);
+            for (int i = 0; i < 1000; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, FirstName = "n" + i });
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT UserKey FROM users
+            UNION DISTINCT
+            SELECT UserKey + 500 FROM users");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                Users.Select(x => new { x.UserKey })
+                    .Union(Users.Select(x => new { UserKey = x.UserKey + 500 }))
+                    .ToList());
+
+            // Delete every third user in one batch
+            foreach (var user in Users.Where(x => x.UserKey % 3 == 0).ToList())
+            {
+                DeleteUser(user);
+            }
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                Users.Select(x => new { x.UserKey })
+                    .Union(Users.Select(x => new { UserKey = x.UserKey + 500 }))
+                    .ToList());
+        }
+
+        /// <summary>
+        /// Same value ten times, tests duplicates in a batch.
+        /// </summary>
+        [Fact]
+        public async Task TestExceptAllMultipleLeavesWithDuplicateRows()
+        {
+            SetPageSizeBytes(256);
+            for (int i = 0; i < 1000; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, FirstName = "n" + (i % 100) });
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT FirstName FROM users
+            EXCEPT ALL
+            SELECT FirstName FROM users WHERE UserKey < 500");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(ExpectedExceptAllByFirstName());
+
+            // Delete rows on both sides at once
+            foreach (var user in Users.Where(x => x.UserKey % 10 == 7).ToList())
+            {
+                DeleteUser(user);
+            }
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(ExpectedExceptAllByFirstName());
+        }
+
+        private class FirstNameRow
+        {
+            public string? FirstName { get; set; }
+        }
+
+        private List<FirstNameRow> ExpectedExceptAllByFirstName()
+        {
+            return Users
+                .GroupBy(x => x.FirstName)
+                .SelectMany(g => Enumerable.Repeat(
+                    new FirstNameRow() { FirstName = g.Key },
+                    g.Count() - g.Count(u => u.UserKey < 500)))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Values disappear from one input over many leaves.
+        /// </summary>
+        [Fact]
+        public async Task TestIntersectDistinctMultipleLeavesWithDeletes()
+        {
+            SetPageSizeBytes(256);
+            for (int i = 0; i < 600; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, FirstName = "n" + (i % 200) });
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT FirstName FROM users
+            INTERSECT DISTINCT
+            SELECT FirstName FROM users WHERE UserKey % 2 = 0");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(ExpectedIntersectByFirstName());
+
+            // These users share parity, removes the value completely
+            foreach (var user in Users.Where(x => x.UserKey % 2 == 0 && (x.UserKey % 200) % 4 == 0).ToList())
+            {
+                DeleteUser(user);
+            }
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(ExpectedIntersectByFirstName());
+        }
+
+        private List<FirstNameRow> ExpectedIntersectByFirstName()
+        {
+            var right = Users.Where(x => x.UserKey % 2 == 0).Select(x => x.FirstName).ToHashSet();
+            return Users
+                .Select(x => x.FirstName)
+                .Where(x => right.Contains(x))
+                .Distinct()
+                .Select(x => new FirstNameRow() { FirstName = x })
+                .ToList();
+        }
+
+        /// <summary>
+        /// Rename rotation deletes and adds a value in one batch.
+        /// </summary>
+        [Fact]
+        public async Task TestUnionDistinctMultipleLeavesWithRenameRotation()
+        {
+            SetPageSizeBytes(256);
+            const int userCount = 600;
+            for (int i = 0; i < userCount; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, FirstName = "n" + i });
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT FirstName FROM users WHERE UserKey < 500
+            UNION DISTINCT
+            SELECT FirstName FROM users WHERE UserKey >= 500");
+
+            await WaitForUpdate();
+
+            var expected = Users.Select(x => new { x.FirstName }).Distinct().ToList();
+            AssertCurrentDataEqual(expected);
+
+            var namesByUserKey = Users.OrderBy(x => x.UserKey).Select(x => x.FirstName).ToList();
+            foreach (var user in Users.OrderBy(x => x.UserKey).ToList())
+            {
+                user.FirstName = namesByUserKey[(user.UserKey + 1) % userCount];
+                AddOrUpdateUser(user);
+            }
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(expected);
+        }
     }
 }
