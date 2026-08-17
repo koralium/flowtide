@@ -66,6 +66,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
         public async Task Initialize(BulkWindowFunctionContext context)
         {
+            // The engine reinitializes this instance after a failure, EndScan reads both
+            _entryLoaded = false;
+            _rowFound = false;
             _partitionColumns = context.PartitionColumns;
             _memoryAllocator = context.MemoryAllocator;
             _tree = await context.StateManagerClient.GetOrCreateTree("partitions",
@@ -223,6 +226,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 }
                 _fullRowColumns = null;
             }
+            // The batches wrap the columns above, drop them together
+            _fullRowBatch = null;
+            _partitionKeyBatch = null;
             _currentValueColumn?.Dispose();
             _currentValueColumn = null;
             _emptyCheckReader?.Dispose();
