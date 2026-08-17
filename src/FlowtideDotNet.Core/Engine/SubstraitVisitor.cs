@@ -706,6 +706,10 @@ namespace FlowtideDotNet.Core.Engine
             {
                 if (!Operators.Window.Bulk.BulkWindowOperator.TryCreate(consistentPartitionWindowRelation, functionsRegister, DefaultBlockOptions, out var bulkWindowOperator))
                 {
+                    if (consistentPartitionWindowRelation.WindowFunctions.Count == 0)
+                    {
+                        throw new NotSupportedException("The window relation contains no window functions.");
+                    }
                     throw new NotSupportedException(
                         "The window relation contains a window function without a bulk window implementation " +
                         $"(functions: {string.Join(", ", consistentPartitionWindowRelation.WindowFunctions.Select(x => x.ExtensionName))}). " +

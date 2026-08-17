@@ -114,7 +114,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private bool _initialComputeSawData;
 
         /// <summary>
-        /// False when any window function has no bulk implementation.
+        /// False when the relation has no window functions, or one has no bulk implementation.
         /// </summary>
         public static bool TryCreate(
             ConsistentPartitionWindowRelation relation,
@@ -122,12 +122,17 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             ExecutionDataflowBlockOptions executionDataflowBlockOptions,
             [NotNullWhen(true)] out BulkWindowOperator? bulkWindowOperator)
         {
+            bulkWindowOperator = null;
+            // Without a function the operator emits the stored rows again on every scan
+            if (relation.WindowFunctions.Count == 0)
+            {
+                return false;
+            }
             var functions = new IBulkWindowFunction[relation.WindowFunctions.Count];
             for (int i = 0; i < relation.WindowFunctions.Count; i++)
             {
                 if (!functionsRegister.TryCreateBulkWindowFunction(relation.WindowFunctions[i], out var function))
                 {
-                    bulkWindowOperator = null;
                     return false;
                 }
                 functions[i] = function;
