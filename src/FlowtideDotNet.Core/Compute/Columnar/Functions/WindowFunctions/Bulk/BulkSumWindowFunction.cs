@@ -430,8 +430,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
                 return;
             }
 
-            // The previous row's frame starts one row further back
-            var lookback = (int)Math.Min(1 - _from, int.MaxValue);
+            // At least the previous row, its stored state is the seed
+            var lookback = (int)Math.Min(Math.Max(1, 1 - _from), int.MaxValue);
             await seedReader.EnsureRows(lookback);
             if (seedReader.MaterializedRows == 0)
             {
@@ -444,7 +444,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             // The stored sum already covers rows below _to
             _accumulateFromPosition = _to;
 
-            var seedRows = Math.Min(lookback, seedReader.MaterializedRows);
+            // A following lower bound needs no rows behind the anchor
+            var seedRows = Math.Min(1 - _from, seedReader.MaterializedRows);
             _nextFeedPosition = -seedRows;
             _oldestFramePosition = -seedRows;
             for (int back = (int)seedRows; back >= 1; back--)

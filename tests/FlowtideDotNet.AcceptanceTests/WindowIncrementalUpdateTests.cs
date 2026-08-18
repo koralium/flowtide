@@ -2535,5 +2535,81 @@ namespace FlowtideDotNet.AcceptanceTests
                 new SurrogateKeyResult("c2", 4, 1),
             });
         }
+
+        private const string FollowingOnlySumSql = @"
+            INSERT INTO output
+            SELECT CompanyId, UserKey,
+            SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY UserKey ROWS BETWEEN 1 FOLLOWING AND 3 FOLLOWING)
+            FROM users";
+
+        // The huge value sits mid partition so it enters a frame and is evicted again
+        private static double[] FollowingOnlyValues(int count)
+        {
+            var values = new double[count];
+            for (int i = 0; i < count; i++)
+            {
+                values[i] = i == 5 ? 1e16 : 1;
+            }
+            return values;
+        }
+
+        private void AddFollowingOnlyRows(int count)
+        {
+            var values = FollowingOnlyValues(10);
+            for (int i = 0; i < count; i++)
+            {
+                AddUser("c1", i, values[i]);
+            }
+        }
+
+        // Mirrors the operator's add then subtract accumulator over the whole partition
+        private static List<AvgResult> FollowingOnlySumExpected()
+        {
+            var values = FollowingOnlyValues(10);
+            var expected = new List<AvgResult>();
+            double accumulator = 0;
+            int nextFeed = 0;
+            int oldest = 0;
+            for (int i = 0; i < values.Length; i++)
+            {
+                while (nextFeed <= i + 3 && nextFeed < values.Length)
+                {
+                    accumulator += values[nextFeed];
+                    nextFeed++;
+                }
+                while (oldest < i + 1)
+                {
+                    accumulator -= values[oldest];
+                    oldest++;
+                }
+                expected.Add(new AvgResult("c1", i, nextFeed - oldest == 0 ? null : accumulator));
+            }
+            return expected;
+        }
+
+        // Baseline, every row is present before the stream starts
+        [Fact]
+        public async Task FollowingOnlySumFullComputeBaseline()
+        {
+            AddFollowingOnlyRows(10);
+            await StartStream(FollowingOnlySumSql);
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(FollowingOnlySumExpected());
+        }
+
+        // The same rows, but the last one arrives late
+        [Fact]
+        public async Task FollowingOnlySumIsIndependentOfArrivalOrder()
+        {
+            AddFollowingOnlyRows(9);
+            await StartStream(FollowingOnlySumSql);
+            await WaitForUpdate();
+
+            AddUser("c1", 9, FollowingOnlyValues(10)[9]);
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(FollowingOnlySumExpected());
+        }
     }
 }
