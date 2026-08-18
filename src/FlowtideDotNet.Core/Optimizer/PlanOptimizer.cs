@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -72,6 +72,12 @@ namespace FlowtideDotNet.Core.Optimizer
             if (settings.WindowJoinKeyOptimization)
             {
                 plan = WindowJoin.TumblingWindowJoinKeyOptimizer.Optimize(plan);
+            }
+
+            // Runs before emit optimizations so the projection is simplified
+            if (settings.GroupByToDistinct)
+            {
+                plan = GroupByToDistinct.GroupByToDistinctOptimizer.Optimize(plan);
             }
 
             // Try and remove any direct field references if possible
