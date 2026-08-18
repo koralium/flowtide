@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -249,10 +249,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
         }
 
         /// <summary>
-        /// Aggregates are partitioned, set operations are not.
+        /// The distinct is partitioned the same way the aggregate was.
         /// </summary>
         [Fact]
-        public void ParallelizedPlanKeepsAggregate()
+        public void ParallelizedPlanPartitionsTheDistinct()
         {
             var plan = BuildPlan(@"
                 INSERT INTO output
@@ -261,7 +261,51 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
             var relations = CollectRelations(plan);
 
-            Assert.NotEmpty(relations.OfType<AggregateRelation>());
+            Assert.Empty(relations.OfType<AggregateRelation>());
+
+            var sets = relations.OfType<SetRelation>().ToList();
+            Assert.Equal(2, sets.Count(x => x.Operation == SetOperation.UnionDistinct));
+            var combine = Assert.Single(sets.Where(x => x.Operation == SetOperation.UnionAll));
+            Assert.Equal(2, combine.Inputs.Count);
+
+            // The rows are scattered on both columns, the key is the whole row
+            var exchange = Assert.Single(relations.OfType<ExchangeRelation>());
+            Assert.Equal(2, exchange.PartitionCount);
+            var scatter = Assert.IsType<ScatterExchangeKind>(exchange.ExchangeKind);
+            Assert.Equal(2, scatter.Fields.Count);
+        }
+
+        /// <summary>
+        /// Every input of a multi input set operation gets its own exchange.
+        /// </summary>
+        [Fact]
+        public void ParallelizedExceptScattersBothInputs()
+        {
+            var plan = BuildPlan(@"
+                INSERT INTO output
+                SELECT col1 FROM table1
+                EXCEPT DISTINCT
+                SELECT col2 FROM table1");
+            plan = PlanOptimizer.Optimize(plan, new PlanOptimizerSettings() { Parallelization = 3 });
+
+            var relations = CollectRelations(plan);
+
+            var sets = relations.OfType<SetRelation>().ToList();
+            Assert.Equal(3, sets.Count(x => x.Operation == SetOperation.MinusPrimary));
+            var combine = Assert.Single(sets.Where(x => x.Operation == SetOperation.UnionAll));
+            Assert.Equal(3, combine.Inputs.Count);
+
+            // One exchange per input, both scattered on the same single column
+            var exchanges = relations.OfType<ExchangeRelation>().ToList();
+            Assert.Equal(2, exchanges.Count);
+            foreach (var exchange in exchanges)
+            {
+                Assert.Equal(3, exchange.PartitionCount);
+                var scatter = Assert.IsType<ScatterExchangeKind>(exchange.ExchangeKind);
+                var field = Assert.Single(scatter.Fields);
+                var segment = Assert.IsType<StructReferenceSegment>(Assert.IsType<DirectFieldReference>(field).ReferenceSegment);
+                Assert.Equal(0, segment.Field);
+            }
         }
 
         private static DirectFieldReference CreateFieldReference(int field)

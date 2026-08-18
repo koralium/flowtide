@@ -384,5 +384,164 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
         }
+
+        /// <summary>
+        /// Partitioned distinct, equal rows must land in the same partition.
+        /// </summary>
+        [Theory]
+        [InlineData(2)]
+        [InlineData(4)]
+        public async Task TestUnionDistinctParallel(int parallelization)
+        {
+            for (int i = 0; i < 1000; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, FirstName = "n" + (i % 250) });
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT FirstName FROM users WHERE UserKey < 500
+            UNION DISTINCT
+            SELECT FirstName FROM users WHERE UserKey >= 500",
+            planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings() { Parallelization = parallelization });
+
+            void AssertExpected()
+            {
+                AssertCurrentDataEqual(Users.Select(x => new { x.FirstName }).Distinct().ToList());
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Removes some values completely, others keep members
+            foreach (var user in Users.Where(x => (x.UserKey % 250) < 20).ToList())
+            {
+                DeleteUser(user);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// Both inputs are the same subplan and share a reference to it.
+        /// </summary>
+        [Theory]
+        [InlineData(2)]
+        [InlineData(4)]
+        public async Task TestUnionDistinctParallelSharedInput(int parallelization)
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT UserKey FROM users
+            UNION DISTINCT
+            SELECT UserKey FROM users",
+            planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings() { Parallelization = parallelization });
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(u => new { u.UserKey }).ToList());
+        }
+
+        /// <summary>
+        /// Both inputs must be scattered the same way for the rows to meet.
+        /// </summary>
+        [Theory]
+        [InlineData(2)]
+        [InlineData(4)]
+        public async Task TestExceptAllParallel(int parallelization)
+        {
+            for (int i = 0; i < 1000; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, FirstName = "n" + (i % 100) });
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT FirstName FROM users
+            EXCEPT ALL
+            SELECT FirstName FROM users WHERE UserKey < 500",
+            planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings() { Parallelization = parallelization });
+
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedExceptAllByFirstName());
+
+            foreach (var user in Users.Where(x => x.UserKey % 10 == 7).ToList())
+            {
+                DeleteUser(user);
+            }
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedExceptAllByFirstName());
+        }
+
+        [Theory]
+        [InlineData(2)]
+        [InlineData(4)]
+        public async Task TestIntersectDistinctParallel(int parallelization)
+        {
+            for (int i = 0; i < 600; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, FirstName = "n" + (i % 200) });
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT FirstName FROM users
+            INTERSECT DISTINCT
+            SELECT FirstName FROM users WHERE UserKey % 2 = 0",
+            planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings() { Parallelization = parallelization });
+
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedIntersectByFirstName());
+
+            foreach (var user in Users.Where(x => x.UserKey % 2 == 0 && (x.UserKey % 200) % 4 == 0).ToList())
+            {
+                DeleteUser(user);
+            }
+            await WaitForUpdate();
+            AssertCurrentDataEqual(ExpectedIntersectByFirstName());
+        }
+
+        /// <summary>
+        /// A group by without measures becomes a distinct, it must still partition.
+        /// </summary>
+        [Theory]
+        [InlineData(2)]
+        [InlineData(4)]
+        public async Task TestGroupByWithoutMeasuresParallel(int parallelization)
+        {
+            for (int i = 0; i < 1000; i++)
+            {
+                AddUser(new Entities.User
+                {
+                    UserKey = i,
+                    CompanyId = "co_" + (i % 10),
+                    Visits = i % 5 == 0 ? null : i % 4
+                });
+            }
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT companyId, visits
+            FROM users
+            GROUP BY companyId, visits",
+            planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings() { Parallelization = parallelization });
+
+            void AssertExpected()
+            {
+                AssertCurrentDataEqual(Users.Select(x => new { x.CompanyId, x.Visits }).Distinct().ToList());
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            foreach (var user in Users.Where(x => x.Visits == 3).ToList())
+            {
+                DeleteUser(user);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
     }
 }

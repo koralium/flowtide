@@ -218,6 +218,95 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
             return setRelation;
         }
 
+        public override Relation VisitSetRelation(SetRelation setRelation, object state)
+        {
+            Debug.Assert(_plan != null);
+
+            // Union all keeps no state, there is nothing to gain from partitioning it
+            if (parallelCount < 2 ||
+                setRelation.Operation == SetOperation.UnionAll ||
+                setRelation.Inputs[0].OutputLength == 0)
+            {
+                for (int i = 0; i < setRelation.Inputs.Count; i++)
+                {
+                    setRelation.Inputs[i] = Visit(setRelation.Inputs[i], state);
+                }
+                return setRelation;
+            }
+
+            // The key of a set operation is the whole row. Every input is scattered on all its
+            // columns, so equal rows from all the inputs end up in the same partition.
+            var inputLength = setRelation.Inputs[0].OutputLength;
+
+            var exchangeIds = new int[setRelation.Inputs.Count];
+            var exchangeLengths = new int[setRelation.Inputs.Count];
+
+            for (int i = 0; i < setRelation.Inputs.Count; i++)
+            {
+                List<ExchangeTarget> exchangeTargets = new List<ExchangeTarget>();
+                for (int p = 0; p < parallelCount; p++)
+                {
+                    exchangeTargets.Add(new StandardOutputExchangeTarget()
+                    {
+                        PartitionIds = new List<int>() { p }
+                    });
+                }
+
+                List<FieldReference> fields = new List<FieldReference>();
+                for (int f = 0; f < inputLength; f++)
+                {
+                    fields.Add(new DirectFieldReference()
+                    {
+                        ReferenceSegment = new StructReferenceSegment() { Field = f }
+                    });
+                }
+
+                var exchange = new ExchangeRelation()
+                {
+                    ExchangeKind = new ScatterExchangeKind()
+                    {
+                        Fields = fields
+                    },
+                    Input = setRelation.Inputs[i],
+                    Targets = exchangeTargets,
+                    PartitionCount = parallelCount
+                };
+
+                exchangeIds[i] = _plan.Relations.Count;
+                exchangeLengths[i] = exchange.OutputLength;
+                _plan.Relations.Add(exchange);
+            }
+
+            SetRelation[] parallelSets = new SetRelation[parallelCount];
+
+            for (int p = 0; p < parallelCount; p++)
+            {
+                var inputs = new List<Relation>();
+                for (int i = 0; i < setRelation.Inputs.Count; i++)
+                {
+                    inputs.Add(new StandardOutputExchangeReferenceRelation()
+                    {
+                        TargetId = p,
+                        ReferenceOutputLength = exchangeLengths[i],
+                        RelationId = exchangeIds[i]
+                    });
+                }
+
+                parallelSets[p] = new SetRelation()
+                {
+                    Inputs = inputs,
+                    Operation = setRelation.Operation,
+                    Emit = setRelation.Emit
+                };
+            }
+
+            return new SetRelation()
+            {
+                Inputs = new List<Relation>(parallelSets),
+                Operation = SetOperation.UnionAll
+            };
+        }
+
         public override Relation VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, object state)
         {
             Debug.Assert(_plan != null);

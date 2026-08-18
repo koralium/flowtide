@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -75,9 +75,8 @@ namespace FlowtideDotNet.Core.Optimizer
             }
 
             // Runs before emit optimizations so the projection is simplified.
-            // Aggregates are partitioned in parallel and distributed mode.
+            // Aggregates are partitioned in distributed mode, set operations are not.
             if (settings.GroupByToDistinct &&
-                settings.Parallelization <= 1 &&
                 settings.DistributedPlanOptions == null)
             {
                 plan = GroupByToDistinct.GroupByToDistinctOptimizer.Optimize(plan);
