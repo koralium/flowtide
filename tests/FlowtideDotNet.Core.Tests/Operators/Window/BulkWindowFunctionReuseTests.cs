@@ -14,8 +14,10 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk;
 using FlowtideDotNet.Core.Operators.Window.Bulk;
+using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
@@ -70,6 +72,8 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
             {
                 PersistentTree = _persistentTree!,
                 PartitionColumns = new List<int>() { 0 },
+                OrderBy = new List<SortField>(),
+                FunctionsRegister = new FunctionsRegister(),
                 CreateInsertComparer = () => new BulkWindowInsertComparer(null, new List<int>() { 0 }, new List<int>()),
                 FunctionIndex = 0,
                 AuxiliaryColumnStartIndex = 1,

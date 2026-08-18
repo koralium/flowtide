@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Window.Bulk;
+using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -94,6 +95,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public required IBPlusTree<ColumnRowReference, BulkWindowValue, ColumnKeyStorageContainer, BulkWindowValueContainer> PersistentTree { get; init; }
 
         public required List<int> PartitionColumns { get; init; }
+
+        /// <summary>
+        /// The relation's ORDER BY, so a function whose result depends on the ordering value can compile it.
+        /// The scan visits rows in this order, so it is the only ordering a function may assume.
+        /// </summary>
+        public required IReadOnlyList<SortField> OrderBy { get; init; }
+
+        /// <summary>
+        /// Used to compile expressions during initialization, such as an ORDER BY expression.
+        /// </summary>
+        public required IFunctionsRegister FunctionsRegister { get; init; }
 
         /// <summary>
         /// Comparers hold scratch state, each reader needs its own instance.

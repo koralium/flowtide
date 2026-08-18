@@ -137,6 +137,8 @@
           href: expressions/windowfunctions/arithmetic.md
         - name: Generic Functions
           href: expressions/windowfunctions/generic.md
+        - name: Datetime Functions
+          href: expressions/windowfunctions/datetime.md
     - name: Specialized Expressions
       href: expressions/specializedexpressions.md
 - name: SQL

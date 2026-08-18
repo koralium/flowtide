@@ -437,6 +437,39 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
+        private int _changeRowsRecieved;
+
+        /// <summary>
+        /// Rows the sink has been sent, counting the change stream rather than the resulting state.
+        /// A retract and its replacing insert count as two.
+        /// </summary>
+        public int ChangeRowsRecieved
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _changeRowsRecieved;
+                }
+            }
+        }
+
+        public void ResetChangeRowsRecieved()
+        {
+            lock (_lock)
+            {
+                _changeRowsRecieved = 0;
+            }
+        }
+
+        private void OnChangeRowsRecieved(int count)
+        {
+            lock (_lock)
+            {
+                _changeRowsRecieved += count;
+            }
+        }
+
         private bool _waitForUpdateDoesNotRequireDataChange = false;
 
         public void WaitForUpdateDoesNotRequireDataChange()
@@ -598,7 +631,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddWriteResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark, deleteFailCount: SinkDeleteFailCount));
+            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark, deleteFailCount: SinkDeleteFailCount, onChangeRowsRecieved: OnChangeRowsRecieved));
         }
 
         protected virtual void OnWatermark(Watermark watermark)

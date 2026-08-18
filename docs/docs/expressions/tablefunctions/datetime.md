@@ -143,3 +143,8 @@ ON o.amount = m.maxamount AND o.order_time >= m.window_start AND o.order_time < 
 ```
 
 When used in a LEFT JOIN, rows with a null timestamp are still returned with null window columns.
+
+## Session Window
+
+A session window is not a table function, since its windows depend on the other rows and not only on the timestamp.
+It is a [window function](../windowfunctions/datetime.md) instead, and can also be used as a grouping.

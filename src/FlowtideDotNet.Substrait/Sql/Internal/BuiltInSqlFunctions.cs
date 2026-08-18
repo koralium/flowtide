@@ -1016,6 +1016,89 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return NullType.Instance;
             }, true, false);
 
+            sqlFunctionRegister.RegisterWindowFunction("session_window",
+                (func, visitor, emitData) =>
+                {
+                    var argList = GetFunctionArguments(func.Args);
+                    if (argList.Args == null || argList.Args.Count != 2)
+                    {
+                        throw new InvalidOperationException("session_window must have exactly two arguments: (gap_amount, gap_unit)");
+                    }
+
+                    // The gap is measured between neighbouring rows in the scan order, so the order by
+                    // is the timestamp. A second order by column or a descending one would make the
+                    // neighbours something other than the next timestamp.
+                    if (func.Over is not WindowSpecType windowSpecType)
+                    {
+                        throw new SubstraitParseException("'session_window' function must have an over clause");
+                    }
+                    if (windowSpecType.Spec.OrderBy == null || windowSpecType.Spec.OrderBy.Count != 1)
+                    {
+                        throw new SubstraitParseException("'session_window' function must have exactly one order by column, it is the timestamp the gap is measured on");
+                    }
+                    if (windowSpecType.Spec.OrderBy[0].Asc == false)
+                    {
+                        throw new SubstraitParseException("'session_window' function must have an ascending order by column");
+                    }
+                    if (windowSpecType.Spec.WindowFrame != null)
+                    {
+                        throw new SubstraitParseException("'session_window' function does not support a frame, the session is the frame");
+                    }
+
+                    WindowFunction sessionWindowFunc = new WindowFunction()
+                    {
+                        Arguments = new List<Expressions.Expression>(),
+                        ExtensionName = FunctionsDatetime.SessionWindow,
+                        ExtensionUri = FunctionsDatetime.Uri,
+                    };
+
+                    for (int i = 0; i < argList.Args.Count; i++)
+                    {
+                        if (argList.Args[i] is FunctionArg.Unnamed unnamedSessionArg &&
+                            unnamedSessionArg.FunctionArgExpression is FunctionArgExpression.FunctionExpression sessionFuncExpr)
+                        {
+                            sessionWindowFunc.Arguments.Add(visitor.Visit(sessionFuncExpr.Expression, emitData).Expr);
+                        }
+                        else
+                        {
+                            throw new NotImplementedException("session_window does not support the input parameter");
+                        }
+                    }
+
+                    return new WindowResponse(sessionWindowFunc, new TimestampType());
+                });
+
+            // Accessors for a 'GROUP BY ... SESSION(ts, amount, unit)'. They carry the same arguments
+            // as the grouping so a mismatch is visible in the query rather than silently ignored.
+            // Registered as an aggregate so the group by handling collects it and resolves it onto
+            // the SESSION grouping, which is also where its arguments are checked against it.
+            // Reaching this mapper means there was no session for it to resolve to.
+            sqlFunctionRegister.RegisterAggregateFunction("session_start", (f, visitor, emitData) =>
+                throw new SubstraitParseException("session_start requires a 'SESSION(...)' expression in the GROUP BY"));
+
+            sqlFunctionRegister.RegisterAggregateFunction("session_end", (f, visitor, emitData) =>
+            {
+                var (timestamp, amount, unit) = VisitSessionAccessorArguments(f, visitor, emitData, "session_end");
+
+                // max(ts + gap) is max(ts) + gap because shifting every value by the same amount
+                // preserves the order, so the session end needs no aggregate of its own.
+                var shifted = new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsDatetime.Uri,
+                    ExtensionName = FunctionsDatetime.TimestampAdd,
+                    Arguments = new List<Expressions.Expression>() { unit, amount, timestamp }
+                };
+
+                return new AggregateResponse(
+                    new AggregateFunction()
+                    {
+                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionName = FunctionsArithmetic.Max,
+                        Arguments = new List<Expressions.Expression>() { shifted }
+                    },
+                    new TimestampType());
+            });
+
             sqlFunctionRegister.RegisterWindowFunction("lead",
                 (func, visitor, emitData) =>
                 {
@@ -1550,6 +1633,35 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
             });
+        }
+
+        /// <summary>
+        /// Visits the '(timestamp, gap_amount, gap_unit)' arguments shared by session_start and
+        /// session_end, which mirror the SESSION expression in the group by.
+        /// </summary>
+        private static (Expressions.Expression timestamp, Expressions.Expression amount, Expressions.Expression unit) VisitSessionAccessorArguments(
+            SqlParser.Ast.Expression.Function function,
+            SqlExpressionVisitor visitor,
+            EmitData emitData,
+            string functionName)
+        {
+            var argList = GetFunctionArguments(function.Args);
+            if (argList.Args == null || argList.Args.Count != 3)
+            {
+                throw new SubstraitParseException($"{functionName} must have three arguments: (timestamp, gap_amount, gap_unit)");
+            }
+
+            Expressions.Expression VisitArgument(int index)
+            {
+                if (argList.Args[index] is FunctionArg.Unnamed unnamed &&
+                    unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcArg)
+                {
+                    return visitor.Visit(funcArg.Expression, emitData).Expr;
+                }
+                throw new SubstraitParseException($"{functionName} argument {index} is not a valid expression");
+            }
+
+            return (VisitArgument(0), VisitArgument(1), VisitArgument(2));
         }
 
         private static void RegisterThreeVariableScalarFunction(

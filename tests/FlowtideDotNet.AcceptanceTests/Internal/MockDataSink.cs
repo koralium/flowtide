@@ -29,6 +29,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         private readonly WriteRelation writeRelation;
         private readonly Action<EventBatchData> onDataChange;
+        private readonly Action<int>? onChangeRowsRecieved;
         private int crashOnCheckpointCount;
         private int _checkpointsBeforeCrash;
         private bool watermarkRecieved = false;
@@ -51,7 +52,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             int crashOnCheckpointCount,
             Action<Watermark> onWatermark,
             int checkpointsBeforeCrash = 0,
-            int deleteFailCount = 0) : base(executionDataflowBlockOptions)
+            int deleteFailCount = 0,
+            Action<int>? onChangeRowsRecieved = null) : base(executionDataflowBlockOptions)
         {
             this.writeRelation = writeRelation;
             this.onDataChange = onDataChange;
@@ -59,6 +61,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             this.onWatermark = onWatermark;
             _checkpointsBeforeCrash = checkpointsBeforeCrash;
             _deleteFailCount = deleteFailCount;
+            this.onChangeRowsRecieved = onChangeRowsRecieved;
         }
 
         public override string DisplayName => "Mock Data Sink";
@@ -184,6 +187,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
             Logger.LogDebug("Mock sink recieved batch with {count} rows", msg.Data.Weights.Count);
+            // Counts the change stream itself, not the resulting state, so a test can assert that an
+            // incremental operator did not re-emit rows it should have left alone.
+            onChangeRowsRecieved?.Invoke(msg.Data.Weights.Count);
 #if DEBUG_WRITE
             allInput!.WriteLine("New batch");
             foreach (var e in msg.Events)

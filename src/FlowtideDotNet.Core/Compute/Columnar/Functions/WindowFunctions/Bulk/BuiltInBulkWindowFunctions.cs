@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Lead, new BulkLeadWindowFunctionDefinition());
             functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, new BulkLastValueWindowFunctionDefinition());
             functionsRegister.RegisterBulkWindowFunction(FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.SurrogateKeyInt64, new BulkSurrogateKeyInt64WindowFunctionDefinition());
+            functionsRegister.RegisterBulkWindowFunction(FunctionsDatetime.Uri, FunctionsDatetime.SessionWindow, new BulkSessionWindowFunctionDefinition());
         }
     }
 }
