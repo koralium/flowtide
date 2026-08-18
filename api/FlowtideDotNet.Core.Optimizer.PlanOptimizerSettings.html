@@ -188,7 +188,7 @@ Class PlanOptimizerSettings  <a class="header-action link-secondary" title="View
 
   <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_DistributedPlanOptions" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.DistributedPlanOptions">
   DistributedPlanOptions
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L59"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L64"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>If set, the plan is split into substreams for distributed mode as the last
@@ -285,6 +285,38 @@ each usage references the shared result.</p>
 
 
 
+  <a id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_GroupByToDistinct_" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.GroupByToDistinct*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_GroupByToDistinct" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.GroupByToDistinct">
+  GroupByToDistinct
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Rewrites a group by without measures into a distinct.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool GroupByToDistinct { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_NoMergeJoin_" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.NoMergeJoin*"></a>
 
   <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_NoMergeJoin" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.NoMergeJoin">
@@ -320,7 +352,7 @@ each usage references the shared result.</p>
 
   <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_Parallelization" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.Parallelization">
   Parallelization
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L45"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -384,7 +416,7 @@ Disabled by default, since its not well tested yet.</p>
 
   <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_TryAddWatermarkOutputMode" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.TryAddWatermarkOutputMode">
   TryAddWatermarkOutputMode
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L47"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -415,7 +447,7 @@ Disabled by default, since its not well tested yet.</p>
 
   <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_WindowJoinKeyOptimization" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.WindowJoinKeyOptimization">
   WindowJoinKeyOptimization
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L54"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Rewrites merge joins with a tumbling window band condition to lead with

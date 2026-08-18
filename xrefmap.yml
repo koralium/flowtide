@@ -34519,6 +34519,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.GetTimestampToJoin
   nameWithType: PlanOptimizerSettings.GetTimestampToJoin
+- uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.GroupByToDistinct
+  name: GroupByToDistinct
+  href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_GroupByToDistinct
+  commentId: P:FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.GroupByToDistinct
+  fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.GroupByToDistinct
+  nameWithType: PlanOptimizerSettings.GroupByToDistinct
+- uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.GroupByToDistinct*
+  name: GroupByToDistinct
+  href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_GroupByToDistinct_
+  commentId: Overload:FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.GroupByToDistinct
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.GroupByToDistinct
+  nameWithType: PlanOptimizerSettings.GroupByToDistinct
 - uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.NoMergeJoin
   name: NoMergeJoin
   href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_NoMergeJoin
