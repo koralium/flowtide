@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Core.Optimizer.DistributedMode;
+using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 
@@ -362,6 +363,101 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                     Assert.Equal(iterationRoot.Name, consumerRoot.Name);
                 }
             }
+        }
+
+        /// <summary>
+        /// A set operation is distributed with one scatter exchange per input, both scattered
+        /// on the whole row so equal rows from both inputs land in the same substream.
+        /// </summary>
+        [Fact]
+        public void DistributedSetOperationScattersEveryInput()
+        {
+            var sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+            CREATE TABLE users (userkey any);
+            CREATE TABLE orders (orderkey any, userkey any);
+
+            INSERT INTO output
+            SELECT userkey FROM users
+            EXCEPT DISTINCT
+            SELECT userkey FROM orders;
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            plan = PlanOptimizer.Optimize(plan, new PlanOptimizerSettings()
+            {
+                DistributedPlanOptions = new DistributedPlanOptions()
+                {
+                    SubstreamCount = 2
+                }
+            });
+
+            // Sink root, one scatter exchange per input and one gather exchange
+            Assert.Equal(4, plan.Relations.Count);
+
+            var scatterRoots = plan.Relations
+                .OfType<SubStreamRootRelation>()
+                .Where(x => x.Input is ExchangeRelation exchange && exchange.PartitionCount == 2)
+                .ToList();
+            Assert.Equal(2, scatterRoots.Count);
+
+            foreach (var scatterRoot in scatterRoots)
+            {
+                var exchange = (ExchangeRelation)scatterRoot.Input;
+                var scatter = Assert.IsType<ScatterExchangeKind>(exchange.ExchangeKind);
+                // Both inputs carry a single column, the whole row is the key
+                var field = Assert.Single(scatter.Fields);
+                var segment = Assert.IsType<StructReferenceSegment>(Assert.IsType<DirectFieldReference>(field).ReferenceSegment);
+                Assert.Equal(0, segment.Field);
+            }
+
+            // The partition copy in the other substream runs inside its gather exchange
+            var gatherRoot = plan.Relations
+                .OfType<SubStreamRootRelation>()
+                .Single(x => x.Input is ExchangeRelation exchange && exchange.PartitionCount == 1);
+            var gatherExchange = (ExchangeRelation)gatherRoot.Input;
+            var copy = Assert.IsType<SetRelation>(gatherExchange.Input);
+            Assert.Equal(SetOperation.MinusPrimary, copy.Operation);
+            Assert.Equal(2, copy.Inputs.Count);
+        }
+
+        /// <summary>
+        /// A distinct on the join key should stay in the partition lanes, the key is the whole
+        /// row so it always covers the lane partition keys.
+        /// </summary>
+        [Fact]
+        public void CoPartitionedDistinctStaysInLane()
+        {
+            var sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+            CREATE TABLE users (userkey any);
+            CREATE TABLE orders (orderkey any, userkey any);
+
+            INSERT INTO output
+            SELECT DISTINCT o.userkey FROM orders o
+            INNER JOIN users u ON o.userkey = u.userkey;
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            plan = PlanOptimizer.Optimize(plan, new PlanOptimizerSettings()
+            {
+                DistributedPlanOptions = new DistributedPlanOptions()
+                {
+                    SubstreamCount = 2
+                }
+            });
+
+            // Sink root, two join scatter exchanges and one gather exchange.
+            // There must be no separate scatter exchange for the distinct.
+            Assert.Equal(4, plan.Relations.Count);
+
+            var gatherRoot = plan.Relations
+                .OfType<SubStreamRootRelation>()
+                .Single(x => x.Input is ExchangeRelation exchange && exchange.PartitionCount == 1);
+            var gatherExchange = (ExchangeRelation)gatherRoot.Input;
+            var laneDistinct = Assert.IsType<SetRelation>(gatherExchange.Input);
+            Assert.Equal(SetOperation.UnionDistinct, laneDistinct.Operation);
+            Assert.True(ContainsRelation<MergeJoinRelation>(gatherExchange.Input), "The join partition should run inside the lane");
         }
 
         private static bool ContainsRelation<T>(Relation root) where T : Relation

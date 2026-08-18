@@ -74,10 +74,8 @@ namespace FlowtideDotNet.Core.Optimizer
                 plan = WindowJoin.TumblingWindowJoinKeyOptimizer.Optimize(plan);
             }
 
-            // Runs before emit optimizations so the projection is simplified.
-            // Aggregates are partitioned in distributed mode, set operations are not.
-            if (settings.GroupByToDistinct &&
-                settings.DistributedPlanOptions == null)
+            // Runs before emit optimizations so the projection is simplified
+            if (settings.GroupByToDistinct)
             {
                 plan = GroupByToDistinct.GroupByToDistinctOptimizer.Optimize(plan);
             }
