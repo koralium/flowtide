@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private readonly BulkWindowBackwardPartitionReader _reader;
         private readonly int _keyColumnCount;
         private readonly int _stateColumnCount;
-        private Column[] _rowColumns;
+        private readonly Column[] _rowColumns;
         private Column[] _stateColumns;
         private readonly IMemoryAllocator _memoryAllocator;
         private EventBatchData _rowBatch;
