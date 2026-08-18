@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
     internal class BulkWindowValueContainer : IValueContainer<BulkWindowValue>
     {
         internal PrimitiveList<int> _weights;
-        internal ListColumn[] _functionStates;
+        internal readonly ListColumn[] _functionStates;
         internal BitmapList _previousValueSent;
         private readonly IMemoryAllocator _memoryAllocator;
 
