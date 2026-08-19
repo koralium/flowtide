@@ -45,6 +45,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private const int ReceiveChunkSize = 2048;
 
         private readonly ConsistentPartitionWindowRelation _relation;
+        private readonly IFunctionsRegister _functionsRegister;
         private readonly IBulkWindowFunction[] _functions;
         private readonly List<int> _emitList;
 
@@ -148,6 +149,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
             ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _relation = relation;
+            _functionsRegister = functionsRegister;
             _functions = functions;
             _inputColumnCount = relation.Input.OutputLength;
 
@@ -1358,6 +1360,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 {
                     PersistentTree = _persistentTree,
                     PartitionColumns = _partitionColumns,
+                    OrderBy = _relation.OrderBy,
+                    FunctionsRegister = _functionsRegister,
                     CreateInsertComparer = () => CreateTreeComparer(),
                     FunctionIndex = f,
                     AuxiliaryColumnStartIndex = _auxiliaryStartIndices[f],

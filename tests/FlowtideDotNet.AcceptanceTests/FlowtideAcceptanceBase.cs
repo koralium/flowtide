@@ -119,6 +119,14 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
+        /// <summary>
+        /// Rows sent to the sink, not the state.
+        /// A retract and its replacing insert count as two.
+        /// </summary>
+        protected int ChangeRowsReceived => flowtideTestStream.ChangeRowsReceived;
+
+        protected void ResetChangeRowsReceived() => flowtideTestStream.ResetChangeRowsReceived();
+
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)
         {
             flowtideTestStream.AssertCurrentDataEqual(data);
