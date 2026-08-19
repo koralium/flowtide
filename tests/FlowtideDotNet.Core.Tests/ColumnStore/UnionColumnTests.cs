@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -1034,6 +1034,314 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(unionColumn.GetValueAt(3, default).IsNull);
             Assert.Equal("3", unionColumn.GetValueAt(4, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(5, default).AsDecimal);
+        }
+
+        [Fact]
+        public void TestRemoveRangeMixedTypes()
+        {
+            using Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("str1"),
+                new Int64Value(100),
+                new StringValue("str2"),
+                new Int64Value(200)
+            };
+
+            unionColumn.RemoveRange(0, 2);
+
+            Assert.Equal(2, unionColumn.Count);
+            Assert.Equal("str2", unionColumn.GetValueAt(0, default).AsString.ToString());
+            Assert.Equal(200, unionColumn.GetValueAt(1, default).AsLong);
+        }
+
+        [Fact]
+        public void TestRemoveRangeWithNullsKeepsOffsetsValid()
+        {
+            using Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("str1"),
+                NullValue.Instance,
+                new Int64Value(100),
+                new StringValue("str2"),
+                NullValue.Instance,
+                new Int64Value(200)
+            };
+
+            unionColumn.RemoveRange(0, 3);
+
+            Assert.Equal(3, unionColumn.Count);
+            Assert.Equal("str2", unionColumn.GetValueAt(0, default).AsString.ToString());
+            Assert.True(unionColumn.GetValueAt(1, default).IsNull);
+            Assert.Equal(200, unionColumn.GetValueAt(2, default).AsLong);
+
+            var (arrowArray, _) = unionColumn.ToArrowArray();
+            var denseUnionArray = Assert.IsType<Apache.Arrow.DenseUnionArray>(arrowArray);
+            for (int i = 0; i < unionColumn.Count; i++)
+            {
+                var offset = denseUnionArray.ValueOffsets[i];
+                Assert.True(offset >= 0, $"Offset at index {i} was negative: {offset}");
+            }
+        }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnSingleRow()
+        {
+            using Column destination = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a")
+            };
+
+            using Column source = new Column(GlobalMemoryManager.Instance)
+            {
+                new DoubleValue(5.5),
+                NullValue.Instance,
+                new DoubleValue(6.5)
+            };
+
+            // Copy only the first row, the null on row 1 is outside of the range and must not be copied.
+            destination.InsertRangeFrom(destination.Count, source, 0, 1);
+
+            Assert.Equal(3, destination.Count);
+            Assert.Equal(1, destination.GetValueAt(0, default).AsLong);
+            Assert.Equal("a", destination.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal(5.5, destination.GetValueAt(2, default).AsDouble);
+        }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnStopsAtEndOfRange()
+        {
+            using Column destination = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("s1")
+            };
+
+            using Column source = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(0),
+                NullValue.Instance,
+                new Int64Value(2),
+                new Int64Value(3),
+                new Int64Value(4),
+                new Int64Value(5),
+                new Int64Value(6),
+                NullValue.Instance
+            };
+
+            // The non null run after the null continues past the end of the range, only 4 rows may be copied.
+            destination.InsertRangeFrom(0, source, 0, 4);
+
+            Assert.Equal(6, destination.Count);
+            Assert.Equal(0, destination.GetValueAt(0, default).AsLong);
+            Assert.True(destination.GetValueAt(1, default).IsNull);
+            Assert.Equal(2, destination.GetValueAt(2, default).AsLong);
+            Assert.Equal(3, destination.GetValueAt(3, default).AsLong);
+            Assert.Equal(1, destination.GetValueAt(4, default).AsLong);
+            Assert.Equal("s1", destination.GetValueAt(5, default).AsString.ToString());
+        }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnTrailingNullRun()
+        {
+            using Column destination = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a")
+            };
+
+            using Column source = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(7),
+                NullValue.Instance,
+                NullValue.Instance,
+                new Int64Value(8)
+            };
+
+            // The null run continues past the end of the range, only one of the two nulls may be copied.
+            destination.InsertRangeFrom(destination.Count, source, 0, 2);
+
+            Assert.Equal(4, destination.Count);
+            Assert.Equal(1, destination.GetValueAt(0, default).AsLong);
+            Assert.Equal("a", destination.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal(7, destination.GetValueAt(2, default).AsLong);
+            Assert.True(destination.GetValueAt(3, default).IsNull);
+        }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnRandomRanges()
+        {
+            for (int seed = 0; seed < 200; seed++)
+            {
+                Random r = new Random(seed);
+                var sourceValues = new List<long?>();
+                using Column source = new Column(GlobalMemoryManager.Instance);
+                var sourceLength = r.Next(1, 12);
+                for (int i = 0; i < sourceLength; i++)
+                {
+                    if (r.Next(3) == 0)
+                    {
+                        source.Add(NullValue.Instance);
+                        sourceValues.Add(null);
+                    }
+                    else
+                    {
+                        long value = r.Next(0, 100);
+                        source.Add(new Int64Value(value));
+                        sourceValues.Add(value);
+                    }
+                }
+
+                // The string makes the destination a union column, which is the path under test.
+                using Column destination = new Column(GlobalMemoryManager.Instance)
+                {
+                    new Int64Value(1),
+                    new StringValue("a")
+                };
+                var expected = new List<object?> { 1L, "a" };
+
+                var start = r.Next(0, sourceLength);
+                var count = r.Next(0, sourceLength - start + 1);
+                var index = r.Next(0, destination.Count + 1);
+
+                destination.InsertRangeFrom(index, source, start, count);
+                expected.InsertRange(index, sourceValues.GetRange(start, count).Select(x => (object?)x));
+
+                Assert.Equal(expected.Count, destination.Count);
+                for (int i = 0; i < expected.Count; i++)
+                {
+                    var actual = destination.GetValueAt(i, default);
+                    if (expected[i] == null)
+                    {
+                        Assert.True(actual.IsNull, $"seed {seed} index {i} expected null");
+                    }
+                    else if (expected[i] is string expectedString)
+                    {
+                        Assert.Equal(expectedString, actual.AsString.ToString());
+                    }
+                    else
+                    {
+                        Assert.Equal((long)expected[i]!, actual.AsLong);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public void TestUpdateToNullKeepsNullChildCount()
+        {
+            using Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a"),
+                new Int64Value(2)
+            };
+
+            column.UpdateAt(0, NullValue.Instance);
+            column.UpdateAt(2, NullValue.Instance);
+
+            Assert.True(column.GetValueAt(0, default).IsNull);
+            Assert.Equal("a", column.GetValueAt(1, default).AsString.ToString());
+            Assert.True(column.GetValueAt(2, default).IsNull);
+
+            var (arrowArray, _) = column.ToArrowArray();
+            var denseUnionArray = Assert.IsType<Apache.Arrow.DenseUnionArray>(arrowArray);
+            Assert.Equal(column.Count, denseUnionArray.Fields.Sum(x => x.Length));
+        }
+
+        [Fact]
+        public void TestRemoveAfterUpdateToNullKeepsNullChildCount()
+        {
+            using Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a")
+            };
+
+            column.UpdateAt(0, NullValue.Instance);
+            column.RemoveAt(0);
+
+            Assert.Single(column);
+            Assert.Equal("a", column.GetValueAt(0, default).AsString.ToString());
+
+            var (arrowArray, _) = column.ToArrowArray();
+            var denseUnionArray = Assert.IsType<Apache.Arrow.DenseUnionArray>(arrowArray);
+            foreach (var field in denseUnionArray.Fields)
+            {
+                Assert.True(field.Length >= 0, $"Child array length was negative: {field.Length}");
+            }
+            Assert.Equal(column.Count, denseUnionArray.Fields.Sum(x => x.Length));
+        }
+
+        [Fact]
+        public void TestUnionChildCountsMatchRowCountRandomOperations()
+        {
+            for (int seed = 0; seed < 300; seed++)
+            {
+                Random r = new Random(seed);
+
+                using Column column = new Column(GlobalMemoryManager.Instance)
+                {
+                    new Int64Value(1),
+                    new StringValue("seed")
+                };
+
+                for (int step = 0; step < 30; step++)
+                {
+                    switch (r.Next(5))
+                    {
+                        case 0:
+                            column.Add(RandomValue(r));
+                            break;
+                        case 1:
+                            if (column.Count > 0)
+                            {
+                                column.UpdateAt(r.Next(column.Count), RandomValue(r));
+                            }
+                            break;
+                        case 2:
+                            if (column.Count > 0)
+                            {
+                                column.RemoveAt(r.Next(column.Count));
+                            }
+                            break;
+                        case 3:
+                            if (column.Count > 0)
+                            {
+                                column.InsertAt(r.Next(column.Count), RandomValue(r));
+                            }
+                            break;
+                        default:
+                            if (column.Count > 1)
+                            {
+                                var start = r.Next(column.Count - 1);
+                                column.RemoveRange(start, r.Next(0, column.Count - start));
+                            }
+                            break;
+                    }
+
+                    var (arrowArray, _) = column.ToArrowArray();
+                    if (arrowArray is Apache.Arrow.DenseUnionArray denseUnionArray)
+                    {
+                        foreach (var field in denseUnionArray.Fields)
+                        {
+                            Assert.True(field.Length >= 0, $"seed {seed} step {step}: child array length was negative: {field.Length}");
+                        }
+                        Assert.Equal(column.Count, denseUnionArray.Fields.Sum(x => x.Length));
+                    }
+                }
+            }
+        }
+
+        private static IDataValue RandomValue(Random r)
+        {
+            switch (r.Next(4))
+            {
+                case 0: return NullValue.Instance;
+                case 1: return new Int64Value(r.Next(0, 50));
+                case 2: return new StringValue("s" + r.Next(0, 50));
+                default: return new DoubleValue(r.Next(0, 50) + 0.5);
+            }
         }
     }
 }

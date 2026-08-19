@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -12,9 +12,11 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Hashing;
 using System.Linq;
@@ -458,6 +460,131 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var val = column.GetValueAt(0, default);
             Assert.Equal(0, val.AsMap.GetLength());
             column.Dispose(GlobalMemoryManager.Instance);
+        }
+
+        [Fact]
+        public void TestUpdateEmptyMap()
+        {
+            using Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("k"), new Int64Value(10) }
+            }));
+
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()));
+
+            column.UpdateAt(1, new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("a"), new Int64Value(1) }
+            }));
+
+            var val = column.GetValueAt(1, new MapKeyReferenceSegment() { Key = "a" });
+            Assert.Equal(1, val.AsLong);
+        }
+
+        [Fact]
+        public void TestRemoveAtEmptyMap()
+        {
+            using Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("k"), new Int64Value(10) }
+            }));
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()));
+
+            column.RemoveAt(1);
+            Assert.Equal(1, column.Count);
+        }
+
+        [Fact]
+        public void TestUpdateMapWithMixedTypes()
+        {
+            using Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("k1"), new StringValue("v1") },
+                { new StringValue("k2"), new Int64Value(100) }
+            }));
+
+            column.UpdateAt(0, new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("k1"), new StringValue("updated_v1") }
+            }));
+
+            var val = column.GetValueAt(0, new MapKeyReferenceSegment() { Key = "k1" });
+            Assert.Equal("updated_v1", val.AsString.ToString());
+
+            var missingVal = column.GetValueAt(0, new MapKeyReferenceSegment() { Key = "k2" });
+            Assert.True(missingVal.IsNull);
+        }
+
+        [Fact]
+        public void TestUpdateDeserializedMapColumn()
+        {
+            var memoryManager = GlobalMemoryManager.Instance;
+            var mapColumn = new MapColumn(memoryManager);
+
+            mapColumn.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("k1"), new Int64Value(10) }
+            }), memoryManager);
+
+            mapColumn.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()), memoryManager);
+            mapColumn.RemoveAt(0, memoryManager);
+
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+            serializer.SerializeDataColumns(bufferWriter, [mapColumn], 2);
+
+            var batchDeserializer = new EventBatchDeserializer(memoryManager);
+            var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(bufferWriter.WrittenMemory));
+            var deserializeResult = batchDeserializer.DeserializeDataColumns(ref sequenceReader);
+            var deserializedMapColumn = (MapColumn)deserializeResult.DataColumns[0];
+
+            Assert.NotNull(deserializedMapColumn);
+
+            deserializedMapColumn.Update(0, new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("k2"), new Int64Value(42) }
+            }), memoryManager);
+
+            var val = deserializedMapColumn.GetValueAt(0, new MapKeyReferenceSegment() { Key = "k2" });
+            Assert.Equal(42, val.AsLong);
+
+            mapColumn.Dispose(memoryManager);
+            deserializedMapColumn.Dispose(memoryManager);
+        }
+
+        [Fact]
+        public void TestUpdateColumnCreatedFromSizeInfo()
+        {
+            var sizeInfo = new ColumnSizeInfo
+            {
+                DataType = ArrowTypeId.Map,
+                TotalRows = 2,
+                Children = new List<ColumnSizeInfo>
+                {
+                    new ColumnSizeInfo { DataType = ArrowTypeId.String, TotalRows = 10, TotalVariableBytes = 100 },
+                    new ColumnSizeInfo { DataType = ArrowTypeId.Int64, TotalRows = 10, BitWidth = 64 },
+                }
+            };
+            using var column = new Column(GlobalMemoryManager.Instance, sizeInfo);
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("k1"), new Int64Value(10) }
+            }));
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()));
+
+            column.UpdateAt(1, new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("k2"), new Int64Value(42) }
+            }));
+
+            var val = column.GetValueAt(1, new MapKeyReferenceSegment() { Key = "k2" });
+            Assert.Equal(42, val.AsLong);
         }
     }
 }
