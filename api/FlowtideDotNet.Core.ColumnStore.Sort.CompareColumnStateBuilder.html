@@ -89,7 +89,7 @@
 
 
   <h1 id="FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder" data-uid="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder" class="text-break">
-Class CompareColumnStateBuilder  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L34"><i class="bi bi-code-slash"></i></a>
+Class CompareColumnStateBuilder  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L38"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -155,7 +155,7 @@ Class CompareColumnStateBuilder  <a class="header-action link-secondary" title="
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_MaxFastPathColumns" data-uid="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.MaxFastPathColumns">
   MaxFastPathColumns
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L36"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L40"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -190,7 +190,7 @@ Class CompareColumnStateBuilder  <a class="header-action link-secondary" title="
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_AddHasTailToKey_System_UInt128__" data-uid="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.AddHasTailToKey(System.UInt128@)">
   AddHasTailToKey(ref UInt128)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L50"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L83"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -217,11 +217,49 @@ Class CompareColumnStateBuilder  <a class="header-action link-secondary" title="
 
 
 
+  <a id="FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_ApplyDirection_" data-uid="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.ApplyDirection*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_ApplyDirection_FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnState_FlowtideDotNet_Core_ColumnStore_Sort_SortColumnDirection_" data-uid="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.ApplyDirection(FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState,FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection)">
+  ApplyDirection(CompareColumnState, SortColumnDirection)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L54"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static CompareColumnState ApplyDirection(CompareColumnState state, SortColumnDirection direction)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.html">CompareColumnState</a></dt>
+    <dd></dd>
+    <dt><code>direction</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.html">SortColumnDirection</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.html">CompareColumnState</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_BuildColumnsKey_" data-uid="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.BuildColumnsKey*"></a>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_BuildColumnsKey_System_UInt128__FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnState_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.BuildColumnsKey(System.UInt128@,FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState,System.Int32)">
   BuildColumnsKey(ref UInt128, CompareColumnState, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L48"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -252,11 +290,48 @@ Class CompareColumnStateBuilder  <a class="header-action link-secondary" title="
 
 
 
+  <a id="FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_CanContainNull_" data-uid="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.CanContainNull*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_CanContainNull_FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnState_" data-uid="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.CanContainNull(FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState)">
+  CanContainNull(CompareColumnState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L70"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>True when the layout can yield a null, so an asymmetric null placement must be kept.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool CanContainNull(CompareColumnState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.html">CompareColumnState</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_Create_" data-uid="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.Create*"></a>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_Create_FlowtideDotNet_Core_ColumnStore_ArrowTypeId_" data-uid="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.Create(FlowtideDotNet.Core.ColumnStore.ArrowTypeId)">
   Create(ArrowTypeId)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L38"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L42"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -292,7 +367,7 @@ Class CompareColumnStateBuilder  <a class="header-action link-secondary" title="
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L34" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/Sort/CompareColumnState.cs/#L38" class="edit-link">Edit this page</a>
         </div>
 
 

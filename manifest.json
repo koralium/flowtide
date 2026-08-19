@@ -4044,6 +4044,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.yml\" sourcestartlinenumber=\"1\">Per column sort order, default ascending nulls first.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Core.ColumnStore.Sort.SortCompareContext.yml",
       "output": {
         ".html": {

@@ -25110,25 +25110,6 @@ references:
   commentId: T:FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer
   fullName: FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer
   nameWithType: EventBatchSerializer
-- uid: FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.#ctor
-  name: EventBatchSerializer()
-  href: api/FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.html#FlowtideDotNet_Core_ColumnStore_Serialization_EventBatchSerializer__ctor
-  commentId: M:FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.#ctor
-  name.vb: New()
-  fullName: FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.EventBatchSerializer()
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.New()
-  nameWithType: EventBatchSerializer.EventBatchSerializer()
-  nameWithType.vb: EventBatchSerializer.New()
-- uid: FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.#ctor*
-  name: EventBatchSerializer
-  href: api/FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.html#FlowtideDotNet_Core_ColumnStore_Serialization_EventBatchSerializer__ctor_
-  commentId: Overload:FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.#ctor
-  isSpec: "True"
-  name.vb: New
-  fullName: FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.EventBatchSerializer
-  fullName.vb: FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.New
-  nameWithType: EventBatchSerializer.EventBatchSerializer
-  nameWithType.vb: EventBatchSerializer.New
 - uid: FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.GetEstimatedBufferSize(FlowtideDotNet.Core.ColumnStore.SerializationEstimation)
   name: GetEstimatedBufferSize(SerializationEstimation)
   href: api/FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchSerializer.html#FlowtideDotNet_Core_ColumnStore_Serialization_EventBatchSerializer_GetEstimatedBufferSize_FlowtideDotNet_Core_ColumnStore_SerializationEstimation_
@@ -25474,6 +25455,18 @@ references:
   commentId: F:FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.OffsetContainsNull
   fullName: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.OffsetContainsNull
   nameWithType: CompareColumnState.OffsetContainsNull
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.SortDescending
+  name: SortDescending
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.html#FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnState_SortDescending
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.SortDescending
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.SortDescending
+  nameWithType: CompareColumnState.SortDescending
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.SortNullsSwapped
+  name: SortNullsSwapped
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.html#FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnState_SortNullsSwapped
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.SortNullsSwapped
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.SortNullsSwapped
+  nameWithType: CompareColumnState.SortNullsSwapped
 - uid: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.TypeMask
   name: TypeMask
   href: api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.html#FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnState_TypeMask
@@ -25502,6 +25495,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.AddHasTailToKey
   nameWithType: CompareColumnStateBuilder.AddHasTailToKey
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.ApplyDirection(FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState,FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection)
+  name: ApplyDirection(CompareColumnState, SortColumnDirection)
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.html#FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_ApplyDirection_FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnState_FlowtideDotNet_Core_ColumnStore_Sort_SortColumnDirection_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.ApplyDirection(FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState,FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection)
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.ApplyDirection(FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState, FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection)
+  nameWithType: CompareColumnStateBuilder.ApplyDirection(CompareColumnState, SortColumnDirection)
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.ApplyDirection*
+  name: ApplyDirection
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.html#FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_ApplyDirection_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.ApplyDirection
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.ApplyDirection
+  nameWithType: CompareColumnStateBuilder.ApplyDirection
 - uid: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.BuildColumnsKey(System.UInt128@,FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState,System.Int32)
   name: BuildColumnsKey(ref UInt128, CompareColumnState, int)
   href: api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.html#FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_BuildColumnsKey_System_UInt128__FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnState_System_Int32_
@@ -25518,6 +25524,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.BuildColumnsKey
   nameWithType: CompareColumnStateBuilder.BuildColumnsKey
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.CanContainNull(FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState)
+  name: CanContainNull(CompareColumnState)
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.html#FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_CanContainNull_FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnState_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.CanContainNull(FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState)
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.CanContainNull(FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState)
+  nameWithType: CompareColumnStateBuilder.CanContainNull(CompareColumnState)
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.CanContainNull*
+  name: CanContainNull
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.html#FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_CanContainNull_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.CanContainNull
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.CanContainNull
+  nameWithType: CompareColumnStateBuilder.CanContainNull
 - uid: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.Create(FlowtideDotNet.Core.ColumnStore.ArrowTypeId)
   name: Create(ArrowTypeId)
   href: api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.html#FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnStateBuilder_Create_FlowtideDotNet_Core_ColumnStore_ArrowTypeId_
@@ -25741,6 +25760,36 @@ references:
   commentId: F:FlowtideDotNet.Core.ColumnStore.Sort.SelfComparePointers.validityPointer
   fullName: FlowtideDotNet.Core.ColumnStore.Sort.SelfComparePointers.validityPointer
   nameWithType: SelfComparePointers.validityPointer
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection
+  name: SortColumnDirection
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.html
+  commentId: T:FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection
+  nameWithType: SortColumnDirection
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.AscendingNullsFirst
+  name: AscendingNullsFirst
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.html#FlowtideDotNet_Core_ColumnStore_Sort_SortColumnDirection_AscendingNullsFirst
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.AscendingNullsFirst
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.AscendingNullsFirst
+  nameWithType: SortColumnDirection.AscendingNullsFirst
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.AscendingNullsLast
+  name: AscendingNullsLast
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.html#FlowtideDotNet_Core_ColumnStore_Sort_SortColumnDirection_AscendingNullsLast
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.AscendingNullsLast
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.AscendingNullsLast
+  nameWithType: SortColumnDirection.AscendingNullsLast
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.DescendingNullsFirst
+  name: DescendingNullsFirst
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.html#FlowtideDotNet_Core_ColumnStore_Sort_SortColumnDirection_DescendingNullsFirst
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.DescendingNullsFirst
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.DescendingNullsFirst
+  nameWithType: SortColumnDirection.DescendingNullsFirst
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.DescendingNullsLast
+  name: DescendingNullsLast
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.html#FlowtideDotNet_Core_ColumnStore_Sort_SortColumnDirection_DescendingNullsLast
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.DescendingNullsLast
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.SortColumnDirection.DescendingNullsLast
+  nameWithType: SortColumnDirection.DescendingNullsLast
 - uid: FlowtideDotNet.Core.ColumnStore.Sort.SortCompareContext
   name: SortCompareContext
   href: api/FlowtideDotNet.Core.ColumnStore.Sort.SortCompareContext.html
@@ -46647,6 +46696,22 @@ references:
   fullName.vb: FlowtideDotNet.Storage.StateManager.IStateManagerClient.GetOrCreateTree(Of K, V, TKeyContainer, TValueContainer)(String, FlowtideDotNet.Storage.Tree.BPlusTreeOptions(Of K, V, TKeyContainer, TValueContainer))
   nameWithType: IStateManagerClient.GetOrCreateTree<K, V, TKeyContainer, TValueContainer>(string, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer>)
   nameWithType.vb: IStateManagerClient.GetOrCreateTree(Of K, V, TKeyContainer, TValueContainer)(String, BPlusTreeOptions(Of K, V, TKeyContainer, TValueContainer))
+- uid: FlowtideDotNet.Storage.StateManager.IStateManagerClient.StateExists(System.String)
+  name: StateExists(string)
+  href: api/FlowtideDotNet.Storage.StateManager.IStateManagerClient.html#FlowtideDotNet_Storage_StateManager_IStateManagerClient_StateExists_System_String_
+  commentId: M:FlowtideDotNet.Storage.StateManager.IStateManagerClient.StateExists(System.String)
+  name.vb: StateExists(String)
+  fullName: FlowtideDotNet.Storage.StateManager.IStateManagerClient.StateExists(string)
+  fullName.vb: FlowtideDotNet.Storage.StateManager.IStateManagerClient.StateExists(String)
+  nameWithType: IStateManagerClient.StateExists(string)
+  nameWithType.vb: IStateManagerClient.StateExists(String)
+- uid: FlowtideDotNet.Storage.StateManager.IStateManagerClient.StateExists*
+  name: StateExists
+  href: api/FlowtideDotNet.Storage.StateManager.IStateManagerClient.html#FlowtideDotNet_Storage_StateManager_IStateManagerClient_StateExists_
+  commentId: Overload:FlowtideDotNet.Storage.StateManager.IStateManagerClient.StateExists
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.StateManager.IStateManagerClient.StateExists
+  nameWithType: IStateManagerClient.StateExists
 - uid: FlowtideDotNet.Storage.StateManager.IStateManager`1
   name: IStateManager<TMetadata>
   href: api/FlowtideDotNet.Storage.StateManager.IStateManager-1.html
