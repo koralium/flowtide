@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         private readonly int _keyColumnCount;
         private readonly int _stateColumnCount;
         private readonly Column[] _rowColumns;
-        private Column[] _stateColumns;
+        private readonly Column[] _stateColumns;
         private readonly IMemoryAllocator _memoryAllocator;
         private readonly EventBatchData _rowBatch;
         private int _materializedRows;
