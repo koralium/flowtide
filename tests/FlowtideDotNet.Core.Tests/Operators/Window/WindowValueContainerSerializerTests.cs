@@ -192,5 +192,45 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
 
             AssertThrowsWithoutLeaking(allocator, TruncatedPayload(8, -1, 8), (ref SequenceReader<byte> r) => serializer.Deserialize(ref r));
         }
+
+        // Lengths throw InvalidOperationException, a corrupt column stream does not
+        private static void AssertRejectedWithoutLeaking(TrackingMemoryAllocator allocator, byte[] payload, DeserializeAction deserialize)
+        {
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(payload));
+
+            Exception? caught = null;
+            try
+            {
+                deserialize(ref reader);
+            }
+            catch (Exception e)
+            {
+                caught = e;
+            }
+
+            Assert.IsType<InvalidOperationException>(caught);
+            Assert.Equal(0, allocator.ActiveAllocations);
+            Assert.Equal(0, allocator.OutstandingBytes);
+        }
+
+        // A length that is not whole ints would truncate the weight count
+        [Fact]
+        public void BulkDeserializeUnalignedWeightsLengthIsRejected()
+        {
+            var allocator = new TrackingMemoryAllocator();
+            var serializer = new BulkWindowValueContainerSerializer(1, allocator);
+
+            AssertRejectedWithoutLeaking(allocator, TruncatedPayload(6, 4, 16), (ref SequenceReader<byte> r) => serializer.Deserialize(ref r));
+        }
+
+        // A length that is not whole ints would truncate the weight count
+        [Fact]
+        public void DeserializeUnalignedWeightsLengthIsRejected()
+        {
+            var allocator = new TrackingMemoryAllocator();
+            var serializer = new WindowValueContainerSerializer(1, allocator);
+
+            AssertRejectedWithoutLeaking(allocator, TruncatedPayload(6, 4, 16), (ref SequenceReader<byte> r) => serializer.Deserialize(ref r));
+        }
     }
 }
