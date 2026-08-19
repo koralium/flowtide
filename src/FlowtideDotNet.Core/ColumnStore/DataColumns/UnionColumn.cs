@@ -663,7 +663,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 {
                     var nextNullLocation = validityList.FindNextFalseIndex(currentStart);
 
-                    if (nextNullLocation < 0)
+                    // The validity list covers the entire other column, the search can find a null
+                    // after the requested range so it must be limited to the end of the range.
+                    if (nextNullLocation < 0 || nextNullLocation > end)
                     {
                         nextNullLocation = end;
                     }
@@ -689,11 +691,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                                 nextOccurenceOffset = _offsets.Get(nextOccurence);
                             }
                         }
+                        // Both locations are limited to the end of the range so this can never exceed it.
                         var toCopy = nextNullLocation - currentStart;
-                        if (toCopy > count)
-                        {
-                            toCopy = count;
-                        }
                         valueColumn.InsertRangeFrom(nextOccurenceOffset, other, currentStart, toCopy, default, memoryAllocator);
                         _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, toCopy, _typeList.Span, valueColumnIndex, toCopy, memoryAllocator);
                         nextOccurenceOffset += toCopy;
@@ -703,7 +702,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     }
 
                     var nextNotNullLocation = validityList.FindNextTrueIndex(nextNullLocation);
-                    if (nextNotNullLocation < 0)
+                    if (nextNotNullLocation < 0 || nextNotNullLocation > end)
                     {
                         nextNotNullLocation = end;
                     }
