@@ -29,7 +29,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         private readonly WriteRelation writeRelation;
         private readonly Action<EventBatchData> onDataChange;
-        private readonly Action<int>? onChangeRowsRecieved;
+        private readonly Action<int>? onChangeRowsReceived;
         private int crashOnCheckpointCount;
         private int _checkpointsBeforeCrash;
         private bool watermarkRecieved = false;
@@ -53,7 +53,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             Action<Watermark> onWatermark,
             int checkpointsBeforeCrash = 0,
             int deleteFailCount = 0,
-            Action<int>? onChangeRowsRecieved = null) : base(executionDataflowBlockOptions)
+            Action<int>? onChangeRowsReceived = null) : base(executionDataflowBlockOptions)
         {
             this.writeRelation = writeRelation;
             this.onDataChange = onDataChange;
@@ -61,7 +61,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             this.onWatermark = onWatermark;
             _checkpointsBeforeCrash = checkpointsBeforeCrash;
             _deleteFailCount = deleteFailCount;
-            this.onChangeRowsRecieved = onChangeRowsRecieved;
+            this.onChangeRowsReceived = onChangeRowsReceived;
         }
 
         public override string DisplayName => "Mock Data Sink";
@@ -188,7 +188,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             Logger.LogDebug("Mock sink recieved batch with {count} rows", msg.Data.Weights.Count);
             // Counts the change stream so a test can assert re-emission.
-            onChangeRowsRecieved?.Invoke(msg.Data.Weights.Count);
+            onChangeRowsReceived?.Invoke(msg.Data.Weights.Count);
 #if DEBUG_WRITE
             allInput!.WriteLine("New batch");
             foreach (var e in msg.Events)

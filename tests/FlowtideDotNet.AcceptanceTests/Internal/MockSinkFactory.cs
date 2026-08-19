@@ -28,21 +28,21 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly int egressCrashOnCheckpointCount;
         private readonly int checkpointsBeforeCrash;
         private readonly int deleteFailCount;
-        private readonly Action<int>? onChangeRowsRecieved;
+        private readonly Action<int>? onChangeRowsReceived;
 
-        public MockSinkFactory(string regexPattern, Action<EventBatchData> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark, int checkpointsBeforeCrash = 0, int deleteFailCount = 0, Action<int>? onChangeRowsRecieved = null) : base(regexPattern)
+        public MockSinkFactory(string regexPattern, Action<EventBatchData> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark, int checkpointsBeforeCrash = 0, int deleteFailCount = 0, Action<int>? onChangeRowsReceived = null) : base(regexPattern)
         {
             this.onDataUpdate = onDataUpdate;
             this.egressCrashOnCheckpointCount = egressCrashOnCheckpointCount;
             this.onWatemrark = onwatermark;
             this.checkpointsBeforeCrash = checkpointsBeforeCrash;
             this.deleteFailCount = deleteFailCount;
-            this.onChangeRowsRecieved = onChangeRowsRecieved;
+            this.onChangeRowsReceived = onChangeRowsReceived;
         }
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new MockDataSink(writeRelation, dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark, checkpointsBeforeCrash, deleteFailCount, onChangeRowsRecieved);
+            return new MockDataSink(writeRelation, dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark, checkpointsBeforeCrash, deleteFailCount, onChangeRowsReceived);
         }
 
         public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)

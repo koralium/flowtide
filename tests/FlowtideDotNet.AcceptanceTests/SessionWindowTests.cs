@@ -316,11 +316,11 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(ExpectedSessions());
 
             // An append changes nothing stored, one row out.
-            ResetChangeRowsRecieved();
+            ResetChangeRowsReceived();
             AddUser("1", 500, 1000 + 50 * 5);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
-            Assert.Equal(1, ChangeRowsRecieved);
+            Assert.Equal(1, ChangeRowsReceived);
         }
 
         /// <summary>
@@ -336,14 +336,14 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            ResetChangeRowsRecieved();
+            ResetChangeRowsReceived();
             // Two appends in one batch, one new row each.
             AddUser("1", 500, 25);
             AddUser("1", 501, 2025);
             await WaitForUpdate();
 
             AssertCurrentDataEqual(ExpectedSessions());
-            Assert.Equal(2, ChangeRowsRecieved);
+            Assert.Equal(2, ChangeRowsReceived);
         }
 
         /// <summary>
@@ -358,7 +358,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            ResetChangeRowsRecieved();
+            ResetChangeRowsReceived();
             // The first session's start moves, all five rows change.
             AddUser("1", 500, -5);
             AddUser("1", 501, 2025);
@@ -366,7 +366,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(ExpectedSessions());
             // Five retracts, five inserts, plus two new rows.
-            Assert.Equal(12, ChangeRowsRecieved);
+            Assert.Equal(12, ChangeRowsReceived);
         }
 
         public record SessionAggResult(string? companyId, long count, DateTime? windowStart, DateTime? windowEnd);

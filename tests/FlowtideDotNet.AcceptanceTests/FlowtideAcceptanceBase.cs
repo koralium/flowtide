@@ -123,9 +123,9 @@ namespace FlowtideDotNet.AcceptanceTests
         /// Rows sent to the sink, not the state.
         /// A retract and its replacing insert count as two.
         /// </summary>
-        protected int ChangeRowsRecieved => flowtideTestStream.ChangeRowsRecieved;
+        protected int ChangeRowsReceived => flowtideTestStream.ChangeRowsReceived;
 
-        protected void ResetChangeRowsRecieved() => flowtideTestStream.ResetChangeRowsRecieved();
+        protected void ResetChangeRowsReceived() => flowtideTestStream.ResetChangeRowsReceived();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)
         {

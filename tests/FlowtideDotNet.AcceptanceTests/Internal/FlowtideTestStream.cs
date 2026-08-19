@@ -437,35 +437,35 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
-        private int _changeRowsRecieved;
+        private int _changeRowsReceived;
 
         /// <summary>
         /// Rows sent to the sink, not the state.
         /// </summary>
-        public int ChangeRowsRecieved
+        public int ChangeRowsReceived
         {
             get
             {
                 lock (_lock)
                 {
-                    return _changeRowsRecieved;
+                    return _changeRowsReceived;
                 }
             }
         }
 
-        public void ResetChangeRowsRecieved()
+        public void ResetChangeRowsReceived()
         {
             lock (_lock)
             {
-                _changeRowsRecieved = 0;
+                _changeRowsReceived = 0;
             }
         }
 
-        private void OnChangeRowsRecieved(int count)
+        private void OnChangeRowsReceived(int count)
         {
             lock (_lock)
             {
-                _changeRowsRecieved += count;
+                _changeRowsReceived += count;
             }
         }
 
@@ -630,7 +630,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddWriteResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark, deleteFailCount: SinkDeleteFailCount, onChangeRowsRecieved: OnChangeRowsRecieved));
+            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark, deleteFailCount: SinkDeleteFailCount, onChangeRowsReceived: OnChangeRowsReceived));
         }
 
         protected virtual void OnWatermark(Watermark watermark)
