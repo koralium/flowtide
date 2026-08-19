@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -367,12 +367,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var (startOffset, endOffset) = GetOffsets(in index);
 
+            var toRemove = endOffset - startOffset;
+
             // Check if the value is null, if so, remove the whole map
             // Null will be added as an empty map
             if (value.Type == ArrowTypeId.Null)
             {
-                _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
-                _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
+                if (toRemove > 0)
+                {
+                    _keyColumn.RemoveRange(startOffset, toRemove);
+                    _valueColumn.RemoveRange(startOffset, toRemove);
+                }
                 _offsets.Update(index + 1, startOffset, startOffset - endOffset);
                 return index;
             }
@@ -381,9 +386,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
 
             // Remove the old values
-            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
-            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
-
+            if (toRemove > 0)
+            {
+                _keyColumn.RemoveRange(startOffset, toRemove);
+                _valueColumn.RemoveRange(startOffset, toRemove);
+            }
 
             // Insert the new values
             for (int i = 0; i < ordered.Count; i++)
@@ -412,8 +419,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var (startOffset, endOffset) = GetOffsets(index);
 
-            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
-            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
+            var toRemove = endOffset - startOffset;
+            if (toRemove > 0)
+            {
+                _keyColumn.RemoveRange(startOffset, toRemove);
+                _valueColumn.RemoveRange(startOffset, toRemove);
+            }
             // Remove the offset and shift all the offsets after it
             _offsets.RemoveAt(index, startOffset - endOffset, memoryAllocator);
         }
@@ -431,9 +442,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             if (map is ReferenceMapValue referenceMapValue)
             {
-                var (copyStart, _) = referenceMapValue.mapColumn.GetOffsets(referenceMapValue.index);
-                _keyColumn.InsertRangeFrom(currentOffset, referenceMapValue.mapColumn._keyColumn, copyStart, mapLength);
-                _valueColumn.InsertRangeFrom(currentOffset, referenceMapValue.mapColumn._valueColumn, copyStart, mapLength);
+                if (mapLength > 0)
+                {
+                    var (copyStart, _) = referenceMapValue.mapColumn.GetOffsets(referenceMapValue.index);
+                    _keyColumn.InsertRangeFrom(currentOffset, referenceMapValue.mapColumn._keyColumn, copyStart, mapLength);
+                    _valueColumn.InsertRangeFrom(currentOffset, referenceMapValue.mapColumn._valueColumn, copyStart, mapLength);
+                }
             }
             else
             {

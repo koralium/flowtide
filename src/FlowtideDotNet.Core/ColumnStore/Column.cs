@@ -535,6 +535,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveRange(in int index, in int count)
         {
+            if (count == 0)
+            {
+                return;
+            }
             if (_nullCounter > 0)
             {
                 if (_type == ArrowTypeId.Null)
@@ -1014,6 +1018,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
         {
+            if (count == 0)
+            {
+                return;
+            }
             if (otherColumn is Column column)
             {
 

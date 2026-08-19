@@ -162,6 +162,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
         {
+            if (count == 0)
+            {
+                return;
+            }
             switch (_elementSize)
             {
                 case 1: AsInt8(ref _storage).RemoveRange(start, count, memoryAllocator); break;
@@ -173,6 +177,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void MoveRangeAt(int index, int count, IMemoryAllocator memoryAllocator)
         {
+            if (count == 0)
+            {
+                return;
+            }
             switch (_elementSize)
             {
                 case 1: AsInt8(ref _storage).MoveAtIndex(index, count, memoryAllocator); break;
@@ -184,6 +192,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
         {
+            if (targets.Length == 0)
+            {
+                return;
+            }
             switch (_elementSize)
             {
                 case 1: AsInt8(ref _storage).DeleteBatch(targets, memoryAllocator); break;
@@ -195,6 +207,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void InsertRangeFrom(int index, in IntegerList other, int start, int count, IMemoryAllocator memoryAllocator)
         {
+            if (count == 0)
+            {
+                return;
+            }
             Debug.Assert(_elementSize == other._elementSize);
             ref var otherStorage = ref Unsafe.AsRef(in other._storage);
             switch (_elementSize)

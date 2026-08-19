@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         [IterationSetup]
         public void IterationSetup()
         {
-            _stream = new BenchmarkTestStream("window" + iterationId.ToString());
+            _stream = new BenchmarkTestStream("window" + iterationId);
             _stream.SourceImmutable();
             _stream.Generate(500_000);
             _stream.CachePageCount = 200_000;
@@ -182,7 +182,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
 
         private void SetupStream(string sql)
         {
-            _stream = new BenchmarkTestStream("windowappend" + iterationId.ToString());
+            _stream = new BenchmarkTestStream("windowappend" + iterationId);
             _stream.Generate(100_000);
             _stream.CachePageCount = 100_000;
             iterationId++;

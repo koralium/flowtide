@@ -380,6 +380,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
                 if (value.Type == ArrowTypeId.Null)
                 {
+                    // The null column counts its rows, the row moves into it so it must be added there as well.
+                    _valueColumns[0].InsertAt(index, value, memoryAllocator);
                     _offsets.InsertAt(index, 0, memoryAllocator);
                     _typeList.Update(index, 0);
                     return index;
@@ -496,64 +498,56 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public unsafe void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
         {
+            if (count == 0)
+            {
+                return;
+            }
+
             // All value columns store the data in order so it is possible to remove the range from all value columns.
-            // The type list can be iterated and start offset and end offset can be calculated for each value column.
+            // The type list can be iterated to find the first offset and the number of values in the range for each value column.
             // The values are stored using stack alloc
-            // A difference stack is also allocated that contains the negative difference between the start and end offset for each value column.
+            // A difference stack is also allocated that contains the negative number of removed values for each value column.
             // That column is used when removing offsets to subtract the value from all offsets being moved down.
 
             // Max number of different types is 127
-            var startOffets = stackalloc int[127];
-            var endOffsets = stackalloc int[127];
+            var startOffsets = stackalloc int[127];
+            var typeCounts = stackalloc int[127];
             var difference = stackalloc int[127];
 
             for (int i = 0; i < _valueColumns.Count; i++)
             {
-                startOffets[i] = 0;
-                endOffsets[i] = 0;
+                startOffsets[i] = -1;
+                typeCounts[i] = 0;
                 difference[i] = 0;
             }
 
             var end = start + count;
-
-            int nullCount = 0;
 
             for (int i = start; i < end; i++)
             {
                 var type = _typeList.Get(i);
                 var offset = _offsets.Get(i);
 
-                if (type == 0)
+                typeCounts[type]++;
+                if (startOffsets[type] == -1)
                 {
-                    nullCount++;
+                    startOffsets[type] = offset;
                 }
-                if (startOffets[type] == 0)
-                {
-                    startOffets[type] = offset;
-                }
-                endOffsets[type] = offset;
-            }
-
-            if (nullCount > 0)
-            {
-                _valueColumns[0].RemoveRange(start, nullCount, memoryAllocator);
             }
 
             bool anyColumnHaveDataRemoved = false;
-            for (int i = 1; i < _valueColumns.Count; i++)
+            for (int i = 0; i < _valueColumns.Count; i++)
             {
-                var startOffset = startOffets[i];
-                var endOffset = endOffsets[i];
-
-                difference[i] = startOffset - endOffset;
-
-                if (endOffset == 0)
+                var typeCount = typeCounts[i];
+                if (typeCount > 0)
                 {
-                    continue;
+                    if (i > 0)
+                    {
+                        difference[i] = -typeCount;
+                        anyColumnHaveDataRemoved = true;
+                    }
+                    _valueColumns[i].RemoveRange(startOffsets[i], typeCount, memoryAllocator);
                 }
-                anyColumnHaveDataRemoved = true;
-                // Remove the range from the value column
-                _valueColumns[i].RemoveRange(startOffset, endOffset - startOffset, memoryAllocator);
             }
 
             if (anyColumnHaveDataRemoved)
@@ -564,7 +558,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 _offsets.RemoveRange(start, count, memoryAllocator);
             }
-
 
             _typeList.RemoveRange(start, count, memoryAllocator);
         }
@@ -672,7 +665,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 {
                     var nextNullLocation = validityList.FindNextFalseIndex(currentStart);
 
-                    if (nextNullLocation < 0)
+                    // The validity list covers the entire other column, the search can find a null
+                    // after the requested range so it must be limited to the end of the range.
+                    if (nextNullLocation < 0 || nextNullLocation > end)
                     {
                         nextNullLocation = end;
                     }
@@ -698,11 +693,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                                 nextOccurenceOffset = _offsets.Get(nextOccurence);
                             }
                         }
+                        // Both locations are limited to the end of the range so this can never exceed it.
                         var toCopy = nextNullLocation - currentStart;
-                        if (toCopy > count)
-                        {
-                            toCopy = count;
-                        }
                         valueColumn.InsertRangeFrom(nextOccurenceOffset, other, currentStart, toCopy, default, memoryAllocator);
                         _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, toCopy, _typeList.Span, valueColumnIndex, toCopy, memoryAllocator);
                         nextOccurenceOffset += toCopy;
@@ -712,7 +704,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     }
 
                     var nextNotNullLocation = validityList.FindNextTrueIndex(nextNullLocation);
-                    if (nextNotNullLocation < 0)
+                    if (nextNotNullLocation < 0 || nextNotNullLocation > end)
                     {
                         nextNotNullLocation = end;
                     }

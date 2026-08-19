@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
         /// <summary>
         /// Ascending with nulls last, for the asymmetric case the null-first compare can't do.
-        /// Probes the type and self compares, the IDataValue overload would box twice per comparison.
+        /// Values are compared, the column compare orders some types differently.
         /// </summary>
         public static int CompareColumnAscendingNullsLast(IColumn column, int x, int y)
         {
@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             {
                 return -1;
             }
-            return column.CompareTo(column, x, y);
+            return DataValueComparer.CompareTo(column.GetValueAt(x, default), column.GetValueAt(y, default));
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                 return 1;
             }
             // Operands swapped, descending is the reverse of the column's own order.
-            return column.CompareTo(column, y, x);
+            return DataValueComparer.CompareTo(column.GetValueAt(y, default), column.GetValueAt(x, default));
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

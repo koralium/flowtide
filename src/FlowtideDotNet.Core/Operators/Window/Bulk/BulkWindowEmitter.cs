@@ -35,9 +35,9 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
         // Row offsets into the current source batch that have not been block copied yet.
         private EventBatchData? _pendingSourceBatch;
-        private PrimitiveList<int> _pendingOffsets;
-        private PrimitiveList<int> _targetPositionScratch;
-        private PrimitiveList<int> _translatedOffsetScratch;
+        private readonly PrimitiveList<int> _pendingOffsets;
+        private readonly PrimitiveList<int> _targetPositionScratch;
+        private readonly PrimitiveList<int> _translatedOffsetScratch;
 
         public int Count => _weights.Count;
 

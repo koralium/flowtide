@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Operators.Window
 
             // Both lengths are validated before either allocation, a declared length
             // the payload cannot satisfy must not reach the allocator
-            if (weightsMemoryLength < 0 || reader.Remaining < weightsMemoryLength)
+            if (weightsMemoryLength < 0 || weightsMemoryLength % sizeof(int) != 0 || reader.Remaining < weightsMemoryLength)
             {
                 throw new InvalidOperationException("Failed to read weights memory");
             }

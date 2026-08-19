@@ -37,6 +37,11 @@ namespace FlowtideDotNet.Core.Optimizer
         /// </summary>
         public bool FindCommonSubPlans { get; set; } = true;
 
+        /// <summary>
+        /// Rewrites a group by without measures into a distinct.
+        /// </summary>
+        public bool GroupByToDistinct { get; set; } = true;
+
         public int Parallelization { get; set; } = 1;
 
         public bool TryAddWatermarkOutputMode { get; set; } = true;

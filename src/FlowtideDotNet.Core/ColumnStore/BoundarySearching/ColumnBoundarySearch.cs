@@ -95,14 +95,12 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                     var inputColumnState = inputColumn.GetColumnState();
 
                     var direction = _directions != null && i < _directions.Count ? _directions[i] : SortColumnDirection.AscendingNullsFirst;
-                    if (direction.HasSwappedNulls())
+                    if (direction.HasSwappedNulls() &&
+                        !CompareColumnStateBuilder.CanContainNull(treeColumnState) &&
+                        !CompareColumnStateBuilder.CanContainNull(inputColumnState))
                     {
                         // Only collapse when neither side can hold a null, a null probe still needs placement.
-                        if (!CompareColumnStateBuilder.CanContainNull(treeColumnState) &&
-                            !CompareColumnStateBuilder.CanContainNull(inputColumnState))
-                        {
-                            direction = direction.NormalizeForNoNulls();
-                        }
+                        direction = direction.NormalizeForNoNulls();
                     }
                     if (direction.IsDescending())
                     {

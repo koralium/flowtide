@@ -161,7 +161,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             public bool UsedRadix;
             public ulong PrimaryComplementMask;
             public uint SecondaryComplementMask;
-            public List<RadixExtraction> Extractions = new List<RadixExtraction>();
+            public readonly List<RadixExtraction> Extractions = new List<RadixExtraction>();
         }
 
         private static RadixPlan ComputePlan(IColumn[] columns, SortColumnDirection[]? directions)
