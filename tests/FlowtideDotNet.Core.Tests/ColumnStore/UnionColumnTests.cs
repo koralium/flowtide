@@ -1226,5 +1226,122 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 }
             }
         }
+
+        [Fact]
+        public void TestUpdateToNullKeepsNullChildCount()
+        {
+            using Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a"),
+                new Int64Value(2)
+            };
+
+            column.UpdateAt(0, NullValue.Instance);
+            column.UpdateAt(2, NullValue.Instance);
+
+            Assert.True(column.GetValueAt(0, default).IsNull);
+            Assert.Equal("a", column.GetValueAt(1, default).AsString.ToString());
+            Assert.True(column.GetValueAt(2, default).IsNull);
+
+            var (arrowArray, _) = column.ToArrowArray();
+            var denseUnionArray = Assert.IsType<Apache.Arrow.DenseUnionArray>(arrowArray);
+            Assert.Equal(column.Count, denseUnionArray.Fields.Sum(x => x.Length));
+        }
+
+        [Fact]
+        public void TestRemoveAfterUpdateToNullKeepsNullChildCount()
+        {
+            using Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a")
+            };
+
+            column.UpdateAt(0, NullValue.Instance);
+            column.RemoveAt(0);
+
+            Assert.Single(column);
+            Assert.Equal("a", column.GetValueAt(0, default).AsString.ToString());
+
+            var (arrowArray, _) = column.ToArrowArray();
+            var denseUnionArray = Assert.IsType<Apache.Arrow.DenseUnionArray>(arrowArray);
+            foreach (var field in denseUnionArray.Fields)
+            {
+                Assert.True(field.Length >= 0, $"Child array length was negative: {field.Length}");
+            }
+            Assert.Equal(column.Count, denseUnionArray.Fields.Sum(x => x.Length));
+        }
+
+        [Fact]
+        public void TestUnionChildCountsMatchRowCountRandomOperations()
+        {
+            for (int seed = 0; seed < 300; seed++)
+            {
+                Random r = new Random(seed);
+
+                using Column column = new Column(GlobalMemoryManager.Instance)
+                {
+                    new Int64Value(1),
+                    new StringValue("seed")
+                };
+
+                for (int step = 0; step < 30; step++)
+                {
+                    switch (r.Next(5))
+                    {
+                        case 0:
+                            column.Add(RandomValue(r));
+                            break;
+                        case 1:
+                            if (column.Count > 0)
+                            {
+                                column.UpdateAt(r.Next(column.Count), RandomValue(r));
+                            }
+                            break;
+                        case 2:
+                            if (column.Count > 0)
+                            {
+                                column.RemoveAt(r.Next(column.Count));
+                            }
+                            break;
+                        case 3:
+                            if (column.Count > 0)
+                            {
+                                column.InsertAt(r.Next(column.Count), RandomValue(r));
+                            }
+                            break;
+                        default:
+                            if (column.Count > 1)
+                            {
+                                var start = r.Next(column.Count - 1);
+                                column.RemoveRange(start, r.Next(0, column.Count - start));
+                            }
+                            break;
+                    }
+
+                    var (arrowArray, _) = column.ToArrowArray();
+                    if (arrowArray is Apache.Arrow.DenseUnionArray denseUnionArray)
+                    {
+                        foreach (var field in denseUnionArray.Fields)
+                        {
+                            Assert.True(field.Length >= 0, $"seed {seed} step {step}: child array length was negative: {field.Length}");
+                        }
+                        Assert.Equal(column.Count, denseUnionArray.Fields.Sum(x => x.Length));
+                    }
+                }
+            }
+        }
+
+        private static IDataValue RandomValue(Random r)
+        {
+            switch (r.Next(4))
+            {
+                case 0: return NullValue.Instance;
+                case 1: return new Int64Value(r.Next(0, 50));
+                case 2: return new StringValue("s" + r.Next(0, 50));
+                default: return new DoubleValue(r.Next(0, 50) + 0.5);
+            }
+        }
     }
 }

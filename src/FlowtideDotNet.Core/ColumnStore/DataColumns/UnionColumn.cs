@@ -380,6 +380,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
                 if (value.Type == ArrowTypeId.Null)
                 {
+                    // The null column counts its rows, the row moves into it so it must be added there as well.
+                    _valueColumns[0].InsertAt(index, value, memoryAllocator);
                     _offsets.InsertAt(index, 0, memoryAllocator);
                     _typeList.Update(index, 0);
                     return index;
