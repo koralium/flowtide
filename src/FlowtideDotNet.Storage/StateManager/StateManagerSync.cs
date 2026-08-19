@@ -66,7 +66,8 @@ namespace FlowtideDotNet.Storage.StateManager
         private readonly StateManagerOptions options;
         private readonly ILoggerFactory m_loggerFactory;
         private readonly ILogger logger;
-        private readonly Meter meter;
+        private Meter meter;
+        private readonly string m_meterName;
         private readonly string streamName;
         private readonly IStreamMemoryManager _streamMemoryManager;
         private readonly object m_lock = new object();
@@ -75,6 +76,7 @@ namespace FlowtideDotNet.Storage.StateManager
         private FileCacheOptions? m_fileCacheOptions;
         private IFileCacheFactory? m_fileCacheFactory;
         private bool disposedValue;
+        private bool m_ownsPersistentStorage;
 
         //private ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> m_adminSession;
         readonly Dictionary<string, IStateManagerClient> _clients = new Dictionary<string, IStateManagerClient>();
@@ -117,12 +119,22 @@ namespace FlowtideDotNet.Storage.StateManager
             m_loggerFactory = loggerFactory;
             this.logger = loggerFactory.CreateLogger("StateManager");
             this.meter = meter;
+            this.m_meterName = meter.Name;
             this.streamName = streamName;
             this._streamMemoryManager = streamMemoryManager;
         }
 
         private void Setup()
         {
+            if (disposedValue)
+            {
+                // The engine disposes the manager when a stream stops and initializes it again if
+                // the stream starts back up. A fresh meter replaces the instruments that went with
+                // the disposed one, the state clients register on it again as they are recreated.
+                meter = new Meter(m_meterName);
+                disposedValue = false;
+            }
+
             if (m_cacheTable == null)
             {
                 m_cacheTable = new S3FifoTableSync(new CacheTableOptions(streamName, logger, meter, new MemoryStatsWithGC(_streamMemoryManager))
@@ -144,10 +156,12 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     DirectoryPath = "./data/fileCachePersistence"
                 });
+                m_ownsPersistentStorage = true;
             }
             else
             {
                 m_persistentStorage = options.PersistentStorage;
+                m_ownsPersistentStorage = false;
             }
             m_fileCacheOptions = options.TemporaryStorageOptions ?? new FileCacheOptions()
             {
@@ -499,14 +513,20 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     // Dispose the cache table first so it stops the cleanup task.
                     // Otherwise an in-flight eviction writes through an already disposed client.
+                    // Cleared so a later initialize builds a fresh one, the disposed table's
+                    // eviction gate and cleanup task cannot be reused.
                     if (m_cacheTable != null)
                     {
                         m_cacheTable.Dispose();
+                        m_cacheTable = null;
                     }
 
-                    if (m_persistentStorage != null)
+                    // A supplied storage belongs to the caller and must outlive a stop, otherwise
+                    // the next start has nothing to recover from. Setup resets it for restore.
+                    if (m_persistentStorage != null && m_ownsPersistentStorage)
                     {
                         m_persistentStorage.Dispose();
+                        m_persistentStorage = null;
                     }
 
                     foreach (var stateClient in _stateClients)
@@ -514,6 +534,10 @@ namespace FlowtideDotNet.Storage.StateManager
                         stateClient.Value.Dispose();
                     }
                     _stateClients.Clear();
+
+                    // Released after the clients, they register instruments on it.
+                    meter.Dispose();
+                    Initialized = false;
                 }
 
                 disposedValue = true;

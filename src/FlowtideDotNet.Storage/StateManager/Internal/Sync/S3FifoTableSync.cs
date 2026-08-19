@@ -99,6 +99,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private Task? m_cleanupTask;
         private int maxSize;
         private readonly ILogger logger;
+        // Owned by the state manager and shared with the state clients, never disposed here.
         private readonly Meter meter;
         private readonly string m_streamName;
         private readonly long maxMemoryUsageInBytes;
@@ -1098,7 +1099,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     DisposeEntries();
                     m_cleanupTokenSource.Dispose();
-                    meter.Dispose();
                     _fullLock.Dispose();
                 }
                 m_disposedValue = true;
