@@ -94,9 +94,13 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
             {
                 deserialize(ref reader);
             }
+            catch (InvalidOperationException)
+            {
+                threw = true;
+            }
             catch (Exception)
             {
-                // The corrupt column stream reports a bare Exception, the lengths an InvalidOperationException
+                // The corrupt column stream reports a bare Exception, while other paths may throw InvalidOperationException
                 threw = true;
             }
 
