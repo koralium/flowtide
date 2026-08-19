@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         [IterationSetup]
         public void IterationSetup()
         {
-            _stream = new BenchmarkTestStream("window" + iterationId.ToString());
+            _stream = new BenchmarkTestStream("window" + iterationId);
             _stream.SourceImmutable();
             _stream.Generate(500_000);
             _stream.CachePageCount = 200_000;
