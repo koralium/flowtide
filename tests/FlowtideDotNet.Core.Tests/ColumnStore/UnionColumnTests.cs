@@ -1082,5 +1082,149 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 Assert.True(offset >= 0, $"Offset at index {i} was negative: {offset}");
             }
         }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnSingleRow()
+        {
+            using Column destination = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a")
+            };
+
+            using Column source = new Column(GlobalMemoryManager.Instance)
+            {
+                new DoubleValue(5.5),
+                NullValue.Instance,
+                new DoubleValue(6.5)
+            };
+
+            // Copy only the first row, the null on row 1 is outside of the range and must not be copied.
+            destination.InsertRangeFrom(destination.Count, source, 0, 1);
+
+            Assert.Equal(3, destination.Count);
+            Assert.Equal(1, destination.GetValueAt(0, default).AsLong);
+            Assert.Equal("a", destination.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal(5.5, destination.GetValueAt(2, default).AsDouble);
+        }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnStopsAtEndOfRange()
+        {
+            using Column destination = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("s1")
+            };
+
+            using Column source = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(0),
+                NullValue.Instance,
+                new Int64Value(2),
+                new Int64Value(3),
+                new Int64Value(4),
+                new Int64Value(5),
+                new Int64Value(6),
+                NullValue.Instance
+            };
+
+            // The non null run after the null continues past the end of the range, only 4 rows may be copied.
+            destination.InsertRangeFrom(0, source, 0, 4);
+
+            Assert.Equal(6, destination.Count);
+            Assert.Equal(0, destination.GetValueAt(0, default).AsLong);
+            Assert.True(destination.GetValueAt(1, default).IsNull);
+            Assert.Equal(2, destination.GetValueAt(2, default).AsLong);
+            Assert.Equal(3, destination.GetValueAt(3, default).AsLong);
+            Assert.Equal(1, destination.GetValueAt(4, default).AsLong);
+            Assert.Equal("s1", destination.GetValueAt(5, default).AsString.ToString());
+        }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnTrailingNullRun()
+        {
+            using Column destination = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a")
+            };
+
+            using Column source = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(7),
+                NullValue.Instance,
+                NullValue.Instance,
+                new Int64Value(8)
+            };
+
+            // The null run continues past the end of the range, only one of the two nulls may be copied.
+            destination.InsertRangeFrom(destination.Count, source, 0, 2);
+
+            Assert.Equal(4, destination.Count);
+            Assert.Equal(1, destination.GetValueAt(0, default).AsLong);
+            Assert.Equal("a", destination.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal(7, destination.GetValueAt(2, default).AsLong);
+            Assert.True(destination.GetValueAt(3, default).IsNull);
+        }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnRandomRanges()
+        {
+            for (int seed = 0; seed < 200; seed++)
+            {
+                Random r = new Random(seed);
+                var sourceValues = new List<long?>();
+                using Column source = new Column(GlobalMemoryManager.Instance);
+                var sourceLength = r.Next(1, 12);
+                for (int i = 0; i < sourceLength; i++)
+                {
+                    if (r.Next(3) == 0)
+                    {
+                        source.Add(NullValue.Instance);
+                        sourceValues.Add(null);
+                    }
+                    else
+                    {
+                        long value = r.Next(0, 100);
+                        source.Add(new Int64Value(value));
+                        sourceValues.Add(value);
+                    }
+                }
+
+                // The string makes the destination a union column, which is the path under test.
+                using Column destination = new Column(GlobalMemoryManager.Instance)
+                {
+                    new Int64Value(1),
+                    new StringValue("a")
+                };
+                var expected = new List<object?> { 1L, "a" };
+
+                var start = r.Next(0, sourceLength);
+                var count = r.Next(0, sourceLength - start + 1);
+                var index = r.Next(0, destination.Count + 1);
+
+                destination.InsertRangeFrom(index, source, start, count);
+                expected.InsertRange(index, sourceValues.GetRange(start, count).Select(x => (object?)x));
+
+                Assert.Equal(expected.Count, destination.Count);
+                for (int i = 0; i < expected.Count; i++)
+                {
+                    var actual = destination.GetValueAt(i, default);
+                    if (expected[i] == null)
+                    {
+                        Assert.True(actual.IsNull, $"seed {seed} index {i} expected null");
+                    }
+                    else if (expected[i] is string expectedString)
+                    {
+                        Assert.Equal(expectedString, actual.AsString.ToString());
+                    }
+                    else
+                    {
+                        Assert.Equal((long)expected[i]!, actual.AsLong);
+                    }
+                }
+            }
+        }
     }
 }
