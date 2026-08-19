@@ -12303,6 +12303,16 @@
     },
     {
       "type": "Conceptual",
+      "source_relative_path": "docs/expressions/windowfunctions/datetime.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/expressions/windowfunctions/datetime.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
       "source_relative_path": "docs/expressions/windowfunctions/generic.md",
       "output": {
         ".html": {

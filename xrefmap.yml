@@ -59029,6 +59029,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.RoundCalendar
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.RoundCalendar
   nameWithType: FunctionsDatetime.RoundCalendar
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.SessionWindow
+  name: SessionWindow
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsDatetime_SessionWindow
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.SessionWindow
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.SessionWindow
+  nameWithType: FunctionsDatetime.SessionWindow
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.Strftime
   name: Strftime
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsDatetime_Strftime

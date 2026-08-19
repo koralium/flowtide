@@ -228,6 +228,9 @@ JOIN (
 ON o.amount = m.maxamount AND o.order_time &gt;= m.window_start AND o.order_time &lt; m.window_end
 </code></pre>
 <p>When used in a LEFT JOIN, rows with a null timestamp are still returned with null window columns.</p>
+<h2 id="session-window">Session Window</h2>
+<p>A session window is not a table function, since its windows depend on the other rows and not only on the timestamp.
+It is a <a href="../windowfunctions/datetime.html">window function</a> instead, and can also be used as a grouping.</p>
 
 </article>
 

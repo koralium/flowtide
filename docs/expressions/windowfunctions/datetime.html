@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Datetime Functions | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Datetime Functions | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../../../images/favicon.ico">
+      <link rel="stylesheet" href="../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/blob/main/docs/docs/expressions/windowfunctions/datetime.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../index.html">
+            <img id="logo" class="svg" src="../../../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="datetime-functions">Datetime Functions</h1>
+
+<h2 id="session-window">Session Window</h2>
+<p><em>This function has no substrait equivalent</em></p>
+<ul>
+<li><strong>Extension URI:</strong> /functions_datetime.yaml</li>
+<li><strong>Extension Name:</strong> session_window</li>
+</ul>
+<p>Session window assigns each row the start of the session it belongs to.
+A session is a run of rows where no two neighbouring timestamps are further apart than the <em>gap</em>.
+The first row of a run starts a new session, and every following row within the gap of its predecessor belongs to the same session.</p>
+<p>Unlike a hopping or a tumbling window, a session is not decided by the timestamp alone, it depends on the other rows in the partition.
+Adding a row between two sessions merges them, and removing a row can split a session in two.</p>
+<p>The rows are ordered by the <em>order by</em> column, so it is that column the gap is measured on.</p>
+<p>Arguments:</p>
+<ol>
+<li>Gap amount, the largest distance between two neighbouring rows that still belong to the same session</li>
+<li>Gap unit</li>
+</ol>
+<p>The amount must be an integer literal, and the unit one of <em>WEEK</em>, <em>DAY</em>, <em>HOUR</em>, <em>MINUTE</em>, <em>SECOND</em>, <em>MILLISECOND</em> or <em>MICROSECOND</em>.
+Fractions are not allowed, use a smaller unit instead, for example <em>342 SECOND</em> instead of <em>5.7 MINUTE</em>.
+Calendar units such as <em>MONTH</em> and <em>YEAR</em> are not supported since their length varies.</p>
+<p>A distance equal to the gap keeps the rows in the same session, a distance greater than the gap starts a new one.</p>
+<p>The function requires exactly one <em>order by</em> column, and it must be ascending and a timestamp.
+A second order by column would make the neighbouring row something other than the next timestamp.</p>
+<p><em>Partition by</em> is optional. Without it every row is part of the same run.</p>
+<p>If the order by value is null or not a timestamp, no session is returned.
+Such rows sort together at one end and do not split the run around them.</p>
+<h3 id="sql-usage">SQL Usage</h3>
+<h4 id="assigning-rows-to-sessions">Assigning rows to sessions</h4>
+<pre><code class="lang-sql">-- A user is in the same session as long as there is less than
+-- 30 minutes between two of their events
+SELECT userid, eventtime,
+       session_window(30, 'MINUTE') OVER (PARTITION BY userid ORDER BY eventtime) AS session_start
+FROM events
+</code></pre>
+<h4 id="sessions-over-all-rows">Sessions over all rows</h4>
+<pre><code class="lang-sql">-- Without a partition by, one run over the whole stream
+SELECT eventtime,
+       session_window(30, 'MINUTE') OVER (ORDER BY eventtime) AS session_start
+FROM events
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>When a row is added or removed, every following row up to the next gap can get a new session start.
+A change at the beginning of a long session therefore re-emits the entire session.</p>
+</div>
+<h2 id="session-windows-in-group-by">Session Windows in GROUP BY</h2>
+<p>A session can also be used directly as a grouping, which computes the session window before the aggregate and groups on its result.
+The partition is taken from the other grouping columns, so it does not have to be repeated inside the <em>SESSION</em> call.</p>
+<p>The grouping is available as a column named <em>window_start</em>, the same name the hopping and tumbling table functions produce.</p>
+<p>Arguments:</p>
+<ol>
+<li>Timestamp to assign to sessions</li>
+<li>Gap amount</li>
+<li>Gap unit</li>
+</ol>
+<p>Only one <em>SESSION</em> expression is allowed in a <em>GROUP BY</em>.</p>
+<h3 id="sql-usage-1">SQL Usage</h3>
+<h4 id="aggregating-per-session">Aggregating per session</h4>
+<pre><code class="lang-sql">SELECT
+  userid,
+  count(*) AS event_count,
+  window_start
+FROM events
+GROUP BY userid, SESSION(eventtime, 30, 'MINUTE')
+</code></pre>
+<h4 id="getting-the-end-of-the-session">Getting the end of the session</h4>
+<p><em>SESSION_END</em> returns the point where the session is over, which is the last timestamp in the session plus the gap.
+It is an aggregate, so it can be used in any query that groups on a session.</p>
+<pre><code class="lang-sql">SELECT
+  userid,
+  count(*) AS event_count,
+  window_start,
+  SESSION_END(eventtime, 30, 'MINUTE') AS window_end
+FROM events
+GROUP BY userid, SESSION(eventtime, 30, 'MINUTE')
+</code></pre>
+<p>The start can also be written as <em>SESSION_START</em>, which returns the same column as <em>window_start</em>.</p>
+<pre><code class="lang-sql">SELECT
+  userid,
+  count(*) AS event_count,
+  SESSION_START(eventtime, 30, 'MINUTE') AS window_start,
+  SESSION_END(eventtime, 30, 'MINUTE') AS window_end
+FROM events
+GROUP BY userid, SESSION(eventtime, 30, 'MINUTE')
+</code></pre>
+<p>Both accessors take the same arguments as the <em>SESSION</em> in the group by, and they must match it.
+A query that asks for the start or the end of a different session than the one it groups on is rejected when the stream starts.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/docs/docs/expressions/windowfunctions/datetime.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
