@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -1034,6 +1034,53 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(unionColumn.GetValueAt(3, default).IsNull);
             Assert.Equal("3", unionColumn.GetValueAt(4, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(5, default).AsDecimal);
+        }
+
+        [Fact]
+        public void TestRemoveRangeMixedTypes()
+        {
+            using Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("str1"),
+                new Int64Value(100),
+                new StringValue("str2"),
+                new Int64Value(200)
+            };
+
+            unionColumn.RemoveRange(0, 2);
+
+            Assert.Equal(2, unionColumn.Count);
+            Assert.Equal("str2", unionColumn.GetValueAt(0, default).AsString.ToString());
+            Assert.Equal(200, unionColumn.GetValueAt(1, default).AsLong);
+        }
+
+        [Fact]
+        public void TestRemoveRangeWithNullsKeepsOffsetsValid()
+        {
+            using Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("str1"),
+                NullValue.Instance,
+                new Int64Value(100),
+                new StringValue("str2"),
+                NullValue.Instance,
+                new Int64Value(200)
+            };
+
+            unionColumn.RemoveRange(0, 3);
+
+            Assert.Equal(3, unionColumn.Count);
+            Assert.Equal("str2", unionColumn.GetValueAt(0, default).AsString.ToString());
+            Assert.True(unionColumn.GetValueAt(1, default).IsNull);
+            Assert.Equal(200, unionColumn.GetValueAt(2, default).AsLong);
+
+            var (arrowArray, _) = unionColumn.ToArrowArray();
+            var denseUnionArray = Assert.IsType<Apache.Arrow.DenseUnionArray>(arrowArray);
+            for (int i = 0; i < unionColumn.Count; i++)
+            {
+                var offset = denseUnionArray.ValueOffsets[i];
+                Assert.True(offset >= 0, $"Offset at index {i} was negative: {offset}");
+            }
         }
     }
 }
