@@ -36,8 +36,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal class DecimalColumn : IDataColumn
     {
-        private PrimitiveList<decimal> _values;
-        private bool disposedValue;
+        // Not readonly, mutations would run on a copy.
+        private NativeList<decimal> _values;
 
         public int Count => _values.Count;
 
@@ -47,53 +47,51 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public DecimalColumn(IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<decimal>(memoryAllocator);
         }
 
         public DecimalColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
         {
-            _values = new PrimitiveList<decimal>(memoryAllocator, columnSizeInfo.TotalRows);
+            _values.EnsureCapacity(columnSizeInfo.TotalRows, memoryAllocator);
         }
 
-        public DecimalColumn(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        public DecimalColumn(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);
+            _values = new NativeList<decimal>(memory, length);
         }
 
-        internal DecimalColumn(PrimitiveList<decimal> values)
+#pragma warning disable RS0042 // The list moves into the column and is not used again.
+        internal DecimalColumn(NativeList<decimal> values)
         {
             _values = values;
         }
+#pragma warning restore RS0042
 
-        public int Add<T>(in T value) where T : IDataValue
+        public int Add<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             var index = _values.Count;
             if (value.Type == ArrowTypeId.Null)
             {
-                _values.Add(0);
+                _values.Add(0, memoryAllocator);
             }
             else
             {
-                _values.Add(value.AsDecimal);
+                _values.Add(value.AsDecimal, memoryAllocator);
             }
             return index;
         }
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            Debug.Assert(_values != null);
-
             if (otherColumn is DecimalColumn decimalColumn)
             {
-                Debug.Assert(decimalColumn._values != null);
                 return _values.Get(thisIndex).CompareTo(decimalColumn._values.Get(otherIndex));
             }
             throw new NotImplementedException();
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
-            if (validityList != null &&
+            if (!validityList.IsNull &&
                 !validityList.Get(index))
             {
                 if (value.Type == ArrowTypeId.Null)
@@ -125,31 +123,31 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (desc)
             {
-                return BoundarySearch.SearchBoundries(_values, dataValue.AsDecimal, start, end, DecimalComparerDesc.Instance);
+                return BoundarySearch.SearchBoundries(in _values, dataValue.AsDecimal, start, end, DecimalComparerDesc.Instance);
             }
-            return BoundarySearch.SearchBoundries(_values, dataValue.AsDecimal, start, end, DecimalComparer.Instance);
+            return BoundarySearch.SearchBoundries(in _values, dataValue.AsDecimal, start, end, DecimalComparer.Instance);
         }
 
-        public int Update<T>(in int index, in T value) where T : IDataValue
+        public int Update<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             _values.Update(index, value.AsDecimal);
             return index;
         }
 
-        public void RemoveAt(in int index)
+        public void RemoveAt(in int index, IMemoryAllocator memoryAllocator)
         {
-            _values.RemoveAt(index);
+            _values.RemoveAt(index, memoryAllocator);
         }
 
-        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        public void InsertAt<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                _values.InsertAt(index, 0);
+                _values.InsertAt(index, 0, memoryAllocator);
             }
             else
             {
-                _values.InsertAt(index, value.AsDecimal);
+                _values.InsertAt(index, value.AsDecimal, memoryAllocator);
             }
         }
 
@@ -164,23 +162,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             return (array, FloatingPointDecimalType.Default);
         }
 
-        protected virtual void Dispose(bool disposing)
+        public void Dispose(IMemoryAllocator memoryAllocator)
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    _values.Dispose();
-                }
-                disposedValue = true;
-            }
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            _values.Dispose(memoryAllocator);
         }
 
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
@@ -188,24 +172,24 @@ namespace FlowtideDotNet.Core.ColumnStore
             return ArrowTypeId.Decimal128;
         }
 
-        public void Clear()
+        public void Clear(IMemoryAllocator memoryAllocator)
         {
             _values.Clear();
         }
 
-        public void AddToNewList<T>(in T value) where T : IDataValue
+        public void AddToNewList<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             throw new NotImplementedException();
         }
 
-        public int EndNewList()
+        public int EndNewList(IMemoryAllocator memoryAllocator)
         {
             throw new NotImplementedException();
         }
 
-        public void RemoveRange(int start, int count)
+        public void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
         {
-            _values.RemoveRange(start, count);
+            _values.RemoveRange(start, count, memoryAllocator);
         }
 
         public int GetByteSize(int start, int end)
@@ -223,11 +207,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _values.GetPrefixSumByteSizes(indices, sizes);
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList, IMemoryAllocator memoryAllocator)
         {
             if (other is DecimalColumn decimalColumn)
             {
-                _values.InsertRangeFrom(index, decimalColumn._values, start, count);
+                _values.InsertRangeFrom(index, in decimalColumn._values, start, count, memoryAllocator);
             }
             else
             {
@@ -235,9 +219,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public void InsertNullRange(int index, int count)
+        public void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
-            _values.InsertStaticRange(index, 0, count);
+            _values.InsertStaticRange(index, 0, count, memoryAllocator);
         }
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
@@ -280,19 +264,19 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_values.SlicedMemory.Length);
+            arrowSerializer.AddBufferForward(_values.SlicedSpan.Length);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
+            dataWriter.WriteArrowBuffer(_values.SlicedSpan);
         }
 
-        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             if (other is DecimalColumn decimalColumn)
             {
-                _values.InsertFrom(in decimalColumn._values, in sortedLookup, in insertPositions, lookupNullIndex);
+                _values.InsertFrom(in decimalColumn._values, in sortedLookup, in insertPositions, lookupNullIndex, memoryAllocator);
             }
             else
             {
@@ -300,9 +284,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public void DeleteBatch(ReadOnlySpan<int> targets)
+        public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
         {
-            _values.DeleteBatch(targets);
+            _values.DeleteBatch(targets, memoryAllocator);
         }
 
         public ColumnSizeInfo GetColumnSizeInfo()

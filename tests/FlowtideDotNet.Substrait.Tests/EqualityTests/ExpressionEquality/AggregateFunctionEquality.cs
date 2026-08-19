@@ -92,6 +92,38 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
         }
 
         [Fact]
+        public void OptionsChangedIsNotEqual()
+        {
+            root.Options = new SortedList<string, string>() { { "NULL_TREATMENT", "IGNORE_NULLS" } };
+            clone.Options = new SortedList<string, string>() { { "NULL_TREATMENT", "ACCEPT_NULLS" } };
+            Assert.NotEqual(root, clone);
+        }
+
+        [Fact]
+        public void OptionsAddedIsNotEqual()
+        {
+            clone.Options = new SortedList<string, string>() { { "NULL_TREATMENT", "IGNORE_NULLS" } };
+            Assert.NotEqual(root, clone);
+        }
+
+        [Fact]
+        public void SameOptionsIsEqual()
+        {
+            root.Options = new SortedList<string, string>() { { "NULL_TREATMENT", "IGNORE_NULLS" } };
+            clone.Options = new SortedList<string, string>() { { "NULL_TREATMENT", "IGNORE_NULLS" } };
+            Assert.Equal(root, clone);
+            Assert.Equal(root.GetHashCode(), clone.GetHashCode());
+        }
+
+        [Fact]
+        public void EmptyOptionsEqualsNullOptions()
+        {
+            clone.Options = new SortedList<string, string>();
+            Assert.Equal(root, clone);
+            Assert.Equal(root.GetHashCode(), clone.GetHashCode());
+        }
+
+        [Fact]
         public void EqualsOperator()
         {
             Assert.True(root == clone);

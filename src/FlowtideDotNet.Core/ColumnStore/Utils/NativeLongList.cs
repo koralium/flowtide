@@ -276,15 +276,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             if (!_disposedValue)
             {
+                // Freed on both paths, the memory owner has no finalizer of its own
+                if (_memoryOwner != null)
+                {
+                    _memoryOwner.Dispose();
+                    _memoryOwner = null;
+                    _data = null;
+                    _longData = null;
+                }
                 if (disposing)
                 {
-                    if (_memoryOwner != null)
-                    {
-                        _memoryOwner.Dispose();
-                        _memoryOwner = null;
-                        _data = null;
-                        _longData = null;
-                    }
                     NativeLongListFactory.Return(this);
                 }
 

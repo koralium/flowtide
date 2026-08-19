@@ -20,6 +20,7 @@ using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using static SqlParser.Ast.Expression;
 
@@ -27,18 +28,25 @@ namespace FlowtideDotNet.Substrait.Sql
 {
     public class SqlExpressionVisitor : BaseExpressionVisitor<ExpressionData, EmitData>
     {
+        private static readonly Dictionary<string, SqlParser.Ast.Expression> EmptyColumnAliases = new Dictionary<string, SqlParser.Ast.Expression>();
+
         private readonly SqlFunctionRegister sqlFunctionRegister;
         private readonly Func<Query, RelationData?>? compileQuery;
         private readonly IReadOnlyList<EmitData> parentScopes;
+        private readonly IReadOnlyDictionary<string, SqlParser.Ast.Expression> columnAliases;
+        private readonly HashSet<string> aliasesBeingResolved;
 
         internal SqlExpressionVisitor(
             SqlFunctionRegister sqlFunctionRegister,
             Func<Query, RelationData?>? compileQuery = null,
-            IReadOnlyList<EmitData>? parentScopes = null)
+            IReadOnlyList<EmitData>? parentScopes = null,
+            IReadOnlyDictionary<string, SqlParser.Ast.Expression>? columnAliases = null)
         {
             this.sqlFunctionRegister = sqlFunctionRegister;
             this.compileQuery = compileQuery;
             this.parentScopes = parentScopes ?? System.Array.Empty<EmitData>();
+            this.columnAliases = columnAliases ?? EmptyColumnAliases;
+            this.aliasesBeingResolved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
 
         public override ExpressionData Visit(SqlParser.Ast.Expression expression, EmitData state)
@@ -67,7 +75,58 @@ namespace FlowtideDotNet.Substrait.Sql
                 }
             }
 
+            // Fall back on aliases declared in the select list, e.g. 'WHERE rownum <= 1'
+            if (TryGetColumnAlias(expression, out var aliasName, out var aliasExpression))
+            {
+                if (!aliasesBeingResolved.Add(aliasName))
+                {
+                    throw new SubstraitParseException($"Column alias '{aliasName}' references itself.");
+                }
+                try
+                {
+                    return Visit(aliasExpression, state);
+                }
+                finally
+                {
+                    aliasesBeingResolved.Remove(aliasName);
+                }
+            }
+
             return base.Visit(expression, state);
+        }
+
+        private bool TryGetColumnAlias(
+            SqlParser.Ast.Expression expression,
+            [NotNullWhen(true)] out string? aliasName,
+            [NotNullWhen(true)] out SqlParser.Ast.Expression? aliasExpression)
+        {
+            aliasName = default;
+            aliasExpression = default;
+
+            if (columnAliases.Count == 0)
+            {
+                return false;
+            }
+
+            string? identifierName = default;
+            if (expression is SqlParser.Ast.Expression.Identifier identifier)
+            {
+                identifierName = identifier.Ident.Value;
+            }
+            else if (expression is SqlParser.Ast.Expression.CompoundIdentifier compoundIdentifier &&
+                compoundIdentifier.Idents.Count == 1)
+            {
+                identifierName = compoundIdentifier.Idents[0].Value;
+            }
+
+            if (identifierName == null ||
+                !columnAliases.TryGetValue(identifierName, out aliasExpression))
+            {
+                return false;
+            }
+
+            aliasName = identifierName;
+            return true;
         }
 
         protected override ExpressionData VisitBinaryOperation(SqlParser.Ast.Expression.BinaryOp binaryOp, EmitData state)

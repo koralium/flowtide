@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 await _tree.Upsert(i, $"{i}");
             }
-            var it = _tree.CreateIterator();
+            using var it = _tree.CreateIterator();
             await it.SeekFirst();
 
             int count = 0;
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Storage.Tests
             await _tree.Delete(9);
 
             var graph = KrokiUrlBuilder.ToKrokiUrl(await _tree.Print());
-            var it = _tree.CreateIterator();
+            using var it = _tree.CreateIterator();
             await it.SeekFirst();
 
             List<long> expected = new List<long>();
@@ -119,7 +119,7 @@ namespace FlowtideDotNet.Storage.Tests
                 await _tree.Upsert(i, $"{i}");
             }
 
-            var it = _tree.CreateIterator();
+            using var it = _tree.CreateIterator();
             await it.SeekFirst();
 
             int count = 0;
@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Storage.Tests
                 await _tree.Delete(i);
             }
 
-            var it = _tree.CreateIterator();
+            using var it = _tree.CreateIterator();
             await it.SeekFirst();
 
             int count = 800;
@@ -179,7 +179,7 @@ namespace FlowtideDotNet.Storage.Tests
                 await _tree.Delete(i);
             }
 
-            var it = _tree.CreateIterator();
+            using var it = _tree.CreateIterator();
             await it.SeekFirst();
 
             int count = 0;
@@ -236,7 +236,7 @@ namespace FlowtideDotNet.Storage.Tests
             var sortedOrder = values.OrderBy(x => x).ToList();
 
             int count = 0;
-            var it = _tree.CreateIterator();
+            using var it = _tree.CreateIterator();
             await it.SeekFirst();
             await foreach (var page in it)
             {
@@ -283,7 +283,7 @@ namespace FlowtideDotNet.Storage.Tests
             var sortedOrder = values.OrderBy(x => x).ToList();
 
             int count = 0;
-            var it = _tree.CreateIterator();
+            using var it = _tree.CreateIterator();
             await it.SeekFirst();
             await foreach (var page in it)
             {
@@ -334,7 +334,7 @@ namespace FlowtideDotNet.Storage.Tests
             var sortedOrder = values.OrderBy(x => x).ToList();
 
             int count = 0;
-            var it = _tree.CreateIterator();
+            using var it = _tree.CreateIterator();
             await it.SeekFirst();
             await foreach (var page in it)
             {
@@ -381,7 +381,7 @@ namespace FlowtideDotNet.Storage.Tests
                     values.Add(val);
                 }
                 var sortedOrder = values.OrderBy(x => x).ToList();
-                var it = _tree.CreateIterator();
+                using var it = _tree.CreateIterator();
                 await it.SeekFirst();
                 int count = 0;
                 await foreach (var page in it)

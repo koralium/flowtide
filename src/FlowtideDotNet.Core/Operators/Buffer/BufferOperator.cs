@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
             Debug.Assert(_tree != null);
             Debug.Assert(_eventsCounter != null);
 
-            var it = _tree.CreateIterator();
+            using var it = _tree.CreateIterator();
             await it.SeekFirst();
 
             await foreach (var page in it)

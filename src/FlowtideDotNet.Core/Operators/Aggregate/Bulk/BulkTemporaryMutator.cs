@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -25,7 +25,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
     {
         public void GetSizePrefixSum(ColumnRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
         {
-            var batch = keys[0].referenceBatch;
+            var idx = indices[0];
+            var batch = keys[idx].referenceBatch;
             for (int i = 0; i < batch.Columns.Count; i++)
             {
                 batch.Columns[i].GetPrefixSumByteSizes(indices, sizes);

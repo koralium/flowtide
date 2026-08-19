@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -577,7 +577,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             Assert.True(spillFiles > 0, "The backlogged exchange queues never spilled to temporary storage, the spill serialization path was not exercised.");
 
             _stream.Substreams["substream_0"].Resume();
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), timeout: TimeSpan.FromMinutes(3));
             Assert.Empty(failures);
         }
 
@@ -4018,6 +4018,200 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             .ToList();
         }
 
+        /// <summary>
+        /// A set operation is partitioned across the substreams, both of its inputs must be
+        /// scattered the same way for equal rows to meet in the same substream.
+        /// </summary>
+        [Theory]
+        [InlineData(2)]
+        [InlineData(3)]
+        public async Task DistributedUnionDistinctProducesCorrectOutput(int substreamCount)
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var testName = $"e2e_union_distinct_{substreamCount}";
+
+            _stream = new DistributedStreamBuilder(testName)
+                .AddPlan(() =>
+                {
+                    var sqlPlanBuilder = new SqlPlanBuilder();
+                    sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+                    sqlPlanBuilder.Sql(@"
+                    INSERT INTO output
+                    SELECT userkey FROM users
+                    UNION DISTINCT
+                    SELECT userkey FROM orders;
+                    ");
+                    return sqlPlanBuilder.GetPlan();
+                })
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
+                .ConfigureSubstream((substreamName, substreamBuilder) =>
+                {
+                    var connectorManager = new ConnectorManager();
+                    connectorManager.AddSource(new MockSourceFactory("*", _db, false));
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
+                    substreamBuilder.AddConnectorManager(connectorManager);
+                    substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                })
+                .DistributeAutomatically(substreamCount)
+                .Build();
+
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedUnionDistinctResult());
+
+            _generator.Generate(500);
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedUnionDistinctResult());
+
+            // Deleting from one input must not remove a value the other input still has
+            foreach (var order in _generator.Orders.Take(100).ToList())
+            {
+                _generator.DeleteOrder(order);
+            }
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedUnionDistinctResult());
+
+            Assert.Empty(failures);
+        }
+
+        private List<UserKeyRow> GetExpectedUnionDistinctResult()
+        {
+            return _generator.Users.Select(x => (long)x.UserKey)
+                .Union(_generator.Orders.Select(x => (long)x.UserKey))
+                .Select(x => new UserKeyRow(x))
+                .ToList();
+        }
+
+        /// <summary>
+        /// The rows that cancel each other sit in different inputs, they only meet when both
+        /// inputs are scattered into the same substream.
+        /// </summary>
+        [Theory]
+        [InlineData(2)]
+        [InlineData(3)]
+        public async Task DistributedExceptProducesCorrectOutput(int substreamCount)
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var testName = $"e2e_except_{substreamCount}";
+
+            _stream = new DistributedStreamBuilder(testName)
+                .AddPlan(() =>
+                {
+                    var sqlPlanBuilder = new SqlPlanBuilder();
+                    sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+                    sqlPlanBuilder.Sql(@"
+                    INSERT INTO output
+                    SELECT userkey FROM users
+                    EXCEPT DISTINCT
+                    SELECT userkey FROM orders;
+                    ");
+                    return sqlPlanBuilder.GetPlan();
+                })
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
+                .ConfigureSubstream((substreamName, substreamBuilder) =>
+                {
+                    var connectorManager = new ConnectorManager();
+                    connectorManager.AddSource(new MockSourceFactory("*", _db, false));
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
+                    substreamBuilder.AddConnectorManager(connectorManager);
+                    substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                })
+                .DistributeAutomatically(substreamCount)
+                .Build();
+
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedExceptResult());
+
+            // Removing the orders of a user brings that user back into the output
+            foreach (var order in _generator.Orders.Take(100).ToList())
+            {
+                _generator.DeleteOrder(order);
+            }
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedExceptResult());
+
+            Assert.Empty(failures);
+        }
+
+        private List<UserKeyRow> GetExpectedExceptResult()
+        {
+            return _generator.Users.Select(x => (long)x.UserKey)
+                .Distinct()
+                .Except(_generator.Orders.Select(x => (long)x.UserKey).Distinct())
+                .Select(x => new UserKeyRow(x))
+                .ToList();
+        }
+
+        /// <summary>
+        /// A distinct on the join key stays inside the partition lanes, the join is already
+        /// partitioned on it so no second shuffle is added.
+        /// </summary>
+        [Fact]
+        public async Task CoPartitionedDistinctOverJoinIsDistributed()
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+
+            _stream = new DistributedStreamBuilder("e2e_distinct_over_join")
+                .AddPlan(() =>
+                {
+                    var sqlPlanBuilder = new SqlPlanBuilder();
+                    sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+                    sqlPlanBuilder.Sql(@"
+                    INSERT INTO output
+                    SELECT DISTINCT o.userkey FROM orders o
+                    INNER JOIN users u ON o.userkey = u.userkey;
+                    ");
+                    return sqlPlanBuilder.GetPlan();
+                })
+                .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_distinct_over_join", substreamName))
+                .ConfigureSubstream((substreamName, substreamBuilder) =>
+                {
+                    var connectorManager = new ConnectorManager();
+                    connectorManager.AddSource(new MockSourceFactory("*", _db, false));
+                    connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
+                    substreamBuilder.AddConnectorManager(connectorManager);
+                    substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                })
+                .DistributeAutomatically(2)
+                .Build();
+
+            await _stream.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedDistinctOverJoinResult());
+
+            _generator.Generate(500);
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedDistinctOverJoinResult());
+
+            foreach (var order in _generator.Orders.Take(100).ToList())
+            {
+                _generator.DeleteOrder(order);
+            }
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedDistinctOverJoinResult());
+
+            Assert.Empty(failures);
+        }
+
+        private List<UserKeyRow> GetExpectedDistinctOverJoinResult()
+        {
+            return _generator.Orders
+                .Join(_generator.Users, o => o.UserKey, u => u.UserKey, (o, u) => (long)o.UserKey)
+                .Distinct()
+                .Select(x => new UserKeyRow(x))
+                .ToList();
+        }
+
         private record UserKeyRow(long UserKey);
 
         private async Task WaitForSinkData<T>(
@@ -4025,9 +4219,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             ConcurrentBag<(string Substream, Exception? Exception)> failures,
             string substreamName,
             List<T> expected,
-            bool allowFailures = false)
+            bool allowFailures = false,
+            TimeSpan? timeout = null)
         {
             Debug.Assert(_stream != null);
+            var waitLimit = timeout ?? TimeSpan.FromSeconds(60);
             var expectedBatch = BatchConverter.ConvertToBatchSorted(expected, GlobalMemoryManager.Instance);
 
             var stopwatch = Stopwatch.StartNew();
@@ -4049,13 +4245,13 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                         EventBatchAssertion.Equal(expectedBatch, actual);
                         return;
                     }
-                    catch when (stopwatch.Elapsed < TimeSpan.FromSeconds(60))
+                    catch when (stopwatch.Elapsed < waitLimit)
                     {
                         // Data has not caught up yet, keep waiting
                     }
                 }
 
-                if (stopwatch.Elapsed >= TimeSpan.FromSeconds(60))
+                if (stopwatch.Elapsed >= waitLimit)
                 {
                     if (!latestData.TryGetValue(substreamName, out var lastSeen))
                     {

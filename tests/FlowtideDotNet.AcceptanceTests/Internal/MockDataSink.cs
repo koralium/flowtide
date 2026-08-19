@@ -29,6 +29,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         private readonly WriteRelation writeRelation;
         private readonly Action<EventBatchData> onDataChange;
+        private readonly Action<int>? onChangeRowsReceived;
         private int crashOnCheckpointCount;
         private int _checkpointsBeforeCrash;
         private bool watermarkRecieved = false;
@@ -39,7 +40,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
 #if DEBUG_WRITE
         // Debug data
-        private StreamWriter? allInput;
+        private TextWriter? allInput;
 #endif
 
         private int _deleteFailCount;
@@ -51,7 +52,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             int crashOnCheckpointCount,
             Action<Watermark> onWatermark,
             int checkpointsBeforeCrash = 0,
-            int deleteFailCount = 0) : base(executionDataflowBlockOptions)
+            int deleteFailCount = 0,
+            Action<int>? onChangeRowsReceived = null) : base(executionDataflowBlockOptions)
         {
             this.writeRelation = writeRelation;
             this.onDataChange = onDataChange;
@@ -59,6 +61,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             this.onWatermark = onWatermark;
             _checkpointsBeforeCrash = checkpointsBeforeCrash;
             _deleteFailCount = deleteFailCount;
+            this.onChangeRowsReceived = onChangeRowsReceived;
         }
 
         public override string DisplayName => "Mock Data Sink";
@@ -89,7 +92,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             else
             {
-                allInput = File.CreateText($"debugwrite/{StreamName}-{Name}.sink.txt");
+                allInput = TextWriter.Synchronized(File.CreateText($"debugwrite/{StreamName}-{Name}.sink.txt"));
             }
 #endif
             _tree = await stateManagerClient.GetOrCreateTree("sink", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
@@ -136,7 +139,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 columns[i] = new Column(MemoryAllocator);
             }
 
-            var iterator = _tree.CreateIterator();
+            using var iterator = _tree.CreateIterator();
             await iterator.SeekFirst();
 
             long rowCount = 0;
@@ -184,6 +187,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
             Logger.LogDebug("Mock sink recieved batch with {count} rows", msg.Data.Weights.Count);
+            // Counts the change stream so a test can assert re-emission.
+            onChangeRowsReceived?.Invoke(msg.Data.Weights.Count);
 #if DEBUG_WRITE
             allInput!.WriteLine("New batch");
             foreach (var e in msg.Events)

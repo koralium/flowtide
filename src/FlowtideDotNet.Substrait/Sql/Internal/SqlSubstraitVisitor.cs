@@ -34,9 +34,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private readonly List<Relation> subRelations;
         private readonly Stack<EmitData> scopeStack = new Stack<EmitData>();
 
-        private SqlExpressionVisitor CreateExpressionVisitor()
+        private SqlExpressionVisitor CreateExpressionVisitor(IReadOnlyDictionary<string, Expression>? columnAliases = null)
         {
-            return new SqlExpressionVisitor(sqlFunctionRegister, q => this.Visit(q, null), scopeStack.ToList());
+            return new SqlExpressionVisitor(sqlFunctionRegister, q => this.Visit(q, null), scopeStack.ToList(), columnAliases);
         }
 
         public SqlSubstraitVisitor(SqlPlanBuilder sqlPlanBuilder, SqlFunctionRegister sqlFunctionRegister)
@@ -133,12 +133,19 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 };
             }
 
+            List<string>? primaryKeyNames = null;
+            if (insert.InsertOperation is FlowtideInsertOperation flowtideInsertOperation)
+            {
+                primaryKeyNames = ResolvePrimaryKeyNames(flowtideInsertOperation, tableSchema);
+            }
+
             var writeRelation = new WriteRelation()
             {
                 Input = source.Relation,
                 NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.InsertOperation.Name.Values.Select(x => x.Value).ToList() },
                 TableSchema = tableSchema,
-                Overwrite = insert.InsertOperation.Overwrite
+                Overwrite = insert.InsertOperation.Overwrite,
+                PrimaryKeyNames = primaryKeyNames
             };
 
             Relation relation = writeRelation;
@@ -152,6 +159,39 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
 
             return new RelationData(relation, source.EmitData);
+        }
+
+        /// <summary>
+        /// Matches declared primary keys against the written columns.
+        /// Returns the names with table schema casing.
+        /// </summary>
+        private static List<string> ResolvePrimaryKeyNames(FlowtideInsertOperation insertOperation, NamedStruct tableSchema)
+        {
+            var primaryKeyNames = new List<string>();
+            foreach (var primaryKey in insertOperation.PrimaryKeys)
+            {
+                var nameIndex = -1;
+                for (int i = 0; i < tableSchema.Names.Count; i++)
+                {
+                    if (tableSchema.Names[i].Equals(primaryKey.Value, StringComparison.OrdinalIgnoreCase))
+                    {
+                        nameIndex = i;
+                        break;
+                    }
+                }
+                if (nameIndex < 0)
+                {
+                    throw new SubstraitParseException($"Primary key column '{primaryKey.Value}' is not written to table '{insertOperation.Name.ToSql()}', all declared primary keys must be part of the insert.");
+                }
+
+                var name = tableSchema.Names[nameIndex];
+                if (primaryKeyNames.Contains(name))
+                {
+                    throw new SubstraitParseException($"Primary key column '{primaryKey.Value}' is declared more than once for table '{insertOperation.Name.ToSql()}'.");
+                }
+                primaryKeyNames.Add(name);
+            }
+            return primaryKeyNames;
         }
 
         protected override RelationData? VisitCreateView(Statement.CreateView createView, object? state)
@@ -531,17 +571,24 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 if (select.Selection != null)
                 {
-                    bool selectionContainsWindow = false;
                     ContainsWindowFunctionVisitor containsWindowSelectFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
-                    selectionContainsWindow |= containsWindowSelectFunctionVisitor.Visit(select.Selection, default);
+                    bool selectionContainsWindow = containsWindowSelectFunctionVisitor.Visit(select.Selection, default);
+
+                    // Select list aliases the where clause uses, e.g. 'WHERE rownum <= 1' on a ROW_NUMBER() alias
+                    var filterAliases = GetAliasesUsedInFilter(select, containsWindowSelectFunctionVisitor.Identifiers, outNode.EmitData);
+
+                    // Window functions behind such an alias must be computed before the filter,
+                    // the projection then reads that column instead of computing it again
+                    outNode = VisitFilterAliasWindowFunctions(filterAliases.Values, outNode);
+
                     if (selectionContainsWindow)
                     {
                         // Does not include expressions from the window functions in the emit data
-                        outNode = VisitFilterWithWindowExpressions(select.Selection, containsWindowSelectFunctionVisitor, outNode);
+                        outNode = VisitFilterWithWindowExpressions(select.Selection, containsWindowSelectFunctionVisitor, outNode, filterAliases);
                     }
                     else
                     {
-                        var exprVisitor = CreateExpressionVisitor();
+                        var exprVisitor = CreateExpressionVisitor(filterAliases);
                         var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
                         outNode = new RelationData(new FilterRelation()
                         {
@@ -645,11 +692,71 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return outNode;
         }
 
-        private RelationData VisitFilterWithWindowExpressions(Expression filter, ContainsWindowFunctionVisitor containsWindowFunctionVisitor, RelationData parent)
+        /// <summary>
+        /// Finds the select list aliases that the where clause refers to, e.g. 'WHERE rownum &lt;= 1'
+        /// where rownum is declared in the select list. Columns of the input win over an alias.
+        /// </summary>
+        private static Dictionary<string, Expression> GetAliasesUsedInFilter(Select select, IReadOnlySet<string> filterIdentifiers, EmitData emitData)
+        {
+            var aliases = new Dictionary<string, Expression>(StringComparer.OrdinalIgnoreCase);
+
+            if (select.Projection == null || filterIdentifiers.Count == 0)
+            {
+                return aliases;
+            }
+
+            foreach (var item in select.Projection)
+            {
+                if (item is not SelectItem.ExpressionWithAlias exprAlias)
+                {
+                    continue;
+                }
+                string alias = exprAlias.Alias;
+                if (!filterIdentifiers.Contains(alias) || aliases.ContainsKey(alias))
+                {
+                    continue;
+                }
+                var identifier = new Expression.CompoundIdentifier(new Sequence<Ident>(new List<Ident>() { new Ident(alias) }));
+                if (emitData.TryGetEmitIndex(identifier, out _, out _, out _))
+                {
+                    continue;
+                }
+                aliases.Add(alias, exprAlias.Expression);
+            }
+
+            return aliases;
+        }
+
+        /// <summary>
+        /// Computes the window functions that the where clause reaches through a select list alias,
+        /// so the filter and the projection share one window relation.
+        /// </summary>
+        private RelationData VisitFilterAliasWindowFunctions(IEnumerable<Expression> aliasExpressions, RelationData parent)
+        {
+            var containsWindowFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
+            bool containsWindow = false;
+            foreach (var aliasExpression in aliasExpressions)
+            {
+                containsWindow |= containsWindowFunctionVisitor.Visit(aliasExpression, default);
+            }
+
+            if (!containsWindow)
+            {
+                return parent;
+            }
+
+            return VisitWindow(containsWindowFunctionVisitor, parent);
+        }
+
+        private RelationData VisitFilterWithWindowExpressions(
+            Expression filter,
+            ContainsWindowFunctionVisitor containsWindowFunctionVisitor,
+            RelationData parent,
+            IReadOnlyDictionary<string, Expression>? columnAliases = null)
         {
             var windowResult = VisitWindow(containsWindowFunctionVisitor, parent);
 
-            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, columnAliases: columnAliases);
             var expr = exprVisitor.Visit(filter, windowResult.EmitData);
 
             var filterRelation = new FilterRelation()
@@ -744,6 +851,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             // Go through the found functions, we create one relation per window function at this time
             foreach (var windowFunction in containsWindowFunctionVisitor.WindowFunctions)
             {
+                // Already computed, for example hoisted before a where clause that filters on its alias
+                if (outputData.EmitData.TryGetEmitIndex(windowFunction, out _, out _, out _))
+                {
+                    continue;
+                }
                 if (!sqlFunctionRegister.TryGetWindowMapper(windowFunction.Name, out var mapper))
                 {
                     throw new NotSupportedException($"Window function '{windowFunction.Name}' is not supported");
@@ -804,7 +916,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                 for (int i = 0; i  < windowGroup.Value.Count; i++)
                 {
-                    emitData.Add(windowGroup.Value[i].Item1, emitData.Count, $"$window{i}", windowGroup.Value[i].Item3);
+                    // Hidden from '*', the column only exists so the projection can reference the function
+                    emitData.Add(windowGroup.Value[i].Item1, emitData.Count, $"$window{i}", windowGroup.Value[i].Item3, hiddenFromWildcard: true);
                 }
 
 
@@ -814,8 +927,181 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return outputData;
         }
 
+        /// <summary>
+        /// The name a 'SESSION(...)' grouping is exposed under.
+        /// </summary>
+        private const string SessionWindowStartName = "window_start";
+
+        private static bool IsSessionGrouping(SqlParser.Ast.Expression expression, [NotNullWhen(true)] out Expression.Function? function)
+        {
+            if (expression is Expression.Function candidate &&
+                candidate.Over == null &&
+                string.Equals(string.Join(".", candidate.Name.Values.Select(x => x.Value)), "session", StringComparison.OrdinalIgnoreCase))
+            {
+                function = candidate;
+                return true;
+            }
+            function = null;
+            return false;
+        }
+
+        /// <summary>
+        /// Returns the accessor name, or null when it is neither.
+        /// </summary>
+        private static string? GetSessionAccessorName(Expression.Function function)
+        {
+            var name = string.Join(".", function.Name.Values.Select(x => x.Value));
+            if (string.Equals(name, "session_start", StringComparison.OrdinalIgnoreCase))
+            {
+                return "session_start";
+            }
+            if (string.Equals(name, "session_end", StringComparison.OrdinalIgnoreCase))
+            {
+                return "session_end";
+            }
+            return null;
+        }
+
+        private static List<SqlParser.Ast.Expression> GetSessionArguments(Expression.Function function, string functionName)
+        {
+            var argList = BuiltInSqlFunctions.GetFunctionArguments(function.Args);
+            if (argList.Args == null || argList.Args.Count != 3)
+            {
+                throw new SubstraitParseException($"{functionName} must have three arguments: (timestamp, gap_amount, gap_unit)");
+            }
+
+            var expressions = new List<SqlParser.Ast.Expression>();
+            for (int i = 0; i < 3; i++)
+            {
+                if (argList.Args[i] is FunctionArg.Unnamed unnamed &&
+                    unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcArg)
+                {
+                    expressions.Add(funcArg.Expression);
+                }
+                else
+                {
+                    throw new SubstraitParseException($"{functionName} argument {i} is not a valid expression");
+                }
+            }
+            return expressions;
+        }
+
+        /// <summary>
+        /// A mismatch would silently return the grouping's session instead.
+        /// </summary>
+        private static void ValidateSessionAccessor(Expression.Function accessor, string accessorName, Expression.Function? sessionGrouping)
+        {
+            if (sessionGrouping == null)
+            {
+                throw new SubstraitParseException($"{accessorName} requires a 'SESSION(...)' expression in the GROUP BY");
+            }
+
+            var expected = GetSessionArguments(sessionGrouping, "SESSION");
+            var actual = GetSessionArguments(accessor, accessorName);
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                if (!expected[i].Equals(actual[i]))
+                {
+                    throw new SubstraitParseException(
+                        $"{accessorName} argument {i} does not match the 'SESSION(...)' in the GROUP BY, expected '{expected[i].ToSql()}' but got '{actual[i].ToSql()}'");
+                }
+            }
+        }
+
+        /// <summary>
+        /// A SESSION grouping becomes a window relation below the aggregate.
+        /// The partition is the rest of the group by.
+        /// </summary>
+        private RelationData AddSessionWindowRelation(Select select, Expression.Function sessionGrouping, RelationData parent)
+        {
+            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+            var argList = BuiltInSqlFunctions.GetFunctionArguments(sessionGrouping.Args);
+            if (argList.Args == null || argList.Args.Count != 3)
+            {
+                throw new SubstraitParseException("SESSION must have three arguments: (timestamp, gap_amount, gap_unit)");
+            }
+
+            Expressions.Expression VisitArgument(int index)
+            {
+                if (argList.Args[index] is FunctionArg.Unnamed unnamed &&
+                    unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcArg)
+                {
+                    return exprVisitor.Visit(funcArg.Expression, parent.EmitData).Expr;
+                }
+                throw new SubstraitParseException($"SESSION argument {index} is not a valid expression");
+            }
+
+            var timestampExpression = VisitArgument(0);
+            var gapAmount = VisitArgument(1);
+            var gapUnit = VisitArgument(2);
+
+            var partitionBy = new List<Expressions.Expression>();
+            if (select.GroupBy is GroupByExpression.Expressions groupByExpressions)
+            {
+                foreach (var group in groupByExpressions.ColumnNames)
+                {
+                    if (ReferenceEquals(group, sessionGrouping))
+                    {
+                        continue;
+                    }
+                    partitionBy.Add(exprVisitor.Visit(group, parent.EmitData).Expr);
+                }
+            }
+
+            var windowRelation = new ConsistentPartitionWindowRelation()
+            {
+                Input = parent.Relation,
+                PartitionBy = partitionBy,
+                OrderBy = new List<Expressions.SortField>()
+                {
+                    new Expressions.SortField()
+                    {
+                        Expression = timestampExpression,
+                        SortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst
+                    }
+                },
+                WindowFunctions = new List<Expressions.WindowFunction>()
+                {
+                    new Expressions.WindowFunction()
+                    {
+                        ExtensionUri = FunctionExtensions.FunctionsDatetime.Uri,
+                        ExtensionName = FunctionExtensions.FunctionsDatetime.SessionWindow,
+                        Arguments = new List<Expressions.Expression>() { gapAmount, gapUnit }
+                    }
+                }
+            };
+
+            var emitData = parent.EmitData.Clone();
+            // Keyed by the SESSION node so the grouping resolves here.
+            emitData.Add(sessionGrouping, emitData.Count, "$sessionwindow", new TimestampType(), hiddenFromWildcard: true);
+
+            return new RelationData(windowRelation, emitData);
+        }
+
         private RelationData VisitSelectAggregate(Select select, ContainsAggregateVisitor containsAggregateVisitor, RelationData parent)
         {
+            Expression.Function? sessionGrouping = default;
+            if (select.GroupBy is GroupByExpression.Expressions sessionSearch)
+            {
+                foreach (var group in sessionSearch.ColumnNames)
+                {
+                    if (IsSessionGrouping(group, out var found))
+                    {
+                        if (sessionGrouping != null)
+                        {
+                            throw new SubstraitParseException("Only one SESSION expression is supported in a GROUP BY");
+                        }
+                        sessionGrouping = found;
+                    }
+                }
+            }
+            if (sessionGrouping != null)
+            {
+                parent = AddSessionWindowRelation(select, sessionGrouping, parent);
+            }
+            var sessionGroupingEmitIndex = -1;
+
             var aggRel = new AggregateRelation()
             {
                 Input = parent.Relation
@@ -843,7 +1129,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
                         var result = exprVisitor.Visit(group, parent.EmitData);
                         grouping.GroupingExpressions.Add(result.Expr);
-                        aggEmitData.Add(group, emitcount, result.Name, result.Type);
+
+                        var isSession = ReferenceEquals(group, sessionGrouping);
+                        aggEmitData.Add(group, emitcount, isSession ? SessionWindowStartName : result.Name, result.Type);
+                        if (isSession)
+                        {
+                            // Also reachable by name, like hopping and tumbling.
+                            aggEmitData.AddWithAlias(
+                                new Expression.CompoundIdentifier(new Sequence<Ident>(new List<Ident>() { new Ident(SessionWindowStartName) })),
+                                emitcount);
+                            sessionGroupingEmitIndex = emitcount;
+                        }
                         emitcount++;
                     }
                 }
@@ -855,6 +1151,19 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             foreach (var foundMeasure in containsAggregateVisitor.AggregateFunctions)
             {
+                var accessorName = GetSessionAccessorName(foundMeasure);
+                if (accessorName != null)
+                {
+                    ValidateSessionAccessor(foundMeasure, accessorName, sessionGrouping);
+
+                    if (accessorName == "session_start")
+                    {
+                        // The start is the grouping column, not a measure.
+                        aggEmitData.AddWithAlias(foundMeasure, sessionGroupingEmitIndex);
+                        continue;
+                    }
+                }
+
                 var mapper = sqlFunctionRegister.GetAggregateMapper(foundMeasure.Name);
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
 

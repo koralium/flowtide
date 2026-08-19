@@ -264,15 +264,24 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 await dataFileReader.SkipPageOffsets();
 
                 _mergedBlobFileWriter.StartAddingSequences(pageLocations.Count);
-                for (int i = 0; i < pageLocations.Count; i++)
+                try
                 {
-                    var location = pageLocations[i];
-                    var pageData = await dataFileReader.ReadDataPage(location.Offset, location.Size);
-                    // Check the checksum so there is no corruption before we add the data
-                    CrcUtils.CheckPageCrc32(crc32, location.PageId, pageData, location.Crc32);
-                    _mergedBlobFileWriter.AddSequence(location.PageId, location.Crc32, pageData);
+                    for (int i = 0; i < pageLocations.Count; i++)
+                    {
+                        var location = pageLocations[i];
+                        var pageData = await dataFileReader.ReadDataPage(location.Offset, location.Size);
+                        // Check the checksum so there is no corruption before we add the data
+                        CrcUtils.CheckPageCrc32(crc32, location.PageId, pageData, location.Crc32);
+                        _mergedBlobFileWriter.AddSequence(location.PageId, location.Crc32, pageData);
+                    }
+                    _mergedBlobFileWriter.FinishAddingSequences();
                 }
-                _mergedBlobFileWriter.FinishAddingSequences();
+                catch
+                {
+                    // If we leave the batch open later compactions fail.
+                    _mergedBlobFileWriter.CancelAddingSequences();
+                    throw;
+                }
                 // Read to the end of the file, this must be done to get correct crc64
                 await dataFileReader.ReadToEnd();
 

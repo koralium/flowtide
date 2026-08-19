@@ -5,8 +5,8 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Microsoft basic packages -->
-    <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.0" />
-    <PackageVersion Include="DuckDB.NET.Data.Full" Version="1.5.3" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.1" />
+    <PackageVersion Include="DuckDB.NET.Data.Full" Version="1.5.5" />
     <PackageVersion Include="FastExpressionCompiler" Version="5.4.1" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
     <PackageVersion Include="System.Linq.AsyncEnumerable" Version="10.0.2" />
@@ -24,7 +24,7 @@
     <!-- Grpc -->
     <PackageVersion Include="Grpc.Tools" Version="2.80.0" />
     <PackageVersion Include="Grpc.Net.Client" Version="2.76.0" />
-    <PackageVersion Include="Google.Protobuf" Version="3.34.0" />
+    <PackageVersion Include="Google.Protobuf" Version="3.35.1" />
     <!-- Polly -->
     <PackageVersion Include="Polly.Core" Version="8.6.6" />
     <PackageVersion Include="Polly.RateLimiting" Version="8.6.6" />
@@ -40,6 +40,8 @@
     <!-- Fody -->
     <PackageVersion Include="Fody" Version="6.9.2" />
     <PackageVersion Include="InlineIL.Fody" Version="1.10.1" />
+    <!-- Analyzers -->
+    <PackageVersion Include="Roslyn.Diagnostics.Analyzers" Version="5.6.0" />
     <!-- Others -->
     <PackageVersion Include="ZstdSharp.Port" Version="0.8.5" />
     <PackageVersion Include="SqlParserCS" Version="0.6.5" />
@@ -48,9 +50,9 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="ParquetSharp" Version="23.0.0.2" />
     <PackageVersion Include="Stowage" Version="2.0.1" />
-    <PackageVersion Include="Confluent.Kafka" Version="2.14.0" />
+    <PackageVersion Include="Confluent.Kafka" Version="2.15.0" />
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
-    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="9.3.2" />
+    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="9.5.0" />
     <PackageVersion Include="PromQL.Parser" Version="3.2.0" />
     <PackageVersion Include="Antlr4.Runtime.Standard" Version="4.13.1" />
 	<!-- Orleans -->
@@ -90,7 +92,7 @@
     <PackageVersion Include="Serilog.Extensions.Logging" Version="8.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
     <!-- Other -->
-    <PackageVersion Include="coverlet.collector" Version="10.0.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="FastMember" Version="1.5.0" />
     <PackageVersion Include="MySql.Data" Version="9.4.0" />

@@ -263,6 +263,113 @@ namespace FlowtideDotNet.Substrait.Tests
         }
 
         [Fact]
+        public void SerializeScalarFunctionWithOptions()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Expressions = [new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionName = FunctionsString.Substring,
+                            Arguments = [new StringLiteral() { Value = "a" }],
+                            Options = new SortedList<string, string>() { { "negative_start", "WRAP_FROM_END" } }
+                        }],
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct() { Names = ["a"] },
+                            NamedTable = new Type.NamedTable() { Names = ["a"] }
+                        },
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void SerializeAggregateFunctionWithOptions()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new AggregateRelation()
+                    {
+                        Groupings = new List<AggregateGrouping>(),
+                        Measures = new List<AggregateMeasure>()
+                        {
+                            new AggregateMeasure()
+                            {
+                                Measure = new AggregateFunction()
+                                {
+                                    ExtensionUri = FunctionsArithmetic.Uri,
+                                    ExtensionName = FunctionsArithmetic.Sum,
+                                    Arguments = [new StringLiteral() { Value = "a" }],
+                                    Options = new SortedList<string, string>() { { "NULL_TREATMENT", "IGNORE_NULLS" } }
+                                }
+                            }
+                        },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct() { Names = ["a"] },
+                            NamedTable = new Type.NamedTable() { Names = ["a"] }
+                        },
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void SerializeWindowFunctionWithOptions()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                insert into out
+                select a, ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) as rn FROM table1;
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            var windowRelation = FindWindowRelation(plan.Relations[plan.Relations.Count - 1]);
+            windowRelation.WindowFunctions[0].Options = new SortedList<string, string>()
+            {
+                { "max_row_number", "1" }
+            };
+
+            var json = SubstraitSerializer.SerializeToJson(plan);
+            var deserializedPlan = SubstraitDeserializer.DeserializeFromJson(json);
+
+            var deserializedWindowRelation = FindWindowRelation(deserializedPlan.Relations[deserializedPlan.Relations.Count - 1]);
+            Assert.NotNull(deserializedWindowRelation.WindowFunctions[0].Options);
+            Assert.Equal("1", deserializedWindowRelation.WindowFunctions[0].Options!["max_row_number"]);
+        }
+
+        private static ConsistentPartitionWindowRelation FindWindowRelation(Relation relation)
+        {
+            switch (relation)
+            {
+                case ConsistentPartitionWindowRelation windowRelation:
+                    return windowRelation;
+                case FilterRelation filterRelation:
+                    return FindWindowRelation(filterRelation.Input);
+                case ProjectRelation projectRelation:
+                    return FindWindowRelation(projectRelation.Input);
+                case WriteRelation writeRelation:
+                    return FindWindowRelation(writeRelation.Input);
+                case RootRelation rootRelation:
+                    return FindWindowRelation(rootRelation.Input);
+                default:
+                    throw new InvalidOperationException($"No window relation found under {relation.GetType().Name}");
+            }
+        }
+
+        [Fact]
         public void SerializeMergeJoin()
         {
             var plan = new Plan()
@@ -854,6 +961,47 @@ namespace FlowtideDotNet.Substrait.Tests
             };
 
             AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void InsertWithPrimaryKeyDeclaration()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO outputtable PRIMARY KEY (b, a)
+                SELECT * FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+
+            var json = SubstraitSerializer.SerializeToJson(plan);
+            var deserializedPlan = SubstraitDeserializer.DeserializeFromJson(json);
+            var writeRelation = Assert.IsType<WriteRelation>(deserializedPlan.Relations[0]);
+            Assert.Equal(new List<string>() { "b", "a" }, writeRelation.PrimaryKeyNames);
+        }
+
+        /// <summary>
+        /// The json is hashed, existing plans must keep their hash.
+        /// </summary>
+        [Fact]
+        public void InsertWithoutPrimaryKeyDeclarationDoesNotChangeJson()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO outputtable
+                SELECT * FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            var json = SubstraitSerializer.SerializeToJson(plan);
+
+            Assert.DoesNotContain("WriteRelationPrimaryKeys", json);
+            Assert.DoesNotContain("advancedExtension", json);
+
+            var writeRelation = Assert.IsType<WriteRelation>(SubstraitDeserializer.DeserializeFromJson(json).Relations[0]);
+            Assert.Null(writeRelation.PrimaryKeyNames);
         }
 
         private void AssertPlanCanSerializeDeserialize(Plan plan)

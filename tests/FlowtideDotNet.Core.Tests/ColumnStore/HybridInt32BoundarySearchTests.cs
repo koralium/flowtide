@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             // lowerBounds.Fill(start) -> 0, upperBounds.Fill(end) -> treeColumn.Count - 1
             Array.Fill(upper, treeColumn.Count - 1);
 
-            BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
+            BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid(
                 treeColumn,
                 inputColumn,
                 inputSortedLookup,
@@ -806,7 +806,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var lower = new int[] { 0, 3 };
             var upper = new int[] { 2, 8 };
 
-            BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
+            BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
                 new DataValueContainer(), new DataValueContainer(),
                 false, Array.Empty<int>());
@@ -839,7 +839,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var lower = new int[] { 0, 3 };
             var upper = new int[] { 2, 7 };
 
-            BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
+            BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
                 new DataValueContainer(), new DataValueContainer(),
                 false, Array.Empty<int>());
@@ -872,7 +872,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var lower = new int[] { 0, 3 };
             var upper = new int[] { 2, 5 };
 
-            BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
+            BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
                 new DataValueContainer(), new DataValueContainer(),
                 false, Array.Empty<int>());
@@ -909,7 +909,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var lower = new int[] { 0, 0, 4, 4, 8, 8 };
             var upper = new int[] { 3, 3, 7, 7, 11, 11 };
 
-            BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
+            BoundarySearchHybridPrimitiveNoNull<int, AscendingBoundaryOrder<int>>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
                 new DataValueContainer(), new DataValueContainer(),
                 false, Array.Empty<int>());

@@ -776,16 +776,17 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             TaskCompletionSource evictionLoopSignal = new TaskCompletionSource();
             s.Cclm.SetEvictionLoopSignal_Test(evictionLoopSignal);
 
-            // The eviction loop parks on Task.Delay against the fake time provider.
-            // A single Advance can be missed if the loop has not registered its next delay yet.
-            // Keep advancing until the loop signals a completed pass.
-            for (var attempt = 0; !evictionLoopSignal.Task.IsCompleted; attempt++)
+            // The eviction loop re-arms its Task.Delay asynchronously, so a single large
+            // advance can race past a timer that is not armed yet (the loop then waits for
+            // fake time that never comes). Advance in steps, yielding real time in between,
+            // until the loop has completed a pass.
+            var timeout = Task.Delay(TimeSpan.FromSeconds(30));
+            while (!evictionLoopSignal.Task.IsCompleted && !timeout.IsCompleted)
             {
-                Assert.True(attempt < 600, "Eviction loop never completed a pass.");
                 fakeTime.Advance(TimeSpan.FromSeconds(20));
                 await Task.WhenAny(evictionLoopSignal.Task, Task.Delay(50));
             }
-            await evictionLoopSignal.Task;
+            Assert.True(evictionLoopSignal.Task.IsCompleted, "Eviction loop did not complete a pass within the timeout.");
 
             Assert.True(s.Cclm.CurrentSize <= maxSize * 0.8, "Background loop failed to evict files.");
         }

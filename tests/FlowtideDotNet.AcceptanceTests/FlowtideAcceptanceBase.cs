@@ -51,6 +51,11 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public StreamStateValue State => flowtideTestStream.State;
 
+        /// <summary>
+        /// State cache page count, set before starting. A small value keeps eviction active.
+        /// </summary>
+        protected int CachePageCount { set => flowtideTestStream.CachePageCount = value; }
+
         protected Task StartStream(
             string sql,
             int parallelism = 1,
@@ -97,6 +102,11 @@ namespace FlowtideDotNet.AcceptanceTests
         protected TimeSpan? InitialDataDelay { set => flowtideTestStream.InitialDataDelay = value; }
 
         /// <summary>
+        /// Overrides the mock source's batch flush size, set before StartStream.
+        /// </summary>
+        protected int? SourceBatchSize { set => flowtideTestStream.SourceBatchSize = value; }
+
+        /// <summary>
         /// Sets the minimum time between checkpoint triggers, set before StartStream.
         /// </summary>
         protected TimeSpan? MinimumTimeBetweenCheckpoints { set => flowtideTestStream.MinimumTimeBetweenCheckpoints = value; }
@@ -108,6 +118,14 @@ namespace FlowtideDotNet.AcceptanceTests
         protected TimeSpan? StopDrainTimeout { set => flowtideTestStream.StopDrainTimeout = value; }
 
         public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
+
+        /// <summary>
+        /// Rows sent to the sink, not the state.
+        /// A retract and its replacing insert count as two.
+        /// </summary>
+        protected int ChangeRowsReceived => flowtideTestStream.ChangeRowsReceived;
+
+        protected void ResetChangeRowsReceived() => flowtideTestStream.ResetChangeRowsReceived();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)
         {

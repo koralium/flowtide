@@ -215,10 +215,11 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task ListFirstDifference()
         {
             GenerateData();
+            // Keys start at 1, so 0 never matches and the second element is always the difference
             await StartStream(@"
-                INSERT INTO output 
-                SELECT 
-                    list_first_difference(list(orderkey, userkey), list(orderkey, 5)) as val
+                INSERT INTO output
+                SELECT
+                    list_first_difference(list(orderkey, userkey), list(orderkey, 0)) as val
                 FROM orders
                 ");
 
@@ -227,6 +228,27 @@ namespace FlowtideDotNet.AcceptanceTests
             var expectedList = Orders.Select(x => new
             {
                 val = x.UserKey
+            });
+
+            AssertCurrentDataEqual(expectedList);
+        }
+
+        [Fact]
+        public async Task ListFirstDifferenceReturnsNullWhenListsAreEqual()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output
+                SELECT
+                    list_first_difference(list(orderkey, userkey), list(orderkey, userkey)) as val
+                FROM orders
+                ");
+
+            await WaitForUpdate();
+
+            var expectedList = Orders.Select(x => new
+            {
+                val = (int?)null
             });
 
             AssertCurrentDataEqual(expectedList);

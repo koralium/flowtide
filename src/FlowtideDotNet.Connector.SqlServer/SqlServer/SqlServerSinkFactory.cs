@@ -46,6 +46,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             return tableNamesList.ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
 
+        public override bool SupportsPrimaryKeyDeclaration => true;
+
         public override bool CanHandle(WriteRelation writeRelation)
         {
             return _sqlServerTableProvider.TryGetTableInformation(writeRelation.NamedObject.Names, out _);

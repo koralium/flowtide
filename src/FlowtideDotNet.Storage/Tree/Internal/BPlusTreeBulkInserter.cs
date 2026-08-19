@@ -788,10 +788,21 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var allLeaves = new LeafNode<K, V, TKeyContainer, TValueContainer>[numNodes];
             allLeaves[0] = leaf;
 
+            var originalNext = leaf.next;
+
+            // The next leaf must be fetched before the write locks are taken, the node write lock is a monitor
+            // which is thread affine. Awaiting while holding it can resume the continuation on another thread
+            // which would then fail to release the lock.
+            LeafNode<K, V, TKeyContainer, TValueContainer>? nextNode = null;
+            if (_tree.m_usePreviousPointer && originalNext != 0)
+            {
+                var nextNodeTask = _tree.m_stateClient.GetValue(originalNext);
+                nextNode = (nextNodeTask.IsCompletedSuccessfully ? nextNodeTask.Result : await nextNodeTask)
+                    as LeafNode<K, V, TKeyContainer, TValueContainer>;
+            }
+
             parent.EnterWriteLock();
             leaf.EnterWriteLock();
-
-            var originalNext = leaf.next;
 
             for (int s = 0; s < numNodes - 1; s++)
             {
@@ -861,16 +872,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             
             parent.ExitWriteLock();
 
-            if (_tree.m_usePreviousPointer && originalNext != 0)
+            if (nextNode != null)
             {
-                var nextNodeTask = _tree.m_stateClient.GetValue(originalNext);
-                var nextNodeObj = nextNodeTask.IsCompletedSuccessfully ? nextNodeTask.Result : await nextNodeTask;
-                if (nextNodeObj is LeafNode<K, V, TKeyContainer, TValueContainer> nextNode)
-                {
-                    nextNode.previous = allLeaves[numNodes - 1].Id;
-                    _tree.m_stateClient.AddOrUpdate(nextNode.Id, nextNode);
-                    nextNode.Return();
-                }
+                // The write lock must be held while mutating, the eviction thread can serialize the node concurrently.
+                nextNode.EnterWriteLock();
+                nextNode.previous = allLeaves[numNodes - 1].Id;
+                nextNode.ExitWriteLock();
+                _tree.m_stateClient.AddOrUpdate(nextNode.Id, nextNode);
+                nextNode.Return();
             }
 
             _tree.m_stateClient.AddOrUpdate(parent.Id, parent);

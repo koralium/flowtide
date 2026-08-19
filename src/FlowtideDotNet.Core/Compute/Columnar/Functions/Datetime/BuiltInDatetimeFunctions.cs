@@ -26,10 +26,43 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
     {
         public static void AddBuiltInDatetimeFunctions(FunctionsRegister functionsRegister)
         {
+            TableFunctions.HoppingWindowFunction.AddBuiltInHoppingWindowFunction(functionsRegister);
+            TableFunctions.TumblingWindowFunction.AddBuiltInTumblingWindowFunction(functionsRegister);
+
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.Strftime, typeof(BuiltInDatetimeFunctions), nameof(StrfTimeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay, typeof(BuiltInDatetimeFunctions), nameof(FloorTimestampDayImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.ParseTimestamp, typeof(BuiltInDatetimeFunctions), nameof(TimestampParseImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.RoundCalendar, typeof(BuiltInDatetimeFunctions), nameof(TimestampRoundCalendar));
+
+            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.TumblingWindowStart,
+                (function, parameterInfo, visitor, functionServices) =>
+                {
+                    if (function.Arguments.Count != 2)
+                    {
+                        throw new InvalidOperationException("tumbling_window_start function must have two arguments, (timestamp, size_ticks)");
+                    }
+                    if (function.Arguments[1] is not FlowtideDotNet.Substrait.Expressions.Literals.NumericLiteral sizeLiteral ||
+                        sizeLiteral.Value != decimal.Truncate(sizeLiteral.Value) ||
+                        sizeLiteral.Value <= 0)
+                    {
+                        throw new InvalidOperationException("tumbling_window_start size_ticks must be a positive whole number literal");
+                    }
+                    long sizeTicks = (long)sizeLiteral.Value;
+
+                    var valueExpr = visitor.Visit(function.Arguments[0], parameterInfo);
+                    if (valueExpr == null)
+                    {
+                        throw new InvalidOperationException("Value argument could not be compiled for tumbling_window_start");
+                    }
+
+                    var method = typeof(BuiltInDatetimeFunctions).GetMethod(nameof(TumblingWindowStartImplementation), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                    var genericMethod = method!.MakeGenericMethod(valueExpr.Type);
+                    return System.Linq.Expressions.Expression.Call(
+                        genericMethod,
+                        valueExpr,
+                        System.Linq.Expressions.Expression.Constant(sizeTicks),
+                        System.Linq.Expressions.Expression.Constant(new DataValueContainer()));
+                });
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.Extract,
                 (function, parameterInfo, visitor, functionServices) =>
@@ -386,6 +419,26 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
 
             result._type = ArrowTypeId.String;
             result._stringValue = new StringValue(dateTime.ToStrFTime(format.AsString.ToString(), CultureInfo.InvariantCulture));
+            return result;
+        }
+
+        internal static IDataValue TumblingWindowStartImplementation<T1>(T1 value, long sizeTicks, DataValueContainer result)
+            where T1 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.Timestamp)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var ts = value.AsTimestamp;
+            // Must match TumblingWindowFunction.DoTumbling exactly
+            long mod = ts.ticks % sizeTicks;
+            if (mod < 0)
+            {
+                mod += sizeTicks;
+            }
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(ts.ticks - mod, ts.offset);
             return result;
         }
 

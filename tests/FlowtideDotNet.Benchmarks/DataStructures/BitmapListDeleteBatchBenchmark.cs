@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Benchmarks.DataStructures
         private int[] _deleteTargets = Array.Empty<int>();
 
         // Pre-built BitmapList recreated before every iteration
-        private BitmapList? _targetList = null;
+        private BitmapList _targetList;
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -54,24 +54,22 @@ namespace FlowtideDotNet.Benchmarks.DataStructures
         [IterationSetup]
         public void IterationSetup()
         {
-            _targetList = new BitmapList(GlobalMemoryManager.Instance);
+            _targetList = default(BitmapList);
             for (int i = 0; i < _baseData.Length; i++)
             {
-                _targetList.Add(_baseData[i]);
+                _targetList.Add(_baseData[i], GlobalMemoryManager.Instance);
             }
         }
 
         [IterationCleanup]
         public void IterationCleanup()
         {
-            Debug.Assert(_targetList != null);
-            _targetList.Dispose();
+            _targetList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Benchmark(Baseline = true)]
         public void RemoveOneByOne()
         {
-            Debug.Assert(_targetList != null);
             // Iterate in reverse so indices stay valid after each removal
             for (int i = _deleteTargets.Length - 1; i >= 0; i--)
             {
@@ -82,15 +80,13 @@ namespace FlowtideDotNet.Benchmarks.DataStructures
         [Benchmark]
         public void DeleteBatch()
         {
-            Debug.Assert(_targetList != null);
             _targetList.DeleteBatch(_deleteTargets.AsSpan());
         }
 
         [Benchmark]
         public void CreateNewFilteredList()
         {
-            Debug.Assert(_targetList != null);
-            var filtered = new BitmapList(GlobalMemoryManager.Instance);
+            var filtered = default(BitmapList);
 
             int deleteIdx = 0;
             for (int i = 0; i < BaseCount; i++)
@@ -102,10 +98,10 @@ namespace FlowtideDotNet.Benchmarks.DataStructures
                     continue;
                 }
 
-                filtered.Add(_targetList.Get(i));
+                filtered.Add(_targetList.Get(i), GlobalMemoryManager.Instance);
             }
 
-            filtered.Dispose();
+            filtered.Dispose(GlobalMemoryManager.Instance);
         }
     }
 }

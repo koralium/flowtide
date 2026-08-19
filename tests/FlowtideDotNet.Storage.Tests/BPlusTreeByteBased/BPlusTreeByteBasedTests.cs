@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
             {
                 await tree.Upsert(new KeyValuePair<long, long>(i, 33000), $"{i}");
             }
-            var it = tree.CreateIterator();
+            using var it = tree.CreateIterator();
             await it.SeekFirst();
 
             int count = 0;
@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
             {
                 await tree.Upsert(new KeyValuePair<long, long>(i, 33000), $"{i}");
             }
-            var it = tree.CreateIterator();
+            using var it = tree.CreateIterator();
             await it.SeekFirst();
 
             int count = 0;

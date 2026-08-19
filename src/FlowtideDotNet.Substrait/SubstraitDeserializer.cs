@@ -22,6 +22,28 @@ namespace FlowtideDotNet.Substrait
 {
     public class SubstraitDeserializer
     {
+        /// <summary>
+        /// Reads function options, the consumer uses the first supported preference.
+        /// </summary>
+        private static SortedList<string, string>? ReadOptions(
+            Google.Protobuf.Collections.RepeatedField<Protobuf.FunctionOption> options)
+        {
+            if (options.Count == 0)
+            {
+                return null;
+            }
+            var result = new SortedList<string, string>();
+            foreach (var option in options)
+            {
+                if (option.Preference.Count > 0)
+                {
+                    // Allow duplicate option names by letting later entries win.
+                    result[option.Name] = option.Preference[0];
+                }
+            }
+            return result.Count == 0 ? null : result;
+        }
+
         private sealed class ExpressionDeserializerImpl
         {
             private readonly Dictionary<uint, string> idToFunctionLookup = new Dictionary<uint, string>();
@@ -393,7 +415,8 @@ namespace FlowtideDotNet.Substrait
                 {
                     ExtensionName = name,
                     ExtensionUri = uri,
-                    Arguments = new List<Expression>()
+                    Arguments = new List<Expression>(),
+                    Options = ReadOptions(aggregateFunction.Options)
                 };
 #pragma warning disable CS0612 // Type or member is obsolete
                 if (aggregateFunction.Args.Count > 0)
@@ -459,8 +482,12 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
-            public WindowBound? GetWindowBound(Protobuf.Expression.Types.WindowFunction.Types.Bound bound)
+            public WindowBound? GetWindowBound(Protobuf.Expression.Types.WindowFunction.Types.Bound? bound)
             {
+                if (bound == null)
+                {
+                    return null;
+                }
                 switch (bound.KindCase)
                 {
                     case Protobuf.Expression.Types.WindowFunction.Types.Bound.KindOneofCase.CurrentRow:
@@ -505,6 +532,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     result.Arguments.Add(VisitExpression(arg.Value));
                 }
+                result.Options = ReadOptions(windowRelFunction.Options);
                 return result;
             }
 
@@ -650,7 +678,8 @@ namespace FlowtideDotNet.Substrait
                 {
                     ExtensionUri = uri,
                     ExtensionName = name,
-                    Arguments = args
+                    Arguments = args,
+                    Options = ReadOptions(scalarFunction.Options)
                 };
 
 
@@ -1164,13 +1193,29 @@ namespace FlowtideDotNet.Substrait
                     overwrite = true;
                 }
 
+                List<string>? primaryKeyNames = null;
+                if (writeRel.AdvancedExtension?.Enhancement != null)
+                {
+                    var typeName = Google.Protobuf.WellKnownTypes.Any.GetTypeName(writeRel.AdvancedExtension.Enhancement.TypeUrl);
+                    if (typeName == CustomProtobuf.WriteRelationPrimaryKeys.Descriptor.FullName)
+                    {
+                        var primaryKeys = writeRel.AdvancedExtension.Enhancement.Unpack<CustomProtobuf.WriteRelationPrimaryKeys>();
+                        primaryKeyNames = primaryKeys.Names.ToList();
+                    }
+                    else
+                    {
+                        throw new NotImplementedException($"Write relation enhancement '{typeName}' is not supported by deserialization");
+                    }
+                }
+
                 var writeRelation = new WriteRelation()
                 {
                     Input = input,
                     NamedObject = namedTableObj,
                     TableSchema = namedStruct,
                     Emit = emitData,
-                    Overwrite = overwrite
+                    Overwrite = overwrite,
+                    PrimaryKeyNames = primaryKeyNames
                 };
 
                 return writeRelation;
@@ -1570,10 +1615,7 @@ namespace FlowtideDotNet.Substrait
 
         public Plan Deserialize(string json)
         {
-            var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
-                    CustomProtobuf.IterationReferenceReadRelation.Descriptor,
-                    CustomProtobuf.IterationRelation.Descriptor);
-            var parser = new Google.Protobuf.JsonParser(new Google.Protobuf.JsonParser.Settings(300, typeRegistry));
+            var parser = new Google.Protobuf.JsonParser(new Google.Protobuf.JsonParser.Settings(300, CustomProtoTypeRegistry.Instance));
             var plan = parser.Parse<Protobuf.Plan>(json);
             return Deserialize(plan);
         }

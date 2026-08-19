@@ -32,7 +32,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     internal class MockDataSourceOperator : ReadBaseOperator
     {
 #if DEBUG_WRITE
-        private StreamWriter? allOutput;
+        private TextWriter? allOutput;
 #endif
 
         private readonly ReadRelation readRelation;
@@ -47,13 +47,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private readonly TimeSpan? _initialDataDelay;
         private readonly bool _failInitialize;
+        private readonly int? _batchSize;
 
-        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false) : base(options)
+        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null) : base(options)
         {
             this.readRelation = readRelation;
             this.mockDatabase = mockDatabase;
             _initialDataDelay = initialDataDelay;
             _failInitialize = failInitialize;
+            _batchSize = batchSize;
 
             _table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
 
@@ -112,7 +114,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                         weights.Add(1);
                     }
 
-                    if (weights.Count > 100)
+                    if (weights.Count > (_batchSize ?? 100))
                     {
                         pendingBatches.Add(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
 
@@ -145,28 +147,44 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 mockDatabase.RwLock.Release();
             }
 
-            foreach (var outputBatch in pendingBatches)
+            int sentCount = 0;
+            try
             {
-#if DEBUG_WRITE
-                foreach (var o in outputBatch.Events)
+                foreach (var outputBatch in pendingBatches)
                 {
-                    allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
-                }
-                await allOutput!.FlushAsync();
-#endif
-                await output.SendAsync(outputBatch);
-            }
-
-            _state.Value.LatestOffset = fetchedOffset;
-
-            if (pendingBatches.Count > 0)
-            {
-                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
-                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
 #if DEBUG_WRITE
-                allOutput!.WriteLine("Delta done");
-                await allOutput!.FlushAsync();
+                    foreach (var o in outputBatch.Events)
+                    {
+                        allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
+                    }
+                    await allOutput!.FlushAsync();
 #endif
+                    await output.SendAsync(outputBatch);
+                    sentCount++;
+                }
+
+                // Only advanced on a complete send, a partial send has to be refetched.
+                _state.Value.LatestOffset = fetchedOffset;
+
+                if (pendingBatches.Count > 0)
+                {
+                    await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
+                    this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
+#if DEBUG_WRITE
+                    allOutput!.WriteLine("Delta done");
+                    await allOutput!.FlushAsync();
+#endif
+                }
+            }
+            catch
+            {
+                // Return any non sent
+                for (int i = sentCount; i < pendingBatches.Count; i++)
+                {
+                    pendingBatches[i].Return();
+                }
+                output.ExitCheckpointLock();
+                throw;
             }
 
             output.ExitCheckpointLock();
@@ -264,7 +282,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             if (allOutput == null)
             {
-                allOutput = File.CreateText($"debugwrite/{StreamName}_{Name}_mock.alloutput.txt");
+                allOutput = TextWriter.Synchronized(File.CreateText($"debugwrite/{StreamName}_{Name}_mock.alloutput.txt"));
             }
             else
             {
@@ -336,7 +354,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     weights.Add(1);
                 }
 
-                if (weights.Count > 1000)
+                if (weights.Count > (_batchSize ?? 1000))
                 {
                     var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
 #if DEBUG_WRITE

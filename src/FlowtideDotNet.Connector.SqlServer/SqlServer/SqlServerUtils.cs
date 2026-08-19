@@ -657,6 +657,37 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return stringBuilder.ToString();
         }
 
+        /// <summary>
+        /// Matches primary key names against the written columns.
+        /// Returns their positions and the casing of the destination table.
+        /// </summary>
+        public static (List<int> Indices, List<string> ColumnNames) ResolvePrimaryKeyColumns(
+            IReadOnlyList<string> writtenColumnNames,
+            IReadOnlyList<string> primaryKeyNames,
+            string destinationTableName)
+        {
+            var indices = new List<int>();
+            var columnNames = new List<string>();
+            foreach (var primaryKey in primaryKeyNames)
+            {
+                int index = -1;
+                for (int i = 0; i < writtenColumnNames.Count; i++)
+                {
+                    if (writtenColumnNames[i].Equals(primaryKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        index = i;
+                    }
+                }
+                if (index == -1)
+                {
+                    throw new InvalidOperationException($"All primary keys of the sink table must be sent to the sink operator, '{primaryKey}' is not written to '{destinationTableName}'.");
+                }
+                indices.Add(index);
+                columnNames.Add(writtenColumnNames[index]);
+            }
+            return (indices, columnNames);
+        }
+
         public static string CreateMergeIntoProcedure(string tmpTableName, string destinationTableName, HashSet<string> primaryKeys, DataTable dataTable)
         {
             StringBuilder stringBuilder = new StringBuilder();

@@ -19,6 +19,8 @@ using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
+    // Process-wide hook statics, these classes must not run in parallel.
+    [Collection("StreamContext test hooks")]
     public class DeleteStreamTests : FlowtideAcceptanceBase
     {
         public DeleteStreamTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper, true)
@@ -132,6 +134,101 @@ namespace FlowtideDotNet.AcceptanceTests
             }
             finally
             {
+                DeletingStreamState.MaxDeleteAttempts = originalMax;
+                DeletingStreamState.DeleteRetryDelay = originalDelay;
+            }
+        }
+
+        /// <summary>
+        /// A stop that races the delete give-up must still complete.
+        /// </summary>
+        [Fact]
+        public async Task StopRacingTheDeleteGiveUpCompletes()
+        {
+            // Harness stream names contain the test method name.
+            const string Token = nameof(StopRacingTheDeleteGiveUpCompletes);
+            var originalMax = DeletingStreamState.MaxDeleteAttempts;
+            var originalDelay = DeletingStreamState.DeleteRetryDelay;
+            DeletingStreamState.MaxDeleteAttempts = 3;
+            DeletingStreamState.DeleteRetryDelay = TimeSpan.FromMilliseconds(10);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            try
+            {
+                GenerateData();
+                // Permanent delete failure, well above the shortened attempt budget.
+                SinkDeleteFailCount = 100;
+
+                await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
+                await WaitForUpdate();
+
+                // Holds the delete task in the race window.
+                StreamContext.DeleteGaveUpHookForTests = async (streamName) =>
+                {
+                    if (!streamName.Contains(Token))
+                    {
+                        return;
+                    }
+                    await release.Task;
+                };
+
+                // Returns when the give-up fails the delete task.
+                await Assert.ThrowsAnyAsync<Exception>(() => DeleteStream());
+
+                var stopTask = StopStream();
+                var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(15)));
+                Assert.True(finished == stopTask, "Stop hung, it deferred to a delete that had already given up");
+                await stopTask;
+            }
+            finally
+            {
+                release.TrySetResult();
+                StreamContext.DeleteGaveUpHookForTests = null;
+                DeletingStreamState.MaxDeleteAttempts = originalMax;
+                DeletingStreamState.DeleteRetryDelay = originalDelay;
+            }
+        }
+
+        /// <summary>
+        /// A delete that races the give-up must restart the attempts, not be swallowed.
+        /// </summary>
+        [Fact]
+        public async Task DeleteRacingTheDeleteGiveUpRestartsAttempts()
+        {
+            const string Token = nameof(DeleteRacingTheDeleteGiveUpRestartsAttempts);
+            var originalMax = DeletingStreamState.MaxDeleteAttempts;
+            var originalDelay = DeletingStreamState.DeleteRetryDelay;
+            DeletingStreamState.MaxDeleteAttempts = 3;
+            DeletingStreamState.DeleteRetryDelay = TimeSpan.FromMilliseconds(10);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            try
+            {
+                GenerateData();
+                SinkDeleteFailCount = 100;
+
+                await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
+                await WaitForUpdate();
+
+                StreamContext.DeleteGaveUpHookForTests = async (streamName) =>
+                {
+                    if (!streamName.Contains(Token))
+                    {
+                        return;
+                    }
+                    await release.Task;
+                };
+
+                await Assert.ThrowsAnyAsync<Exception>(() => DeleteStream());
+
+                // Gives up in turn, what matters is that it answers.
+                var retryTask = DeleteStream();
+                var finished = await Task.WhenAny(retryTask, Task.Delay(TimeSpan.FromSeconds(15)));
+                Assert.True(finished == retryTask, "The retried delete hung, it was swallowed as a duplicate");
+                await Assert.ThrowsAnyAsync<Exception>(() => retryTask);
+            }
+            finally
+            {
+                release.TrySetResult();
+                StreamContext.DeleteGaveUpHookForTests = null;
                 DeletingStreamState.MaxDeleteAttempts = originalMax;
                 DeletingStreamState.DeleteRetryDelay = originalDelay;
             }

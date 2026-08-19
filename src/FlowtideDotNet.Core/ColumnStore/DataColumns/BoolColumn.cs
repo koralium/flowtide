@@ -31,22 +31,21 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal class BoolColumn : IDataColumn
     {
-        private readonly BitmapList _data;
-        private bool disposedValue;
+        // Not readonly, mutations would run on a copy.
+        private BitmapList _data;
 
         public BoolColumn(IMemoryAllocator memoryAllocator)
         {
-            _data = BitmapListFactory.Get(memoryAllocator);
         }
 
         public BoolColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
         {
-            _data = new BitmapList(memoryAllocator, columnSizeInfo.TotalRows);
+            _data = new BitmapList(columnSizeInfo.TotalRows, memoryAllocator);
         }
 
-        public BoolColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
+        public BoolColumn(FlowtideMemory memory, int count, IMemoryAllocator memoryAllocator)
         {
-            _data = BitmapListFactory.Get(memory, count, memoryAllocator);
+            _data = new BitmapList(memory, count);
         }
 
         public int Count => _data.Count;
@@ -55,42 +54,39 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public StructHeader StructHeader => throw new NotImplementedException();
 
-        public int Add<T>(in T value) where T : IDataValue
+        public int Add<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             var index = _data.Count;
 
             if (value.Type == ArrowTypeId.Null)
             {
-                _data.Add(false);
+                _data.Add(false, memoryAllocator);
                 return index;
             }
 
             if (value.AsBool)
             {
-                _data.Add(true);
+                _data.Add(true, memoryAllocator);
             }
             else
             {
-                _data.Add(false);
+                _data.Add(false, memoryAllocator);
             }
             return index;
         }
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            Debug.Assert(_data != null);
-
             if (otherColumn is BoolColumn boolColumn)
             {
-                Debug.Assert(boolColumn._data != null);
                 return _data.Get(thisIndex).CompareTo(boolColumn._data.Get(otherIndex));
             }
             throw new NotImplementedException();
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
-            if (validityList != null &&
+            if (!validityList.IsNull &&
                 !validityList.Get(index))
             {
                 if (value.Type == ArrowTypeId.Null)
@@ -123,56 +119,56 @@ namespace FlowtideDotNet.Core.ColumnStore
             var val = dataValue.AsBool;
             if (desc)
             {
-                return BoundarySearch.SearchBoundries<bool>(_data, val, start, end, BoolComparerDesc.Instance);
+                return BoundarySearch.SearchBoundries(in _data, val, start, end, BoolComparerDesc.Instance);
             }
-            return BoundarySearch.SearchBoundries<bool>(_data, val, start, end, BoolComparer.Instance);
+            return BoundarySearch.SearchBoundries(in _data, val, start, end, BoolComparer.Instance);
         }
 
-        public int Update(in int index, in IDataValue value)
+        public int Update(in int index, in IDataValue value, IMemoryAllocator memoryAllocator)
         {
             if (value.AsBool)
             {
-                _data.Set(index);
+                _data.Set(index, memoryAllocator);
             }
             else
             {
-                _data.Unset(index);
+                _data.Unset(index, memoryAllocator);
             }
             return index;
         }
 
-        public int Update<T>(in int index, in T value) where T : IDataValue
+        public int Update<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.AsBool)
             {
-                _data.Set(index);
+                _data.Set(index, memoryAllocator);
             }
             else
             {
-                _data.Unset(index);
+                _data.Unset(index, memoryAllocator);
             }
             return index;
         }
 
-        public void RemoveAt(in int index)
+        public void RemoveAt(in int index, IMemoryAllocator memoryAllocator)
         {
             _data.RemoveAt(index);
         }
 
-        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        public void InsertAt<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                _data.InsertAt(index, false);
+                _data.InsertAt(index, false, memoryAllocator);
                 return;
             }
             if (value.AsBool)
             {
-                _data.InsertAt(index, true);
+                _data.InsertAt(index, true, memoryAllocator);
             }
             else
             {
-                _data.InsertAt(index, false);
+                _data.InsertAt(index, false, memoryAllocator);
             }
         }
 
@@ -183,24 +179,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             return (arr, new BooleanType());
         }
 
-        protected virtual void Dispose(bool disposing)
+        public void Dispose(IMemoryAllocator memoryAllocator)
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    _data.Dispose();
-                }
-
-                disposedValue = true;
-            }
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            _data.Dispose(memoryAllocator);
         }
 
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
@@ -208,22 +189,22 @@ namespace FlowtideDotNet.Core.ColumnStore
             return ArrowTypeId.Boolean;
         }
 
-        public void Clear()
+        public void Clear(IMemoryAllocator memoryAllocator)
         {
             _data.Clear();
         }
 
-        public void AddToNewList<T>(in T value) where T : IDataValue
+        public void AddToNewList<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             throw new NotImplementedException();
         }
 
-        public int EndNewList()
+        public int EndNewList(IMemoryAllocator memoryAllocator)
         {
             throw new NotImplementedException();
         }
 
-        public void RemoveRange(int start, int count)
+        public void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
         {
             _data.RemoveRange(start, count);
         }
@@ -243,11 +224,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data.GetPrefixSumByteSizes(indices, sizes);
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList, IMemoryAllocator memoryAllocator)
         {
             if (other is BoolColumn boolColumn)
             {
-                _data.InsertRangeFrom(index, boolColumn._data, start, count);
+                _data.InsertRangeFrom(index, boolColumn._data, start, count, memoryAllocator);
             }
             else
             {
@@ -255,9 +236,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public void InsertNullRange(int index, int count)
+        public void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
-            _data.InsertFalseInRange(index, count);
+            _data.InsertFalseInRange(index, count, memoryAllocator);
         }
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
@@ -267,9 +248,9 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
-            var mem = _data.MemorySlice;
-            var newMemory = memoryAllocator.Allocate(mem.Length, 64);
-            mem.Span.CopyTo(newMemory.Memory.Span);
+            var slicedSpan = _data.SlicedSpan;
+            var newMemory = memoryAllocator.AllocateMemory(slicedSpan.Length);
+            slicedSpan.CopyTo(newMemory.Span);
             return new BoolColumn(newMemory, Count, memoryAllocator);
         }
 
@@ -303,19 +284,19 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_data.MemorySlice.Length);
+            arrowSerializer.AddBufferForward(_data.SlicedSpan.Length);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_data.MemorySlice.Span);
+            dataWriter.WriteArrowBuffer(_data.SlicedSpan);
         }
 
-        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             if (other is BoolColumn boolColumn)
             {
-                _data.InsertFrom(in boolColumn._data, in sortedLookup, in insertPositions, lookupNullIndex);
+                _data.InsertFrom(in boolColumn._data, in sortedLookup, in insertPositions, lookupNullIndex, memoryAllocator);
             }
             else
             {
@@ -323,7 +304,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public void DeleteBatch(ReadOnlySpan<int> targets)
+        public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
         {
             _data.DeleteBatch(targets);
         }

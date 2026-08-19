@@ -29,43 +29,44 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestUpdateSmallerList()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             listColumn.Update(0, new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             var currentValue = listColumn.GetValueAt(0, default);
             var list = currentValue.AsList;
             Assert.Equal(2, list.Count);
             Assert.Equal(1, list.GetAt(0).AsLong);
             Assert.Equal(2, list.GetAt(1).AsLong);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void TestUpdateLargerList()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             listColumn.Update(0, new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             var currentValue = listColumn.GetValueAt(0, default);
             var list = currentValue.AsList;
@@ -73,41 +74,43 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(1, list.GetAt(0).AsLong);
             Assert.Equal(2, list.GetAt(1).AsLong);
             Assert.Equal(3, list.GetAt(2).AsLong);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void UpdateValueToEmptyList()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2)
-            }));
+            }), GlobalMemoryManager.Instance);
 
-            listColumn.Update(0, new ListValue(new List<IDataValue>()));
+            listColumn.Update(0, new ListValue(new List<IDataValue>()), GlobalMemoryManager.Instance);
 
             var currentValue = listColumn.GetValueAt(0, default);
             var list = currentValue.AsList;
             Assert.Equal(0, list.Count);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void UpdateValueToNull()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2)
-            }));
+            }), GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(3),
                 new Int64Value(4)
-            }));
+            }), GlobalMemoryManager.Instance);
 
-            listColumn.Update(0, NullValue.Instance);
+            listColumn.Update(0, NullValue.Instance, GlobalMemoryManager.Instance);
 
             var currentValue = listColumn.GetValueAt(0, default);
             var list = currentValue.AsList;
@@ -118,66 +121,69 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(2, list.Count);
             Assert.Equal(3, list.GetAt(0).AsLong);
             Assert.Equal(4, list.GetAt(1).AsLong);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void RemoveFirstElement()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(4),
                 new Int64Value(5)
-            }));
+            }), GlobalMemoryManager.Instance);
 
-            listColumn.RemoveAt(0);
+            listColumn.RemoveAt(0, GlobalMemoryManager.Instance);
 
             var currentValue = listColumn.GetValueAt(0, default);
             var list = currentValue.AsList;
             Assert.Equal(2, list.Count);
             Assert.Equal(4, list.GetAt(0).AsLong);
             Assert.Equal(5, list.GetAt(1).AsLong);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void RemoveSingleElementResultsEmptyList()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
 
-            listColumn.RemoveAt(0);
+            listColumn.RemoveAt(0, GlobalMemoryManager.Instance);
 
             Assert.Equal(0, listColumn.Count);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void RemoveLastElement()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(4),
                 new Int64Value(5)
-            }));
+            }), GlobalMemoryManager.Instance);
 
-            listColumn.RemoveAt(1);
+            listColumn.RemoveAt(1, GlobalMemoryManager.Instance);
 
             var currentValue = listColumn.GetValueAt(0, default);
             var list = currentValue.AsList;
@@ -185,30 +191,31 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(1, list.GetAt(0).AsLong);
             Assert.Equal(2, list.GetAt(1).AsLong);
             Assert.Equal(3, list.GetAt(2).AsLong);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void RemoveMiddleElement()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(4),
                 new Int64Value(5)
-            }));
+            }), GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(6),
                 new Int64Value(7)
-            }));
+            }), GlobalMemoryManager.Instance);
 
-            listColumn.RemoveAt(1);
+            listColumn.RemoveAt(1, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, listColumn.Count);
 
@@ -224,18 +231,19 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(2, list.Count);
             Assert.Equal(6, list.GetAt(0).AsLong);
             Assert.Equal(7, list.GetAt(1).AsLong);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void InsertAtInEmptyList()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.InsertAt(0, new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             var currentValue = listColumn.GetValueAt(0, default);
             var list = currentValue.AsList;
@@ -243,29 +251,30 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(1, list.GetAt(0).AsLong);
             Assert.Equal(2, list.GetAt(1).AsLong);
             Assert.Equal(3, list.GetAt(2).AsLong);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void InsertAtInMiddleOfList()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(4),
                 new Int64Value(5)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             listColumn.InsertAt(1, new ListValue(new List<IDataValue>()
             {
                 new Int64Value(6),
                 new Int64Value(7)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             Assert.Equal(3, listColumn.Count);
 
@@ -287,25 +296,26 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(2, list.Count);
             Assert.Equal(4, list.GetAt(0).AsLong);
             Assert.Equal(5, list.GetAt(1).AsLong);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void InsertNullInMiddleOfList()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(4),
                 new Int64Value(5)
-            }));
+            }), GlobalMemoryManager.Instance);
 
-            listColumn.InsertAt(1, NullValue.Instance);
+            listColumn.InsertAt(1, NullValue.Instance, GlobalMemoryManager.Instance);
 
             Assert.Equal(3, listColumn.Count);
 
@@ -325,24 +335,25 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(2, list.Count);
             Assert.Equal(4, list.GetAt(0).AsLong);
             Assert.Equal(5, list.GetAt(1).AsLong);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void InsertAtEndOfList()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             listColumn.InsertAt(1, new ListValue(new List<IDataValue>()
             {
                 new Int64Value(4),
                 new Int64Value(5)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             Assert.Equal(2, listColumn.Count);
 
@@ -358,24 +369,25 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(2, list.Count);
             Assert.Equal(4, list.GetAt(0).AsLong);
             Assert.Equal(5, list.GetAt(1).AsLong);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void InsertAtStartOfList()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             listColumn.InsertAt(0, new ListValue(new List<IDataValue>()
             {
                 new Int64Value(4),
                 new Int64Value(5)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             Assert.Equal(2, listColumn.Count);
 
@@ -391,31 +403,32 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(1, list.GetAt(0).AsLong);
             Assert.Equal(2, list.GetAt(1).AsLong);
             Assert.Equal(3, list.GetAt(2).AsLong);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void SearchBoundries()
         {
-            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(1),
                 new Int64Value(2),
                 new Int64Value(3)
-            }));
+            }), GlobalMemoryManager.Instance);
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(4),
                 new Int64Value(5),
                 new Int64Value(6)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             listColumn.Add(new ListValue(new List<IDataValue>()
             {
                 new Int64Value(7),
                 new Int64Value(8),
                 new Int64Value(9)
-            }));
+            }), GlobalMemoryManager.Instance);
 
             var (start, end) = listColumn.SearchBoundries(new ListValue(new List<IDataValue>()
             {
@@ -426,6 +439,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(1, start);
             Assert.Equal(1, end);
+            listColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
@@ -1107,10 +1121,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void AppendToCurrentList()
         {
-            using ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
             {
-                new ListValue(new Int64Value(1), new Int64Value(2)),
-                new ListValue(new Int64Value(4), new Int64Value(5))
+                { new ListValue(new Int64Value(1), new Int64Value(2)), GlobalMemoryManager.Instance },
+                { new ListValue(new Int64Value(4), new Int64Value(5)), GlobalMemoryManager.Instance }
             };
 
             column.AppendToList(0, new Int64Value(3));
@@ -1122,15 +1136,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(4, column.GetValueAt(1, default).AsList.GetAt(0).AsLong);
             Assert.Equal(5, column.GetValueAt(1, default).AsList.GetAt(1).AsLong);
             Assert.Equal("a", column.GetValueAt(1, default).AsList.GetAt(2).AsString.ToString());
+            column.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void AppendToCurrentListNullValue()
         {
-            using ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
             {
-                NullValue.Instance,
-                NullValue.Instance
+                { NullValue.Instance, GlobalMemoryManager.Instance },
+                { NullValue.Instance, GlobalMemoryManager.Instance }
             };
 
             column.AppendToList(0, new Int64Value(3));
@@ -1138,15 +1153,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(3, column.GetValueAt(0, default).AsList.GetAt(0).AsLong);
             Assert.Equal("a", column.GetValueAt(1, default).AsList.GetAt(0).AsString.ToString());
+            column.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void UpdateElementInList()
         {
-            using ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
             {
-                new ListValue(new Int64Value(1), new Int64Value(2)),
-                new ListValue(new Int64Value(4), new Int64Value(5))
+                { new ListValue(new Int64Value(1), new Int64Value(2)), GlobalMemoryManager.Instance },
+                { new ListValue(new Int64Value(4), new Int64Value(5)), GlobalMemoryManager.Instance }
             };
 
             column.UpdateListElement(0, 0, new Int64Value(3));
@@ -1156,15 +1172,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(2, column.GetValueAt(0, default).AsList.GetAt(1).AsLong);
             Assert.Equal(4, column.GetValueAt(1, default).AsList.GetAt(0).AsLong);
             Assert.Equal("a", column.GetValueAt(1, default).AsList.GetAt(1).AsString.ToString());
+            column.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void UpdateElementInListNullValue()
         {
-            using ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
             {
-                new ListValue(new Int64Value(1), new Int64Value(2)),
-                new ListValue(new Int64Value(4), new Int64Value(5))
+                { new ListValue(new Int64Value(1), new Int64Value(2)), GlobalMemoryManager.Instance },
+                { new ListValue(new Int64Value(4), new Int64Value(5)), GlobalMemoryManager.Instance }
             };
 
             column.UpdateListElement(0, 0, NullValue.Instance);
@@ -1174,30 +1191,32 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(2, column.GetValueAt(0, default).AsList.GetAt(1).AsLong);
             Assert.Equal(4, column.GetValueAt(1, default).AsList.GetAt(0).AsLong);
             Assert.True(column.GetValueAt(1, default).AsList.GetAt(1).IsNull);
+            column.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void GetListLengthTests()
         {
-            using ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
             {
-                new ListValue(new Int64Value(1), new Int64Value(2)),
-                new ListValue(new Int64Value(4)),
-                NullValue.Instance
+                { new ListValue(new Int64Value(1), new Int64Value(2)), GlobalMemoryManager.Instance },
+                { new ListValue(new Int64Value(4)), GlobalMemoryManager.Instance },
+                { NullValue.Instance, GlobalMemoryManager.Instance }
             };
 
             Assert.Equal(2, column.GetListLength(0));
             Assert.Equal(1, column.GetListLength(1));
             Assert.Equal(0, column.GetListLength(2));
+            column.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void RemoveElementInList()
         {
-            using ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
             {
-                new ListValue(new Int64Value(1), new Int64Value(2)),
-                new ListValue(new Int64Value(4), new Int64Value(5))
+                { new ListValue(new Int64Value(1), new Int64Value(2)), GlobalMemoryManager.Instance },
+                { new ListValue(new Int64Value(4), new Int64Value(5)), GlobalMemoryManager.Instance }
             };
 
             column.RemoveListElement(0, 0);
@@ -1213,30 +1232,32 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(0, column.GetListLength(0));
             Assert.Equal(0, column.GetListLength(1));
+            column.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void GetListElementValue()
         {
-            using ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
             {
-                new ListValue(new Int64Value(1), new Int64Value(2)),
-                new ListValue(new Int64Value(4), new Int64Value(5))
+                { new ListValue(new Int64Value(1), new Int64Value(2)), GlobalMemoryManager.Instance },
+                { new ListValue(new Int64Value(4), new Int64Value(5)), GlobalMemoryManager.Instance }
             };
 
             Assert.Equal(1, column.GetListElementValue(0, 0).AsLong);
             Assert.Equal(2, column.GetListElementValue(0, 1).AsLong);
             Assert.Equal(4, column.GetListElementValue(1, 0).AsLong);
             Assert.Equal(5, column.GetListElementValue(1, 1).AsLong);
+            column.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void GetListElementValueWithDataValueContainer()
         {
-            using ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
             {
-                new ListValue(new Int64Value(1), new Int64Value(2)),
-                new ListValue(new Int64Value(4), new Int64Value(5))
+                { new ListValue(new Int64Value(1), new Int64Value(2)), GlobalMemoryManager.Instance },
+                { new ListValue(new Int64Value(4), new Int64Value(5)), GlobalMemoryManager.Instance }
             };
 
             DataValueContainer dataValueContainer = new DataValueContainer();
@@ -1249,6 +1270,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(4, dataValueContainer.AsLong);
             column.GetListElementValue(1, 1, dataValueContainer);
             Assert.Equal(5, dataValueContainer.AsLong);
+            column.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]

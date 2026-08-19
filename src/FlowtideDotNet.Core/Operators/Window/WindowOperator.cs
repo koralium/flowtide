@@ -338,6 +338,17 @@ namespace FlowtideDotNet.Core.Operators.Window
                 _eventsInCounter = Metrics.CreateCounter<long>("events_processed");
             }
 
+            // The bulk window operator stores its state under "persistent_v1" with an incompatible
+            // layout. Restoring such state silently as an empty tree would produce permanently wrong
+            // output, so fail loudly instead.
+            if (stateManagerClient.StateExists("persistent_v1"))
+            {
+                throw new InvalidOperationException(
+                    "Found existing window operator state written by the bulk window operator. " +
+                    "The non bulk window operator stores its state differently and cannot restore it. " +
+                    "Reset the stream state, or run in column store mode which uses the bulk window operator.");
+            }
+
             _persistentTree = await stateManagerClient.GetOrCreateTree("persistent",
             new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>()
             {

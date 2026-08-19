@@ -94,6 +94,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private readonly Dictionary<SharedTreeKey, SharedGroupValueTree> _sharedTrees = new();
 
         private ColumnStore.Column[] outputColumns;
+        // Column indices left out of the emit set. Those columns never reach an emitted batch, so
+        // the emit has to release them. Fixed for the operator, so it is resolved once.
+        private readonly int[] _nonEmittedColumnIndices;
         private PrimitiveList<int>? weights;
         private PrimitiveList<uint>? iterations;
         // Retraction rows are emitted as their own batch. Within one watermark a temp leaf can span
@@ -105,6 +108,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private PrimitiveList<int>? _retractWeights;
         private PrimitiveList<uint>? _retractIterations;
         private uint m_currentIteration;
+
+        // Deferred insert buffering for random group keys
+        private readonly DeferredInsertBuffer _defer = new DeferredInsertBuffer();
+        private long _lastReceiveTime;
+        private uint _pendingIteration;
 
         public BulkAggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -130,6 +138,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
             m_groupLength = groupLength;
             outputColumns = new ColumnStore.Column[groupLength + _measures.Length];
+            _nonEmittedColumnIndices = BuildNonEmittedColumnIndices(aggregateRelation, outputColumns.Length);
 
             _batchSorter = new BatchSorter(groupLength);
 
@@ -174,6 +183,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             Debug.Assert(m_temporaryStateValues != null);
             Debug.Assert(m_hasSentInitialData != null);
 
+            if (_defer.HasPending)
+            {
+                // OnCheckpointFlush always runs before OnCheckpoint
+                throw new InvalidOperationException("Deferred aggregate data pending at checkpoint, OnCheckpointFlush should have flushed it.");
+            }
+
             await _tree.Commit();
 
             if (_temporaryTree != null)
@@ -212,6 +227,18 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             await m_hasSentInitialData.Commit();
         }
 
+        // Checkpoints arrive independently of watermarks, keep buffering latched
+        protected override IAsyncEnumerable<StreamEventBatch> OnCheckpointFlush()
+        {
+            return FlushPending();
+        }
+
+        // Buffered data must be visible to the loop before it can settle
+        protected override IAsyncEnumerable<StreamEventBatch> OnLockingEventPrepare()
+        {
+            return FlushPending();
+        }
+
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
         {
             Debug.Assert(_temporaryTree != null);
@@ -220,6 +247,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             Debug.Assert(m_hasSentInitialData != null);
             Debug.Assert(weights != null);
             Debug.Assert(iterations != null);
+
+            // Buffered batches must be in state before emitting results
+            await foreach (var batch in FlushPending())
+            {
+                yield return batch;
+            }
+            _defer.ExitBuffering();
 
             int groupLength = m_groupValues.Length;
 
@@ -532,18 +566,76 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             await _temporaryTree.Clear();
         }
 
+        /// <summary>
+        /// Resolves which column indices the emit set leaves out. Both column arrays are the same
+        /// length for the operator's lifetime, so this is answered once instead of per emit.
+        /// </summary>
+        private static int[] BuildNonEmittedColumnIndices(AggregateRelation relation, int totalColumns)
+        {
+            if (!relation.EmitSet)
+            {
+                return Array.Empty<int>();
+            }
+
+            var emit = relation.Emit!;
+            var emitted = new bool[totalColumns];
+            for (int i = 0; i < emit.Count; i++)
+            {
+                var index = emit[i];
+                // An out of range index is left to fail where it always did, on the emit itself.
+                if (index >= 0 && index < totalColumns)
+                {
+                    emitted[index] = true;
+                }
+            }
+
+            var count = 0;
+            for (int i = 0; i < totalColumns; i++)
+            {
+                if (!emitted[i])
+                {
+                    count++;
+                }
+            }
+            if (count == 0)
+            {
+                return Array.Empty<int>();
+            }
+
+            var result = new int[count];
+            var next = 0;
+            for (int i = 0; i < totalColumns; i++)
+            {
+                if (!emitted[i])
+                {
+                    result[next++] = i;
+                }
+            }
+            return result;
+        }
+
         private EventBatchData GetEmitBatchData() => GetEmitBatchData(outputColumns);
 
         private EventBatchData GetEmitBatchData(ColumnStore.Column[] columns)
         {
             if (_aggregateRelation.EmitSet)
             {
-                var emit = _aggregateRelation.Emit;
+                var emit = _aggregateRelation.Emit!;
                 var emitColumns = new ColumnStore.Column[emit.Count];
                 for (int i = 0; i < emit.Count; i++)
                 {
                     emitColumns[i] = columns[emit[i]];
                 }
+
+                // Every caller replaces the column array right after this. Only the emitted
+                // columns go into the batch and are freed with it, the rest have no owner left.
+                // Usually empty, in which case this costs nothing.
+                var nonEmitted = _nonEmittedColumnIndices;
+                for (int i = 0; i < nonEmitted.Length; i++)
+                {
+                    columns[nonEmitted[i]].Dispose();
+                }
+
                 return new EventBatchData(emitColumns);
             }
             return new EventBatchData(columns);
@@ -580,7 +672,97 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             _retractIterations = new PrimitiveList<uint>(MemoryAllocator);
         }
 
-        public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        {
+            _lastReceiveTime = time;
+            if (_defer.Buffering)
+            {
+                return BufferBatch(msg);
+            }
+            return ProcessBatch(msg, time);
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> BufferBatch(StreamEventBatch msg)
+        {
+            if (msg.Data.Weights.Count == 0)
+            {
+                yield break;
+            }
+            // Batches from different loop iterations must not merge
+            if (_defer.HasPending && msg.Data.Iterations[0] != _pendingIteration)
+            {
+                await foreach (var batch in FlushPending())
+                {
+                    yield return batch;
+                }
+            }
+            _pendingIteration = msg.Data.Iterations[0];
+            if (_defer.Add(msg.Data))
+            {
+                await foreach (var batch in FlushPending())
+                {
+                    yield return batch;
+                }
+            }
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> FlushPending()
+        {
+            if (!_defer.HasPending)
+            {
+                yield break;
+            }
+
+            // One sort and insert amortized over all pending rows
+            var combined = _defer.TakePending(MemoryAllocator);
+            try
+            {
+                var combinedMsg = new StreamEventBatch(combined);
+                await foreach (var batch in ProcessBatch(combinedMsg, _lastReceiveTime))
+                {
+                    yield return batch;
+                }
+            }
+            finally
+            {
+                combined.Return();
+            }
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> ProcessBatch(StreamEventBatch msg, long time)
+        {
+            try
+            {
+                await foreach (var batch in ProcessBatchCore(msg, time))
+                {
+                    yield return batch;
+                }
+            }
+            finally
+            {
+                BatchDone();
+            }
+        }
+
+        /// <summary>
+        /// Releases the per batch projections that the measures and shared trees allocate in NewBatch.
+        /// Without this the last batch keeps its columns until the operator is disposed, and since the
+        /// column finalizer does not free anything that memory is gone for good.
+        /// Runs in a finally so it also happens if the consumer stops enumerating early.
+        /// </summary>
+        private void BatchDone()
+        {
+            for (int i = 0; i < _measures.Length; i++)
+            {
+                _measures[i].BatchDone();
+            }
+            foreach (var sharedTree in _sharedTrees.Values)
+            {
+                sharedTree.BatchDone();
+            }
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> ProcessBatchCore(StreamEventBatch msg, long time)
         {
             if (msg.Data.Count > 0)
             {
@@ -849,6 +1031,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             // Apply the batch, mutator handles calling compute on measures for a group of values
             await _treeBulkInserter.ApplyBatch(_rowReferenceBuffer, _rowValuesBuffer, uniqueCounter, _noDuplicateIndices, _duplicateTags, mutator, totalBatchSize);
 
+            // Unique group count and leaf hits drive the buffering
+            _defer.OnBatchApplied(uniqueCounter, _treeBulkInserter.LeafHitCount);
+
             // Temporary should be moved
             if (_tempIndices.Length < uniqueCounter)
             {
@@ -900,8 +1085,101 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
         }
 
+        public override ValueTask DisposeAsync()
+        {
+            _defer.ReturnPending();
+            ReleaseOwnedColumns();
+
+            return base.DisposeAsync();
+        }
+
+        /// <summary>
+        /// Releases every column set this operator owns. Called from both dispose and restore: a
+        /// restore reuses this instance and replaces the fields, so anything released only on
+        /// dispose would be orphaned there. Each field is cleared after release so a second call
+        /// cannot free the same buffer twice.
+        /// </summary>
+        private void ReleaseOwnedColumns()
+        {
+            // Each shared tree holds the projected column of the last batch it saw, and a restore
+            // clears the dictionary, so they have to be released here rather than dropped.
+            foreach (var sharedTree in _sharedTrees.Values)
+            {
+                sharedTree.Dispose();
+            }
+            _sharedTrees.Clear();
+
+            if (_retractIterations != null)
+            {
+                _retractIterations.Dispose();
+                _retractIterations = null;
+            }
+
+            if (_retractWeights != null)
+            {
+                _retractWeights.Dispose();
+                _retractWeights = null;
+            }
+
+            for (int i = 0; i < _retractColumns.Length; i++)
+            {
+                _retractColumns[i].Dispose();
+            }
+            _retractColumns = Array.Empty<ColumnStore.Column>();
+
+            if (weights != null)
+            {
+                weights.Dispose();
+                weights = null;
+            }
+
+            if (iterations != null)
+            {
+                iterations.Dispose();
+                iterations = null;
+            }
+
+            for (int i = 0; i < outputColumns.Length; i++)
+            {
+                if (outputColumns[i] != null)
+                {
+                    outputColumns[i].Dispose();
+                }
+            }
+            outputColumns = Array.Empty<ColumnStore.Column>();
+
+            // A direct field slot in m_groupValues borrows the incoming batch's column instead of
+            // owning one, disposing those would free data the source still owns.
+            if (m_groupValues != null)
+            {
+                for (int i = 0; i < m_groupValues.Length; i++)
+                {
+                    if (m_groupDirectFields != null && m_groupDirectFields[i] != -1)
+                    {
+                        continue;
+                    }
+                    m_groupValues[i]?.Dispose();
+                }
+                m_groupValues = Array.Empty<IColumn>();
+            }
+
+            if (m_temporaryStateValues != null)
+            {
+                for (int i = 0; i < m_temporaryStateValues.Length; i++)
+                {
+                    m_temporaryStateValues[i]?.Dispose();
+                }
+                m_temporaryStateValues = Array.Empty<ColumnStore.Column>();
+            }
+        }
+
         protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
+            // A restore reuses this instance and replaces every column field below. Released here
+            // while m_groupDirectFields still describes the old set, that is what says which
+            // m_groupValues slots are owned rather than borrowed.
+            ReleaseOwnedColumns();
+
             _sharedTrees.Clear();
             InitOutputColumns();
 

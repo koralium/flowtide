@@ -3369,5 +3369,89 @@ namespace FlowtideDotNet.AcceptanceTests
                 AssertExpected();
             }
         }
+
+        /// <summary>
+        /// Group by without measures, with and without the rewrite.
+        /// </summary>
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task GroupByWithoutMeasures(bool groupByToDistinct)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                AddUser(new Entities.User
+                {
+                    UserKey = i,
+                    CompanyId = "co_" + (i % 10),
+                    Visits = i % 5 == 0 ? null : i % 4
+                });
+            }
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, visits
+                FROM users
+                GROUP BY companyId, visits",
+                planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings { GroupByToDistinct = groupByToDistinct });
+
+            void AssertExpected()
+            {
+                AssertCurrentDataEqual(Users.Select(x => new { x.CompanyId, x.Visits }).Distinct().ToList());
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            // All combinations still have members left
+            foreach (var user in Users.Where(x => x.UserKey % 3 == 0).ToList())
+            {
+                DeleteUser(user);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Removes the combinations that have three visits
+            foreach (var user in Users.Where(x => x.Visits == 3).ToList())
+            {
+                DeleteUser(user);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task GroupByWithoutMeasuresOnExpression(bool groupByToDistinct)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i % 10), Visits = i % 4 });
+            }
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT visits + 1
+                FROM users
+                GROUP BY visits + 1",
+                planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings { GroupByToDistinct = groupByToDistinct });
+
+            void AssertExpected()
+            {
+                AssertCurrentDataEqual(Users.Select(x => new { Value = x.Visits + 1 }).Distinct().ToList());
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Removes one of the values completely
+            foreach (var user in Users.Where(x => x.Visits == 2).ToList())
+            {
+                DeleteUser(user);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
     }
 }

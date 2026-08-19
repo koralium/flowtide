@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Storage.Mimalloc;
 using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -548,6 +547,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     else
                     {
+                        if (m_sameCacheHitsCount >= 1000)
+                        {
+                            // Idle with an empty cache, hand the freed pages back to the OS.
+                            FlowtideMemoryAllocation.Collect();
+                            m_sameCacheHitsCount = 0;
+                        }
                         CompactQueuesIfNeeded();
                         return;
                     }

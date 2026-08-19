@@ -20,6 +20,11 @@ namespace FlowtideDotNet.Core.Connectors
 {
     public abstract class AbstractConnectorSinkFactory : IConnectorSinkFactory
     {
+        /// <summary>
+        /// <inheritdoc cref="IConnectorSinkFactory.SupportsPrimaryKeyDeclaration"/>
+        /// </summary>
+        public virtual bool SupportsPrimaryKeyDeclaration => false;
+
         public abstract bool CanHandle(WriteRelation writeRelation);
 
         public abstract IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions);

@@ -127,7 +127,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public async Task GetPullBucketData(int exchangeTargetId, ExchangeFetchDataMessage fetchDataRequest)
         {
             Debug.Assert(_events != null);
-            var iterator = _events.CreateIterator();
+            using var iterator = _events.CreateIterator();
             await iterator.Seek(fetchDataRequest.FromEventId);
 
             List<IStreamEvent> outputData = new List<IStreamEvent>();

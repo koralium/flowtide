@@ -85,6 +85,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public int CachePageCount { get; set; } = 0;
 
         /// <summary>
+        /// The floor the cache is never evicted below. Set to 0 to let the cache empty completely.
+        /// </summary>
+        public int MinCachePageCount { get; set; } = 1000;
+
+        /// <summary>
         /// Enables the stream option that takes a checkpoint right after initial data, which
         /// installs a checkpoint placeholder during startup. Set before starting the stream.
         /// </summary>
@@ -98,6 +103,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public TimeSpan? InitialDataDelay { get; set; }
 
         /// <summary>
+        /// Overrides the mock source's batch flush size. Set before starting the stream.
+        /// </summary>
+        public int? SourceBatchSize { get; set; }
+
+        /// <summary>
         /// Sets the minimum time between checkpoint triggers. Set before starting the stream.
         /// </summary>
         public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
@@ -109,6 +119,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public TimeSpan? StopDrainTimeout { get; set; }
 
         public int BPlusTreePageSizeBytes { get; set; } = 32 * 1024;
+
+        /// <summary>
+        /// Overrides the column store mode of the stream. Set before starting the stream.
+        /// </summary>
+        public bool? UseColumnStore { get; set; }
 
         public Watermark? LastWatermark => _lastWatermark;
 
@@ -341,6 +356,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
                     CachePageCount = CachePageCount,
+                    MinCachePageCount = MinCachePageCount,
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _persistentStorage,
                     DefaultBPlusTreePageSize = pageSize,
@@ -354,6 +370,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (!string.IsNullOrWhiteSpace(version))
             {
                 flowtideBuilder.SetVersion(version);
+            }
+
+            if (UseColumnStore.HasValue)
+            {
+                flowtideBuilder.ColumnStore(UseColumnStore.Value);
             }
 
             if (distributedOptions != null)
@@ -413,6 +434,38 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 _actualData = actualData;
                 _dataUpdated = true;
+            }
+        }
+
+        private int _changeRowsReceived;
+
+        /// <summary>
+        /// Rows sent to the sink, not the state.
+        /// </summary>
+        public int ChangeRowsReceived
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _changeRowsReceived;
+                }
+            }
+        }
+
+        public void ResetChangeRowsReceived()
+        {
+            lock (_lock)
+            {
+                _changeRowsReceived = 0;
+            }
+        }
+
+        private void OnChangeRowsReceived(int count)
+        {
+            lock (_lock)
+            {
+                _changeRowsReceived += count;
             }
         }
 
@@ -566,7 +619,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay));
+            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay, batchSize: SourceBatchSize));
         }
 
         /// <summary>
@@ -577,7 +630,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddWriteResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark, deleteFailCount: SinkDeleteFailCount));
+            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark, deleteFailCount: SinkDeleteFailCount, onChangeRowsReceived: OnChangeRowsReceived));
         }
 
         protected virtual void OnWatermark(Watermark watermark)
@@ -589,6 +642,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             var expectedBatch = BatchConverter.ConvertToBatchSorted(data, GlobalMemoryManager.Instance);
             EventBatchAssertion.Equal(expectedBatch, _actualData!);
+            expectedBatch.Dispose();
         }
 
         public EventBatchData GetActualRowsAsVectors()

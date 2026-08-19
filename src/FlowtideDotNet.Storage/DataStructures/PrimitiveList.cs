@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,11 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Memory;
-using System.Buffers;
 using System.Collections;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.DataStructures
 {
@@ -25,17 +22,16 @@ namespace FlowtideDotNet.Storage.DataStructures
     /// which can be exposed as a <see cref="Span"/> or <see cref="Memory"/> and serialized without copying element by element.
     /// Ownership is reference counted through <see cref="Rent(int)"/> and <see cref="Return"/>, and the buffer is
     /// released when the list is disposed or the last reference is returned.
+    /// The list logic lives in <see cref="NativeList{T}"/>, this class adds shared ownership on top of it.
     /// </summary>
     /// <typeparam name="T">The unmanaged element type.</typeparam>
     public unsafe class PrimitiveList<T> : IDisposable, IReadOnlyList<T>
         where T : unmanaged
     {
-        private void* _data;
-        private int _dataLength;
-        private int _length;
+        // Not readonly, mutations would run on a copy.
+        private NativeList<T> _list;
         private bool _disposedValue;
         private readonly IMemoryAllocator _memoryAllocator;
-        private IMemoryOwner<byte>? _memoryOwner;
         private int _rentCounter;
 
         /// <summary>
@@ -44,7 +40,6 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="memoryAllocator">The allocator used for backing memory.</param>
         public PrimitiveList(IMemoryAllocator memoryAllocator)
         {
-            _data = null;
             _memoryAllocator = memoryAllocator;
         }
 
@@ -56,7 +51,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         public PrimitiveList(IMemoryAllocator memoryAllocator, int initialCapacity)
         {
             _memoryAllocator = memoryAllocator;
-            EnsureCapacity(initialCapacity);
+            _list.EnsureCapacity(initialCapacity, memoryAllocator);
         }
 
         /// <summary>
@@ -64,46 +59,45 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         /// <param name="memory">The memory holding the elements.</param>
         /// <param name="length">The number of valid elements in <paramref name="memory"/>.</param>
-        /// <param name="memoryAllocator">The allocator used for any later growth.</param>
-        public PrimitiveList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        /// <param name="memoryAllocator">The allocator that produced the memory.</param>
+        public PrimitiveList(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _memoryOwner = memory;
-            _data = _memoryOwner.Memory.Pin().Pointer;
-            _dataLength = memory.Memory.Length / sizeof(T);
-            _length = length;
+            _list = new NativeList<T>(memory, length);
             _memoryAllocator = memoryAllocator;
         }
+
+        /// <summary>
+        /// Creates a list that takes over an existing native list.
+        /// </summary>
+        /// <param name="list">The list to take ownership of, it must not be used again by the caller.</param>
+        /// <param name="memoryAllocator">The allocator that produced the list.</param>
+#pragma warning disable RS0042 // The list moves into this instance and is not used again.
+        public PrimitiveList(NativeList<T> list, IMemoryAllocator memoryAllocator)
+        {
+            _list = list;
+            _memoryAllocator = memoryAllocator;
+        }
+#pragma warning restore RS0042
 
         /// <summary>
         /// A span over the current elements of the list.
         /// </summary>
-        public Span<T> Span => new Span<T>(_data, _length);
+        public Span<T> Span => _list.Span;
 
         /// <summary>
         /// The full backing memory buffer in bytes, including any capacity beyond the current elements, or empty when nothing is allocated.
         /// </summary>
-        public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
+        public Memory<byte> Memory => _list.Memory;
 
         /// <summary>
-        /// The portion of the backing memory in bytes that actually holds the current elements.
-        /// Use this when serializing or copying the list.
+        /// The current elements for consumers that need Memory.
         /// </summary>
-        public Memory<byte> SlicedMemory => _memoryOwner?.Memory.Slice(0, _length * sizeof(T)) ?? new Memory<byte>();
+        public Memory<byte> SlicedMemory => _list.SlicedMemory;
 
         /// <summary>
-        /// Creates a list over an existing raw memory pointer. The caller is responsible for keeping the memory alive.
+        /// The bytes of the current elements.
         /// </summary>
-        /// <param name="data">Pointer to the element data.</param>
-        /// <param name="dataLength">The capacity, in elements, of the buffer at <paramref name="data"/>.</param>
-        /// <param name="length">The number of valid elements.</param>
-        /// <param name="memoryAllocator">The allocator used for any later growth.</param>
-        public PrimitiveList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
-        {
-            _data = data;
-            _dataLength = dataLength;
-            _length = length;
-            _memoryAllocator = memoryAllocator;
-        }
+        public Span<byte> SlicedSpan => _list.SlicedSpan;
 
         /// <summary>
         /// UNSAFE: Gets the raw pointer to do operations without boundary checks
@@ -112,48 +106,13 @@ namespace FlowtideDotNet.Storage.DataStructures
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal T* GetPointer_Unsafe()
         {
-            return (T*)_data;
+            return _list.GetPointer_Unsafe();
         }
 
         internal void EnsureCapacity(int length)
         {
-            if (_dataLength < length)
-            {
-                var newLength = length * 2;
-                if (newLength < 64)
-                {
-                    newLength = 64;
-                }
-                var allocSize = newLength * sizeof(T);
-
-                if (_memoryOwner == null)
-                {
-                    _memoryOwner = _memoryAllocator.Allocate(allocSize, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                }
-                else
-                {
-                    _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, allocSize, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
-                }
-                _dataLength = _memoryOwner.Memory.Length / sizeof(T);
-            }
+            _list.EnsureCapacity(length, _memoryAllocator);
         }
-
-        private void CheckSizeReduction()
-        {
-            var multipleid = (_length << 1) + (_length >> 1);
-            if (multipleid < _dataLength && _dataLength > 256)
-            {
-                Debug.Assert(_memoryAllocator != null);
-                Debug.Assert(_memoryOwner != null);
-                _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length * sizeof(T), 64);
-                _data = _memoryOwner.Memory.Pin().Pointer;
-                _dataLength = _memoryOwner.Memory.Length / sizeof(T);
-            }
-        }
-
-        private Span<T> AccessSpan => new Span<T>(_data, _dataLength);
 
         /// <summary>
         /// Appends a value to the end of the list, growing it by one.
@@ -161,8 +120,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="value">The value to append.</param>
         public void Add(T value)
         {
-            EnsureCapacity(_length + 1);
-            AccessSpan[_length++] = value;
+            _list.Add(value, _memoryAllocator);
         }
 
         /// <summary>
@@ -173,11 +131,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="count">The number of elements to copy.</param>
         public void AddRangeFrom(PrimitiveList<T> list, int index, int count)
         {
-            EnsureCapacity(_length + count);
-            var span = AccessSpan;
-            var sourceSpan = list.AccessSpan;
-            sourceSpan.Slice(index, count).CopyTo(span.Slice(_length, count));
-            _length += count;
+            _list.AddRangeFrom(in list._list, index, count, _memoryAllocator);
         }
 
         /// <summary>
@@ -187,17 +141,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="value">The value to insert.</param>
         public void InsertAt(int index, T value)
         {
-            if (index == _length)
-            {
-                Add(value);
-                return;
-            }
-
-            EnsureCapacity(_length + 1);
-            var span = AccessSpan;
-            span.Slice(index, _length - index).CopyTo(span.Slice(index + 1, _length - index));
-            span[index] = value;
-            _length++;
+            _list.InsertAt(index, value, _memoryAllocator);
         }
 
         /// <summary>
@@ -209,12 +153,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="count">The number of elements to copy.</param>
         public void InsertRangeFrom(int index, PrimitiveList<T> other, int start, int count)
         {
-            EnsureCapacity(_length + count);
-            var span = AccessSpan;
-            var sourceSpan = other.AccessSpan;
-            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
-            sourceSpan.Slice(start, count).CopyTo(span.Slice(index, count));
-            _length += count;
+            _list.InsertRangeFrom(index, in other._list, start, count, _memoryAllocator);
         }
 
         /// <summary>
@@ -225,14 +164,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="count">The number of copies to insert.</param>
         public void InsertStaticRange(int index, T value, int count)
         {
-            EnsureCapacity(_length + count);
-            var span = AccessSpan;
-            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
-            for (var i = 0; i < count; i++)
-            {
-                span[index + i] = value;
-            }
-            _length += count;
+            _list.InsertStaticRange(index, value, count, _memoryAllocator);
         }
 
         /// <summary>
@@ -248,45 +180,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="lookupNullIndex">A sentinel value in <paramref name="sortedLookup"/> that inserts a default element instead of reading from <paramref name="other"/>.</param>
         public void InsertFrom(ref readonly PrimitiveList<T> other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
-            Debug.Assert(sortedLookup.Length == insertPositions.Length);
-            int otherCount = sortedLookup.Length;
-            if (otherCount == 0) return;
-
-            int oldCount = _length;
-
-            // Ensure we have enough capacity for all elements
-            EnsureCapacity(oldCount + otherCount);
-
-            var selfData = AccessSpan;
-            var otherData = other.AccessSpan;
-
-            int currentReadIdx = oldCount;
-            int currentWriteIdx = oldCount + otherCount;
-
-            for (int i = otherCount - 1; i >= 0; i--)
-            {
-                int targetInsertIdx = insertPositions[i];
-                int elementsToMove = currentReadIdx - targetInsertIdx;
-
-                if (elementsToMove > 0)
-                {
-                    currentWriteIdx -= elementsToMove;
-                    currentReadIdx -= elementsToMove;
-
-                    selfData.Slice(currentReadIdx, elementsToMove)
-                            .CopyTo(selfData.Slice(currentWriteIdx, elementsToMove));
-                }
-
-                // Place the new element from the other list
-                int oIdx = sortedLookup[i];
-                currentWriteIdx--;
-                selfData[currentWriteIdx] = oIdx == lookupNullIndex ? default : otherData[oIdx];
-
-                // Move the read tracker to the left of the block we just processed
-                currentReadIdx = targetInsertIdx;
-            }
-
-            _length += otherCount;
+            _list.InsertFrom(in other._list, in sortedLookup, in insertPositions, in lookupNullIndex, _memoryAllocator);
         }
 
         /// <summary>
@@ -297,47 +191,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="targets">A span of sorted indices (ascending) of elements to delete.</param>
         public void DeleteBatch(ReadOnlySpan<int> targets)
         {
-            int deleteCount = targets.Length;
-            if (deleteCount == 0) return;
-
-            Debug.Assert(deleteCount <= _length);
-
-            int oldCount = _length;
-            var selfData = AccessSpan;
-
-            int writeIdx = 0;
-            int currentSourceIdx = 0;
-
-            for (int i = 0; i < deleteCount; i++)
-            {
-                int targetIdx = targets[i];
-
-                // Copy the retained block before this deletion target
-                int elementsToMove = targetIdx - currentSourceIdx;
-                if (elementsToMove > 0)
-                {
-                    if (writeIdx != currentSourceIdx)
-                    {
-                        selfData.Slice(currentSourceIdx, elementsToMove)
-                                .CopyTo(selfData.Slice(writeIdx, elementsToMove));
-                    }
-                    writeIdx += elementsToMove;
-                }
-
-                // Skip the deleted element
-                currentSourceIdx = targetIdx + 1;
-            }
-
-            // Copy the remaining block after the last deletion target
-            int remaining = oldCount - currentSourceIdx;
-            if (remaining > 0 && writeIdx != currentSourceIdx)
-            {
-                selfData.Slice(currentSourceIdx, remaining)
-                        .CopyTo(selfData.Slice(writeIdx, remaining));
-            }
-
-            _length = oldCount - deleteCount;
-            CheckSizeReduction();
+            _list.DeleteBatch(targets, _memoryAllocator);
         }
 
         /// <summary>
@@ -352,42 +206,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</param>
         public void InsertFrom(T[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
-            Debug.Assert(sortedLookup.Length == insertPositions.Length);
-            int otherCount = sortedLookup.Length;
-            if (otherCount == 0) return;
-
-            int oldCount = _length;
-
-            EnsureCapacity(oldCount + otherCount);
-
-            var selfData = AccessSpan;
-            var otherData = keys.AsSpan();
-
-            int currentReadIdx = oldCount;
-            int currentWriteIdx = oldCount + otherCount;
-
-            for (int i = otherCount - 1; i >= 0; i--)
-            {
-                int targetInsertIdx = insertPositions[i];
-                int elementsToMove = currentReadIdx - targetInsertIdx;
-
-                if (elementsToMove > 0)
-                {
-                    currentWriteIdx -= elementsToMove;
-                    currentReadIdx -= elementsToMove;
-
-                    selfData.Slice(currentReadIdx, elementsToMove)
-                            .CopyTo(selfData.Slice(currentWriteIdx, elementsToMove));
-                }
-
-                int oIdx = sortedLookup[i];
-                currentWriteIdx--;
-                selfData[currentWriteIdx] = otherData[oIdx];
-
-                currentReadIdx = targetInsertIdx;
-            }
-
-            _length += otherCount;
+            _list.InsertFrom(keys, sortedLookup, insertPositions, _memoryAllocator);
         }
 
         /// <summary>
@@ -398,10 +217,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="count">The number of element slots to open.</param>
         public void MoveAtIndex(int index, int count)
         {
-            EnsureCapacity(_length + count);
-            var span = AccessSpan;
-            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
-            _length += count;
+            _list.MoveAtIndex(index, count, _memoryAllocator);
         }
 
         /// <summary>
@@ -410,10 +226,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="index">The zero based index of the element to remove.</param>
         public void RemoveAt(int index)
         {
-            var span = AccessSpan;
-            span.Slice(index + 1, _length - index - 1).CopyTo(span.Slice(index, _length - index - 1));
-            _length--;
-            CheckSizeReduction();
+            _list.RemoveAt(index, _memoryAllocator);
         }
 
         /// <summary>
@@ -423,11 +236,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="count">The number of elements to remove.</param>
         public void RemoveRange(int index, int count)
         {
-            var span = AccessSpan;
-            var length = _length - index - count;
-            span.Slice(index + count, length).CopyTo(span.Slice(index));
-            _length -= count;
-            CheckSizeReduction();
+            _list.RemoveRange(index, count, _memoryAllocator);
         }
 
         /// <summary>
@@ -437,8 +246,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Get(int index)
         {
-            Debug.Assert(index >= 0 && index < _length);
-            return ((T*)_data)[index];
+            return _list.Get(index);
         }
 
         /// <summary>
@@ -447,8 +255,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="index">The zero based index.</param>
         public ref T GetRef(scoped in int index)
         {
-            var span = AccessSpan;
-            return ref span[index];
+            return ref _list.GetRef(in index);
         }
 
         /// <summary>
@@ -458,7 +265,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="value">The new value.</param>
         public void Update(in int index, in T value)
         {
-            AccessSpan[index] = value;
+            _list.Update(in index, in value);
         }
 
         /// <summary>
@@ -469,30 +276,24 @@ namespace FlowtideDotNet.Storage.DataStructures
         {
             get
             {
-                return Get(index);
+                return _list.Get(index);
             }
             set
             {
-                Update(index, value);
+                _list.Update(index, value);
             }
         }
 
         /// <summary>
         /// The number of elements in the list.
         /// </summary>
-        public int Count => _length;
+        public int Count => _list.Count;
 
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposedValue)
             {
-                if (_memoryOwner != null)
-                {
-                    _memoryOwner.Dispose();
-                    _memoryOwner = null;
-                    _data = null;
-                }
-
+                _list.Dispose(_memoryAllocator);
                 _disposedValue = true;
             }
         }
@@ -510,7 +311,7 @@ namespace FlowtideDotNet.Storage.DataStructures
 
         private IEnumerable<T> GetEnumerable()
         {
-            for (var i = 0; i < _length; i++)
+            for (var i = 0; i < Count; i++)
             {
                 yield return Get(i);
             }
@@ -556,7 +357,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         public void Clear()
         {
-            _length = 0;
+            _list.Clear();
         }
 
         /// <summary>
@@ -566,11 +367,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <returns>A new list with the same elements.</returns>
         public PrimitiveList<T> Copy(IMemoryAllocator memoryAllocator)
         {
-            var slicedMem = SlicedMemory;
-            var newMemory = memoryAllocator.Allocate(slicedMem.Length, 64);
-            slicedMem.Span.CopyTo(newMemory.Memory.Span);
-
-            return new PrimitiveList<T>(newMemory, _length, memoryAllocator);
+            return new PrimitiveList<T>(_list.Copy(memoryAllocator), memoryAllocator);
         }
 
         /// <summary>
@@ -584,7 +381,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         public int BinarySearch<TComp>(TComp value)
             where TComp : IComparable<T>
         {
-            return AccessSpan.Slice(0, _length).BinarySearch(value);
+            return _list.BinarySearch(value);
         }
 
         /// <summary>
@@ -594,7 +391,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="newLength">The new element count.</param>
         public void SetLength(int newLength)
         {
-            _length = newLength;
+            _list.SetLength(newLength);
         }
 
         /// <summary>
@@ -606,18 +403,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="sizes">The running per-index byte size totals to add to.</param>
         public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
         {
-            int length = indices.Length;
-            int elementSize = sizeof(T);
-
-            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
-
-            int cumulativeMass = elementSize;
-
-            for (int i = 0; i < length; i++)
-            {
-                Unsafe.Add(ref sizesHead, i) += cumulativeMass;
-                cumulativeMass += elementSize;
-            }
+            _list.GetPrefixSumByteSizes(indices, sizes);
         }
     }
 }

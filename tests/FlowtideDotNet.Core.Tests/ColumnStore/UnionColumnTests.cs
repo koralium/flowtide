@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -23,6 +23,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Buffers;
 using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {
@@ -31,13 +32,14 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestGetTypeAt()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
 
-            unionColumn.Add(new Int64Value(1));
-            unionColumn.Add(new StringValue("hello"));
+            unionColumn.Add(new Int64Value(1), GlobalMemoryManager.Instance);
+            unionColumn.Add(new StringValue("hello"), GlobalMemoryManager.Instance);
 
             Assert.Equal(ArrowTypeId.Int64, unionColumn.GetTypeAt(0, default));
             Assert.Equal(ArrowTypeId.String, unionColumn.GetTypeAt(1, default));
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
@@ -284,77 +286,82 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNoNulls()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3)
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
             };
 
-            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
-                new StringValue("hello"),
-                new StringValue("world")
+                { new StringValue("hello"), GlobalMemoryManager.Instance },
+                { new StringValue("world"), GlobalMemoryManager.Instance }
             };
 
-            unionColumn.InsertRangeFrom(1, stringColumn, 0, 2, default);
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 2, default, GlobalMemoryManager.Instance);
 
             Assert.Equal(4, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
             Assert.Equal("hello", unionColumn.GetValueAt(1, default).AsString.ToString());
             Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            stringColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         // No nulls but with validity list
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNoNullsWithValidityList()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3)
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
             };
 
-            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
-                new StringValue("hello"),
-                new StringValue("world")
+                { new StringValue("hello"), GlobalMemoryManager.Instance },
+                { new StringValue("world"), GlobalMemoryManager.Instance }
             };
 
-            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Set(0);
-            validityList.Set(1);
+            BitmapList validityList = default;
+            validityList.Set(0, GlobalMemoryManager.Instance);
+            validityList.Set(1, GlobalMemoryManager.Instance);
 
-            unionColumn.InsertRangeFrom(1, stringColumn, 0, 2, validityList);
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 2, validityList, GlobalMemoryManager.Instance);
 
             Assert.Equal(4, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
             Assert.Equal("hello", unionColumn.GetValueAt(1, default).AsString.ToString());
             Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            stringColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNullInMiddle()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3)
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
             };
 
-            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
-                new StringValue("hello"),
-                NullValue.Instance,
-                new StringValue("world")
+                { new StringValue("hello"), GlobalMemoryManager.Instance },
+                { NullValue.Instance, GlobalMemoryManager.Instance },
+                { new StringValue("world"), GlobalMemoryManager.Instance }
             };
 
-            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Set(0);
-            validityList.Set(2);
+            BitmapList validityList = default;
+            validityList.Set(0, GlobalMemoryManager.Instance);
+            validityList.Set(2, GlobalMemoryManager.Instance);
 
-            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList, GlobalMemoryManager.Instance);
 
             Assert.Equal(5, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
@@ -362,29 +369,32 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(unionColumn.GetValueAt(2, default).IsNull);
             Assert.Equal("world", unionColumn.GetValueAt(3, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            stringColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNullInStart()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3)
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
             };
 
-            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
-                NullValue.Instance,
-                new StringValue("hello"),
-                new StringValue("world")
+                { NullValue.Instance, GlobalMemoryManager.Instance },
+                { new StringValue("hello"), GlobalMemoryManager.Instance },
+                { new StringValue("world"), GlobalMemoryManager.Instance }
             };
 
-            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Set(1);
-            validityList.Set(2);
+            BitmapList validityList = default;
+            validityList.Set(1, GlobalMemoryManager.Instance);
+            validityList.Set(2, GlobalMemoryManager.Instance);
 
-            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList, GlobalMemoryManager.Instance);
 
             Assert.Equal(5, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
@@ -392,30 +402,33 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("hello", unionColumn.GetValueAt(2, default).AsString.ToString());
             Assert.Equal("world", unionColumn.GetValueAt(3, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            stringColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNullInEnd()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3)
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
             };
 
-            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
-                new StringValue("hello"),
-                new StringValue("world"),
-                NullValue.Instance
+                { new StringValue("hello"), GlobalMemoryManager.Instance },
+                { new StringValue("world"), GlobalMemoryManager.Instance },
+                { NullValue.Instance, GlobalMemoryManager.Instance }
             };
 
-            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Set(0);
-            validityList.Set(1);
-            validityList.Unset(2);
+            BitmapList validityList = default;
+            validityList.Set(0, GlobalMemoryManager.Instance);
+            validityList.Set(1, GlobalMemoryManager.Instance);
+            validityList.Unset(2, GlobalMemoryManager.Instance);
 
-            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList, GlobalMemoryManager.Instance);
 
             Assert.Equal(5, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
@@ -423,31 +436,34 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
             Assert.True(unionColumn.GetValueAt(3, default).IsNull);
             Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            stringColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         // Test with all values set to null in the range
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnAllNulls()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3)
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
             };
 
-            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
-                NullValue.Instance,
-                NullValue.Instance,
-                NullValue.Instance
+                { NullValue.Instance, GlobalMemoryManager.Instance },
+                { NullValue.Instance, GlobalMemoryManager.Instance },
+                { NullValue.Instance, GlobalMemoryManager.Instance }
             };
 
-            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Unset(0);
-            validityList.Unset(1);
-            validityList.Unset(2);
+            BitmapList validityList = default;
+            validityList.Unset(0, GlobalMemoryManager.Instance);
+            validityList.Unset(1, GlobalMemoryManager.Instance);
+            validityList.Unset(2, GlobalMemoryManager.Instance);
 
-            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList, GlobalMemoryManager.Instance);
 
             Assert.Equal(5, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
@@ -455,36 +471,42 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(unionColumn.GetValueAt(2, default).IsNull);
             Assert.True(unionColumn.GetValueAt(3, default).IsNull);
             Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            stringColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void TestInsertRangeFromInsertBasicColumnNulSubrange()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3)
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
             };
 
-            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
             {
-                new StringValue("hello"),
-                new StringValue("world"),
-                NullValue.Instance
+                { new StringValue("hello"), GlobalMemoryManager.Instance },
+                { new StringValue("world"), GlobalMemoryManager.Instance },
+                { NullValue.Instance, GlobalMemoryManager.Instance }
             };
 
-            using BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
-            validityList.Set(0);
-            validityList.Set(1);
-            validityList.Unset(2);
+            BitmapList validityList = default;
+            validityList.Set(0, GlobalMemoryManager.Instance);
+            validityList.Set(1, GlobalMemoryManager.Instance);
+            validityList.Unset(2, GlobalMemoryManager.Instance);
 
-            unionColumn.InsertRangeFrom(1, stringColumn, 1, 2, validityList);
+            unionColumn.InsertRangeFrom(1, stringColumn, 1, 2, validityList, GlobalMemoryManager.Instance);
 
             Assert.Equal(4, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
             Assert.Equal("world", unionColumn.GetValueAt(1, default).AsString.ToString());
             Assert.True(unionColumn.GetValueAt(2, default).IsNull);
             Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+            validityList.Dispose(GlobalMemoryManager.Instance);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            stringColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
@@ -513,74 +535,76 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertRangeFromOtherUnionColumn()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3)
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
             };
 
-            using UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new StringValue("hello"),
-                new StringValue("world")
+                { new StringValue("hello"), GlobalMemoryManager.Instance },
+                { new StringValue("world"), GlobalMemoryManager.Instance }
             };
 
-            unionColumn.InsertRangeFrom(1, otherUnionColumn, 0, 2, default);
+            unionColumn.InsertRangeFrom(1, otherUnionColumn, 0, 2, default, GlobalMemoryManager.Instance);
 
             Assert.Equal(4, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
             Assert.Equal("hello", unionColumn.GetValueAt(1, default).AsString.ToString());
             Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            otherUnionColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void InsertRangeFromOtherUnionColumnWithAvx()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3)
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
             };
 
-            using UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new StringValue("1"),
-                new StringValue("2"),
-                new StringValue("3"),
-                new StringValue("4"),
-                new StringValue("5"),
-                new StringValue("6"),
-                new StringValue("7"),
-                new StringValue("8"),
-                new StringValue("9"),
-                new StringValue("10"),
-                new StringValue("11"),
-                new StringValue("12"),
-                new StringValue("13"),
-                new StringValue("14"),
-                new StringValue("15"),
-                new StringValue("16"),
-                new StringValue("17"),
-                new StringValue("18"),
-                new StringValue("19"),
-                new StringValue("20"),
-                new StringValue("21"),
-                new StringValue("22"),
-                new StringValue("23"),
-                new StringValue("24"),
-                new StringValue("25"),
-                new StringValue("26"),
-                new StringValue("27"),
-                new StringValue("28"),
-                new StringValue("29"),
-                new StringValue("30"),
-                new StringValue("31"),
-                new StringValue("32"),
-                new StringValue("33"),
+                { new StringValue("1"), GlobalMemoryManager.Instance },
+                { new StringValue("2"), GlobalMemoryManager.Instance },
+                { new StringValue("3"), GlobalMemoryManager.Instance },
+                { new StringValue("4"), GlobalMemoryManager.Instance },
+                { new StringValue("5"), GlobalMemoryManager.Instance },
+                { new StringValue("6"), GlobalMemoryManager.Instance },
+                { new StringValue("7"), GlobalMemoryManager.Instance },
+                { new StringValue("8"), GlobalMemoryManager.Instance },
+                { new StringValue("9"), GlobalMemoryManager.Instance },
+                { new StringValue("10"), GlobalMemoryManager.Instance },
+                { new StringValue("11"), GlobalMemoryManager.Instance },
+                { new StringValue("12"), GlobalMemoryManager.Instance },
+                { new StringValue("13"), GlobalMemoryManager.Instance },
+                { new StringValue("14"), GlobalMemoryManager.Instance },
+                { new StringValue("15"), GlobalMemoryManager.Instance },
+                { new StringValue("16"), GlobalMemoryManager.Instance },
+                { new StringValue("17"), GlobalMemoryManager.Instance },
+                { new StringValue("18"), GlobalMemoryManager.Instance },
+                { new StringValue("19"), GlobalMemoryManager.Instance },
+                { new StringValue("20"), GlobalMemoryManager.Instance },
+                { new StringValue("21"), GlobalMemoryManager.Instance },
+                { new StringValue("22"), GlobalMemoryManager.Instance },
+                { new StringValue("23"), GlobalMemoryManager.Instance },
+                { new StringValue("24"), GlobalMemoryManager.Instance },
+                { new StringValue("25"), GlobalMemoryManager.Instance },
+                { new StringValue("26"), GlobalMemoryManager.Instance },
+                { new StringValue("27"), GlobalMemoryManager.Instance },
+                { new StringValue("28"), GlobalMemoryManager.Instance },
+                { new StringValue("29"), GlobalMemoryManager.Instance },
+                { new StringValue("30"), GlobalMemoryManager.Instance },
+                { new StringValue("31"), GlobalMemoryManager.Instance },
+                { new StringValue("32"), GlobalMemoryManager.Instance },
+                { new StringValue("33"), GlobalMemoryManager.Instance },
             };
 
-            unionColumn.InsertRangeFrom(1, otherUnionColumn, 0, 33, default);
+            unionColumn.InsertRangeFrom(1, otherUnionColumn, 0, 33, default, GlobalMemoryManager.Instance);
 
             Assert.Equal(35, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
@@ -589,55 +613,57 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 Assert.Equal(i.ToString(), unionColumn.GetValueAt(i, default).AsString.ToString());
             }
             Assert.Equal(3, unionColumn.GetValueAt(34, default).AsDecimal);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            otherUnionColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void InsertRangeFromOtherUnionColumnWithAvxSubrange()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3)
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
             };
 
-            using UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new StringValue("1"),
-                new StringValue("2"),
-                new StringValue("3"),
-                new StringValue("4"),
-                new StringValue("5"),
-                new StringValue("6"),
-                new StringValue("7"),
-                new StringValue("8"),
-                new StringValue("9"),
-                new StringValue("10"),
-                new StringValue("11"),
-                new StringValue("12"),
-                new StringValue("13"),
-                new StringValue("14"),
-                new StringValue("15"),
-                new StringValue("16"),
-                new StringValue("17"),
-                new StringValue("18"),
-                new StringValue("19"),
-                new StringValue("20"),
-                new StringValue("21"),
-                new StringValue("22"),
-                new StringValue("23"),
-                new StringValue("24"),
-                new StringValue("25"),
-                new StringValue("26"),
-                new StringValue("27"),
-                new StringValue("28"),
-                new StringValue("29"),
-                new StringValue("30"),
-                new StringValue("31"),
-                new StringValue("32"),
-                new StringValue("33"),
+                { new StringValue("1"), GlobalMemoryManager.Instance },
+                { new StringValue("2"), GlobalMemoryManager.Instance },
+                { new StringValue("3"), GlobalMemoryManager.Instance },
+                { new StringValue("4"), GlobalMemoryManager.Instance },
+                { new StringValue("5"), GlobalMemoryManager.Instance },
+                { new StringValue("6"), GlobalMemoryManager.Instance },
+                { new StringValue("7"), GlobalMemoryManager.Instance },
+                { new StringValue("8"), GlobalMemoryManager.Instance },
+                { new StringValue("9"), GlobalMemoryManager.Instance },
+                { new StringValue("10"), GlobalMemoryManager.Instance },
+                { new StringValue("11"), GlobalMemoryManager.Instance },
+                { new StringValue("12"), GlobalMemoryManager.Instance },
+                { new StringValue("13"), GlobalMemoryManager.Instance },
+                { new StringValue("14"), GlobalMemoryManager.Instance },
+                { new StringValue("15"), GlobalMemoryManager.Instance },
+                { new StringValue("16"), GlobalMemoryManager.Instance },
+                { new StringValue("17"), GlobalMemoryManager.Instance },
+                { new StringValue("18"), GlobalMemoryManager.Instance },
+                { new StringValue("19"), GlobalMemoryManager.Instance },
+                { new StringValue("20"), GlobalMemoryManager.Instance },
+                { new StringValue("21"), GlobalMemoryManager.Instance },
+                { new StringValue("22"), GlobalMemoryManager.Instance },
+                { new StringValue("23"), GlobalMemoryManager.Instance },
+                { new StringValue("24"), GlobalMemoryManager.Instance },
+                { new StringValue("25"), GlobalMemoryManager.Instance },
+                { new StringValue("26"), GlobalMemoryManager.Instance },
+                { new StringValue("27"), GlobalMemoryManager.Instance },
+                { new StringValue("28"), GlobalMemoryManager.Instance },
+                { new StringValue("29"), GlobalMemoryManager.Instance },
+                { new StringValue("30"), GlobalMemoryManager.Instance },
+                { new StringValue("31"), GlobalMemoryManager.Instance },
+                { new StringValue("32"), GlobalMemoryManager.Instance },
+                { new StringValue("33"), GlobalMemoryManager.Instance },
             };
 
-            unionColumn.InsertRangeFrom(1, otherUnionColumn, 1, 31, default);
+            unionColumn.InsertRangeFrom(1, otherUnionColumn, 1, 31, default, GlobalMemoryManager.Instance);
 
             Assert.Equal(33, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
@@ -646,63 +672,65 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 Assert.Equal(i.ToString(), unionColumn.GetValueAt(i - 1, default).AsString.ToString());
             }
             Assert.Equal(3, unionColumn.GetValueAt(32, default).AsDecimal);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            otherUnionColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void InsertRangeFromOtherUnionColumnWithAvxExistingDataInType()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3),
-                new StringValue("1a"),
-                new StringValue("2a"),
-                new StringValue("3a"),
-                new StringValue("4a"),
-                new StringValue("5a"),
-                new StringValue("6a"),
-                new StringValue("7a"),
-                new StringValue("8a"),
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance },
+                { new StringValue("1a"), GlobalMemoryManager.Instance },
+                { new StringValue("2a"), GlobalMemoryManager.Instance },
+                { new StringValue("3a"), GlobalMemoryManager.Instance },
+                { new StringValue("4a"), GlobalMemoryManager.Instance },
+                { new StringValue("5a"), GlobalMemoryManager.Instance },
+                { new StringValue("6a"), GlobalMemoryManager.Instance },
+                { new StringValue("7a"), GlobalMemoryManager.Instance },
+                { new StringValue("8a"), GlobalMemoryManager.Instance },
             };
 
-            using UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new StringValue("1"),
-                new StringValue("2"),
-                new StringValue("3"),
-                new StringValue("4"),
-                new StringValue("5"),
-                new StringValue("6"),
-                new StringValue("7"),
-                new StringValue("8"),
-                new StringValue("9"),
-                new StringValue("10"),
-                new StringValue("11"),
-                new StringValue("12"),
-                new StringValue("13"),
-                new StringValue("14"),
-                new StringValue("15"),
-                new StringValue("16"),
-                new StringValue("17"),
-                new StringValue("18"),
-                new StringValue("19"),
-                new StringValue("20"),
-                new StringValue("21"),
-                new StringValue("22"),
-                new StringValue("23"),
-                new StringValue("24"),
-                new StringValue("25"),
-                new StringValue("26"),
-                new StringValue("27"),
-                new StringValue("28"),
-                new StringValue("29"),
-                new StringValue("30"),
-                new StringValue("31"),
-                new StringValue("32"),
-                new StringValue("33"),
+                { new StringValue("1"), GlobalMemoryManager.Instance },
+                { new StringValue("2"), GlobalMemoryManager.Instance },
+                { new StringValue("3"), GlobalMemoryManager.Instance },
+                { new StringValue("4"), GlobalMemoryManager.Instance },
+                { new StringValue("5"), GlobalMemoryManager.Instance },
+                { new StringValue("6"), GlobalMemoryManager.Instance },
+                { new StringValue("7"), GlobalMemoryManager.Instance },
+                { new StringValue("8"), GlobalMemoryManager.Instance },
+                { new StringValue("9"), GlobalMemoryManager.Instance },
+                { new StringValue("10"), GlobalMemoryManager.Instance },
+                { new StringValue("11"), GlobalMemoryManager.Instance },
+                { new StringValue("12"), GlobalMemoryManager.Instance },
+                { new StringValue("13"), GlobalMemoryManager.Instance },
+                { new StringValue("14"), GlobalMemoryManager.Instance },
+                { new StringValue("15"), GlobalMemoryManager.Instance },
+                { new StringValue("16"), GlobalMemoryManager.Instance },
+                { new StringValue("17"), GlobalMemoryManager.Instance },
+                { new StringValue("18"), GlobalMemoryManager.Instance },
+                { new StringValue("19"), GlobalMemoryManager.Instance },
+                { new StringValue("20"), GlobalMemoryManager.Instance },
+                { new StringValue("21"), GlobalMemoryManager.Instance },
+                { new StringValue("22"), GlobalMemoryManager.Instance },
+                { new StringValue("23"), GlobalMemoryManager.Instance },
+                { new StringValue("24"), GlobalMemoryManager.Instance },
+                { new StringValue("25"), GlobalMemoryManager.Instance },
+                { new StringValue("26"), GlobalMemoryManager.Instance },
+                { new StringValue("27"), GlobalMemoryManager.Instance },
+                { new StringValue("28"), GlobalMemoryManager.Instance },
+                { new StringValue("29"), GlobalMemoryManager.Instance },
+                { new StringValue("30"), GlobalMemoryManager.Instance },
+                { new StringValue("31"), GlobalMemoryManager.Instance },
+                { new StringValue("32"), GlobalMemoryManager.Instance },
+                { new StringValue("33"), GlobalMemoryManager.Instance },
             };
 
-            unionColumn.InsertRangeFrom(1, otherUnionColumn, 1, 31, default);
+            unionColumn.InsertRangeFrom(1, otherUnionColumn, 1, 31, default, GlobalMemoryManager.Instance);
 
             Assert.Equal(41, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
@@ -711,63 +739,65 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 Assert.Equal(i.ToString(), unionColumn.GetValueAt(i - 1, default).AsString.ToString());
             }
             Assert.Equal(3, unionColumn.GetValueAt(32, default).AsDecimal);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            otherUnionColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void InsertRangeFromOtherUnionColumnWithAvxExistingDataInTypeInMiddle()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3),
-                new StringValue("1a"),
-                new StringValue("2a"),
-                new StringValue("3a"),
-                new StringValue("4a"),
-                new StringValue("5a"),
-                new StringValue("6a"),
-                new StringValue("7a"),
-                new StringValue("8a"),
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance },
+                { new StringValue("1a"), GlobalMemoryManager.Instance },
+                { new StringValue("2a"), GlobalMemoryManager.Instance },
+                { new StringValue("3a"), GlobalMemoryManager.Instance },
+                { new StringValue("4a"), GlobalMemoryManager.Instance },
+                { new StringValue("5a"), GlobalMemoryManager.Instance },
+                { new StringValue("6a"), GlobalMemoryManager.Instance },
+                { new StringValue("7a"), GlobalMemoryManager.Instance },
+                { new StringValue("8a"), GlobalMemoryManager.Instance },
             };
 
-            using UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new StringValue("1"),
-                new StringValue("2"),
-                new StringValue("3"),
-                new StringValue("4"),
-                new StringValue("5"),
-                new StringValue("6"),
-                new StringValue("7"),
-                new StringValue("8"),
-                new StringValue("9"),
-                new StringValue("10"),
-                new StringValue("11"),
-                new StringValue("12"),
-                new StringValue("13"),
-                new StringValue("14"),
-                new StringValue("15"),
-                new StringValue("16"),
-                new StringValue("17"),
-                new StringValue("18"),
-                new StringValue("19"),
-                new StringValue("20"),
-                new StringValue("21"),
-                new StringValue("22"),
-                new StringValue("23"),
-                new StringValue("24"),
-                new StringValue("25"),
-                new StringValue("26"),
-                new StringValue("27"),
-                new StringValue("28"),
-                new StringValue("29"),
-                new StringValue("30"),
-                new StringValue("31"),
-                new StringValue("32"),
-                new StringValue("33"),
+                { new StringValue("1"), GlobalMemoryManager.Instance },
+                { new StringValue("2"), GlobalMemoryManager.Instance },
+                { new StringValue("3"), GlobalMemoryManager.Instance },
+                { new StringValue("4"), GlobalMemoryManager.Instance },
+                { new StringValue("5"), GlobalMemoryManager.Instance },
+                { new StringValue("6"), GlobalMemoryManager.Instance },
+                { new StringValue("7"), GlobalMemoryManager.Instance },
+                { new StringValue("8"), GlobalMemoryManager.Instance },
+                { new StringValue("9"), GlobalMemoryManager.Instance },
+                { new StringValue("10"), GlobalMemoryManager.Instance },
+                { new StringValue("11"), GlobalMemoryManager.Instance },
+                { new StringValue("12"), GlobalMemoryManager.Instance },
+                { new StringValue("13"), GlobalMemoryManager.Instance },
+                { new StringValue("14"), GlobalMemoryManager.Instance },
+                { new StringValue("15"), GlobalMemoryManager.Instance },
+                { new StringValue("16"), GlobalMemoryManager.Instance },
+                { new StringValue("17"), GlobalMemoryManager.Instance },
+                { new StringValue("18"), GlobalMemoryManager.Instance },
+                { new StringValue("19"), GlobalMemoryManager.Instance },
+                { new StringValue("20"), GlobalMemoryManager.Instance },
+                { new StringValue("21"), GlobalMemoryManager.Instance },
+                { new StringValue("22"), GlobalMemoryManager.Instance },
+                { new StringValue("23"), GlobalMemoryManager.Instance },
+                { new StringValue("24"), GlobalMemoryManager.Instance },
+                { new StringValue("25"), GlobalMemoryManager.Instance },
+                { new StringValue("26"), GlobalMemoryManager.Instance },
+                { new StringValue("27"), GlobalMemoryManager.Instance },
+                { new StringValue("28"), GlobalMemoryManager.Instance },
+                { new StringValue("29"), GlobalMemoryManager.Instance },
+                { new StringValue("30"), GlobalMemoryManager.Instance },
+                { new StringValue("31"), GlobalMemoryManager.Instance },
+                { new StringValue("32"), GlobalMemoryManager.Instance },
+                { new StringValue("33"), GlobalMemoryManager.Instance },
             };
 
-            unionColumn.InsertRangeFrom(5, otherUnionColumn, 1, 31, default);
+            unionColumn.InsertRangeFrom(5, otherUnionColumn, 1, 31, default, GlobalMemoryManager.Instance);
 
             Assert.Equal(41, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
@@ -784,41 +814,46 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("6a", Assert.IsType<StringValue>(unionColumn.GetValueAt(38, default)).ToString());
             Assert.Equal("7a", Assert.IsType<StringValue>(unionColumn.GetValueAt(39, default)).ToString());
             Assert.Equal("8a", Assert.IsType<StringValue>(unionColumn.GetValueAt(40, default)).ToString());
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            otherUnionColumn.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void TestInsertNullUnionColumn()
         {
-            using UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                new Int64Value(1),
-                new DecimalValue(3)
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
             };
 
-            using UnionColumn other = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn other = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                NullValue.Instance,
-                NullValue.Instance
+                { NullValue.Instance, GlobalMemoryManager.Instance },
+                { NullValue.Instance, GlobalMemoryManager.Instance }
             };
 
-            unionColumn.InsertRangeFrom(2, other, 0, 2, default);
+            unionColumn.InsertRangeFrom(2, other, 0, 2, default, GlobalMemoryManager.Instance);
 
             Assert.Equal(4, unionColumn.Count);
             Assert.Equal(2, unionColumn.GetDataColumn(0).Count);
+            unionColumn.Dispose(GlobalMemoryManager.Instance);
+            other.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void TestRemoveRangeWitNull()
         {
-            using UnionColumn column = new UnionColumn(GlobalMemoryManager.Instance)
+            UnionColumn column = new UnionColumn(GlobalMemoryManager.Instance)
             {
-                NullValue.Instance,
-                NullValue.Instance
+                { NullValue.Instance, GlobalMemoryManager.Instance },
+                { NullValue.Instance, GlobalMemoryManager.Instance }
             };
 
-            column.RemoveRange(0, 2);
+            column.RemoveRange(0, 2, GlobalMemoryManager.Instance);
             Assert.Empty(column);
             Assert.Equal(0, column.GetDataColumn(0).Count);
+            column.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
@@ -896,6 +931,82 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
 
         [Fact]
+        public void InsertRangeFromUnionWithTypeIdsAbove15IntoNarrowUnion()
+        {
+            UnionColumn source = new UnionColumn(GlobalMemoryManager.Instance);
+
+            // Claim type ids 1..17 with distinct struct headers so the copied range uses an id above 15.
+            var headers = new StructHeader[17];
+            for (int i = 0; i < 17; i++)
+            {
+                headers[i] = StructHeader.Create("col" + i);
+                source.Add(new StructValue(headers[i], new Int64Value(i)), GlobalMemoryManager.Instance);
+            }
+            var wideHeader = headers[16];
+            for (int i = 0; i < 16; i++)
+            {
+                source.Add(new StructValue(wideHeader, new Int64Value(100 + i)), GlobalMemoryManager.Instance);
+            }
+
+            UnionColumn target = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
+            };
+
+            target.InsertRangeFrom(1, source, 17, 16, default, GlobalMemoryManager.Instance);
+
+            Assert.Equal(18, target.Count);
+            Assert.Equal(1, target.GetValueAt(0, default).AsLong);
+            for (int i = 0; i < 16; i++)
+            {
+                var expected = new StructValue(wideHeader, new Int64Value(100 + i));
+                Assert.Equal(0, DataValueComparer.CompareTo(expected, target.GetValueAt(1 + i, default)));
+            }
+            Assert.Equal(3, target.GetValueAt(17, default).AsDecimal);
+            target.Dispose(GlobalMemoryManager.Instance);
+            source.Dispose(GlobalMemoryManager.Instance);
+        }
+
+        [Fact]
+        public void InsertRangeFromUnionWithTypeIdsAbove7IntoNarrowUnion()
+        {
+            UnionColumn source = new UnionColumn(GlobalMemoryManager.Instance);
+
+            // Claim type ids 1..9 so the copied range uses an id above 7 with a non-zero start offset.
+            var headers = new StructHeader[9];
+            for (int i = 0; i < 9; i++)
+            {
+                headers[i] = StructHeader.Create("col" + i);
+                source.Add(new StructValue(headers[i], new Int64Value(i)), GlobalMemoryManager.Instance);
+            }
+            var wideHeader = headers[8];
+            for (int i = 0; i < 8; i++)
+            {
+                source.Add(new StructValue(wideHeader, new Int64Value(100 + i)), GlobalMemoryManager.Instance);
+            }
+
+            UnionColumn target = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                { new Int64Value(1), GlobalMemoryManager.Instance },
+                { new DecimalValue(3), GlobalMemoryManager.Instance }
+            };
+
+            target.InsertRangeFrom(1, source, 9, 8, default, GlobalMemoryManager.Instance);
+
+            Assert.Equal(10, target.Count);
+            Assert.Equal(1, target.GetValueAt(0, default).AsLong);
+            for (int i = 0; i < 8; i++)
+            {
+                var expected = new StructValue(wideHeader, new Int64Value(100 + i));
+                Assert.Equal(0, DataValueComparer.CompareTo(expected, target.GetValueAt(1 + i, default)));
+            }
+            Assert.Equal(3, target.GetValueAt(9, default).AsDecimal);
+            target.Dispose(GlobalMemoryManager.Instance);
+            source.Dispose(GlobalMemoryManager.Instance);
+        }
+
+        [Fact]
         public void InsertRangeFromBasicNullInRange()
         {
             using Column unionColumn = new Column(GlobalMemoryManager.Instance)
@@ -923,6 +1034,314 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(unionColumn.GetValueAt(3, default).IsNull);
             Assert.Equal("3", unionColumn.GetValueAt(4, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(5, default).AsDecimal);
+        }
+
+        [Fact]
+        public void TestRemoveRangeMixedTypes()
+        {
+            using Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("str1"),
+                new Int64Value(100),
+                new StringValue("str2"),
+                new Int64Value(200)
+            };
+
+            unionColumn.RemoveRange(0, 2);
+
+            Assert.Equal(2, unionColumn.Count);
+            Assert.Equal("str2", unionColumn.GetValueAt(0, default).AsString.ToString());
+            Assert.Equal(200, unionColumn.GetValueAt(1, default).AsLong);
+        }
+
+        [Fact]
+        public void TestRemoveRangeWithNullsKeepsOffsetsValid()
+        {
+            using Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("str1"),
+                NullValue.Instance,
+                new Int64Value(100),
+                new StringValue("str2"),
+                NullValue.Instance,
+                new Int64Value(200)
+            };
+
+            unionColumn.RemoveRange(0, 3);
+
+            Assert.Equal(3, unionColumn.Count);
+            Assert.Equal("str2", unionColumn.GetValueAt(0, default).AsString.ToString());
+            Assert.True(unionColumn.GetValueAt(1, default).IsNull);
+            Assert.Equal(200, unionColumn.GetValueAt(2, default).AsLong);
+
+            var (arrowArray, _) = unionColumn.ToArrowArray();
+            var denseUnionArray = Assert.IsType<Apache.Arrow.DenseUnionArray>(arrowArray);
+            for (int i = 0; i < unionColumn.Count; i++)
+            {
+                var offset = denseUnionArray.ValueOffsets[i];
+                Assert.True(offset >= 0, $"Offset at index {i} was negative: {offset}");
+            }
+        }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnSingleRow()
+        {
+            using Column destination = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a")
+            };
+
+            using Column source = new Column(GlobalMemoryManager.Instance)
+            {
+                new DoubleValue(5.5),
+                NullValue.Instance,
+                new DoubleValue(6.5)
+            };
+
+            // Copy only the first row, the null on row 1 is outside of the range and must not be copied.
+            destination.InsertRangeFrom(destination.Count, source, 0, 1);
+
+            Assert.Equal(3, destination.Count);
+            Assert.Equal(1, destination.GetValueAt(0, default).AsLong);
+            Assert.Equal("a", destination.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal(5.5, destination.GetValueAt(2, default).AsDouble);
+        }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnStopsAtEndOfRange()
+        {
+            using Column destination = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("s1")
+            };
+
+            using Column source = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(0),
+                NullValue.Instance,
+                new Int64Value(2),
+                new Int64Value(3),
+                new Int64Value(4),
+                new Int64Value(5),
+                new Int64Value(6),
+                NullValue.Instance
+            };
+
+            // The non null run after the null continues past the end of the range, only 4 rows may be copied.
+            destination.InsertRangeFrom(0, source, 0, 4);
+
+            Assert.Equal(6, destination.Count);
+            Assert.Equal(0, destination.GetValueAt(0, default).AsLong);
+            Assert.True(destination.GetValueAt(1, default).IsNull);
+            Assert.Equal(2, destination.GetValueAt(2, default).AsLong);
+            Assert.Equal(3, destination.GetValueAt(3, default).AsLong);
+            Assert.Equal(1, destination.GetValueAt(4, default).AsLong);
+            Assert.Equal("s1", destination.GetValueAt(5, default).AsString.ToString());
+        }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnTrailingNullRun()
+        {
+            using Column destination = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a")
+            };
+
+            using Column source = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(7),
+                NullValue.Instance,
+                NullValue.Instance,
+                new Int64Value(8)
+            };
+
+            // The null run continues past the end of the range, only one of the two nulls may be copied.
+            destination.InsertRangeFrom(destination.Count, source, 0, 2);
+
+            Assert.Equal(4, destination.Count);
+            Assert.Equal(1, destination.GetValueAt(0, default).AsLong);
+            Assert.Equal("a", destination.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal(7, destination.GetValueAt(2, default).AsLong);
+            Assert.True(destination.GetValueAt(3, default).IsNull);
+        }
+
+        [Fact]
+        public void TestInsertRangeFromNullableColumnRandomRanges()
+        {
+            for (int seed = 0; seed < 200; seed++)
+            {
+                Random r = new Random(seed);
+                var sourceValues = new List<long?>();
+                using Column source = new Column(GlobalMemoryManager.Instance);
+                var sourceLength = r.Next(1, 12);
+                for (int i = 0; i < sourceLength; i++)
+                {
+                    if (r.Next(3) == 0)
+                    {
+                        source.Add(NullValue.Instance);
+                        sourceValues.Add(null);
+                    }
+                    else
+                    {
+                        long value = r.Next(0, 100);
+                        source.Add(new Int64Value(value));
+                        sourceValues.Add(value);
+                    }
+                }
+
+                // The string makes the destination a union column, which is the path under test.
+                using Column destination = new Column(GlobalMemoryManager.Instance)
+                {
+                    new Int64Value(1),
+                    new StringValue("a")
+                };
+                var expected = new List<object?> { 1L, "a" };
+
+                var start = r.Next(0, sourceLength);
+                var count = r.Next(0, sourceLength - start + 1);
+                var index = r.Next(0, destination.Count + 1);
+
+                destination.InsertRangeFrom(index, source, start, count);
+                expected.InsertRange(index, sourceValues.GetRange(start, count).Select(x => (object?)x));
+
+                Assert.Equal(expected.Count, destination.Count);
+                for (int i = 0; i < expected.Count; i++)
+                {
+                    var actual = destination.GetValueAt(i, default);
+                    if (expected[i] == null)
+                    {
+                        Assert.True(actual.IsNull, $"seed {seed} index {i} expected null");
+                    }
+                    else if (expected[i] is string expectedString)
+                    {
+                        Assert.Equal(expectedString, actual.AsString.ToString());
+                    }
+                    else
+                    {
+                        Assert.Equal((long)expected[i]!, actual.AsLong);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public void TestUpdateToNullKeepsNullChildCount()
+        {
+            using Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a"),
+                new Int64Value(2)
+            };
+
+            column.UpdateAt(0, NullValue.Instance);
+            column.UpdateAt(2, NullValue.Instance);
+
+            Assert.True(column.GetValueAt(0, default).IsNull);
+            Assert.Equal("a", column.GetValueAt(1, default).AsString.ToString());
+            Assert.True(column.GetValueAt(2, default).IsNull);
+
+            var (arrowArray, _) = column.ToArrowArray();
+            var denseUnionArray = Assert.IsType<Apache.Arrow.DenseUnionArray>(arrowArray);
+            Assert.Equal(column.Count, denseUnionArray.Fields.Sum(x => x.Length));
+        }
+
+        [Fact]
+        public void TestRemoveAfterUpdateToNullKeepsNullChildCount()
+        {
+            using Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new StringValue("a")
+            };
+
+            column.UpdateAt(0, NullValue.Instance);
+            column.RemoveAt(0);
+
+            Assert.Single(column);
+            Assert.Equal("a", column.GetValueAt(0, default).AsString.ToString());
+
+            var (arrowArray, _) = column.ToArrowArray();
+            var denseUnionArray = Assert.IsType<Apache.Arrow.DenseUnionArray>(arrowArray);
+            foreach (var field in denseUnionArray.Fields)
+            {
+                Assert.True(field.Length >= 0, $"Child array length was negative: {field.Length}");
+            }
+            Assert.Equal(column.Count, denseUnionArray.Fields.Sum(x => x.Length));
+        }
+
+        [Fact]
+        public void TestUnionChildCountsMatchRowCountRandomOperations()
+        {
+            for (int seed = 0; seed < 300; seed++)
+            {
+                Random r = new Random(seed);
+
+                using Column column = new Column(GlobalMemoryManager.Instance)
+                {
+                    new Int64Value(1),
+                    new StringValue("seed")
+                };
+
+                for (int step = 0; step < 30; step++)
+                {
+                    switch (r.Next(5))
+                    {
+                        case 0:
+                            column.Add(RandomValue(r));
+                            break;
+                        case 1:
+                            if (column.Count > 0)
+                            {
+                                column.UpdateAt(r.Next(column.Count), RandomValue(r));
+                            }
+                            break;
+                        case 2:
+                            if (column.Count > 0)
+                            {
+                                column.RemoveAt(r.Next(column.Count));
+                            }
+                            break;
+                        case 3:
+                            if (column.Count > 0)
+                            {
+                                column.InsertAt(r.Next(column.Count), RandomValue(r));
+                            }
+                            break;
+                        default:
+                            if (column.Count > 1)
+                            {
+                                var start = r.Next(column.Count - 1);
+                                column.RemoveRange(start, r.Next(0, column.Count - start));
+                            }
+                            break;
+                    }
+
+                    var (arrowArray, _) = column.ToArrowArray();
+                    if (arrowArray is Apache.Arrow.DenseUnionArray denseUnionArray)
+                    {
+                        foreach (var field in denseUnionArray.Fields)
+                        {
+                            Assert.True(field.Length >= 0, $"seed {seed} step {step}: child array length was negative: {field.Length}");
+                        }
+                        Assert.Equal(column.Count, denseUnionArray.Fields.Sum(x => x.Length));
+                    }
+                }
+            }
+        }
+
+        private static IDataValue RandomValue(Random r)
+        {
+            switch (r.Next(4))
+            {
+                case 0: return NullValue.Instance;
+                case 1: return new Int64Value(r.Next(0, 50));
+                case 2: return new StringValue("s" + r.Next(0, 50));
+                default: return new DoubleValue(r.Next(0, 50) + 0.5);
+            }
         }
     }
 }

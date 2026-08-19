@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             Debug.Assert(m_serializer != null);
 
             Logger.StartingCosmosDBUpdate(StreamName, Name);
-            var iterator = m_modified.CreateIterator();
+            using var iterator = m_modified.CreateIterator();
             await iterator.SeekFirst();
 
             List<MemoryStream> activeStreams = new List<MemoryStream>();

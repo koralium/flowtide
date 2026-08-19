@@ -92,7 +92,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         public void GetSizePrefixSum(ColumnRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
         {
-            var columns = keys[0].referenceBatch.GetColumns_Unsafe();
+            // TODO: Add test to verify this
+            var idx = indices[0];
+            var columns = keys[idx].referenceBatch.GetColumns_Unsafe();
             for (int i = 0; i < columns.Length; i++)
             {
                 columns[i].GetPrefixSumByteSizes(indices, sizes);

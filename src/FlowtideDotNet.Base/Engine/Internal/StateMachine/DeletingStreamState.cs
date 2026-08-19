@@ -113,7 +113,19 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // The stream stays in the deleting state, a new delete call restarts the
             // attempts and a stop is honored by StopAsync since the blocks are torn down.
             _context._logger.LogError(lastError, "Deleting the stream {stream} failed after {attempts} attempts, giving up. A new delete call starts fresh attempts.", _context.streamName, MaxDeleteAttempts);
+            lock (_lock)
+            {
+                // Cleared before the waiters wake, IsCompleted lies until this returns.
+                _deleteTask = null;
+            }
             _context.FailTeardownWaiters(lastError!);
+
+            // Test hook: park after the give-up.
+            var gaveUpHook = StreamContext.DeleteGaveUpHookForTests;
+            if (gaveUpHook != null)
+            {
+                await gaveUpHook(_context.streamName);
+            }
         }
 
         private async Task DeleteEntireStream()
@@ -187,7 +199,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // the stop task together with the delete task when the delete has finished.
                 return Task.CompletedTask;
             }
-            // No delete is running, for example it gave up after exhausting its attempts.
+            // No delete is running, the give-up clears the field before waking us.
             // The blocks are already faulted and disposed so the stop has nothing left to
             // do, its task must be completed or the caller waits forever. Shares the
             // checkpoint lock with the deleted state so only one of them completes it.

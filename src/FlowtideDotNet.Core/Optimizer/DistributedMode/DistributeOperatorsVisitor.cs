@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -225,6 +225,79 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 PartitionKeyColumns = partitionKeyColumns
             });
             return union;
+        }
+
+        public override Relation VisitSetRelation(SetRelation setRelation, object state)
+        {
+            Debug.Assert(_plan != null);
+
+            // Union all keeps no state, there is nothing to gain from distributing it
+            if (_substreamCount < 2 ||
+                setRelation.Operation == SetOperation.UnionAll ||
+                setRelation.Inputs[0].OutputLength == 0)
+            {
+                for (int i = 0; i < setRelation.Inputs.Count; i++)
+                {
+                    setRelation.Inputs[i] = Visit(setRelation.Inputs[i], state);
+                }
+                return setRelation;
+            }
+
+            // The key of a set operation is the whole row, so every input is scattered on all
+            // its columns and equal rows from all the inputs end up in the same substream.
+            var inputLength = setRelation.Inputs[0].OutputLength;
+            var allColumns = new List<int>(inputLength);
+            for (int i = 0; i < inputLength; i++)
+            {
+                allColumns.Add(i);
+            }
+
+            if (setRelation.Inputs.Count == 1 && IsCoPartitionedWithJoinBelow(setRelation.Inputs[0], allColumns))
+            {
+                // A merge join below is partitioned on columns the whole row covers, so every
+                // row is already in one join partition. Distribute the join instead, the lane
+                // pushdown then moves this into the lanes without another shuffle.
+                setRelation.Inputs[0] = Visit(setRelation.Inputs[0], state);
+                return setRelation;
+            }
+
+            var copySubstreams = GetCopySubstreams();
+
+            var references = new Relation[setRelation.Inputs.Count][];
+            for (int i = 0; i < setRelation.Inputs.Count; i++)
+            {
+                // The fields are kept on the exchange, so each one gets its own list
+                List<FieldReference> fields = new List<FieldReference>(inputLength);
+                for (int f = 0; f < inputLength; f++)
+                {
+                    fields.Add(new DirectFieldReference()
+                    {
+                        ReferenceSegment = new StructReferenceSegment() { Field = f }
+                    });
+                }
+                references[i] = AddScatterExchange(setRelation.Inputs[i], fields, copySubstreams);
+            }
+
+            var copies = new Relation[_substreamCount];
+            for (int p = 0; p < _substreamCount; p++)
+            {
+                var inputs = new List<Relation>(setRelation.Inputs.Count);
+                for (int i = 0; i < setRelation.Inputs.Count; i++)
+                {
+                    inputs.Add(references[i][p]);
+                }
+
+                copies[p] = new SetRelation()
+                {
+                    Inputs = inputs,
+                    Operation = setRelation.Operation,
+                    Emit = setRelation.Emit
+                };
+            }
+
+            // The output rows still carry the values they were partitioned on, the mapping
+            // gives null when the emit drops one of them.
+            return GatherCopies(copies, copySubstreams, LanePushdownVisitor.MapColumnsThroughEmit(allColumns, setRelation.Emit));
         }
 
         public override Relation VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, object state)

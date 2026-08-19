@@ -20,6 +20,12 @@ namespace FlowtideDotNet.Core.Connectors
 {
     public interface IConnectorSinkFactory
     {
+        /// <summary>
+        /// If the sink uses <see cref="WriteRelation.PrimaryKeyNames"/> declared by the plan.
+        /// Building a stream fails when false and keys are declared.
+        /// </summary>
+        bool SupportsPrimaryKeyDeclaration => false;
+
         bool CanHandle(WriteRelation writeRelation);
 
         /// <summary>

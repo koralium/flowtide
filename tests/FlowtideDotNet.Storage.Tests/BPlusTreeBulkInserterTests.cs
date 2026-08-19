@@ -202,7 +202,7 @@ namespace FlowtideDotNet.Storage.Tests
         private async Task<List<(long key, long value)>> ReadAllFromTree()
         {
             var result = new List<(long key, long value)>();
-            var it = _tree.CreateIterator();
+            using var it = _tree.CreateIterator();
             await it.SeekFirst();
             await foreach (var page in it)
             {
@@ -2187,7 +2187,7 @@ namespace FlowtideDotNet.Storage.Tests
             await bulkInserter.ApplyBatch(wideKeys, wideValues, wideCount, new FixedSizeUpsertMutator(400), wideCount * 400);
 
             // No page may be empty, and all rows must be present in order.
-            var it = tree.CreateIterator();
+            using var it = tree.CreateIterator();
             await it.SeekFirst();
             int pageCount = 0;
             var rows = new List<(long key, long value)>();
