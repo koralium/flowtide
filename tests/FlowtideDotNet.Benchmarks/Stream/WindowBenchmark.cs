@@ -182,7 +182,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
 
         private void SetupStream(string sql)
         {
-            _stream = new BenchmarkTestStream("windowappend" + iterationId.ToString());
+            _stream = new BenchmarkTestStream("windowappend" + iterationId);
             _stream.Generate(100_000);
             _stream.CachePageCount = 100_000;
             iterationId++;
