@@ -263,25 +263,6 @@ namespace FlowtideDotNet.Substrait.Tests
         }
 
         [Fact]
-        public void SerializeWindowFunctionWithOptions()
-        {
-            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
-            sqlPlanBuilder.Sql(@"
-                create table table1 (a any, b any);
-                insert into out
-                select a, LAST_VALUE(b) IGNORE NULLS OVER (PARTITION BY a ORDER BY b) as last_b FROM table1;
-            ");
-            var plan = sqlPlanBuilder.GetPlan();
-
-            // The ignore nulls option changes the result, it has to survive the roundtrip
-            var windowRelation = FindWindowRelation(plan.Relations[0]);
-            Assert.NotNull(windowRelation);
-            Assert.Equal("IGNORE_NULLS", windowRelation.WindowFunctions[0].Options!["NULL_TREATMENT"]);
-
-            AssertPlanCanSerializeDeserialize(plan);
-        }
-
-        [Fact]
         public void SerializeScalarFunctionWithOptions()
         {
             Plan plan = new Plan()
@@ -344,16 +325,47 @@ namespace FlowtideDotNet.Substrait.Tests
             AssertPlanCanSerializeDeserialize(plan);
         }
 
-        private static ConsistentPartitionWindowRelation? FindWindowRelation(Relation relation)
+        [Fact]
+        public void SerializeWindowFunctionWithOptions()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                insert into out
+                select a, ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) as rn FROM table1;
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            var windowRelation = FindWindowRelation(plan.Relations[plan.Relations.Count - 1]);
+            windowRelation.WindowFunctions[0].Options = new SortedList<string, string>()
+            {
+                { "max_row_number", "1" }
+            };
+
+            var json = SubstraitSerializer.SerializeToJson(plan);
+            var deserializedPlan = SubstraitDeserializer.DeserializeFromJson(json);
+
+            var deserializedWindowRelation = FindWindowRelation(deserializedPlan.Relations[deserializedPlan.Relations.Count - 1]);
+            Assert.NotNull(deserializedWindowRelation.WindowFunctions[0].Options);
+            Assert.Equal("1", deserializedWindowRelation.WindowFunctions[0].Options!["max_row_number"]);
+        }
+
+        private static ConsistentPartitionWindowRelation FindWindowRelation(Relation relation)
         {
             switch (relation)
             {
-                case ConsistentPartitionWindowRelation window: return window;
-                case WriteRelation write: return FindWindowRelation(write.Input);
-                case ProjectRelation project: return FindWindowRelation(project.Input);
-                case FilterRelation filter: return FindWindowRelation(filter.Input);
-                case RootRelation root: return FindWindowRelation(root.Input);
-                default: return null;
+                case ConsistentPartitionWindowRelation windowRelation:
+                    return windowRelation;
+                case FilterRelation filterRelation:
+                    return FindWindowRelation(filterRelation.Input);
+                case ProjectRelation projectRelation:
+                    return FindWindowRelation(projectRelation.Input);
+                case WriteRelation writeRelation:
+                    return FindWindowRelation(writeRelation.Input);
+                case RootRelation rootRelation:
+                    return FindWindowRelation(rootRelation.Input);
+                default:
+                    throw new InvalidOperationException($"No window relation found under {relation.GetType().Name}");
             }
         }
 

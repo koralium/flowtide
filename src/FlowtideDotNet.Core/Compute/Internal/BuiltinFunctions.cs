@@ -46,6 +46,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             BuiltInGuidFunctions.AddBuiltInGuidFunctions(functionsRegister);
 
             BuiltInWindowFunctions.AddBuiltInWindowFunctions(functionsRegister);
+            Columnar.Functions.WindowFunctions.Bulk.BuiltInBulkWindowFunctions.AddBuiltInBulkWindowFunctions(functionsRegister);
         }
     }
 }

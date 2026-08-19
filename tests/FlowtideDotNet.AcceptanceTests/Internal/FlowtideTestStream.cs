@@ -103,6 +103,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public TimeSpan? InitialDataDelay { get; set; }
 
         /// <summary>
+        /// Overrides the mock source's batch flush size. Set before starting the stream.
+        /// </summary>
+        public int? SourceBatchSize { get; set; }
+
+        /// <summary>
         /// Sets the minimum time between checkpoint triggers. Set before starting the stream.
         /// </summary>
         public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
@@ -114,6 +119,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public TimeSpan? StopDrainTimeout { get; set; }
 
         public int BPlusTreePageSizeBytes { get; set; } = 32 * 1024;
+
+        /// <summary>
+        /// Overrides the column store mode of the stream. Set before starting the stream.
+        /// </summary>
+        public bool? UseColumnStore { get; set; }
 
         public Watermark? LastWatermark => _lastWatermark;
 
@@ -362,6 +372,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 flowtideBuilder.SetVersion(version);
             }
 
+            if (UseColumnStore.HasValue)
+            {
+                flowtideBuilder.ColumnStore(UseColumnStore.Value);
+            }
+
             if (distributedOptions != null)
             {
                 flowtideBuilder.SetDistributedOptions(distributedOptions);
@@ -572,7 +587,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay));
+            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay, batchSize: SourceBatchSize));
         }
 
         /// <summary>

@@ -26,6 +26,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly bool immutable;
         private readonly TimeSpan? initialDataDelay;
         private readonly bool failInitialize;
+        private readonly int? batchSize;
 
         /// <param name="initialDataDelay">
         /// Delays the initial data send, keeping the stream in its starting phase for the
@@ -35,12 +36,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// Makes every created source operator throw during initialization, used to test
         /// how a stream host handles a substream that cannot start.
         /// </param>
-        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase, bool immutable, TimeSpan? initialDataDelay = null, bool failInitialize = false) : base(regexPattern)
+        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase, bool immutable, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null) : base(regexPattern)
         {
             this.mockDatabase = mockDatabase;
             this.immutable = immutable;
             this.initialDataDelay = initialDataDelay;
             this.failInitialize = failInitialize;
+            this.batchSize = batchSize;
         }
 
         public override Relation ModifyPlan(ReadRelation readRelation)
@@ -93,7 +95,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new MockDataSourceOperator(readRelation, mockDatabase, dataflowBlockOptions, initialDataDelay, failInitialize);
+            return new MockDataSourceOperator(readRelation, mockDatabase, dataflowBlockOptions, initialDataDelay, failInitialize, batchSize);
         }
 
         public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)

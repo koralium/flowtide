@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.Optimizer.FilterPushdown;
 using FlowtideDotNet.Core.Optimizer.GetTimestamp;
 using FlowtideDotNet.Core.Optimizer.WatermarkOutput;
+using FlowtideDotNet.Core.Optimizer.Window;
 using FlowtideDotNet.Substrait;
 
 namespace FlowtideDotNet.Core.Optimizer
@@ -43,6 +44,9 @@ namespace FlowtideDotNet.Core.Optimizer
 
                 var filterIntoRead = new FilterIntoReadOptimizer();
                 relation = filterIntoRead.Visit(relation, null!);
+
+                var rowNumberFilterHint = new RowNumberFilterHintVisitor();
+                relation = rowNumberFilterHint.Visit(relation, null!);
 
                 plan.Relations[i] = relation;
             }

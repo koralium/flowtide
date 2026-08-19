@@ -49,6 +49,44 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return DataValueComparer.CompareTo(xval, yval);
         }
 
+        /// <summary>
+        /// Ascending with nulls last, for the asymmetric case the null-first compare can't do.
+        /// Values are compared, the column compare orders some types differently.
+        /// </summary>
+        public static int CompareColumnAscendingNullsLast(IColumn column, int x, int y)
+        {
+            var xIsNull = column.GetTypeAt(x, default) == ArrowTypeId.Null;
+            var yIsNull = column.GetTypeAt(y, default) == ArrowTypeId.Null;
+            if (xIsNull)
+            {
+                return yIsNull ? 0 : 1;
+            }
+            if (yIsNull)
+            {
+                return -1;
+            }
+            return DataValueComparer.CompareTo(column.GetValueAt(x, default), column.GetValueAt(y, default));
+        }
+
+        /// <summary>
+        /// Descending with nulls first, the mirrored asymmetric case.
+        /// </summary>
+        public static int CompareColumnDescendingNullsFirst(IColumn column, int x, int y)
+        {
+            var xIsNull = column.GetTypeAt(x, default) == ArrowTypeId.Null;
+            var yIsNull = column.GetTypeAt(y, default) == ArrowTypeId.Null;
+            if (xIsNull)
+            {
+                return yIsNull ? 0 : -1;
+            }
+            if (yIsNull)
+            {
+                return 1;
+            }
+            // Operands swapped, descending is the reverse of the column's own order.
+            return DataValueComparer.CompareTo(column.GetValueAt(y, default), column.GetValueAt(x, default));
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static int CompareTail(ref SortCompareContext context, int x, int y)
         {
@@ -154,6 +192,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
         public static BlockExpression Compile(IColumn[] columns, Expression contextParameter, Expression xParameter, Expression yParameter, int startColumnIndex)
         {
+            return Compile(columns, contextParameter, xParameter, yParameter, startColumnIndex, null);
+        }
+
+        public static BlockExpression Compile(IColumn[] columns, Expression contextParameter, Expression xParameter, Expression yParameter, int startColumnIndex, SortColumnDirection[]? directions)
+        {
             var pointersField = typeof(SortCompareContext).GetField(nameof(SortCompareContext.pointers))!;
             var columnsField = typeof(SortCompareContext).GetField(nameof(SortCompareContext.columns))!;
 
@@ -167,54 +210,91 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             for (int i = startColumnIndex; i < columns.Length && i < 7; i++)
             {
                 var column = columns[i];
+                var direction = GetEffectiveDirection(column, directions, i);
 
-                if (column.SupportSelfCompareExpression)
+                Expression compareResult;
+                if (direction.HasSwappedNulls())
                 {
-                    // Take out index i from the pointers parameter
-                    var pointer = Expression.ArrayIndex(fetchPointers, Expression.Constant(i));
-                    var compareResult = column.CreateSelfCompareExpression(pointer, xParameter, yParameter);
-                    bodyExpressions.Add(Expression.Assign(compareResultVar, compareResult));
-
-                    var ifCompareNotEqual = Expression.IfThen(
-                        Expression.NotEqual(compareResultVar, Expression.Constant(0)),
-                        Expression.Return(returnTarget, compareResultVar)
-                    );
-                    bodyExpressions.Add(ifCompareNotEqual);
-                }
-                else
-                {
+                    // Opposite null placement needs the explicit helper.
                     var col = Expression.ArrayIndex(fetchColumns, Expression.Constant(i));
-                    var compareResult = Expression.Call(
-                        typeof(BatchSortCompiler).GetMethod(nameof(CompareColumn))!,
+                    var method = direction.IsDescending() ? nameof(CompareColumnDescendingNullsFirst) : nameof(CompareColumnAscendingNullsLast);
+                    compareResult = Expression.Call(
+                        typeof(BatchSortCompiler).GetMethod(method)!,
                         col,
                         xParameter,
                         yParameter
                     );
-                    bodyExpressions.Add(Expression.Assign(compareResultVar, compareResult));
-
-                    var ifCompareNotEqual = Expression.IfThen(
-                        Expression.NotEqual(compareResultVar, Expression.Constant(0)),
-                        Expression.Return(returnTarget, compareResultVar)
-                    );
-                    bodyExpressions.Add(ifCompareNotEqual);
                 }
+                else
+                {
+                    // Descending nulls last inverts the default, swap operands at compile time.
+                    var left = direction.IsDescending() ? yParameter : xParameter;
+                    var right = direction.IsDescending() ? xParameter : yParameter;
+                    if (column.SupportSelfCompareExpression)
+                    {
+                        // Take out index i from the pointers parameter
+                        var pointer = Expression.ArrayIndex(fetchPointers, Expression.Constant(i));
+                        compareResult = column.CreateSelfCompareExpression(pointer, left, right);
+                    }
+                    else
+                    {
+                        var col = Expression.ArrayIndex(fetchColumns, Expression.Constant(i));
+                        compareResult = Expression.Call(
+                            typeof(BatchSortCompiler).GetMethod(nameof(CompareColumn))!,
+                            col,
+                            left,
+                            right
+                        );
+                    }
+                }
+
+                bodyExpressions.Add(Expression.Assign(compareResultVar, compareResult));
+
+                var ifCompareNotEqual = Expression.IfThen(
+                    Expression.NotEqual(compareResultVar, Expression.Constant(0)),
+                    Expression.Return(returnTarget, compareResultVar)
+                );
+                bodyExpressions.Add(ifCompareNotEqual);
             }
 
             if (columns.Length > 7)
             {
-                // Add extra code to handle the remainder
-                var compareTailCall = Expression.Call(
-                    typeof(BatchSortCompiler).GetMethod(nameof(CompareTail))!,
-                    contextParameter,
-                    xParameter,
-                    yParameter
-                );
-                bodyExpressions.Add(Expression.Label(returnTarget, compareTailCall));
+                // Tail compares, direction baked in per column. Raw direction since tail null
+                // states are not keyed, the asymmetric helpers handle both.
+                for (int i = 7; i < columns.Length; i++)
+                {
+                    var direction = directions != null && i < directions.Length ? directions[i] : SortColumnDirection.AscendingNullsFirst;
+                    var col = Expression.ArrayIndex(fetchColumns, Expression.Constant(i));
+                    Expression compareResult;
+                    if (direction.HasSwappedNulls())
+                    {
+                        var method = direction.IsDescending() ? nameof(CompareColumnDescendingNullsFirst) : nameof(CompareColumnAscendingNullsLast);
+                        compareResult = Expression.Call(
+                            typeof(BatchSortCompiler).GetMethod(method)!,
+                            col,
+                            xParameter,
+                            yParameter
+                        );
+                    }
+                    else
+                    {
+                        var left = direction.IsDescending() ? yParameter : xParameter;
+                        var right = direction.IsDescending() ? xParameter : yParameter;
+                        compareResult = Expression.Call(
+                            typeof(BatchSortCompiler).GetMethod(nameof(CompareColumn))!,
+                            col,
+                            left,
+                            right
+                        );
+                    }
+                    bodyExpressions.Add(Expression.Assign(compareResultVar, compareResult));
+                    bodyExpressions.Add(Expression.IfThen(
+                        Expression.NotEqual(compareResultVar, Expression.Constant(0)),
+                        Expression.Return(returnTarget, compareResultVar)
+                    ));
+                }
             }
-            else
-            {
-                bodyExpressions.Add(Expression.Label(returnTarget, Expression.Constant(0)));
-            }
+            bodyExpressions.Add(Expression.Label(returnTarget, Expression.Constant(0)));
 
             var block = Expression.Block(
                 new[] { compareResultVar },
@@ -222,6 +302,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             );
 
             return block;
+        }
+
+        /// <summary>
+        /// A null-free column collapses asymmetric placements to symmetric, keeping the fast paths.
+        /// Only valid for fast path columns whose null state is keyed.
+        /// </summary>
+        internal static SortColumnDirection GetEffectiveDirection(IColumn column, SortColumnDirection[]? directions, int index)
+        {
+            var direction = directions != null && index < directions.Length ? directions[index] : SortColumnDirection.AscendingNullsFirst;
+            if (!direction.HasSwappedNulls())
+            {
+                return direction;
+            }
+            if (!CompareColumnStateBuilder.CanContainNull(column.GetColumnState()))
+            {
+                return direction.NormalizeForNoNulls();
+            }
+            return direction;
         }
     }
 }

@@ -61,6 +61,17 @@ namespace FlowtideDotNet.Core.Operators.Window
                 throw new InvalidOperationException("Failed to read bitmap memory length");
             }
 
+            // Both lengths are validated before either allocation, a declared length
+            // the payload cannot satisfy must not reach the allocator
+            if (weightsMemoryLength < 0 || weightsMemoryLength % sizeof(int) != 0 || reader.Remaining < weightsMemoryLength)
+            {
+                throw new InvalidOperationException("Failed to read weights memory");
+            }
+            if (bitmapMemoryLength < 0 || reader.Remaining < (long)weightsMemoryLength + bitmapMemoryLength)
+            {
+                throw new InvalidOperationException("Failed to read bitmap memory");
+            }
+
             var weightsNativeMemory = _memoryAllocator.AllocateMemory(weightsMemoryLength);
             FlowtideMemory bitmapNativeMemory = default;
             try

@@ -701,7 +701,26 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new WindowOperator(consistentPartitionWindowRelation, functionsRegister, DefaultBlockOptions);
+            UnaryVertex<StreamEventBatch> op;
+            if (_useColumnStore)
+            {
+                if (!Operators.Window.Bulk.BulkWindowOperator.TryCreate(consistentPartitionWindowRelation, functionsRegister, DefaultBlockOptions, out var bulkWindowOperator))
+                {
+                    if (consistentPartitionWindowRelation.WindowFunctions.Count == 0)
+                    {
+                        throw new NotSupportedException("The window relation contains no window functions.");
+                    }
+                    throw new NotSupportedException(
+                        "The window relation contains a window function without a bulk window implementation " +
+                        $"(functions: {string.Join(", ", consistentPartitionWindowRelation.WindowFunctions.Select(x => x.ExtensionName))}). " +
+                        "Custom window functions must be registered with RegisterBulkWindowFunction.");
+                }
+                op = bulkWindowOperator;
+            }
+            else
+            {
+                op = new WindowOperator(consistentPartitionWindowRelation, functionsRegister, DefaultBlockOptions);
+            }
             if (state != null)
             {
                 op.LinkTo(state);

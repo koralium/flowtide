@@ -1761,6 +1761,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                 createdNullByte = true;
             }
 
+            // Null rows must get all-zero value bytes so nulls group first, cleared below after the write.
+            int innerBytes = _dataColumn.SetRadixPrefix(items, insertBytePosition, selectionVector);
+
             if (selectionVector.IsEmpty)
             {
                 for (int i = 0; i < items.Length; i++)
@@ -1777,6 +1780,15 @@ namespace FlowtideDotNet.Core.ColumnStore
                     else if (!isNotNull)
                     {
                         nullByte = 0x00;
+                    }
+
+                    if (!isNotNull)
+                    {
+                        ref byte valueBytes = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+                        for (int b = 0; b < innerBytes; b++)
+                        {
+                            Unsafe.Add(ref valueBytes, b) = 0x00;
+                        }
                     }
                 }
             }
@@ -1799,10 +1811,17 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         nullByte = 0x00;
                     }
+
+                    if (!isNotNull)
+                    {
+                        ref byte valueBytes = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+                        for (int b = 0; b < innerBytes; b++)
+                        {
+                            Unsafe.Add(ref valueBytes, b) = 0x00;
+                        }
+                    }
                 }
             }
-
-            int innerBytes = _dataColumn.SetRadixPrefix(items, insertBytePosition, selectionVector);
 
             return (createdNullByte ? 1 : 0) + innerBytes;
         }

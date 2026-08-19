@@ -51,6 +51,11 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public StreamStateValue State => flowtideTestStream.State;
 
+        /// <summary>
+        /// State cache page count, set before starting. A small value keeps eviction active.
+        /// </summary>
+        protected int CachePageCount { set => flowtideTestStream.CachePageCount = value; }
+
         protected Task StartStream(
             string sql,
             int parallelism = 1,
@@ -95,6 +100,11 @@ namespace FlowtideDotNet.AcceptanceTests
         /// StartStream.
         /// </summary>
         protected TimeSpan? InitialDataDelay { set => flowtideTestStream.InitialDataDelay = value; }
+
+        /// <summary>
+        /// Overrides the mock source's batch flush size, set before StartStream.
+        /// </summary>
+        protected int? SourceBatchSize { set => flowtideTestStream.SourceBatchSize = value; }
 
         /// <summary>
         /// Sets the minimum time between checkpoint triggers, set before StartStream.

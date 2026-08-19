@@ -482,8 +482,12 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
-            public WindowBound? GetWindowBound(Protobuf.Expression.Types.WindowFunction.Types.Bound bound)
+            public WindowBound? GetWindowBound(Protobuf.Expression.Types.WindowFunction.Types.Bound? bound)
             {
+                if (bound == null)
+                {
+                    return null;
+                }
                 switch (bound.KindCase)
                 {
                     case Protobuf.Expression.Types.WindowFunction.Types.Bound.KindOneofCase.CurrentRow:
