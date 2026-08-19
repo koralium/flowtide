@@ -35,14 +35,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     }
 
     /// <summary>
-    /// Assigns each row the start of the session it belongs to. A session is a maximal run of rows
-    /// where no two neighbours are further apart than the gap, so it is a pure function of the
-    /// order by value and the run the row sits in.
-    ///
-    /// The scan visits rows in order by value order, so the run is found by carrying the previous
-    /// row's value forward. The previous row's stored output is the session start, which is why a
-    /// scan starting at a changed row only needs a single seed row rather than a walk back to the
-    /// nearest gap.
+    /// Assigns each row the start of its session.
+    /// A session is a run of rows within the gap.
     /// </summary>
     internal class BulkSessionWindowFunction : IBulkWindowFunction
     {
@@ -62,21 +56,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         }
 
         /// <summary>
-        /// A change never moves the session start of a row ahead of it in order: an insert only ever
-        /// extends or merges forward, and a delete only ever shrinks or splits forward.
+        /// A change only ever moves rows after it.
         /// </summary>
         public long AffectedRowsBefore => 0;
 
         /// <summary>
-        /// A change can reach every following row, up to the next gap. Distance cannot bound it,
-        /// the value equality below is what stops the scan.
+        /// Reaches every following row, value equality stops it.
         /// </summary>
         public long AffectedRowsAfter => long.MaxValue;
 
         /// <summary>
-        /// The state carried forward is the row's own order by value and its session start. The
-        /// value comes from an immutable key column and the session start is the stored output, so
-        /// one row keeping its stored value means every row after it keeps its value too.
+        /// Carried state is the key value and the output.
         /// </summary>
         public bool StableByValueEquality => true;
 
@@ -88,8 +78,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             _functionIndex = context.FunctionIndex;
 
-            // The scan order is the only ordering the carried state can rely on, so the gap must be
-            // measured on the column the rows are ordered by.
+            // The gap is measured on the order by column.
             if (context.OrderBy.Count != 1)
             {
                 throw new InvalidOperationException("session_window requires exactly one order by column");
@@ -112,8 +101,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
 
         public async ValueTask StartScan(ColumnRowReference partitionValues, BulkWindowSeedReader seedReader, bool fromPartitionStart)
         {
-            // With AffectedRowsBefore 0 the operator never reports the partition start, an empty
-            // seed is the only signal that there is no row before the scan.
+            // An empty seed is the only partition start signal.
             if (fromPartitionStart || !await seedReader.EnsureRows(1))
             {
                 _hasPrevious = false;
@@ -124,7 +112,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
             var previousRow = seedReader.GetRow(1);
             var previousValue = _orderValueFunction!(previousRow.referenceBatch, previousRow.RowIndex);
 
-            // A previous row without a session carries nothing forward, the scan starts a new one.
+            // Nothing to carry, so start a new session.
             if (previousStart.Type != ArrowTypeId.Timestamp || previousValue.Type != ArrowTypeId.Timestamp)
             {
                 _hasPrevious = false;
@@ -142,8 +130,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         {
             var value = _orderValueFunction!(context.Batch, context.RowIndex);
 
-            // Rows without a usable value belong to no session. They sort together at one end, so
-            // leaving the carried state untouched keeps them from splitting a run.
+            // No value means no session, and the run is unbroken.
             if (value.Type != ArrowTypeId.Timestamp)
             {
                 result._type = ArrowTypeId.Null;

@@ -16,9 +16,8 @@ using Xunit.Abstractions;
 namespace FlowtideDotNet.AcceptanceTests
 {
     /// <summary>
-    /// Session windows assign each row the start of the gap free run it belongs to.
-    /// A run grows, merges and splits as rows are inserted and deleted, so the expected
-    /// values are recomputed from the current dataset rather than hardcoded.
+    /// Session windows assign each row the start of its run.
+    /// Expected values are recomputed from the current dataset.
     /// </summary>
     public class SessionWindowTests : FlowtideAcceptanceBase
     {
@@ -28,7 +27,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
         private static readonly DateTime Base = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
 
-        // A 10 second gap, so rows further apart than 10 seconds start a new session.
+        // A 10 second gap between neighbouring rows.
         private const string SessionQuery = @"
             INSERT INTO output
             SELECT
@@ -65,8 +64,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
-        /// The oracle: group by partition, order by the timestamp, cut whenever the distance to the
-        /// previous row is greater than the gap. Rows without a timestamp belong to no session.
+        /// The oracle, cut whenever the distance exceeds the gap.
         /// </summary>
         private List<SessionResult> ExpectedSessions(int gapSeconds = 10)
         {
@@ -78,7 +76,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     DateTime? sessionStart = null;
                     DateTime? previous = null;
 
-                    // Null timestamps sort first and carry nothing forward.
+                    // Null timestamps sort first and carry nothing.
                     foreach (var user in g.Where(x => x.BirthDate == null).OrderBy(x => x.UserKey))
                     {
                         output.Add(new SessionResult(user.CompanyId, user.UserKey, null));
@@ -101,7 +99,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task AppendExtendingAndStartingSessions()
         {
-            // Two sessions in company 1: 0,5,10 then 100,105.
+            // Two sessions: 0,5,10 then 100,105.
             AddUser("1", 1, 0);
             AddUser("1", 2, 5);
             AddUser("1", 3, 10);
@@ -112,12 +110,12 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            // Append within the gap of the last row, extends the second session.
+            // Within the gap, extends the second session.
             AddUser("1", 6, 110);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            // Append beyond the gap, starts a third session.
+            // Beyond the gap, starts a third session.
             AddUser("1", 7, 200);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
@@ -126,7 +124,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task InsertBridgingTwoSessions()
         {
-            // 0,5 and 30,35 are separate, the distance from 5 to 30 is 25 seconds.
+            // 0,5 and 30,35 are separate, 25 seconds apart.
             AddUser("1", 1, 0);
             AddUser("1", 2, 5);
             AddUser("1", 3, 30);
@@ -136,12 +134,12 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            // 20 is within 10 of neither... 5->20 is 15. Still two sessions, now 0,5 and 20,30,35.
+            // 5 to 20 is 15, still two sessions.
             AddUser("1", 5, 20);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            // 12 bridges 5 and 20, collapsing everything into one session starting at 0.
+            // 12 bridges 5 and 20 into one session.
             AddUser("1", 6, 12);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
@@ -158,7 +156,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            // Within the gap of 50, so the whole session start moves back to 45.
+            // Within the gap of 50, the start moves back.
             AddUser("1", 4, 45);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
@@ -177,7 +175,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            // Removing 8 leaves 0 and 16 which are 16 apart, so the session splits.
+            // Removing 8 leaves 0 and 16, so it splits.
             RemoveUser(2);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
@@ -194,7 +192,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            // The session start moves from 0 to 5, so every remaining row changes.
+            // The start moves to 5, every row changes.
             RemoveUser(1);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
@@ -203,7 +201,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task TransitiveThreeWayMergeFromOneInsert()
         {
-            // Three sessions, each pair separated by more than the gap.
+            // Three sessions, each further apart than the gap.
             AddUser("1", 1, 0);
             AddUser("1", 2, 20);
             AddUser("1", 3, 40);
@@ -212,7 +210,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            // 10 bridges 0 and 20, 30 bridges 20 and 40. Added together they collapse all three.
+            // 10 and 30 together collapse all three.
             AddUser("1", 4, 10);
             AddUser("1", 5, 30);
             await WaitForUpdate();
@@ -222,7 +220,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task ExactlyAtGapBoundary()
         {
-            // Exactly the gap joins the session, one tick more starts a new one.
+            // Exactly the gap joins, more starts a new one.
             AddUser("1", 1, 0);
             AddUser("1", 2, 10);
             AddUser("1", 3, 21);
@@ -244,7 +242,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            // A null row must not split the run of real timestamps around it.
+            // A null row must not split the run.
             AddUser("1", 5, 10);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
@@ -253,7 +251,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task SessionsAreIndependentPerPartition()
         {
-            // Same timestamps in two companies, sessions must not bleed across partitions.
+            // Sessions must not bleed across partitions.
             for (int i = 0; i < 5; i++)
             {
                 AddUser("1", i, i * 5);
@@ -282,16 +280,15 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            // Inserting before the head moves the start of every row in the session.
+            // Inserting before the head moves every start.
             AddUser("1", 500, -3);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
         }
 
         /// <summary>
-        /// Three sessions in one partition, with a large middle one. A full re emission would be
-        /// around 120 rows, so the change counts below are what separate an incremental scan from a
-        /// scan that recomputes and re emits everything it walks over.
+        /// Three sessions with a large middle one.
+        /// A full re emission would be around 120 rows.
         /// </summary>
         private void AddThreeSessionsWithLargeMiddle()
         {
@@ -318,8 +315,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
 
-            // Appending to the end of the middle session gives the new row the existing start, so
-            // no stored row changes and exactly one row should reach the sink.
+            // An append changes nothing stored, one row out.
             ResetChangeRowsRecieved();
             AddUser("1", 500, 1000 + 50 * 5);
             await WaitForUpdate();
@@ -328,10 +324,8 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
-        /// Two changes far apart in the same partition. The scan cannot stop between them because a
-        /// marker is still outstanding, but it must not re emit the rows it walks over, and it must
-        /// still apply the second change. A wrong stability declaration shows up here as either a
-        /// row count blow up or a silently missing update.
+        /// Two changes far apart in the same partition.
+        /// The rows between them must not be re emitted.
         /// </summary>
         [Fact]
         public async Task TwoChangesFarApartInOnePartition()
@@ -343,8 +337,7 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(ExpectedSessions());
 
             ResetChangeRowsRecieved();
-            // Extend the first session and the last session in the same batch. Both are appends
-            // within the gap, so each contributes exactly one new row and nothing else moves.
+            // Two appends in one batch, one new row each.
             AddUser("1", 500, 25);
             AddUser("1", 501, 2025);
             await WaitForUpdate();
@@ -354,8 +347,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
-        /// The first change cascades through its own session while the second sits far away. The
-        /// cascade must not swallow the second marker.
+        /// A cascade must not swallow the second marker.
         /// </summary>
         [Fact]
         public async Task SecondChangeAppliedWhenFirstCascades()
@@ -367,20 +359,19 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(ExpectedSessions());
 
             ResetChangeRowsRecieved();
-            // Inserting before the first session's start moves it, so all five of its rows are
-            // retracted and re emitted. The append to the last session must still be applied.
+            // The first session's start moves, all five rows change.
             AddUser("1", 500, -5);
             AddUser("1", 501, 2025);
             await WaitForUpdate();
 
             AssertCurrentDataEqual(ExpectedSessions());
-            // Five retracts, five replacing inserts, plus the two new rows.
+            // Five retracts, five inserts, plus two new rows.
             Assert.Equal(12, ChangeRowsRecieved);
         }
 
         public record SessionAggResult(string? companyId, long count, DateTime? windowStart, DateTime? windowEnd);
 
-        // GROUP BY SESSION(...) exposes the grouping as window_start, matching hopping and tumbling.
+        // GROUP BY SESSION(...) exposes the grouping as window_start.
         private const string SessionGroupByQuery = @"
             INSERT INTO output
             SELECT
@@ -391,7 +382,7 @@ namespace FlowtideDotNet.AcceptanceTests
             FROM users
             GROUP BY CompanyId, SESSION(BirthDate, 10, 'SECOND')";
 
-        // The same query written with the Flink style accessor instead of the column name.
+        // The same query using the accessor instead.
         private const string SessionGroupByAccessorQuery = @"
             INSERT INTO output
             SELECT
@@ -457,8 +448,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public record SessionCountResult(string? companyId, long count, DateTime? windowStart);
 
         /// <summary>
-        /// The documented minimal form, where nothing but the grouping references the timestamp so
-        /// the aggregate has no max measure at all.
+        /// The minimal form, the aggregate has no max measure.
         /// </summary>
         [Fact]
         public async Task GroupBySessionWithoutSessionEnd()
@@ -497,7 +487,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessionAggregate());
 
-            // Bridging the two sessions must retract both aggregate rows and emit one merged row.
+            // Bridging retracts both rows and emits one merged.
             AddUser("1", 5, 20);
             AddUser("1", 6, 12);
             await WaitForUpdate();
@@ -516,7 +506,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessionAggregate());
 
-            // Removing the middle row splits one aggregate row into two.
+            // Removing the middle row splits one row into two.
             RemoveUser(2);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessionAggregate());
@@ -535,7 +525,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Theory]
-        // A different timestamp column than the one the grouping sessionizes on
+        // A different timestamp column than the grouping uses
         [InlineData("SESSION_START(FirstName, 10, 'SECOND')")]
         [InlineData("SESSION_END(FirstName, 10, 'SECOND')")]
         // A different gap than the grouping uses
@@ -602,7 +592,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await Crash();
 
-            // A merge across the crash boundary exercises the restored stored values.
+            // A merge across the crash uses the restored values.
             AddUser("1", 4, 95);
             await WaitForUpdate();
             AssertCurrentDataEqual(ExpectedSessions());
@@ -643,10 +633,8 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream(globalQuery);
             await WaitForUpdate();
 
-            // Spelled out rather than derived, because ExpectedSessions groups by company and the
-            // point of this test is that without a PARTITION BY the companies share one run.
-            // 0 and 5 are five seconds apart so they share a session, 20 is fifteen after 5 so it
-            // starts its own.
+            // Spelled out, the oracle groups by company.
+            // 0 and 5 share a session, 20 starts its own.
             AssertCurrentDataEqual(new List<SessionResult>()
             {
                 new SessionResult("1", 1, Base),

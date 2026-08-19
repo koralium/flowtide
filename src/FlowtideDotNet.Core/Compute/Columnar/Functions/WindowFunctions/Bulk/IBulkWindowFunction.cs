@@ -97,13 +97,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
         public required List<int> PartitionColumns { get; init; }
 
         /// <summary>
-        /// The relation's ORDER BY, so a function whose result depends on the ordering value can compile it.
-        /// The scan visits rows in this order, so it is the only ordering a function may assume.
+        /// The ORDER BY, the only order a function may assume.
         /// </summary>
         public required IReadOnlyList<SortField> OrderBy { get; init; }
 
         /// <summary>
-        /// Used to compile expressions during initialization, such as an ORDER BY expression.
+        /// Compiles expressions during initialization, such as the ORDER BY.
         /// </summary>
         public required IFunctionsRegister FunctionsRegister { get; init; }
 

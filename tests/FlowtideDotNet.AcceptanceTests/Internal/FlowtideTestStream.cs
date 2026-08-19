@@ -440,8 +440,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private int _changeRowsRecieved;
 
         /// <summary>
-        /// Rows the sink has been sent, counting the change stream rather than the resulting state.
-        /// A retract and its replacing insert count as two.
+        /// Rows sent to the sink, not the state.
         /// </summary>
         public int ChangeRowsRecieved
         {

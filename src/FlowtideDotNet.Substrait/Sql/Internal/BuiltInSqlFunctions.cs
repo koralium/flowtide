@@ -1025,9 +1025,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         throw new InvalidOperationException("session_window must have exactly two arguments: (gap_amount, gap_unit)");
                     }
 
-                    // The gap is measured between neighbouring rows in the scan order, so the order by
-                    // is the timestamp. A second order by column or a descending one would make the
-                    // neighbours something other than the next timestamp.
+                    // The gap is measured on the order by column.
                     if (func.Over is not WindowSpecType windowSpecType)
                     {
                         throw new SubstraitParseException("'session_window' function must have an over clause");
@@ -1068,11 +1066,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new WindowResponse(sessionWindowFunc, new TimestampType());
                 });
 
-            // Accessors for a 'GROUP BY ... SESSION(ts, amount, unit)'. They carry the same arguments
-            // as the grouping so a mismatch is visible in the query rather than silently ignored.
-            // Registered as an aggregate so the group by handling collects it and resolves it onto
-            // the SESSION grouping, which is also where its arguments are checked against it.
-            // Reaching this mapper means there was no session for it to resolve to.
+            // Accessors for a 'GROUP BY ... SESSION(ts, amount, unit)'.
+            // An aggregate, so the group by resolves it.
+            // Reaching this mapper means there was no session.
             sqlFunctionRegister.RegisterAggregateFunction("session_start", (f, visitor, emitData) =>
                 throw new SubstraitParseException("session_start requires a 'SESSION(...)' expression in the GROUP BY"));
 
@@ -1080,8 +1076,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 var (timestamp, amount, unit) = VisitSessionAccessorArguments(f, visitor, emitData, "session_end");
 
-                // max(ts + gap) is max(ts) + gap because shifting every value by the same amount
-                // preserves the order, so the session end needs no aggregate of its own.
+                // max(ts + gap) is max(ts) + gap, order preserved.
                 var shifted = new ScalarFunction()
                 {
                     ExtensionUri = FunctionsDatetime.Uri,
@@ -1636,8 +1631,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         }
 
         /// <summary>
-        /// Visits the '(timestamp, gap_amount, gap_unit)' arguments shared by session_start and
-        /// session_end, which mirror the SESSION expression in the group by.
+        /// Visits the shared '(timestamp, gap_amount, gap_unit)' accessor arguments.
         /// </summary>
         private static (Expressions.Expression timestamp, Expressions.Expression amount, Expressions.Expression unit) VisitSessionAccessorArguments(
             SqlParser.Ast.Expression.Function function,

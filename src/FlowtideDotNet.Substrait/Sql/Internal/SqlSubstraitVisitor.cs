@@ -928,8 +928,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         }
 
         /// <summary>
-        /// The name a 'SESSION(...)' grouping is exposed under, matching the column the hopping and
-        /// tumbling table functions produce.
+        /// The name a 'SESSION(...)' grouping is exposed under.
         /// </summary>
         private const string SessionWindowStartName = "window_start";
 
@@ -947,8 +946,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         }
 
         /// <summary>
-        /// Returns 'session_start' or 'session_end' when the function is one of the session
-        /// accessors, otherwise null.
+        /// Returns the accessor name, or null when it is neither.
         /// </summary>
         private static string? GetSessionAccessorName(Expression.Function function)
         {
@@ -989,9 +987,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         }
 
         /// <summary>
-        /// The accessors take the same arguments as the SESSION in the group by, but their value
-        /// comes from the grouping. A mismatch would silently return the grouping's session instead
-        /// of the one written, so it is rejected here where both are in scope.
+        /// A mismatch would silently return the grouping's session instead.
         /// </summary>
         private static void ValidateSessionAccessor(Expression.Function accessor, string accessorName, Expression.Function? sessionGrouping)
         {
@@ -1014,9 +1010,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         }
 
         /// <summary>
-        /// 'GROUP BY x, SESSION(ts, amount, unit)' is sugar for a session window function computed
-        /// before the aggregate, grouped on its output. The partition is the rest of the group by,
-        /// so the partitioning does not have to be repeated inside the SESSION call.
+        /// A SESSION grouping becomes a window relation below the aggregate.
+        /// The partition is the rest of the group by.
         /// </summary>
         private RelationData AddSessionWindowRelation(Select select, Expression.Function sessionGrouping, RelationData parent)
         {
@@ -1078,8 +1073,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             };
 
             var emitData = parent.EmitData.Clone();
-            // Keyed by the SESSION node itself, so the grouping below resolves to this column
-            // through the normal emit lookup. Hidden because it is plumbing below the aggregate.
+            // Keyed by the SESSION node so the grouping resolves here.
             emitData.Add(sessionGrouping, emitData.Count, "$sessionwindow", new TimestampType(), hiddenFromWildcard: true);
 
             return new RelationData(windowRelation, emitData);
@@ -1140,8 +1134,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         aggEmitData.Add(group, emitcount, isSession ? SessionWindowStartName : result.Name, result.Type);
                         if (isSession)
                         {
-                            // Also reachable by name, so a session groups the same way a hopping or
-                            // tumbling window does.
+                            // Also reachable by name, like hopping and tumbling.
                             aggEmitData.AddWithAlias(
                                 new Expression.CompoundIdentifier(new Sequence<Ident>(new List<Ident>() { new Ident(SessionWindowStartName) })),
                                 emitcount);
@@ -1165,8 +1158,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                     if (accessorName == "session_start")
                     {
-                        // The start is the grouping column, not something aggregated over the rows,
-                        // so it is aliased onto it rather than becoming a measure.
+                        // The start is the grouping column, not a measure.
                         aggEmitData.AddWithAlias(foundMeasure, sessionGroupingEmitIndex);
                         continue;
                     }

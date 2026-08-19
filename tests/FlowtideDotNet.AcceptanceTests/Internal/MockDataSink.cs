@@ -187,8 +187,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
             Logger.LogDebug("Mock sink recieved batch with {count} rows", msg.Data.Weights.Count);
-            // Counts the change stream itself, not the resulting state, so a test can assert that an
-            // incremental operator did not re-emit rows it should have left alone.
+            // Counts the change stream so a test can assert re-emission.
             onChangeRowsRecieved?.Invoke(msg.Data.Weights.Count);
 #if DEBUG_WRITE
             allInput!.WriteLine("New batch");
