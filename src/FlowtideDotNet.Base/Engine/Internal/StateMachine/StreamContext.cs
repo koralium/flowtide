@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // A disposed context is terminal, volatile to avoid taking _contextLock
         private volatile bool _disposed;
 
-        // One once a dispose has claimed the teardown
+        // Once a dispose has claimed the teardown
         private int _disposeClaimed;
 
         // Failures in a row since the last proven recovery
