@@ -2443,11 +2443,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         [Fact]
         public async Task StaggeredSubstreamStopKeepsDataComplete()
         {
-            // Long enough that the escape cannot fire, so this covers the pairing path only.
-            var originalTimeout = Core.Operators.Exchange.SubstreamReadOperator.StopAlignmentTimeout;
-            Core.Operators.Exchange.SubstreamReadOperator.StopAlignmentTimeout = TimeSpan.FromSeconds(60);
-            try
-            {
                 _generator.Generate(300);
 
                 var latestData = new ConcurrentDictionary<string, EventBatchData>();
@@ -2514,11 +2509,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 _generator.Generate(50);
 
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
-            }
-            finally
-            {
-                Core.Operators.Exchange.SubstreamReadOperator.StopAlignmentTimeout = originalTimeout;
-            }
         }
 
         /// <summary>

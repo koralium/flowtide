@@ -48,10 +48,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // Internal so tests can shorten it, forcing the pairing budget to expire would
         // otherwise take minutes.
         internal static TimeSpan PairingAttemptDelay = TimeSpan.FromSeconds(5);
-        /// <summary>
-        /// Wait for the peers stop barrier before forwarding ours.
-        /// </summary>
-        internal static TimeSpan StopAlignmentTimeout = TimeSpan.FromSeconds(5);
 
         // Handoff drain patience; raised in tests.
         internal static TimeSpan HandoffDrainTimeout = TimeSpan.FromSeconds(10);
@@ -82,8 +78,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // During a handoff drain no peer events arrive to pair local checkpoints with, so
         // they are self-forwarded like a stop checkpoint.
         private volatile bool _handoffDraining;
-        // Stop barrier went out without the peers.
-        private volatile bool _stopAlignmentEscaped;
         // Cancels the escape when the epoch ends.
         private CancellationTokenSource? _stopAlignmentCancel;
         // True while events forwarded after the last checkpoint barrier await a covering
@@ -125,11 +119,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         public override bool ReadyToStop => _peerStopConsumedCommitted;
 
-        /// <summary>
-        /// True when the stop dropped events.
-        /// </summary>
-        public override bool StopIsUnclean => _stopAlignmentEscaped;
-
         public override Task Compact()
         {
             return Task.CompletedTask;
@@ -170,7 +159,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _swallowNextInitWatermarks = false;
                 _localCheckpointSeen = false;
                 _handoffDraining = false;
-                _stopAlignmentEscaped = false;
                 _uncoveredForwards = false;
                 // Signals from before the restore belong to the aborted epoch, replaying
                 // them would complete a new cycle too early.
@@ -509,7 +497,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             var channel = _channel;
             if (channel != null)
             {
-                _ = channel.Writer.WriteAsync(s_localStopCheckpointMarker).AsTask();
+                _ = channel.Writer.WriteAsync(s_localStopCheckpointMarker).AsTask()
+                    .ContinueWith(t => Logger.LogWarning(t.Exception, "Substream read {name} could not queue the stop checkpoint marker.", Name), TaskContinuationOptions.OnlyOnFaulted);
             }
         }
 
@@ -517,12 +506,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// Forwards without the peers barrier if it never arrives.
         /// </summary>
         /// <summary>
-        /// Always under the streams drain timeout.
+        /// Half the streams drain timeout, so the escape always fires before it.
         /// </summary>
         private TimeSpan StopAlignmentDeadline()
         {
-            var half = TimeSpan.FromTicks(StopDrainTimeout.Ticks / 2);
-            return StopAlignmentTimeout < half ? StopAlignmentTimeout : half;
+            return TimeSpan.FromTicks(StopDrainTimeout.Ticks / 2);
         }
 
         private void ScheduleStopAlignmentEscape(ICheckpointEvent stopCheckpoint)
@@ -552,7 +540,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         }
                     }
                     Logger.LogWarning("Substream read {name} did not receive the other substreams stop barrier, forwarding the stop checkpoint without it. Events produced after it may be dropped, so the stop is not clean.", Name);
-                    _stopAlignmentEscaped = true;
                     SelfForwardStopCheckpoint();
                 }
                 catch (OperationCanceledException)
@@ -648,7 +635,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             var channel = _channel;
             if (pendingCheckpoint && channel != null)
             {
-                _ = channel.Writer.WriteAsync(s_localStopCheckpointMarker).AsTask();
+                _ = channel.Writer.WriteAsync(s_localStopCheckpointMarker).AsTask()
+                    .ContinueWith(t => Logger.LogWarning(t.Exception, "Substream read {name} could not queue the stop checkpoint marker.", Name), TaskContinuationOptions.OnlyOnFaulted);
             }
         }
 
@@ -779,7 +767,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 if (checkpointEvent is StopStreamCheckpoint)
                 {
                     // The barrier seals the outbox, so align it first.
-                    if (_peerStopConsumed || _handoffDraining)
+                    // Nothing is coming when the subscription is already gone.
+                    if (_peerStopConsumed || _handoffDraining || !_communicationPoint.IsSubscribed(_exchangeReferenceRelation.ExchangeTargetId))
                     {
                         SelfForwardStopCheckpoint();
                     }

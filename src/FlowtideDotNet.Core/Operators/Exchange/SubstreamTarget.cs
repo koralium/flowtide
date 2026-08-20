@@ -54,8 +54,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private volatile bool _stopBarrierStored;
         private volatile bool _stopBarrierFetched;
         private volatile bool _stopBarrierFetchAcked;
-        // Something was dropped after the stop barrier.
-        private volatile bool _droppedAfterStopBarrier;
 
         private PrimitiveList<int>? _weights;
         private PrimitiveList<uint>? _iterations;
@@ -134,7 +132,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // fetched. A clean stop cannot replay these rows.
                         // Never throw, an unacked cycle blocks the drain timeout.
                         _substreamCommunication.Logger.LogWarning("Target {targetId} dropped {rowCount} rows produced after the stop barrier, they are not part of the stopped state.", _exchangeTargetId, _weights.Count);
-                        _droppedAfterStopBarrier = true;
                         _offsets.Dispose();
                         _weights.Dispose();
                         _iterations.Dispose();
@@ -237,7 +234,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _stopBarrierStored = false;
             _stopBarrierFetched = false;
             _stopBarrierFetchAcked = false;
-            _droppedAfterStopBarrier = false;
             _lockSemaphore.Release();
         }
 
@@ -249,8 +245,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// peer that never confirms is handled by the stop drain timeout.
         /// </summary>
         public bool ReadyToStop => !_stopBarrierStored || (_stopBarrierFetched && _stopBarrierFetchAcked);
-
-        public bool StopIsUnclean => _droppedAfterStopBarrier;
 
         public void NewBatch(EventBatchWeighted weightedBatch)
         {
@@ -318,7 +312,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     // A dropped watermark silences the sink.
                     _substreamCommunication.Logger.LogWarning("Target {targetId} dropped a watermark produced after the stop barrier.", _exchangeTargetId);
-                    _droppedAfterStopBarrier = true;
                     return;
                 }
                 await _queue.Enqueue(watermark);

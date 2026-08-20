@@ -35,10 +35,5 @@ namespace FlowtideDotNet.Base.Vertices
         /// before the other substream has received them.
         /// </summary>
         bool ReadyToStop => true;
-
-        /// <summary>
-        /// True when this vertex knows the stop dropped events.
-        /// </summary>
-        bool StopIsUnclean => false;
     }
 }

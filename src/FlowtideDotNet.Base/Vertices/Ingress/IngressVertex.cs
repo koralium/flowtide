@@ -800,8 +800,6 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public virtual bool ReadyToStop => true;
 
-        public virtual bool StopIsUnclean => false;
-
         /// <summary>
         /// First phase of a planned handoff stop: stop taking in new external input while the
         /// stream keeps running. Overridden by substream read vertices. Default no-op.

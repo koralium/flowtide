@@ -284,21 +284,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return Task.WhenAll(tasks);
         }
 
-        public bool StopIsUnclean
-        {
-            get
-            {
-                foreach (var target in _targets)
-                {
-                    if (target.StopIsUnclean)
-                    {
-                        return true;
-                    }
-                }
-                return false;
-            }
-        }
-
         public bool ReadyToStop
         {
             get
