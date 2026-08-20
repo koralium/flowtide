@@ -35,6 +35,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
+            if (_context.IsDisposed)
+            {
+                // A late ack must not commit while a dispose runs
+                return;
+            }
+
             if (lockingEvent != null && lockingEvent is not ICheckpointEvent)
             {
                 // A late acknowledgement of a non checkpoint locking event, for example an
@@ -89,7 +95,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // Check if all egresses has done their dependencies. Do not start
                 // compaction once a teardown has moved the stream out of the running state,
                 // it would write the state manager the teardown is about to dispose.
-                if (waitingForDependencies.Count > 0 || !_initialCheckpointTaken || _compactionStarted || _context.currentState != StreamStateValue.Running)
+                // A dispose leaves the state, so check it here
+                if (waitingForDependencies.Count > 0 || !_initialCheckpointTaken || _compactionStarted || _context.currentState != StreamStateValue.Running || _context.IsDisposed)
                 {
                     return;
                 }
@@ -321,6 +328,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     // If the stream was in the failure status, we can now set it to running to mark that it is operational
                     _context.SetStatus(StreamStatus.Running);
+                }
+                // Proven when a checkpoint commits above the restore version.
+                // Initial data lands here too, without committing anything
+                if (_context._stateManager.LastCompletedCheckpointVersion > _context._checkpointVersionAtLastFailure)
+                {
+                    System.Threading.Volatile.Write(ref _context._consecutiveFailures, 0);
                 }
                 _context._initialCheckpointTaken = true;
                 if (_context.checkpointTask != null)

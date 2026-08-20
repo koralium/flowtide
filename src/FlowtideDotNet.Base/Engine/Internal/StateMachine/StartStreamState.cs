@@ -476,6 +476,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private bool StartAborted()
         {
             Debug.Assert(_context != null, nameof(_context));
+            if (_context.IsDisposed)
+            {
+                // A start still running when the dispose landed is abandoned
+                _context._logger.LogInformation("The start of stream {stream} was superseded by a dispose, abandoning it.", _context.streamName);
+                return true;
+            }
             if (!_startAbort.IsCancellationRequested)
             {
                 return false;

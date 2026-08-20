@@ -16,6 +16,8 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    # GitHub defaults to 6 hours, fail a wedged run faster
+    timeout-minutes: 40
 
     steps:
     - uses: actions/checkout@v3
@@ -31,6 +33,8 @@ jobs:
       run: dotnet build --no-restore -p:FeatureFlags=#DEBUG_WRITE
       
     - name: Test
+      # Trips before the job ceiling, pointing at the tests
+      timeout-minutes: 25
       # 1. Inject the mimalloc environment variables here
       env:
         MIMALLOC_SHOW_ERRORS: 1
@@ -39,17 +43,39 @@ jobs:
         MIMALLOC_PAGE_RESET: 1
         MIMALLOC_PURGE_DECOMMITS: 1
         MIMALLOC_ABANDONED_PAGE_PURGE: 1
-      # 2. Add --blame-crash, --diag, and set a specific --results-directory
+      # 2. Add --blame-crash, --blame-hang, --diag, and set a specific --results-directory
+      # -p:ParallelizeTestCollections=false was dropped, nothing read it
+      # Everything after the bare -- goes to VSTest as run settings
       run: >
-        dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj 
-        --no-build 
-        --verbosity normal 
-        -p:ParallelizeTestCollections=false 
-        --framework net10.0 
-        --blame-crash 
-        --blame-crash-dump-type full 
+        dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj
+        --no-build
+        --verbosity normal
+        --framework net10.0
+        --blame-crash
+        --blame-crash-dump-type full
+        --blame-hang
+        --blame-hang-timeout 10min
+        --blame-hang-dump-type mini
         --diag:./CrashDiagnostics/test-diag.txt
         --results-directory ./CrashDiagnostics
+        --
+        RunConfiguration.TestSessionTimeout=1200000
+
+    # A wedged stream can write hundreds of megabytes per test
+    - name: Trim debug logs
+      if: always()
+      run: |
+        DIR=./tests/FlowtideDotNet.AcceptanceTests/bin/Debug/net10.0/debugwrite
+        [ -d "$DIR" ] || exit 0
+        echo "debugwrite size: $(du -sh "$DIR" | cut -f1)"
+        du -ah "$DIR" | sort -rh | head -20
+        find "$DIR" -type f -size +20M -print0 | while IFS= read -r -d '' f; do
+          sz=$(stat -c%s "$f")
+          { head -c 5M "$f"
+            printf '\n... TRUNCATED BY CI: original size %s bytes ...\n' "$sz"
+            tail -c 5M "$f"; } > "$f.trim"
+          mv "$f.trim" "$f"
+        done
 
     # 3. Add a new step to upload the crash dumps and VSTest diagnostics
     - name: Upload Crash Dumps and Diagnostics
@@ -58,10 +84,13 @@ jobs:
       with:
         name: test-crash-dumps
         path: ./CrashDiagnostics/
-        
+        retention-days: 7
+
     - name: Upload logs
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: debugwrites
         path: ./tests/FlowtideDotNet.AcceptanceTests/bin/Debug/net10.0/debugwrite
+        retention-days: 7
+        compression-level: 9
