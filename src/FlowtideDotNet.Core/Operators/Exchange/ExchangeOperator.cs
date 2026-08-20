@@ -100,6 +100,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         public bool ReadyToStop => _executor.ReadyToStop;
 
+        public bool StopIsUnclean => _executor.StopIsUnclean;
+
         private Task FailAndRecoverMethod(long recoveryPoint)
         {
             return FailAndRollback(restoreVersion: recoveryPoint);

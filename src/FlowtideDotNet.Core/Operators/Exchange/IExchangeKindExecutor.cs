@@ -59,5 +59,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// True when all targets have everything they need for the stream to finish stopping.
         /// </summary>
         bool ReadyToStop => true;
+
+        bool StopIsUnclean => false;
     }
 }

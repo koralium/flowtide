@@ -98,6 +98,11 @@ namespace FlowtideDotNet.Base.Vertices
         protected IMemoryAllocator MemoryAllocator => _ingressState?._vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
 
         /// <summary>
+        /// The streams drain timeout.
+        /// </summary>
+        protected TimeSpan StopDrainTimeout => _ingressState?._vertexHandler?.StopDrainTimeout ?? TimeSpan.FromSeconds(30);
+
+        /// <summary>
         /// Gets or sets a value indicating whether dependencies should be automatically completed.
         /// </summary>
         /// <remarks>
@@ -794,6 +799,8 @@ namespace FlowtideDotNet.Base.Vertices
         /// first when the other substreams stop barrier has been consumed.
         /// </summary>
         public virtual bool ReadyToStop => true;
+
+        public virtual bool StopIsUnclean => false;
 
         /// <summary>
         /// First phase of a planned handoff stop: stop taking in new external input while the

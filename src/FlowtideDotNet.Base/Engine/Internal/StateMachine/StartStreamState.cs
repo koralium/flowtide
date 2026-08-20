@@ -359,7 +359,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             blockStateClient,
                             _context.loggerFactory,
                             _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                            _context.FailAndRollback);
+                            _context.FailAndRollback,
+                            _context._dataflowStreamOptions.StopDrainTimeout);
                         await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
                     }
 
@@ -381,7 +382,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             blockStateClient,
                             _context.loggerFactory,
                             _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                            _context.FailAndRollback);
+                            _context.FailAndRollback,
+                            _context._dataflowStreamOptions.StopDrainTimeout);
                         await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
                         block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone, _context.EgressDependenciesDone);
                     }
@@ -404,7 +406,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             blockStateClient,
                             _context.loggerFactory,
                             _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                            _context.FailAndRollback);
+                            _context.FailAndRollback,
+                            _context._dataflowStreamOptions.StopDrainTimeout);
                         await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
                         block.Value.SetDependenciesDoneFunction(_context.EgressDependenciesDone);
                     }

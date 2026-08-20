@@ -54,6 +54,11 @@ namespace FlowtideDotNet.Base.Vertices
         bool ReadyToStop => true;
 
         /// <summary>
+        /// True when this vertex knows the stop dropped events.
+        /// </summary>
+        bool StopIsUnclean => false;
+
+        /// <summary>
         /// First phase of a planned handoff stop (e.g. before a grain migration): stop taking
         /// in new external input while the stream still runs, so input already taken can drain
         /// and be covered by the following stop checkpoint. Default no-op.

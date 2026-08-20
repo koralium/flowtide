@@ -2415,6 +2415,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             _stream = BuildHost("e2e_stop_cycles", NormalJoinSql, latestData, failures, stateOptions: CreateOptions);
             await _stream.StartAsync();
 
+            // A restored host is mute, force a publish.
+            _generator.Generate(50);
+
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
         }
 

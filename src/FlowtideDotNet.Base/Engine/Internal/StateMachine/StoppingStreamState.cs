@@ -186,7 +186,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      _context._logger.ShutdownCheckpointDone(_context.streamName);
                      if (@this.AllVerticesReadyToStop())
                      {
-                         await @this.StopAll(faultBlocks: false);
+                         // A dropped event means no complete cut, fault instead.
+                         var unclean = @this.AnyVertexReportsUncleanStop();
+                         if (unclean)
+                         {
+                             _context._logger.LogWarning("Stopping stream {stream} could not produce a complete cut, stopping without a clean checkpoint so the next start replays.", _context.streamName);
+                         }
+                         await @this.StopAll(faultBlocks: unclean);
                      }
                      else if (Stopwatch.GetElapsedTime(@this._stoppingStartedTimestamp) > _context._dataflowStreamOptions.StopDrainTimeout)
                      {
@@ -210,6 +216,28 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      }
                  }, this)
                  .Unwrap();
+        }
+
+        /// <summary>
+        /// True when a vertex reports an incomplete cut.
+        /// </summary>
+        private bool AnyVertexReportsUncleanStop()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+
+            bool unclean = false;
+            _context.ForEachBlock((key, block) =>
+            {
+                if (block is IStreamIngressVertex ingressVertex && ingressVertex.StopIsUnclean)
+                {
+                    unclean = true;
+                }
+                else if (block is IStreamEgressVertex egressVertex && egressVertex.StopIsUnclean)
+                {
+                    unclean = true;
+                }
+            });
+            return unclean;
         }
 
         private bool AllVerticesReadyToStop()

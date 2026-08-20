@@ -73,5 +73,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// barrier, so the events before it are not disposed before they have been received.
         /// </summary>
         bool ReadyToStop => true;
+
+        /// <summary>
+        /// True when events after the stop barrier were dropped.
+        /// </summary>
+        bool StopIsUnclean => false;
     }
 }

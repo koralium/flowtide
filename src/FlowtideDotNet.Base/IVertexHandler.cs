@@ -34,6 +34,11 @@ namespace FlowtideDotNet.Base
         string StreamName { get; }
 
         /// <summary>
+        /// How long the stream waits for substreams to drain.
+        /// </summary>
+        TimeSpan StopDrainTimeout => TimeSpan.FromSeconds(30);
+
+        /// <summary>
         /// Gets the metric manager used to record operational metrics for this vertex.
         /// </summary>
         IMeter Metrics { get; }

@@ -76,6 +76,7 @@ namespace FlowtideDotNet.Storage.StateManager
         private FileCacheOptions? m_fileCacheOptions;
         private IFileCacheFactory? m_fileCacheFactory;
         private bool disposedValue;
+        private bool m_ownsPersistentStorage;
 
         //private ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> m_adminSession;
         readonly Dictionary<string, IStateManagerClient> _clients = new Dictionary<string, IStateManagerClient>();
@@ -145,10 +146,12 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     DirectoryPath = "./data/fileCachePersistence"
                 });
+                m_ownsPersistentStorage = true;
             }
             else
             {
                 m_persistentStorage = options.PersistentStorage;
+                m_ownsPersistentStorage = false;
             }
             m_fileCacheOptions = options.TemporaryStorageOptions ?? new FileCacheOptions()
             {
@@ -471,9 +474,11 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 if (disposing)
                 {
-                    if (m_persistentStorage != null)
+                    // A supplied storage is the callers, it outlives a stop.
+                    if (m_persistentStorage != null && m_ownsPersistentStorage)
                     {
                         m_persistentStorage.Dispose();
+                        m_persistentStorage = null;
                     }
 
                     foreach (var stateClient in _stateClients)
