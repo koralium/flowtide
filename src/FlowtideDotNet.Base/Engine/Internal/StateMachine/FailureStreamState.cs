@@ -34,6 +34,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             while (true)
             {
+                if (_context.IsDisposed)
+                {
+                    // The dispose tears the blocks and state manager down itself
+                    return;
+                }
                 try
                 {
                     lock (_lock)
@@ -145,6 +150,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     _context._restoreCheckpointVersion = completed;
                 }
+                // The version to beat before the backoff clears, see CheckpointCompleted
+                _context._checkpointVersionAtLastFailure = _context._restoreCheckpointVersion.Value;
             }
 
             // Clear all triggers before cancelling and stop registering new triggers
@@ -229,13 +236,65 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         // Internal so tests can shorten it, every recovery hop in a test otherwise pays the
         // full settle delay.
+        // The backoff grows the slice count, never the slice length
         internal static TimeSpan RecoveryRestartDelay = TimeSpan.FromMilliseconds(500);
+
+        /// <summary>
+        /// How long to wait before the next restart, in slices.
+        /// Flat inside the grace count, then doubling to the cap.
+        /// </summary>
+        private int RestartDelaySlices(int consecutiveFailures)
+        {
+            Debug.Assert(_context != null, nameof(_context));
+
+            var options = _context._dataflowStreamOptions;
+            var overGrace = consecutiveFailures - options.FailureRestartGraceCount;
+            if (overGrace <= 0)
+            {
+                return 1;
+            }
+            // Shifting past the cap would overflow, and clamps there anyway
+            if (overGrace >= 31)
+            {
+                return options.MaxFailureRestartDelaySlices;
+            }
+            return Math.Min(1 << overGrace, options.MaxFailureRestartDelaySlices);
+        }
 
         private async Task Transition()
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            await Task.Delay(RecoveryRestartDelay);
+            var consecutiveFailures = Interlocked.Increment(ref _context._consecutiveFailures);
+            var slices = RestartDelaySlices(consecutiveFailures);
+            if (slices > 1 && consecutiveFailures == _context._dataflowStreamOptions.FailureRestartGraceCount + 1)
+            {
+                // Logged once as the backoff starts, not on every hop
+                _context._logger.LogWarning("Stream {stream} has failed {count} times in a row without completing a checkpoint, backing off the restarts up to {max} times the restart delay.", _context.streamName, consecutiveFailures, _context._dataflowStreamOptions.MaxFailureRestartDelaySlices);
+            }
+
+            for (int slice = 0; slice < slices; slice++)
+            {
+                await Task.Delay(RecoveryRestartDelay);
+
+                if (_context.IsDisposed)
+                {
+                    // The transition below is refused anyway, skip the rest
+                    return;
+                }
+                if (_context._wantedState == StreamStateValue.NotStarted ||
+                    _context._wantedState == StreamStateValue.Deleting)
+                {
+                    // A stop or delete is honored without waiting further
+                    break;
+                }
+            }
+
+            if (_context.IsDisposed)
+            {
+                // A dispose parks the same wish the branches below honor
+                return;
+            }
 
             // A pending delete takes precedence over a pending stop: the wish holds only the
             // last requested value, but a created delete task means a caller awaits a delete,

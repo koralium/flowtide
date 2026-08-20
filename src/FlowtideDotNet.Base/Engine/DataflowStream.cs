@@ -197,13 +197,14 @@ namespace FlowtideDotNet.Base.Engine
                 var diagnosticsWriter = File.CreateText("diagnostics.txt");
 #endif
                 await StartAsync();
-                PeriodicTimer periodicTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
+                using PeriodicTimer periodicTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
                 int count = 0;
-                while (await periodicTimer.WaitForNextTickAsync() && State != StreamStateValue.NotStarted)
+                // A dispose leaves the state, so end the loop too
+                while (await periodicTimer.WaitForNextTickAsync() && State != StreamStateValue.NotStarted && !streamContext.IsDisposed)
                 {
                     await streamScheduler.Tick();
                     count++;
-                    
+
                     if (count % 1000 == 0)
                     {
 #if DEBUG_WRITE

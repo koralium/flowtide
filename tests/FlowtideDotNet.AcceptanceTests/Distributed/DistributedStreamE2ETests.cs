@@ -2415,7 +2415,100 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             _stream = BuildHost("e2e_stop_cycles", NormalJoinSql, latestData, failures, stateOptions: CreateOptions);
             await _stream.StartAsync();
 
+            // The stop barrier is aligned, so nothing may be produced after the outbox seals.
+            foreach (var buffer in logBuffers)
+            {
+                var dropped = buffer.Value.LinesContaining("produced after the stop barrier");
+                Assert.True(dropped.Count == 0, $"Substream {buffer.Key} dropped events after the stop barrier: {string.Join(" | ", dropped)}");
+            }
+
+            // A restored host is mute, force a publish.
+            _generator.Generate(50);
+
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+            // The stop barrier is aligned, so nothing may be produced after the outbox seals.
+            foreach (var buffer in logBuffers)
+            {
+                var dropped = buffer.Value.LinesContaining("produced after the stop barrier");
+                Assert.True(dropped.Count == 0, $"Substream {buffer.Key} dropped events after the stop barrier: {string.Join(" | ", dropped)}");
+            }
+        }
+
+        /// <summary>
+        /// One substream stops while the other keeps running and checkpointing. An ordinary
+        /// barrier from a peer that is not stopping must not release the parked stop barrier,
+        /// the peer is still producing and that output still has to be delivered.
+        /// </summary>
+        [Fact]
+        public async Task StaggeredSubstreamStopKeepsDataComplete()
+        {
+                _generator.Generate(300);
+
+                var latestData = new ConcurrentDictionary<string, EventBatchData>();
+                var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+                var fileProviders = new ConcurrentDictionary<string, MemoryFileProvider>();
+
+                Storage.StateManager.StateManagerOptions CreateOptions(string substreamName)
+                {
+                    return new Storage.StateManager.StateManagerOptions()
+                    {
+                        CachePageCount = 100_000,
+                        PersistentStorage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
+                        {
+                            FileProvider = fileProviders.GetOrAdd(substreamName, _ => new MemoryFileProvider())
+                        }),
+                        DefaultBPlusTreePageSize = 1024,
+                        DefaultBPlusTreePageSizeBytes = 32 * 1024,
+                        TemporaryStorageOptions = new Storage.FileCacheOptions()
+                        {
+                            DirectoryPath = $"./data/tempFiles/e2e_staggered_stop/{substreamName}/tmp"
+                        }
+                    };
+                }
+
+                var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+                Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+                {
+                    var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                    return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                    {
+                        b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                        b.AddProvider(provider);
+                    });
+                }
+
+                _stream = BuildHost("e2e_staggered_stop", NormalJoinSql, latestData, failures, stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
+                await _stream.StartAsync();
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                // Stop one substream only, the other keeps running and keeps checkpointing.
+                var stopOne = _stream.Substreams["substream_1"].StopAsync();
+
+                // Rows still in flight while the stop is parked.
+                for (int i = 0; i < 5; i++)
+                {
+                    _generator.Generate(100);
+                    await Task.Delay(100);
+                }
+
+                var finished = await Task.WhenAny(stopOne, Task.Delay(TimeSpan.FromSeconds(120)));
+                Assert.True(finished == stopOne, "Stopping one substream did not finish");
+                await stopOne;
+
+                var stopRest = _stream.StopAsync();
+                finished = await Task.WhenAny(stopRest, Task.Delay(TimeSpan.FromSeconds(90)));
+                Assert.True(finished == stopRest, "Stopping the rest of the stream did not finish");
+                await stopRest;
+                await _stream.DisposeAsync();
+
+                _stream = BuildHost("e2e_staggered_stop", NormalJoinSql, latestData, failures, stateOptions: CreateOptions);
+                await _stream.StartAsync();
+
+                // A restored host is mute, force a publish.
+                _generator.Generate(50);
+
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
         }
 
         /// <summary>

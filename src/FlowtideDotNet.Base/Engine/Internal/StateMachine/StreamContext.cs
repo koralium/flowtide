@@ -90,6 +90,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // flag, so overlapping spans across a failure epoch don't let one finishing clear the guard.
         internal int _stateManagerWriteCount;
 
+        // A disposed context is terminal, volatile to avoid taking _contextLock
+        private volatile bool _disposed;
+
+        // Once a dispose has claimed the teardown
+        private int _disposeClaimed;
+
+        // Failures in a row since the last proven recovery
+        internal int _consecutiveFailures;
+
+        // The version the stream came back at
+        internal long _checkpointVersionAtLastFailure = -1;
+
         // One while the vertices' dataflow blocks exist, set after every CreateBlock pass and
         // zeroed when a start begins. A failure before the blocks were created (for example
         // storage initialization) must skip the block teardown, the operations assume created
@@ -340,11 +352,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
+        // True once disposed, the context is then terminal
+        internal bool IsDisposed => _disposed;
+
         private Task TransitionTo(StreamStateMachineState current, StreamStateMachineState state, StreamStateValue newValue)
         {
             StreamStateValue previous;
             lock (_contextLock)
             {
+                if (_disposed && newValue != StreamStateValue.NotStarted && newValue != StreamStateValue.Deleted)
+                {
+                    // A disposed stream only transitions to a resting state
+                    _logger.LogDebug("Ignoring the transition to {state} on stream {stream}, the stream has been disposed.", newValue, streamName);
+                    return Task.CompletedTask;
+                }
                 if (current != _state)
                 {
                     // The calling state has already been replaced, for example a delete
@@ -546,6 +567,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(Monitor.IsEntered(_checkpointLock));
 
+            if (_disposed)
+            {
+                // The schedule rearms itself, a disposed stream must not schedule
+                return false;
+            }
+
             // Check if minimum time has been set, if so default it to the minimum time. The
             // minimum throttles regular running checkpoints so a chatty source cannot trigger
             // a checkpoint storm; a stop drain schedules its cycles on a tight cadence and
@@ -657,6 +684,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             lock (_triggerLock)
             {
+                if (_disposed)
+                {
+                    // Every start enables this again, a disposed stream stays off
+                    return;
+                }
                 _triggersEnabled = true;
             }
         }
@@ -720,6 +752,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Since they are sent by the failure state to stop running blocks
             if (IsBlockStopException(e))
             {
+                return Task.CompletedTask;
+            }
+            if (_disposed)
+            {
+                // The failure state reenters itself without going through TransitionTo
+                _logger.LogDebug("Ignoring a failure on stream {stream}, the stream has been disposed.", streamName);
                 return Task.CompletedTask;
             }
             var activity = s_exceptionActivitySource.StartActivity("StreamFailure", ActivityKind.Internal, null);
@@ -844,10 +882,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         /// <summary>
         /// Disposes the stream, completes all blocks and then disposes them.
+        /// The stream cannot be started again after this.
         /// </summary>
         /// <returns></returns>
         public async ValueTask DisposeAsync()
         {
+            if (Interlocked.Exchange(ref _disposeClaimed, 1) == 1)
+            {
+                // A second dispose has nothing left to tear down
+                return;
+            }
+            // Marked first, a failing stream would otherwise restart forever
+            _disposed = true;
+            _wantedState = StreamStateValue.NotStarted;
+
             CancelTriggerRegistration();
             await ClearTriggers();
 
@@ -858,7 +906,19 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     checkpointTask.SetCanceled();
                     checkpointTask = null;
                 }
+                // Cancel the schedule chain, it rearms itself
+                if (_scheduleCheckpointCancelSource != null)
+                {
+                    _scheduleCheckpointCancelSource.Cancel();
+                    _scheduleCheckpointCancelSource.Dispose();
+                    _scheduleCheckpointCancelSource = null;
+                }
+                _scheduleCheckpointTask = null;
+                _triggerCheckpointTime = null;
+                inQueueCheckpoint = null;
             }
+
+            await WaitForStateManagerToSettle();
 
             bool blocksClaimed;
             lock (_blockClaimLock)
@@ -885,6 +945,39 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _stateManager.Dispose();
 
             _streamMemoryManager.Dispose();
+
+            // Nothing is left to honor a pending stop or delete
+            FailTeardownWaiters(new ObjectDisposedException(nameof(DataflowStream), $"The stream `{streamName}` was disposed while a stop or delete was pending."));
+        }
+
+        /// <summary>
+        /// Waits until nothing is inside the state manager, bounded.
+        /// Disposing it while it is written or restored corrupts it.
+        /// </summary>
+        private async Task WaitForStateManagerToSettle()
+        {
+            var waitStart = Stopwatch.GetTimestamp();
+            while (true)
+            {
+                Task? startInitGate;
+                lock (_blockClaimLock)
+                {
+                    startInitGate = _inFlightStartInitGate;
+                }
+                // The gate spans the start's whole state manager region
+                bool startSettled = startInitGate == null || startInitGate.IsCompleted;
+                bool writesSettled = Volatile.Read(ref _stateManagerWriteCount) == 0;
+                if (startSettled && writesSettled)
+                {
+                    return;
+                }
+                if (Stopwatch.GetElapsedTime(waitStart) > _dataflowStreamOptions.StopDrainTimeout)
+                {
+                    _logger.LogWarning("Dispose of stream {stream} proceeded while a start or a state manager write was still active after {timeout}, the state manager may be wedged on storage.", streamName, _dataflowStreamOptions.StopDrainTimeout);
+                    return;
+                }
+                await Task.Delay(10);
+            }
         }
 
         public StreamGraph GetGraph()

@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -336,6 +336,12 @@ namespace FlowtideDotNet.AcceptanceTests
             Debug.Assert(test != null, "test != null");
             return test.TestCase.TestMethod.Method.Name;
         }
+
+        // A rising count means the stream restarts itself
+        protected int FailureNotificationCount => flowtideTestStream.FailureNotificationCount;
+
+        // Disposes inside the test, the teardown dispose then does nothing
+        protected ValueTask DisposeStream() => flowtideTestStream.DisposeAsync();
 
         public async Task DisposeAsync()
         {

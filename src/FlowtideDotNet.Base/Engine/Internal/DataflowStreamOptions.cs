@@ -24,5 +24,17 @@ namespace FlowtideDotNet.Base.Engine.Internal
         /// waiting forever when another substream has crashed or never started.
         /// </summary>
         public TimeSpan StopDrainTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Failures restarted at the base delay before the wait grows.
+        /// Keeps ordinary crash and recover fast.
+        /// </summary>
+        public int FailureRestartGraceCount { get; set; } = 3;
+
+        /// <summary>
+        /// The longest wait before a restart, in base restart delays.
+        /// Bounds the log volume of a permanently failing stream.
+        /// </summary>
+        public int MaxFailureRestartDelaySlices { get; set; } = 60;
     }
 }

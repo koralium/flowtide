@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -128,6 +128,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public Watermark? LastWatermark => _lastWatermark;
 
         public StreamStateValue State => _stream!.State;
+
+        // A rising count means the stream restarts itself
+        public int FailureNotificationCount => _notificationReciever == null ? 0 : Volatile.Read(ref _notificationReciever._failureNotifications);
 
         public FlowtideTestStream(string testName)
         {

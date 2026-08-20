@@ -256,6 +256,22 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
+        /// Sets the restart backoff, counted in base restart delays.
+        /// Bounds the restart rate of a permanently failing stream.
+        /// </summary>
+        /// <param name="graceCount">Failures restarted at the base delay.</param>
+        /// <param name="maxDelaySlices">The cap on the wait, in base restart delays.</param>
+        /// <returns>This builder instance for method chaining.</returns>
+        public DataflowStreamBuilder SetFailureRestartBackoff(int graceCount, int maxDelaySlices)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(graceCount);
+            ArgumentOutOfRangeException.ThrowIfLessThan(maxDelaySlices, 1);
+            _dataflowStreamOptions.FailureRestartGraceCount = graceCount;
+            _dataflowStreamOptions.MaxFailureRestartDelaySlices = maxDelaySlices;
+            return this;
+        }
+
+        /// <summary>
         /// Subscribes an <see cref="ICheckpointListener"/> to receive a notification each time
         /// the stream completes a checkpoint boundary.
         /// </summary>
