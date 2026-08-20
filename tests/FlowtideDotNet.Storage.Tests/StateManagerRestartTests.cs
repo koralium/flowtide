@@ -135,6 +135,44 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
+        /// Repeated stop and start must not grow allocated memory. Catches a page rent that a
+        /// stop leaves behind, where the containers are only reclaimed by a finalizer.
+        /// </summary>
+        [Fact]
+        public async Task RepeatedStopStartCyclesDoNotGrowAllocatedMemory()
+        {
+            using var stateManager = CreateStateManager("restart_no_growth");
+
+            // The first cycle allocates the structures every later cycle reuses.
+            await RunOneCycle(stateManager, 0);
+            var baseline = GlobalMemoryManager.Instance.GetAllocatedMemory();
+
+            for (var cycle = 1; cycle <= 8; cycle++)
+            {
+                await RunOneCycle(stateManager, cycle);
+            }
+
+            var afterCycles = GlobalMemoryManager.Instance.GetAllocatedMemory();
+            var growth = afterCycles - baseline;
+
+            // A stranded rent per cycle would grow this without bound, the tolerance only
+            // covers the pages the final cycle legitimately still holds.
+            Assert.True(growth <= baseline, $"Allocated memory grew by {growth} bytes over 8 stop and start cycles, baseline was {baseline}.");
+        }
+
+        private static async Task RunOneCycle(StateManagerSync<object> stateManager, int cycle)
+        {
+            await stateManager.InitializeAsync();
+            var tree = await CreateTree(stateManager.GetOrCreateClient("node1"), "tree");
+            for (var i = 0; i < 2000; i++)
+            {
+                await tree.Upsert(i, i + cycle);
+            }
+            await tree.Commit();
+            stateManager.Dispose();
+        }
+
+        /// <summary>
         /// A supplied storage is owned by the caller, so a stop must not throw its data away.
         /// Without this the restart silently starts from empty instead of resuming.
         /// </summary>

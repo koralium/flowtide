@@ -487,6 +487,38 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Throws<InvalidOperationException>(() => table.Add(0, new TestCacheObject(0), handler));
         }
 
+        /// <summary>
+        /// The deep clean drops to MinSize, not to empty. Every other test runs with a floor
+        /// of zero, where the two are indistinguishable.
+        /// </summary>
+        [Fact]
+        public async Task DeepCleanupStopsAtMinSize()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10, minSize: 3);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 5; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+
+            // Below the cleanup threshold, so nothing goes until the no-hits counter trips.
+            for (var i = 0; i < 1001 && table.Count > 3; i++)
+            {
+                await table.ForceCleanup();
+            }
+
+            Assert.Equal(3, table.Count);
+            Assert.Equal(2, handler.Evictions.Count);
+            Assert.All(handler.Evictions, e => Assert.True(e.IsCleanup));
+
+            // The floor holds, further cleanups must not drain it.
+            for (var i = 0; i < 100; i++)
+            {
+                await table.ForceCleanup();
+            }
+            Assert.Equal(3, table.Count);
+        }
+
         [Fact]
         public async Task NoCacheHitsForALongTimeTriggersDeepCleanup()
         {
