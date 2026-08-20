@@ -1000,6 +1000,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.FromState
   nameWithType: DataflowStreamBuilder.FromState
+- uid: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetFailureRestartBackoff(System.Int32,System.Int32)
+  name: SetFailureRestartBackoff(int, int)
+  href: api/FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetFailureRestartBackoff_System_Int32_System_Int32_
+  commentId: M:FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetFailureRestartBackoff(System.Int32,System.Int32)
+  name.vb: SetFailureRestartBackoff(Integer, Integer)
+  fullName: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetFailureRestartBackoff(int, int)
+  fullName.vb: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetFailureRestartBackoff(Integer, Integer)
+  nameWithType: DataflowStreamBuilder.SetFailureRestartBackoff(int, int)
+  nameWithType.vb: DataflowStreamBuilder.SetFailureRestartBackoff(Integer, Integer)
+- uid: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetFailureRestartBackoff*
+  name: SetFailureRestartBackoff
+  href: api/FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetFailureRestartBackoff_
+  commentId: Overload:FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetFailureRestartBackoff
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetFailureRestartBackoff
+  nameWithType: DataflowStreamBuilder.SetFailureRestartBackoff
 - uid: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetMinimumTimeBetweenCheckpoint(System.TimeSpan)
   name: SetMinimumTimeBetweenCheckpoint(TimeSpan)
   href: api/FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetMinimumTimeBetweenCheckpoint_System_TimeSpan_
