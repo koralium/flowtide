@@ -2415,10 +2415,24 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             _stream = BuildHost("e2e_stop_cycles", NormalJoinSql, latestData, failures, stateOptions: CreateOptions);
             await _stream.StartAsync();
 
+            // The stop barrier is aligned, so nothing may be produced after the outbox seals.
+            foreach (var buffer in logBuffers)
+            {
+                var dropped = buffer.Value.LinesContaining("produced after the stop barrier");
+                Assert.True(dropped.Count == 0, $"Substream {buffer.Key} dropped events after the stop barrier: {string.Join(" | ", dropped)}");
+            }
+
             // A restored host is mute, force a publish.
             _generator.Generate(50);
 
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+            // The stop barrier is aligned, so nothing may be produced after the outbox seals.
+            foreach (var buffer in logBuffers)
+            {
+                var dropped = buffer.Value.LinesContaining("produced after the stop barrier");
+                Assert.True(dropped.Count == 0, $"Substream {buffer.Key} dropped events after the stop barrier: {string.Join(" | ", dropped)}");
+            }
         }
 
         /// <summary>

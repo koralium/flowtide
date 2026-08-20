@@ -43,6 +43,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
+        /// <summary>
+        /// Lines containing the text, so a test can assert on what was logged.
+        /// </summary>
+        public IReadOnlyList<string> LinesContaining(string text)
+        {
+            return _lines.Where(x => x.Contains(text, StringComparison.Ordinal)).ToList();
+        }
+
         public void WriteToFile(string path)
         {
             var directory = Path.GetDirectoryName(path);
