@@ -48,6 +48,11 @@ namespace FlowtideDotNet.AcceptanceTests
         {
             await StartPermanentlyFailingStream();
 
+            // Ensure the stream is actually in a restart loop before asserting that dispose stops it.
+            var failuresBeforeDispose = FailureNotificationCount;
+            await Task.Delay(TimeSpan.FromMilliseconds(200));
+            Assert.True(FailureNotificationCount > failuresBeforeDispose, "Expected the permanently failing stream to restart at least once before dispose.");
+
             await DisposeStream();
 
             var failuresAtDispose = FailureNotificationCount;
