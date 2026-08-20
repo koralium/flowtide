@@ -274,6 +274,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return true;
                 }
             }
+            Interlocked.Increment(ref m_cacheMisses);
             return false;
         }
 

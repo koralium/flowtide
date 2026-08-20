@@ -86,6 +86,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null);
             _context._wantedState = StreamStateValue.Running;
+            // A new start gets a fresh restart budget
+            System.Threading.Volatile.Write(ref _context._consecutiveFailures, 0);
+            System.Threading.Volatile.Write(ref _context._checkpointVersionAtLastFailure, -1);
             return TransitionTo(StreamStateValue.Starting);
         }
 
