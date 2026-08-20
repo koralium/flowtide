@@ -1957,6 +1957,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Base.IVertexHandler.StateClient
   nameWithType: IVertexHandler.StateClient
+- uid: FlowtideDotNet.Base.IVertexHandler.StopDrainTimeout
+  name: StopDrainTimeout
+  href: api/FlowtideDotNet.Base.IVertexHandler.html#FlowtideDotNet_Base_IVertexHandler_StopDrainTimeout
+  commentId: P:FlowtideDotNet.Base.IVertexHandler.StopDrainTimeout
+  fullName: FlowtideDotNet.Base.IVertexHandler.StopDrainTimeout
+  nameWithType: IVertexHandler.StopDrainTimeout
+- uid: FlowtideDotNet.Base.IVertexHandler.StopDrainTimeout*
+  name: StopDrainTimeout
+  href: api/FlowtideDotNet.Base.IVertexHandler.html#FlowtideDotNet_Base_IVertexHandler_StopDrainTimeout_
+  commentId: Overload:FlowtideDotNet.Base.IVertexHandler.StopDrainTimeout
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.IVertexHandler.StopDrainTimeout
+  nameWithType: IVertexHandler.StopDrainTimeout
 - uid: FlowtideDotNet.Base.IVertexHandler.StreamName
   name: StreamName
   href: api/FlowtideDotNet.Base.IVertexHandler.html#FlowtideDotNet_Base_IVertexHandler_StreamName
@@ -5979,6 +5992,23 @@ references:
   fullName.vb: FlowtideDotNet.Base.Vertices.IngressVertex(Of TData).Setup
   nameWithType: IngressVertex<TData>.Setup
   nameWithType.vb: IngressVertex(Of TData).Setup
+- uid: FlowtideDotNet.Base.Vertices.IngressVertex`1.StopDrainTimeout
+  name: StopDrainTimeout
+  href: api/FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_StopDrainTimeout
+  commentId: P:FlowtideDotNet.Base.Vertices.IngressVertex`1.StopDrainTimeout
+  fullName: FlowtideDotNet.Base.Vertices.IngressVertex<TData>.StopDrainTimeout
+  fullName.vb: FlowtideDotNet.Base.Vertices.IngressVertex(Of TData).StopDrainTimeout
+  nameWithType: IngressVertex<TData>.StopDrainTimeout
+  nameWithType.vb: IngressVertex(Of TData).StopDrainTimeout
+- uid: FlowtideDotNet.Base.Vertices.IngressVertex`1.StopDrainTimeout*
+  name: StopDrainTimeout
+  href: api/FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_StopDrainTimeout_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.IngressVertex`1.StopDrainTimeout
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.IngressVertex<TData>.StopDrainTimeout
+  fullName.vb: FlowtideDotNet.Base.Vertices.IngressVertex(Of TData).StopDrainTimeout
+  nameWithType: IngressVertex<TData>.StopDrainTimeout
+  nameWithType.vb: IngressVertex(Of TData).StopDrainTimeout
 - uid: FlowtideDotNet.Base.Vertices.IngressVertex`1.StreamName
   name: StreamName
   href: api/FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_StreamName

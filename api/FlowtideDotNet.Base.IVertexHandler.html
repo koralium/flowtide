@@ -126,7 +126,7 @@ with the underlying stream engine, manage state, log information, and report met
 
   <h3 id="FlowtideDotNet_Base_IVertexHandler_LoggerFactory" data-uid="FlowtideDotNet.Base.IVertexHandler.LoggerFactory">
   LoggerFactory
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L54"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets the logger factory used to create loggers for tracing and debugging within the vertex.</p>
@@ -158,7 +158,7 @@ with the underlying stream engine, manage state, log information, and report met
 
   <h3 id="FlowtideDotNet_Base_IVertexHandler_MemoryManager" data-uid="FlowtideDotNet.Base.IVertexHandler.MemoryManager">
   MemoryManager
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L54"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L59"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets the memory manager configured for this specific operator, used to track and allocate memory safely.</p>
@@ -190,7 +190,7 @@ with the underlying stream engine, manage state, log information, and report met
 
   <h3 id="FlowtideDotNet_Base_IVertexHandler_Metrics" data-uid="FlowtideDotNet.Base.IVertexHandler.Metrics">
   Metrics
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L44"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets the metric manager used to record operational metrics for this vertex.</p>
@@ -254,7 +254,7 @@ with the underlying stream engine, manage state, log information, and report met
 
   <h3 id="FlowtideDotNet_Base_IVertexHandler_StateClient" data-uid="FlowtideDotNet.Base.IVertexHandler.StateClient">
   StateClient
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L49"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets the state manager client used by this vertex to read, write, and persist distributed state.</p>
@@ -272,6 +272,38 @@ with the underlying stream engine, manage state, log information, and report met
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
     <dt><a class="xref" href="FlowtideDotNet.Storage.StateManager.IStateManagerClient.html">IStateManagerClient</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_IVertexHandler_StopDrainTimeout_" data-uid="FlowtideDotNet.Base.IVertexHandler.StopDrainTimeout*"></a>
+
+  <h3 id="FlowtideDotNet_Base_IVertexHandler_StopDrainTimeout" data-uid="FlowtideDotNet.Base.IVertexHandler.StopDrainTimeout">
+  StopDrainTimeout
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>How long the stream waits for substreams to drain.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">TimeSpan StopDrainTimeout { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
     <dd></dd>
   </dl>
 
@@ -322,7 +354,7 @@ with the underlying stream engine, manage state, log information, and report met
 
   <h3 id="FlowtideDotNet_Base_IVertexHandler_FailAndRollback_System_Exception_System_Nullable_System_Int64__" data-uid="FlowtideDotNet.Base.IVertexHandler.FailAndRollback(System.Exception,System.Nullable{System.Int64})">
   FailAndRollback(Exception?, long?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L75"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L80"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Signals the stream engine that a critical failure has occurred and requests a rollback to a previous checkpoint.</p>
@@ -363,7 +395,7 @@ with the underlying stream engine, manage state, log information, and report met
 
   <h3 id="FlowtideDotNet_Base_IVertexHandler_RegisterTrigger_System_String_System_Nullable_System_TimeSpan__" data-uid="FlowtideDotNet.Base.IVertexHandler.RegisterTrigger(System.String,System.Nullable{System.TimeSpan})">
   RegisterTrigger(string, TimeSpan?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L68"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L73"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Registers a trigger that can be called externally from the stream.
@@ -405,7 +437,7 @@ It can also be registered with a schedule where the trigger will be called in a 
 
   <h3 id="FlowtideDotNet_Base_IVertexHandler_ScheduleCheckpoint_System_TimeSpan_System_Nullable_System_Int64__" data-uid="FlowtideDotNet.Base.IVertexHandler.ScheduleCheckpoint(System.TimeSpan,System.Nullable{System.Int64})">
   ScheduleCheckpoint(TimeSpan, long?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L60"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/IVertexHandler.cs/#L65"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Schedules a checkpoint to be taken by the stream engine.</p>
