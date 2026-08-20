@@ -882,7 +882,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         /// <summary>
         /// Disposes the stream, completes all blocks and then disposes them.
-        /// The stream can not be started again after this.
+        /// The stream cannot be started again after this.
         /// </summary>
         /// <returns></returns>
         public async ValueTask DisposeAsync()
