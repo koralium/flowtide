@@ -200,7 +200,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // Remove a page from the new pages counter
                     Interlocked.Decrement(ref newPages);
 
+                    // Free before removing the version entry, as in the modified branch below.
                     m_fileCache.Free(kv.Key);
+                    m_fileCacheVersion.Remove(kv.Key, out _);
                     continue;
                 }
                 if (stateManager.TryGetValueFromCache<V>(kv.Key, out var val))
@@ -401,6 +403,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         options.ValueSerializer.Dispose();
                     }
+                    // The client owns the session it was created with. A supplied storage
+                    // outlives a stop, so an undisposed session would be stranded in it.
+                    session.Dispose();
                 }
 
                 disposedValue = true;

@@ -521,6 +521,13 @@ namespace FlowtideDotNet.Storage.StateManager
                         m_cacheTable = null;
                     }
 
+                    // Before the storage, the clients return their sessions to it.
+                    foreach (var stateClient in _stateClients)
+                    {
+                        stateClient.Value.Dispose();
+                    }
+                    _stateClients.Clear();
+
                     // A supplied storage belongs to the caller and must outlive a stop, otherwise
                     // the next start has nothing to recover from. Setup resets it for restore.
                     if (m_persistentStorage != null && m_ownsPersistentStorage)
@@ -528,12 +535,6 @@ namespace FlowtideDotNet.Storage.StateManager
                         m_persistentStorage.Dispose();
                         m_persistentStorage = null;
                     }
-
-                    foreach (var stateClient in _stateClients)
-                    {
-                        stateClient.Value.Dispose();
-                    }
-                    _stateClients.Clear();
 
                     // Released after the clients, they register instruments on it.
                     meter.Dispose();

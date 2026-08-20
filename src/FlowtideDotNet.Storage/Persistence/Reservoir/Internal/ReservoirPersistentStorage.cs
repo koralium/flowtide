@@ -479,6 +479,17 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             return session;
         }
 
+        /// <summary>
+        /// Drops a disposed session, it must not be reset or committed again.
+        /// </summary>
+        internal void RemoveSession(ReservoirPersistentSession session)
+        {
+            lock (_sessionsLock)
+            {
+                _sessions.Remove(session);
+            }
+        }
+
         public void Dispose()
         {
             if (_mergedBlobFileWriter != null)
@@ -495,7 +506,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 _adminSession.Dispose();
             }
             
-            foreach(var session in _sessions)
+            // Copied out, a session deregisters itself while it disposes.
+            ReservoirPersistentSession[] sessions;
+            lock (_sessionsLock)
+            {
+                sessions = _sessions.ToArray();
+            }
+            foreach (var session in sessions)
             {
                 session.Dispose();
             }

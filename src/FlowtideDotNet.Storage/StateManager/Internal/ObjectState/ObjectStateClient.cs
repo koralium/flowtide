@@ -76,6 +76,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.ObjectState
 
         public override void Dispose()
         {
+            _session.Dispose();
         }
 
         public override async ValueTask Reset(bool clearMetadata)

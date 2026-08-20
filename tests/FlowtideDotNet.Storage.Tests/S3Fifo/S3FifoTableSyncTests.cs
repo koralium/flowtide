@@ -529,6 +529,36 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(0, counts.GhostCount);
         }
 
+        /// <summary>
+        /// Clear must not mark entries removed and must not return the cache reference.
+        /// SyncStateClient caches these handles and short circuits on !Removed, so a page that
+        /// only lives in memory stays reachable across a Clear. Marking them removed instead
+        /// sends the client to persistent storage for a page that was never written there,
+        /// which shows up far away as ExchangeOperatorTests.TestPullBucketOutput failing with
+        /// "Segment not found".
+        /// </summary>
+        [Fact]
+        public async Task ClearKeepsEntryHandlesRentableForTheClientLookupSlots()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
+            var handler = new TestEvictHandler();
+            var values = new List<TestCacheObject>();
+            for (var i = 0; i < 5; i++)
+            {
+                var value = new TestCacheObject(i);
+                values.Add(value);
+                table.Add(i, value, handler);
+            }
+            Assert.True(table.TryGetCacheValue(2, out var entry));
+
+            table.Clear();
+
+            Assert.False(Volatile.Read(ref entry.Removed));
+            Assert.True(entry.TryRentValue());
+            entry.Value.Return();
+            Assert.All(values, v => Assert.Equal(0, v.DisposeCount));
+        }
+
         [Fact]
         public async Task WaitCompletesWhenNoCleanupIsRunning()
         {

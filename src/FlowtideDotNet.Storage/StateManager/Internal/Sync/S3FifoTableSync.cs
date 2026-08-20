@@ -560,10 +560,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 else
                 {
+                    // Falls through to the memory check. The count says the cache is small, but
+                    // pages can have grown since maxSize was last derived, so the budget still
+                    // has to be re-evaluated. Compaction happens on the no-eviction exit below.
                     m_lastSeenCacheHits = cacheHitsLocal;
                     m_sameCacheHitsCount = 0;
-                    CompactQueuesIfNeeded();
-                    return;
                 }
             }
 

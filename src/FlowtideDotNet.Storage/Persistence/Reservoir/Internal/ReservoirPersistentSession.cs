@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private readonly ReservoirPersistentStorage _persistentStorage;
         private readonly IMemoryAllocator _memoryAllocator;
         private readonly HashSet<long> _deletedPages;
+        private bool _disposed;
 
         public ReservoirPersistentSession(
             ReservoirPersistentStorage persistentStorage, 
@@ -96,6 +97,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public void Dispose()
         {
+            if (_disposed)
+            {
+                return;
+            }
+            _disposed = true;
+            // Deregister first, the storage keeps sessions alive for restore otherwise.
+            _persistentStorage.RemoveSession(this);
             _fileWriter.Return(); // Return the file which will dispose it if the counter is 0
         }
 
