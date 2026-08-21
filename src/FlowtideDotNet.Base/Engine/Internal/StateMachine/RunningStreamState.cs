@@ -404,7 +404,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         /// true when it promoted the queued checkpoint or there was nothing queued. Must be
         /// called while holding the checkpoint lock.
         /// </summary>
-        /// <param name="forStopDrain">True for a stop drain, it runs on its own cadence.</param>
+        /// <param name="forStopDrain">True for a stop drain.</param>
         private bool TryPromoteQueuedCheckpoint(bool forStopDrain = false)
         {
             Debug.Assert(_context != null, nameof(_context));
@@ -412,7 +412,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 return true;
             }
-            // The queued deadline can already carry a clamp, a stop must not reuse it.
+            // The queued deadline can carry a clamp.
             var span = forStopDrain
                 ? TimeSpan.FromMilliseconds(1)
                 : _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
@@ -420,7 +420,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 span = TimeSpan.FromMilliseconds(1);
             }
-            // A stop drain is no distributed barrier, a version would leak past the stop.
+            // A version would leak past the stop.
             var providedVersion = forStopDrain ? default : _context._scheduledProvidedCheckpointVersion;
             if (_context.TryScheduleCheckpointIn_NoLock(span, providedVersion, forStopDrain))
             {

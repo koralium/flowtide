@@ -188,6 +188,13 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        /// <summary>
+        /// Throttles checkpoints so a chatty source cannot storm.
+        /// </summary>
+        /// <remarks>
+        /// The first checkpoint per start and all drains bypass it.
+        /// </remarks>
+        /// <param name="timeSpan">The minimum interval between throttled checkpoints.</param>
         public FlowtideBuilder SetMinimumTimeBetweenCheckpoint(TimeSpan timeSpan)
         {
             dataflowStreamBuilder.SetMinimumTimeBetweenCheckpoint(timeSpan);

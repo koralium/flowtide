@@ -109,6 +109,41 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
+        /// A recovery needs a prompt baseline too.
+        /// </summary>
+        [Fact]
+        public async Task FirstCheckpointAfterARecoveryIsNotDelayedByTheMinimumInterval()
+        {
+            // Well above what the recovery itself needs.
+            MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(20);
+            AllowFailureAndRecover();
+
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+
+            // Arms the throttle, only a restart disarms it.
+            await WaitForUpdate();
+
+            await Crash();
+
+            // New data, so the stream asks for a checkpoint.
+            GenerateData();
+
+            // The recovery must commit promptly after reloading.
+            var stopwatch = Stopwatch.StartNew();
+            var afterRecovery = WaitForUpdate();
+            var finished = await Task.WhenAny(afterRecovery, Task.Delay(TimeSpan.FromSeconds(15)));
+            stopwatch.Stop();
+
+            Assert.True(
+                finished == afterRecovery,
+                $"No checkpoint committed within {stopwatch.Elapsed.TotalSeconds:F1}s of the recovery, the throttle stayed armed across the restart.");
+            await afterRecovery;
+        }
+
+        /// <summary>
         /// A stop during initial data should not wait the interval.
         /// </summary>
         [Fact]

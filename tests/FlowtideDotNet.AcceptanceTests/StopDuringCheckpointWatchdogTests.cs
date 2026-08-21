@@ -139,6 +139,9 @@ namespace FlowtideDotNet.AcceptanceTests
         /// <summary>
         /// A stop behind a checkpoint should not wait.
         /// </summary>
+        /// <remarks>
+        /// Guards the re-arm, not the promotion bypass.
+        /// </remarks>
         [Fact]
         public async Task StopDeferredBehindACheckpointIsNotDelayedByTheMinimumCheckpointInterval()
         {
@@ -175,8 +178,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 }
                 Assert.True(commitHeld.Task.IsCompleted, "No checkpoint commit was held by the hook");
 
-                // Queues a checkpoint behind the held one. The throttle is armed, so it is
-                // clamped and stored as a deadline 20s out, which the stop must not inherit.
+                // Queues a clamped checkpoint for the stop to beat.
                 TryScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
 
                 // The stop defers behind the held checkpoint.
@@ -194,7 +196,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 Assert.Equal(StreamStateValue.NotStarted, State);
                 Assert.True(
                     stopwatch.Elapsed < TimeSpan.FromSeconds(12),
-                    $"The stop took {stopwatch.Elapsed.TotalSeconds:F1}s after the checkpoint released, it inherited the queued checkpoint's clamped deadline.");
+                    $"The stop took {stopwatch.Elapsed.TotalSeconds:F1}s after the checkpoint released, the stopping state's 1ms drain never replaced the clamped schedule left behind it.");
             }
             finally
             {

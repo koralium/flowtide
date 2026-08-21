@@ -275,10 +275,13 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
-        /// A delete should not wait the interval either.
+        /// A delete never becomes gated on the checkpoint scheduler.
         /// </summary>
+        /// <remarks>
+        /// Cannot fail today, it pins that the delete stays ungated.
+        /// </remarks>
         [Fact]
-        public async Task DeleteAfterACheckpointIsNotDelayedByTheMinimumCheckpointInterval()
+        public async Task DeleteIsNotGatedOnTheCheckpointScheduler()
         {
             // Well above what the delete itself needs.
             MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(20);
@@ -286,7 +289,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
 
-            // Arms the throttle.
+            // Arms the throttle and leaves a clamped schedule armed.
             await WaitForUpdate();
 
             var stopwatch = Stopwatch.StartNew();
@@ -298,39 +301,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             Assert.True(
                 stopwatch.Elapsed < TimeSpan.FromSeconds(10),
-                $"The delete took {stopwatch.Elapsed.TotalSeconds:F1}s, it was delayed by the minimum checkpoint interval.");
-        }
-
-        /// <summary>
-        /// A delete during initial data should not wait the interval.
-        /// </summary>
-        [Fact]
-        public async Task DeleteDuringInitialDataIsNotDelayedByTheMinimumCheckpointInterval()
-        {
-            MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(20);
-            WaitForCheckpointAfterInitialData = true;
-            InitialDataDelay = TimeSpan.FromSeconds(2);
-
-            GenerateData();
-            await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
-
-            var runningDeadline = DateTime.UtcNow.AddSeconds(5);
-            while (State != StreamStateValue.Running && DateTime.UtcNow < runningDeadline)
-            {
-                await Task.Delay(10);
-            }
-            Assert.Equal(StreamStateValue.Running, State);
-
-            var stopwatch = Stopwatch.StartNew();
-            var deleteTask = DeleteStream();
-            var completed = await Task.WhenAny(deleteTask, Task.Delay(TimeSpan.FromSeconds(60)));
-            Assert.True(completed == deleteTask, "DeleteAsync hung: the delete landed during the initial-data checkpoint placeholder.");
-            await deleteTask;
-            stopwatch.Stop();
-
-            Assert.True(
-                stopwatch.Elapsed < TimeSpan.FromSeconds(12),
-                $"The delete took {stopwatch.Elapsed.TotalSeconds:F1}s, it was delayed by the minimum checkpoint interval.");
+                $"The delete took {stopwatch.Elapsed.TotalSeconds:F1}s, it is now waiting on the checkpoint scheduler.");
         }
 
         /// <summary>

@@ -79,7 +79,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal DateTime? _triggerCheckpointTime;
         internal CancellationTokenSource? _scheduleCheckpointCancelSource;
 
-        internal StreamStateValue currentState;
+        // Volatile, written and read under different locks.
+        internal volatile StreamStateValue currentState;
         // Volatile: written by stop/delete on caller threads, read by the state machine on its own
         // threads, often outside locks. The honoring points tolerate the check-then-act window by
         // re-checking at every safe point.
