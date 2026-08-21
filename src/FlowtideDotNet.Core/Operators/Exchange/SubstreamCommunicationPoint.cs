@@ -786,6 +786,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             TryStartFetchTask();
         }
 
+        /// <summary>
+        /// True while events are still fetched from that target in the other substream.
+        /// </summary>
+        public bool IsSubscribed(int exchangeTarget)
+        {
+            lock (_fetchDataLock)
+            {
+                return _subscribedTargets.ContainsKey(exchangeTarget);
+            }
+        }
+
         public void Unsubscribe(int exchangeTarget)
         {
             lock (_fetchDataLock)

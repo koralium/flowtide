@@ -33,7 +33,8 @@ namespace FlowtideDotNet.Base.Engine.Internal
             IStateManagerClient stateClient,
             ILoggerFactory loggerFactory,
             IOperatorMemoryManager memoryManager,
-            Func<Exception?, long?, Task> failRollbackFunc)
+            Func<Exception?, long?, Task> failRollbackFunc,
+            TimeSpan? stopDrainTimeout = null)
         {
             StreamName = streamName;
             this.operatorName = operatorName;
@@ -44,9 +45,12 @@ namespace FlowtideDotNet.Base.Engine.Internal
             LoggerFactory = loggerFactory;
             MemoryManager = memoryManager;
             this.failRollbackFunc = failRollbackFunc;
+            StopDrainTimeout = stopDrainTimeout ?? TimeSpan.FromSeconds(30);
         }
 
         public string StreamName { get; }
+
+        public TimeSpan StopDrainTimeout { get; }
 
         public IMeter Metrics { get; }
 
