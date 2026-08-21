@@ -239,6 +239,56 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// A distributed stop should not wait the interval either.
+        /// </summary>
+        [Fact]
+        public async Task DistributedStopIsNotDelayedByTheMinimumCheckpointInterval()
+        {
+            _generator.Generate(200);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
+
+            Microsoft.Extensions.Logging.ILoggerFactory CreateBufferedLoggerFactory(string substreamName)
+            {
+                var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
+                return Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                {
+                    b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                    b.AddProvider(provider);
+                });
+            }
+
+            _stream = BuildHost(
+                "e2e_stop_min_interval",
+                NormalJoinSql,
+                latestData,
+                failures,
+                loggerFactory: CreateBufferedLoggerFactory,
+                // Below the interval, a clamped drain would fault.
+                stopDrainTimeout: TimeSpan.FromSeconds(5),
+                configureSubstream: (name, builder) => builder.SetMinimumTimeBetweenCheckpoint(TimeSpan.FromSeconds(30)));
+
+            await _stream.StartAsync();
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            var sw = Stopwatch.StartNew();
+            await _stream.StopAsync();
+            sw.Stop();
+
+            if (sw.Elapsed >= TimeSpan.FromSeconds(4))
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_stop_min_interval_{buffer.Key}.log");
+                }
+            }
+
+            Assert.True(sw.Elapsed < TimeSpan.FromSeconds(4),
+                $"The distributed stop took {sw.Elapsed.TotalSeconds:F1}s with a 30s minimum checkpoint interval and a 5s drain timeout, a drain cycle was clamped to the interval.");
+        }
+
+        /// <summary>
         /// A stopped distributed stream can be started again on the SAME instance, resuming
         /// from its state, and data added after the restart flows through, which also
         /// verifies that the internal trigger tick loop survives a stop and restart.

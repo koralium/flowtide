@@ -711,6 +711,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _stream!.InjectEgressCheckpointDoneForTests(operatorName, lockingEvent);
         }
 
+        public void TryScheduleCheckpoint(TimeSpan t)
+        {
+            _stream!.TryScheduleCheckpoint(t);
+        }
+
         public Task StartStream()
         {
             return _stream!.StartAsync();

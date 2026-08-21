@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -11,7 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Entities;
+using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
+using System.Diagnostics;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -131,6 +133,75 @@ namespace FlowtideDotNet.AcceptanceTests
                 StreamContext.CheckpointCommitHookForTests = null;
                 StreamContext.CheckpointPostCommitGapHookForTests = null;
                 StreamContext.BeforeFailureDisposeForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// A stop behind a checkpoint should not wait.
+        /// </summary>
+        /// <remarks>
+        /// Guards the re-arm, not the promotion bypass.
+        /// </remarks>
+        [Fact]
+        public async Task StopDeferredBehindACheckpointIsNotDelayedByTheMinimumCheckpointInterval()
+        {
+            var commitHeld = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseCommit = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            // Well above what the stop itself needs.
+            MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(20);
+            try
+            {
+                GenerateData();
+                await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
+
+                // Arms the throttle.
+                await WaitForUpdate();
+
+                // Armed after the first checkpoint, holding that one would deadlock.
+                StreamContext.CheckpointCommitHookForTests = async (streamName, lastVersion) =>
+                {
+                    if (!streamName.Contains(Token))
+                    {
+                        return;
+                    }
+                    commitHeld.TrySetResult();
+                    await releaseCommit.Task;
+                };
+
+                AddOrUpdateUser(new User() { UserKey = 999999, FirstName = "stoptrigger" });
+                var deadline = DateTime.UtcNow.AddSeconds(60);
+                while (!commitHeld.Task.IsCompleted && DateTime.UtcNow < deadline)
+                {
+                    await SchedulerTick();
+                    await Task.Delay(10);
+                }
+                Assert.True(commitHeld.Task.IsCompleted, "No checkpoint commit was held by the hook");
+
+                // Queues a clamped checkpoint for the stop to beat.
+                TryScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+
+                // The stop defers behind the held checkpoint.
+                var stopTask = StopStream();
+                await Task.Delay(200);
+
+                // From here the stop only waits on the drain cadence.
+                var stopwatch = Stopwatch.StartNew();
+                releaseCommit.TrySetResult();
+                var completed = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+                stopwatch.Stop();
+                Assert.True(completed == stopTask, "StopAsync hung after the checkpoint it was deferred behind completed");
+                await stopTask;
+
+                Assert.Equal(StreamStateValue.NotStarted, State);
+                Assert.True(
+                    stopwatch.Elapsed < TimeSpan.FromSeconds(12),
+                    $"The stop took {stopwatch.Elapsed.TotalSeconds:F1}s after the checkpoint released, the stopping state's 1ms drain never replaced the clamped schedule left behind it.");
+            }
+            finally
+            {
+                releaseCommit.TrySetResult();
+                StreamContext.CheckpointCommitHookForTests = null;
             }
         }
     }

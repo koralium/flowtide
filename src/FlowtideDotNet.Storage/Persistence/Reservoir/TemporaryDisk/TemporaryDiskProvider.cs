@@ -120,9 +120,37 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
             }
         }
 
-        public Task<IEnumerable<ulong>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<ulong>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException();
+            List<ulong> storedFileIds = new List<ulong>();
+
+            string pattern = @"^dataFile_(?<fileId>.+)\.data$";
+            await _semaphore.WaitAsync(cancellationToken);
+            try
+            {
+                foreach (var file in _openFiles)
+                {
+                    if (!file.Key.StartsWith(_dataFileDirectory))
+                    {
+                        continue;
+                    }
+                    var fileName = Path.GetFileName(file.Key);
+                    Match match = Regex.Match(fileName, pattern);
+                    if (match.Success)
+                    {
+                        string fileIdString = match.Groups["fileId"].Value;
+                        if (ulong.TryParse(fileIdString, out var fileId))
+                        {
+                            storedFileIds.Add(fileId);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+            return storedFileIds;
         }
 
         public Task InitializeAsync(StorageProviderContext providerContext, CancellationToken cancellationToken = default)

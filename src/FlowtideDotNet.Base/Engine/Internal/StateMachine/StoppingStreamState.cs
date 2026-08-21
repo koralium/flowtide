@@ -238,7 +238,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Debug.Assert(_context != null, nameof(_context));
             lock (_context._checkpointLock)
             {
-                _context._initialCheckpointTaken = true;
+                _context._minimumIntervalThrottleArmed = true;
                 if (_context.checkpointTask != null)
                 {
                     _context._scheduleCheckpointTask = null;

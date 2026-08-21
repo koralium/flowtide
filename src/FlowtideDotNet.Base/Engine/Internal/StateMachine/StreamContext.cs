@@ -79,7 +79,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal DateTime? _triggerCheckpointTime;
         internal CancellationTokenSource? _scheduleCheckpointCancelSource;
 
-        internal StreamStateValue currentState;
+        // Volatile, written and read under different locks.
+        internal volatile StreamStateValue currentState;
         // Volatile: written by stop/delete on caller threads, read by the state machine on its own
         // threads, often outside locks. The honoring points tolerate the check-then-act window by
         // re-checking at every safe point.
@@ -162,7 +163,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState> _stateManager;
         internal readonly ILogger<StreamContext> _logger;
 
-        internal bool _initialCheckpointTaken = false;
+        // Armed by a committed checkpoint, gates the minimum interval.
+        internal bool _minimumIntervalThrottleArmed = false;
         
         // Test variable
         internal long _startCheckpointVersion = 0;
@@ -580,13 +582,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // distributed drain to time out when the interval is at or above the drain timeout.
             if (!bypassMinimumInterval &&
                 _dataflowStreamOptions.MinimumTimeBetweenCheckpoints != null &&
-                _initialCheckpointTaken &&
+                _minimumIntervalThrottleArmed &&
                 _dataflowStreamOptions.MinimumTimeBetweenCheckpoints.Value.CompareTo(timeSpan) > 0)
             {
                 timeSpan = _dataflowStreamOptions.MinimumTimeBetweenCheckpoints.Value;
             }
 
-            var triggerTime = DateTime.Now.Add(timeSpan);
+            // UTC, local time is ambiguous in the DST fall-back hour.
+            var triggerTime = DateTime.UtcNow.Add(timeSpan);
 
             // Check if a checkpoint is already running, if so, add that a checkpoint is waiting
             // This is required so checkpoints are not missed.
