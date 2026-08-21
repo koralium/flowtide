@@ -231,10 +231,12 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
-        /// Sets the minimum time that must elapse between two consecutive checkpoint triggers,
-        /// preventing excessive checkpointing under high-throughput conditions.
+        /// Throttles checkpoints so a chatty source cannot storm.
         /// </summary>
-        /// <param name="timeSpan">The minimum interval between checkpoints.</param>
+        /// <remarks>
+        /// The first checkpoint per start and all drains bypass it.
+        /// </remarks>
+        /// <param name="timeSpan">The minimum interval between throttled checkpoints.</param>
         /// <returns>This builder instance for method chaining.</returns>
         public DataflowStreamBuilder SetMinimumTimeBetweenCheckpoint(TimeSpan timeSpan)
         {

@@ -318,7 +318,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        private void CheckpointCompleted()
+        private void CheckpointCompleted(bool checkpointCommitted = true)
         {
             Debug.Assert(_context != null, nameof(_context));
             StreamStateValue? wishTransition = null;
@@ -335,7 +335,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     System.Threading.Volatile.Write(ref _context._consecutiveFailures, 0);
                 }
-                _context._initialCheckpointTaken = true;
+                if (checkpointCommitted)
+                {
+                    _context._minimumIntervalThrottleArmed = true;
+                }
                 if (_context.checkpointTask != null)
                 {
                     _context._scheduleCheckpointTask = null;
@@ -351,7 +354,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         // to honor it. Must not depend on a checkpoint being in progress,
                         // initial data completion also lands here without one.
                         _doingCheckpoint = false;
-                        if (_context._wantedState == StreamStateValue.NotStarted)
+                        if (_context._wantedState == StreamStateValue.NotStarted ||
+                            _context.currentState == StreamStateValue.Stopping)
                         {
                             // A stop that arrived while this placeholder held the checkpoint
                             // slot already transitioned the stream to Stopping, whose
@@ -365,7 +369,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             // directly in the deleting state and runs no checkpoint cycle, so
                             // scheduling one would only leave a checkpoint the deleting state
                             // ignores.
-                            TryPromoteQueuedCheckpoint();
+                            // A delete on a queued stop still needs the drain.
+                            // Bypass the interval, a stop must never wait for it.
+                            TryPromoteQueuedCheckpoint(forStopDrain: true);
                         }
                         // The transition takes the context lock and must not run under the
                         // checkpoint lock: checkpoint done acknowledgements from other
@@ -398,19 +404,25 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         /// true when it promoted the queued checkpoint or there was nothing queued. Must be
         /// called while holding the checkpoint lock.
         /// </summary>
-        private bool TryPromoteQueuedCheckpoint()
+        /// <param name="forStopDrain">True for a stop drain.</param>
+        private bool TryPromoteQueuedCheckpoint(bool forStopDrain = false)
         {
             Debug.Assert(_context != null, nameof(_context));
             if (!_context.inQueueCheckpoint.HasValue)
             {
                 return true;
             }
-            var span = _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
+            // The queued deadline can carry a clamp.
+            var span = forStopDrain
+                ? TimeSpan.FromMilliseconds(1)
+                : _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
             if (span.TotalMilliseconds < 0)
             {
                 span = TimeSpan.FromMilliseconds(1);
             }
-            if (_context.TryScheduleCheckpointIn_NoLock(span, _context._scheduledProvidedCheckpointVersion))
+            // A version would leak past the stop.
+            var providedVersion = forStopDrain ? default : _context._scheduledProvidedCheckpointVersion;
+            if (_context.TryScheduleCheckpointIn_NoLock(span, providedVersion, forStopDrain))
             {
                 _context._scheduledProvidedCheckpointVersion = default;
                 _context.inQueueCheckpoint = null;
@@ -445,6 +457,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     // Reset the checkpoint version after the stream is in a running state
                     _context._restoreCheckpointVersion = default;
+
+                    // The first checkpoint after every start should be instant.
+                    _context._minimumIntervalThrottleArmed = false;
 
                     // Dependencies done signals that arrived while the stream was starting are
                     // consumed by the first checkpoint
@@ -490,7 +505,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         }
                         if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
                         {
-                            CheckpointCompleted();
+                            // Just clearing the placeholder, nothing was checkpointed.
+                            CheckpointCompleted(checkpointCommitted: false);
                         }
 
                         return Task.CompletedTask;
