@@ -337,7 +337,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 if (checkpointCommitted)
                 {
-                    _context._initialCheckpointTaken = true;
+                    _context._minimumIntervalThrottleArmed = true;
                 }
                 if (_context.checkpointTask != null)
                 {
@@ -420,7 +420,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 span = TimeSpan.FromMilliseconds(1);
             }
-            if (_context.TryScheduleCheckpointIn_NoLock(span, _context._scheduledProvidedCheckpointVersion, forStopDrain))
+            // A stop drain is no distributed barrier, a version would leak past the stop.
+            var providedVersion = forStopDrain ? default : _context._scheduledProvidedCheckpointVersion;
+            if (_context.TryScheduleCheckpointIn_NoLock(span, providedVersion, forStopDrain))
             {
                 _context._scheduledProvidedCheckpointVersion = default;
                 _context.inQueueCheckpoint = null;
@@ -457,7 +459,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context._restoreCheckpointVersion = default;
 
                     // The first checkpoint after every start should be instant.
-                    _context._initialCheckpointTaken = false;
+                    _context._minimumIntervalThrottleArmed = false;
 
                     // Dependencies done signals that arrived while the stream was starting are
                     // consumed by the first checkpoint
