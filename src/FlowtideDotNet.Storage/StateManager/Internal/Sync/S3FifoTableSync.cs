@@ -31,6 +31,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     ///
     /// Reads never touch the queues, a hit only bumps the entry frequency.
     /// Queue maintenance happens on insert and in the background cleanup task.
+    /// The cleanup task also holds the small queue at its target share while the cache is below
+    /// the eviction threshold, so a cache that never fills still promotes reused pages, still
+    /// fills the ghost queue, and does not save the whole small queue up for one huge batch.
     /// Frequency uses spaced counting, a hit only counts when the entry aged past the
     /// correlation window since its insertion or last counted hit, so a burst counts as
     /// one reuse event, see S3FifoCorrelationClock.
@@ -508,7 +511,42 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private int SmallQueueTargetSize()
         {
             // The small queue gets ~10% of the cache capacity, as in the S3-FIFO paper.
-            return Math.Max(1, Volatile.Read(ref maxSize) / 10);
+            return SmallQueueTargetSize(Volatile.Read(ref maxSize));
+        }
+
+        /// <summary>
+        /// The small queue share of a given cache size. A pass that drives the cache down to a
+        /// smaller size has to shrink the small queue with it. Sized against the capacity
+        /// instead, a deep clean to MinSize fills the whole floor with unproven small queue
+        /// entries and pays for it with the reused main queue pages, which is backwards, those
+        /// are the pages the floor exists to keep.
+        /// </summary>
+        private static int SmallQueueTargetSize(int cacheSize)
+        {
+            return Math.Max(1, cacheSize / 10);
+        }
+
+        /// <summary>
+        /// How far the small queue is over its target share, used when the cache as a whole is
+        /// still below the eviction threshold. The result caps an early drain, so a concurrent
+        /// add storm cannot keep one drain running.
+        /// </summary>
+        private int SmallQueueOverflow(int currentCount)
+        {
+            // MinSize keeps pages resident to cut read latency, so a cache that is already at or
+            // below it is left alone even when its small queue is over the target. Real pressure
+            // goes through the normal path, which is allowed to cross the floor.
+            var headroom = currentCount - tableOptions.MinSize;
+            if (headroom <= 0)
+            {
+                return 0;
+            }
+            int liveSmall;
+            lock (m_queueLock)
+            {
+                liveSmall = m_smallQueue.Count - m_smallStaleCount;
+            }
+            return Math.Min(liveSmall - SmallQueueTargetSize(), headroom);
         }
 
         /// <summary>
@@ -605,22 +643,40 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
             }
 
+            var smallQueueOverflow = 0;
             if (toBeRemovedCount <= 0)
             {
                 CompactQueuesIfNeeded();
-                return;
+                // The cache is below the eviction threshold, but the small queue is only meant to
+                // hold its ~10% share of the capacity. Drain the overflow early instead of waiting
+                // for the cache to fill, the head either earned promotion to main or goes out to
+                // the ghost queue. An idle cache never gets here, the no-hits check above returns
+                // first, so a quiet stream is not churned.
+                smallQueueOverflow = SmallQueueOverflow(currentCount);
+                if (smallQueueOverflow <= 0)
+                {
+                    return;
+                }
             }
+
+            // What the cache holds once this pass is done. The deep clean and the memory
+            // adaptive resize both aim below the current threshold, so it is derived from the
+            // batch size rather than read back off cleanupStart.
+            var targetCacheSize = currentCount - toBeRemovedCount;
 
             // Large batches are selected in chunks, releasing the queue lock between them so
             // Add and Delete are not stalled. Selected victims are dequeued and owned here.
             var victims = new List<EvictionCandidate>();
+            var drainSmallQueueOnly = toBeRemovedCount <= 0;
             while (true)
             {
                 bool finished;
                 lock (m_queueLock)
                 {
                     m_selectionLockAcquisitions++;
-                    finished = TrySelectVictims(victims, toBeRemovedCount, SelectionOperationBudget);
+                    finished = drainSmallQueueOnly
+                        ? TrySelectSmallQueueOverflowVictims(victims, smallQueueOverflow, SelectionOperationBudget)
+                        : TrySelectVictims(victims, toBeRemovedCount, targetCacheSize, SelectionOperationBudget);
                 }
                 if (finished)
                 {
@@ -820,14 +876,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// Runs the eviction scans until enough victims, nothing evictable, or budget spent.
         /// Must be called under the queue lock.
         /// Victims are only dequeued here, they stay readable until the removal phase.
+        /// targetCacheSize is the entry count the cache is being driven down to, it sets how
+        /// much of what survives the pass the small queue is allowed to hold.
         /// </summary>
         /// <returns>
         /// True when selection is complete, false when the budget ran out and the caller
         /// should reacquire the lock for another chunk.
         /// </returns>
-        private bool TrySelectVictims(List<EvictionCandidate> victims, int toBeRemovedCount, int operationBudget)
+        private bool TrySelectVictims(List<EvictionCandidate> victims, int toBeRemovedCount, int targetCacheSize, int operationBudget)
         {
-            var smallTarget = SmallQueueTargetSize();
+            // The share is taken from the size this pass leaves behind, never more than the
+            // capacity share, so a shrink drains the small queue instead of preserving it.
+            var smallTarget = SmallQueueTargetSize(Math.Min(Volatile.Read(ref maxSize), targetCacheSize));
             while (victims.Count < toBeRemovedCount)
             {
                 if (operationBudget <= 0)
@@ -853,6 +913,37 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     // Both queues were scanned without finding an evictable entry.
                     return true;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Drains the small queue head until it is back at its target size, used while the cache
+        /// is below the eviction threshold. The main queue is not scanned, there is no pressure
+        /// on the cache as a whole, only on the small queues share of it.
+        /// Must be called under the queue lock.
+        /// </summary>
+        /// <returns>
+        /// True when the drain is complete, false when the budget ran out and the caller
+        /// should reacquire the lock for another chunk.
+        /// </returns>
+        private bool TrySelectSmallQueueOverflowVictims(List<EvictionCandidate> victims, int overflowCount, int operationBudget)
+        {
+            var smallTarget = SmallQueueTargetSize();
+            // Promotions shrink the queue without producing a victim, so both the victim count
+            // and the live count end the drain. The victim cap is the overflow measured before
+            // the drain started, so concurrent adds are left for the next pass.
+            while (victims.Count < overflowCount && (m_smallQueue.Count - m_smallStaleCount) > smallTarget)
+            {
+                if (operationBudget <= 0)
+                {
+                    return false;
+                }
+                if (!TryEvictOneFromSmall(victims, ref operationBudget))
+                {
+                    // Either the budget ran out mid scan, or the queue holds nothing evictable.
+                    return operationBudget > 0;
                 }
             }
             return true;
