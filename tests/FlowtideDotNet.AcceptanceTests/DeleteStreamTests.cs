@@ -354,17 +354,22 @@ namespace FlowtideDotNet.AcceptanceTests
 
             // The stop queues its drain behind the placeholder.
             var stopTask = StopStream();
-            _ = stopTask.ContinueWith(t => { _ = t.Exception; }, TaskScheduler.Default);
             await Task.Delay(100);
 
             // The delete lands on top of the queued stop.
             var deleteTask = DeleteStream();
-            _ = deleteTask.ContinueWith(t => { _ = t.Exception; }, TaskScheduler.Default);
 
             var both = Task.WhenAll(stopTask, deleteTask);
             var completed = await Task.WhenAny(both, Task.Delay(TimeSpan.FromSeconds(45)));
+            if (completed != both)
+            {
+                // Abandoning them here, so a later fault needs observing.
+                _ = stopTask.ContinueWith(t => { _ = t.Exception; }, TaskScheduler.Default);
+                _ = deleteTask.ContinueWith(t => { _ = t.Exception; }, TaskScheduler.Default);
+            }
             Assert.True(completed == both,
                 $"The stop and the delete both hung, the stream is still {State}: the queued stop drain was never promoted once the placeholder cleared.");
+            // Rethrows if either faulted, both must complete cleanly.
             await both;
         }
     }

@@ -152,8 +152,9 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task StopWithAMinimumIntervalAboveTheDrainTimeoutStillDrainsCleanly()
         {
+            var drainTimeout = TimeSpan.FromSeconds(3);
             MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(30);
-            StopDrainTimeout = TimeSpan.FromSeconds(3);
+            StopDrainTimeout = drainTimeout;
 
             GenerateData();
             await StartStream(@"
@@ -168,9 +169,9 @@ namespace FlowtideDotNet.AcceptanceTests
             stopwatch.Stop();
 
             Assert.Equal(StreamStateValue.NotStarted, State);
-            // Under the drain timeout, so it really drained.
+            // The drain runs 25ms cycles, a healthy stop measures ~31ms.
             Assert.True(
-                stopwatch.Elapsed < TimeSpan.FromSeconds(3),
+                stopwatch.Elapsed < drainTimeout,
                 $"The stop took {stopwatch.Elapsed.TotalSeconds:F1}s, it reached the drain timeout instead of draining on its own cadence.");
         }
 
