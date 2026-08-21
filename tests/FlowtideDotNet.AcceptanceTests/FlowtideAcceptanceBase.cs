@@ -354,6 +354,11 @@ namespace FlowtideDotNet.AcceptanceTests
             return Task.CompletedTask;
         }
 
+        protected void TryScheduleCheckpoint(TimeSpan t)
+        {
+            flowtideTestStream.TryScheduleCheckpoint(t);
+        }
+
         public Task DeleteStream()
         {
             return flowtideTestStream.DeleteStream();

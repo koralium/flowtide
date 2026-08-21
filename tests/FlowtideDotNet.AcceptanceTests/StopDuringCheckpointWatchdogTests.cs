@@ -151,6 +151,8 @@ namespace FlowtideDotNet.AcceptanceTests
             {
                 GenerateData();
                 await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
+
+                // Arms the throttle.
                 await WaitForUpdate();
 
                 // Armed after the first checkpoint, holding that one would deadlock.
@@ -173,9 +175,9 @@ namespace FlowtideDotNet.AcceptanceTests
                 }
                 Assert.True(commitHeld.Task.IsCompleted, "No checkpoint commit was held by the hook");
 
-                // Queues a checkpoint behind the held one.
-                AddOrUpdateUser(new User() { UserKey = 999998, FirstName = "queuedtrigger" });
-                await SchedulerTick();
+                // Queues a checkpoint behind the held one. The throttle is armed, so it is
+                // clamped and stored as a deadline 20s out, which the stop must not inherit.
+                TryScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
 
                 // The stop defers behind the held checkpoint.
                 var stopTask = StopStream();
@@ -192,7 +194,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 Assert.Equal(StreamStateValue.NotStarted, State);
                 Assert.True(
                     stopwatch.Elapsed < TimeSpan.FromSeconds(12),
-                    $"The stop took {stopwatch.Elapsed.TotalSeconds:F1}s after the checkpoint released, it waited out the minimum checkpoint interval.");
+                    $"The stop took {stopwatch.Elapsed.TotalSeconds:F1}s after the checkpoint released, it inherited the queued checkpoint's clamped deadline.");
             }
             finally
             {

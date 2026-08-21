@@ -371,7 +371,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             // ignores.
                             // A delete on a queued stop still needs the drain.
                             // Bypass the interval, a stop must never wait for it.
-                            TryPromoteQueuedCheckpoint(bypassMinimumInterval: true);
+                            TryPromoteQueuedCheckpoint(forStopDrain: true);
                         }
                         // The transition takes the context lock and must not run under the
                         // checkpoint lock: checkpoint done acknowledgements from other
@@ -404,20 +404,23 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         /// true when it promoted the queued checkpoint or there was nothing queued. Must be
         /// called while holding the checkpoint lock.
         /// </summary>
-        /// <param name="bypassMinimumInterval">True for a stop drain, it must not wait.</param>
-        private bool TryPromoteQueuedCheckpoint(bool bypassMinimumInterval = false)
+        /// <param name="forStopDrain">True for a stop drain, it runs on its own cadence.</param>
+        private bool TryPromoteQueuedCheckpoint(bool forStopDrain = false)
         {
             Debug.Assert(_context != null, nameof(_context));
             if (!_context.inQueueCheckpoint.HasValue)
             {
                 return true;
             }
-            var span = _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
+            // The queued deadline can already carry a clamp, a stop must not reuse it.
+            var span = forStopDrain
+                ? TimeSpan.FromMilliseconds(1)
+                : _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
             if (span.TotalMilliseconds < 0)
             {
                 span = TimeSpan.FromMilliseconds(1);
             }
-            if (_context.TryScheduleCheckpointIn_NoLock(span, _context._scheduledProvidedCheckpointVersion, bypassMinimumInterval))
+            if (_context.TryScheduleCheckpointIn_NoLock(span, _context._scheduledProvidedCheckpointVersion, forStopDrain))
             {
                 _context._scheduledProvidedCheckpointVersion = default;
                 _context.inQueueCheckpoint = null;
