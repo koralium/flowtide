@@ -375,7 +375,7 @@ public FlowtideBuilder AddReadWriteFactory(IReadWriteFactory readWriteFactory)</
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_Build" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.Build">
   Build()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L294"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L301"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -406,7 +406,7 @@ public FlowtideBuilder AddReadWriteFactory(IReadWriteFactory readWriteFactory)</
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_ColumnStore_System_Boolean_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.ColumnStore(System.Boolean)">
   ColumnStore(bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L223"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L230"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -442,7 +442,7 @@ public FlowtideBuilder AddReadWriteFactory(IReadWriteFactory readWriteFactory)</
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetDistributedOptions_FlowtideDotNet_Core_Engine_DistributedOptions_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetDistributedOptions(FlowtideDotNet.Core.Engine.DistributedOptions)">
   SetDistributedOptions(DistributedOptions)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L287"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L294"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -550,10 +550,11 @@ public FlowtideBuilder AddReadWriteFactory(IReadWriteFactory readWriteFactory)</
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetMinimumTimeBetweenCheckpoint_System_TimeSpan_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetMinimumTimeBetweenCheckpoint(System.TimeSpan)">
   SetMinimumTimeBetweenCheckpoint(TimeSpan)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L191"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L198"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 summary"><p>Throttles checkpoints so a chatty source cannot storm.</p>
+</div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
@@ -563,7 +564,8 @@ public FlowtideBuilder AddReadWriteFactory(IReadWriteFactory readWriteFactory)</
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>timeSpan</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
-    <dd></dd>
+    <dd><p>The minimum interval between throttled checkpoints.</p>
+</dd>
   </dl>
 
   <h4 class="section">Returns</h4>
@@ -578,6 +580,9 @@ public FlowtideBuilder AddReadWriteFactory(IReadWriteFactory readWriteFactory)</
 
 
 
+  <h4 class="section" id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetMinimumTimeBetweenCheckpoint_System_TimeSpan__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>The first checkpoint per start and all drains bypass it.</p>
+</div>
 
 
 
@@ -622,7 +627,7 @@ public FlowtideBuilder AddReadWriteFactory(IReadWriteFactory readWriteFactory)</
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetStopDrainTimeout_System_TimeSpan_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetStopDrainTimeout(System.TimeSpan)">
   SetStopDrainTimeout(TimeSpan)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L201"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L208"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Sets how long a stopping stream waits for vertices that exchange data with other
@@ -660,7 +665,7 @@ substreams to drain before it finishes stopping anyway.</p>
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetTaskScheduler_System_Threading_Tasks_TaskScheduler_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetTaskScheduler(System.Threading.Tasks.TaskScheduler)">
   SetTaskScheduler(TaskScheduler)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L217"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L224"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -696,7 +701,7 @@ substreams to drain before it finishes stopping anyway.</p>
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetVersion_System_String_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetVersion(System.String)">
   SetVersion(string)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L229"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L236"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -732,7 +737,7 @@ substreams to drain before it finishes stopping anyway.</p>
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetVersionParts_System_Collections_Generic_IEnumerable_System_ValueTuple_System_String_System_Nullable_System_Boolean____" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetVersionParts(System.Collections.Generic.IEnumerable{System.ValueTuple{System.String,System.Nullable{System.Boolean}}})">
   SetVersionParts(IEnumerable&lt;(string?, bool?)&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L236"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L243"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -768,7 +773,7 @@ substreams to drain before it finishes stopping anyway.</p>
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WaitForCheckpointAfterInitialData_System_Boolean_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WaitForCheckpointAfterInitialData(System.Boolean)">
   WaitForCheckpointAfterInitialData(bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L211"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L218"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>When enabled the stream takes a checkpoint right after its initial data has been
@@ -806,7 +811,7 @@ loaded, holding off any other checkpoint until then.</p>
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckActivityLogger" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckActivityLogger">
   WithCheckActivityLogger()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L256"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L263"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Adds check failures as an activity with name FlowtideDotNet.CheckFailures.CheckFailure</p>
@@ -874,7 +879,7 @@ loaded, holding off any other checkpoint until then.</p>
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckLogger_Microsoft_Extensions_Logging_LogLevel_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckLogger(Microsoft.Extensions.Logging.LogLevel)">
   WithCheckLogger(LogLevel)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L242"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L249"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1126,7 +1131,7 @@ loaded, holding off any other checkpoint until then.</p>
 
   <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithOpenLineageHttp_FlowtideDotNet_Core_Lineage_OpenLineageHttpOptions_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithOpenLineageHttp(FlowtideDotNet.Core.Lineage.OpenLineageHttpOptions)">
   WithOpenLineageHttp(OpenLineageHttpOptions)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L262"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L269"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
