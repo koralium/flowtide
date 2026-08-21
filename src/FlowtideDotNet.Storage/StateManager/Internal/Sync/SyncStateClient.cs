@@ -121,6 +121,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
 
             _lookupTable = new S3FifoCacheEntry?[1009];
+            // The fast path bypasses the table's hit counters, feed its count to the idle check.
+            stateManager.RegisterExternalHitCounter(() => Volatile.Read(ref m_lookupTableHits));
         }
 
         public TMetadata? Metadata
@@ -207,23 +209,30 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 if (stateManager.TryGetValueFromCache<V>(kv.Key, out var val))
                 {
-                    // Write to persistence
-                    await session.Write(kv.Key, new SerializableObject(val, options.ValueSerializer));
+                    // Return the lookup's rent even when the write throws, a leaked rent keeps the page unevictable forever.
+                    try
+                    {
+                        // Write to persistence
+                        await session.Write(kv.Key, new SerializableObject(val, options.ValueSerializer));
 
-                    if (!useReadCache)
-                    {
-                        m_fileCache.Free(kv.Key);
+                        if (!useReadCache)
+                        {
+                            m_fileCache.Free(kv.Key);
+                        }
+                        else
+                        {
+                            // Remove it from file cache version and file cache
+                            // This is required since the data can have been modified since it was written to the cache.
+                            // Free before removing the version entry, see Evict.
+                            // The pairing keeps a surviving version entry pointing at live spill data.
+                            m_fileCache.Free(kv.Key);
+                            m_fileCacheVersion.Remove(kv.Key, out _);
+                        }
                     }
-                    else
+                    finally
                     {
-                        // Remove it from file cache version and file cache
-                        // This is required since the data can have been modified since it was written to the cache.
-                        // Free before removing the version entry, see Evict.
-                        // The pairing keeps a surviving version entry pointing at live spill data.
-                        m_fileCache.Free(kv.Key);
-                        m_fileCacheVersion.Remove(kv.Key, out _);
+                        val.Return();
                     }
-                    val.Return();
                     continue;
                 }
                 {

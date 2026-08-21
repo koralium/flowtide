@@ -212,6 +212,12 @@ namespace FlowtideDotNet.Storage.StateManager
             m_cacheTable.Clear();
         }
 
+        internal void RegisterExternalHitCounter(Func<long> hitCounter)
+        {
+            Debug.Assert(m_cacheTable != null);
+            m_cacheTable.RegisterExternalHitCounter(hitCounter);
+        }
+
         /// <summary>
         /// Pauses the background eviction task so a commit or recovery does not race an eviction.
         /// Must be paired with ResumeEviction in a finally block.
@@ -224,8 +230,13 @@ namespace FlowtideDotNet.Storage.StateManager
 
         internal void ResumeEviction()
         {
-            Debug.Assert(m_cacheTable != null);
-            m_cacheTable.ResumeEviction();
+            // A commit in flight during teardown resumes after Dispose already dropped the table.
+            var cacheTable = m_cacheTable;
+            if (cacheTable == null)
+            {
+                return;
+            }
+            cacheTable.ResumeEviction();
         }
 
         internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? value)
@@ -459,7 +470,9 @@ namespace FlowtideDotNet.Storage.StateManager
             await PauseEvictionAsync();
             try
             {
-                m_cacheTable.Clear();
+                // Returns the cache rents, the clients are reset below so no lookup handle
+                // keeps serving a cleared entry.
+                m_cacheTable.ClearAndReturnRents();
                 await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
 
                 // Check that metadata exist, also that the checkpoint version is larger than 0

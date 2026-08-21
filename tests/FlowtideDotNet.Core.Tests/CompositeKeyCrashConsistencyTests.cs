@@ -217,7 +217,17 @@ namespace FlowtideDotNet.Core.Tests
 
                 if (rnd.Next(3) != 0)
                 {
-                    await tree.Commit();
+                    // Production pauses eviction for a commit through a gate ForceCleanup
+                    // bypasses, so the crashGate stands in for it here.
+                    await crashGate.WaitAsync();
+                    try
+                    {
+                        await tree.Commit();
+                    }
+                    finally
+                    {
+                        crashGate.Release();
+                    }
                     await stateManager.CheckpointAsync();
                     committed = new Dictionary<(string, string), int>(live);
                     sinceCheckpoint.Clear();

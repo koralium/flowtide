@@ -82,7 +82,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public SqlPlanBuilder SqlPlanBuilder => sqlPlanBuilder;
 
-        public int CachePageCount { get; set; } = 0;
+        public int CachePageCount { get; set; } = 100_000;
 
         /// <summary>
         /// The floor the cache is never evicted below. Set to 0 to let the cache empty completely.

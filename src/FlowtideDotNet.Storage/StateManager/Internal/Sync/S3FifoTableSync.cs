@@ -114,6 +114,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_readCacheMisses;
         private long m_commitCacheHits;
         private long m_commitCacheMisses;
+        // Client lookup-table fast paths count hits the table never sees. The idle check reads
+        // them through these providers so a fast-path-only stream is not judged idle and wiped.
+        private readonly List<Func<long>> m_externalHitCounters = new List<Func<long>>();
         // Written only on the cleanup thread, read lock-free by the metric callbacks.
         // Small-queue-head outcomes and one-hit-wonders, see the metric registrations.
         private long m_smallQueuePromotions;
@@ -261,9 +264,32 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return Volatile.Read(ref m_readCacheMisses) + Volatile.Read(ref m_commitCacheMisses);
         }
 
+        internal void RegisterExternalHitCounter(Func<long> hitCounter)
+        {
+            lock (m_externalHitCounters)
+            {
+                m_externalHitCounters.Add(hitCounter);
+            }
+        }
+
+        private long ExternalCacheHits()
+        {
+            long sum = 0;
+            lock (m_externalHitCounters)
+            {
+                foreach (var counter in m_externalHitCounters)
+                {
+                    sum += counter();
+                }
+            }
+            return sum;
+        }
+
         /// <summary>
-        /// Drops all entries without returning the cache references.
-        /// Only called on init or restore, where the clients are reset right after.
+        /// Drops all entries without returning the cache references or marking them removed.
+        /// Only for ClearCache, where the clients keep their lookup handles and must go on
+        /// serving through them, a Removed mark would route those reads to persistent storage
+        /// where a dirty page was never written.
         /// Referenced objects repair the reference on re-add, the rest are finalized.
         /// </summary>
         public void Clear()
@@ -281,35 +307,59 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
+        /// <summary>
+        /// Drops all entries and returns the cache-owned rent on each, so pages are disposed
+        /// deterministically instead of waiting for the finalizer.
+        /// Values are flagged removed-from-cache so a surviving holder re-adds with a fresh rent.
+        /// Callers must reset every state client afterwards, the entries are marked Removed and
+        /// fail the clients' lookup handles.
+        /// </summary>
+        public void ClearAndReturnRents()
+        {
+            lock (m_queueLock)
+            {
+                DrainQueueOnDispose(m_smallQueue);
+                DrainQueueOnDispose(m_mainQueue);
+                m_cache.Clear();
+                m_ghostQueue.Clear();
+                m_ghostKeys.Clear();
+                m_smallStaleCount = 0;
+                m_mainStaleCount = 0;
+                Volatile.Write(ref m_count, 0);
+            }
+        }
+
         public void Delete(in long key)
         {
             if (m_cache.TryGetValue(key, out var entry))
             {
-                lock (entry)
-                {
-                    if (entry.Removed)
-                    {
-                        return;
-                    }
-                    // Write Removed before Return so lock-free readers see it once a rent fails.
-                    Volatile.Write(ref entry.Removed, true);
-                    if (m_cache.TryRemove(key, out _))
-                    {
-                        entry.Value.Return();
-                        Interlocked.Decrement(ref m_count);
-                    }
-                }
-                // The ring buffer cannot remove from the middle, so the slot stays behind as
-                // stale and the scan skips it. Track the count so cleanup can compact later.
+                // One hold over both locks, split phases let the scan consume a stale count
+                // this delete had not published yet, understating the live queue length.
                 lock (m_queueLock)
                 {
-                    if (entry.Location == S3FifoQueueLocation.Small)
+                    lock (entry)
                     {
-                        m_smallStaleCount++;
-                    }
-                    else if (entry.Location == S3FifoQueueLocation.Main)
-                    {
-                        m_mainStaleCount++;
+                        if (entry.Removed)
+                        {
+                            return;
+                        }
+                        // Write Removed before Return so lock-free readers see it once a rent fails.
+                        Volatile.Write(ref entry.Removed, true);
+                        if (m_cache.TryRemove(key, out _))
+                        {
+                            entry.Value.Return();
+                            Interlocked.Decrement(ref m_count);
+                        }
+                        // The ring buffer cannot remove from the middle, so the slot stays behind as
+                        // stale and the scan skips it. Track the count so cleanup can compact later.
+                        if (entry.Location == S3FifoQueueLocation.Small)
+                        {
+                            m_smallStaleCount++;
+                        }
+                        else if (entry.Location == S3FifoQueueLocation.Main)
+                        {
+                            m_mainStaleCount++;
+                        }
                     }
                 }
             }
@@ -433,7 +483,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         internal void ResumeEviction()
         {
-            _fullLock.Release();
+            try
+            {
+                _fullLock.Release();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Dispose won the race against an in-flight commit's resume, nothing left to release.
+            }
         }
 
         public bool Add(long key, ICacheObject value, ICacheEvictHandler evictHandler)
@@ -573,7 +630,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             bool isCleanup = false;
             if (currentCount <= cleanupStartLocal)
             {
-                var cacheHitsLocal = TotalCacheHits();
+                // Fast-path hits included, a stream reading only through client lookup tables
+                // is active and must not be deep-cleaned as idle.
+                var cacheHitsLocal = TotalCacheHits() + ExternalCacheHits();
                 if (m_lastSeenCacheHits == cacheHitsLocal)
                 {
                     m_sameCacheHitsCount++;
@@ -668,6 +727,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             // Add and Delete are not stalled. Selected victims are dequeued and owned here.
             var victims = new List<EvictionCandidate>();
             var drainSmallQueueOnly = toBeRemovedCount <= 0;
+            // Readers can re-pump frequencies between chunks, at correlation window 0 faster than
+            // the scan drains them, so the whole pass gets a finite budget on top of the per-hold one.
+            var passBudget = ((long)m_smallQueue.Count + m_mainQueue.Count) * (S3FifoCacheEntry.MaxFrequency + 1) + SelectionOperationBudget;
             while (true)
             {
                 bool finished;
@@ -682,6 +744,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     break;
                 }
+                passBudget -= SelectionOperationBudget;
+                if (passBudget <= 0)
+                {
+                    // Proceed with the victims found so far, the next pass continues the drain.
+                    break;
+                }
+                // An immediate retake wins the unfair monitor race, yield so parked writers get a window.
+                Thread.Yield();
             }
 
             if (victims.Count == 0)
@@ -800,48 +870,57 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             if (requeueToSmall != null || requeueToMain != null || ghostInserts != null)
             {
-                lock (m_queueLock)
+                // Chunked like selection, one hold proportional to the batch stalls Add and Delete.
+                int smallIndex = 0;
+                int mainIndex = 0;
+                int ghostIndex = 0;
+                while (true)
                 {
-                    if (requeueToSmall != null)
+                    lock (m_queueLock)
                     {
-                        foreach (var entry in requeueToSmall)
+                        var operationBudget = SelectionOperationBudget;
+                        while (requeueToSmall != null && smallIndex < requeueToSmall.Count && operationBudget > 0)
                         {
+                            operationBudget--;
+                            var entry = requeueToSmall[smallIndex++];
                             lock (entry)
                             {
                                 // Deleted after the removal phase kept it, enqueuing it would
                                 // resurrect a dead slot with no stale count.
-                                if (entry.Removed)
+                                if (!entry.Removed)
                                 {
-                                    continue;
+                                    entry.Location = S3FifoQueueLocation.Small;
+                                    m_smallQueue.Enqueue(entry);
                                 }
-                                entry.Location = S3FifoQueueLocation.Small;
-                                m_smallQueue.Enqueue(entry);
                             }
                         }
-                    }
-                    if (requeueToMain != null)
-                    {
-                        foreach (var entry in requeueToMain)
+                        while (requeueToMain != null && mainIndex < requeueToMain.Count && operationBudget > 0)
                         {
+                            operationBudget--;
+                            var entry = requeueToMain[mainIndex++];
                             lock (entry)
                             {
                                 // Same delete race as the small requeue above.
-                                if (entry.Removed)
+                                if (!entry.Removed)
                                 {
-                                    continue;
+                                    entry.Location = S3FifoQueueLocation.Main;
+                                    m_mainQueue.Enqueue(entry);
                                 }
-                                entry.Location = S3FifoQueueLocation.Main;
-                                m_mainQueue.Enqueue(entry);
                             }
                         }
-                    }
-                    if (ghostInserts != null)
-                    {
-                        foreach (var key in ghostInserts)
+                        while (ghostInserts != null && ghostIndex < ghostInserts.Count && operationBudget > 0)
                         {
-                            AddToGhost(key);
+                            operationBudget--;
+                            AddToGhost(ghostInserts[ghostIndex++], ref operationBudget);
                         }
                     }
+                    if ((requeueToSmall == null || smallIndex >= requeueToSmall.Count)
+                        && (requeueToMain == null || mainIndex >= requeueToMain.Count)
+                        && (ghostInserts == null || ghostIndex >= ghostInserts.Count))
+                    {
+                        break;
+                    }
+                    Thread.Yield();
                 }
             }
 
@@ -1021,15 +1100,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         /// <summary>
         /// Must be called under the queue lock.
+        /// The trim is bounded by the budget, a shrink can drop the capacity by the whole
+        /// queue at once and the leftover excess trims on later inserts.
         /// </summary>
-        private void AddToGhost(long key)
+        private void AddToGhost(long key, ref int operationBudget)
         {
             var sequence = ++m_ghostSequence;
             m_ghostKeys[key] = sequence;
             m_ghostQueue.Enqueue(new GhostRecord(key, sequence));
             var capacity = GhostCapacity();
-            while (m_ghostQueue.Count > capacity)
+            while (m_ghostQueue.Count > capacity && operationBudget > 0)
             {
+                operationBudget--;
                 var oldest = m_ghostQueue.Dequeue();
                 if (m_ghostKeys.TryGetValue(oldest.Key, out var storedSequence) && storedSequence == oldest.Sequence)
                 {
@@ -1055,35 +1137,64 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     return;
                 }
-                CompactQueue(m_smallQueue);
-                CompactQueue(m_mainQueue);
-                m_smallStaleCount = 0;
-                m_mainStaleCount = 0;
             }
+            CompactQueue(m_smallQueue, small: true);
+            CompactQueue(m_mainQueue, small: false);
         }
 
         /// <summary>
-        /// Removes stale (deleted) slots from a queue while preserving FIFO order.
-        /// Must be called under the queue lock.
+        /// Removes stale (deleted) slots from a queue, chunked under the selection budget so a
+        /// large compaction does not stall Add and Delete for its whole duration.
+        /// Adds landing between chunks interleave with re-enqueued survivors, that FIFO drift
+        /// during a rare compaction is accepted. The stale counters are decremented per dropped
+        /// slot, a reset would lose counts published while the compaction is in flight.
         /// </summary>
-        private static void CompactQueue(Queue<S3FifoCacheEntry> queue)
+        private void CompactQueue(Queue<S3FifoCacheEntry> queue, bool small)
         {
-            var count = queue.Count;
-            for (int i = 0; i < count; i++)
+            int remaining;
+            lock (m_queueLock)
             {
-                var entry = queue.Dequeue();
-                bool removed;
-                lock (entry)
+                remaining = queue.Count;
+            }
+            while (remaining > 0)
+            {
+                lock (m_queueLock)
                 {
-                    removed = entry.Removed;
+                    // remaining is an upper bound, a concurrent test-driven cleanup pass can
+                    // drain the queue between chunks, so it is clamped to the live count.
+                    remaining = Math.Min(remaining, queue.Count);
+                    var operationBudget = SelectionOperationBudget;
+                    while (remaining > 0 && operationBudget > 0)
+                    {
+                        operationBudget--;
+                        remaining--;
+                        var entry = queue.Dequeue();
+                        // Removed is written under the queue lock in Delete and dequeued victims
+                        // never re-enter the queues, so a volatile read is enough here.
+                        if (!Volatile.Read(ref entry.Removed))
+                        {
+                            queue.Enqueue(entry);
+                        }
+                        else
+                        {
+                            entry.Location = S3FifoQueueLocation.None;
+                            if (small)
+                            {
+                                if (m_smallStaleCount > 0)
+                                {
+                                    m_smallStaleCount--;
+                                }
+                            }
+                            else if (m_mainStaleCount > 0)
+                            {
+                                m_mainStaleCount--;
+                            }
+                        }
+                    }
                 }
-                if (!removed)
+                if (remaining > 0)
                 {
-                    queue.Enqueue(entry);
-                }
-                else
-                {
-                    entry.Location = S3FifoQueueLocation.None;
+                    Thread.Yield();
                 }
             }
         }
@@ -1156,6 +1267,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (!entry.Removed)
                     {
                         Volatile.Write(ref entry.Removed, true);
+                        // Flagged before the dictionary removal so a racing re-add takes a new rent.
+                        entry.Value.RemovedFromCache = true;
                         m_cache.TryRemove(entry.Key, out _);
                         entry.Value.Return();
                         Interlocked.Decrement(ref m_count);

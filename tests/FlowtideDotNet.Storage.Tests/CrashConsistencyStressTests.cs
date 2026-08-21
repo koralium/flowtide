@@ -26,9 +26,9 @@ namespace FlowtideDotNet.Storage.Tests
 {
     /// <summary>
     /// Crash-consistency harness for the page cache under maximal eviction.
-    /// A B+ tree evicts every page while a dedicated evictor thread races Commit and Checkpoint.
+    /// A B+ tree evicts every page while a dedicated evictor thread races Checkpoint.
     /// After each crash the recovered tree must exactly equal the last checkpoint.
-    /// The crashGate serializes eviction against the crash and verify phase.
+    /// The crashGate serializes eviction against the commit, crash and verify phases.
     /// </summary>
     public class CrashConsistencyStressTests
     {
@@ -165,16 +165,26 @@ namespace FlowtideDotNet.Storage.Tests
                 var choice = rnd.Next(3);
                 if (choice != 0)
                 {
-                    // Checkpoint, commit tree pages and take a checkpoint. The evictor races this.
+                    // Commit tree pages and take a checkpoint. The evictor races the checkpoint
+                    // but not the commit, production pauses eviction for a commit through a gate
+                    // ForceCleanup bypasses, so the crashGate stands in for it here.
                     // Commit throwing Segment not found is a corruption failure and must propagate,
                     // a transient segment-writer file error is retried once.
+                    await crashGate.WaitAsync();
                     try
                     {
-                        await tree.Commit();
+                        try
+                        {
+                            await tree.Commit();
+                        }
+                        catch (Exception e) when (e.ToString().Contains("FileCacheSegmentWriter"))
+                        {
+                            await tree.Commit();
+                        }
                     }
-                    catch (Exception e) when (e.ToString().Contains("FileCacheSegmentWriter"))
+                    finally
                     {
-                        await tree.Commit();
+                        crashGate.Release();
                     }
                     await stateManager.CheckpointAsync();
                     committed = new Dictionary<long, long>(live);
