@@ -239,11 +239,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// A stopped distributed stream can be started again on the SAME instance, resuming
-        /// from its state, and data added after the restart flows through, which also
-        /// verifies that the internal trigger tick loop survives a stop and restart.
-        /// </summary>
-        /// <summary>
         /// A distributed stop should not wait the interval either.
         /// </summary>
         [Fact]
@@ -293,6 +288,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 $"The distributed stop took {sw.Elapsed.TotalSeconds:F1}s with a 30s minimum checkpoint interval and a 5s drain timeout, a drain cycle was clamped to the interval.");
         }
 
+        /// <summary>
+        /// A stopped distributed stream can be started again on the SAME instance, resuming
+        /// from its state, and data added after the restart flows through, which also
+        /// verifies that the internal trigger tick loop survives a stop and restart.
+        /// </summary>
         [Fact]
         public async Task StopThenStartSameInstanceResumes()
         {
