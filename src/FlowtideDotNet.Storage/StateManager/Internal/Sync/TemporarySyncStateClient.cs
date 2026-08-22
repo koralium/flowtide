@@ -86,9 +86,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return baseClient.WaitForNotFullAsync();
         }
 
-        public void Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+        public bool Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
         {
-            baseClient.Evict(valuesToEvict, isCleanup);
+            return baseClient.Evict(valuesToEvict, isCleanup);
         }
 
         public Task InitializeSerializerAsync()

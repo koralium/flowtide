@@ -38,6 +38,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly IMemoryAllocator memoryAllocator;
         private readonly Dictionary<long, long> m_modified;
         private readonly object m_lock = new object();
+
+        /// <summary>
+        /// Serializes this client's Commit against its Evict, both go through the same
+        /// non-thread-safe value serializer and file-cache version state.
+        /// Never disposed, a commit still in flight during teardown must be able to release it.
+        /// </summary>
+        private readonly SemaphoreSlim m_commitEvictLock = new SemaphoreSlim(1, 1);
         private readonly FlowtideDotNet.Storage.FileCache.IFileCache m_fileCache;
         private readonly ConcurrentDictionary<long, long> m_fileCacheVersion;
 
@@ -171,20 +178,31 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return stateManager.WaitForNotFullAsync();
         }
 
+        internal override Task PauseCommitsAsync()
+        {
+            return m_commitEvictLock.WaitAsync();
+        }
+
+        internal override void ResumeCommits()
+        {
+            m_commitEvictLock.Release();
+        }
+
         public async ValueTask Commit()
         {
             Debug.Assert(options.ValueSerializer != null);
 
             // Eviction serializes pages through the same value serializer this commit uses.
-            // Pause it for the commit so a concurrent eviction cannot corrupt the persisted bytes.
-            await stateManager.PauseEvictionAsync();
+            // Exclusion is per client: the eviction pass declines this client's batch while
+            // the commit holds the lock, other clients' commits and evictions proceed freely.
+            await m_commitEvictLock.WaitAsync();
             try
             {
                 await CommitInternal();
             }
             finally
             {
-                stateManager.ResumeEviction();
+                m_commitEvictLock.Release();
             }
         }
 
@@ -461,7 +479,27 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        public void Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+        public bool Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+        {
+            Debug.Assert(options.ValueSerializer != null);
+            // Declined while this client's commit is in flight, the table requeues the victims
+            // and a later pass retries them, so the eviction pass never stalls behind commit I/O.
+            if (!m_commitEvictLock.Wait(0))
+            {
+                return false;
+            }
+            try
+            {
+                EvictInternal(valuesToEvict, isCleanup);
+            }
+            finally
+            {
+                m_commitEvictLock.Release();
+            }
+            return true;
+        }
+
+        private void EvictInternal(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
         {
             Debug.Assert(options.ValueSerializer != null);
             foreach (var value in valuesToEvict)

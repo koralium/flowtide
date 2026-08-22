@@ -219,7 +219,7 @@ namespace FlowtideDotNet.Storage.StateManager
         }
 
         /// <summary>
-        /// Pauses the background eviction task so a commit or recovery does not race an eviction.
+        /// Pauses the background eviction task so recovery does not race an eviction.
         /// Must be paired with ResumeEviction in a finally block.
         /// </summary>
         internal Task PauseEvictionAsync()
@@ -468,8 +468,19 @@ namespace FlowtideDotNet.Storage.StateManager
             // Pause eviction for the whole reset. An in-flight eviction could otherwise write a
             // stale page after the reset and route later reads to it.
             await PauseEvictionAsync();
+            // Drain in-flight client commits and hold new ones out for the whole reset.
+            // A detached parallel-mode checkpoint commit is not joined by the engine's
+            // block-completion wait, and one overlapping the revert would persist
+            // aborted-epoch pages into the recovered store.
+            var pausedClients = new List<StateClient>();
             try
             {
+                foreach (var stateClient in _stateClients)
+                {
+                    await stateClient.Value.PauseCommitsAsync();
+                    pausedClients.Add(stateClient.Value);
+                }
+
                 // Returns the cache rents, the clients are reset below so no lookup handle
                 // keeps serving a cleared entry.
                 m_cacheTable.ClearAndReturnRents();
@@ -510,6 +521,10 @@ namespace FlowtideDotNet.Storage.StateManager
             }
             finally
             {
+                foreach (var pausedClient in pausedClients)
+                {
+                    pausedClient.ResumeCommits();
+                }
                 ResumeEviction();
             }
 

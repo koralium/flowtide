@@ -16,5 +16,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         public abstract void Dispose();
         public abstract ValueTask Reset(bool clearMetadata);
         public abstract long MetadataId { get; }
+
+        /// <summary>
+        /// Blocks this client's commits until ResumeCommits, draining an in-flight one first.
+        /// Recovery holds it across the whole reset, a commit overlapping the revert would
+        /// persist aborted-epoch pages into the recovered store.
+        /// Base is a no-op for clients whose commits do not race recovery.
+        /// </summary>
+        internal virtual Task PauseCommitsAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        internal virtual void ResumeCommits()
+        {
+        }
     }
 }

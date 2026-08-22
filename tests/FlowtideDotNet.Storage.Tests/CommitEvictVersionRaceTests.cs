@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
@@ -23,9 +24,10 @@ using Xunit;
 namespace FlowtideDotNet.Storage.Tests
 {
     /// <summary>
-    /// Reproduces the Commit vs Evict version race deterministically.
-    /// An eviction that straddles a commit leaves a version entry that collides with the next
-    /// interval, so the dedup skips serializing a modified page and it is lost.
+    /// Commit vs Evict interaction tests.
+    /// The per-client lock must keep a commit and this client's eviction from overlapping,
+    /// and no interleaving may lose a written page or leave a version entry pointing at
+    /// freed spill data.
     /// </summary>
     public class CommitEvictVersionRaceTests
     {
@@ -302,16 +304,20 @@ namespace FlowtideDotNet.Storage.Tests
             var key = client.GetNewPageId();
             client.AddOrUpdate(key, new TestPage(1));
 
-            // Freeze the eviction between writing its spill and recording the version entry,
-            // run a full commit through the window, then let the eviction finish.
+            // Freeze the eviction right after its spill write and start a commit against it.
+            // The per-client lock must hold the commit back until the eviction finishes, a
+            // commit running through the window would share the non-thread-safe serializer.
             var gate = new ManualResetEventSlim(false);
             var fileCache = factory.Created.Single();
             fileCache.ArmGateAfterWrite(gate);
             var cleanup = Task.Run(() => manager.CacheTable.ForceCleanup());
             await fileCache.WaitForBlockedWriterAsync();
-            await client.Commit();
+            var commit = client.Commit().AsTask();
+            await Task.Delay(100);
+            Assert.False(commit.IsCompleted, "commit ran while this client's eviction was still in flight");
             gate.Set();
             await cleanup;
+            await commit;
 
             // The page must be readable, from a live spill or from persistent storage.
             // A version entry pointing at freed data throws Segment not found.
@@ -352,17 +358,20 @@ namespace FlowtideDotNet.Storage.Tests
             var key = client.GetNewPageId();
             client.AddOrUpdate(key, new TestPage(1));
 
-            // Freeze the eviction inside its spill write, run a full commit through the
-            // window, then let the eviction finish. The eviction now records a version
-            // entry that survived the commit.
+            // Freeze the eviction inside its spill write and start a commit against it.
+            // The per-client lock holds the commit back until the eviction finishes, so the
+            // eviction's version bookkeeping is complete before the commit clears it.
             var gate = new ManualResetEventSlim(false);
             var fileCache = factory.Created.Single();
             fileCache.ArmGate(gate);
             var cleanup = Task.Run(() => manager.CacheTable.ForceCleanup());
             await fileCache.WaitForBlockedWriterAsync();
-            await client.Commit();
+            var commit = client.Commit().AsTask();
+            await Task.Delay(100);
+            Assert.False(commit.IsCompleted, "commit ran while this client's eviction was still in flight");
             gate.Set();
             await cleanup;
+            await commit;
 
             // Next commit interval, reload the page and modify it once.
             var reloaded = await client.GetValue(key);
@@ -386,8 +395,8 @@ namespace FlowtideDotNet.Storage.Tests
         /// <summary>
         /// A commit and a background eviction both serialize pages through the same client
         /// serializer, which is not thread-safe. Under CachePageCount 0 the eviction task runs
-        /// constantly, so without pausing eviction the two corrupt the persisted bytes.
-        /// The commit must pause eviction so the serializer is never used concurrently.
+        /// constantly, so without exclusion the two corrupt the persisted bytes.
+        /// The per-client commit lock must keep the serializer from ever being used concurrently.
         /// </summary>
         [Fact]
         public async Task CommitAndBackgroundEvictionNeverSerializeConcurrently()
@@ -414,7 +423,7 @@ namespace FlowtideDotNet.Storage.Tests
 
             // Held pages keep an extra rent so they stay cached and every commit serializes them,
             // while throwaway pages keep the eviction task serializing victims.
-            // Without the pause the two overlap.
+            // Without the exclusion the two overlap.
             var held = new List<(long key, TestPage page)>();
             for (int i = 0; i < 16; i++)
             {
@@ -445,6 +454,143 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 page.Return();
             }
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Wraps a persistent session so a test can freeze a commit inside its page write.
+        /// </summary>
+        private class GatedPersistentSession : IPersistentStorageSession
+        {
+            private readonly IPersistentStorageSession _inner;
+            private readonly SemaphoreSlim _writerBlocked = new SemaphoreSlim(0);
+            private ManualResetEventSlim? _gate;
+
+            public GatedPersistentSession(IPersistentStorageSession inner)
+            {
+                _inner = inner;
+            }
+
+            public void ArmGate(ManualResetEventSlim gate)
+            {
+                Volatile.Write(ref _gate, gate);
+            }
+
+            public Task WaitForBlockedWriterAsync()
+            {
+                return _writerBlocked.WaitAsync();
+            }
+
+            public Task Write(long key, SerializableObject value)
+            {
+                var gate = Interlocked.Exchange(ref _gate, null);
+                if (gate != null)
+                {
+                    _writerBlocked.Release();
+                    gate.Wait();
+                }
+                return _inner.Write(key, value);
+            }
+
+            public ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer)
+                where T : ICacheObject => _inner.Read(key, stateSerializer);
+
+            public ValueTask<ReadOnlyMemory<byte>> Read(long key) => _inner.Read(key);
+
+            public Task Delete(long key) => _inner.Delete(key);
+
+            public Task Commit() => _inner.Commit();
+
+            public void Dispose() => _inner.Dispose();
+        }
+
+        private class GatedPersistentStorage : IPersistentStorage
+        {
+            private readonly IPersistentStorage _inner;
+
+            public GatedPersistentStorage(IPersistentStorage inner)
+            {
+                _inner = inner;
+            }
+
+            public List<GatedPersistentSession> Sessions { get; } = new List<GatedPersistentSession>();
+
+            public IPersistentStorageSession CreateSession()
+            {
+                var session = new GatedPersistentSession(_inner.CreateSession());
+                lock (Sessions)
+                {
+                    Sessions.Add(session);
+                }
+                return session;
+            }
+
+            public long CurrentVersion => _inner.CurrentVersion;
+
+            public Task InitializeAsync(StorageInitializationMetadata metadata) => _inner.InitializeAsync(metadata);
+
+            public ValueTask CheckpointAsync(byte[] metadata, bool includeIndex) => _inner.CheckpointAsync(metadata, includeIndex);
+
+            public ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount) => _inner.CompactAsync(changesSinceLastCompact, pageCount);
+
+            public ValueTask ResetAsync() => _inner.ResetAsync();
+
+            public ValueTask RecoverAsync(long checkpointVersion) => _inner.RecoverAsync(checkpointVersion);
+
+            public bool TryGetValue(long key, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out ReadOnlyMemory<byte>? value) => _inner.TryGetValue(key, out value);
+
+            public ValueTask Write(long key, byte[] value) => _inner.Write(key, value);
+
+            public void ClearForRestore() => _inner.ClearForRestore();
+
+            public void Dispose() => _inner.Dispose();
+        }
+
+        /// <summary>
+        /// A parallel-mode checkpoint commit runs on a detached task the engine's teardown does
+        /// not join, so recovery itself must drain in-flight commits. Overlapping the revert
+        /// with a live commit would persist aborted-epoch pages into the recovered store.
+        /// </summary>
+        [Fact]
+        public async Task RecoveryWaitsForInFlightClientCommit()
+        {
+            var persist = new GatedPersistentStorage(new FileCachePersistentStorage(new FileCacheOptions()
+            {
+                DirectoryPath = "./commitRecoveryDrain"
+            }));
+            var options = new StateManagerOptions()
+            {
+                PersistentStorage = persist,
+                CachePageCount = 0,
+                MinCachePageCount = 0
+            };
+            var manager = new StateManagerSync<StateManagerMetadata>(options, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmpRecoveryDrain"), "test", GlobalMemoryManager.Instance);
+            await manager.InitializeAsync();
+            await manager.CacheTable.StopCleanupTask();
+
+            var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
+                "client",
+                new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
+                GlobalMemoryManager.Instance);
+
+            var key = client.GetNewPageId();
+            client.AddOrUpdate(key, new TestPage(1));
+
+            // Freeze the commit inside its persistent page write, off the test thread since the
+            // gate blocks synchronously, then start a recovery against it.
+            var gate = new ManualResetEventSlim(false);
+            var session = persist.Sessions.Single();
+            session.ArmGate(gate);
+            var commit = Task.Run(() => client.Commit().AsTask());
+            await session.WaitForBlockedWriterAsync();
+
+            var recovery = Task.Run(() => manager.InitializeAsync());
+            await Task.Delay(150);
+            Assert.False(recovery.IsCompleted, "recovery ran while a client commit was still in flight");
+
+            gate.Set();
+            await commit;
+            await recovery;
             manager.Dispose();
         }
     }

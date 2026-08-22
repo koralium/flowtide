@@ -470,11 +470,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Blocks the background eviction task until ResumeEviction is called.
-        /// A commit and an eviction serialize pages through the same client serializer, which is
-        /// not thread-safe, so a concurrent serialize corrupts the persisted bytes.
-        /// Recovery also clears the cache that an in-flight eviction would write through.
+        /// Blocks the background eviction task until ResumeEviction is called, used by recovery,
+        /// which clears the cache that an in-flight eviction would write through.
         /// Uses the lock the cleanup task holds, so acquiring it drains any in-flight eviction.
+        /// Commit versus eviction exclusion is per client, see SyncStateClient.
         /// </summary>
         internal Task PauseEvictionAsync()
         {
@@ -770,14 +769,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 list.Add((candidate.Entry, candidate.Version));
             }
 
-            List<Task> evictTasks = new List<Task>();
+            List<Task<bool>> evictTasks = new List<Task<bool>>();
             List<List<(S3FifoCacheEntry, long)>> evictTaskGroups = new List<List<(S3FifoCacheEntry, long)>>();
             foreach (var group in groupedValues)
             {
                 evictTaskGroups.Add(group.Value);
                 evictTasks.Add(Task.Factory.StartNew(() =>
                 {
-                    group.Key.Evict(group.Value, isCleanup);
+                    return group.Key.Evict(group.Value, isCleanup);
                 }));
             }
 
@@ -791,20 +790,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 evictException = e;
             }
 
+            // A failed evict handler did not serialize its victims and a declining one skipped
+            // them (its commit is in flight), so keep both cached. Collect them here so they go
+            // back into their queues and are retried later.
             HashSet<S3FifoCacheEntry>? failedVictims = null;
-            if (evictException != null)
+            for (int i = 0; i < evictTasks.Count; i++)
             {
-                // A failed evict handler did not serialize its victims, so keep them cached.
-                // Collect them here so they go back into their queues and are retried later.
-                failedVictims = new HashSet<S3FifoCacheEntry>();
-                for (int i = 0; i < evictTasks.Count; i++)
+                if (!evictTasks[i].IsCompletedSuccessfully || !evictTasks[i].Result)
                 {
-                    if (!evictTasks[i].IsCompletedSuccessfully)
+                    failedVictims ??= new HashSet<S3FifoCacheEntry>();
+                    foreach (var value in evictTaskGroups[i])
                     {
-                        foreach (var value in evictTaskGroups[i])
-                        {
-                            failedVictims.Add(value.Item1);
-                        }
+                        failedVictims.Add(value.Item1);
                     }
                 }
             }

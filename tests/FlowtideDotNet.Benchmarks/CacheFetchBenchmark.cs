@@ -72,8 +72,9 @@ namespace FlowtideDotNet.Benchmarks
 
         private sealed class NoopEvictHandler : ICacheEvictHandler
         {
-            public void Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+            public bool Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
             {
+                return true;
             }
         }
 
