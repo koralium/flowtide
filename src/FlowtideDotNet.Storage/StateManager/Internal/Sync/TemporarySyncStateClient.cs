@@ -53,6 +53,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public ValueTask Commit()
         {
+            // Temporary state is never persisted. With no commits the inherited PauseCommitsAsync
+            // no-op is correct, forwarding it would double-acquire the base client's lock.
             return ValueTask.CompletedTask;
         }
 
