@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         [Fact]
-        public async Task GhostHitOnReAddGoesDirectlyToMainQueue()
+        public async Task GhostHitRoutesByRecordedReuse()
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
             var handler = new TestEvictHandler();
@@ -81,19 +81,36 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
+            // Key 0 counts one reuse before eviction, key 1 none.
+            Assert.True(table.TryGetValue(0, out var hit));
+            hit!.Return();
             await table.ForceCleanup();
             Assert.True(table.IsInGhostForTests(0));
+            Assert.True(table.IsInGhostForTests(1));
 
-            // Key 0 was recently evicted from the small queue, a re-add goes to main.
+            // One counted reuse plus the re-reference is two events, straight to main.
             table.Add(0, new TestCacheObject(0), handler);
             Assert.True(table.TryPeekEntryForTests(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
             Assert.False(table.IsInGhostForTests(0));
 
-            // A brand new key still goes to the small queue.
+            // No counted reuse, the re-reference is the first event and is banked as frequency.
+            table.Add(1, new TestCacheObject(1), handler);
+            Assert.True(table.TryPeekEntryForTests(1, out var coldEntry));
+            Assert.Equal(S3FifoQueueLocation.Small, coldEntry.Location);
+            Assert.Equal(1, coldEntry.Frequency);
+            Assert.False(table.IsInGhostForTests(1));
+
+            // One counted hit completes the banked pair, frequency 2 is what the scan promotes on.
+            Assert.True(table.TryGetValue(1, out var pairHit));
+            pairHit!.Return();
+            Assert.Equal(2, coldEntry.Frequency);
+
+            // A brand new key still goes to the small queue with nothing banked.
             table.Add(100, new TestCacheObject(100), handler);
             Assert.True(table.TryPeekEntryForTests(100, out var freshEntry));
             Assert.Equal(S3FifoQueueLocation.Small, freshEntry.Location);
+            Assert.Equal(0, freshEntry.Frequency);
         }
 
         [Fact]
@@ -131,7 +148,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         [Fact]
-        public async Task EntryAccessedOnceIsPromotedFromSmallQueue()
+        public async Task EntryAccessedOnceIsNotPromotedFromSmallQueue()
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
             var handler = new TestEvictHandler();
@@ -139,16 +156,15 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // One counted access is a real reuse signal and promotes, saving the page the
-            // ghost round trip. The next-oldest entries are evicted instead.
+            // One counted access is only the first reuse event, main admission needs two.
+            // The page leaves through the ghost queue with the reuse recorded instead.
             Assert.True(table.TryGetValue(0, out var cacheObject));
             cacheObject!.Return();
 
             await table.ForceCleanup();
 
-            Assert.DoesNotContain(0, handler.EvictedKeys);
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
-            Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
+            Assert.Contains(0, handler.EvictedKeys);
+            Assert.True(table.IsInGhostForTests(0));
         }
 
         [Fact]
@@ -203,15 +219,22 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
             var handler = new TestEvictHandler();
             var objects = new TestCacheObject[50];
-            for (var i = 0; i < 50; i++)
+            for (var i = 0; i < 48; i++)
             {
                 objects[i] = new TestCacheObject(i);
                 table.Add(i, objects[i], handler);
             }
-            // A counted hit on the head, it must be promoted instead of drained out.
-            // It also keeps the cache off the idle path, which owns the no-hits case.
+            // Two counted hits on the head in separate windows, it must be promoted instead
+            // of drained out. The hits also keep the cache off the idle path.
             Assert.True(table.TryGetValue(0, out var head));
             head!.Return();
+            for (var i = 48; i < 50; i++)
+            {
+                objects[i] = new TestCacheObject(i);
+                table.Add(i, objects[i], handler);
+            }
+            Assert.True(table.TryGetValue(0, out var headAgain));
+            headAgain!.Return();
 
             await table.ForceCleanup();
 
@@ -246,32 +269,38 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
             var handler = new TestEvictHandler();
-            for (var i = 0; i < 50; i++)
+            for (var i = 0; i < 48; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
             Assert.True(table.TryGetValue(0, out var firstHit));
             firstHit!.Return();
+            for (var i = 48; i < 50; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            Assert.True(table.TryGetValue(0, out var promotingHit));
+            promotingHit!.Return();
 
             await table.ForceCleanup();
             Assert.True(table.TryPeekEntryForTests(0, out var mainEntry));
             Assert.Equal(S3FifoQueueLocation.Main, mainEntry.Location);
 
-            // Refill the small queue past its target and earn key 0 a second counted hit,
-            // the 40 inserts age it well past the correlation window of 5.
+            // Refill the small queue past its target and earn key 0 a third counted hit,
+            // the 40 inserts age it well past the correlation window of 2.
             for (var i = 50; i < 90; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            Assert.True(table.TryGetValue(0, out var secondHit));
-            secondHit!.Return();
-            Assert.Equal(2, mainEntry.Frequency);
+            Assert.True(table.TryGetValue(0, out var thirdHit));
+            thirdHit!.Return();
+            Assert.Equal(3, mainEntry.Frequency);
             var evictedBefore = handler.Evictions.Count;
 
             await table.ForceCleanup();
 
             // A main queue scan would have spent a second chance and decremented the frequency.
-            Assert.Equal(2, mainEntry.Frequency);
+            Assert.Equal(3, mainEntry.Frequency);
             Assert.Equal(S3FifoQueueLocation.Main, mainEntry.Location);
             var counts = table.GetQueueCountsForTests();
             Assert.Equal(10, counts.SmallCount);
@@ -290,12 +319,18 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(100, minSize: 45);
             var handler = new TestEvictHandler();
-            for (var i = 0; i < 50; i++)
+            for (var i = 0; i < 48; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
             Assert.True(table.TryGetValue(0, out var head));
             head!.Return();
+            for (var i = 48; i < 50; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            Assert.True(table.TryGetValue(0, out var headAgain));
+            headAgain!.Return();
 
             await table.ForceCleanup();
 
@@ -346,12 +381,18 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             // under the threshold while the small queue is 600 over its target.
             using var table = await S3FifoTestHelpers.CreateStoppedTable(4000);
             var handler = new TestEvictHandler();
-            for (var i = 0; i < 1000; i++)
+            for (var i = 0; i < 900; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
             Assert.True(table.TryGetValue(0, out var head));
             head!.Return();
+            for (var i = 900; i < 1000; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            Assert.True(table.TryGetValue(0, out var headAgain));
+            headAgain!.Return();
 
             var acquisitionsBefore = table.SelectionLockAcquisitionsForTests;
             await table.ForceCleanup();
@@ -723,7 +764,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         /// with it. Held at its full size share the floor ends up filled with unproven small
         /// queue entries while the reused main queue pages, the ones the floor exists to keep,
         /// are the ones thrown away.
-        /// MaxSize 100 gives small target 10, threshold 70 and window 5, MinSize 10 is the
+        /// MaxSize 100 gives small target 10, threshold 70 and window 2, MinSize 10 is the
         /// deep clean target.
         /// </summary>
         [Fact]
@@ -735,12 +776,19 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // Keys 0..4 are reused outside the correlation window, so the drain below promotes
+            // Keys 0..4 count two reuses in separate windows, so the drain below promotes
             // them to the main queue instead of dropping them.
             for (var i = 0; i < 5; i++)
             {
                 Assert.True(table.TryGetValue(i, out var reused));
                 reused!.Return();
+            }
+            table.Add(50, new TestCacheObject(50), handler);
+            table.Add(51, new TestCacheObject(51), handler);
+            for (var i = 0; i < 5; i++)
+            {
+                Assert.True(table.TryGetValue(i, out var reusedAgain));
+                reusedAgain!.Return();
             }
 
             await table.ForceCleanup();

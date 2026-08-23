@@ -26,8 +26,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     ///
     /// A concurrent dictionary gives lock-free key lookup.
     /// A small FIFO queue takes new keys and filters one-hit wonders.
-    /// A main FIFO queue holds promoted entries and ghost re-admissions.
-    /// A ghost queue remembers keys recently evicted from the small queue.
+    /// A main FIFO queue holds entries that proved two reuse events, either two counted
+    /// hits or one counted hit plus a ghost re-reference.
+    /// A ghost queue remembers keys recently evicted from the small queue along with
+    /// whether they counted a reuse; a re-referenced key without one re-enters the small
+    /// queue with the re-reference banked as frequency.
     ///
     /// Reads never touch the queues, a hit only bumps the entry frequency.
     /// Queue maintenance happens on insert and in the background cleanup task.
@@ -92,8 +95,25 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly object m_queueLock = new object();
         private readonly Queue<S3FifoCacheEntry> m_smallQueue;
         private readonly Queue<S3FifoCacheEntry> m_mainQueue;
+        private readonly struct GhostValue
+        {
+            public GhostValue(long sequence, bool reused)
+            {
+                Sequence = sequence;
+                Reused = reused;
+            }
+
+            public long Sequence { get; }
+
+            /// <summary>
+            /// The entry counted a reuse before it was evicted, so a re-reference is its
+            /// second reuse event and admits it straight to main.
+            /// </summary>
+            public bool Reused { get; }
+        }
+
         private readonly Queue<GhostRecord> m_ghostQueue;
-        private readonly Dictionary<long, long> m_ghostKeys;
+        private readonly Dictionary<long, GhostValue> m_ghostKeys;
         private readonly S3FifoCorrelationClock m_correlationClock = new S3FifoCorrelationClock();
         private long m_ghostSequence;
         private int m_smallStaleCount;
@@ -140,7 +160,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_smallQueue = new Queue<S3FifoCacheEntry>();
             m_mainQueue = new Queue<S3FifoCacheEntry>();
             m_ghostQueue = new Queue<GhostRecord>();
-            m_ghostKeys = new Dictionary<long, long>();
+            m_ghostKeys = new Dictionary<long, GhostValue>();
             this.maxSize = tableOptions.MaxSize;
             this.logger = tableOptions.Logger;
             this.meter = tableOptions.Meter;
@@ -536,14 +556,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         // The entry is already in the dictionary, so a hit can land before
                         // this stamp and count. The gap is tiny and the filter is a heuristic.
                         entry.SetCountStamp(m_correlationClock.NextSequence());
-                        if (m_ghostKeys.Remove(key))
+                        var inGhost = m_ghostKeys.Remove(key, out var ghostValue);
+                        if (inGhost && ghostValue.Reused)
                         {
-                            // Recently evicted from the small queue, admit directly to main.
+                            // A counted reuse before eviction plus this re-reference makes
+                            // the two events main admission requires.
                             entry.Location = S3FifoQueueLocation.Main;
                             m_mainQueue.Enqueue(entry);
                         }
                         else
                         {
+                            if (inGhost)
+                            {
+                                // Re-referenced but never counted a reuse while resident.
+                                // Bank this as the first event and let small ask for one more.
+                                Volatile.Write(ref entry.Frequency, 1);
+                            }
                             entry.Location = S3FifoQueueLocation.Small;
                             m_smallQueue.Enqueue(entry);
                         }
@@ -606,14 +634,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Correlation window width, five percent of the cache capacity.
+        /// Correlation window width, two and a half percent of the cache capacity.
         /// A hit must be this many insertions after the entrys insertion or last counted hit
-        /// to count as reuse. Integer division makes the window 0 for MaxSize below 20,
-        /// disabling the filter.
+        /// to count as reuse. Promotion needs two counted hits, so the window must fit about
+        /// four times in a small-queue residency (~10% of capacity) for hot pages to make it.
+        /// Integer division makes the window 0 for MaxSize below 40, disabling the filter.
         /// </summary>
         private int CorrelationWindowSize()
         {
-            return Volatile.Read(ref maxSize) / 20;
+            return Volatile.Read(ref maxSize) / 40;
         }
 
         private int GhostCapacity()
@@ -808,7 +837,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             List<S3FifoCacheEntry>? requeueToSmall = null;
             List<S3FifoCacheEntry>? requeueToMain = null;
-            List<long>? ghostInserts = null;
+            List<(long Key, bool Reused)>? ghostInserts = null;
             foreach (var candidate in victims)
             {
                 var entry = candidate.Entry;
@@ -858,7 +887,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         Interlocked.Decrement(ref m_count);
                         if (candidate.FromSmallQueue)
                         {
-                            (ghostInserts ??= new List<long>()).Add(entry.Key);
+                            // The reuse bit is read here rather than at selection, a hit landing
+                            // between the two still earns the entry its ghost credit.
+                            (ghostInserts ??= new List<(long, bool)>()).Add((entry.Key, Volatile.Read(ref entry.Frequency) >= 1));
                             m_smallQueueEvictions++;
                         }
                     }
@@ -908,7 +939,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         while (ghostInserts != null && ghostIndex < ghostInserts.Count && operationBudget > 0)
                         {
                             operationBudget--;
-                            AddToGhost(ghostInserts[ghostIndex++], ref operationBudget);
+                            var ghostInsert = ghostInserts[ghostIndex++];
+                            AddToGhost(ghostInsert.Key, ghostInsert.Reused, ref operationBudget);
                         }
                     }
                     if ((requeueToSmall == null || smallIndex >= requeueToSmall.Count)
@@ -1042,11 +1074,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         }
                         continue;
                     }
-                    if (Volatile.Read(ref entry.Frequency) > 0)
+                    if (Volatile.Read(ref entry.Frequency) > 1)
                     {
-                        // One counted hit promotes. With spaced counting a counted hit is a
-                        // real reuse signal, the insertion burst never counts, so promotion
-                        // here saves the page the ghost round trip and its extra miss.
+                        // Two counted hits promote, the same two-reuse-events bar as the ghost
+                        // path. A single counted hit leaves through the ghost queue with the
+                        // reuse recorded, so a re-reference completes the pair there.
                         entry.Location = S3FifoQueueLocation.Main;
                         m_mainQueue.Enqueue(entry);
                         m_smallQueuePromotions++;
@@ -1100,17 +1132,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// The trim is bounded by the budget, a shrink can drop the capacity by the whole
         /// queue at once and the leftover excess trims on later inserts.
         /// </summary>
-        private void AddToGhost(long key, ref int operationBudget)
+        private void AddToGhost(long key, bool reused, ref int operationBudget)
         {
             var sequence = ++m_ghostSequence;
-            m_ghostKeys[key] = sequence;
+            m_ghostKeys[key] = new GhostValue(sequence, reused);
             m_ghostQueue.Enqueue(new GhostRecord(key, sequence));
             var capacity = GhostCapacity();
             while (m_ghostQueue.Count > capacity && operationBudget > 0)
             {
                 operationBudget--;
                 var oldest = m_ghostQueue.Dequeue();
-                if (m_ghostKeys.TryGetValue(oldest.Key, out var storedSequence) && storedSequence == oldest.Sequence)
+                if (m_ghostKeys.TryGetValue(oldest.Key, out var storedValue) && storedValue.Sequence == oldest.Sequence)
                 {
                     // A live ghost membership ages out, this key was evicted and never
                     // re-admitted. Added once, never promoted, and now gone. A one-hit-wonder.

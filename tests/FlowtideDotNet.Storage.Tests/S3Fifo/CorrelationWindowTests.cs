@@ -42,12 +42,12 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         [Fact]
-        public async Task WindowIsFivePercentOfCacheSize()
+        public async Task WindowIsTwoAndAHalfPercentOfCacheSize()
         {
             using var large = await S3FifoTestHelpers.CreateStoppedTable(100);
-            Assert.Equal(5, large.CorrelationWindowSizeForTests);
+            Assert.Equal(2, large.CorrelationWindowSizeForTests);
 
-            // MaxSize below 20 gives window 0, so the filter is disabled.
+            // MaxSize below 40 gives window 0, so the filter is disabled.
             // This keeps small caches and the CachePageCount 0 config on the old behavior.
             using var tiny = await S3FifoTestHelpers.CreateStoppedTable(10);
             Assert.Equal(0, tiny.CorrelationWindowSizeForTests);
@@ -203,7 +203,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         /// <summary>
         /// The memory-adaptive resize recomputes maxSize from the allocation per entry.
         /// The window follows maxSize on both a shrink and a growth.
-        /// MaxSize 1000 gives window 50, the shrink drops it to 10 and the growth raises it to 20.
+        /// MaxSize 1000 gives window 25, the shrink drops it to 5 and the growth raises it to 10.
         /// </summary>
         [Fact]
         public async Task MemoryAdaptiveResizeUpdatesTheWindowInBothDirections()
@@ -218,7 +218,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             await table.StopCleanupTask();
             var handler = new TestEvictHandler();
 
-            Assert.Equal(50, table.CorrelationWindowSizeForTests);
+            Assert.Equal(25, table.CorrelationWindowSizeForTests);
 
             // Shrink, entries report as large so the budget fits fewer pages.
             long key = 0;
@@ -228,7 +228,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
             stats.AllocatedMemory = 701 * 32 * 1024;
             await table.ForceCleanup();
-            Assert.Equal(10, table.CorrelationWindowSizeForTests);
+            Assert.Equal(5, table.CorrelationWindowSizeForTests);
 
             // Growth, entries report as small so the budget fits more pages and the window
             // widens with the small queue target.
@@ -238,7 +238,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
             stats.AllocatedMemory = 200 * 16 * 1024;
             await table.ForceCleanup();
-            Assert.Equal(20, table.CorrelationWindowSizeForTests);
+            Assert.Equal(10, table.CorrelationWindowSizeForTests);
         }
 
         /// <summary>
