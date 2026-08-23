@@ -141,7 +141,8 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     MaxSize = options.CachePageCount,
                     MaxMemoryUsageInBytes = options.MaxProcessMemory,
-                    MinSize = options.MinCachePageCount
+                    MinSize = options.MinCachePageCount,
+                    DrainSmallQueueEarly = options.DrainSmallQueueEarly
                 });
             }
 

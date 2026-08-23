@@ -34,9 +34,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     ///
     /// Reads never touch the queues, a hit only bumps the entry frequency.
     /// Queue maintenance happens on insert and in the background cleanup task.
-    /// The cleanup task also holds the small queue at its target share while the cache is below
-    /// the eviction threshold, so a cache that never fills still promotes reused pages, still
-    /// fills the ghost queue, and does not save the whole small queue up for one huge batch.
+    /// The cleanup task ages the main queue every pass, paced by how much the cache turned over,
+    /// so a page there keeps its place only while it is still being read. Eviction then takes the
+    /// aged out head first, which lets the main queue shrink back and hand the space to the small
+    /// queue instead of holding a fixed share of the cache.
     /// Frequency uses spaced counting, a hit only counts when the entry aged past the
     /// correlation window since its insertion or last counted hit, so a burst counts as
     /// one reuse event, see S3FifoCorrelationClock.
@@ -635,11 +636,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return Math.Max(1, cacheSize / 10);
         }
 
-        /// <summary>
-        /// How far the small queue is over its target share, used when the cache as a whole is
-        /// still below the eviction threshold. The result caps an early drain, so a concurrent
-        /// add storm cannot keep one drain running.
-        /// </summary>
         private int SmallQueueOverflow(int currentCount)
         {
             // MinSize keeps pages resident to cut read latency, so a cache that is already at or
@@ -755,15 +751,21 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
             }
 
+            // Age the main queue whether or not this pass evicts. Aging is what makes a page
+            // earn its place over time, and it used to happen only as a side effect of scanning
+            // main for victims, which almost never ran.
+            AgeMainQueue(currentCount);
+
             var smallQueueOverflow = 0;
             if (toBeRemovedCount <= 0)
             {
                 CompactQueuesIfNeeded();
-                // The cache is below the eviction threshold, but the small queue is only meant to
-                // hold its ~10% share of the capacity. Drain the overflow early instead of waiting
-                // for the cache to fill, the head either earned promotion to main or goes out to
-                // the ghost queue. An idle cache never gets here, the no-hits check above returns
-                // first, so a quiet stream is not churned.
+                if (!tableOptions.DrainSmallQueueEarly)
+                {
+                    // Nothing to free. Evicting here would throw away capacity the cache was
+                    // configured to use, which costs far more than the queue shares are worth.
+                    return;
+                }
                 smallQueueOverflow = SmallQueueOverflow(currentCount);
                 if (smallQueueOverflow <= 0)
                 {
@@ -1044,13 +1046,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return true;
                 }
                 bool foundVictim;
-                if (liveSmall > smallTarget || liveMain <= 0)
+                // A main head that aged to zero spent every second chance and went MaxFrequency
+                // cache turnovers unused, which makes it a weaker page than the small queue head,
+                // and that one is at least recent. When main is still being read its head is
+                // never zero, so this never rotates a hot main queue looking for a victim.
+                if (MainHeadHasAgedOut() || liveSmall <= smallTarget)
                 {
-                    foundVictim = TryEvictOneFromSmall(victims, ref operationBudget) || TryEvictOneFromMain(victims, ref operationBudget);
+                    foundVictim = TryEvictOneFromMain(victims, ref operationBudget) || TryEvictOneFromSmall(victims, ref operationBudget);
                 }
                 else
                 {
-                    foundVictim = TryEvictOneFromMain(victims, ref operationBudget) || TryEvictOneFromSmall(victims, ref operationBudget);
+                    foundVictim = TryEvictOneFromSmall(victims, ref operationBudget) || TryEvictOneFromMain(victims, ref operationBudget);
                 }
                 if (!foundVictim && operationBudget > 0)
                 {
@@ -1061,27 +1067,27 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return true;
         }
 
-        /// <summary>
-        /// Drains the small queue head until it is back at its target size, used while the cache
-        /// is below the eviction threshold. The main queue is not scanned, there is no pressure
-        /// on the cache as a whole, only on the small queues share of it.
-        /// Must be called under the queue lock.
-        /// </summary>
-        /// <returns>
-        /// True when the drain is complete, false when the budget ran out and the caller
-        /// should reacquire the lock for another chunk.
-        /// </returns>
         private bool TrySelectSmallQueueOverflowVictims(List<EvictionCandidate> victims, int overflowCount, int operationBudget)
         {
             var smallTarget = SmallQueueTargetSize();
-            // Promotions shrink the queue without producing a victim, so both the victim count
-            // and the live count end the drain. The victim cap is the overflow measured before
-            // the drain started, so concurrent adds are left for the next pass.
-            while (victims.Count < overflowCount && (m_smallQueue.Count - m_smallStaleCount) > smallTarget)
+            while (victims.Count < overflowCount)
             {
                 if (operationBudget <= 0)
                 {
                     return false;
+                }
+                // Draining the small queue promotes its reused heads into main, so main grows
+                // here. Without taking its aged out pages too, main would only ever grow while
+                // the cache stays below the threshold, and it is those pages, unread for
+                // MainQueueTurnoversToAgeOut turnovers, that the drain should pay with first.
+                if (MainHeadHasAgedOut() && TryEvictOneFromMain(victims, ref operationBudget))
+                {
+                    continue;
+                }
+                if ((m_smallQueue.Count - m_smallStaleCount) <= smallTarget)
+                {
+                    // The small queue is back at its share and main has nothing aged out.
+                    return true;
                 }
                 if (!TryEvictOneFromSmall(victims, ref operationBudget))
                 {
@@ -1090,6 +1096,123 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
             }
             return true;
+        }
+
+        /// <summary>
+        /// How many cache turnovers a main queue page survives without being read again, which
+        /// falls out of losing one frequency point per turnover. A read earns a point back per
+        /// correlation window, and there are many of those per turnover, so a page still being
+        /// read stays saturated while an abandoned one drains.
+        /// </summary>
+        private const int MainQueueTurnoversToAgeOut = S3FifoCacheEntry.MaxFrequency;
+
+        /// <summary>
+        /// Max aging steps in one pass, so a large main queue cannot hold the queue lock while it
+        /// is swept. Whatever is left over is aged on the following passes.
+        /// </summary>
+        private const int AgingOperationBudget = 1024;
+
+        /// <summary>
+        /// Insertion count the last aging sweep ran at, and the sweep work carried over from it.
+        /// The sweep is paced by how much the cache turned over rather than by wall clock, so a
+        /// quiet stream does not age its own hot set. The carry over matters, a pass usually
+        /// earns a fraction of a step and dropping it would leave a small main queue never aged.
+        /// </summary>
+        private long m_lastAgingSequence;
+        private long m_agingCredit;
+
+        /// <summary>
+        /// Advances the aging hand over the main queue, decrementing frequencies without evicting
+        /// anything. A page that stops being read drains to zero and becomes the first thing
+        /// eviction takes, a page still being read is pushed back up by its hits.
+        /// Freeing space is the eviction pass's job, aging only decides what has earned its place,
+        /// which is why this runs even when nothing needs to be evicted.
+        /// </summary>
+        private void AgeMainQueue(int currentCount)
+        {
+            var sequence = m_correlationClock.CurrentSequence();
+            var inserted = sequence - m_lastAgingSequence;
+            m_lastAgingSequence = sequence;
+            if (inserted <= 0)
+            {
+                return;
+            }
+
+            int liveMain;
+            lock (m_queueLock)
+            {
+                liveMain = m_mainQueue.Count - m_mainStaleCount;
+            }
+            if (liveMain <= 0)
+            {
+                return;
+            }
+
+            // One sweep of the whole main queue per cache turnover, so each page loses a point
+            // per turnover and an unread one is gone after MainQueueTurnoversToAgeOut of them.
+            // Scaling by the main queue's own size keeps a small main queue cheap to age.
+            var turnover = Math.Max(1, Volatile.Read(ref maxSize));
+            m_agingCredit += inserted * liveMain;
+            var stepsToRun = m_agingCredit / turnover;
+            m_agingCredit -= stepsToRun * turnover;
+            var steps = (int)Math.Min(int.MaxValue, stepsToRun);
+            while (steps > 0)
+            {
+                var chunk = Math.Min(steps, AgingOperationBudget);
+                steps -= chunk;
+                lock (m_queueLock)
+                {
+                    AgeMainQueueChunk(chunk);
+                }
+                if (steps > 0)
+                {
+                    // Give writers parked on the queue lock a window, as the selection scan does.
+                    Thread.Yield();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Must be called under the queue lock.
+        /// </summary>
+        private void AgeMainQueueChunk(int steps)
+        {
+            for (int i = 0; i < steps && m_mainQueue.Count > 0; i++)
+            {
+                var entry = m_mainQueue.Dequeue();
+                lock (entry)
+                {
+                    if (entry.Removed)
+                    {
+                        entry.Location = S3FifoQueueLocation.None;
+                        if (m_mainStaleCount > 0)
+                        {
+                            m_mainStaleCount--;
+                        }
+                        continue;
+                    }
+                    if (Volatile.Read(ref entry.Frequency) > 0)
+                    {
+                        Interlocked.Decrement(ref entry.Frequency);
+                    }
+                    // Aged pages stay queued, eviction decides whether the space is needed.
+                    m_mainQueue.Enqueue(entry);
+                }
+            }
+        }
+
+        /// <summary>
+        /// True when the main queue head has aged out and is ready to be taken.
+        /// Must be called under the queue lock.
+        /// </summary>
+        private bool MainHeadHasAgedOut()
+        {
+            if (m_mainQueue.Count == 0)
+            {
+                return false;
+            }
+            var head = m_mainQueue.Peek();
+            return Volatile.Read(ref head.Removed) || Volatile.Read(ref head.Frequency) == 0;
         }
 
         private bool TryEvictOneFromSmall(List<EvictionCandidate> victims, ref int operationBudget)

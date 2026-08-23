@@ -25,6 +25,13 @@ namespace FlowtideDotNet.Storage.StateManager
         public int MinCachePageCount { get; set; } = 1000;
 
         /// <summary>
+        /// Keeps the cache's small queue at its ~10% share even when the cache is below the
+        /// eviction threshold, instead of letting it use the space the cache has free.
+        /// Off by default, turning it on trades resident pages for a warmer main queue.
+        /// </summary>
+        public bool DrainSmallQueueEarly { get; set; } = false;
+
+        /// <summary>
         /// Optional: Set a maximum process memory limit for the state manager. If the limit is reached, the state manager will start evicting pages from the cache.
         /// This can help keep the application at a steady memory usage, but can also cause performance issues if the limit is too low.
         /// Setting this value increases cache page count if memory usage is low.

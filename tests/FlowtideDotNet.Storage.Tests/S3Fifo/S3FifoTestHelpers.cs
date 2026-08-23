@@ -152,12 +152,13 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
     internal static class S3FifoTestHelpers
     {
-        public static S3FifoTableSync CreateRunningTable(int maxSize, int minSize = 0)
+        public static S3FifoTableSync CreateRunningTable(int maxSize, int minSize = 0, bool drainSmallQueueEarly = false)
         {
             return new S3FifoTableSync(new CacheTableOptions("", NullLogger.Instance, new Meter(Guid.NewGuid().ToString()), new ZeroMemoryStats())
             {
                 MaxSize = maxSize,
-                MinSize = minSize
+                MinSize = minSize,
+                DrainSmallQueueEarly = drainSmallQueueEarly
             });
         }
 
@@ -165,9 +166,9 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         /// Creates a table with the background cleanup task stopped, so tests drive
         /// eviction deterministically through ForceCleanup.
         /// </summary>
-        public static async Task<S3FifoTableSync> CreateStoppedTable(int maxSize, int minSize = 0)
+        public static async Task<S3FifoTableSync> CreateStoppedTable(int maxSize, int minSize = 0, bool drainSmallQueueEarly = false)
         {
-            var table = CreateRunningTable(maxSize, minSize);
+            var table = CreateRunningTable(maxSize, minSize, drainSmallQueueEarly);
             await table.StopCleanupTask();
             return table;
         }

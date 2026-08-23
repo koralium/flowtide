@@ -208,207 +208,10 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(S3FifoQueueLocation.Small, readdedEntry.Location);
         }
 
-        /// <summary>
-        /// The small queue only owns ~10% of the capacity, also while the cache as a whole is
-        /// below the eviction threshold. MaxSize 100 gives small target 10 and threshold 70,
-        /// so 50 entries are under the threshold but far over the small queue target.
-        /// </summary>
-        [Fact]
-        public async Task SmallQueueIsDrainedToItsTargetWhileCacheIsBelowThreshold()
-        {
-            using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
-            var handler = new TestEvictHandler();
-            var objects = new TestCacheObject[50];
-            for (var i = 0; i < 48; i++)
-            {
-                objects[i] = new TestCacheObject(i);
-                table.Add(i, objects[i], handler);
-            }
-            // Two counted hits on the head in separate windows, it must be promoted instead
-            // of drained out. The hits also keep the cache off the idle path.
-            Assert.True(table.TryGetValue(0, out var head));
-            head!.Return();
-            for (var i = 48; i < 50; i++)
-            {
-                objects[i] = new TestCacheObject(i);
-                table.Add(i, objects[i], handler);
-            }
-            Assert.True(table.TryGetValue(0, out var headAgain));
-            headAgain!.Return();
 
-            await table.ForceCleanup();
 
-            // Key 0 promoted, then keys 1..39 drained until the small queue was back at 10.
-            var counts = table.GetQueueCountsForTests();
-            Assert.Equal(10, counts.SmallCount);
-            Assert.Equal(1, counts.MainCount);
-            Assert.Equal(11, table.Count);
-            Assert.Equal(Enumerable.Range(1, 39).Select(i => (long)i).ToList(), handler.EvictedKeys);
-            // Not a deep clean, the cache is not under pressure at all.
-            Assert.All(handler.Evictions, e => Assert.False(e.IsCleanup));
 
-            Assert.True(table.TryPeekEntryForTests(0, out var promoted));
-            Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
-            Assert.False(table.IsInGhostForTests(0));
-            // Drained from the small queue, so the keys are remembered by the ghost queue and
-            // the objects were released.
-            for (var i = 1; i < 40; i++)
-            {
-                Assert.True(table.IsInGhostForTests(i));
-                Assert.Equal(0, objects[i].RentCount);
-                Assert.Equal(1, objects[i].DisposeCount);
-            }
-        }
 
-        /// <summary>
-        /// The early drain is only about the small queues share of the capacity, the main queue
-        /// holds pages the cache has room for and must not be scanned or aged by it.
-        /// </summary>
-        [Fact]
-        public async Task SmallQueueDrainLeavesTheMainQueueAlone()
-        {
-            using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
-            var handler = new TestEvictHandler();
-            for (var i = 0; i < 48; i++)
-            {
-                table.Add(i, new TestCacheObject(i), handler);
-            }
-            Assert.True(table.TryGetValue(0, out var firstHit));
-            firstHit!.Return();
-            for (var i = 48; i < 50; i++)
-            {
-                table.Add(i, new TestCacheObject(i), handler);
-            }
-            Assert.True(table.TryGetValue(0, out var promotingHit));
-            promotingHit!.Return();
-
-            await table.ForceCleanup();
-            Assert.True(table.TryPeekEntryForTests(0, out var mainEntry));
-            Assert.Equal(S3FifoQueueLocation.Main, mainEntry.Location);
-
-            // Refill the small queue past its target and earn key 0 a third counted hit,
-            // the 40 inserts age it well past the correlation window of 2.
-            for (var i = 50; i < 90; i++)
-            {
-                table.Add(i, new TestCacheObject(i), handler);
-            }
-            Assert.True(table.TryGetValue(0, out var thirdHit));
-            thirdHit!.Return();
-            Assert.Equal(3, mainEntry.Frequency);
-            var evictedBefore = handler.Evictions.Count;
-
-            await table.ForceCleanup();
-
-            // A main queue scan would have spent a second chance and decremented the frequency.
-            Assert.Equal(3, mainEntry.Frequency);
-            Assert.Equal(S3FifoQueueLocation.Main, mainEntry.Location);
-            var counts = table.GetQueueCountsForTests();
-            Assert.Equal(10, counts.SmallCount);
-            Assert.Equal(1, counts.MainCount);
-            // Only small queue entries were drained, all of them fresh never-hit keys.
-            Assert.Equal(40, handler.Evictions.Count - evictedBefore);
-            Assert.DoesNotContain(0, handler.EvictedKeys);
-        }
-
-        /// <summary>
-        /// MinSize keeps pages resident to cut read latency. The early drain runs without any
-        /// memory pressure behind it, so it stops at that floor instead of crossing it.
-        /// </summary>
-        [Fact]
-        public async Task SmallQueueDrainStopsAtMinSize()
-        {
-            using var table = await S3FifoTestHelpers.CreateStoppedTable(100, minSize: 45);
-            var handler = new TestEvictHandler();
-            for (var i = 0; i < 48; i++)
-            {
-                table.Add(i, new TestCacheObject(i), handler);
-            }
-            Assert.True(table.TryGetValue(0, out var head));
-            head!.Return();
-            for (var i = 48; i < 50; i++)
-            {
-                table.Add(i, new TestCacheObject(i), handler);
-            }
-            Assert.True(table.TryGetValue(0, out var headAgain));
-            headAgain!.Return();
-
-            await table.ForceCleanup();
-
-            // The small queue is 40 over its target but only 5 entries fit above the floor.
-            Assert.Equal(45, table.Count);
-            Assert.Equal(new List<long> { 1, 2, 3, 4, 5 }, handler.EvictedKeys);
-
-            // At the floor the drain does no more work, even though the small queue is still
-            // far over its target. The hit keeps the cache off the idle path.
-            Assert.True(table.TryGetValue(0, out var secondHit));
-            secondHit!.Return();
-            await table.ForceCleanup();
-
-            Assert.Equal(45, table.Count);
-            Assert.Equal(5, handler.Evictions.Count);
-        }
-
-        /// <summary>
-        /// The early drain is for a cache that is being used, an idle one is left to the
-        /// no-hits deep clean, which drops it in one go instead of churning it every tick.
-        /// </summary>
-        [Fact]
-        public async Task IdleCacheIsNotDrainedEarly()
-        {
-            using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
-            var handler = new TestEvictHandler();
-            for (var i = 0; i < 50; i++)
-            {
-                table.Add(i, new TestCacheObject(i), handler);
-            }
-
-            await table.ForceCleanup();
-
-            Assert.Empty(handler.Evictions);
-            Assert.Equal(50, table.Count);
-            var counts = table.GetQueueCountsForTests();
-            Assert.Equal(50, counts.SmallCount);
-        }
-
-        /// <summary>
-        /// A large early drain is chunked the same way a full eviction batch is, so it cannot
-        /// hold the queue lock across hundreds of queue operations.
-        /// </summary>
-        [Fact]
-        public async Task LargeSmallQueueDrainIsSelectedInChunks()
-        {
-            // MaxSize 4000 gives small target 400 and threshold 2800, so 1000 entries stay
-            // under the threshold while the small queue is 600 over its target.
-            using var table = await S3FifoTestHelpers.CreateStoppedTable(4000);
-            var handler = new TestEvictHandler();
-            for (var i = 0; i < 900; i++)
-            {
-                table.Add(i, new TestCacheObject(i), handler);
-            }
-            Assert.True(table.TryGetValue(0, out var head));
-            head!.Return();
-            for (var i = 900; i < 1000; i++)
-            {
-                table.Add(i, new TestCacheObject(i), handler);
-            }
-            Assert.True(table.TryGetValue(0, out var headAgain));
-            headAgain!.Return();
-
-            var acquisitionsBefore = table.SelectionLockAcquisitionsForTests;
-            await table.ForceCleanup();
-            var acquisitions = table.SelectionLockAcquisitionsForTests - acquisitionsBefore;
-
-            Assert.True(acquisitions > 1, $"Drain used {acquisitions} lock acquisition(s); large drains must be chunked");
-            // Key 0 promoted, keys 1..599 drained, the small queue is back at its target.
-            var counts = table.GetQueueCountsForTests();
-            Assert.Equal(400, counts.SmallCount);
-            Assert.Equal(1, counts.MainCount);
-            Assert.Equal(401, table.Count);
-            Assert.Equal(599, handler.Evictions.Count);
-            // FIFO order preserved across chunks.
-            Assert.Equal(1, handler.EvictedKeys.First());
-            Assert.Equal(599, handler.EvictedKeys.Last());
-        }
 
         [Fact]
         public async Task ValueModifiedDuringEvictionStaysCached()
@@ -761,42 +564,43 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The deep clean shrinks the cache to MinSize, and the small queue share has to shrink
-        /// with it. Held at its full size share the floor ends up filled with unproven small
-        /// queue entries while the reused main queue pages, the ones the floor exists to keep,
-        /// are the ones thrown away.
-        /// MaxSize 100 gives small target 10, threshold 70 and window 2, MinSize 10 is the
-        /// deep clean target.
+        /// The deep clean shrinks the cache to MinSize, and it should pay with pages nothing is
+        /// reading rather than the ones that proved reuse.
+        /// MaxSize 100 gives threshold 70 and window 2, MinSize 10 is the deep clean target.
         /// </summary>
         [Fact]
         public async Task DeepCleanupKeepsReusedPagesOverUnprovenOnes()
         {
             using var table = await S3FifoTestHelpers.CreateStoppedTable(100, minSize: 10);
             var handler = new TestEvictHandler();
-            for (var i = 0; i < 50; i++)
+            for (var i = 0; i < 71; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // Keys 0..4 count two reuses in separate windows, so the drain below promotes
-            // them to the main queue instead of dropping them.
+            // Keys 0..4 count two reuses in separate windows, so the scan promotes them.
             for (var i = 0; i < 5; i++)
             {
                 Assert.True(table.TryGetValue(i, out var reused));
                 reused!.Return();
             }
-            table.Add(50, new TestCacheObject(50), handler);
-            table.Add(51, new TestCacheObject(51), handler);
+            table.Add(71, new TestCacheObject(71), handler);
+            table.Add(72, new TestCacheObject(72), handler);
             for (var i = 0; i < 5; i++)
             {
                 Assert.True(table.TryGetValue(i, out var reusedAgain));
                 reusedAgain!.Return();
             }
 
+            // Over the threshold, so this pass evicts and promotes the reused keys on the way.
             await table.ForceCleanup();
 
-            var afterDrain = table.GetQueueCountsForTests();
-            Assert.Equal(5, afterDrain.MainCount);
-            Assert.Equal(10, afterDrain.SmallCount);
+            var afterEviction = table.GetQueueCountsForTests();
+            Assert.Equal(5, afterEviction.MainCount);
+            for (var i = 0; i < 5; i++)
+            {
+                Assert.True(table.TryPeekEntryForTests(i, out var promoted));
+                Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
+            }
 
             // Idle long enough to trip the deep clean, which drops the cache to MinSize.
             for (var i = 0; i < 1001 && table.Count > 10; i++)
@@ -810,11 +614,6 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var afterDeepClean = table.GetQueueCountsForTests();
             Assert.Equal(5, afterDeepClean.MainCount);
             Assert.Equal(5, afterDeepClean.SmallCount);
-            for (var i = 0; i < 5; i++)
-            {
-                Assert.True(table.TryPeekEntryForTests(i, out var entry));
-                Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
-            }
         }
 
         /// <summary>
@@ -842,6 +641,174 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(S3FifoQueueLocation.Small, entry.Location);
             Assert.False(table.IsInGhostForTests(0));
             objects[0].Return();
+        }
+
+        /// <summary>
+        /// A cache below its eviction threshold keeps what it has. Trading resident pages for
+        /// queue shares throws away capacity the cache was configured to use.
+        /// </summary>
+        [Fact]
+        public async Task CacheBelowThresholdKeepsEverything()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 60; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            // A hit keeps the cache off the idle deep clean, which owns the no-hits case.
+            Assert.True(table.TryGetValue(0, out var hit));
+            hit!.Return();
+
+            await table.ForceCleanup();
+
+            // 60 is well over the small queue's 10% share but well under the 70 threshold.
+            Assert.Empty(handler.Evictions);
+            Assert.Equal(60, table.Count);
+            Assert.Equal(60, table.GetQueueCountsForTests().SmallCount);
+        }
+
+        /// <summary>
+        /// A main queue page that stops being read loses its frequency as the cache turns over,
+        /// and once it is aged out eviction takes it before the small queue's head.
+        /// </summary>
+        [Fact]
+        public async Task AgedOutMainPagesAreEvictedBeforeSmallQueuePages()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100, minSize: 0);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 71; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            // Key 0 earns two spaced reuses and is promoted by the first pass.
+            Assert.True(table.TryGetValue(0, out var first));
+            first!.Return();
+            table.Add(71, new TestCacheObject(71), handler);
+            table.Add(72, new TestCacheObject(72), handler);
+            Assert.True(table.TryGetValue(0, out var second));
+            second!.Return();
+
+            await table.ForceCleanup();
+            Assert.True(table.TryPeekEntryForTests(0, out var promoted));
+            Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
+
+            // Nothing reads key 0 again. Turning the cache over ages it down to zero, and once
+            // there it is the first thing eviction takes.
+            for (var round = 0; round < 40 && !handler.EvictedKeys.Contains(0); round++)
+            {
+                for (var i = 0; i < 100; i++)
+                {
+                    table.Add(1000 + (round * 100) + i, new TestCacheObject(0), handler);
+                }
+                Assert.True(table.TryGetValue(1000 + (round * 100), out var keepAlive));
+                keepAlive!.Return();
+                await table.ForceCleanup();
+            }
+
+            Assert.Contains(0, handler.EvictedKeys);
+            Assert.Equal(0, table.GetQueueCountsForTests().MainCount);
+        }
+
+        /// <summary>
+        /// Aging is paced by how much the cache turned over, so a cache nothing is inserting into
+        /// does not age its own resident set away.
+        /// </summary>
+        [Fact]
+        public async Task AgingDoesNotRunWithoutInsertions()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100, minSize: 0);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 71; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            Assert.True(table.TryGetValue(0, out var first));
+            first!.Return();
+            table.Add(71, new TestCacheObject(71), handler);
+            table.Add(72, new TestCacheObject(72), handler);
+            Assert.True(table.TryGetValue(0, out var second));
+            second!.Return();
+            await table.ForceCleanup();
+
+            Assert.True(table.TryPeekEntryForTests(0, out var promoted));
+            Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
+            var frequencyAfterPromotion = promoted.Frequency;
+
+            // No inserts, so no turnover, so the hand does not move however often cleanup runs.
+            for (var i = 0; i < 50; i++)
+            {
+                await table.ForceCleanup();
+            }
+
+            Assert.Equal(frequencyAfterPromotion, promoted.Frequency);
+            Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
+        }
+
+        /// <summary>
+        /// With the opt in drain on, the small queue is held at its share even below the
+        /// eviction threshold.
+        /// </summary>
+        [Fact]
+        public async Task EarlyDrainHoldsSmallQueueAtItsTargetWhenEnabled()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100, drainSmallQueueEarly: true);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 60; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            // A hit keeps the cache off the idle deep clean, which owns the no-hits case.
+            Assert.True(table.TryGetValue(0, out var hit));
+            hit!.Return();
+
+            await table.ForceCleanup();
+
+            Assert.Equal(10, table.GetQueueCountsForTests().SmallCount);
+            Assert.NotEmpty(handler.Evictions);
+        }
+
+        /// <summary>
+        /// Draining the small queue promotes its reused heads into main, so the drain has to be
+        /// able to take main's aged out pages as well. Without that, main only ever grows while
+        /// the cache stays below the eviction threshold.
+        /// </summary>
+        [Fact]
+        public async Task EarlyDrainAlsoEvictsAgedOutMainPages()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100, drainSmallQueueEarly: true);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 60; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            // Key 0 earns two spaced reuses, so the first drain promotes it into main.
+            Assert.True(table.TryGetValue(0, out var first));
+            first!.Return();
+            table.Add(60, new TestCacheObject(60), handler);
+            table.Add(61, new TestCacheObject(61), handler);
+            Assert.True(table.TryGetValue(0, out var second));
+            second!.Return();
+
+            await table.ForceCleanup();
+            Assert.True(table.TryPeekEntryForTests(0, out var promoted));
+            Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
+
+            // Nothing reads key 0 again, so the cache turning over ages it out and the drain
+            // takes it instead of only ever paying from the small queue.
+            for (var round = 0; round < 40 && !handler.EvictedKeys.Contains(0); round++)
+            {
+                for (var i = 0; i < 100; i++)
+                {
+                    table.Add(1000 + (round * 100) + i, new TestCacheObject(0), handler);
+                }
+                Assert.True(table.TryGetValue(1000 + (round * 100), out var keepAlive));
+                keepAlive!.Return();
+                await table.ForceCleanup();
+            }
+
+            Assert.Contains(0, handler.EvictedKeys);
+            Assert.Equal(0, table.GetQueueCountsForTests().MainCount);
         }
 
         [Fact]

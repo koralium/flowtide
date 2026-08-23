@@ -51,7 +51,7 @@ builder.Services.AddFlowtideStream("test")
     b.AddFileStorage("./stateData")
     .OldStreamVersionsRetention(0);
 
-    b.MaxPageCount = 1000;
+    b.MaxPageCount = 10000;
     //b.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
     b.MinPageCount = 0;
 });

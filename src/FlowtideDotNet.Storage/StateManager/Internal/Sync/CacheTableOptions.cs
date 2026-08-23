@@ -32,6 +32,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public int MinSize { get; set; } = 1000;
 
+        /// <summary>
+        /// Hold the small queue at its target share even while the cache is below the eviction
+        /// threshold. Off by default, a cache with room to spare keeps what it has rather than
+        /// trading resident pages for queue shares.
+        /// </summary>
+        public bool DrainSmallQueueEarly { get; set; }
+
         public string StreamName { get; }
 
         public ILogger Logger { get; }
