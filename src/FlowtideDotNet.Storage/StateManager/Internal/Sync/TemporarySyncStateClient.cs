@@ -88,6 +88,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return baseClient.WaitForNotFullAsync();
         }
 
+        public int MaxHeldPages => baseClient.MaxHeldPages;
+
+        public bool TryGetCachedValue(in long key, out V? value)
+        {
+            return baseClient.TryGetCachedValue(key, out value);
+        }
+
         public bool Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
         {
             return baseClient.Evict(valuesToEvict, isCleanup);

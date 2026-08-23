@@ -149,6 +149,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_metrics_lastSeenHits;
         private float m_metrics_lastSentPercentage;
 
+
         private bool m_disposedValue;
         private readonly CancellationTokenSource m_cleanupTokenSource;
         private readonly CacheTableOptions tableOptions;
@@ -463,6 +464,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return false;
         }
 
+        /// <summary>
+        /// Rents a value only when it is already cached, never touching storage.
+        /// Lets a caller hold pages it knows it will read without pulling in the ones that would
+        /// cost a read. A hit counts, a caller holding the page will use it; a miss counts
+        /// nothing, the page is fetched on the normal path later and counted there.
+        /// </summary>
+        public bool TryRentCached(long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
+        {
+            if (m_cache.TryGetValue(key, out entry) && entry.TryRentValue())
+            {
+                Interlocked.Increment(ref m_readCacheHits);
+                return true;
+            }
+            entry = null;
+            return false;
+        }
+
         public bool TryGetValue(long key, out ICacheObject? cacheObject)
         {
             if (m_cache.TryGetValue(key, out var entry))
@@ -511,6 +529,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 // Dispose won the race against an in-flight commit's resume, nothing left to release.
             }
         }
+
+        /// <summary>
+        /// How many pages one caller may hold at once while working through a batch. Held pages
+        /// are not evictable, so a caller takes at most half the capacity and eviction always has
+        /// the other half to work with. Holding more than the cache fits is not possible anyway.
+        /// </summary>
+        internal int MaxHeldPages => Math.Max(1, Volatile.Read(ref maxSize) / 2);
 
         public bool Add(long key, ICacheObject value, ICacheEvictHandler evictHandler)
         {
@@ -877,7 +902,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // and a racing re-add blocks on lock(entry) and sees Removed once we release.
                     if (!entry.Value.TryReclaimForEviction())
                     {
-                        (requeueToMain ??= new List<S3FifoCacheEntry>()).Add(entry);
+                        // Held by a reader or a read-ahead window, which is not proven reuse,
+                        // so it goes back where it came from instead of being handed the main
+                        // queue for free and skipping the two reuse events admission asks for.
+                        if (candidate.FromSmallQueue)
+                        {
+                            (requeueToSmall ??= new List<S3FifoCacheEntry>()).Add(entry);
+                        }
+                        else
+                        {
+                            (requeueToMain ??= new List<S3FifoCacheEntry>()).Add(entry);
+                        }
                         continue;
                     }
                     Volatile.Write(ref entry.Removed, true);

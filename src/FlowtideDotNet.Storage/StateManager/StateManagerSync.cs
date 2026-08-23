@@ -212,6 +212,14 @@ namespace FlowtideDotNet.Storage.StateManager
             m_cacheTable.Clear();
         }
 
+        internal int MaxHeldPages => m_cacheTable?.MaxHeldPages ?? 1;
+
+        internal bool TryRentCachedValue(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
+        {
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.TryRentCached(key, out entry);
+        }
+
         internal void RegisterExternalHitCounter(Func<long> hitCounter)
         {
             Debug.Assert(m_cacheTable != null);

@@ -79,6 +79,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         private long m_lookupTableHits;
 
+
         public long CacheMisses => cacheMisses;
 
         public override long MetadataId => metadataId;
@@ -176,6 +177,39 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public Task WaitForNotFullAsync()
         {
             return stateManager.WaitForNotFullAsync();
+        }
+
+        /// <summary>
+        /// Highest number of pages the caller may hold at once while working through a batch.
+        /// Held pages cannot be evicted, so the cache decides how many it can spare.
+        /// </summary>
+        public int MaxHeldPages => stateManager.MaxHeldPages;
+
+        /// <summary>
+        /// Rents the page only when it is already cached, so a caller can hold pages it is
+        /// certain to read without paying a read for the ones that are not there.
+        /// </summary>
+        public bool TryGetCachedValue(in long key, out V? value)
+        {
+            var modLookup = key % _lookupTable.Length;
+            var entry = Volatile.Read(ref _lookupTable[modLookup]);
+            if (entry != null && entry.Key == key && entry.TryRentValue())
+            {
+                m_lookupTableHits++;
+                value = (V)entry.Value;
+                return true;
+            }
+            lock (m_lock)
+            {
+                if (stateManager.TryRentCachedValue(key, out var cached))
+                {
+                    Volatile.Write(ref _lookupTable[modLookup], cached);
+                    value = (V)cached.Value;
+                    return true;
+                }
+            }
+            value = default;
+            return false;
         }
 
         internal override Task PauseCommitsAsync()

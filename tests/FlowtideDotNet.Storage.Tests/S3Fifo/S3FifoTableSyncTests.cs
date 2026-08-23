@@ -665,9 +665,10 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.False(objects[0].RemovedFromCache);
             Assert.False(objects[0].Disposed);
             Assert.Equal(4, table.Count);
-            // It was requeued into the main queue for a later retry.
+            // It was requeued into the queue it came from for a later retry, being held is not
+            // the proven reuse the main queue asks for.
             Assert.True(table.TryPeekEntryForTests(0, out var entry));
-            Assert.Equal(S3FifoQueueLocation.Main, entry!.Location);
+            Assert.Equal(S3FifoQueueLocation.Small, entry!.Location);
 
             // Accounting is unharmed by the skipped eviction, cache share plus our rent.
             Assert.Equal(2, objects[0].RentCount);
@@ -814,6 +815,33 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 Assert.True(table.TryPeekEntryForTests(i, out var entry));
                 Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
             }
+        }
+
+        /// <summary>
+        /// A page a caller still holds survives eviction, and goes back to the queue it came
+        /// from. Handing it the main queue would let being held buy main admission without the
+        /// two reuse events the policy asks for.
+        /// </summary>
+        [Fact]
+        public async Task HeldVictimRequeuesToItsOriginQueue()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
+            var handler = new TestEvictHandler();
+            var objects = new TestCacheObject[10];
+            for (var i = 0; i < 10; i++)
+            {
+                objects[i] = new TestCacheObject(i);
+                table.Add(i, objects[i], handler);
+            }
+            // Hold the small queue head directly, a table read would also count as a reuse.
+            Assert.True(objects[0].TryRent());
+
+            await table.ForceCleanup();
+
+            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.Equal(S3FifoQueueLocation.Small, entry.Location);
+            Assert.False(table.IsInGhostForTests(0));
+            objects[0].Return();
         }
 
         [Fact]
