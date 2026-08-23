@@ -29,7 +29,14 @@ namespace FlowtideDotNet.Storage.StateManager
         /// eviction threshold, instead of letting it use the space the cache has free.
         /// Off by default, turning it on trades resident pages for a warmer main queue.
         /// </summary>
-        public bool DrainSmallQueueEarly { get; set; } = false;
+        public bool DrainSmallQueueEarly { get; set; } = true;
+
+        /// <summary>
+        /// Sizes the cache's small queue from what the ghost queue observes rather than holding a
+        /// fixed 10% share, so a workload that reuses pages gives the main queue more room and a
+        /// workload that does not gives it less. Off by default.
+        /// </summary>
+        public bool AdaptiveSmallQueueSize { get; set; } = true;
 
         /// <summary>
         /// Optional: Set a maximum process memory limit for the state manager. If the limit is reached, the state manager will start evicting pages from the cache.

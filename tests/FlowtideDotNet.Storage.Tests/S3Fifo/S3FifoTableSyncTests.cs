@@ -811,6 +811,278 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(0, table.GetQueueCountsForTests().MainCount);
         }
 
+        /// <summary>
+        /// Re-adds a key only when it is no longer cached. Adding a second instance for a key the
+        /// cache still holds is a caller error the table rejects on purpose.
+        /// </summary>
+        private static void ReAddIfEvicted(S3FifoTableSync table, long key, TestEvictHandler handler)
+        {
+            if (!table.TryPeekEntryForTests(key, out _))
+            {
+                table.Add(key, new TestCacheObject(key), handler);
+            }
+        }
+
+        /// <summary>
+        /// Off by default, the small queue keeps the fixed share whatever the ghost queue sees.
+        /// </summary>
+        [Fact]
+        public async Task SmallQueueShareIsFixedUnlessAdaptationIsEnabled()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
+            var handler = new TestEvictHandler();
+            for (var round = 0; round < 5; round++)
+            {
+                for (var i = 0; i < 100; i++)
+                {
+                    table.Add((round * 100) + i, new TestCacheObject(i), handler);
+                }
+                await table.ForceCleanup();
+                // Re-reference evicted keys, which would move an adaptive split.
+                for (var i = 0; i < 20; i++)
+                {
+                    ReAddIfEvicted(table, (round * 100) + i, handler);
+                }
+            }
+
+            Assert.Equal(100, table.SmallTargetPermilleForTests);
+        }
+
+        /// <summary>
+        /// A hit on a key the small queue evicted says it was too small to still be holding it,
+        /// so the split moves toward the small queue.
+        /// </summary>
+        [Fact]
+        public async Task SmallQueueGhostHitsGrowItsShare()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100, adaptiveSmallQueueSize: true);
+            var handler = new TestEvictHandler();
+            var startPermille = table.SmallTargetPermilleForTests;
+
+            for (var round = 0; round < 5; round++)
+            {
+                for (var i = 0; i < 100; i++)
+                {
+                    table.Add((round * 1000) + i, new TestCacheObject(i), handler);
+                }
+                await table.ForceCleanup();
+                // Bring back keys the small queue just evicted, each one is a ghost hit.
+                for (var i = 0; i < 20; i++)
+                {
+                    ReAddIfEvicted(table, (round * 1000) + i, handler);
+                }
+            }
+
+            Assert.True(table.SmallTargetPermilleForTests > startPermille,
+                $"share stayed at {table.SmallTargetPermilleForTests}, ghost hits should have grown it");
+        }
+
+        /// <summary>
+        /// The share never leaves its bounds, the floor keeps enough residency for a page to earn
+        /// the two spaced hits promotion asks for.
+        /// </summary>
+        [Fact]
+        public async Task AdaptiveShareStaysWithinItsBounds()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100, adaptiveSmallQueueSize: true);
+            var handler = new TestEvictHandler();
+
+            for (var round = 0; round < 60; round++)
+            {
+                for (var i = 0; i < 100; i++)
+                {
+                    table.Add((round * 1000) + i, new TestCacheObject(i), handler);
+                }
+                await table.ForceCleanup();
+                for (var i = 0; i < 40; i++)
+                {
+                    ReAddIfEvicted(table, (round * 1000) + i, handler);
+                }
+                var permille = table.SmallTargetPermilleForTests;
+                Assert.InRange(permille, 50, 950);
+            }
+        }
+
+        /// <summary>
+        /// Aging is paced by what it takes to replace the resident pages, not by the configured
+        /// ceiling. The early drain holds this cache near 1000 pages against a ceiling of 10000,
+        /// so pacing off the ceiling would age the main queue ten times slower than the cache
+        /// really turns over, and over this many rounds not at all.
+        /// </summary>
+        [Fact]
+        public async Task AgingIsPacedByResidentPagesNotTheConfiguredCeiling()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10000, drainSmallQueueEarly: true);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 2000; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            // Two hits spaced past the 250 wide correlation window promote key 0, so the main
+            // queue has something to age.
+            Assert.True(table.TryGetValue(0, out var first));
+            first!.Return();
+            for (var i = 2000; i < 2400; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            Assert.True(table.TryGetValue(0, out var second));
+            second!.Return();
+
+            await table.ForceCleanup();
+            Assert.True(table.TryPeekEntryForTests(0, out var promoted));
+            Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
+
+            var stepsBefore = table.AgingStepsForTests;
+            var residentBefore = table.Count;
+
+            // Turn the resident pages over several times. The drain keeps residency near the
+            // small queue target, far below the ceiling.
+            for (var round = 0; round < 6; round++)
+            {
+                for (var i = 0; i < 1000; i++)
+                {
+                    table.Add(10000 + (round * 1000) + i, new TestCacheObject(i), handler);
+                }
+                // A hit on some other key keeps the cache off the idle path, which returns before
+                // anything ages. Reading key 0 would pump its frequency back up instead.
+                Assert.True(table.TryGetValue(10000 + (round * 1000), out var keepAlive));
+                keepAlive!.Return();
+                await table.ForceCleanup();
+            }
+
+            Assert.True(residentBefore < 3000, $"expected the drain to hold residency low, saw {residentBefore}");
+            Assert.True(table.AgingStepsForTests > stepsBefore,
+                "the main queue never aged, so aging is paced off the ceiling rather than the resident pages");
+        }
+
+        /// <summary>
+        /// A ghost hit only says something about the split when the queue could plausibly have
+        /// held the page. One that left more evictions ago than the cache holds pages would have
+        /// needed a bigger cache, not a bigger share, so it must not move the split.
+        /// The drain keeps residency near 100 against a ghost that remembers ~900 keys, which is
+        /// the only shape where the two can differ.
+        /// </summary>
+        [Fact]
+        public async Task GhostHitsDeeperThanTheCacheDoNotMoveTheSplit()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(1000, drainSmallQueueEarly: true, adaptiveSmallQueueSize: true);
+            var handler = new TestEvictHandler();
+
+            // Evict key 0 into the ghost queue.
+            for (var i = 0; i < 400; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            Assert.True(table.TryGetValue(399, out var keepAlive));
+            keepAlive!.Return();
+            await table.ForceCleanup();
+            Assert.True(table.IsInGhostForTests(0));
+
+            // Push key 0 deeper into the ghost, past what the cache now holds but still inside
+            // the ghost's own capacity of maxSize minus the small share.
+            for (var i = 0; i < 200; i++)
+            {
+                table.Add(1000 + i, new TestCacheObject(i), handler);
+            }
+            Assert.True(table.TryGetValue(1000, out var alive));
+            alive!.Return();
+            await table.ForceCleanup();
+
+            Assert.True(table.IsInGhostForTests(0), "key 0 aged out of the ghost, the test proves nothing");
+            Assert.True(table.Count < 400, $"expected the drain to hold residency low, saw {table.Count}");
+
+            var permilleBefore = table.SmallTargetPermilleForTests;
+            table.Add(0, new TestCacheObject(0), handler);
+
+            Assert.Equal(permilleBefore, table.SmallTargetPermilleForTests);
+        }
+
+        /// <summary>
+        /// The ghost queue is the evidence the adaptive split reads, so its size must not follow
+        /// the split. Sized from the adaptive share, growing the small queue shrinks the ghost,
+        /// a short ghost only remembers the newest evictions, every hit then looks shallow, and
+        /// shallow hits vote to grow the small queue again.
+        /// </summary>
+        [Fact]
+        public async Task GhostCapacityDoesNotFollowTheAdaptiveShare()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(1000, adaptiveSmallQueueSize: true);
+            var handler = new TestEvictHandler();
+            var capacityBefore = table.GhostCapacityForTests;
+            var permilleBefore = table.SmallTargetPermilleForTests;
+
+            // Drive the share up with ghost hits.
+            for (var round = 0; round < 10; round++)
+            {
+                for (var i = 0; i < 1000; i++)
+                {
+                    table.Add((round * 10000) + i, new TestCacheObject(i), handler);
+                }
+                await table.ForceCleanup();
+                for (var i = 0; i < 100; i++)
+                {
+                    ReAddIfEvicted(table, (round * 10000) + i, handler);
+                }
+            }
+
+            Assert.True(table.SmallTargetPermilleForTests > permilleBefore,
+                "the share never moved, so this proves nothing about the ghost following it");
+            Assert.Equal(capacityBefore, table.GhostCapacityForTests);
+        }
+
+        /// <summary>
+        /// Pins which end of the ghost queue is which. Depth counts ghost insertions since the
+        /// key was evicted, so the key evicted longest ago carries the largest depth and the one
+        /// evicted most recently carries the smallest. That orientation is what the adaptive
+        /// split's filter depends on: it drops the deep hits, the ones no split could have caught.
+        /// </summary>
+        [Fact]
+        public async Task GhostDepthIsLargestForTheOldestEntry()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(1000, adaptiveSmallQueueSize: true);
+            var handler = new TestEvictHandler();
+
+            // First eviction wave, key 0 is the oldest thing in the ghost queue.
+            for (var i = 0; i < 1000; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            await table.ForceCleanup();
+            Assert.True(table.IsInGhostForTests(0));
+
+            // A second wave evicts more of the queue, all of it newer in the ghost than key 0.
+            for (var i = 1000; i < 1200; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            Assert.True(table.TryGetValue(1100, out var keepAlive));
+            keepAlive!.Return();
+            await table.ForceCleanup();
+
+            var oldestDepth = table.GhostDepthForTests(0);
+            Assert.True(oldestDepth >= 0, "key 0 left the ghost queue, the test proves nothing");
+
+            // Eviction is FIFO by insertion, so the highest key still in the ghost is the one
+            // evicted most recently.
+            long newestDepth = -1;
+            long newestKey = -1;
+            for (var i = 1199; i >= 0; i--)
+            {
+                var depth = table.GhostDepthForTests(i);
+                if (depth >= 0)
+                {
+                    newestDepth = depth;
+                    newestKey = i;
+                    break;
+                }
+            }
+            Assert.True(newestKey > 0, "found no second entry in the ghost queue to compare against");
+
+            Assert.True(oldestDepth > newestDepth,
+                $"key 0 was evicted first so it must sit deeper, saw oldest={oldestDepth} newest(key {newestKey})={newestDepth}");
+        }
+
         [Fact]
         public async Task ClearEmptiesTheTable()
         {

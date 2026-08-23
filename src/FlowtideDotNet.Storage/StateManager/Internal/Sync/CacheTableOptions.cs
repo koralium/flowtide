@@ -39,6 +39,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         public bool DrainSmallQueueEarly { get; set; }
 
+        /// <summary>
+        /// Let the small queue's share of the cache follow what the ghost queue observes instead
+        /// of holding the fixed 10%. A hit on a key the small queue evicted grows its share, a hit
+        /// on one the main queue evicted shrinks it.
+        /// </summary>
+        public bool AdaptiveSmallQueueSize { get; set; }
+
         public string StreamName { get; }
 
         public ILogger Logger { get; }

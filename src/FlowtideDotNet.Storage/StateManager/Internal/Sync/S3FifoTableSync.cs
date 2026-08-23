@@ -98,10 +98,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly Queue<S3FifoCacheEntry> m_mainQueue;
         private readonly struct GhostValue
         {
-            public GhostValue(long sequence, bool reused)
+            public GhostValue(long sequence, bool reused, bool fromMain)
             {
                 Sequence = sequence;
                 Reused = reused;
+                FromMain = fromMain;
             }
 
             public long Sequence { get; }
@@ -111,6 +112,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             /// second reuse event and admits it straight to main.
             /// </summary>
             public bool Reused { get; }
+
+            /// <summary>
+            /// The entry was evicted from the main queue rather than the small one. A hit on it
+            /// says main was too small, the mirror of a hit on a small queue evictee, and it is
+            /// the evidence the small queue's own ghost entries can never give.
+            /// Only recorded while the adaptive split is on.
+            /// </summary>
+            public bool FromMain { get; }
         }
 
         private readonly Queue<GhostRecord> m_ghostQueue;
@@ -119,6 +128,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_ghostSequence;
         private int m_smallStaleCount;
         private int m_mainStaleCount;
+
+        /// <summary>
+        /// Live ghost memberships by the queue they were evicted from. A hit on one is evidence
+        /// that queue was too small, and these sizes scale the adaptation step so the split
+        /// settles instead of swinging, as in ARC.
+        /// Guarded by the queue lock.
+        /// </summary>
+        private int m_ghostFromSmallCount;
+        private int m_ghostFromMainCount;
+
+        /// <summary>
+        /// The small queue's share of the cache in permille. Adapted from ghost hits when the
+        /// adaptive split is on, left at the default share otherwise.
+        /// Written under the queue lock, read with Volatile off it.
+        /// </summary>
+        private int m_smallTargetPermille = DefaultSmallTargetPermille;
 
         private Task? m_cleanupTask;
         private int maxSize;
@@ -323,6 +348,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_mainQueue.Clear();
                 m_ghostQueue.Clear();
                 m_ghostKeys.Clear();
+                m_ghostFromSmallCount = 0;
+                m_ghostFromMainCount = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
                 Volatile.Write(ref m_count, 0);
@@ -345,6 +372,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_cache.Clear();
                 m_ghostQueue.Clear();
                 m_ghostKeys.Clear();
+                m_ghostFromSmallCount = 0;
+                m_ghostFromMainCount = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
                 Volatile.Write(ref m_count, 0);
@@ -583,10 +612,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         // this stamp and count. The gap is tiny and the filter is a heuristic.
                         entry.SetCountStamp(m_correlationClock.NextSequence());
                         var inGhost = m_ghostKeys.Remove(key, out var ghostValue);
-                        if (inGhost && ghostValue.Reused)
+                        if (inGhost)
+                        {
+                            DropGhostPopulation(ghostValue.FromMain);
+                            // The queue this key was evicted from was too small to still hold it,
+                            // so the split moves that way.
+                            AdaptSmallTarget(ghostValue.FromMain);
+                        }
+                        if (inGhost && (ghostValue.Reused || ghostValue.FromMain))
                         {
                             // A counted reuse before eviction plus this re-reference makes
-                            // the two events main admission requires.
+                            // the two events main admission requires, and a key that was in main
+                            // already proved as much before it aged out.
                             entry.Location = S3FifoQueueLocation.Main;
                             m_mainQueue.Enqueue(entry);
                         }
@@ -618,9 +655,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return Cleanup();
         }
 
+        /// <summary>
+        /// The small queue's default share of the cache, 10% as in the S3-FIFO paper.
+        /// </summary>
+        private const int DefaultSmallTargetPermille = 100;
+
+        /// <summary>
+        /// How far the adaptive split may move the small queue's share.
+        /// The floor is two correlation windows worth, the residency a page needs to earn the two
+        /// spaced hits promotion asks for. The ceiling leaves the main queue a sliver so a
+        /// workload that starts reusing pages again can climb back out.
+        /// </summary>
+        private const int MinSmallTargetPermille = 50;
+        private const int MaxSmallTargetPermille = 950;
+
         private int SmallQueueTargetSize()
         {
-            // The small queue gets ~10% of the cache capacity, as in the S3-FIFO paper.
             return SmallQueueTargetSize(Volatile.Read(ref maxSize));
         }
 
@@ -631,11 +681,45 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// entries and pays for it with the reused main queue pages, which is backwards, those
         /// are the pages the floor exists to keep.
         /// </summary>
-        private static int SmallQueueTargetSize(int cacheSize)
+        private int SmallQueueTargetSize(int cacheSize)
         {
-            return Math.Max(1, cacheSize / 10);
+            var permille = tableOptions.AdaptiveSmallQueueSize
+                ? Volatile.Read(ref m_smallTargetPermille)
+                : DefaultSmallTargetPermille;
+            return Math.Max(1, (int)((long)cacheSize * permille / 1000));
         }
 
+        /// <summary>
+        /// A ghost hit says the queue the key was evicted from was too small to hold it until it
+        /// came back, so the split moves toward that queue. The step is scaled by the other
+        /// queue's ghost population, which is what makes it settle instead of swing, as in ARC.
+        /// Must be called under the queue lock.
+        /// </summary>
+        private void AdaptSmallTarget(bool fromMain)
+        {
+            if (!tableOptions.AdaptiveSmallQueueSize)
+            {
+                return;
+            }
+            if (fromMain)
+            {
+                var step = Math.Max(1, m_ghostFromSmallCount / Math.Max(1, m_ghostFromMainCount));
+                Volatile.Write(ref m_smallTargetPermille, Math.Max(MinSmallTargetPermille, m_smallTargetPermille - step));
+            }
+            else
+            {
+                var step = Math.Max(1, m_ghostFromMainCount / Math.Max(1, m_ghostFromSmallCount));
+                Volatile.Write(ref m_smallTargetPermille, Math.Min(MaxSmallTargetPermille, m_smallTargetPermille + step));
+            }
+        }
+
+        internal int SmallTargetPermilleForTests => Volatile.Read(ref m_smallTargetPermille);
+
+        /// <summary>
+        /// How far the small queue is over its target share, used when the cache as a whole is
+        /// still below the eviction threshold. The result caps an early drain, so a concurrent
+        /// add storm cannot keep one drain running.
+        /// </summary>
         private int SmallQueueOverflow(int currentCount)
         {
             // MinSize keeps pages resident to cut read latency, so a cache that is already at or
@@ -654,13 +738,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return Math.Min(liveSmall - SmallQueueTargetSize(), headroom);
         }
 
-        /// <summary>
-        /// Correlation window width, two and a half percent of the cache capacity.
-        /// A hit must be this many insertions after the entrys insertion or last counted hit
-        /// to count as reuse. Promotion needs two counted hits, so the window must fit about
-        /// four times in a small-queue residency (~10% of capacity) for hot pages to make it.
-        /// Integer division makes the window 0 for MaxSize below 40, disabling the filter.
-        /// </summary>
         private int CorrelationWindowSize()
         {
             return Volatile.Read(ref maxSize) / 40;
@@ -668,8 +745,31 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private int GhostCapacity()
         {
-            // The ghost queue tracks as many keys as the main queue holds objects.
-            return Math.Max(1, Volatile.Read(ref maxSize) - SmallQueueTargetSize());
+            // One cache worth of evicted keys, so a ghost hit means the key would still be here
+            // if the cache were up to twice its size. Deliberately not sized off the queue shares:
+            // the ghost is the evidence the adaptive split reads, and sizing it from the split
+            // would feed the split its own output. A grown small queue would shrink the ghost, a
+            // short ghost only remembers the newest evictions, every hit would then look shallow,
+            // and shallow hits vote to grow the small queue again.
+            return Math.Max(1, Volatile.Read(ref maxSize) / 2);
+        }
+
+        internal int GhostCapacityForTests => GhostCapacity();
+
+        /// <summary>
+        /// Ghost insertions since this key was evicted, which is the depth the adaptive split
+        /// filters on. Minus one when the key is not in the ghost queue.
+        /// </summary>
+        internal long GhostDepthForTests(long key)
+        {
+            lock (m_queueLock)
+            {
+                if (!m_ghostKeys.TryGetValue(key, out var value))
+                {
+                    return -1;
+                }
+                return m_ghostSequence - value.Sequence;
+            }
         }
 
         private async Task Cleanup()
@@ -864,7 +964,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             List<S3FifoCacheEntry>? requeueToSmall = null;
             List<S3FifoCacheEntry>? requeueToMain = null;
-            List<(long Key, bool Reused)>? ghostInserts = null;
+            List<(long Key, bool Reused, bool FromMain)>? ghostInserts = null;
             foreach (var candidate in victims)
             {
                 var entry = candidate.Entry;
@@ -926,8 +1026,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         {
                             // The reuse bit is read here rather than at selection, a hit landing
                             // between the two still earns the entry its ghost credit.
-                            (ghostInserts ??= new List<(long, bool)>()).Add((entry.Key, Volatile.Read(ref entry.Frequency) >= 1));
+                            (ghostInserts ??= new List<(long, bool, bool)>()).Add((entry.Key, Volatile.Read(ref entry.Frequency) >= 1, false));
                             m_smallQueueEvictions++;
+                        }
+                        else if (tableOptions.AdaptiveSmallQueueSize)
+                        {
+                            // Only tracked for the adaptive split. A hit on one of these says the
+                            // main queue was too small, which is the evidence the small queue's
+                            // own ghost entries can never provide.
+                            (ghostInserts ??= new List<(long, bool, bool)>()).Add((entry.Key, true, true));
                         }
                     }
                 }
@@ -977,7 +1084,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         {
                             operationBudget--;
                             var ghostInsert = ghostInserts[ghostIndex++];
-                            AddToGhost(ghostInsert.Key, ghostInsert.Reused, ref operationBudget);
+                            AddToGhost(ghostInsert.Key, ghostInsert.Reused, ghostInsert.FromMain, ref operationBudget);
                         }
                     }
                     if ((requeueToSmall == null || smallIndex >= requeueToSmall.Count)
@@ -1122,6 +1229,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_agingCredit;
 
         /// <summary>
+        /// Aging steps taken so far, used by unit tests to pin the pacing.
+        /// Written only on the cleanup thread.
+        /// </summary>
+        private long m_agingSteps;
+
+        internal long AgingStepsForTests => Volatile.Read(ref m_agingSteps);
+
+        /// <summary>
         /// Advances the aging hand over the main queue, decrementing frequencies without evicting
         /// anything. A page that stops being read drains to zero and becomes the first thing
         /// eviction takes, a page still being read is pushed back up by its hits.
@@ -1151,7 +1266,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             // One sweep of the whole main queue per cache turnover, so each page loses a point
             // per turnover and an unread one is gone after MainQueueTurnoversToAgeOut of them.
             // Scaling by the main queue's own size keeps a small main queue cheap to age.
-            var turnover = Math.Max(1, Volatile.Read(ref maxSize));
+            // A turnover is what it takes to replace the pages actually resident, not the
+            // configured ceiling. Paced off the ceiling, a cache running well below it, which is
+            // what the early drain and a working set smaller than the cache both produce, would
+            // age its main queue far slower than it really turns over.
+            var turnover = Math.Max(1, currentCount);
             m_agingCredit += inserted * liveMain;
             var stepsToRun = m_agingCredit / turnover;
             m_agingCredit -= stepsToRun * turnover;
@@ -1164,6 +1283,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     AgeMainQueueChunk(chunk);
                 }
+                m_agingSteps += chunk;
                 if (steps > 0)
                 {
                     // Give writers parked on the queue lock a window, as the selection scan does.
@@ -1290,10 +1410,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// The trim is bounded by the budget, a shrink can drop the capacity by the whole
         /// queue at once and the leftover excess trims on later inserts.
         /// </summary>
-        private void AddToGhost(long key, bool reused, ref int operationBudget)
+        private void AddToGhost(long key, bool reused, bool fromMain, ref int operationBudget)
         {
             var sequence = ++m_ghostSequence;
-            m_ghostKeys[key] = new GhostValue(sequence, reused);
+            if (m_ghostKeys.TryGetValue(key, out var replaced))
+            {
+                DropGhostPopulation(replaced.FromMain);
+            }
+            m_ghostKeys[key] = new GhostValue(sequence, reused, fromMain);
+            if (fromMain)
+            {
+                m_ghostFromMainCount++;
+            }
+            else
+            {
+                m_ghostFromSmallCount++;
+            }
             m_ghostQueue.Enqueue(new GhostRecord(key, sequence));
             var capacity = GhostCapacity();
             while (m_ghostQueue.Count > capacity && operationBudget > 0)
@@ -1305,8 +1437,30 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // A live ghost membership ages out, this key was evicted and never
                     // re-admitted. Added once, never promoted, and now gone. A one-hit-wonder.
                     m_ghostKeys.Remove(oldest.Key);
-                    m_oneHitWonders++;
+                    DropGhostPopulation(storedValue.FromMain);
+                    if (!storedValue.FromMain)
+                    {
+                        m_oneHitWonders++;
+                    }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Must be called under the queue lock.
+        /// </summary>
+        private void DropGhostPopulation(bool fromMain)
+        {
+            if (fromMain)
+            {
+                if (m_ghostFromMainCount > 0)
+                {
+                    m_ghostFromMainCount--;
+                }
+            }
+            else if (m_ghostFromSmallCount > 0)
+            {
+                m_ghostFromSmallCount--;
             }
         }
 
@@ -1438,6 +1592,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 DrainQueueOnDispose(m_mainQueue);
                 m_ghostQueue.Clear();
                 m_ghostKeys.Clear();
+                m_ghostFromSmallCount = 0;
+                m_ghostFromMainCount = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
             }
