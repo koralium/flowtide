@@ -1042,6 +1042,117 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
+        /// Growth is a claim on space nothing else is asking for, so a full cache must not honour
+        /// it. Whatever adaptation has grown the target to, the share defended when one of the
+        /// queues has to give up a page stays at the paper's, and the extra only ever caps an
+        /// early drain. Shrink below it is still honoured, since that only makes the small queue
+        /// give up sooner.
+        /// </summary>
+        [Fact]
+        public async Task GrowthAboveThePaperShareIsNotDefendedUnderPressure()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(1000, adaptiveSmallQueueSize: true);
+            var handler = new TestEvictHandler();
+
+            var key = 0L;
+            for (var round = 0; round < 25; round++)
+            {
+                var roundStart = key;
+                for (var i = 0; i < 1000; i++)
+                {
+                    table.Add(key++, new TestCacheObject(i), handler);
+                }
+                await table.ForceCleanup();
+                for (var i = 0; i < 600; i++)
+                {
+                    ReAddIfEvicted(table, roundStart + i, handler);
+                }
+                await table.ForceCleanup();
+            }
+
+            var grown = table.SmallTargetPermilleForTests;
+            Assert.True(grown > 100, $"the workload never grew the target, it is at {grown}");
+            Assert.Equal(100, table.SmallQueuePressureShareForTests(1000));
+        }
+
+        /// <summary>
+        /// The main queue holds pages already proven to be reused, and a scan for a main victim
+        /// grinds frequencies down until one reaches zero, so sending it to main first does not
+        /// merely reorder the choice, it destroys the evidence main is built on. With the small
+        /// queue holding more than the paper's share, a grown target must not send it there.
+        /// </summary>
+        [Fact]
+        public async Task AGrownTargetDoesNotDrainTheMainQueue()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(1000, adaptiveSmallQueueSize: true);
+            var handler = new TestEvictHandler();
+
+            var key = 0L;
+            for (var round = 0; round < 25; round++)
+            {
+                var roundStart = key;
+                for (var i = 0; i < 1000; i++)
+                {
+                    table.Add(key++, new TestCacheObject(i), handler);
+                }
+                await table.ForceCleanup();
+                for (var i = 0; i < 600; i++)
+                {
+                    ReAddIfEvicted(table, roundStart + i, handler);
+                }
+                await table.ForceCleanup();
+            }
+            var grown = table.SmallTargetPermilleForTests;
+
+            // A hot set that earns its way into main and is read every round after, so its head
+            // is never aged out and the only reason to take from it is the grown target.
+            const int HotCount = 600;
+            var hotStart = key;
+            for (var i = 0; i < HotCount; i++)
+            {
+                table.Add(key++, new TestCacheObject(i), handler);
+            }
+            for (var touch = 0; touch < 2; touch++)
+            {
+                for (var i = 0; i < HotCount; i++)
+                {
+                    if (table.TryGetValue(hotStart + i, out var hot))
+                    {
+                        hot!.Return();
+                    }
+                }
+            }
+            await table.ForceCleanup();
+
+            // Each round leaves the small queue above the paper's share and below the grown
+            // target, which is the only band where the two disagree.
+            var before = table.AdaptEvidenceForTests;
+            for (var round = 0; round < 10; round++)
+            {
+                for (var i = 0; i < 200; i++)
+                {
+                    table.Add(key++, new TestCacheObject(i), handler);
+                }
+                for (var i = 0; i < HotCount; i++)
+                {
+                    if (table.TryGetValue(hotStart + i, out var hot))
+                    {
+                        hot!.Return();
+                    }
+                }
+                await table.ForceCleanup();
+            }
+            var after = table.AdaptEvidenceForTests;
+
+            var smallGaveUp = after.SmallEvictions - before.SmallEvictions;
+            var mainGaveUp = after.MainEvictions - before.MainEvictions;
+            Assert.True(smallGaveUp > 0, "nothing was evicted, so the rule was never exercised");
+            Assert.True(mainGaveUp == 0,
+                $"main gave up {mainGaveUp} proven pages while the small queue gave up " +
+                $"{smallGaveUp} and was above the paper's share the whole time, target {grown}");
+        }
+
+        /// <summary>
         /// The small queue is where every new page enters, so it evicts far more often than the
         /// main queue and would win any contest counted in raw events. A regret from the queue
         /// that rarely evicts has to weigh proportionally more, otherwise the main queue can never

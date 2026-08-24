@@ -723,8 +723,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// The small queue share of a given cache size. A pass that drives the cache down to a
-        /// smaller size has to shrink the small queue with it. Sized against the capacity
+        /// The small queue share of a given cache size, as the early drain caps it. This is the
+        /// share adaptation may grow, because an early drain trims the small queue while the cache
+        /// still has room, so the space it claims is space nothing else is asking for.
+        /// A pass that drives the cache down to a smaller size has to shrink the small queue with it. Sized against the capacity
         /// instead, a deep clean to MinSize fills the whole floor with unproven small queue
         /// entries and pays for it with the reused main queue pages, which is backwards, those
         /// are the pages the floor exists to keep.
@@ -733,6 +735,25 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             var permille = tableOptions.AdaptiveSmallQueueSize
                 ? Volatile.Read(ref m_smallTargetPermille)
+                : DefaultSmallTargetPermille;
+            return Math.Max(1, (int)((long)cacheSize * permille / 1000));
+        }
+
+        /// <summary>
+        /// The small queue share to defend when the cache is full and one of the queues has to
+        /// give up a page. Never more than the paper's share, however far adaptation has grown
+        /// the target, because growth above it is only ever a claim on space nothing else wants.
+        /// A full cache is exactly the case where something else wants it, and the main queue
+        /// holds pages already proven to be reused while the small queue is an admission filter
+        /// holding unproven ones. A page whose reuse distance outruns the small queue does not
+        /// need a larger one either, it is the ghost queue that catches it and routes it straight
+        /// to main. Adaptation is still free to take this below the paper's share, since that only
+        /// makes the small queue give up sooner.
+        /// </summary>
+        private int SmallQueuePressureShare(int cacheSize)
+        {
+            var permille = tableOptions.AdaptiveSmallQueueSize
+                ? Math.Min(Volatile.Read(ref m_smallTargetPermille), DefaultSmallTargetPermille)
                 : DefaultSmallTargetPermille;
             return Math.Max(1, (int)((long)cacheSize * permille / 1000));
         }
@@ -839,6 +860,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         internal int SmallTargetPermilleForTests => Volatile.Read(ref m_smallTargetPermille);
+
+        internal int SmallQueuePressureShareForTests(int cacheSize) => SmallQueuePressureShare(cacheSize);
 
         /// <summary>
         /// The evidence the split is read from, for tests and for reading a benchmark run.
@@ -1270,7 +1293,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             // The share is taken from the size this pass leaves behind, never more than the
             // capacity share, so a shrink drains the small queue instead of preserving it.
-            var smallTarget = SmallQueueTargetSize(Math.Min(Volatile.Read(ref maxSize), targetCacheSize));
+            var smallTarget = SmallQueuePressureShare(Math.Min(Volatile.Read(ref maxSize), targetCacheSize));
             while (victims.Count < toBeRemovedCount)
             {
                 if (operationBudget <= 0)
