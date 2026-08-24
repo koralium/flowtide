@@ -925,6 +925,86 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
+        /// The aging hand takes the main queue head, decrements it and puts it at the back, so a
+        /// page that keeps being read cannot sit at the head and shield the abandoned pages
+        /// behind it. Without the rotation the head would stay hot forever, MainHeadHasAgedOut
+        /// would never fire, and main would keep every page it was ever given.
+        /// </summary>
+        [Fact]
+        public async Task AHotMainHeadDoesNotShieldTheAbandonedPagesBehindIt()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(1000);
+            var handler = new TestEvictHandler();
+
+            // Fill past the cleanup threshold so a pass actually scans the small queue.
+            for (var i = 0; i < 1000; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            // Warm 0..199 twice. Only inserts advance the correlation clock, so the two reads
+            // have to be separated by more than a window of them or the second will not count.
+            for (var i = 0; i < 200; i++)
+            {
+                if (table.TryGetValue(i, out var v)) { v!.Return(); }
+            }
+            for (var i = 0; i < 100; i++)
+            {
+                table.Add(50000 + i, new TestCacheObject(i), handler);
+            }
+            for (var i = 0; i < 200; i++)
+            {
+                if (table.TryGetValue(i, out var v)) { v!.Return(); }
+            }
+            await table.ForceCleanup();
+
+            var inMain = 0;
+            for (var i = 0; i < 200; i++)
+            {
+                if (table.TryPeekEntryForTests(i, out var e) && e.Location == S3FifoQueueLocation.Main) { inMain++; }
+            }
+            var countsAfterPromote = table.GetQueueCountsForTests();
+
+            // From here only key 0 is read. 1..199 are abandoned behind it in main.
+            var key = 100000L;
+            for (var round = 0; round < 40; round++)
+            {
+                for (var i = 0; i < 500; i++)
+                {
+                    table.Add(key++, new TestCacheObject(i), handler);
+                }
+                if (table.TryGetValue(0, out var hot)) { hot!.Return(); }
+                await table.ForceCleanup();
+            }
+
+            table.TryPeekEntryForTests(0, out var head);
+            var survivors = 0;
+            var zeroFreq = 0;
+            for (var i = 1; i < 200; i++)
+            {
+                if (table.TryPeekEntryForTests(i, out var e))
+                {
+                    survivors++;
+                    if (e.Frequency == 0) { zeroFreq++; }
+                }
+            }
+            var counts = table.GetQueueCountsForTests();
+
+            Assert.True(inMain > 100, $"the hot set never reached main, only {inMain} of 200 promoted");
+            Assert.True(table.AgingStepsForTests > 0, "the aging hand never moved");
+
+            // The one page still being read kept its place and its frequency.
+            Assert.NotNull(head);
+            Assert.Equal(S3FifoQueueLocation.Main, head!.Location);
+            Assert.True(head.Frequency > 0, "the page being read every round still aged out");
+
+            // Everything abandoned behind it drained to zero and was taken.
+            Assert.Equal(0, survivors);
+            Assert.Equal(0, zeroFreq);
+            Assert.True(counts.MainCount < 10,
+                $"main kept {counts.MainCount} pages when only one was still being read");
+        }
+
+        /// <summary>
         /// The ghost queue is sized from the cache size alone, never from the queue shares. The
         /// ghost is the evidence the adaptive split reads, and sizing it from the split would feed
         /// the split its own output, a loop that collapses the ghost and makes every hit look like
