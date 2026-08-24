@@ -1404,6 +1404,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         internal long AgingStepsForTests => Volatile.Read(ref m_agingSteps);
 
+        internal static long UsefulAgingSteps(long stepsToRun, int liveMain)
+        {
+            return Math.Min(stepsToRun, (long)MainQueueTurnoversToAgeOut * Math.Max(0, liveMain));
+        }
+
         /// <summary>
         /// Advances the aging hand over the main queue, decrementing frequencies without evicting
         /// anything. A page that stops being read drains to zero and becomes the first thing
@@ -1442,7 +1447,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_agingCredit += inserted * liveMain;
             var stepsToRun = m_agingCredit / turnover;
             m_agingCredit -= stepsToRun * turnover;
-            var steps = (int)Math.Min(int.MaxValue, stepsToRun);
+            var steps = (int)Math.Min(int.MaxValue, UsefulAgingSteps(stepsToRun, liveMain));
             while (steps > 0)
             {
                 var chunk = Math.Min(steps, AgingOperationBudget);

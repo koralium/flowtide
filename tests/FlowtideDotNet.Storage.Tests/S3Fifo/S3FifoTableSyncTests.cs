@@ -902,6 +902,29 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
+        /// Passes that skip aging leave the insertions they saw owed to the next pass that runs
+        /// one, so a long quiet stretch can owe a sweep of many laps. A page loses at most
+        /// MaxFrequency points, so the laps past that cannot change a single frequency and only
+        /// hold the queue lock, which Add and Delete wait behind.
+        /// </summary>
+        [Fact]
+        public void AnOwedAgingSweepIsCutToTheLapsThatCanStillChangeSomething()
+        {
+            // Three laps of a 70000 page main queue is every point every page could lose, so an
+            // owed sweep of a hundred laps is cut to those three.
+            Assert.Equal(210_000, S3FifoTableSync.UsefulAgingSteps(stepsToRun: 7_800_000, liveMain: 70_000));
+
+            // Exactly at the bound is kept whole.
+            Assert.Equal(210_000, S3FifoTableSync.UsefulAgingSteps(stepsToRun: 210_000, liveMain: 70_000));
+
+            // An ordinary pass earns a fraction of a lap and is left alone.
+            Assert.Equal(140, S3FifoTableSync.UsefulAgingSteps(stepsToRun: 140, liveMain: 70_000));
+
+            // Nothing queued to sweep.
+            Assert.Equal(0, S3FifoTableSync.UsefulAgingSteps(stepsToRun: 5_000, liveMain: 0));
+        }
+
+        /// <summary>
         /// The ghost queue is sized from the cache size alone, never from the queue shares. The
         /// ghost is the evidence the adaptive split reads, and sizing it from the split would feed
         /// the split its own output, a loop that collapses the ghost and makes every hit look like
