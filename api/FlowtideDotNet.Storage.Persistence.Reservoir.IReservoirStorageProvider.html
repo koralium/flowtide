@@ -341,8 +341,8 @@ the requested bytes.</p>
   <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/IReservoirStorageProvider.cs/#L71"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Used in local cache, returns the data file ids currently on disk.
-It is used to populate the cache list after a restart so the files do not need to be redownloaded if they already exist.</p>
+  <div class="markdown level1 summary"><p>Returns all data file ids that exist in the storage.
+It is used to populate the local cache after a restart so existing files are not redownloaded, and to delete files left by a previous stream timeline.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
