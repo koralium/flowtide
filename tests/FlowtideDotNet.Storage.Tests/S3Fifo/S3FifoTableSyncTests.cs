@@ -1041,6 +1041,29 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 $"share stayed at {table.SmallTargetPermilleForTests} with evidence {evidence}");
         }
 
+        /// <summary>
+        /// The small queue is where every new page enters, so it evicts far more often than the
+        /// main queue and would win any contest counted in raw events. A regret from the queue
+        /// that rarely evicts has to weigh proportionally more, otherwise the main queue can never
+        /// argue for space however well its own evictions were doing.
+        /// </summary>
+        [Fact]
+        public void RareQueueRegretsWeighProportionallyMore()
+        {
+            // The small queue evicting ten times as often makes each main queue regret worth ten.
+            Assert.Equal(10, S3FifoTableSync.GhostHitWeightForTests(otherEvictions: 10000, ownEvictions: 1000));
+
+            // The busy queue's own regrets stay worth a plain step.
+            Assert.Equal(1, S3FifoTableSync.GhostHitWeightForTests(otherEvictions: 1000, ownEvictions: 10000));
+
+            // Capped, so a queue that has barely evicted cannot swamp the other.
+            Assert.Equal(16, S3FifoTableSync.GhostHitWeightForTests(otherEvictions: 10000000, ownEvictions: 100));
+
+            // And not trusted at all until the queue has evicted enough for its rarity to mean
+            // something, so one early regret cannot become a large move.
+            Assert.Equal(1, S3FifoTableSync.GhostHitWeightForTests(otherEvictions: 10000, ownEvictions: 10));
+        }
+
         [Fact]
         public async Task ClearEmptiesTheTable()
         {

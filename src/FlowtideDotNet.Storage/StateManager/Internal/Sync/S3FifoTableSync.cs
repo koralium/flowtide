@@ -657,10 +657,25 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         /// <summary>
         /// A ghost hit is decisive: the page was thrown away and wanted straight back, so the
-        /// queue that evicted it is too small. Each one is worth a step, which is what lets the
-        /// split climb quickly when a workload clearly wants more of one queue.
+        /// queue that evicted it is too small. Each one is worth at least a step, which is what
+        /// lets the split climb quickly when a workload clearly wants more of one queue.
         /// </summary>
         private const int AdaptPermillePerGhostHit = 1;
+
+        /// <summary>
+        /// Most a rare queue's regret may be magnified by. The small queue is where every new page
+        /// enters, so it evicts far more than the main queue and would win any contest counted in
+        /// raw events, however much better the main queue's evictions were doing. Weighting each
+        /// hit by how rarely its queue evicts puts them on the same footing; the cap stops a queue
+        /// that has barely evicted at all from swamping the other.
+        /// </summary>
+        private const int AdaptMaxHitWeight = 16;
+
+        /// <summary>
+        /// Evictions a queue needs before its rarity is trusted to weight anything, so a handful
+        /// of early evictions cannot magnify one regret into a large move.
+        /// </summary>
+        private const int AdaptMinimumEvidence = 64;
 
         /// <summary>
         /// Most evicted pages are never wanted again even in a well sized cache, so an expiry is
@@ -676,6 +691,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// it there in one go.
         /// </summary>
         private const int AdaptMaxPermillePerPass = 8;
+
+        /// <summary>
+        /// Halve the eviction totals once either queue passes this, so the weighting ratio can
+        /// follow a lasting change in the workload instead of being anchored by everything that
+        /// ever happened. Both are halved together, so the ratio itself does not jump.
+        /// </summary>
+        private const int AdaptDecayEvictions = 1 << 20;
 
         /// <summary>
         /// Movement earned since the last pass, applied together and capped there. Growth comes
@@ -719,7 +741,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// Applies the movement earned since the last pass, capped so no burst of evidence can
         /// carry the split across its range at once.
         /// Growth is fast because a ghost hit is decisive, a page thrown away and wanted straight
-        /// back. Shrink from expiries is deliberately a trickle, since most evicted pages are
+        /// back. Each hit is weighed by how rarely its queue evicts, so the two queues are judged
+        /// on how well their evictions did and not on how many they made, and the cap is applied
+        /// to the net so evidence pushing both ways cancels instead of swinging the split.
+        /// Shrink from expiries is deliberately a trickle, since most evicted pages are
         /// never wanted again even when the queue is sized well. The share therefore rests at the
         /// paper's ten percent and only leaves it while the evidence keeps saying so, climbing
         /// freely when the main queue is not being used and nothing pushes the other way.
@@ -741,6 +766,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             net = Math.Clamp(net, -AdaptMaxPermillePerPass, AdaptMaxPermillePerPass);
             var updated = Math.Clamp(m_smallTargetPermille + (int)net, MinSmallTargetPermille, MaxSmallTargetPermille);
             Volatile.Write(ref m_smallTargetPermille, updated);
+
+            // Halve both counters together so the weighting ratio is untouched, it only keeps the
+            // totals from running away and lets the ratio follow a lasting change in the workload.
+            if (m_smallEvictionsSeen >= AdaptDecayEvictions || m_mainEvictionsSeen >= AdaptDecayEvictions)
+            {
+                m_smallEvictionsSeen /= 2;
+                m_smallGhostHits /= 2;
+                m_mainEvictionsSeen /= 2;
+                m_mainGhostHits /= 2;
+            }
         }
 
         /// <summary>
@@ -756,13 +791,32 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             if (fromMain)
             {
                 m_mainGhostHits++;
-                m_pendingShrinkPermille += AdaptPermillePerGhostHit;
+                m_pendingShrinkPermille += GhostHitWeight(m_smallEvictionsSeen, m_mainEvictionsSeen);
             }
             else
             {
                 m_smallGhostHits++;
-                m_pendingGrowPermille += AdaptPermillePerGhostHit;
+                m_pendingGrowPermille += GhostHitWeight(m_mainEvictionsSeen, m_smallEvictionsSeen);
             }
+        }
+
+        /// <summary>
+        /// What one queue's regret is worth, given how rarely it evicts compared with the other.
+        /// A queue that evicts a tenth as often has each of its regrets counted about ten times,
+        /// so the two are judged on how well their evictions did rather than on how many they
+        /// happened to make. Bounded at both ends, and worth a plain step until the queue has
+        /// evicted enough for its rarity to mean anything.
+        /// </summary>
+        internal static long GhostHitWeightForTests(long otherEvictions, long ownEvictions)
+            => GhostHitWeight(otherEvictions, ownEvictions);
+
+        private static long GhostHitWeight(long otherEvictions, long ownEvictions)
+        {
+            if (ownEvictions < AdaptMinimumEvidence)
+            {
+                return AdaptPermillePerGhostHit;
+            }
+            return Math.Clamp(otherEvictions / ownEvictions, AdaptPermillePerGhostHit, AdaptMaxHitWeight);
         }
 
         /// <summary>
