@@ -17,6 +17,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -339,6 +340,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_mainQueue.Clear();
                 m_ghostQueue.Clear();
                 m_ghostKeys.Clear();
+                m_ghostSmallEntries = 0;
+                m_ghostMainEntries = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
                 Volatile.Write(ref m_count, 0);
@@ -361,6 +364,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_cache.Clear();
                 m_ghostQueue.Clear();
                 m_ghostKeys.Clear();
+                m_ghostSmallEntries = 0;
+                m_ghostMainEntries = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
                 Volatile.Write(ref m_count, 0);
@@ -601,6 +606,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         var inGhost = m_ghostKeys.Remove(key, out var ghostValue);
                         if (inGhost)
                         {
+                            DropGhostMembership(ghostValue.FromMain);
                             // The queue this key was evicted from could not hold it until it was
                             // wanted again. Evidence only, the split moves once per pass.
                             RecordGhostHit(ghostValue.FromMain);
@@ -672,8 +678,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private const int AdaptMaxHitWeight = 16;
 
         /// <summary>
-        /// Evictions a queue needs before its rarity is trusted to weight anything, so a handful
-        /// of early evictions cannot magnify one regret into a large move.
+        /// Ghost entries needed before the shares of it are trusted to weight anything, so a
+        /// barely populated ghost queue cannot magnify one regret into a large move.
         /// </summary>
         private const int AdaptMinimumEvidence = 64;
 
@@ -693,13 +699,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private const int AdaptMaxPermillePerPass = 8;
 
         /// <summary>
-        /// Halve the eviction totals once either queue passes this, so the weighting ratio can
-        /// follow a lasting change in the workload instead of being anchored by everything that
-        /// ever happened. Both are halved together, so the ratio itself does not jump.
-        /// </summary>
-        private const int AdaptDecayEvictions = 1 << 20;
-
-        /// <summary>
         /// Movement earned since the last pass, applied together and capped there. Growth comes
         /// from the small queue's own ghost hits, shrink from the main queue's ghost hits and from
         /// the slow trickle of small queue evictions that expired unused.
@@ -716,6 +715,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_smallGhostHits;
         private long m_mainEvictionsSeen;
         private long m_mainGhostHits;
+
+        /// <summary>
+        /// How many of the keys the ghost queue currently remembers came from each queue, which
+        /// is ARC's |B1| and |B2|. A ghost membership lasts from the eviction that created it
+        /// until the key is wanted again or ages out, so the two counts are the eviction rates of
+        /// the queues over exactly the horizon the ghost queue can still testify about.
+        /// Guarded by the queue lock.
+        /// </summary>
+        private long m_ghostSmallEntries;
+        private long m_ghostMainEntries;
 
         private int SmallQueueTargetSize()
         {
@@ -787,16 +796,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             net = Math.Clamp(net, -AdaptMaxPermillePerPass, AdaptMaxPermillePerPass);
             var updated = Math.Clamp(m_smallTargetPermille + (int)net, MinSmallTargetPermille, MaxSmallTargetPermille);
             Volatile.Write(ref m_smallTargetPermille, updated);
-
-            // Halve both counters together so the weighting ratio is untouched, it only keeps the
-            // totals from running away and lets the ratio follow a lasting change in the workload.
-            if (m_smallEvictionsSeen >= AdaptDecayEvictions || m_mainEvictionsSeen >= AdaptDecayEvictions)
-            {
-                m_smallEvictionsSeen /= 2;
-                m_smallGhostHits /= 2;
-                m_mainEvictionsSeen /= 2;
-                m_mainGhostHits /= 2;
-            }
         }
 
         /// <summary>
@@ -812,32 +811,33 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             if (fromMain)
             {
                 m_mainGhostHits++;
-                m_pendingShrinkPermille += GhostHitWeight(m_smallEvictionsSeen, m_mainEvictionsSeen);
+                m_pendingShrinkPermille += GhostHitWeight(m_ghostSmallEntries, m_ghostMainEntries);
             }
             else
             {
                 m_smallGhostHits++;
-                m_pendingGrowPermille += GhostHitWeight(m_mainEvictionsSeen, m_smallEvictionsSeen);
+                m_pendingGrowPermille += GhostHitWeight(m_ghostMainEntries, m_ghostSmallEntries);
             }
         }
 
         /// <summary>
         /// What one queue's regret is worth, given how rarely it evicts compared with the other.
-        /// A queue that evicts a tenth as often has each of its regrets counted about ten times,
-        /// so the two are judged on how well their evictions did rather than on how many they
-        /// happened to make. Bounded at both ends, and worth a plain step until the queue has
-        /// evicted enough for its rarity to mean anything.
+        /// This is ARC's max(1, |B2|/|B1|): a queue holding a tenth of the ghost queue evicted a
+        /// tenth as often over the horizon the ghost queue covers, so each of its regrets counts
+        /// about ten times, and the two are judged on how well their evictions did rather than on
+        /// how many they happened to make. Bounded at both ends, unlike ARC, and worth a plain
+        /// step until the ghost queue holds enough for its shares to mean anything.
         /// </summary>
-        internal static long GhostHitWeightForTests(long otherEvictions, long ownEvictions)
-            => GhostHitWeight(otherEvictions, ownEvictions);
+        internal static long GhostHitWeightForTests(long otherGhostEntries, long ownGhostEntries)
+            => GhostHitWeight(otherGhostEntries, ownGhostEntries);
 
-        private static long GhostHitWeight(long otherEvictions, long ownEvictions)
+        private static long GhostHitWeight(long otherGhostEntries, long ownGhostEntries)
         {
-            if (ownEvictions < AdaptMinimumEvidence)
+            if (otherGhostEntries + ownGhostEntries < AdaptMinimumEvidence)
             {
                 return AdaptPermillePerGhostHit;
             }
-            return Math.Clamp(otherEvictions / ownEvictions, AdaptPermillePerGhostHit, AdaptMaxHitWeight);
+            return Math.Clamp(otherGhostEntries / Math.Max(1, ownGhostEntries), AdaptPermillePerGhostHit, AdaptMaxHitWeight);
         }
 
         /// <summary>
@@ -862,6 +862,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         internal int SmallTargetPermilleForTests => Volatile.Read(ref m_smallTargetPermille);
 
         internal int SmallQueuePressureShareForTests(int cacheSize) => SmallQueuePressureShare(cacheSize);
+
+        /// <summary>
+        /// ARC's |B1| and |B2|, the shares of the ghost queue each cache queue is remembered in.
+        /// </summary>
+        internal (long Small, long Main, int Remembered) GhostMembershipForTests
+        {
+            get
+            {
+                lock (m_queueLock)
+                {
+                    return (m_ghostSmallEntries, m_ghostMainEntries, m_ghostKeys.Count);
+                }
+            }
+        }
 
         /// <summary>
         /// The evidence the split is read from, for tests and for reading a benchmark run.
@@ -1567,13 +1581,24 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private void AddToGhost(long key, bool reused, bool fromMain, ref int operationBudget)
         {
             var sequence = ++m_ghostSequence;
-            m_ghostKeys[key] = new GhostValue(sequence, reused, fromMain);
+            ref var membership = ref CollectionsMarshal.GetValueRefOrAddDefault(m_ghostKeys, key, out var alreadyRemembered);
+            if (alreadyRemembered)
+            {
+                // Dropping the page from the cache and remembering it here are not one step, so
+                // a key can be evicted again while its earlier membership is still live. That
+                // replaces the membership rather than adding one, and the queue it was evicted
+                // from may differ.
+                DropGhostMembership(membership.FromMain);
+            }
+            membership = new GhostValue(sequence, reused, fromMain);
             if (fromMain)
             {
+                m_ghostMainEntries++;
                 m_mainEvictionsSeen++;
             }
             else
             {
+                m_ghostSmallEntries++;
                 m_smallEvictionsSeen++;
             }
             m_ghostQueue.Enqueue(new GhostRecord(key, sequence));
@@ -1587,12 +1612,33 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // A live ghost membership ages out, this key was evicted and never
                     // re-admitted. Added once, never promoted, and now gone. A one-hit-wonder.
                     m_ghostKeys.Remove(oldest.Key);
+                    DropGhostMembership(storedValue.FromMain);
                     if (!storedValue.FromMain)
                     {
                         m_oneHitWonders++;
                         RecordGhostExpiry();
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// One of the keys the ghost queue remembered is gone, whether it was wanted again, aged
+        /// out, or was replaced by a later eviction of the same key.
+        /// Must be called under the queue lock.
+        /// </summary>
+        private void DropGhostMembership(bool fromMain)
+        {
+            if (fromMain)
+            {
+                if (m_ghostMainEntries > 0)
+                {
+                    m_ghostMainEntries--;
+                }
+            }
+            else if (m_ghostSmallEntries > 0)
+            {
+                m_ghostSmallEntries--;
             }
         }
 
@@ -1724,6 +1770,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 DrainQueueOnDispose(m_mainQueue);
                 m_ghostQueue.Clear();
                 m_ghostKeys.Clear();
+                m_ghostSmallEntries = 0;
+                m_ghostMainEntries = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
             }

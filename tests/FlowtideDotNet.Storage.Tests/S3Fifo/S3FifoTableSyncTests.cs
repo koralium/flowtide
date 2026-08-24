@@ -1156,23 +1156,76 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         /// The small queue is where every new page enters, so it evicts far more often than the
         /// main queue and would win any contest counted in raw events. A regret from the queue
         /// that rarely evicts has to weigh proportionally more, otherwise the main queue can never
-        /// argue for space however well its own evictions were doing.
+        /// argue for space however well its own evictions were doing. This is ARC's |B2|/|B1|.
         /// </summary>
         [Fact]
         public void RareQueueRegretsWeighProportionallyMore()
         {
-            // The small queue evicting ten times as often makes each main queue regret worth ten.
-            Assert.Equal(10, S3FifoTableSync.GhostHitWeightForTests(otherEvictions: 10000, ownEvictions: 1000));
+            // Holding a tenth of the ghost queue means evicting a tenth as often over the horizon
+            // it covers, so each of that queue's regrets is worth ten.
+            Assert.Equal(10, S3FifoTableSync.GhostHitWeightForTests(otherGhostEntries: 10000, ownGhostEntries: 1000));
 
-            // The busy queue's own regrets stay worth a plain step.
-            Assert.Equal(1, S3FifoTableSync.GhostHitWeightForTests(otherEvictions: 1000, ownEvictions: 10000));
+            // The queue filling the ghost queue keeps its regrets at a plain step.
+            Assert.Equal(1, S3FifoTableSync.GhostHitWeightForTests(otherGhostEntries: 1000, ownGhostEntries: 10000));
 
-            // Capped, so a queue that has barely evicted cannot swamp the other.
-            Assert.Equal(16, S3FifoTableSync.GhostHitWeightForTests(otherEvictions: 10000000, ownEvictions: 100));
+            // Capped, so a queue barely represented cannot swamp the other, and a queue with no
+            // memberships left at all is the extreme of that rather than a divide by zero.
+            Assert.Equal(16, S3FifoTableSync.GhostHitWeightForTests(otherGhostEntries: 10000000, ownGhostEntries: 100));
+            Assert.Equal(16, S3FifoTableSync.GhostHitWeightForTests(otherGhostEntries: 10000, ownGhostEntries: 0));
 
-            // And not trusted at all until the queue has evicted enough for its rarity to mean
-            // something, so one early regret cannot become a large move.
-            Assert.Equal(1, S3FifoTableSync.GhostHitWeightForTests(otherEvictions: 10000, ownEvictions: 10));
+            // And nothing is trusted until the ghost queue holds enough for its shares to mean
+            // something, so a near empty one cannot magnify the first regret into a large move.
+            Assert.Equal(1, S3FifoTableSync.GhostHitWeightForTests(otherGhostEntries: 40, ownGhostEntries: 4));
+        }
+
+        /// <summary>
+        /// The two shares stand in for how often each queue evicts, so they have to track what the
+        /// ghost queue actually remembers. A membership ends when the key is wanted again, when it
+        /// ages out, or when a later eviction of the same key replaces it, and every one of those
+        /// has to be counted or the shares drift away from the queues they describe.
+        /// </summary>
+        [Fact]
+        public async Task GhostMembershipCountsFollowTheGhostQueue()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(1000, adaptiveSmallQueueSize: true);
+            var handler = new TestEvictHandler();
+
+            for (var i = 0; i < 1000; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            await table.ForceCleanup();
+
+            var evicted = table.GhostMembershipForTests;
+            Assert.True(evicted.Small > 0, "small queue evictions were not remembered");
+            Assert.Equal(evicted.Remembered, evicted.Small + evicted.Main);
+
+            // Wanting the evicted keys back ends those memberships.
+            foreach (var evictedKey in handler.EvictedKeys.ToList())
+            {
+                ReAddIfEvicted(table, evictedKey, handler);
+            }
+            var afterHits = table.GhostMembershipForTests;
+            Assert.Equal(afterHits.Remembered, afterHits.Small + afterHits.Main);
+
+            // So does churning until the oldest memberships age out, and re-evicting keys the
+            // ghost queue already remembers, which replaces a membership instead of adding one.
+            var key = 100000L;
+            for (var round = 0; round < 20; round++)
+            {
+                for (var i = 0; i < 1000; i++)
+                {
+                    table.Add(key++, new TestCacheObject(i), handler);
+                }
+                await table.ForceCleanup();
+                for (var i = 0; i < 300; i++)
+                {
+                    ReAddIfEvicted(table, key - 1000 + i, handler);
+                }
+                await table.ForceCleanup();
+                var counts = table.GhostMembershipForTests;
+                Assert.Equal(counts.Remembered, counts.Small + counts.Main);
+            }
         }
 
         [Fact]
