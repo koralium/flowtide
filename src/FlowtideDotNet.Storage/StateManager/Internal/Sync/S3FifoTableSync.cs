@@ -130,15 +130,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private int m_mainStaleCount;
 
         /// <summary>
-        /// Live ghost memberships by the queue they were evicted from. A hit on one is evidence
-        /// that queue was too small, and these sizes scale the adaptation step so the split
-        /// settles instead of swinging, as in ARC.
-        /// Guarded by the queue lock.
-        /// </summary>
-        private int m_ghostFromSmallCount;
-        private int m_ghostFromMainCount;
-
-        /// <summary>
         /// The small queue's share of the cache in permille. Adapted from ghost hits when the
         /// adaptive split is on, left at the default share otherwise.
         /// Written under the queue lock, read with Volatile off it.
@@ -348,8 +339,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_mainQueue.Clear();
                 m_ghostQueue.Clear();
                 m_ghostKeys.Clear();
-                m_ghostFromSmallCount = 0;
-                m_ghostFromMainCount = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
                 Volatile.Write(ref m_count, 0);
@@ -372,8 +361,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_cache.Clear();
                 m_ghostQueue.Clear();
                 m_ghostKeys.Clear();
-                m_ghostFromSmallCount = 0;
-                m_ghostFromMainCount = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
                 Volatile.Write(ref m_count, 0);
@@ -614,10 +601,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         var inGhost = m_ghostKeys.Remove(key, out var ghostValue);
                         if (inGhost)
                         {
-                            DropGhostPopulation(ghostValue.FromMain);
-                            // The queue this key was evicted from was too small to still hold it,
-                            // so the split moves that way.
-                            AdaptSmallTarget(ghostValue.FromMain);
+                            // The queue this key was evicted from could not hold it until it was
+                            // wanted again. Evidence only, the split moves once per pass.
+                            RecordGhostHit(ghostValue.FromMain);
                         }
                         if (inGhost && (ghostValue.Reused || ghostValue.FromMain))
                         {
@@ -669,6 +655,46 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private const int MinSmallTargetPermille = 50;
         private const int MaxSmallTargetPermille = 950;
 
+        /// <summary>
+        /// A ghost hit is decisive: the page was thrown away and wanted straight back, so the
+        /// queue that evicted it is too small. Each one is worth a step, which is what lets the
+        /// split climb quickly when a workload clearly wants more of one queue.
+        /// </summary>
+        private const int AdaptPermillePerGhostHit = 1;
+
+        /// <summary>
+        /// Most evicted pages are never wanted again even in a well sized cache, so an expiry is
+        /// weak evidence and only worth a step in bulk. Scaled to the cache so the trickle is a
+        /// property of how much the cache turns over rather than of raw throughput: a full cache
+        /// worth of evictions that nobody returns for moves the split about four steps.
+        /// </summary>
+        private static int ExpiriesPerPermille(int cacheSize) => Math.Max(64, cacheSize / 4);
+
+        /// <summary>
+        /// Most the split may move in one cleanup pass however much evidence arrived. Fast enough
+        /// to cross its range in about a second of steady evidence, bounded so no burst can carry
+        /// it there in one go.
+        /// </summary>
+        private const int AdaptMaxPermillePerPass = 8;
+
+        /// <summary>
+        /// Movement earned since the last pass, applied together and capped there. Growth comes
+        /// from the small queue's own ghost hits, shrink from the main queue's ghost hits and from
+        /// the slow trickle of small queue evictions that expired unused.
+        /// Guarded by the queue lock.
+        /// </summary>
+        private long m_pendingGrowPermille;
+        private long m_pendingShrinkPermille;
+        private long m_expiryCredit;
+
+        /// <summary>
+        /// Lifetime totals, for diagnostics and tests.
+        /// </summary>
+        private long m_smallEvictionsSeen;
+        private long m_smallGhostHits;
+        private long m_mainEvictionsSeen;
+        private long m_mainGhostHits;
+
         private int SmallQueueTargetSize()
         {
             return SmallQueueTargetSize(Volatile.Read(ref maxSize));
@@ -690,12 +716,38 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// A ghost hit says the queue the key was evicted from was too small to hold it until it
-        /// came back, so the split moves toward that queue. The step is scaled by the other
-        /// queue's ghost population, which is what makes it settle instead of swing, as in ARC.
+        /// Applies the movement earned since the last pass, capped so no burst of evidence can
+        /// carry the split across its range at once.
+        /// Growth is fast because a ghost hit is decisive, a page thrown away and wanted straight
+        /// back. Shrink from expiries is deliberately a trickle, since most evicted pages are
+        /// never wanted again even when the queue is sized well. The share therefore rests at the
+        /// paper's ten percent and only leaves it while the evidence keeps saying so, climbing
+        /// freely when the main queue is not being used and nothing pushes the other way.
         /// Must be called under the queue lock.
         /// </summary>
-        private void AdaptSmallTarget(bool fromMain)
+        private void AdaptSmallTarget()
+        {
+            if (!tableOptions.AdaptiveSmallQueueSize)
+            {
+                return;
+            }
+            var net = m_pendingGrowPermille - m_pendingShrinkPermille;
+            m_pendingGrowPermille = 0;
+            m_pendingShrinkPermille = 0;
+            if (net == 0)
+            {
+                return;
+            }
+            net = Math.Clamp(net, -AdaptMaxPermillePerPass, AdaptMaxPermillePerPass);
+            var updated = Math.Clamp(m_smallTargetPermille + (int)net, MinSmallTargetPermille, MaxSmallTargetPermille);
+            Volatile.Write(ref m_smallTargetPermille, updated);
+        }
+
+        /// <summary>
+        /// The queue this key was evicted from could not hold it until it was wanted again.
+        /// Must be called under the queue lock.
+        /// </summary>
+        private void RecordGhostHit(bool fromMain)
         {
             if (!tableOptions.AdaptiveSmallQueueSize)
             {
@@ -703,17 +755,51 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             if (fromMain)
             {
-                var step = Math.Max(1, m_ghostFromSmallCount / Math.Max(1, m_ghostFromMainCount));
-                Volatile.Write(ref m_smallTargetPermille, Math.Max(MinSmallTargetPermille, m_smallTargetPermille - step));
+                m_mainGhostHits++;
+                m_pendingShrinkPermille += AdaptPermillePerGhostHit;
             }
             else
             {
-                var step = Math.Max(1, m_ghostFromMainCount / Math.Max(1, m_ghostFromSmallCount));
-                Volatile.Write(ref m_smallTargetPermille, Math.Min(MaxSmallTargetPermille, m_smallTargetPermille + step));
+                m_smallGhostHits++;
+                m_pendingGrowPermille += AdaptPermillePerGhostHit;
+            }
+        }
+
+        /// <summary>
+        /// A small queue eviction aged out of the ghost queue without ever being wanted again.
+        /// Weak evidence, so it only earns a step in bulk.
+        /// Must be called under the queue lock.
+        /// </summary>
+        private void RecordGhostExpiry()
+        {
+            if (!tableOptions.AdaptiveSmallQueueSize)
+            {
+                return;
+            }
+            var perPermille = ExpiriesPerPermille(Volatile.Read(ref maxSize));
+            if (++m_expiryCredit >= perPermille)
+            {
+                m_expiryCredit -= perPermille;
+                m_pendingShrinkPermille++;
             }
         }
 
         internal int SmallTargetPermilleForTests => Volatile.Read(ref m_smallTargetPermille);
+
+        /// <summary>
+        /// The evidence the split is read from, for tests and for reading a benchmark run.
+        /// </summary>
+        internal (long SmallEvictions, long SmallHits, long MainEvictions, long MainHits) AdaptEvidenceForTests
+        {
+            get
+            {
+                lock (m_queueLock)
+                {
+                    return (m_smallEvictionsSeen, m_smallGhostHits, m_mainEvictionsSeen, m_mainGhostHits);
+                }
+            }
+        }
+
 
         /// <summary>
         /// How far the small queue is over its target share, used when the cache as a whole is
@@ -745,8 +831,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private int GhostCapacity()
         {
-            // One cache worth of evicted keys, so a ghost hit means the key would still be here
-            // if the cache were up to twice its size. Deliberately not sized off the queue shares:
+            // Half a cache worth of evicted keys, so a ghost hit means the key would still be
+            // here if the cache were half again as large.
+            // Deliberately not sized off the queue shares:
             // the ghost is the evidence the adaptive split reads, and sizing it from the split
             // would feed the split its own output. A grown small queue would shrink the ghost, a
             // short ghost only remembers the newest evictions, every hit would then look shallow,
@@ -755,22 +842,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         internal int GhostCapacityForTests => GhostCapacity();
-
-        /// <summary>
-        /// Ghost insertions since this key was evicted, which is the depth the adaptive split
-        /// filters on. Minus one when the key is not in the ghost queue.
-        /// </summary>
-        internal long GhostDepthForTests(long key)
-        {
-            lock (m_queueLock)
-            {
-                if (!m_ghostKeys.TryGetValue(key, out var value))
-                {
-                    return -1;
-                }
-                return m_ghostSequence - value.Sequence;
-            }
-        }
 
         private async Task Cleanup()
         {
@@ -849,6 +920,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         }
                     }
                 }
+            }
+
+            // Move the split at most one step, on the evidence gathered since the last pass.
+            lock (m_queueLock)
+            {
+                AdaptSmallTarget();
             }
 
             // Age the main queue whether or not this pass evicts. Aging is what makes a page
@@ -1413,18 +1490,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private void AddToGhost(long key, bool reused, bool fromMain, ref int operationBudget)
         {
             var sequence = ++m_ghostSequence;
-            if (m_ghostKeys.TryGetValue(key, out var replaced))
-            {
-                DropGhostPopulation(replaced.FromMain);
-            }
             m_ghostKeys[key] = new GhostValue(sequence, reused, fromMain);
             if (fromMain)
             {
-                m_ghostFromMainCount++;
+                m_mainEvictionsSeen++;
             }
             else
             {
-                m_ghostFromSmallCount++;
+                m_smallEvictionsSeen++;
             }
             m_ghostQueue.Enqueue(new GhostRecord(key, sequence));
             var capacity = GhostCapacity();
@@ -1437,30 +1510,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // A live ghost membership ages out, this key was evicted and never
                     // re-admitted. Added once, never promoted, and now gone. A one-hit-wonder.
                     m_ghostKeys.Remove(oldest.Key);
-                    DropGhostPopulation(storedValue.FromMain);
                     if (!storedValue.FromMain)
                     {
                         m_oneHitWonders++;
+                        RecordGhostExpiry();
                     }
                 }
-            }
-        }
-
-        /// <summary>
-        /// Must be called under the queue lock.
-        /// </summary>
-        private void DropGhostPopulation(bool fromMain)
-        {
-            if (fromMain)
-            {
-                if (m_ghostFromMainCount > 0)
-                {
-                    m_ghostFromMainCount--;
-                }
-            }
-            else if (m_ghostFromSmallCount > 0)
-            {
-                m_ghostFromSmallCount--;
             }
         }
 
@@ -1592,8 +1647,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 DrainQueueOnDispose(m_mainQueue);
                 m_ghostQueue.Clear();
                 m_ghostKeys.Clear();
-                m_ghostFromSmallCount = 0;
-                m_ghostFromMainCount = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
             }
