@@ -172,6 +172,39 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             });
         }
 
+        [Fact]
+        public async Task TestResetWithLocalCacheRemovesDataFiles()
+        {
+            var provider = new MemoryFileProvider();
+            var cacheProvider = new MemoryFileProvider();
+            var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider,
+                CacheProvider = cacheProvider
+            });
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+
+            var session = persistentStorage.CreateSession();
+            await session.Write(100, new SerializableObject(new byte[] { 9 }));
+            await session.Commit();
+            await persistentStorage.CheckpointAsync(new byte[] { 1 }, false);
+
+            Assert.NotEmpty(await provider.GetStoredDataFileIdsAsync());
+            Assert.NotEmpty(await cacheProvider.GetStoredDataFileIdsAsync());
+
+            await persistentStorage.ResetAsync();
+
+            // The previous timeline must not be left behind in either layer
+            Assert.Empty(await provider.GetStoredDataFileIdsAsync());
+            Assert.Empty(await cacheProvider.GetStoredDataFileIdsAsync());
+
+            var newSession = persistentStorage.CreateSession();
+            await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () =>
+            {
+                await newSession.Read(100);
+            });
+        }
+
         /// <summary>
         /// Verifies that concurrent compaction and write operations do not result in data loss or corruption in the
         /// persistent storage implementation.

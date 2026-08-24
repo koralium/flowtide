@@ -161,7 +161,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
         public Task<IEnumerable<ulong>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException();
+            // The remote holds the complete set, the cache only a subset of it
+            return _remoteStorage.GetStoredDataFileIdsAsync(cancellationToken);
         }
 
         public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion, CancellationToken cancellationToken = default)
