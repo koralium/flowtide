@@ -849,10 +849,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Aging is paced by what it takes to replace the resident pages, not by the configured
-        /// ceiling. The early drain holds this cache near 1000 pages against a ceiling of 10000,
-        /// so pacing off the ceiling would age the main queue ten times slower than the cache
-        /// really turns over, and over this many rounds not at all.
+        /// Aging is paced off the resident pages, not the ceiling.
         /// </summary>
         [Fact]
         public async Task AgingIsPacedByResidentPagesNotTheConfiguredCeiling()
@@ -902,10 +899,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Passes that skip aging leave the insertions they saw owed to the next pass that runs
-        /// one, so a long quiet stretch can owe a sweep of many laps. A page loses at most
-        /// MaxFrequency points, so the laps past that cannot change a single frequency and only
-        /// hold the queue lock, which Add and Delete wait behind.
+        /// An owed sweep is cut to the laps that matter.
         /// </summary>
         [Fact]
         public void AnOwedAgingSweepIsCutToTheLapsThatCanStillChangeSomething()
@@ -925,10 +919,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The aging hand takes the main queue head, decrements it and puts it at the back, so a
-        /// page that keeps being read cannot sit at the head and shield the abandoned pages
-        /// behind it. Without the rotation the head would stay hot forever, MainHeadHasAgedOut
-        /// would never fire, and main would keep every page it was ever given.
+        /// The aging hand rotates, a hot head shields nothing behind it.
         /// </summary>
         [Fact]
         public async Task AHotMainHeadDoesNotShieldTheAbandonedPagesBehindIt()
@@ -1005,10 +996,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The ghost queue is sized from the cache size alone, never from the queue shares. The
-        /// ghost is the evidence the adaptive split reads, and sizing it from the split would feed
-        /// the split its own output, a loop that collapses the ghost and makes every hit look like
-        /// it landed on the newest entry.
+        /// Ghost size follows the cache size only, never the queue shares.
+        /// Sizing it from the split would feed the split its own output.
         /// </summary>
         [Fact]
         public async Task GhostCapacityFollowsTheCacheSizeOnly()
@@ -1021,8 +1010,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The split moves a bounded amount per cleanup pass however much evidence arrives, so no
-        /// burst of ghost hits can carry it across its range in one go.
+        /// The split moves a bounded amount per pass, whatever evidence arrives.
         /// </summary>
         [Fact]
         public async Task SplitMovementPerPassIsBounded()
@@ -1079,10 +1067,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Ghost entries that age out unused are the signal that the small queue is holding pages
-        /// nobody comes back for, so its share shrinks. This has to work with an empty main queue,
-        /// which is what a workload with no reuse produces, and it is the case that matters most:
-        /// with the early drain on, the share is what the cache shrinks back to.
+        /// Ghost entries aging out unused shrink the small queue share.
+        /// Must work with an empty main queue, no reuse produces that.
         /// </summary>
         [Fact]
         public async Task UnusedGhostEntriesShrinkTheSmallQueue()
@@ -1111,8 +1097,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The mirror: when the pages the small queue discards keep being wanted again, it is
-        /// throwing them away too soon and its share grows.
+        /// The mirror, evictions wanted back again grow the small queue share.
         /// </summary>
         [Fact]
         public async Task GhostHitsGrowTheSmallQueue()
@@ -1145,11 +1130,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Growth is a claim on space nothing else is asking for, so a full cache must not honour
-        /// it. Whatever adaptation has grown the target to, the share defended when one of the
-        /// queues has to give up a page stays at the paper's, and the extra only ever caps an
-        /// early drain. Shrink below it is still honoured, since that only makes the small queue
-        /// give up sooner.
+        /// A full cache does not honour growth above the paper's share.
+        /// Shrink below it still counts, that only makes small give up sooner.
         /// </summary>
         [Fact]
         public async Task GrowthAboveThePaperShareIsNotDefendedUnderPressure()
@@ -1179,10 +1161,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The main queue holds pages already proven to be reused, and a scan for a main victim
-        /// grinds frequencies down until one reaches zero, so sending it to main first does not
-        /// merely reorder the choice, it destroys the evidence main is built on. With the small
-        /// queue holding more than the paper's share, a grown target must not send it there.
+        /// A grown target must not send eviction to main.
+        /// A main scan grinds frequencies down and destroys main's evidence.
         /// </summary>
         [Fact]
         public async Task AGrownTargetDoesNotDrainTheMainQueue()
@@ -1207,8 +1187,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
             var grown = table.SmallTargetPermilleForTests;
 
-            // A hot set that earns its way into main and is read every round after, so its head
-            // is never aged out and the only reason to take from it is the grown target.
+            // A hot set in main, read every round so it never ages out.
             const int HotCount = 600;
             var hotStart = key;
             for (var i = 0; i < HotCount; i++)
@@ -1227,8 +1206,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
             await table.ForceCleanup();
 
-            // Each round leaves the small queue above the paper's share and below the grown
-            // target, which is the only band where the two disagree.
+            // Keep small between the paper share and the grown target.
             var before = table.AdaptEvidenceForTests;
             for (var round = 0; round < 10; round++)
             {
@@ -1256,36 +1234,29 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The small queue is where every new page enters, so it evicts far more often than the
-        /// main queue and would win any contest counted in raw events. A regret from the queue
-        /// that rarely evicts has to weigh proportionally more, otherwise the main queue can never
-        /// argue for space however well its own evictions were doing. This is ARC's |B2|/|B1|.
+        /// A hit from the queue that rarely evicts weighs more, ARC's |B2|/|B1|.
+        /// Counted in raw events the small queue would win everything.
         /// </summary>
         [Fact]
         public void RareQueueRegretsWeighProportionallyMore()
         {
-            // Holding a tenth of the ghost queue means evicting a tenth as often over the horizon
-            // it covers, so each of that queue's regrets is worth ten.
+            // A tenth of the ghost queue makes its hit worth ten.
             Assert.Equal(10, S3FifoTableSync.GhostHitWeightForTests(otherGhostEntries: 10000, ownGhostEntries: 1000));
 
-            // The queue filling the ghost queue keeps its regrets at a plain step.
+            // The queue filling the ghost queue keeps a plain step.
             Assert.Equal(1, S3FifoTableSync.GhostHitWeightForTests(otherGhostEntries: 1000, ownGhostEntries: 10000));
 
-            // Capped, so a queue barely represented cannot swamp the other, and a queue with no
-            // memberships left at all is the extreme of that rather than a divide by zero.
+            // Capped, and no memberships left is the extreme, not a divide by zero.
             Assert.Equal(16, S3FifoTableSync.GhostHitWeightForTests(otherGhostEntries: 10000000, ownGhostEntries: 100));
             Assert.Equal(16, S3FifoTableSync.GhostHitWeightForTests(otherGhostEntries: 10000, ownGhostEntries: 0));
 
-            // And nothing is trusted until the ghost queue holds enough for its shares to mean
-            // something, so a near empty one cannot magnify the first regret into a large move.
+            // A near empty ghost queue is not trusted to weight anything.
             Assert.Equal(1, S3FifoTableSync.GhostHitWeightForTests(otherGhostEntries: 40, ownGhostEntries: 4));
         }
 
         /// <summary>
-        /// The two shares stand in for how often each queue evicts, so they have to track what the
-        /// ghost queue actually remembers. A membership ends when the key is wanted again, when it
-        /// ages out, or when a later eviction of the same key replaces it, and every one of those
-        /// has to be counted or the shares drift away from the queues they describe.
+        /// The shares must match what the ghost queue remembers.
+        /// Wanted again, aged out and replaced all end a membership.
         /// </summary>
         [Fact]
         public async Task GhostMembershipCountsFollowTheGhostQueue()
@@ -1311,8 +1282,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var afterHits = table.GhostMembershipForTests;
             Assert.Equal(afterHits.Remembered, afterHits.Small + afterHits.Main);
 
-            // So does churning until the oldest memberships age out, and re-evicting keys the
-            // ghost queue already remembers, which replaces a membership instead of adding one.
+            // So does churning until the oldest age out, and re-evicting remembered keys.
             var key = 100000L;
             for (var round = 0; round < 20; round++)
             {

@@ -25,19 +25,14 @@ namespace FlowtideDotNet.Storage.StateManager
         public int MinCachePageCount { get; set; } = 1000;
 
         /// <summary>
-        /// Keeps the cache's small queue at its target share even when the cache is below the
-        /// eviction threshold, instead of letting it use the space the cache has free.
-        /// On by default. Turning it off keeps every page the cache has room for, which raises
-        /// the hit rate at the cost of holding several times as many pages resident.
+        /// Hold the small queue at its share below the threshold too.
+        /// On by default. Off keeps more pages resident for a better hit rate.
         /// </summary>
         public bool DrainSmallQueueEarly { get; set; } = true;
 
         /// <summary>
-        /// Sizes the cache's small queue from what the ghost queue observes rather than holding
-        /// the fixed 10% share, so a workload that reuses pages gives the main queue more room and
-        /// one that does not gives it less.
-        /// On by default. Turning it off holds the share the S3-FIFO paper fixes it at, which is
-        /// the right one only for a workload that keeps the same shape throughout.
+        /// Size the small queue from what the ghost queue observes.
+        /// On by default. Off holds the fixed 10% share from the paper.
         /// </summary>
         public bool AdaptiveSmallQueueSize { get; set; } = true;
 

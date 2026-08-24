@@ -21,33 +21,6 @@ using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
-    /// <summary>
-    /// In-memory page cache shared by all state clients in a stream.
-    /// Uses the S3-FIFO eviction algorithm instead of the old LRU/CLOCK hybrid.
-    ///
-    /// A concurrent dictionary gives lock-free key lookup.
-    /// A small FIFO queue takes new keys and filters one-hit wonders.
-    /// A main FIFO queue holds entries that proved two reuse events, either two counted
-    /// hits or one counted hit plus a ghost re-reference.
-    /// A ghost queue remembers keys recently evicted from the small queue along with
-    /// whether they counted a reuse; a re-referenced key without one re-enters the small
-    /// queue with the re-reference banked as frequency.
-    ///
-    /// Reads never touch the queues, a hit only bumps the entry frequency.
-    /// Queue maintenance happens on insert and in the background cleanup task.
-    /// The cleanup task ages the main queue every pass, paced by how much the cache turned over,
-    /// so a page there keeps its place only while it is still being read. Eviction then takes the
-    /// aged out head first, which lets the main queue shrink back and hand the space to the small
-    /// queue instead of holding a fixed share of the cache.
-    /// Frequency uses spaced counting, a hit only counts when the entry aged past the
-    /// correlation window since its insertion or last counted hit, so a burst counts as
-    /// one reuse event, see S3FifoCorrelationClock.
-    ///
-    /// lock(entry) guards Removed, Frequency and Version.
-    /// m_queueLock guards the queues, the stale counters and entry.Location.
-    /// An entry lock may be taken inside the queue lock, never the reverse.
-    /// Add and Delete on one key must be serialized by the caller, reads race freely.
-    /// </summary>
     internal class S3FifoTableSync : IDisposable
     {
         private readonly struct GhostRecord
@@ -653,56 +626,38 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private const int DefaultSmallTargetPermille = 100;
 
         /// <summary>
-        /// How far the adaptive split may move the small queue's share.
-        /// The floor is two correlation windows worth, the residency a page needs to earn the two
-        /// spaced hits promotion asks for. The ceiling leaves the main queue a sliver so a
-        /// workload that starts reusing pages again can climb back out.
+        /// How far the adaptive split may move the small queue share.
         /// </summary>
         private const int MinSmallTargetPermille = 50;
         private const int MaxSmallTargetPermille = 950;
 
         /// <summary>
-        /// A ghost hit is decisive: the page was thrown away and wanted straight back, so the
-        /// queue that evicted it is too small. Each one is worth at least a step, which is what
-        /// lets the split climb quickly when a workload clearly wants more of one queue.
+        /// Smallest move one ghost hit is worth.
         /// </summary>
         private const int AdaptPermillePerGhostHit = 1;
 
         /// <summary>
-        /// Most a rare queue's regret may be magnified by. The small queue is where every new page
-        /// enters, so it evicts far more than the main queue and would win any contest counted in
-        /// raw events, however much better the main queue's evictions were doing. Weighting each
-        /// hit by how rarely its queue evicts puts them on the same footing; the cap stops a queue
-        /// that has barely evicted at all from swamping the other.
+        /// Cap on how much a rare queue's hit is magnified.
         /// </summary>
         private const int AdaptMaxHitWeight = 16;
 
         /// <summary>
-        /// Ghost entries needed before the shares of it are trusted to weight anything, so a
-        /// barely populated ghost queue cannot magnify one regret into a large move.
+        /// Ghost entries needed before the shares are trusted.
         /// </summary>
         private const int AdaptMinimumEvidence = 64;
 
         /// <summary>
-        /// Most evicted pages are never wanted again even in a well sized cache, so an expiry is
-        /// weak evidence and only worth a step in bulk. Scaled to the cache so the trickle is a
-        /// property of how much the cache turns over rather than of raw throughput: a full cache
-        /// worth of evictions that nobody returns for moves the split about four steps.
+        /// Expiries needed to shrink the share one step.
         /// </summary>
         private static int ExpiriesPerPermille(int cacheSize) => Math.Max(64, cacheSize / 4);
 
         /// <summary>
-        /// Most the split may move in one cleanup pass however much evidence arrived. Fast enough
-        /// to cross its range in about a second of steady evidence, bounded so no burst can carry
-        /// it there in one go.
+        /// Most the split may move in one cleanup pass.
         /// </summary>
         private const int AdaptMaxPermillePerPass = 8;
 
         /// <summary>
-        /// Movement earned since the last pass, applied together and capped there. Growth comes
-        /// from the small queue's own ghost hits, shrink from the main queue's ghost hits and from
-        /// the slow trickle of small queue evictions that expired unused.
-        /// Guarded by the queue lock.
+        /// Movement earned since the last pass. Guarded by the queue lock.
         /// </summary>
         private long m_pendingGrowPermille;
         private long m_pendingShrinkPermille;
@@ -716,13 +671,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_mainEvictionsSeen;
         private long m_mainGhostHits;
 
-        /// <summary>
-        /// How many of the keys the ghost queue currently remembers came from each queue, which
-        /// is ARC's |B1| and |B2|. A ghost membership lasts from the eviction that created it
-        /// until the key is wanted again or ages out, so the two counts are the eviction rates of
-        /// the queues over exactly the horizon the ghost queue can still testify about.
-        /// Guarded by the queue lock.
-        /// </summary>
         private long m_ghostSmallEntries;
         private long m_ghostMainEntries;
 
@@ -732,13 +680,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// The small queue share of a given cache size, as the early drain caps it. This is the
-        /// share adaptation may grow, because an early drain trims the small queue while the cache
-        /// still has room, so the space it claims is space nothing else is asking for.
-        /// A pass that drives the cache down to a smaller size has to shrink the small queue with it. Sized against the capacity
-        /// instead, a deep clean to MinSize fills the whole floor with unproven small queue
-        /// entries and pays for it with the reused main queue pages, which is backwards, those
-        /// are the pages the floor exists to keep.
+        /// Small queue share of a cache size, as the early drain caps it.
+        /// Sized off what the pass leaves behind, not the capacity.
         /// </summary>
         private int SmallQueueTargetSize(int cacheSize)
         {
@@ -749,15 +692,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// The small queue share to defend when the cache is full and one of the queues has to
-        /// give up a page. Never more than the paper's share, however far adaptation has grown
-        /// the target, because growth above it is only ever a claim on space nothing else wants.
-        /// A full cache is exactly the case where something else wants it, and the main queue
-        /// holds pages already proven to be reused while the small queue is an admission filter
-        /// holding unproven ones. A page whose reuse distance outruns the small queue does not
-        /// need a larger one either, it is the ghost queue that catches it and routes it straight
-        /// to main. Adaptation is still free to take this below the paper's share, since that only
-        /// makes the small queue give up sooner.
+        /// The small queue share to defend when the cache is full.
+        /// Never above the paper's share, adaptation may still take it below.
         /// </summary>
         private int SmallQueuePressureShare(int cacheSize)
         {
@@ -768,16 +704,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Applies the movement earned since the last pass, capped so no burst of evidence can
-        /// carry the split across its range at once.
-        /// Growth is fast because a ghost hit is decisive, a page thrown away and wanted straight
-        /// back. Each hit is weighed by how rarely its queue evicts, so the two queues are judged
-        /// on how well their evictions did and not on how many they made, and the cap is applied
-        /// to the net so evidence pushing both ways cancels instead of swinging the split.
-        /// Shrink from expiries is deliberately a trickle, since most evicted pages are
-        /// never wanted again even when the queue is sized well. The share therefore rests at the
-        /// paper's ten percent and only leaves it while the evidence keeps saying so, climbing
-        /// freely when the main queue is not being used and nothing pushes the other way.
+        /// Applies the movement earned since the last pass, capped on the net.
         /// Must be called under the queue lock.
         /// </summary>
         private void AdaptSmallTarget()
@@ -820,14 +747,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        /// <summary>
-        /// What one queue's regret is worth, given how rarely it evicts compared with the other.
-        /// This is ARC's max(1, |B2|/|B1|): a queue holding a tenth of the ghost queue evicted a
-        /// tenth as often over the horizon the ghost queue covers, so each of its regrets counts
-        /// about ten times, and the two are judged on how well their evictions did rather than on
-        /// how many they happened to make. Bounded at both ends, unlike ARC, and worth a plain
-        /// step until the ghost queue holds enough for its shares to mean anything.
-        /// </summary>
         internal static long GhostHitWeightForTests(long otherGhostEntries, long ownGhostEntries)
             => GhostHitWeight(otherGhostEntries, ownGhostEntries);
 
@@ -841,8 +760,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// A small queue eviction aged out of the ghost queue without ever being wanted again.
-        /// Weak evidence, so it only earns a step in bulk.
+        /// A small queue eviction aged out of ghost unused.
         /// Must be called under the queue lock.
         /// </summary>
         private void RecordGhostExpiry()
@@ -863,9 +781,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         internal int SmallQueuePressureShareForTests(int cacheSize) => SmallQueuePressureShare(cacheSize);
 
-        /// <summary>
-        /// ARC's |B1| and |B2|, the shares of the ghost queue each cache queue is remembered in.
-        /// </summary>
         internal (long Small, long Main, int Remembered) GhostMembershipForTests
         {
             get
@@ -878,7 +793,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// The evidence the split is read from, for tests and for reading a benchmark run.
+        /// The evidence the split is read from.
         /// </summary>
         internal (long SmallEvictions, long SmallHits, long MainEvictions, long MainHits) AdaptEvidenceForTests
         {
@@ -1321,10 +1236,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return true;
                 }
                 bool foundVictim;
-                // A main head that aged to zero spent every second chance and went MaxFrequency
-                // cache turnovers unused, which makes it a weaker page than the small queue head,
-                // and that one is at least recent. When main is still being read its head is
-                // never zero, so this never rotates a hot main queue looking for a victim.
+                // The aged out main head is weaker than the small head.
                 if (MainHeadHasAgedOut() || liveSmall <= smallTarget)
                 {
                     foundVictim = TryEvictOneFromMain(victims, ref operationBudget) || TryEvictOneFromSmall(victims, ref operationBudget);
@@ -1351,10 +1263,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     return false;
                 }
-                // Draining the small queue promotes its reused heads into main, so main grows
-                // here. Without taking its aged out pages too, main would only ever grow while
-                // the cache stays below the threshold, and it is those pages, unread for
-                // MainQueueTurnoversToAgeOut turnovers, that the drain should pay with first.
+                // The drain grows main, so pay with its aged out pages first.
                 if (MainHeadHasAgedOut() && TryEvictOneFromMain(victims, ref operationBudget))
                 {
                     continue;
@@ -1374,24 +1283,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// How many cache turnovers a main queue page survives without being read again, which
-        /// falls out of losing one frequency point per turnover. A read earns a point back per
-        /// correlation window, and there are many of those per turnover, so a page still being
-        /// read stays saturated while an abandoned one drains.
+        /// Cache turnovers an unread main page survives.
         /// </summary>
         private const int MainQueueTurnoversToAgeOut = S3FifoCacheEntry.MaxFrequency;
 
         /// <summary>
-        /// Max aging steps in one pass, so a large main queue cannot hold the queue lock while it
-        /// is swept. Whatever is left over is aged on the following passes.
+        /// Max aging steps per lock hold, the rest ages on later passes.
         /// </summary>
         private const int AgingOperationBudget = 1024;
 
         /// <summary>
-        /// Insertion count the last aging sweep ran at, and the sweep work carried over from it.
-        /// The sweep is paced by how much the cache turned over rather than by wall clock, so a
-        /// quiet stream does not age its own hot set. The carry over matters, a pass usually
-        /// earns a fraction of a step and dropping it would leave a small main queue never aged.
+        /// Insertion count the last sweep ran at, and its carried over work.
+        /// A pass earns a fraction of a step, so it carries.
         /// </summary>
         private long m_lastAgingSequence;
         private long m_agingCredit;
@@ -1410,11 +1313,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Advances the aging hand over the main queue, decrementing frequencies without evicting
-        /// anything. A page that stops being read drains to zero and becomes the first thing
-        /// eviction takes, a page still being read is pushed back up by its hits.
-        /// Freeing space is the eviction pass's job, aging only decides what has earned its place,
-        /// which is why this runs even when nothing needs to be evicted.
+        /// Advances the aging hand over main, decrementing without evicting.
+        /// Runs even when nothing needs freeing.
         /// </summary>
         private void AgeMainQueue(int currentCount)
         {
@@ -1436,13 +1336,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 return;
             }
 
-            // One sweep of the whole main queue per cache turnover, so each page loses a point
-            // per turnover and an unread one is gone after MainQueueTurnoversToAgeOut of them.
-            // Scaling by the main queue's own size keeps a small main queue cheap to age.
-            // A turnover is what it takes to replace the pages actually resident, not the
-            // configured ceiling. Paced off the ceiling, a cache running well below it, which is
-            // what the early drain and a working set smaller than the cache both produce, would
-            // age its main queue far slower than it really turns over.
+            // One sweep of main per cache turnover.
+            // Turnover is the resident pages, not the ceiling.
             var turnover = Math.Max(1, currentCount);
             m_agingCredit += inserted * liveMain;
             var stepsToRun = m_agingCredit / turnover;
@@ -1589,10 +1484,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             ref var membership = ref CollectionsMarshal.GetValueRefOrAddDefault(m_ghostKeys, key, out var alreadyRemembered);
             if (alreadyRemembered)
             {
-                // Dropping the page from the cache and remembering it here are not one step, so
-                // a key can be evicted again while its earlier membership is still live. That
-                // replaces the membership rather than adding one, and the queue it was evicted
-                // from may differ.
+                // Evicted again while the earlier membership is still live, so replace it.
                 DropGhostMembership(membership.FromMain);
             }
             membership = new GhostValue(sequence, reused, fromMain);
@@ -1628,8 +1520,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// One of the keys the ghost queue remembered is gone, whether it was wanted again, aged
-        /// out, or was replaced by a later eviction of the same key.
+        /// A remembered ghost key is gone, wanted again, aged out or replaced.
         /// Must be called under the queue lock.
         /// </summary>
         private void DropGhostMembership(bool fromMain)
