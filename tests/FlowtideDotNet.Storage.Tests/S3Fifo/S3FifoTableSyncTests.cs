@@ -17,8 +17,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 {
     /// <summary>
     /// Functional tests for the S3-FIFO cache table.
-    /// All tests stop the cleanup task and drive eviction through ForceCleanup.
-    /// MaxSize 10 gives cleanup threshold 7 and small target 1, so a cleanup at 10 evicts 3.
+    /// Tests stop the cleanup task and drive eviction through ForceCleanup.
+    /// MaxSize 10 gives threshold 7 and small target 1.
     /// </summary>
     public class S3FifoTableSyncTests
     {
@@ -64,10 +64,10 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             for (var i = 0; i < 3; i++)
             {
                 Assert.False(table.TryGetValue(i, out _));
-                // The cache's reference was the only one, so the object is disposed.
+                // The cache held the only reference, so it is disposed.
                 Assert.Equal(0, objects[i].RentCount);
                 Assert.Equal(1, objects[i].DisposeCount);
-                // Evicted from the small queue, so the key is remembered in the ghost queue.
+                // Evicted from small, so the key is remembered in ghost.
                 Assert.True(table.IsInGhostForTests(i));
             }
         }
@@ -88,25 +88,25 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(table.IsInGhostForTests(0));
             Assert.True(table.IsInGhostForTests(1));
 
-            // One counted reuse plus the re-reference is two events, straight to main.
+            // One counted reuse plus the re-reference, straight to main.
             table.Add(0, new TestCacheObject(0), handler);
             Assert.True(table.TryPeekEntryForTests(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
             Assert.False(table.IsInGhostForTests(0));
 
-            // No counted reuse, the re-reference is the first event and is banked as frequency.
+            // No counted reuse, so the re-reference is banked as frequency.
             table.Add(1, new TestCacheObject(1), handler);
             Assert.True(table.TryPeekEntryForTests(1, out var coldEntry));
             Assert.Equal(S3FifoQueueLocation.Small, coldEntry.Location);
             Assert.Equal(1, coldEntry.Frequency);
             Assert.False(table.IsInGhostForTests(1));
 
-            // One counted hit completes the banked pair, frequency 2 is what the scan promotes on.
+            // One counted hit completes the pair, the scan promotes on 2.
             Assert.True(table.TryGetValue(1, out var pairHit));
             pairHit!.Return();
             Assert.Equal(2, coldEntry.Frequency);
 
-            // A brand new key still goes to the small queue with nothing banked.
+            // A new key goes to small with nothing banked.
             table.Add(100, new TestCacheObject(100), handler);
             Assert.True(table.TryPeekEntryForTests(100, out var freshEntry));
             Assert.Equal(S3FifoQueueLocation.Small, freshEntry.Location);
@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, objects[i], handler);
             }
 
-            // Access keys 0..2 twice each, giving them frequency 2 (> 1 promotes).
+            // Access keys 0..2 twice, frequency 2 promotes.
             for (var round = 0; round < 2; round++)
             {
                 for (var i = 0; i < 3; i++)
@@ -137,7 +137,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             await table.ForceCleanup();
 
-            // 0..2 were promoted, so the next-oldest small entries were evicted instead.
+            // 0..2 promoted, so the next oldest went instead.
             Assert.Equal(new List<long> { 3, 4, 5 }, handler.EvictedKeys);
             for (var i = 0; i < 3; i++)
             {
@@ -156,8 +156,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // One counted access is only the first reuse event, main admission needs two.
-            // The page leaves through the ghost queue with the reuse recorded instead.
+            // One access is the first event, main needs two.
+            // It leaves through ghost with the reuse recorded.
             Assert.True(table.TryGetValue(0, out var cacheObject));
             cacheObject!.Return();
 
@@ -178,7 +178,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 objects[i] = new TestCacheObject(i);
                 table.Add(i, objects[i], handler);
             }
-            // Give every entry frequency 2 so the small-queue scan promotes all of them.
+            // Frequency 2 on every entry, so the scan promotes them all.
             for (var round = 0; round < 2; round++)
             {
                 for (var i = 0; i < 4; i++)
@@ -190,8 +190,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             await table.ForceCleanup();
 
-            // All four promoted to main, then the scan decrements frequencies in FIFO
-            // passes until the oldest entry reaches 0 and is evicted.
+            // All four promoted, then the scan decrements until the oldest reaches 0.
             Assert.Equal(new List<long> { 0 }, handler.EvictedKeys);
             Assert.Equal(3, table.Count);
             for (var i = 1; i < 4; i++)
@@ -200,8 +199,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
             }
 
-            // Main-queue evictions do not enter the ghost queue, so a re-add of key 0
-            // starts over in the small queue.
+            // Main evictions skip ghost, so a re-add starts over in small.
             Assert.False(table.IsInGhostForTests(0));
             table.Add(0, new TestCacheObject(0), handler);
             Assert.True(table.TryPeekEntryForTests(0, out var readdedEntry));
@@ -220,7 +218,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var handler = new TestEvictHandler();
             var objects = new TestCacheObject[4];
 
-            // Simulates a state client modifying the page while it is being serialized.
+            // A client modifying the page while it serializes.
             // The version bump must prevent the removal.
             handler.OnEvict = (values, _) =>
             {
@@ -241,7 +239,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             await table.ForceCleanup();
 
-            // Key 0 was selected as the victim, but its version changed during eviction.
+            // Key 0 was the victim, but its version changed.
             Assert.Equal(new List<long> { 0 }, handler.EvictedKeys);
             Assert.Equal(4, table.Count);
             Assert.False(objects[0].Disposed);
@@ -267,8 +265,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, objects[i], handler);
             }
 
-            // 5000 entries over a threshold of 7, so one cleanup selects 4993 victims.
-            // These must span many queue-lock acquisitions and keep FIFO order and accounting.
+            // 5000 entries over a threshold of 7 selects 4993 victims.
+            // They must span many lock acquisitions and keep FIFO order.
             var acquisitionsBefore = table.SelectionLockAcquisitionsForTests;
             await table.ForceCleanup();
             var acquisitions = table.SelectionLockAcquisitionsForTests - acquisitionsBefore;
@@ -276,7 +274,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(acquisitions > 1, $"Selection used {acquisitions} lock acquisition(s); large batches must be chunked");
             Assert.Equal(7, table.Count);
             Assert.Equal(total - 7, handler.Evictions.Count);
-            // FIFO order preserved across chunks, the oldest evicted and the newest survived.
+            // FIFO order across chunks, oldest out and newest kept.
             Assert.Equal(0, handler.EvictedKeys.First());
             Assert.Equal(total - 8, handler.EvictedKeys.Last());
             for (var i = total - 7; i < total; i++)
@@ -303,8 +301,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, objects[i], handler);
             }
 
-            // Storage failure while serializing the victims, the cleanup pass must fail loudly
-            // but the victims must stay cached and evictable.
+            // Storage fails while serializing, the pass must fail loudly.
+            // The victims must stay cached and evictable.
             handler.OnEvict = (_, _) => throw new IOException("temporary storage failure");
             await Assert.ThrowsAsync<IOException>(() => table.ForceCleanup());
 
@@ -312,8 +310,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(table.TryGetValue(0, out var stillCached));
             stillCached!.Return();
 
-            // Handler recovers, every entry including the failed victims must be evictable
-            // all the way down to an empty table.
+            // Handler recovers, everything must evict down to empty.
             handler.OnEvict = null;
             for (var i = 0; i < 2001 && table.Count > 0; i++)
             {
@@ -340,8 +337,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 {
                     if (value.Item1.Key == 0)
                     {
-                        // The page is modified and then deleted while being serialized.
-                        // The delete must win and the entry must not be resurrected.
+                        // Modified then deleted while serializing.
+                        // The delete must win, no resurrection.
                         table.Add(0, value.Item1.Value, handler);
                         table.Delete(0);
                     }
@@ -376,12 +373,11 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             table.Delete(0);
 
-            // A reader holding a stale entry reference (like a state client lookup slot)
-            // must observe a miss on the lock-free read path, not a throw, and must not rent.
+            // A stale entry reference must miss, not throw, and must not rent.
             Assert.False(entry!.TryRentValue());
             Assert.Equal(0, obj.RentCount);
 
-            // Same when the object survives removal because another holder still rents it.
+            // Same when another holder still rents the object.
             var held = new TestCacheObject(1);
             Assert.True(held.TryRent());
             table.Add(1, held, handler);
@@ -414,8 +410,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             table.Delete(0);
             Assert.Equal(1, obj0.DisposeCount);
 
-            // Fill up and clean, the stale slot for key 0 must be skipped so the victims
-            // are the oldest live entries.
+            // Fill and clean, the stale slot must be skipped.
             for (var i = 2; i <= 10; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
@@ -432,14 +427,13 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.False(table.Add(0, new TestCacheObject(0), handler));
             Assert.False(table.Add(1, new TestCacheObject(1), handler));
             Assert.False(table.Add(2, new TestCacheObject(2), handler));
-            // Count is now 3 > MaxSize 2, so the caller is told to wait.
+            // Count 3 over MaxSize 2, the caller is told to wait.
             Assert.True(table.Add(3, new TestCacheObject(3), handler));
         }
 
         /// <summary>
-        /// A page that anything still references must never be removed from the cache.
-        /// Removing it lets a traversal reload a second object for the same key and the two
-        /// copies diverge. Seen when a B+ tree iterator holds a leaf under eviction pressure.
+        /// A referenced page must never be removed from the cache.
+        /// A reload would make a second copy that diverges.
         /// </summary>
         [Fact]
         public async Task HeldPagesAreNotEvictedSoTheirIdentityIsStable()
@@ -453,14 +447,14 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, objects[i], handler);
             }
 
-            // Hold a reference to key 0 across a cleanup, like a B+ tree iterator would.
-            // Rent directly on the object, a table read would now count as a promoting hit.
+            // Hold key 0 across a cleanup, like a tree iterator would.
+            // Rent on the object, a table read would count as a hit.
             Assert.True(objects[0].TryRent());
 
             await table.ForceCleanup();
 
-            // The held page was selected and serialized but must stay cached.
-            // A later read must return the same object, not a reloaded copy.
+            // Selected and serialized but it must stay cached.
+            // A later read returns the same object, not a copy.
             Assert.Contains(0, handler.EvictedKeys);
             Assert.True(table.TryGetValue(0, out var again));
             Assert.Same(objects[0], again);
@@ -468,12 +462,11 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.False(objects[0].RemovedFromCache);
             Assert.False(objects[0].Disposed);
             Assert.Equal(4, table.Count);
-            // It was requeued into the queue it came from for a later retry, being held is not
-            // the proven reuse the main queue asks for.
+            // Requeued where it came from, being held is not proven reuse.
             Assert.True(table.TryPeekEntryForTests(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Small, entry!.Location);
 
-            // Accounting is unharmed by the skipped eviction, cache share plus our rent.
+            // Accounting survives the skipped eviction, cache plus our rent.
             Assert.Equal(2, objects[0].RentCount);
             objects[0].Return();
             Assert.Equal(1, objects[0].RentCount);
@@ -510,8 +503,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The deep clean drops to MinSize, not to empty. Every other test runs with a floor
-        /// of zero, where the two are indistinguishable.
+        /// The deep clean drops to MinSize, not to empty.
+        /// Every other test runs with a floor of zero.
         /// </summary>
         [Fact]
         public async Task DeepCleanupStopsAtMinSize()
@@ -523,7 +516,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, new TestCacheObject(i), handler);
             }
 
-            // Below the cleanup threshold, so nothing goes until the no-hits counter trips.
+            // Below the threshold, nothing goes until the no-hits counter trips.
             for (var i = 0; i < 1001 && table.Count > 3; i++)
             {
                 await table.ForceCleanup();
@@ -551,8 +544,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, new TestCacheObject(i), handler);
             }
 
-            // 5 entries is below the cleanup threshold of 7, so nothing is evicted until
-            // the no-hits counter reaches its limit, after which everything is dropped.
+            // 5 entries is below the threshold of 7.
+            // Nothing goes until the no-hits counter trips, then all of it does.
             for (var i = 0; i < 1001 && table.Count > 0; i++)
             {
                 await table.ForceCleanup();
@@ -564,9 +557,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// The deep clean shrinks the cache to MinSize, and it should pay with pages nothing is
-        /// reading rather than the ones that proved reuse.
-        /// MaxSize 100 gives threshold 70 and window 2, MinSize 10 is the deep clean target.
+        /// The deep clean should pay with unread pages, not proven ones.
+        /// MaxSize 100 gives threshold 70 and window 2, MinSize 10 is the target.
         /// </summary>
         [Fact]
         public async Task DeepCleanupKeepsReusedPagesOverUnprovenOnes()
@@ -577,7 +569,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // Keys 0..4 count two reuses in separate windows, so the scan promotes them.
+            // Keys 0..4 count two spaced reuses, so the scan promotes them.
             for (var i = 0; i < 5; i++)
             {
                 Assert.True(table.TryGetValue(i, out var reused));
@@ -591,7 +583,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 reusedAgain!.Return();
             }
 
-            // Over the threshold, so this pass evicts and promotes the reused keys on the way.
+            // Over the threshold, so this pass evicts and promotes.
             await table.ForceCleanup();
 
             var afterEviction = table.GetQueueCountsForTests();
@@ -602,24 +594,22 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
             }
 
-            // Idle long enough to trip the deep clean, which drops the cache to MinSize.
+            // Idle long enough for the deep clean to drop to MinSize.
             for (var i = 0; i < 1001 && table.Count > 10; i++)
             {
                 await table.ForceCleanup();
             }
 
             Assert.Equal(10, table.Count);
-            // The reused pages are what the floor is for, the never-reused small queue tail is
-            // what the deep clean pays with.
+            // The floor is for the reused pages, the small tail pays.
             var afterDeepClean = table.GetQueueCountsForTests();
             Assert.Equal(5, afterDeepClean.MainCount);
             Assert.Equal(5, afterDeepClean.SmallCount);
         }
 
         /// <summary>
-        /// A page a caller still holds survives eviction, and goes back to the queue it came
-        /// from. Handing it the main queue would let being held buy main admission without the
-        /// two reuse events the policy asks for.
+        /// A held page survives eviction and returns to its own queue.
+        /// Sending it to main would buy admission without the two reuse events.
         /// </summary>
         [Fact]
         public async Task HeldVictimRequeuesToItsOriginQueue()
@@ -632,7 +622,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 objects[i] = new TestCacheObject(i);
                 table.Add(i, objects[i], handler);
             }
-            // Hold the small queue head directly, a table read would also count as a reuse.
+            // Hold the small head directly, a table read counts as reuse.
             Assert.True(objects[0].TryRent());
 
             await table.ForceCleanup();
@@ -644,8 +634,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// A cache below its eviction threshold keeps what it has. Trading resident pages for
-        /// queue shares throws away capacity the cache was configured to use.
+        /// A cache below its threshold keeps what it has.
+        /// Trading resident pages for queue shares throws away capacity.
         /// </summary>
         [Fact]
         public async Task CacheBelowThresholdKeepsEverything()
@@ -656,21 +646,21 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // A hit keeps the cache off the idle deep clean, which owns the no-hits case.
+            // A hit keeps it off the idle deep clean.
             Assert.True(table.TryGetValue(0, out var hit));
             hit!.Return();
 
             await table.ForceCleanup();
 
-            // 60 is well over the small queue's 10% share but well under the 70 threshold.
+            // 60 is over the 10% share but under the 70 threshold.
             Assert.Empty(handler.Evictions);
             Assert.Equal(60, table.Count);
             Assert.Equal(60, table.GetQueueCountsForTests().SmallCount);
         }
 
         /// <summary>
-        /// A main queue page that stops being read loses its frequency as the cache turns over,
-        /// and once it is aged out eviction takes it before the small queue's head.
+        /// A main page that stops being read loses frequency on turnover.
+        /// Once aged out, eviction takes it before the small head.
         /// </summary>
         [Fact]
         public async Task AgedOutMainPagesAreEvictedBeforeSmallQueuePages()
@@ -681,7 +671,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // Key 0 earns two spaced reuses and is promoted by the first pass.
+            // Key 0 earns two spaced reuses and is promoted.
             Assert.True(table.TryGetValue(0, out var first));
             first!.Return();
             table.Add(71, new TestCacheObject(71), handler);
@@ -693,8 +683,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(table.TryPeekEntryForTests(0, out var promoted));
             Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
 
-            // Nothing reads key 0 again. Turning the cache over ages it down to zero, and once
-            // there it is the first thing eviction takes.
+            // Nothing reads key 0 again, so turnover ages it to zero.
+            // At zero it is the first thing eviction takes.
             for (var round = 0; round < 40 && !handler.EvictedKeys.Contains(0); round++)
             {
                 for (var i = 0; i < 100; i++)
@@ -711,8 +701,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Aging is paced by how much the cache turned over, so a cache nothing is inserting into
-        /// does not age its own resident set away.
+        /// Aging is paced by turnover, no inserts means no aging.
         /// </summary>
         [Fact]
         public async Task AgingDoesNotRunWithoutInsertions()
@@ -735,7 +724,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
             var frequencyAfterPromotion = promoted.Frequency;
 
-            // No inserts, so no turnover, so the hand does not move however often cleanup runs.
+            // No inserts, no turnover, so the hand does not move.
             for (var i = 0; i < 50; i++)
             {
                 await table.ForceCleanup();
@@ -746,8 +735,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// With the opt in drain on, the small queue is held at its share even below the
-        /// eviction threshold.
+        /// With the drain on, small is held at its share below the threshold.
         /// </summary>
         [Fact]
         public async Task EarlyDrainHoldsSmallQueueAtItsTargetWhenEnabled()
@@ -758,7 +746,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // A hit keeps the cache off the idle deep clean, which owns the no-hits case.
+            // A hit keeps it off the idle deep clean.
             Assert.True(table.TryGetValue(0, out var hit));
             hit!.Return();
 
@@ -769,9 +757,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Draining the small queue promotes its reused heads into main, so the drain has to be
-        /// able to take main's aged out pages as well. Without that, main only ever grows while
-        /// the cache stays below the eviction threshold.
+        /// The drain promotes into main, so it must take its aged out pages too.
+        /// Otherwise main only ever grows below the threshold.
         /// </summary>
         [Fact]
         public async Task EarlyDrainAlsoEvictsAgedOutMainPages()
@@ -782,7 +769,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // Key 0 earns two spaced reuses, so the first drain promotes it into main.
+            // Key 0 earns two spaced reuses, the first drain promotes it.
             Assert.True(table.TryGetValue(0, out var first));
             first!.Return();
             table.Add(60, new TestCacheObject(60), handler);
@@ -794,8 +781,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(table.TryPeekEntryForTests(0, out var promoted));
             Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
 
-            // Nothing reads key 0 again, so the cache turning over ages it out and the drain
-            // takes it instead of only ever paying from the small queue.
+            // Nothing reads key 0 again, so turnover ages it out.
+            // The drain takes it instead of paying from small.
             for (var round = 0; round < 40 && !handler.EvictedKeys.Contains(0); round++)
             {
                 for (var i = 0; i < 100; i++)
@@ -812,8 +799,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Re-adds a key only when it is no longer cached. Adding a second instance for a key the
-        /// cache still holds is a caller error the table rejects on purpose.
+        /// Re-adds a key only when it is no longer cached.
+        /// A second instance for a cached key is a caller error.
         /// </summary>
         private static void ReAddIfEvicted(S3FifoTableSync table, long key, TestEvictHandler handler)
         {
@@ -824,7 +811,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Off by default, the small queue keeps the fixed share whatever the ghost queue sees.
+        /// Off by default, the small queue keeps the fixed share.
         /// </summary>
         [Fact]
         public async Task SmallQueueShareIsFixedUnlessAdaptationIsEnabled()
@@ -860,8 +847,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // Two hits spaced past the 250 wide correlation window promote key 0, so the main
-            // queue has something to age.
+            // Two hits past the 250 wide window promote key 0.
             Assert.True(table.TryGetValue(0, out var first));
             first!.Return();
             for (var i = 2000; i < 2400; i++)
@@ -886,8 +872,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 {
                     table.Add(10000 + (round * 1000) + i, new TestCacheObject(i), handler);
                 }
-                // A hit on some other key keeps the cache off the idle path, which returns before
-                // anything ages. Reading key 0 would pump its frequency back up instead.
+                // A hit on another key keeps it off the idle path.
+                // Reading key 0 would pump its frequency back up.
                 Assert.True(table.TryGetValue(10000 + (round * 1000), out var keepAlive));
                 keepAlive!.Return();
                 await table.ForceCleanup();
@@ -904,8 +890,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         [Fact]
         public void AnOwedAgingSweepIsCutToTheLapsThatCanStillChangeSomething()
         {
-            // Three laps of a 70000 page main queue is every point every page could lose, so an
-            // owed sweep of a hundred laps is cut to those three.
+            // Three laps of 70000 pages is every point they could lose.
+            // An owed sweep of a hundred laps is cut to those three.
             Assert.Equal(210_000, S3FifoTableSync.UsefulAgingSteps(stepsToRun: 7_800_000, liveMain: 70_000));
 
             // Exactly at the bound is kept whole.
@@ -932,8 +918,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // Warm 0..199 twice. Only inserts advance the correlation clock, so the two reads
-            // have to be separated by more than a window of them or the second will not count.
+            // Warm 0..199 twice. Only inserts advance the clock.
+            // The two reads must straddle a window of them to both count.
             for (var i = 0; i < 200; i++)
             {
                 if (table.TryGetValue(i, out var v)) { v!.Return(); }
@@ -955,7 +941,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
             var countsAfterPromote = table.GetQueueCountsForTests();
 
-            // From here only key 0 is read. 1..199 are abandoned behind it in main.
+            // Only key 0 is read now, 1..199 are abandoned in main.
             var key = 100000L;
             for (var round = 0; round < 40; round++)
             {
@@ -1026,7 +1012,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 {
                     table.Add(key++, new TestCacheObject(i), handler);
                 }
-                // Bring back a batch of just evicted keys, a burst of evidence in one pass.
+                // Bring back just evicted keys, a burst of evidence.
                 for (var i = 1; i <= 200; i++)
                 {
                     ReAddIfEvicted(table, key - i, handler);
@@ -1041,7 +1027,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Off by default, the split keeps the fixed share whatever the ghost queue sees.
+        /// Off by default, the split keeps the fixed share.
         /// </summary>
         [Fact]
         public async Task SplitIsFixedUnlessAdaptationIsEnabled()
@@ -1077,8 +1063,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var handler = new TestEvictHandler();
             var startPermille = table.SmallTargetPermilleForTests;
 
-            // Every key is touched once and never again, so everything the small queue evicts
-            // expires in the ghost queue unused.
+            // Every key is touched once, so every eviction expires unused.
             var key = 0L;
             for (var round = 0; round < 25; round++)
             {
@@ -1322,12 +1307,9 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Clear must not mark entries removed and must not return the cache reference.
-        /// SyncStateClient caches these handles and short circuits on !Removed, so a page that
-        /// only lives in memory stays reachable across a Clear. Marking them removed instead
-        /// sends the client to persistent storage for a page that was never written there,
-        /// which shows up far away as ExchangeOperatorTests.TestPullBucketOutput failing with
-        /// "Segment not found".
+        /// Clear must not mark entries removed or return the cache reference.
+        /// Clients short circuit on !Removed to reach memory only pages.
+        /// Marking them removed shows up as TestPullBucketOutput, "Segment not found".
         /// </summary>
         [Fact]
         public async Task ClearKeepsEntryHandlesRentableForTheClientLookupSlots()
@@ -1408,9 +1390,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// A delete landing between a victims requeue decision and the requeue block must not
-        /// resurrect the dead entry into a queue, that slot would carry no stale count and
-        /// drift the compaction accounting.
+        /// A delete between the requeue decision and the requeue must not resurrect it.
+        /// That slot would carry no stale count and drift the accounting.
         /// </summary>
         [Fact]
         public async Task DeleteDuringVictimRequeueDoesNotResurrectDeadEntry()
@@ -1428,11 +1409,11 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, objects[i], handler);
             }
 
-            // Key 0 is held so its reclaim fails and it lands on the requeue list.
-            // Rent directly on the object, a table read would now count as a promoting hit.
+            // Key 0 is held, so its reclaim fails and it is requeued.
+            // Rent on the object, a table read would count as a hit.
             Assert.True(objects[0].TryRent());
 
-            // Key 1 holds the removal phase open after key 0's requeue decision was made.
+            // Key 1 holds the removal phase open after key 0 was requeued.
             objects[1].OnTryReclaimForEviction = () =>
             {
                 gateEntered.Release();
@@ -1442,7 +1423,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var cleanup = Task.Run(() => table.ForceCleanup());
             Assert.True(await gateEntered.WaitAsync(5000));
 
-            // Delete key 0 in the window between its requeue decision and the requeue block.
+            // Delete key 0 between its requeue decision and the requeue.
             table.Delete(0);
 
             gateRelease.Set();
@@ -1487,8 +1468,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
-        /// Stopping the cleanup task must complete even while a commit or recovery holds the
-        /// eviction pause, the parked wait must observe the cancellation.
+        /// Stopping the cleanup task must complete while eviction is paused.
+        /// The parked wait must observe the cancellation.
         /// </summary>
         [Fact]
         public async Task StopCleanupTaskCompletesWhileEvictionIsPaused()

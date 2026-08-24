@@ -34,8 +34,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             public long Key { get; }
 
             /// <summary>
-            /// Which insertion into the ghost queue this record belongs to.
-            /// Stops a stale ring slot from removing a newer membership record.
+            /// Which ghost insertion this record belongs to.
+            /// Stops a stale slot removing a newer membership.
             /// </summary>
             public long Sequence { get; }
         }
@@ -53,15 +53,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             public long Version { get; }
 
             /// <summary>
-            /// Only entries evicted from the small queue enter the ghost queue,
-            /// as prescribed by the S3-FIFO algorithm.
+            /// Only small queue evictions enter the ghost queue.
             /// </summary>
             public bool FromSmallQueue { get; }
         }
 
         /// <summary>
-        /// Compact the queues when stale slots pass both this value and the live count.
-        /// Deletes leave a stale slot behind, so a delete-heavy workload would grow unbounded.
+        /// Compact when stale slots pass this and the live count.
+        /// Deletes leave a stale slot behind.
         /// </summary>
         private const int CompactionMinimumStaleCount = 1024;
 
@@ -82,15 +81,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             public long Sequence { get; }
 
             /// <summary>
-            /// The entry counted a reuse before it was evicted, so a re-reference is its
-            /// second reuse event and admits it straight to main.
+            /// Counted a reuse before eviction, so a re-reference admits it to main.
             /// </summary>
             public bool Reused { get; }
 
             /// <summary>
-            /// The entry was evicted from the main queue rather than the small one. A hit on it
-            /// says main was too small, the mirror of a hit on a small queue evictee, and it is
-            /// the evidence the small queue's own ghost entries can never give.
+            /// Evicted from main, so a hit on it says main was too small.
             /// Only recorded while the adaptive split is on.
             /// </summary>
             public bool FromMain { get; }
@@ -104,8 +100,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private int m_mainStaleCount;
 
         /// <summary>
-        /// The small queue's share of the cache in permille. Adapted from ghost hits when the
-        /// adaptive split is on, left at the default share otherwise.
+        /// The small queue share in permille, adapted from ghost hits.
         /// Written under the queue lock, read with Volatile off it.
         /// </summary>
         private int m_smallTargetPermille = DefaultSmallTargetPermille;
@@ -113,7 +108,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private Task? m_cleanupTask;
         private int maxSize;
         private readonly ILogger logger;
-        // Owned by the state manager and shared with the state clients, never disposed here.
+        // Owned by the state manager, never disposed here.
         private readonly Meter meter;
         private readonly string m_streamName;
         private readonly long maxMemoryUsageInBytes;
@@ -125,11 +120,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_readCacheMisses;
         private long m_commitCacheHits;
         private long m_commitCacheMisses;
-        // Client lookup-table fast paths count hits the table never sees. The idle check reads
-        // them through these providers so a fast-path-only stream is not judged idle and wiped.
+        // Client fast path hits the table never sees.
+        // Read by the idle check so a fast-path-only stream is not wiped.
         private readonly List<Func<long>> m_externalHitCounters = new List<Func<long>>();
-        // Written only on the cleanup thread, read lock-free by the metric callbacks.
-        // Small-queue-head outcomes and one-hit-wonders, see the metric registrations.
+        // Written on the cleanup thread, read lock-free by the metrics.
         private long m_smallQueuePromotions;
         private long m_smallQueueEvictions;
         private long m_oneHitWonders;
@@ -167,8 +161,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             if (!string.IsNullOrEmpty(m_streamName))
             {
-                // Metric names are kept from the previous LRU implementation so existing
-                // dashboards keep working, even though the table is no longer an LRU.
+                // LRU metric names kept so existing dashboards keep working.
                 meter.CreateObservableGauge("flowtide_lru_table_size", () =>
                 {
                     return new Measurement<int>(Volatile.Read(ref m_count), new KeyValuePair<string, object?>("stream", m_streamName));
@@ -193,8 +186,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     return new Measurement<int>(m_ghostQueue.Count, new KeyValuePair<string, object?>("stream", m_streamName));
                 });
-                // promotions went to main, evictions went to the ghost queue.
-                // one_hit_wonders aged out of ghost unused, added once and never promoted.
+                // Promotions went to main, evictions to ghost.
+                // One hit wonders aged out of ghost unused.
                 meter.CreateObservableCounter("flowtide_s3fifo_small_queue_promotions", () =>
                 {
                     return new Measurement<long>(Volatile.Read(ref m_smallQueuePromotions), new KeyValuePair<string, object?>("stream", m_streamName));
@@ -238,8 +231,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     return new Measurement<long>(TotalCacheHits() + TotalCacheMisses(), new KeyValuePair<string, object?>("stream", m_streamName));
                 });
-                // Split by path. Read numbers measure cache quality for query processing,
-                // commit numbers measure dirty pages surviving until the checkpoint.
+                // Split by path. Read is query processing, commit is dirty pages at checkpoint.
                 meter.CreateObservableCounter("flowtide_cache_read_hits", () =>
                 {
                     return new Measurement<long>(Volatile.Read(ref m_readCacheHits), new KeyValuePair<string, object?>("stream", m_streamName));
@@ -298,11 +290,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Drops all entries without returning the cache references or marking them removed.
-        /// Only for ClearCache, where the clients keep their lookup handles and must go on
-        /// serving through them, a Removed mark would route those reads to persistent storage
-        /// where a dirty page was never written.
-        /// Referenced objects repair the reference on re-add, the rest are finalized.
+        /// Drops all entries without returning references or marking them removed.
+        /// Only for ClearCache, the clients keep serving through their lookup handles.
         /// </summary>
         public void Clear()
         {
@@ -322,11 +311,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Drops all entries and returns the cache-owned rent on each, so pages are disposed
-        /// deterministically instead of waiting for the finalizer.
-        /// Values are flagged removed-from-cache so a surviving holder re-adds with a fresh rent.
-        /// Callers must reset every state client afterwards, the entries are marked Removed and
-        /// fail the clients' lookup handles.
+        /// Drops all entries and returns the cache rent, disposing deterministically.
+        /// Callers must reset every state client afterwards.
         /// </summary>
         public void ClearAndReturnRents()
         {
@@ -349,8 +335,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             if (m_cache.TryGetValue(key, out var entry))
             {
-                // One hold over both locks, split phases let the scan consume a stale count
-                // this delete had not published yet, understating the live queue length.
+                // One hold over both locks, or the scan reads too early.
                 lock (m_queueLock)
                 {
                     lock (entry)
@@ -366,8 +351,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             entry.Value.Return();
                             Interlocked.Decrement(ref m_count);
                         }
-                        // The ring buffer cannot remove from the middle, so the slot stays behind as
-                        // stale and the scan skips it. Track the count so cleanup can compact later.
+                        // No removal from the middle, cleanup compacts the stale slot.
                         if (entry.Location == S3FifoQueueLocation.Small)
                         {
                             m_smallStaleCount++;
@@ -412,15 +396,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private async Task CleanupTask()
         {
-            // PeriodicTimer is allocation-free per tick. Task.Delay here allocated every 10ms
-            // forever and made a visible GC sawtooth on idle streams.
+            // PeriodicTimer allocates nothing per tick, Task.Delay made a GC sawtooth.
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
             while (true)
             {
                 m_cleanupTokenSource.Token.ThrowIfCancellationRequested();
                 await timer.WaitForNextTickAsync(m_cleanupTokenSource.Token);
-                // Acquire outside the try so a failed wait cannot release without a matching
-                // acquire, and pass the token so disposal can wake a parked wait.
+                // Acquire outside the try, a failed wait must not release.
                 await _fullLock.WaitAsync(m_cleanupTokenSource.Token);
                 try
                 {
@@ -444,8 +426,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public bool TryGetCacheValue(long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
-            // Lock-free read, the rent handoff lives in TryRentValue.
-            // A rent failure means the entry is being evicted and is treated as a miss.
+            // Lock-free read, a failed rent means it is being evicted.
             if (m_cache.TryGetValue(key, out entry))
             {
                 if (entry.TryRentValue())
@@ -460,10 +441,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Rents a value only when it is already cached, never touching storage.
-        /// Lets a caller hold pages it knows it will read without pulling in the ones that would
-        /// cost a read. A hit counts, a caller holding the page will use it; a miss counts
-        /// nothing, the page is fetched on the normal path later and counted there.
+        /// Rents a value only when already cached, never touching storage.
+        /// A miss counts nothing, the normal path fetches and counts it later.
         /// </summary>
         public bool TryRentCached(long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
@@ -503,10 +482,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Blocks the background eviction task until ResumeEviction is called, used by recovery,
-        /// which clears the cache that an in-flight eviction would write through.
-        /// Uses the lock the cleanup task holds, so acquiring it drains any in-flight eviction.
-        /// Commit versus eviction exclusion is per client, see SyncStateClient.
+        /// Blocks the eviction task until ResumeEviction, used by recovery.
+        /// Takes the cleanup task's lock, so it drains any in-flight eviction.
         /// </summary>
         internal Task PauseEvictionAsync()
         {
@@ -521,14 +498,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             catch (ObjectDisposedException)
             {
-                // Dispose won the race against an in-flight commit's resume, nothing left to release.
+                // Dispose won the race, nothing left to release.
             }
         }
 
         /// <summary>
-        /// How many pages one caller may hold at once while working through a batch. Held pages
-        /// are not evictable, so a caller takes at most half the capacity and eviction always has
-        /// the other half to work with. Holding more than the cache fits is not possible anyway.
+        /// Pages one caller may hold at once, half the capacity.
+        /// Held pages are not evictable, so eviction keeps the other half.
         /// </summary>
         internal int MaxHeldPages => Math.Max(1, Volatile.Read(ref maxSize) / 2);
 
@@ -552,8 +528,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             return full;
                         }
                     }
-                    // The entry was removed concurrently by eviction.
-                    // Retry to observe the removal and insert a fresh entry.
+                    // Removed by eviction, retry and insert a fresh entry.
                     continue;
                 }
 
@@ -562,8 +537,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     if (value.RemovedFromCache)
                     {
-                        // Defensive, the cache no longer produces objects with this flag set.
-                        // Take a new cache-owned rent, the caller still holds its own rent.
+                        // Defensive, take a new cache rent, the caller keeps its own.
                         if (!value.TryRent())
                         {
                             throw new InvalidOperationException("Already disposed");
@@ -573,22 +547,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                     lock (m_queueLock)
                     {
-                        // The entry is already in the dictionary, so a hit can land before
-                        // this stamp and count. The gap is tiny and the filter is a heuristic.
+                        // A hit can land before this stamp, the filter is a heuristic.
                         entry.SetCountStamp(m_correlationClock.NextSequence());
                         var inGhost = m_ghostKeys.Remove(key, out var ghostValue);
                         if (inGhost)
                         {
                             DropGhostMembership(ghostValue.FromMain);
-                            // The queue this key was evicted from could not hold it until it was
-                            // wanted again. Evidence only, the split moves once per pass.
+                            // Evidence only, the split moves once per pass.
                             RecordGhostHit(ghostValue.FromMain);
                         }
                         if (inGhost && (ghostValue.Reused || ghostValue.FromMain))
                         {
-                            // A counted reuse before eviction plus this re-reference makes
-                            // the two events main admission requires, and a key that was in main
-                            // already proved as much before it aged out.
+                            // Two reuse events, which is what main admission requires.
                             entry.Location = S3FifoQueueLocation.Main;
                             m_mainQueue.Enqueue(entry);
                         }
@@ -596,8 +566,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         {
                             if (inGhost)
                             {
-                                // Re-referenced but never counted a reuse while resident.
-                                // Bank this as the first event and let small ask for one more.
+                                // Bank the first event, small asks for one more.
                                 Volatile.Write(ref entry.Frequency, 1);
                             }
                             entry.Location = S3FifoQueueLocation.Small;
@@ -608,7 +577,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     Interlocked.Increment(ref m_count);
                     return full;
                 }
-                // Lost an insert race for the key, retry and treat it as an update.
+                // Lost the insert race, retry as an update.
             }
         }
 
@@ -621,7 +590,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// The small queue's default share of the cache, 10% as in the S3-FIFO paper.
+        /// The default small queue share, 10% as in the paper.
         /// </summary>
         private const int DefaultSmallTargetPermille = 100;
 
@@ -726,7 +695,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// The queue this key was evicted from could not hold it until it was wanted again.
+        /// The queue that evicted this key could not hold it.
         /// Must be called under the queue lock.
         /// </summary>
         private void RecordGhostHit(bool fromMain)
@@ -808,15 +777,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
 
         /// <summary>
-        /// How far the small queue is over its target share, used when the cache as a whole is
-        /// still below the eviction threshold. The result caps an early drain, so a concurrent
-        /// add storm cannot keep one drain running.
+        /// How far the small queue is over its share, below the threshold.
+        /// Caps an early drain so an add storm cannot keep one running.
         /// </summary>
         private int SmallQueueOverflow(int currentCount)
         {
-            // MinSize keeps pages resident to cut read latency, so a cache that is already at or
-            // below it is left alone even when its small queue is over the target. Real pressure
-            // goes through the normal path, which is allowed to cross the floor.
+            // A cache at MinSize is left alone, real pressure crosses the floor instead.
             var headroom = currentCount - tableOptions.MinSize;
             if (headroom <= 0)
             {
@@ -837,13 +803,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private int GhostCapacity()
         {
-            // Half a cache worth of evicted keys, so a ghost hit means the key would still be
-            // here if the cache were half again as large.
-            // Deliberately not sized off the queue shares:
-            // the ghost is the evidence the adaptive split reads, and sizing it from the split
-            // would feed the split its own output. A grown small queue would shrink the ghost, a
-            // short ghost only remembers the newest evictions, every hit would then look shallow,
-            // and shallow hits vote to grow the small queue again.
+            // Half a cache worth of evicted keys.
+            // Never sized off the shares, that would feed the split its own output.
             return Math.Max(1, Volatile.Read(ref maxSize) / 2);
         }
 
@@ -856,8 +817,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             bool isCleanup = false;
             if (currentCount <= cleanupStartLocal)
             {
-                // Fast-path hits included, a stream reading only through client lookup tables
-                // is active and must not be deep-cleaned as idle.
+                // Fast path hits count, that stream is active and not idle.
                 var cacheHitsLocal = TotalCacheHits() + ExternalCacheHits();
                 if (m_lastSeenCacheHits == cacheHitsLocal)
                 {
@@ -883,9 +843,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 else
                 {
-                    // Falls through to the memory check. The count says the cache is small, but
-                    // pages can have grown since maxSize was last derived, so the budget still
-                    // has to be re-evaluated. Compaction happens on the no-eviction exit below.
+                    // Falls through to the memory check, pages may have grown since maxSize.
                     m_lastSeenCacheHits = cacheHitsLocal;
                     m_sameCacheHitsCount = 0;
                 }
@@ -911,8 +869,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (Math.Abs(maxSize - idealMaxSize) > tolerance)
                     {
                         Volatile.Write(ref maxSize, idealMaxSize);
-                        // The small queue target follows maxSize, so the correlation window
-                        // must follow it too.
+                        // The correlation window follows maxSize too.
                         m_correlationClock.SetWindowSize(CorrelationWindowSize());
 
                         var rawCleanupSize = (int)Math.Ceiling(idealMaxSize * 0.70);
@@ -928,15 +885,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
             }
 
-            // Move the split at most one step, on the evidence gathered since the last pass.
+            // Move the split at most one step per pass.
             lock (m_queueLock)
             {
                 AdaptSmallTarget();
             }
 
-            // Age the main queue whether or not this pass evicts. Aging is what makes a page
-            // earn its place over time, and it used to happen only as a side effect of scanning
-            // main for victims, which almost never ran.
+            // Age main whether or not this pass evicts.
             AgeMainQueue(currentCount);
 
             var smallQueueOverflow = 0;
@@ -945,8 +900,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 CompactQueuesIfNeeded();
                 if (!tableOptions.DrainSmallQueueEarly)
                 {
-                    // Nothing to free. Evicting here would throw away capacity the cache was
-                    // configured to use, which costs far more than the queue shares are worth.
+                    // Nothing to free, evicting here throws away configured capacity.
                     return;
                 }
                 smallQueueOverflow = SmallQueueOverflow(currentCount);
@@ -956,17 +910,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
             }
 
-            // What the cache holds once this pass is done. The deep clean and the memory
-            // adaptive resize both aim below the current threshold, so it is derived from the
-            // batch size rather than read back off cleanupStart.
+            // What the cache holds once this pass is done.
             var targetCacheSize = currentCount - toBeRemovedCount;
 
-            // Large batches are selected in chunks, releasing the queue lock between them so
-            // Add and Delete are not stalled. Selected victims are dequeued and owned here.
+            // Selected in chunks so Add and Delete are not stalled.
             var victims = new List<EvictionCandidate>();
             var drainSmallQueueOnly = toBeRemovedCount <= 0;
-            // Readers can re-pump frequencies between chunks, at correlation window 0 faster than
-            // the scan drains them, so the whole pass gets a finite budget on top of the per-hold one.
+            // Readers re-pump frequencies between chunks, so the pass gets its own budget.
             var passBudget = ((long)m_smallQueue.Count + m_mainQueue.Count) * (S3FifoCacheEntry.MaxFrequency + 1) + SelectionOperationBudget;
             while (true)
             {
@@ -988,7 +938,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // Proceed with the victims found so far, the next pass continues the drain.
                     break;
                 }
-                // An immediate retake wins the unfair monitor race, yield so parked writers get a window.
+                // An immediate retake wins the monitor race, yield instead.
                 Thread.Yield();
             }
 
@@ -1029,9 +979,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 evictException = e;
             }
 
-            // A failed evict handler did not serialize its victims and a declining one skipped
-            // them (its commit is in flight), so keep both cached. Collect them here so they go
-            // back into their queues and are retried later.
+            // Failed and declined victims were never serialized, so keep them cached.
             HashSet<S3FifoCacheEntry>? failedVictims = null;
             for (int i = 0; i < evictTasks.Count; i++)
             {
@@ -1055,14 +1003,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     if (entry.Removed)
                     {
-                        // Deleted during eviction, already removed and returned.
-                        // Requeuing it would resurrect a dead stale slot.
+                        // Deleted during eviction, requeuing would resurrect a dead slot.
                         continue;
                     }
                     if (failedVictims != null && failedVictims.Contains(entry))
                     {
-                        // Its evict handler failed, keep it cached and put it back so a later
-                        // cleanup retries it.
+                        // Its handler failed, put it back for a later retry.
                         if (candidate.FromSmallQueue)
                         {
                             (requeueToSmall ??= new List<S3FifoCacheEntry>()).Add(entry);
@@ -1075,21 +1021,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     if (candidate.Version != entry.Version)
                     {
-                        // Modified while being serialized, so the copy is stale.
-                        // Keep it cached and put it in the main queue since it is being used.
+                        // Modified while serializing, so the copy is stale. It is being used.
                         (requeueToMain ??= new List<S3FifoCacheEntry>()).Add(entry);
                         continue;
                     }
-                    // Only evict pages nothing else references. Claim the cache reference if it
-                    // is the sole one, otherwise a held page stays cached. Evicting a held page
-                    // would let a reload create a second diverging copy of the same key.
-                    // The claim disposes on success, so a racing reader reloads as the new owner
-                    // and a racing re-add blocks on lock(entry) and sees Removed once we release.
+                    // Only evict pages nothing else references.
+                    // Evicting a held page lets a reload make a second diverging copy.
                     if (!entry.Value.TryReclaimForEviction())
                     {
-                        // Held by a reader or a read-ahead window, which is not proven reuse,
-                        // so it goes back where it came from instead of being handed the main
-                        // queue for free and skipping the two reuse events admission asks for.
+                        // Being held is not proven reuse, back where it came from.
                         if (candidate.FromSmallQueue)
                         {
                             (requeueToSmall ??= new List<S3FifoCacheEntry>()).Add(entry);
@@ -1107,16 +1047,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         Interlocked.Decrement(ref m_count);
                         if (candidate.FromSmallQueue)
                         {
-                            // The reuse bit is read here rather than at selection, a hit landing
-                            // between the two still earns the entry its ghost credit.
+                            // Read the reuse bit here, a late hit still earns ghost credit.
                             (ghostInserts ??= new List<(long, bool, bool)>()).Add((entry.Key, Volatile.Read(ref entry.Frequency) >= 1, false));
                             m_smallQueueEvictions++;
                         }
                         else if (tableOptions.AdaptiveSmallQueueSize)
                         {
-                            // Only tracked for the adaptive split. A hit on one of these says the
-                            // main queue was too small, which is the evidence the small queue's
-                            // own ghost entries can never provide.
+                            // Only for the adaptive split, a hit says main was too small.
                             (ghostInserts ??= new List<(long, bool, bool)>()).Add((entry.Key, true, true));
                         }
                     }
@@ -1125,7 +1062,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             if (requeueToSmall != null || requeueToMain != null || ghostInserts != null)
             {
-                // Chunked like selection, one hold proportional to the batch stalls Add and Delete.
+                // Chunked like selection, one long hold stalls Add and Delete.
                 int smallIndex = 0;
                 int mainIndex = 0;
                 int ghostIndex = 0;
@@ -1140,8 +1077,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             var entry = requeueToSmall[smallIndex++];
                             lock (entry)
                             {
-                                // Deleted after the removal phase kept it, enqueuing it would
-                                // resurrect a dead slot with no stale count.
+                                // Deleted after the removal phase, enqueuing resurrects a dead slot.
                                 if (!entry.Removed)
                                 {
                                     entry.Location = S3FifoQueueLocation.Small;
@@ -1182,8 +1118,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             if (evictException != null)
             {
-                // Rethrow after the victims are rehomed, so the failure is still logged and the
-                // cleanup task restarts.
+                // Rethrow after the victims are rehomed, so cleanup restarts.
                 ExceptionDispatchInfo.Capture(evictException).Throw();
             }
 
@@ -1194,34 +1129,29 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Max queue operations under one queue-lock acquisition during selection.
-        /// Bounds how long a lock hold can stall Add and Delete.
+        /// Max queue operations per lock hold during selection.
         /// </summary>
         private const int SelectionOperationBudget = 256;
 
         /// <summary>
-        /// Number of queue-lock acquisitions spent on victim selection, used by unit tests
-        /// to verify that large batches are actually chunked.
+        /// Lock acquisitions spent on selection, tests check batches are chunked.
         /// </summary>
         private long m_selectionLockAcquisitions;
 
         internal long SelectionLockAcquisitionsForTests => Volatile.Read(ref m_selectionLockAcquisitions);
 
         /// <summary>
-        /// Runs the eviction scans until enough victims, nothing evictable, or budget spent.
+        /// Scans until enough victims, nothing evictable, or budget spent.
+        /// Victims are only dequeued here, they stay readable until removal.
         /// Must be called under the queue lock.
-        /// Victims are only dequeued here, they stay readable until the removal phase.
-        /// targetCacheSize is the entry count the cache is being driven down to, it sets how
-        /// much of what survives the pass the small queue is allowed to hold.
         /// </summary>
         /// <returns>
-        /// True when selection is complete, false when the budget ran out and the caller
-        /// should reacquire the lock for another chunk.
+        /// True when selection is complete, false when the budget ran out
+        /// and the caller should reacquire the lock.
         /// </returns>
         private bool TrySelectVictims(List<EvictionCandidate> victims, int toBeRemovedCount, int targetCacheSize, int operationBudget)
         {
-            // The share is taken from the size this pass leaves behind, never more than the
-            // capacity share, so a shrink drains the small queue instead of preserving it.
+            // Share off what the pass leaves behind, so a shrink drains small too.
             var smallTarget = SmallQueuePressureShare(Math.Min(Volatile.Read(ref maxSize), targetCacheSize));
             while (victims.Count < toBeRemovedCount)
             {
@@ -1270,7 +1200,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 if ((m_smallQueue.Count - m_smallStaleCount) <= smallTarget)
                 {
-                    // The small queue is back at its share and main has nothing aged out.
+                    // Small is back at its share, main has nothing aged out.
                     return true;
                 }
                 if (!TryEvictOneFromSmall(victims, ref operationBudget))
@@ -1300,7 +1230,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_agingCredit;
 
         /// <summary>
-        /// Aging steps taken so far, used by unit tests to pin the pacing.
+        /// Aging steps so far, tests pin the pacing on it.
         /// Written only on the cleanup thread.
         /// </summary>
         private long m_agingSteps;
@@ -1354,7 +1284,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_agingSteps += chunk;
                 if (steps > 0)
                 {
-                    // Give writers parked on the queue lock a window, as the selection scan does.
+                    // Give parked writers a window, as selection does.
                     Thread.Yield();
                 }
             }
@@ -1390,7 +1320,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// True when the main queue head has aged out and is ready to be taken.
+        /// True when the main head has aged out.
         /// Must be called under the queue lock.
         /// </summary>
         private bool MainHeadHasAgedOut()
@@ -1422,9 +1352,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     if (Volatile.Read(ref entry.Frequency) > 1)
                     {
-                        // Two counted hits promote, the same two-reuse-events bar as the ghost
-                        // path. A single counted hit leaves through the ghost queue with the
-                        // reuse recorded, so a re-reference completes the pair there.
+                        // Two counted hits promote, the same bar as the ghost path.
+                        // One hit leaves through ghost and completes the pair there.
                         entry.Location = S3FifoQueueLocation.Main;
                         m_mainQueue.Enqueue(entry);
                         m_smallQueuePromotions++;
@@ -1459,8 +1388,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     if (Volatile.Read(ref entry.Frequency) > 0)
                     {
-                        // Second chance, reinsert at the tail with a decremented frequency.
-                        // Cannot underflow, only one scan holds an entry and readers only increment.
+                        // Second chance, back to the tail with one point less.
                         Interlocked.Decrement(ref entry.Frequency);
                         m_mainQueue.Enqueue(entry);
                         continue;
@@ -1474,9 +1402,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
+        /// The trim is bounded by the budget, the excess trims on later inserts.
         /// Must be called under the queue lock.
-        /// The trim is bounded by the budget, a shrink can drop the capacity by the whole
-        /// queue at once and the leftover excess trims on later inserts.
         /// </summary>
         private void AddToGhost(long key, bool reused, bool fromMain, ref int operationBudget)
         {
@@ -1506,8 +1433,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var oldest = m_ghostQueue.Dequeue();
                 if (m_ghostKeys.TryGetValue(oldest.Key, out var storedValue) && storedValue.Sequence == oldest.Sequence)
                 {
-                    // A live ghost membership ages out, this key was evicted and never
-                    // re-admitted. Added once, never promoted, and now gone. A one-hit-wonder.
+                    // Aged out never re-admitted, a one hit wonder.
                     m_ghostKeys.Remove(oldest.Key);
                     DropGhostMembership(storedValue.FromMain);
                     if (!storedValue.FromMain)
@@ -1558,11 +1484,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Removes stale (deleted) slots from a queue, chunked under the selection budget so a
-        /// large compaction does not stall Add and Delete for its whole duration.
-        /// Adds landing between chunks interleave with re-enqueued survivors, that FIFO drift
-        /// during a rare compaction is accepted. The stale counters are decremented per dropped
-        /// slot, a reset would lose counts published while the compaction is in flight.
+        /// Removes stale slots from a queue, chunked so it does not stall writers.
+        /// Adds between chunks drift the FIFO order, which is accepted here.
+        /// Stale counters drop per slot, a reset would lose in flight counts.
         /// </summary>
         private void CompactQueue(Queue<S3FifoCacheEntry> queue, bool small)
         {
@@ -1575,8 +1499,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 lock (m_queueLock)
                 {
-                    // remaining is an upper bound, a concurrent test-driven cleanup pass can
-                    // drain the queue between chunks, so it is clamped to the live count.
+                    // An upper bound, a concurrent pass can drain the queue between chunks.
                     remaining = Math.Min(remaining, queue.Count);
                     var operationBudget = SelectionOperationBudget;
                     while (remaining > 0 && operationBudget > 0)
@@ -1584,8 +1507,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         operationBudget--;
                         remaining--;
                         var entry = queue.Dequeue();
-                        // Removed is written under the queue lock in Delete and dequeued victims
-                        // never re-enter the queues, so a volatile read is enough here.
+                        // Removed is written under this lock, a volatile read is enough.
                         if (!Volatile.Read(ref entry.Removed))
                         {
                             queue.Enqueue(entry);
@@ -1617,7 +1539,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         #region Test helpers
 
         /// <summary>
-        /// Looks up the entry for a key without renting. Used for unit test assertions only.
+        /// Looks up an entry without renting, for test assertions only.
         /// </summary>
         internal bool TryPeekEntryForTests(long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
@@ -1684,7 +1606,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (!entry.Removed)
                     {
                         Volatile.Write(ref entry.Removed, true);
-                        // Flagged before the dictionary removal so a racing re-add takes a new rent.
+                        // Flagged before removal so a racing re-add takes a new rent.
                         entry.Value.RemovedFromCache = true;
                         m_cache.TryRemove(entry.Key, out _);
                         entry.Value.Return();
@@ -1710,7 +1632,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         }
                         catch
                         {
-                            // A faulted or cancelled cleanup task rethrows on Wait, disposal swallows it.
+                            // A faulted task rethrows on Wait, disposal swallows it.
                         }
                         var successor = m_cleanupTask;
                         if (ReferenceEquals(successor, cleanupTask))
