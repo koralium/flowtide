@@ -1027,6 +1027,48 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
+        /// Clear wipes the ghost queue, so movement earned from it goes too.
+        /// The next pass must not move the split on discarded evidence.
+        /// </summary>
+        [Fact]
+        public async Task ClearDropsPendingAdaptationEvidence()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(1000, adaptiveSmallQueueSize: true);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 1000; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            await table.ForceCleanup();
+
+            // Ghost hits bank pending growth that no pass has applied yet.
+            var banked = 0;
+            for (var i = 0; i < 1000 && banked < 20; i++)
+            {
+                if (!table.TryPeekEntryForTests(i, out _) && table.IsInGhostForTests(i))
+                {
+                    table.Add(i, new TestCacheObject(i), handler);
+                    banked++;
+                }
+            }
+            Assert.True(banked >= 8, $"only {banked} ghost hits were banked");
+            var before = table.SmallTargetPermilleForTests;
+
+            table.Clear();
+
+            // Activity so the next pass reaches the adaptation step.
+            for (var i = 0; i < 10; i++)
+            {
+                table.Add(5000 + i, new TestCacheObject(i), handler);
+            }
+            Assert.True(table.TryGetValue(5000, out var hit));
+            hit!.Return();
+            await table.ForceCleanup();
+
+            Assert.Equal(before, table.SmallTargetPermilleForTests);
+        }
+
+        /// <summary>
         /// Off by default, the split keeps the fixed share.
         /// </summary>
         [Fact]

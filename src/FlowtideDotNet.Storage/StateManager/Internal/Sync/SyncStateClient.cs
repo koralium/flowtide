@@ -199,14 +199,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 value = (V)entry.Value;
                 return true;
             }
-            lock (m_lock)
+            // Lock-free probe, a miss never waits behind a commit.
+            if (stateManager.TryRentCachedValue(key, out var cached))
             {
-                if (stateManager.TryRentCachedValue(key, out var cached))
+                // Publish under the lock like every other slot write.
+                // A delete racing this leaves a stale slot the fast path already tolerates.
+                lock (m_lock)
                 {
                     Volatile.Write(ref _lookupTable[modLookup], cached);
-                    value = (V)cached.Value;
-                    return true;
                 }
+                value = (V)cached.Value;
+                return true;
             }
             value = default;
             return false;

@@ -304,6 +304,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_ghostKeys.Clear();
                 m_ghostSmallEntries = 0;
                 m_ghostMainEntries = 0;
+                // Pending movement came from the wiped ghost queue, it goes too.
+                m_pendingGrowPermille = 0;
+                m_pendingShrinkPermille = 0;
+                m_expiryCredit = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
                 Volatile.Write(ref m_count, 0);
@@ -325,6 +329,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_ghostKeys.Clear();
                 m_ghostSmallEntries = 0;
                 m_ghostMainEntries = 0;
+                // Pending movement came from the wiped ghost queue, it goes too.
+                m_pendingGrowPermille = 0;
+                m_pendingShrinkPermille = 0;
+                m_expiryCredit = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
                 Volatile.Write(ref m_count, 0);
@@ -1590,6 +1598,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_ghostKeys.Clear();
                 m_ghostSmallEntries = 0;
                 m_ghostMainEntries = 0;
+                // Pending movement came from the wiped ghost queue, it goes too.
+                m_pendingGrowPermille = 0;
+                m_pendingShrinkPermille = 0;
+                m_expiryCredit = 0;
                 m_smallStaleCount = 0;
                 m_mainStaleCount = 0;
             }
