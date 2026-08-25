@@ -682,6 +682,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_pendingGrowPermille = 0;
             m_pendingShrinkPermille = 0;
             m_expiryCredit = 0;
+            m_expiryForgiveness = 0;
         }
 
         /// <summary>

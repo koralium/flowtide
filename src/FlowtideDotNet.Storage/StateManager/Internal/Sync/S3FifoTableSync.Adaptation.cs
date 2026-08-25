@@ -42,9 +42,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private const int AdaptMinimumEvidence = 64;
 
         /// <summary>
-        /// Expiries needed to shrink the share one step.
+        /// Unforgiven expiries needed to shrink the share one step.
         /// </summary>
-        private static int ExpiriesPerPermille(int cacheSize) => Math.Max(64, cacheSize / 4);
+        private const int ExpiriesPerPermille = 64;
+
+        /// <summary>
+        /// Expiries one small queue ghost hit forgives.
+        /// With ExpiriesPerPermille this sets the reuse ratio the share rests on,
+        /// about one hit per 160 evictions, in events on both sides so every
+        /// cache size rests at the same ratio.
+        /// </summary>
+        private const int ExpiriesForgivenPerGhostHit = 100;
 
         /// <summary>
         /// Most the split may move in one cleanup pass.
@@ -57,6 +65,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_pendingGrowPermille;
         private long m_pendingShrinkPermille;
         private long m_expiryCredit;
+
+        /// <summary>
+        /// Expiries recent hits have paid for, capped at one ghost horizon.
+        /// Guarded by the queue lock.
+        /// </summary>
+        private long m_expiryForgiveness;
 
         /// <summary>
         /// Lifetime totals, for diagnostics and tests.
@@ -139,6 +153,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 m_smallGhostHits++;
                 m_pendingGrowPermille += GhostHitWeight(m_ghostMainEntries, m_ghostSmallEntries);
+                m_expiryForgiveness = Math.Min(m_expiryForgiveness + ExpiriesForgivenPerGhostHit, GhostCapacity());
             }
         }
 
@@ -164,10 +179,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 return;
             }
-            var perPermille = ExpiriesPerPermille(Volatile.Read(ref maxSize));
-            if (++m_expiryCredit >= perPermille)
+            if (m_expiryForgiveness > 0)
             {
-                m_expiryCredit -= perPermille;
+                // A recent hit paid for this one, so it is no evidence of junk.
+                m_expiryForgiveness--;
+                return;
+            }
+            if (++m_expiryCredit >= ExpiriesPerPermille)
+            {
+                m_expiryCredit -= ExpiriesPerPermille;
                 m_pendingShrinkPermille++;
             }
         }

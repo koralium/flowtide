@@ -1027,6 +1027,52 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
+        /// The share rests on the reuse ratio, not on raw expiry counts.
+        /// Hits forgive expiries, so a stream with modest reuse holds its share,
+        /// and once the reuse stops the forgiveness drains and shrink resumes.
+        /// </summary>
+        [Fact]
+        public async Task ModestReuseForgivesExpiriesUntilItStops()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(1000, adaptiveSmallQueueSize: true);
+            var handler = new TestEvictHandler();
+            var start = table.SmallTargetPermilleForTests;
+
+            // Each round evicts about a thousand and wants twelve back, one in
+            // eighty, above the resting ratio.
+            var key = 0L;
+            for (var round = 0; round < 40; round++)
+            {
+                var roundStart = key;
+                for (var i = 0; i < 1000; i++)
+                {
+                    table.Add(key++, new TestCacheObject(i), handler);
+                }
+                await table.ForceCleanup();
+                for (var i = 0; i < 12; i++)
+                {
+                    ReAddIfEvicted(table, roundStart + i, handler);
+                }
+                await table.ForceCleanup();
+            }
+            Assert.True(table.SmallTargetPermilleForTests >= start,
+                $"a reused stream shrank the share to {table.SmallTargetPermilleForTests}");
+
+            // The reuse stops, the junk stream shrinks the share.
+            var held = table.SmallTargetPermilleForTests;
+            for (var round = 0; round < 60; round++)
+            {
+                for (var i = 0; i < 1000; i++)
+                {
+                    table.Add(key++, new TestCacheObject(i), handler);
+                }
+                await table.ForceCleanup();
+            }
+            Assert.True(table.SmallTargetPermilleForTests < held,
+                $"the share stayed at {table.SmallTargetPermilleForTests} after the reuse stopped");
+        }
+
+        /// <summary>
         /// Clear wipes the ghost queue, so movement earned from it goes too.
         /// The next pass must not move the split on discarded evidence.
         /// </summary>
