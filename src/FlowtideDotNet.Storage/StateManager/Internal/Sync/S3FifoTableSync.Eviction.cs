@@ -148,19 +148,29 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
             }
 
-            var victims = SelectVictims(toBeRemovedCount, currentCount - toBeRemovedCount, smallQueueOverflow);
-            if (victims.Count == 0)
+            // Rent the scratch set so the 10ms cadence does not allocate.
+            var scratch = Interlocked.Exchange(ref m_cleanupScratch, null) ?? new CleanupScratch();
+            try
             {
-                return;
+                SelectVictims(scratch, toBeRemovedCount, currentCount - toBeRemovedCount, smallQueueOverflow);
+                if (scratch.Victims.Count == 0)
+                {
+                    return;
+                }
+
+                var (failedVictims, evictException) = await RunEvictHandlers(scratch, isCleanup);
+                RemoveOrRequeueVictims(scratch, failedVictims);
+
+                if (evictException != null)
+                {
+                    // Rethrow after the victims are rehomed, so cleanup restarts.
+                    ExceptionDispatchInfo.Capture(evictException).Throw();
+                }
             }
-
-            var (failedVictims, evictException) = await RunEvictHandlers(victims, isCleanup);
-            RemoveOrRequeueVictims(victims, failedVictims);
-
-            if (evictException != null)
+            finally
             {
-                // Rethrow after the victims are rehomed, so cleanup restarts.
-                ExceptionDispatchInfo.Capture(evictException).Throw();
+                scratch.Reset();
+                Volatile.Write(ref m_cleanupScratch, scratch);
             }
 
             if (isCleanup)
@@ -168,6 +178,52 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 FlowtideMemoryAllocation.Collect();
             }
         }
+
+        /// <summary>
+        /// The collections one cleanup pass works through, reused between passes.
+        /// A concurrent test driven pass rents nothing and builds a fresh set.
+        /// </summary>
+        private sealed class CleanupScratch
+        {
+            public readonly List<EvictionCandidate> Victims = new List<EvictionCandidate>();
+            public readonly Dictionary<ICacheEvictHandler, List<(S3FifoCacheEntry, long)>> VictimsByHandler = new Dictionary<ICacheEvictHandler, List<(S3FifoCacheEntry, long)>>();
+            public readonly List<Task<bool>> EvictTasks = new List<Task<bool>>();
+            public readonly List<List<(S3FifoCacheEntry, long)>> EvictTaskGroups = new List<List<(S3FifoCacheEntry, long)>>();
+            public readonly List<S3FifoCacheEntry> RequeueToSmall = new List<S3FifoCacheEntry>();
+            public readonly List<S3FifoCacheEntry> RequeueToMain = new List<S3FifoCacheEntry>();
+            public readonly List<(long Key, bool Reused, bool FromMain)> GhostInserts = new List<(long, bool, bool)>();
+            public readonly Stack<List<(S3FifoCacheEntry, long)>> HandlerListPool = new Stack<List<(S3FifoCacheEntry, long)>>();
+
+            public void Reset()
+            {
+                Victims.Clear();
+                GhostInserts.Clear();
+                RequeueToSmall.Clear();
+                RequeueToMain.Clear();
+                EvictTasks.Clear();
+                EvictTaskGroups.Clear();
+                foreach (var list in VictimsByHandler.Values)
+                {
+                    list.Clear();
+                    HandlerListPool.Push(list);
+                }
+                VictimsByHandler.Clear();
+                // A rare deep clean must not pin its huge backing arrays forever.
+                if (Victims.Capacity > 65536)
+                {
+                    Victims.TrimExcess();
+                }
+                if (GhostInserts.Capacity > 65536)
+                {
+                    GhostInserts.TrimExcess();
+                }
+            }
+        }
+
+        /// <summary>
+        /// The parked scratch set, exchanged out by the pass that runs.
+        /// </summary>
+        private CleanupScratch? m_cleanupScratch = new CleanupScratch();
 
         /// <summary>
         /// Decides how much this pass evicts.
@@ -253,13 +309,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Runs the eviction scans in chunks and returns the owned victims.
+        /// Runs the eviction scans in chunks, filling scratch with the owned victims.
         /// targetCacheSize is what the cache holds once this pass is done.
         /// </summary>
-        private List<EvictionCandidate> SelectVictims(int toBeRemovedCount, int targetCacheSize, int smallQueueOverflow)
+        private void SelectVictims(CleanupScratch scratch, int toBeRemovedCount, int targetCacheSize, int smallQueueOverflow)
         {
             // Selected in chunks so Add and Delete are not stalled.
-            var victims = new List<EvictionCandidate>();
+            var victims = scratch.Victims;
             var drainSmallQueueOnly = toBeRemovedCount <= 0;
             // Readers re-pump frequencies between chunks, so the pass gets its own budget.
             var passBudget = ((long)m_smallQueue.Count + m_mainQueue.Count) * (S3FifoCacheEntry.MaxFrequency + 1) + SelectionOperationBudget;
@@ -286,35 +342,40 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 // An immediate retake wins the monitor race, yield instead.
                 Thread.Yield();
             }
-            return victims;
         }
 
         /// <summary>
         /// Fans the victims out to their evict handlers and awaits them.
         /// Returns the victims whose handler failed or declined, and the failure.
         /// </summary>
-        private async Task<(HashSet<S3FifoCacheEntry>? FailedVictims, Exception? EvictException)> RunEvictHandlers(List<EvictionCandidate> victims, bool isCleanup)
+        private async Task<(HashSet<S3FifoCacheEntry>? FailedVictims, Exception? EvictException)> RunEvictHandlers(CleanupScratch scratch, bool isCleanup)
         {
-            Dictionary<ICacheEvictHandler, List<(S3FifoCacheEntry, long)>> groupedValues = new Dictionary<ICacheEvictHandler, List<(S3FifoCacheEntry, long)>>();
-            foreach (var candidate in victims)
+            var groupedValues = scratch.VictimsByHandler;
+            foreach (var candidate in scratch.Victims)
             {
                 if (!groupedValues.TryGetValue(candidate.Entry.EvictHandler, out var list))
                 {
-                    list = new List<(S3FifoCacheEntry, long)>();
+                    list = scratch.HandlerListPool.Count > 0
+                        ? scratch.HandlerListPool.Pop()
+                        : new List<(S3FifoCacheEntry, long)>();
                     groupedValues.Add(candidate.Entry.EvictHandler, list);
                 }
                 list.Add((candidate.Entry, candidate.Version));
             }
 
-            List<Task<bool>> evictTasks = new List<Task<bool>>();
-            List<List<(S3FifoCacheEntry, long)>> evictTaskGroups = new List<List<(S3FifoCacheEntry, long)>>();
+            var evictTasks = scratch.EvictTasks;
+            var evictTaskGroups = scratch.EvictTaskGroups;
             foreach (var group in groupedValues)
             {
                 evictTaskGroups.Add(group.Value);
-                evictTasks.Add(Task.Factory.StartNew(() =>
-                {
-                    return group.Key.Evict(group.Value, isCleanup);
-                }));
+                // The state overload spares a closure per handler.
+                evictTasks.Add(Task.Factory.StartNew(
+                    static state =>
+                    {
+                        var (handler, victimsForHandler, cleanup) = ((ICacheEvictHandler, List<(S3FifoCacheEntry, long)>, bool))state!;
+                        return handler.Evict(victimsForHandler, cleanup);
+                    },
+                    (group.Key, group.Value, isCleanup)));
             }
 
             Exception? evictException = null;
@@ -347,12 +408,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// Removes each victim or puts it back, then applies the requeues and
         /// ghost inserts in chunks.
         /// </summary>
-        private void RemoveOrRequeueVictims(List<EvictionCandidate> victims, HashSet<S3FifoCacheEntry>? failedVictims)
+        private void RemoveOrRequeueVictims(CleanupScratch scratch, HashSet<S3FifoCacheEntry>? failedVictims)
         {
-            List<S3FifoCacheEntry>? requeueToSmall = null;
-            List<S3FifoCacheEntry>? requeueToMain = null;
-            List<(long Key, bool Reused, bool FromMain)>? ghostInserts = null;
-            foreach (var candidate in victims)
+            var requeueToSmall = scratch.RequeueToSmall;
+            var requeueToMain = scratch.RequeueToMain;
+            var ghostInserts = scratch.GhostInserts;
+            foreach (var candidate in scratch.Victims)
             {
                 var entry = candidate.Entry;
                 lock (entry)
@@ -367,18 +428,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         // Its handler failed, put it back for a later retry.
                         if (candidate.FromSmallQueue)
                         {
-                            (requeueToSmall ??= new List<S3FifoCacheEntry>()).Add(entry);
+                            requeueToSmall.Add(entry);
                         }
                         else
                         {
-                            (requeueToMain ??= new List<S3FifoCacheEntry>()).Add(entry);
+                            requeueToMain.Add(entry);
                         }
                         continue;
                     }
                     if (candidate.Version != entry.Version)
                     {
                         // Modified while serializing, so the copy is stale. It is being used.
-                        (requeueToMain ??= new List<S3FifoCacheEntry>()).Add(entry);
+                        requeueToMain.Add(entry);
                         continue;
                     }
                     // Only evict pages nothing else references.
@@ -388,11 +449,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         // Being held is not proven reuse, back where it came from.
                         if (candidate.FromSmallQueue)
                         {
-                            (requeueToSmall ??= new List<S3FifoCacheEntry>()).Add(entry);
+                            requeueToSmall.Add(entry);
                         }
                         else
                         {
-                            (requeueToMain ??= new List<S3FifoCacheEntry>()).Add(entry);
+                            requeueToMain.Add(entry);
                         }
                         continue;
                     }
@@ -404,19 +465,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         if (candidate.FromSmallQueue)
                         {
                             // Read the reuse bit here, a late hit still earns ghost credit.
-                            (ghostInserts ??= new List<(long, bool, bool)>()).Add((entry.Key, Volatile.Read(ref entry.Frequency) >= 1, false));
+                            ghostInserts.Add((entry.Key, Volatile.Read(ref entry.Frequency) >= 1, false));
                             m_smallQueueEvictions++;
                         }
                         else if (tableOptions.AdaptiveSmallQueueSize)
                         {
                             // Only for the adaptive split, a hit says main was too small.
-                            (ghostInserts ??= new List<(long, bool, bool)>()).Add((entry.Key, true, true));
+                            ghostInserts.Add((entry.Key, true, true));
                         }
                     }
                 }
             }
 
-            if (requeueToSmall != null || requeueToMain != null || ghostInserts != null)
+            if (requeueToSmall.Count > 0 || requeueToMain.Count > 0 || ghostInserts.Count > 0)
             {
                 // Chunked like selection, one long hold stalls Add and Delete.
                 int smallIndex = 0;
@@ -427,7 +488,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     lock (m_queueLock)
                     {
                         var operationBudget = SelectionOperationBudget;
-                        while (requeueToSmall != null && smallIndex < requeueToSmall.Count && operationBudget > 0)
+                        while (smallIndex < requeueToSmall.Count && operationBudget > 0)
                         {
                             operationBudget--;
                             var entry = requeueToSmall[smallIndex++];
@@ -441,7 +502,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                                 }
                             }
                         }
-                        while (requeueToMain != null && mainIndex < requeueToMain.Count && operationBudget > 0)
+                        while (mainIndex < requeueToMain.Count && operationBudget > 0)
                         {
                             operationBudget--;
                             var entry = requeueToMain[mainIndex++];
@@ -455,16 +516,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                                 }
                             }
                         }
-                        while (ghostInserts != null && ghostIndex < ghostInserts.Count && operationBudget > 0)
+                        while (ghostIndex < ghostInserts.Count && operationBudget > 0)
                         {
                             operationBudget--;
                             var ghostInsert = ghostInserts[ghostIndex++];
                             AddToGhost(ghostInsert.Key, ghostInsert.Reused, ghostInsert.FromMain, ref operationBudget);
                         }
                     }
-                    if ((requeueToSmall == null || smallIndex >= requeueToSmall.Count)
-                        && (requeueToMain == null || mainIndex >= requeueToMain.Count)
-                        && (ghostInserts == null || ghostIndex >= ghostInserts.Count))
+                    if (smallIndex >= requeueToSmall.Count
+                        && mainIndex >= requeueToMain.Count
+                        && ghostIndex >= ghostInserts.Count)
                     {
                         break;
                     }
