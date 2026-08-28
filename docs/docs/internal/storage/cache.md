@@ -28,7 +28,7 @@ The cache has three queues just as in S3-FIFO:
 
 The small page starts at 10% of the cache size, main queue 90% and ghost queue 50% of the total size.
 
-When a page gets added it goes into the small queue. A page can get promoted to the main queue if it has atleast a frequnecy of 2. This number was chosen since many operators does atleast one fetch even if it might not be reused in the future.
+When a page gets added it goes into the small queue. A page can get promoted to the main queue if it has atleast a frequency of 2. This number was chosen since many operators does atleast one fetch even if it might not be reused in the future. The maximum frequency of any page is 3.
 
 To get a frequency increase the page must have travelled 1/40 of the total cache size in element cache. So in the small queue it must travel 25% of the small queue (beeing bumped by new elements) before a frequency hit will count. This is inspired by Clock2Q+. So to get bumped to main it must be reused twice but also beeing moved 25% of the small queue between each hit. This filters out temporarily hot pages to promote.
 
