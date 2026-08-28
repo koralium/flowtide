@@ -150,16 +150,46 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
     }
 
+    /// <summary>
+    /// Fixed allocation figure, drives the memory based resize.
+    /// </summary>
+    internal class FixedMemoryStats : IMemoryAllocationStats
+    {
+        private long _allocated;
+
+        public FixedMemoryStats(long allocated)
+        {
+            _allocated = allocated;
+        }
+
+        public void Set(long allocated)
+        {
+            Volatile.Write(ref _allocated, allocated);
+        }
+
+        public long GetAllocatedMemory()
+        {
+            return Volatile.Read(ref _allocated);
+        }
+    }
+
     internal static class S3FifoTestHelpers
     {
-        public static S3FifoTableSync CreateRunningTable(int maxSize, int minSize = 0, bool drainSmallQueueEarly = false, bool adaptiveSmallQueueSize = false)
+        public static S3FifoTableSync CreateRunningTable(
+            int maxSize,
+            int minSize = 0,
+            bool drainSmallQueueEarly = false,
+            bool adaptiveSmallQueueSize = false,
+            long maxMemoryUsageInBytes = -1,
+            IMemoryAllocationStats? memoryStats = null)
         {
-            return new S3FifoTableSync(new CacheTableOptions("", NullLogger.Instance, new Meter(Guid.NewGuid().ToString()), new ZeroMemoryStats())
+            return new S3FifoTableSync(new CacheTableOptions("", NullLogger.Instance, new Meter(Guid.NewGuid().ToString()), memoryStats ?? new ZeroMemoryStats())
             {
                 MaxSize = maxSize,
                 MinSize = minSize,
                 DrainSmallQueueEarly = drainSmallQueueEarly,
-                AdaptiveSmallQueueSize = adaptiveSmallQueueSize
+                AdaptiveSmallQueueSize = adaptiveSmallQueueSize,
+                MaxMemoryUsageInBytes = maxMemoryUsageInBytes
             });
         }
 
@@ -167,9 +197,15 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         /// Creates a table with the background cleanup task stopped, so tests drive
         /// eviction deterministically through ForceCleanup.
         /// </summary>
-        public static async Task<S3FifoTableSync> CreateStoppedTable(int maxSize, int minSize = 0, bool drainSmallQueueEarly = false, bool adaptiveSmallQueueSize = false)
+        public static async Task<S3FifoTableSync> CreateStoppedTable(
+            int maxSize,
+            int minSize = 0,
+            bool drainSmallQueueEarly = false,
+            bool adaptiveSmallQueueSize = false,
+            long maxMemoryUsageInBytes = -1,
+            IMemoryAllocationStats? memoryStats = null)
         {
-            var table = CreateRunningTable(maxSize, minSize, drainSmallQueueEarly, adaptiveSmallQueueSize);
+            var table = CreateRunningTable(maxSize, minSize, drainSmallQueueEarly, adaptiveSmallQueueSize, maxMemoryUsageInBytes, memoryStats);
             await table.StopCleanupTask();
             return table;
         }

@@ -246,9 +246,9 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.False(objects[0].RemovedFromCache);
             Assert.True(table.TryGetValue(0, out var cacheObject));
             cacheObject!.Return();
-            // The survivor is requeued into the main queue.
+            // Back where it came from, a write is not reuse.
             Assert.True(table.TryPeekEntryForTests(0, out var entry));
-            Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
+            Assert.Equal(S3FifoQueueLocation.Small, entry.Location);
             Assert.False(table.IsInGhostForTests(0));
         }
 

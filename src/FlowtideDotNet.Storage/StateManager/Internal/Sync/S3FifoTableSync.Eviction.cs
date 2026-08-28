@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private async Task CleanupTask()
         {
             // PeriodicTimer allocates nothing per tick, Task.Delay made a GC sawtooth.
-            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(CleanupIntervalMs));
             while (true)
             {
                 m_cleanupTokenSource.Token.ThrowIfCancellationRequested();
@@ -122,7 +122,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 return;
             }
+            try
+            {
+                await CleanupCore(currentCount, toBeRemovedCount, isCleanup);
+            }
+            finally
+            {
+                if (isCleanup)
+                {
+                    // A deep clean hands memory back even when nothing freed.
+                    FlowtideMemoryAllocation.Collect();
+                }
+            }
+        }
 
+        private async Task CleanupCore(int currentCount, int toBeRemovedCount, bool isCleanup)
+        {
             // Move the split at most one step per pass.
             lock (m_queueLock)
             {
@@ -172,11 +187,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 scratch.Reset();
                 Volatile.Write(ref m_cleanupScratch, scratch);
             }
-
-            if (isCleanup)
-            {
-                FlowtideMemoryAllocation.Collect();
-            }
         }
 
         /// <summary>
@@ -209,13 +219,25 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 VictimsByHandler.Clear();
                 // A rare deep clean must not pin its huge backing arrays forever.
-                if (Victims.Capacity > 65536)
+                TrimIfOversized(Victims);
+                TrimIfOversized(GhostInserts);
+                TrimIfOversized(RequeueToSmall);
+                TrimIfOversized(RequeueToMain);
+                TrimIfOversized(EvictTasks);
+                TrimIfOversized(EvictTaskGroups);
+                foreach (var list in HandlerListPool)
                 {
-                    Victims.TrimExcess();
+                    TrimIfOversized(list);
                 }
-                if (GhostInserts.Capacity > 65536)
+            }
+
+            private const int TrimAboveCapacity = 65536;
+
+            private static void TrimIfOversized<T>(List<T> list)
+            {
+                if (list.Capacity > TrimAboveCapacity)
                 {
-                    GhostInserts.TrimExcess();
+                    list.TrimExcess();
                 }
             }
         }
@@ -297,10 +319,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         var cleanupSize = Math.Max(1, rawCleanupSize);
                         Volatile.Write(ref cleanupStart, cleanupSize);
 
-                        if (currentCount > idealMaxSize)
-                        {
-                            toBeRemovedCount = currentCount - cleanupSize;
-                        }
+                        // Replan on the new threshold, the old evicts a grow.
+                        toBeRemovedCount = currentCount - cleanupSize;
                     }
                 }
             }
@@ -439,7 +459,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (candidate.Version != entry.Version)
                     {
                         // Modified while serializing, so the copy is stale. It is being used.
-                        requeueToMain.Add(entry);
+                        // A write is not reuse, back where it came from.
+                        if (candidate.FromSmallQueue)
+                        {
+                            requeueToSmall.Add(entry);
+                        }
+                        else
+                        {
+                            requeueToMain.Add(entry);
+                        }
                         continue;
                     }
                     // Only evict pages nothing else references.
@@ -573,7 +601,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 bool foundVictim;
                 // The aged out main head is weaker than the small head.
-                if (MainHeadHasAgedOut() || liveSmall <= smallTarget)
+                if (MainHeadHasAgedOut(ref operationBudget) || liveSmall <= smallTarget)
                 {
                     foundVictim = TryEvictOneFromMain(victims, ref operationBudget) || TryEvictOneFromSmall(victims, ref operationBudget);
                 }
@@ -600,7 +628,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return false;
                 }
                 // The drain grows main, so pay with its aged out pages first.
-                if (MainHeadHasAgedOut() && TryEvictOneFromMain(victims, ref operationBudget))
+                if (MainHeadHasAgedOut(ref operationBudget) && TryEvictOneFromMain(victims, ref operationBudget))
                 {
                     continue;
                 }
@@ -692,6 +720,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         private void AddToGhost(long key, bool reused, bool fromMain, ref int operationBudget)
         {
+            if (m_cache.ContainsKey(key))
+            {
+                // Resident again before this insert, so no ghost record.
+                return;
+            }
             var sequence = ++m_ghostSequence;
             ref var membership = ref CollectionsMarshal.GetValueRefOrAddDefault(m_ghostKeys, key, out var alreadyRemembered);
             if (alreadyRemembered)
@@ -712,20 +745,30 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             m_ghostQueue.Enqueue(new GhostRecord(key, sequence));
             var capacity = GhostCapacity();
-            while (m_ghostQueue.Count > capacity && operationBudget > 0)
+            while (m_ghostQueue.Count > 0 && operationBudget > 0)
             {
-                operationBudget--;
-                var oldest = m_ghostQueue.Dequeue();
-                if (m_ghostKeys.TryGetValue(oldest.Key, out var storedValue) && storedValue.Sequence == oldest.Sequence)
+                var oldest = m_ghostQueue.Peek();
+                if (!m_ghostKeys.TryGetValue(oldest.Key, out var storedValue) || storedValue.Sequence != oldest.Sequence)
                 {
-                    // Aged out never re-admitted, a one hit wonder.
-                    m_ghostKeys.Remove(oldest.Key);
-                    DropGhostMembership(storedValue.FromMain);
-                    if (!storedValue.FromMain)
-                    {
-                        m_oneHitWonders++;
-                        RecordGhostExpiry();
-                    }
+                    // Re-admitted or replaced, a dead slot. Drop it for free.
+                    operationBudget--;
+                    m_ghostQueue.Dequeue();
+                    continue;
+                }
+                if (m_ghostKeys.Count <= capacity && m_ghostQueue.Count <= capacity * 2)
+                {
+                    // Room for the live memberships, buried dead slots can wait.
+                    break;
+                }
+                operationBudget--;
+                m_ghostQueue.Dequeue();
+                // Aged out never re-admitted, a one hit wonder.
+                m_ghostKeys.Remove(oldest.Key);
+                DropGhostMembership(storedValue.FromMain);
+                if (!storedValue.FromMain)
+                {
+                    m_oneHitWonders++;
+                    RecordGhostExpiry();
                 }
             }
         }

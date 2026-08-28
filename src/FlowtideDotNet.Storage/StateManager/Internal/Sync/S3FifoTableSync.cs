@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             public long Version { get; }
 
             /// <summary>
-            /// Only small queue evictions enter the ghost queue.
+            /// Which queue the victim came from, for requeue and ghost.
             /// </summary>
             public bool FromSmallQueue { get; }
         }
@@ -63,6 +63,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// Deletes leave a stale slot behind.
         /// </summary>
         private const int CompactionMinimumStaleCount = 1024;
+
+        /// <summary>
+        /// Cadence of the background cleanup pass.
+        /// </summary>
+        private const int CleanupIntervalMs = 10;
 
         private readonly ConcurrentDictionary<long, S3FifoCacheEntry> m_cache;
 
@@ -130,6 +135,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_lastSeenCacheHits;
         private int m_sameCacheHitsCount;
 
+        // Guards the gauge state below, callbacks run per listener thread.
+        private readonly object m_metricsLock = new object();
         private long m_metrics_lastSeenTotal;
         private long m_metrics_lastSeenHits;
         private float m_metrics_lastSentPercentage;
@@ -207,20 +214,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 });
                 meter.CreateObservableGauge("flowtide_lru_table_cache_hits_percentage", () =>
                 {
-                    var hit = TotalCacheHits();
-                    var misses = TotalCacheMisses();
-                    var total = hit + misses;
-                    if (total > m_metrics_lastSeenTotal)
+                    // Carries state between collections, so the window needs a lock.
+                    lock (m_metricsLock)
                     {
-                        var newTotal = total - m_metrics_lastSeenTotal;
-                        var newHits = hit - m_metrics_lastSeenHits;
-                        m_metrics_lastSeenTotal = total;
-                        m_metrics_lastSeenHits = hit;
-                        m_metrics_lastSentPercentage = (float)newHits / newTotal;
-                        return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
-                    }
-                    else
-                    {
+                        var hit = TotalCacheHits();
+                        var misses = TotalCacheMisses();
+                        var total = hit + misses;
+                        if (total > m_metrics_lastSeenTotal)
+                        {
+                            var newTotal = total - m_metrics_lastSeenTotal;
+                            var newHits = hit - m_metrics_lastSeenHits;
+                            m_metrics_lastSeenTotal = total;
+                            m_metrics_lastSeenHits = hit;
+                            m_metrics_lastSentPercentage = (float)newHits / newTotal;
+                        }
                         return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
                     }
                 });
@@ -330,35 +337,55 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public void Delete(in long key)
         {
-            if (m_cache.TryGetValue(key, out var entry))
+            if (!m_cache.TryGetValue(key, out var entry))
+            {
+                return;
+            }
+            while (true)
             {
                 // One hold over both locks, or the scan reads too early.
+                // Never block here, eviction holds it across a spill write.
                 lock (m_queueLock)
                 {
-                    lock (entry)
+                    if (Monitor.TryEnter(entry))
                     {
-                        if (entry.Removed)
+                        try
                         {
+                            if (entry.Removed)
+                            {
+                                return;
+                            }
+                            // Write Removed before Return so lock-free readers see it once a rent fails.
+                            Volatile.Write(ref entry.Removed, true);
+                            if (m_cache.TryRemove(key, out _))
+                            {
+                                // Flagged before removal so a racing re-add takes a new rent.
+                                entry.Value.RemovedFromCache = true;
+                                entry.Value.Return();
+                                Interlocked.Decrement(ref m_count);
+                            }
+                            // No removal from the middle, cleanup compacts the stale slot.
+                            if (entry.Location == S3FifoQueueLocation.Small)
+                            {
+                                m_smallStaleCount++;
+                            }
+                            else if (entry.Location == S3FifoQueueLocation.Main)
+                            {
+                                m_mainStaleCount++;
+                            }
                             return;
                         }
-                        // Write Removed before Return so lock-free readers see it once a rent fails.
-                        Volatile.Write(ref entry.Removed, true);
-                        if (m_cache.TryRemove(key, out _))
+                        finally
                         {
-                            entry.Value.Return();
-                            Interlocked.Decrement(ref m_count);
-                        }
-                        // No removal from the middle, cleanup compacts the stale slot.
-                        if (entry.Location == S3FifoQueueLocation.Small)
-                        {
-                            m_smallStaleCount++;
-                        }
-                        else if (entry.Location == S3FifoQueueLocation.Main)
-                        {
-                            m_mainStaleCount++;
+                            Monitor.Exit(entry);
                         }
                     }
                 }
+                // Wait for the entry lock with the queue lock dropped.
+                lock (entry)
+                {
+                }
+                Thread.Yield();
             }
         }
 
@@ -411,11 +438,49 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return false;
         }
 
+        /// <summary>
+        /// Cleanup passes a producer waits before it proceeds anyway.
+        /// </summary>
+        private const int MaxWaitPassesWhenFull = 16;
+
+        private bool IsOverCapacity => Volatile.Read(ref m_count) > Volatile.Read(ref maxSize);
+
         public async Task Wait()
         {
             logger.LruTableIsFull(m_streamName);
-            await _fullLock.WaitAsync().ConfigureAwait(false);
-            _fullLock.Release();
+            try
+            {
+                for (int pass = 0; pass < MaxWaitPassesWhenFull; pass++)
+                {
+                    // Checked first, the common case costs no acquisition.
+                    if (!IsOverCapacity)
+                    {
+                        break;
+                    }
+                    // Rides out the pass in flight.
+                    await _fullLock.WaitAsync().ConfigureAwait(false);
+                    _fullLock.Release();
+                    if (!IsOverCapacity)
+                    {
+                        break;
+                    }
+                    if (pass + 1 >= MaxWaitPassesWhenFull)
+                    {
+                        // Out of passes, sleeping here would be dead time.
+                        break;
+                    }
+                    // No room freed, let the next pass run first.
+                    await Task.Delay(CleanupIntervalMs, m_cleanupTokenSource.Token).ConfigureAwait(false);
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // Disposed while parked, the stream is tearing down.
+            }
+            catch (OperationCanceledException)
+            {
+                // Cleanup cancelled, disposal is in progress.
+            }
             logger.LruTableNoLongerFull(m_streamName);
         }
 
@@ -478,6 +543,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         // Defensive, take a new cache rent, the caller keeps its own.
                         if (!value.TryRent())
                         {
+                            // Withdraw the entry, an orphan would poison the key.
+                            m_cache.TryRemove(new KeyValuePair<long, S3FifoCacheEntry>(key, entry));
                             throw new InvalidOperationException("Already disposed");
                         }
                         value.RemovedFromCache = false;

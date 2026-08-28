@@ -123,17 +123,30 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// True when the main head has aged out.
+        /// Reaps tombstones, then true when the live head aged out.
         /// Must be called under the queue lock.
         /// </summary>
-        private bool MainHeadHasAgedOut()
+        private bool MainHeadHasAgedOut(ref int operationBudget)
         {
-            if (m_mainQueue.Count == 0)
+            while (m_mainQueue.Count > 0 && operationBudget > 0)
             {
-                return false;
+                var head = m_mainQueue.Peek();
+                lock (head)
+                {
+                    if (!head.Removed)
+                    {
+                        return Volatile.Read(ref head.Frequency) == 0;
+                    }
+                    m_mainQueue.Dequeue();
+                    head.Location = S3FifoQueueLocation.None;
+                    if (m_mainStaleCount > 0)
+                    {
+                        m_mainStaleCount--;
+                    }
+                }
+                operationBudget--;
             }
-            var head = m_mainQueue.Peek();
-            return Volatile.Read(ref head.Removed) || Volatile.Read(ref head.Frequency) == 0;
+            return false;
         }
 
     }
