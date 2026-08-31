@@ -228,7 +228,6 @@ namespace FlowtideDotNet.Core.Tests
                         crashGate.Release();
                     }
                     await stateManager.CheckpointAsync();
-                    committed = new Dictionary<(string, string), int>(live);
                     sinceCheckpoint.Clear();
                     checkpoints++;
                 }
