@@ -132,6 +132,10 @@ namespace FlowtideDotNet.Substrait
                             {
                                 return new AnyType();
                             }
+                            else if (typeName.Equals("named_struct", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return ParseNamedStructType(type.UserDefined);
+                            }
                             else
                             {
                                 throw new NotImplementedException($"User defined type not implemented {typeName}");
@@ -209,6 +213,40 @@ namespace FlowtideDotNet.Substrait
                 }
 
                 return st;
+            }
+
+            private NamedStruct ParseNamedStructType(Protobuf.Type.Types.UserDefined userDefined)
+            {
+                var names = new List<string>();
+                Struct? structType = default;
+                foreach (var parameter in userDefined.TypeParameters)
+                {
+                    switch (parameter.ParameterCase)
+                    {
+                        case Protobuf.Type.Types.Parameter.ParameterOneofCase.String:
+                            names.Add(parameter.String);
+                            break;
+                        case Protobuf.Type.Types.Parameter.ParameterOneofCase.DataType:
+                            if (parameter.DataType.KindCase != Protobuf.Type.KindOneofCase.Struct)
+                            {
+                                throw new InvalidOperationException($"Named struct field types must be a struct, got {parameter.DataType.KindCase}");
+                            }
+                            structType = ParseStruct(parameter.DataType.Struct);
+                            break;
+                        default:
+                            throw new NotImplementedException($"Named struct type parameter not implemented {parameter.ParameterCase}");
+                    }
+                }
+                if (structType != null && structType.Types.Count != names.Count)
+                {
+                    throw new InvalidOperationException("Named struct must have one name per field type");
+                }
+                return new NamedStruct()
+                {
+                    Names = names,
+                    Struct = structType,
+                    Nullable = userDefined.Nullability != Protobuf.Type.Types.Nullability.Required
+                };
             }
 
             internal NamedStruct ParseNamedStruct(Protobuf.NamedStruct namedStruct)
