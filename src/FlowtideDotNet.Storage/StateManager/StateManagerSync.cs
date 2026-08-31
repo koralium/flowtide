@@ -500,9 +500,11 @@ namespace FlowtideDotNet.Storage.StateManager
                 // If zero we revert back to an empty state
                 if (m_persistentStorage.TryGetValue(1, out var metadataBytes) && (!checkpointVersion.HasValue || (checkpointVersion.HasValue && checkpointVersion.Value > 0)))
                 {
+                    // Never fall through, the else branch resets the stream.
+                    var metadata = metadataBytes ?? throw new InvalidOperationException("Metadata page was found but empty.");
                     lock (m_lock)
                     {
-                        m_metadata = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(metadataBytes.Value), metadataBytes.Value.Length);
+                        m_metadata = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(metadata), metadata.Length);
                     }
                     await m_persistentStorage.RecoverAsync(!checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value).ConfigureAwait(false);
                     LastCompletedCheckpointVersion = !checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value;

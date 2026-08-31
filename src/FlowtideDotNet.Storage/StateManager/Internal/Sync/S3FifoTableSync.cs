@@ -16,8 +16,6 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
-using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {

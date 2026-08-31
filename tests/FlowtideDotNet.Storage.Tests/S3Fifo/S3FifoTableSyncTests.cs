@@ -207,10 +207,6 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
 
-
-
-
-
         [Fact]
         public async Task ValueModifiedDuringEvictionStaysCached()
         {

@@ -60,12 +60,10 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(1, table.GetQueueCountsForTests().MainStale);
 
             // Sized so aging earns no steps and cannot reap the tombstone.
-            var countBeforeBurst = table.Count;
             for (var i = 100; i < 112; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            Assert.True(12 * 1 < countBeforeBurst + 12, "burst must not earn an aging step");
 
             var agingBefore = table.AgingStepsForTests;
             Assert.True(table.TryGetValue(1, out var warm2));
