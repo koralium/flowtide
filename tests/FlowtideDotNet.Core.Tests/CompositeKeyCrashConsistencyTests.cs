@@ -189,7 +189,6 @@ namespace FlowtideDotNet.Core.Tests
 
             var rnd = new Random(7);
             var live = new Dictionary<(string, string), int>();
-            var committed = new Dictionary<(string, string), int>();
             // The events applied since the last checkpoint. On crash the tree reverts to the
             // checkpoint and the stream replays exactly these, the harness does the same.
             var sinceCheckpoint = new List<(string group, string item, int weight)>();
