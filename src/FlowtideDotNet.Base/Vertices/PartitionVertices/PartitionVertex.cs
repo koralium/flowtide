@@ -41,7 +41,6 @@ namespace FlowtideDotNet.Base.Vertices
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
         private string? _name;
         private string? _streamName;
-        private long _currentTime;
         private ILogger? _logger;
         private IMeter? _metrics;
         private bool _isHealthy = true;
@@ -335,7 +334,6 @@ namespace FlowtideDotNet.Base.Vertices
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
-            _currentTime = newTime;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
             _metrics = vertexHandler.Metrics;
             _vertexHandler = vertexHandler;
@@ -444,13 +442,13 @@ namespace FlowtideDotNet.Base.Vertices
             throw new NotSupportedException("Triggers are not supported in partition vertices");
         }
 
-        protected void ScheduleCheckpoint(TimeSpan inTime, long? checkpointVersion = default)
+        protected void ScheduleCheckpoint(TimeSpan inTime, long? providedCheckpointToken = default)
         {
             if (_vertexHandler == null)
             {
                 throw new NotSupportedException("Cannot schedule checkpoint before initialize");
             }
-            _vertexHandler.ScheduleCheckpoint(inTime, checkpointVersion);
+            _vertexHandler.ScheduleCheckpoint(inTime, providedCheckpointToken);
         }
 
         /// <summary>

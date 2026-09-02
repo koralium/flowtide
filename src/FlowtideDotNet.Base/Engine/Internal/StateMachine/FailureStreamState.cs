@@ -170,8 +170,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // trigger times in the past and be dropped, leaving the stream without
                 // checkpoints until an external trigger arrives.
                 _context.inQueueCheckpoint = null;
-                _context._currentProvidedCheckpointVersion = default;
-                _context._scheduledProvidedCheckpointVersion = default;
+                _context._currentProvidedCheckpointToken = default;
+                _context._scheduledProvidedCheckpointToken = default;
                 if (_context._scheduleCheckpointCancelSource != null)
                 {
                     _context._scheduleCheckpointCancelSource.Cancel();

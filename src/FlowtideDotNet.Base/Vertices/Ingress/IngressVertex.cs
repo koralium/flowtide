@@ -29,7 +29,6 @@ namespace FlowtideDotNet.Base.Vertices
         public BufferBlock<IStreamEvent>? _block;
         public ISourceBlock<IStreamEvent>? _sourceBlock;
         public long _currentTime;
-        public long _restoreTime;
         public IVertexHandler? _vertexHandler;
         public SemaphoreSlim? _checkpointLock;
         public bool _inCheckpointLock;
@@ -401,7 +400,11 @@ namespace FlowtideDotNet.Base.Vertices
         /// Schedules a checkpoint to occur after the specified delay.
         /// </summary>
         /// <param name="inTime">The timespan indicating how long to wait before checkpointing.</param>
-        protected void ScheduleCheckpoint(TimeSpan inTime, long? checkpointVersion = default)
+        /// <param name="providedCheckpointToken">
+        /// Optional token identifying the request, a repeated request with the same token is only scheduled once.
+        /// It is compared for equality and nothing else, it is not a state manager checkpoint version.
+        /// </param>
+        protected void ScheduleCheckpoint(TimeSpan inTime, long? providedCheckpointToken = default)
         {
             Debug.Assert(_ingressState?._vertexHandler != null, nameof(_ingressState._vertexHandler));
 
@@ -409,7 +412,7 @@ namespace FlowtideDotNet.Base.Vertices
             {
                 throw new NotSupportedException("Cannot schedule checkpoint before initialize");
             }
-            _ingressState._vertexHandler.ScheduleCheckpoint(inTime, checkpointVersion);
+            _ingressState._vertexHandler.ScheduleCheckpoint(inTime, providedCheckpointToken);
         }
 
         private sealed record TaskState(Func<IngressOutput<TData>, object?, Task> func, IngressOutput<TData> ingressOutput, object? state, int taskId);
@@ -499,7 +502,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// Asynchronously initializes the vertex, wiring up metrics, dependencies, and persistent state retrieval.
         /// </summary>
         /// <param name="name">The name assigned to the vertex.</param>
-        /// <param name="restoreTime">The time representing the last known good state to restore from.</param>
+        /// <param name="restoreTime">The state manager version of the last known good state to restore from.</param>
         /// <param name="newTime">The new logical stream execution time.</param>
         /// <param name="vertexHandler">The handler containing stream environment references like state client and metrics.</param>
         /// <param name="streamVersionInformation">Configuration tracking the overall version of stream changes.</param>
@@ -520,7 +523,6 @@ namespace FlowtideDotNet.Base.Vertices
 
             _ingressState._vertexHandler = vertexHandler;
             _ingressState._currentTime = newTime;
-            _ingressState._restoreTime = restoreTime;
             _ingressState._metrics = vertexHandler.Metrics;
 
             Metrics.CreateObservableGauge("backpressure", () =>
@@ -620,7 +622,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// <summary>
         /// Performs the specific state initialization or restoration logic using the state manager.
         /// </summary>
-        /// <param name="restoreTime">The time to restore from.</param>
+        /// <param name="restoreTime">The state manager version to restore from.</param>
         /// <param name="stateManagerClient">The state manager client used to access persistent state.</param>
         /// <returns>A task representing the state initialization/restoration operation.</returns>
         protected abstract Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient);

@@ -59,8 +59,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal Task? _onFailureTask;
         internal TaskCompletionSource? checkpointTask;
         internal DateTimeOffset? inQueueCheckpoint;
-        internal long? _currentProvidedCheckpointVersion;
-        internal long? _scheduledProvidedCheckpointVersion;
+        internal long? _currentProvidedCheckpointToken;
+        internal long? _scheduledProvidedCheckpointToken;
 
         /// <summary>
         /// Dependencies done signals that arrived while the stream was still starting, for
@@ -552,20 +552,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         // Kept as a distinct two argument method (not an optional parameter) so it stays usable
         // as an Action<TimeSpan, long?> method group, the vertex handler schedules through it.
-        internal void TryScheduleCheckpointIn(TimeSpan timeSpan, long? checkpointVersion)
+        internal void TryScheduleCheckpointIn(TimeSpan timeSpan, long? providedCheckpointToken)
         {
-            TryScheduleCheckpointIn(timeSpan, checkpointVersion, bypassMinimumInterval: false);
+            TryScheduleCheckpointIn(timeSpan, providedCheckpointToken, bypassMinimumInterval: false);
         }
 
-        internal void TryScheduleCheckpointIn(TimeSpan timeSpan, long? checkpointVersion, bool bypassMinimumInterval)
+        internal void TryScheduleCheckpointIn(TimeSpan timeSpan, long? providedCheckpointToken, bool bypassMinimumInterval)
         {
             lock (_checkpointLock)
             {
-                TryScheduleCheckpointIn_NoLock(timeSpan, checkpointVersion, bypassMinimumInterval);
+                TryScheduleCheckpointIn_NoLock(timeSpan, providedCheckpointToken, bypassMinimumInterval);
             }
         }
 
-        internal bool TryScheduleCheckpointIn_NoLock(TimeSpan timeSpan, long? checkpointVersion, bool bypassMinimumInterval = false)
+        internal bool TryScheduleCheckpointIn_NoLock(TimeSpan timeSpan, long? providedCheckpointToken, bool bypassMinimumInterval = false)
         {
             Debug.Assert(Monitor.IsEntered(_checkpointLock));
 
@@ -597,7 +597,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 // If the provided version is the same as the running one, skip scheduling
                 // This is to hinder multiple checkpoints after one another in distributed mode
-                if (checkpointVersion.HasValue && _currentProvidedCheckpointVersion.HasValue && checkpointVersion.Value == _currentProvidedCheckpointVersion.Value)
+                if (providedCheckpointToken.HasValue && _currentProvidedCheckpointToken.HasValue && providedCheckpointToken.Value == _currentProvidedCheckpointToken.Value)
                 {
                     return false;
                 }
@@ -607,14 +607,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 else
                 {
-                    _scheduledProvidedCheckpointVersion = checkpointVersion;
+                    _scheduledProvidedCheckpointToken = providedCheckpointToken;
                     inQueueCheckpoint = triggerTime;
                     return true;
                 }
             }
             else
             {
-                _currentProvidedCheckpointVersion = checkpointVersion;
+                _currentProvidedCheckpointToken = providedCheckpointToken;
             }
 
             if (_scheduleCheckpointTask != null)

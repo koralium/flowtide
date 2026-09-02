@@ -29,8 +29,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly int checkpointsBeforeCrash;
         private readonly int deleteFailCount;
         private readonly Action<int>? onChangeRowsReceived;
+        private readonly Action<string, long>? onCheckpointId;
 
-        public MockSinkFactory(string regexPattern, Action<EventBatchData> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark, int checkpointsBeforeCrash = 0, int deleteFailCount = 0, Action<int>? onChangeRowsReceived = null) : base(regexPattern)
+        public MockSinkFactory(string regexPattern, Action<EventBatchData> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark, int checkpointsBeforeCrash = 0, int deleteFailCount = 0, Action<int>? onChangeRowsReceived = null, Action<string, long>? onCheckpointId = null) : base(regexPattern)
         {
             this.onDataUpdate = onDataUpdate;
             this.egressCrashOnCheckpointCount = egressCrashOnCheckpointCount;
@@ -38,11 +39,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             this.checkpointsBeforeCrash = checkpointsBeforeCrash;
             this.deleteFailCount = deleteFailCount;
             this.onChangeRowsReceived = onChangeRowsReceived;
+            this.onCheckpointId = onCheckpointId;
         }
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new MockDataSink(writeRelation, dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark, checkpointsBeforeCrash, deleteFailCount, onChangeRowsReceived);
+            return new MockDataSink(writeRelation, dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark, checkpointsBeforeCrash, deleteFailCount, onChangeRowsReceived, onCheckpointId);
         }
 
         public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)

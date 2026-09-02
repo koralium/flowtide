@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Core.Tests
         public async Task SendCheckpoint(ITargetBlock<IStreamEvent> target, long checkpointTime)
         {
             _taskCompletion = new TaskCompletionSource();
-            await target.SendAsync(new Checkpoint(checkpointTime, checkpointTime + 1));
+            await target.SendAsync(new Checkpoint(checkpointTime, checkpointTime + 1, 1));
         }
 
         public async Task SendWatermark(ITargetBlock<IStreamEvent> target, IReadOnlyDictionary<string, AbstractWatermarkValue> values)

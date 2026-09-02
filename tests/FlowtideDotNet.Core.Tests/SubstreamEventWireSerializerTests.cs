@@ -56,8 +56,8 @@ namespace FlowtideDotNet.Core.Tests
             {
                 CreateBatchEvent(1, 10, 20, 30),
                 new SubstreamEventData() { ExchangeTargetId = 2, StreamEvent = new Watermark("table1", LongWatermarkValue.Create(17)) },
-                new SubstreamEventData() { ExchangeTargetId = 1, StreamEvent = new Checkpoint(5, 6) },
-                new SubstreamEventData() { ExchangeTargetId = 2, StreamEvent = new StopStreamCheckpoint(7, 8) },
+                new SubstreamEventData() { ExchangeTargetId = 1, StreamEvent = new Checkpoint(5, 6, 1) },
+                new SubstreamEventData() { ExchangeTargetId = 2, StreamEvent = new StopStreamCheckpoint(7, 8, 1) },
                 CreateBatchEvent(2, 40)
             };
 
@@ -196,7 +196,7 @@ namespace FlowtideDotNet.Core.Tests
         public void LockingEventPrepareRoundTrips()
         {
             var id = Guid.NewGuid();
-            var prepare = new LockingEventPrepare(new Checkpoint(11, 12), isInitEvent: true, otherInputsNotInCheckpoint: false, id: id);
+            var prepare = new LockingEventPrepare(new Checkpoint(11, 12, 1), isInitEvent: true, otherInputsNotInCheckpoint: false, id: id);
 
             var serializer = new SubstreamEventWireSerializer();
             var events = new List<SubstreamEventData>()

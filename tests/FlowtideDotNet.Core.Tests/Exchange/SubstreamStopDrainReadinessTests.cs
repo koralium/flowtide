@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             // The stream is stopping: the stop barrier is stored, the target must hold the
             // stop until the other substream received it.
-            await target.OnLockingEvent(new StopStreamCheckpoint(1, 2));
+            await target.OnLockingEvent(new StopStreamCheckpoint(1, 2, 1));
             Assert.False(target.ReadyToStop);
 
             // The peer's fetch dequeues the barrier, but the response is lost after the
@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             // even stored, it cannot say anything about the drain.
             await pointB.SendCheckpointDone(4);
 
-            await target.OnLockingEvent(new StopStreamCheckpoint(1, 2));
+            await target.OnLockingEvent(new StopStreamCheckpoint(1, 2, 1));
             var fetched = new List<SubstreamEventData>();
             await target.ReadData(fetched, 100);
             SubstreamEventWireSerializer.ReturnEvents(fetched);

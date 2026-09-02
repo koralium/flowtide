@@ -385,7 +385,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 var newTime = _context.producingTime + 1;
-                checkpoint = new StopStreamCheckpoint(_context.producingTime, newTime);
+                checkpoint = new StopStreamCheckpoint(_context.producingTime, newTime, _context._stateManager.CurrentVersion);
                 _context.producingTime = newTime;
                 _currentCheckpoint = checkpoint;
 

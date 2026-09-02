@@ -35,6 +35,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
     /// over the local hub without an Orleans cluster; rebuilding a substream over the same hub
     /// and storage is what a grain activation moving to another silo does.
     /// </summary>
+    [Collection("StreamContext test hooks")]
     public class DistributedCleanHandoffTests : IAsyncLifetime
     {
         private record UserKeyRow(long UserKey);
@@ -53,6 +54,19 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         private const string JoinSql = @"
             INSERT INTO output
+            SELECT u.userkey FROM users u
+            INNER JOIN orders o ON u.userkey = o.userkey;
+            ";
+
+        /// <summary>
+        /// Two outputs, so a distributed plan has more than one egress point to compare.
+        /// </summary>
+        private const string TwoSinkJoinSql = @"
+            INSERT INTO output
+            SELECT u.userkey FROM users u
+            INNER JOIN orders o ON u.userkey = o.userkey;
+
+            INSERT INTO output2
             SELECT u.userkey FROM users u
             INNER JOIN orders o ON u.userkey = o.userkey;
             ";
@@ -361,6 +375,498 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         private readonly ConcurrentDictionary<string, RingBufferLoggerProvider> _logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
 
+        /// <summary>
+        /// Rule 1: every substream commits the same checkpoint versions. In normal running the
+        /// barrier pairing keeps the cycles in lockstep, so the counters stay equal.
+        /// </summary>
+        [Fact]
+        public async Task AllSubstreamsCommitTheSameCheckpointVersionsWhileRunning()
+        {
+            var testName = "e2e_rule1_running";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var committed = new ConcurrentDictionary<string, long>();
+
+            Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    committed.AddOrUpdate(streamName, lastVersion, (_, existing) => Math.Max(existing, lastVersion));
+                }
+                return Task.CompletedTask;
+            };
+            try
+            {
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                await AssertCommittedVersionsConverge(committed, "while running");
+
+                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+            }
+            finally
+            {
+                Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// Rule 1 across a clean handoff: a substream that stops and is rebuilt must come back on
+        /// the version its peer is on. The stop drain commits a checkpoint per cycle while only the
+        /// first stop barrier reaches the peer, so today the returning substream is ahead and the
+        /// handoff accepts it without reconciling.
+        /// </summary>
+        [Fact]
+        public async Task AllSubstreamsCommitTheSameCheckpointVersionsAfterACleanHandoff()
+        {
+            var testName = "e2e_rule1_handoff";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var committed = new ConcurrentDictionary<string, long>();
+
+            Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    committed.AddOrUpdate(streamName, lastVersion, (_, existing) => Math.Max(existing, lastVersion));
+                }
+                return Task.CompletedTask;
+            };
+            try
+            {
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                await AssertCommittedVersionsConverge(committed, "before the handoff");
+
+                await substream1.PrepareHandoffAsync();
+                await AwaitBounded(substream1.StopAsync(), "handoff stop");
+                await substream1.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream1);
+                }
+
+                substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+                await substream1.StartAsync();
+
+                _generator.Generate(250);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                await AssertCommittedVersionsConverge(committed, "after the handoff");
+
+                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+            }
+            finally
+            {
+                Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// Waits for the commits to settle and then requires every substream to be on the same
+        /// checkpoint version. Settling matters because a cycle can be in flight on one side.
+        /// </summary>
+        private static Task AssertCommittedVersionsConverge(
+            ConcurrentDictionary<string, long> committed,
+            string phase,
+            int expectedSubstreams = 2,
+            long minVersion = 0)
+        {
+            return AssertCommittedVersionsConverge(
+                () => committed.ToArray().ToDictionary(x => x.Key, x => x.Value),
+                phase,
+                expectedSubstreams,
+                minVersion);
+        }
+
+        /// <summary>
+        /// The snapshot is taken again on every poll, so the caller must hand in a live view. A
+        /// minimum version keeps a set of substreams that all happen to sit at the first version
+        /// from counting as converged.
+        /// </summary>
+        private static async Task AssertCommittedVersionsConverge(
+            Func<Dictionary<string, long>> takeSnapshot,
+            string phase,
+            int expectedSubstreams = 2,
+            long minVersion = 0)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(20);
+            string snapshot = string.Empty;
+            while (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(250);
+                var pairs = takeSnapshot().OrderBy(x => x.Key).ToList();
+                snapshot = string.Join(", ", pairs.Select(x => $"{x.Key}={x.Value}"));
+                if (pairs.Count >= expectedSubstreams
+                    && pairs.All(x => x.Value >= minVersion)
+                    && pairs.Select(x => x.Value).Distinct().Count() == 1)
+                {
+                    return;
+                }
+            }
+            Assert.Fail($"Substream checkpoint versions did not converge {phase}: {snapshot}");
+        }
+
+        private static Dictionary<string, long> HighestVersionPerStream(ConcurrentQueue<(string Stream, long Version)> commits)
+        {
+            var result = new Dictionary<string, long>();
+            foreach (var (stream, version) in commits.ToArray())
+            {
+                result[stream] = result.TryGetValue(stream, out var existing) ? Math.Max(existing, version) : version;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Rule 3: every egress point checkpoints the same version. Measured at the sinks rather
+        /// than at the state manager, because that is the value a connector stamps into its output.
+        /// </summary>
+        [Fact]
+        public async Task AllEgressPointsCheckpointTheSameVersion()
+        {
+            var testName = "e2e_rule3_egress";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var egressIds = new ConcurrentDictionary<string, long>();
+
+            void RecordEgressId(string substream, string sink, long id)
+            {
+                egressIds.AddOrUpdate($"{substream}/{sink}", id, (_, existing) => Math.Max(existing, id));
+            }
+
+            var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false, onCheckpointId: RecordEgressId, sql: TwoSinkJoinSql);
+            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false, onCheckpointId: RecordEgressId, sql: TwoSinkJoinSql);
+            await substream0.StartAsync();
+            await substream1.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            await AssertEgressIdsConverge(egressIds, "while running");
+
+            // A handoff must not change what the sinks see, they still write to one destination.
+            await substream1.PrepareHandoffAsync();
+            await AwaitBounded(substream1.StopAsync(), "handoff stop");
+            await substream1.DisposeAsync();
+            lock (_streams)
+            {
+                _streams.Remove(substream1);
+            }
+
+            substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true, onCheckpointId: RecordEgressId, sql: TwoSinkJoinSql);
+            await substream1.StartAsync();
+
+            _generator.Generate(250);
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            await AssertEgressIdsConverge(egressIds, "after the handoff");
+
+            await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+        }
+
+        /// <summary>
+        /// Rule 4: on failure every substream rolls back to the same version. The failure is taken
+        /// after a clean handoff, because that is what pulls the substream versions apart in the
+        /// first place; a failure from a lockstep state cannot show the rule breaking.
+        /// Asserts the restored data as well as the numbers: two substreams can agree on a version
+        /// number while that number names a different cut on each of them.
+        /// </summary>
+        [Fact]
+        public async Task AllSubstreamsRollBackToTheSameVersionOnFailure()
+        {
+            var testName = "e2e_rule4_rollback";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var commits = new ConcurrentQueue<(string Stream, long Version)>();
+
+            Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    commits.Enqueue((streamName, lastVersion));
+                }
+                return Task.CompletedTask;
+            };
+            try
+            {
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                // A clean handoff first, this is what makes the substream versions differ.
+                await substream1.PrepareHandoffAsync();
+                await AwaitBounded(substream1.StopAsync(), "handoff stop");
+                await substream1.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream1);
+                }
+                substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+                await substream1.StartAsync();
+
+                _generator.Generate(250);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                // Now fail the substream that owns the sink, so the rollback has to reach both.
+                await substream0.StopAsync();
+                await substream0.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream0);
+                }
+                substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false, egressCrashOnCheckpointCount: 1);
+                await substream0.StartAsync();
+
+                _generator.Generate(250);
+
+                // The data has to survive the rollback. Two substreams restoring different cuts
+                // under the same version number shows up here, not in the numbers.
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+                commits.Clear();
+                _generator.Generate(100);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+                await AssertCommittedVersionsConverge(
+                    () => HighestVersionPerStream(commits),
+                    "after the failure",
+                    expectedSubstreams: 2,
+                    minVersion: 2);
+
+                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+            }
+            finally
+            {
+                Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// Rule 4: a substream that restarts without a clean handoff must not be dragged back past
+        /// the versions its running peer holds. The peer answers the handshake with
+        /// _selfInitializeVersion, which it set at its own start and never refreshes, so a long
+        /// running peer offers a stale low version and Math.Min takes it.
+        /// </summary>
+        [Fact]
+        public async Task AFailoverRestartDoesNotDragTheSubstreamsBackToTheStartVersion()
+        {
+            var testName = "e2e_rule4_stale";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var commits = new ConcurrentQueue<(string Stream, long Version)>();
+
+            Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    commits.Enqueue((streamName, lastVersion));
+                }
+                return Task.CompletedTask;
+            };
+            try
+            {
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+
+                // Run long enough that the versions are well above where the peer started.
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                for (int i = 0; i < 3; i++)
+                {
+                    _generator.Generate(200);
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                }
+
+                long highestBeforeRestart = commits.ToArray()
+                    .Where(c => c.Stream.EndsWith("substream_0", StringComparison.Ordinal))
+                    .Select(c => c.Version)
+                    .DefaultIfEmpty(0)
+                    .Max();
+                Assert.True(highestBeforeRestart > 3, $"The peer did not run enough checkpoints to make the test meaningful, highest was {highestBeforeRestart}.");
+
+                // A failover restart, no clean handoff announced, so the handshake reconciliation runs.
+                await substream1.StopAsync();
+                await substream1.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream1);
+                }
+                commits.Clear();
+                substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream1.StartAsync();
+
+                _generator.Generate(200);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+                var afterRestart = commits.ToArray()
+                    .Where(c => c.Stream.EndsWith("substream_0", StringComparison.Ordinal))
+                    .Select(c => c.Version)
+                    .DefaultIfEmpty(-1)
+                    .Min();
+
+                Assert.True(
+                    afterRestart >= highestBeforeRestart - 2,
+                    $"The running peer was dragged back on a failover restart: it was at {highestBeforeRestart} and resumed at {afterRestart}.");
+
+                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+            }
+            finally
+            {
+                Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// Rule 4 with three substreams: a failure in one has to bring every substream to the same
+        /// version. The negotiation is pairwise, so a substream with no direct link to the failing
+        /// one only learns about the rollback second hand.
+        /// </summary>
+        [Fact]
+        public async Task AllThreeSubstreamsRollBackToTheSameVersionOnFailure()
+        {
+            var testName = "e2e_rule4_three";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var commits = new ConcurrentQueue<(string Stream, long Version)>();
+
+            Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    commits.Enqueue((streamName, lastVersion));
+                }
+                return Task.CompletedTask;
+            };
+            try
+            {
+                // The sink lands on substream_0, so that is the one whose crash fails the stream.
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false, egressCrashOnCheckpointCount: 1, substreamCount: 3);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false, substreamCount: 3);
+                var substream2 = BuildSubstream(testName, "substream_2", hub, fileProviders, latestData, failures, announceCleanHandoff: false, substreamCount: 3);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+                await substream2.StartAsync();
+
+                _generator.Generate(250);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+                Assert.True(failures.Any(f => f.Exception != null), "No substream failed, the sink crash did not fire.");
+
+                commits.Clear();
+                _generator.Generate(100);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+                await AssertCommittedVersionsConverge(
+                    () => HighestVersionPerStream(commits),
+                    "after the failure with three substreams",
+                    expectedSubstreams: 3,
+                    minVersion: 2);
+
+                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync(), substream2.StopAsync()), "coordinated stop");
+            }
+            finally
+            {
+                Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// Rule 2: the negotiated rollback version is available on every substream, so the rollback
+        /// is clean. An unavailable version surfaces as a recovery failure and a stream that never
+        /// gets going again.
+        /// </summary>
+        [Fact]
+        public async Task TheNegotiatedRollbackVersionIsAvailableOnEverySubstream()
+        {
+            var testName = "e2e_rule2_available";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+
+            var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false, egressCrashOnCheckpointCount: 1);
+            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            await substream0.StartAsync();
+            await substream1.StartAsync();
+
+            _generator.Generate(250);
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+            Assert.True(failures.Any(f => f.Exception != null), "No substream failed, the sink crash did not fire.");
+
+            // A version that is missing where it is applied throws out of the recovery and the
+            // stream retries the same version forever.
+            var recoveryFailures = failures
+                .Where(f => f.Exception != null && f.Exception.ToString().Contains("not found for recovery", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            Assert.True(
+                recoveryFailures.Count == 0,
+                $"A negotiated rollback version was not available: {string.Join(" | ", recoveryFailures.Select(f => f.Substream + ": " + f.Exception!.Message))}");
+
+            // The rollback must actually settle, a stream stuck retrying never produces again.
+            _generator.Generate(100);
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+            await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+        }
+
+        /// <summary>
+        /// Waits for the sinks to settle and then requires every egress point to be on the same
+        /// checkpoint id.
+        /// </summary>
+        private static async Task AssertEgressIdsConverge(ConcurrentDictionary<string, long> egressIds, string phase)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(20);
+            string snapshot = string.Empty;
+            while (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(250);
+                var pairs = egressIds.ToArray().OrderBy(x => x.Key).ToList();
+                snapshot = string.Join(", ", pairs.Select(x => $"{x.Key}={x.Value}"));
+                if (pairs.Count > 1 && pairs.Select(x => x.Value).Distinct().Count() == 1)
+                {
+                    return;
+                }
+            }
+            Assert.Fail($"Egress checkpoint ids did not converge {phase}: {snapshot}");
+        }
+
         private void DumpLogBuffers(string phase)
         {
             foreach (var buffer in _logBuffers)
@@ -376,15 +882,24 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             ConcurrentDictionary<string, KeepAliveMemoryFileProvider> fileProviders,
             ConcurrentDictionary<string, EventBatchData> latestData,
             ConcurrentBag<(string Substream, Exception? Exception)> failures,
-            bool announceCleanHandoff)
+            bool announceCleanHandoff,
+            int egressCrashOnCheckpointCount = 0,
+            Action<string, string, long>? onCheckpointId = null,
+            string? sql = null,
+            int substreamCount = 2)
         {
             var connectorManager = new ConnectorManager();
             connectorManager.AddSource(new MockSourceFactory("*", _db, false));
-            connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }));
+            connectorManager.AddSink(new MockSinkFactory(
+                "*",
+                data => latestData[substreamName] = data,
+                egressCrashOnCheckpointCount,
+                _ => { },
+                onCheckpointId: onCheckpointId == null ? null : (sinkName, id) => onCheckpointId(substreamName, sinkName, id)));
 
             var logProvider = _logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
             var builder = new FlowtideBuilder($"{testName.Length}_{testName}_{substreamName}")
-                .AddPlan(CreateDistributedPlan(), false)
+                .AddPlan(CreateDistributedPlan(sql ?? JoinSql, substreamCount), false)
                 .WithStateOptions(CreateStateOptions(testName, substreamName, fileProviders))
                 .AddConnectorManager(connectorManager);
             builder.WithLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
@@ -413,16 +928,16 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         /// Builds the distributed plan the same way for every substream instance; building a
         /// stream mutates the plan in place, so each build needs its own identical instance.
         /// </summary>
-        private Plan CreateDistributedPlan()
+        private Plan CreateDistributedPlan(string sql, int substreamCount = 2)
         {
             var sqlPlanBuilder = new SqlPlanBuilder();
             sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
-            sqlPlanBuilder.Sql(JoinSql);
+            sqlPlanBuilder.Sql(sql);
             return PlanOptimizer.Optimize(sqlPlanBuilder.GetPlan(), new PlanOptimizerSettings()
             {
                 DistributedPlanOptions = new DistributedPlanOptions()
                 {
-                    SubstreamCount = 2
+                    SubstreamCount = substreamCount
                 }
             });
         }

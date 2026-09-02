@@ -31,15 +31,20 @@ namespace FlowtideDotNet.Base
         /// </summary>
         public long NewTime { get; }
 
+        /// <inheritdoc cref="ICheckpointEvent.CheckpointVersion"/>
+        public long CheckpointVersion { get; }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Checkpoint"/> class.
         /// </summary>
         /// <param name="checkpointTime">The time of the checkpoint being finalized.</param>
         /// <param name="newTime">The time for the newly created checkpoint span.</param>
-        public Checkpoint(long checkpointTime, long newTime)
+        /// <param name="checkpointVersion">The state manager version this checkpoint is written under.</param>
+        public Checkpoint(long checkpointTime, long newTime, long checkpointVersion)
         {
             CheckpointTime = checkpointTime;
             NewTime = newTime;
+            CheckpointVersion = checkpointVersion;
         }
     }
 }

@@ -69,6 +69,39 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         }
 
         [Fact]
+        public async Task RollbackHandsOutTheSameCheckpointVersionAgain()
+        {
+            var provider = new MemoryFileProvider();
+            long uncommittedVersion;
+            {
+                var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+
+                var session = persistentStorage.CreateSession();
+                await session.Write(100, new SerializableObject(new byte[] { 1 }));
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 1 }, false); // Version 1
+
+                // The version the next checkpoint would commit as.
+                uncommittedVersion = persistentStorage.CurrentVersion;
+
+                // Write data that never reaches a checkpoint, this is the epoch that is rolled back.
+                await session.Write(101, new SerializableObject(new byte[] { 2 }));
+                await session.Commit();
+            }
+
+            {
+                var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+                await persistentStorage.RecoverAsync(1);
+
+                // The rolled back version is handed out again instead of being skipped, so a sink that
+                // stamps rows with it gives replayed rows the same id they had before the rollback.
+                Assert.Equal(uncommittedVersion, persistentStorage.CurrentVersion);
+            }
+        }
+
+        [Fact]
         public async Task TestRecoverSpecificCheckpoint()
         {
             var provider = new MemoryFileProvider();

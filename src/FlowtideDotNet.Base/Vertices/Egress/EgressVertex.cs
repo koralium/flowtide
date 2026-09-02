@@ -97,7 +97,12 @@ namespace FlowtideDotNet.Base.Vertices
         public abstract string DisplayName { get; }
 
         /// <summary>
-        /// Gets the logical checkpoint time identifier of the most recently processed checkpoint.
+        /// Gets the state manager checkpoint version that the data currently being processed belongs to,
+        /// which is the version the next checkpoint commits as.
+        /// It is seeded from the state manager on initialize and advanced once per checkpoint, so it matches
+        /// the version handed to <see cref="CheckpointDone(long)"/> when that checkpoint has committed.
+        /// The version is reused when a stream rolls back, so replayed data carries the same id as before the
+        /// rollback. It is not a wall clock time, use the checkpoint time for that.
         /// </summary>
         public long CurrentCheckpointId { get; private set; }
 
@@ -204,8 +209,12 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async Task HandleCheckpoint(ICheckpointEvent checkpointEvent)
         {
-            CurrentCheckpointId = checkpointEvent.CheckpointTime;
+            // The barrier carries the version it commits as, data staged inside it belongs to that version.
+            CurrentCheckpointId = checkpointEvent.CheckpointVersion;
             await OnCheckpoint(checkpointEvent.CheckpointTime);
+            // Data received after the barrier belongs to the next checkpoint. The next barrier carries its
+            // own version and corrects this if a version is ever skipped.
+            CurrentCheckpointId = checkpointEvent.CheckpointVersion + 1;
         }
 
         /// <summary>
@@ -293,8 +302,8 @@ namespace FlowtideDotNet.Base.Vertices
         /// Asynchronously initializes the vertex, wiring up metrics, memory, logging, and persistent state retrieval.
         /// </summary>
         /// <param name="name">The name assigned to this vertex.</param>
-        /// <param name="restoreTime">The logical time representing the last known good state to restore from.</param>
-        /// <param name="newTime">The new logical stream execution time after initialization.</param>
+        /// <param name="restoreTime">The state manager version of the last known good state to restore from.</param>
+        /// <param name="newTime">The state manager version the next checkpoint commits as, it seeds <see cref="CurrentCheckpointId"/>.</param>
         /// <param name="vertexHandler">The handler providing state clients, memory managers, logger factories, and metrics.</param>
         /// <param name="streamVersionInformation">Optional version information used to handle stream upgrades or downgrades.</param>
         /// <returns>A task representing the asynchronous initialization and state restore operation.</returns>

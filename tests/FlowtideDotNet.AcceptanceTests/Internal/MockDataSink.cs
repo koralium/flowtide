@@ -30,6 +30,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly WriteRelation writeRelation;
         private readonly Action<EventBatchData> onDataChange;
         private readonly Action<int>? onChangeRowsReceived;
+        // Reports the checkpoint id this sink staged under, so a test can check that every
+        // egress point checkpoints the same version.
+        private readonly Action<string, long>? onCheckpointId;
         private int crashOnCheckpointCount;
         private int _checkpointsBeforeCrash;
         private bool watermarkRecieved = false;
@@ -53,7 +56,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             Action<Watermark> onWatermark,
             int checkpointsBeforeCrash = 0,
             int deleteFailCount = 0,
-            Action<int>? onChangeRowsReceived = null) : base(executionDataflowBlockOptions)
+            Action<int>? onChangeRowsReceived = null,
+            Action<string, long>? onCheckpointId = null) : base(executionDataflowBlockOptions)
         {
             this.writeRelation = writeRelation;
             this.onDataChange = onDataChange;
@@ -62,6 +66,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _checkpointsBeforeCrash = checkpointsBeforeCrash;
             _deleteFailCount = deleteFailCount;
             this.onChangeRowsReceived = onChangeRowsReceived;
+            this.onCheckpointId = onCheckpointId;
         }
 
         public override string DisplayName => "Mock Data Sink";
@@ -117,6 +122,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override async Task OnCheckpoint(long checkpointTime)
         {
+            onCheckpointId?.Invoke(Name, CurrentCheckpointId);
+
             if (crashOnCheckpointCount > 0)
             {
                 if (_checkpointsBeforeCrash > 0)

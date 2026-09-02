@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.Tests
                 {
                     return Task.FromResult<IReadOnlyList<SubstreamEventData>>(new List<SubstreamEventData>()
                     {
-                        new SubstreamEventData() { ExchangeTargetId = 1, StreamEvent = new Checkpoint(1, 2) }
+                        new SubstreamEventData() { ExchangeTargetId = 1, StreamEvent = new Checkpoint(1, 2, 1) }
                     });
                 }
                 return Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>());
