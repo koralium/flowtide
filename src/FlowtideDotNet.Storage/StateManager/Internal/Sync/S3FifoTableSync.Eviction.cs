@@ -130,9 +130,21 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 if (isCleanup)
                 {
-                    // A deep clean hands memory back even when nothing freed.
-                    FlowtideMemoryAllocation.Collect();
+                    // A deep clean hands back what was freed, an idle table at the floor has nothing to give.
+                    CollectIfPagesFreed();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Runs a forced collection once per batch of freed pages.
+        /// </summary>
+        private void CollectIfPagesFreed()
+        {
+            if (Interlocked.Exchange(ref m_pagesFreedSinceCollect, 0) > 0)
+            {
+                m_collectCalls++;
+                FlowtideMemoryAllocation.Collect();
             }
         }
 
@@ -275,7 +287,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         if (m_sameCacheHitsCount >= 1000)
                         {
                             // Idle with an empty cache, hand the freed pages back to the OS.
-                            FlowtideMemoryAllocation.Collect();
+                            CollectIfPagesFreed();
                             m_sameCacheHitsCount = 0;
                         }
                         CompactQueuesIfNeeded();
@@ -490,6 +502,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (m_cache.TryRemove(entry.Key, out _))
                     {
                         Interlocked.Decrement(ref m_count);
+                        Interlocked.Increment(ref m_pagesFreedSinceCollect);
                         if (candidate.FromSmallQueue)
                         {
                             // Read the reuse bit here, a late hit still earns ghost credit.

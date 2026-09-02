@@ -174,6 +174,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(internalNode.children[0]);
                 m_stateClient.Delete(internalNode.Id);
+                // Delete drops the cache rent, this drops the fetch rent.
+                internalNode.Return();
             }
             else
             {

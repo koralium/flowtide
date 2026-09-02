@@ -267,5 +267,71 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Empty(handler.EvictedKeys);
             Assert.Equal(900, table.Count);
         }
+
+        /// <summary>
+        /// An idle cache already at MinSize must not collect on every re-armed deep clean.
+        /// </summary>
+        [Fact]
+        public async Task IdleCacheAtMinSizeDoesNotCollectOnEveryReArmedDeepClean()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100, minSize: 10);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 20; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+
+            // The first deep clean frees pages, so it may collect.
+            for (var i = 0; i < 1001 && table.Count > 10; i++)
+            {
+                await table.ForceCleanup();
+            }
+            Assert.Equal(10, table.Count);
+            var collectsAfterFirstDeepClean = table.CollectCallsForTests;
+            Assert.Equal(1, collectsAfterFirstDeepClean);
+
+            // Still idle at the floor, the next re-arm frees nothing.
+            var evictionsAfterFirstDeepClean = handler.Evictions.Count;
+            for (var i = 0; i < 1001; i++)
+            {
+                await table.ForceCleanup();
+            }
+
+            Assert.Equal(10, table.Count);
+            Assert.Equal(evictionsAfterFirstDeepClean, handler.Evictions.Count);
+            Assert.Equal(collectsAfterFirstDeepClean, table.CollectCallsForTests);
+        }
+
+        /// <summary>
+        /// Disposing the table must complete callers parked on the eviction gate.
+        /// </summary>
+        [Fact]
+        public async Task ParkedGateWaitersCompleteWhenTheTableIsDisposed()
+        {
+            var table = await S3FifoTestHelpers.CreateStoppedTable(2);
+            var handler = new TestEvictHandler();
+            for (long key = 1; key <= 3; key++)
+            {
+                table.Add(key, new TestCacheObject(key), handler);
+            }
+            // Over capacity, so Wait parks instead of returning early.
+            Assert.True(table.Count > 2);
+
+            // Stands in for a cleanup pass holding the gate at dispose time.
+            var holder = table.PauseEvictionAsync();
+            Assert.True(holder.IsCompletedSuccessfully);
+
+            var parkedWait = table.Wait();
+            var parkedPause = table.PauseEvictionAsync();
+            Assert.False(parkedWait.IsCompleted);
+            Assert.False(parkedPause.IsCompleted);
+
+            table.Dispose();
+
+            // Any completion counts, a cancelled park is fine, a park that never wakes is not.
+            var timeout = Task.Delay(TimeSpan.FromSeconds(5));
+            Assert.True(await Task.WhenAny(parkedWait, timeout) == parkedWait, "Wait stayed parked after Dispose");
+            Assert.True(await Task.WhenAny(parkedPause, timeout) == parkedPause, "PauseEvictionAsync stayed parked after Dispose");
+        }
     }
 }

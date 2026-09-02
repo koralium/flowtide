@@ -132,6 +132,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_oneHitWonders;
         private long m_lastSeenCacheHits;
         private int m_sameCacheHitsCount;
+        // Forced collections issued by this table, tests pin when a deep clean collects.
+        private long m_collectCalls;
+        // Pages freed since the last forced collection, an idle table with none does not collect.
+        private long m_pagesFreedSinceCollect;
 
         // Guards the gauge state below, callbacks run per listener thread.
         private readonly object m_metricsLock = new object();
@@ -142,6 +146,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private bool m_disposedValue;
         private readonly CancellationTokenSource m_cleanupTokenSource;
+        // Cancelled by Dispose alone, it wakes waits parked on the eviction gate.
+        private readonly CancellationTokenSource m_disposeTokenSource = new CancellationTokenSource();
         private readonly CacheTableOptions tableOptions;
         private readonly IMemoryAllocationStats _memoryAllocationStats;
 
@@ -361,6 +367,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                                 entry.Value.RemovedFromCache = true;
                                 entry.Value.Return();
                                 Interlocked.Decrement(ref m_count);
+                                Interlocked.Increment(ref m_pagesFreedSinceCollect);
                             }
                             // No removal from the middle, cleanup compacts the stale slot.
                             if (entry.Location == S3FifoQueueLocation.Small)
@@ -455,8 +462,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         break;
                     }
-                    // Rides out the pass in flight.
-                    await _fullLock.WaitAsync().ConfigureAwait(false);
+                    // Rides out the pass in flight. The token wakes a parked wait on Dispose.
+                    await _fullLock.WaitAsync(m_disposeTokenSource.Token).ConfigureAwait(false);
                     _fullLock.Release();
                     if (!IsOverCapacity)
                     {
@@ -485,10 +492,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// <summary>
         /// Blocks the eviction task until ResumeEviction, used by recovery.
         /// Takes the cleanup task's lock, so it drains any in-flight eviction.
+        /// Cancelled by Dispose, a parked pause must not outlive the table.
         /// </summary>
         internal Task PauseEvictionAsync()
         {
-            return _fullLock.WaitAsync();
+            return _fullLock.WaitAsync(m_disposeTokenSource.Token);
         }
 
         internal void ResumeEviction()
@@ -634,6 +642,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         internal long SmallQueueEvictionsForTests => Volatile.Read(ref m_smallQueueEvictions);
 
+        internal long CollectCallsForTests => Volatile.Read(ref m_collectCalls);
+
         #endregion
 
         private void DisposeEntries()
@@ -676,6 +686,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (disposing)
                 {
                     m_cleanupTokenSource.Cancel();
+                    // Parked gate waits wake now.
+                    m_disposeTokenSource.Cancel();
                     var cleanupTask = m_cleanupTask;
                     while (cleanupTask != null)
                     {
@@ -696,7 +708,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     DisposeEntries();
                     m_cleanupTokenSource.Dispose();
-                    _fullLock.Dispose();
+                    m_disposeTokenSource.Dispose();
+                    // The gate is never disposed. A cancelled wait still unlinks itself from it
+                    // asynchronously, and a disposed semaphore drops that waiter so it never wakes.
+                    // It owns no handle, so there is nothing to release.
                 }
                 m_disposedValue = true;
             }
