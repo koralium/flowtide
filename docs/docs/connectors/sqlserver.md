@@ -252,30 +252,44 @@ connectorManager.AddSqlServerSink(new SqlServerSinkOptions()
     CustomBulkCopyDestinationTable = (destinationTable) =>
         destinationTable[^1] == "orders" ? "dbo.orders_staging" : null,
 
-    // add a column that does not exist in the destination table
+    // add a column that does not exist in the destination table, only for the table taken over
     OnDataTableCreation = (dataTable, bulkCopyTable, destinationTable) =>
     {
-        dataTable.Columns.Add("md_checkpoint");
+        if (destinationTable[^1] == "orders")
+        {
+            dataTable.Columns.Add("md_checkpoint");
+        }
         return ValueTask.CompletedTask;
     },
 
     // fill the column for each row
     ModifyRow = (row, isDeleted, watermark, checkpointId, isInitialData, bulkCopyTable, destinationTable) =>
     {
-        row["md_checkpoint"] = checkpointId;
+        if (destinationTable[^1] == "orders")
+        {
+            row["md_checkpoint"] = checkpointId;
+        }
     },
 
     // run the merge into logic yourself after each batch
     OnDataUploaded = async (connection, watermark, checkpointId, isInitialData, bulkCopyTable, destinationTable) =>
     {
+        if (destinationTable[^1] != "orders")
+        {
+            return;
+        }
         using var command = connection.CreateCommand();
         command.CommandText = $"EXEC merge_orders @staging = '{bulkCopyTable}'";
         await command.ExecuteNonQueryAsync();
     },
 
     // clear out rows left behind by a previous run
-    OnInitialize = async (connection, checkpointId, bulkCopyTable, destinationTable) =>
+    OnInitialize = async (connection, checkpointId, lastCommittedCheckpointId, bulkCopyTable, destinationTable) =>
     {
+        if (destinationTable[^1] != "orders")
+        {
+            return;
+        }
         using var command = connection.CreateCommand();
         command.CommandText = $"DELETE FROM {bulkCopyTable}";
         await command.ExecuteNonQueryAsync();

@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.Operators.Exchange;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
+using System.Buffers.Binary;
 
 namespace FlowtideDotNet.Core.Tests
 {
@@ -56,8 +57,8 @@ namespace FlowtideDotNet.Core.Tests
             {
                 CreateBatchEvent(1, 10, 20, 30),
                 new SubstreamEventData() { ExchangeTargetId = 2, StreamEvent = new Watermark("table1", LongWatermarkValue.Create(17)) },
-                new SubstreamEventData() { ExchangeTargetId = 1, StreamEvent = new Checkpoint(5, 6, 1) },
-                new SubstreamEventData() { ExchangeTargetId = 2, StreamEvent = new StopStreamCheckpoint(7, 8, 1) },
+                new SubstreamEventData() { ExchangeTargetId = 1, StreamEvent = new Checkpoint(5, 6, 41) },
+                new SubstreamEventData() { ExchangeTargetId = 2, StreamEvent = new StopStreamCheckpoint(7, 8, 42) },
                 CreateBatchEvent(2, 40)
             };
 
@@ -84,11 +85,15 @@ namespace FlowtideDotNet.Core.Tests
 
             var checkpoint = Assert.IsType<Checkpoint>(result[2].StreamEvent);
             Assert.Equal(5, checkpoint.CheckpointTime);
+            Assert.Equal(6, checkpoint.NewTime);
+            Assert.Equal(41, checkpoint.CheckpointVersion);
 
             // The stop checkpoint must keep its type so the receiving substream can
             // recognize the other substreams stop barrier.
             var stopCheckpoint = Assert.IsType<StopStreamCheckpoint>(result[3].StreamEvent);
             Assert.Equal(7, stopCheckpoint.CheckpointTime);
+            Assert.Equal(8, stopCheckpoint.NewTime);
+            Assert.Equal(42, stopCheckpoint.CheckpointVersion);
 
             var batch2 = Assert.IsType<StreamMessage<StreamEventBatch>>(result[4].StreamEvent);
             batch2.Data.Data.EventBatchData.Columns[0].GetValueAt(0, container, default);
@@ -215,6 +220,37 @@ namespace FlowtideDotNet.Core.Tests
             Assert.Equal(id, roundTripped.Id);
             var inner = Assert.IsType<Checkpoint>(roundTripped.LockingEvent);
             Assert.Equal(11, inner.CheckpointTime);
+            Assert.Equal(1, inner.CheckpointVersion);
+            SubstreamEventWireSerializer.ReturnEvents(result);
+        }
+
+        /// <summary>
+        /// Checkpoints stored before the version existed must still deserialize.
+        /// Their type ids carry no version, so it reads back as zero.
+        /// </summary>
+        [Theory]
+        [InlineData((byte)4, false)]
+        [InlineData((byte)5, true)]
+        public void CheckpointWithoutAVersionStillDeserializes(byte typeId, bool isStopCheckpoint)
+        {
+            // One event, target 3, then the pre version checkpoint record: type, time, new time.
+            var payload = new byte[4 + 4 + 1 + 8 + 8];
+            BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(0), 1);
+            BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(4), 3);
+            payload[8] = typeId;
+            BinaryPrimitives.WriteInt64LittleEndian(payload.AsSpan(9), 91);
+            BinaryPrimitives.WriteInt64LittleEndian(payload.AsSpan(17), 92);
+
+            var serializer = new SubstreamEventWireSerializer();
+            var result = serializer.Deserialize(new ReadOnlySequence<byte>(payload), _ => GlobalMemoryManager.Instance);
+
+            Assert.Single(result);
+            Assert.Equal(3, result[0].ExchangeTargetId);
+            var checkpoint = Assert.IsAssignableFrom<Checkpoint>(result[0].StreamEvent);
+            Assert.Equal(isStopCheckpoint, checkpoint is StopStreamCheckpoint);
+            Assert.Equal(91, checkpoint.CheckpointTime);
+            Assert.Equal(92, checkpoint.NewTime);
+            Assert.Equal(0, checkpoint.CheckpointVersion);
             SubstreamEventWireSerializer.ReturnEvents(result);
         }
 

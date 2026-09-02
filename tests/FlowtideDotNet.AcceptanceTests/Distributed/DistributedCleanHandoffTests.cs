@@ -407,7 +407,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
-                await AssertCommittedVersionsConverge(committed, "while running");
+                // One checkpoint proves nothing, both sides start on the same version.
+                for (int i = 0; i < 3; i++)
+                {
+                    _generator.Generate(150);
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                }
+
+                await AssertCommittedVersionsConverge(committed, "while running", minVersion: 2);
 
                 await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
             }
@@ -448,7 +455,15 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream1.StartAsync();
 
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-                await AssertCommittedVersionsConverge(committed, "before the handoff");
+
+                // One checkpoint proves nothing, both sides start on the same version.
+                for (int i = 0; i < 3; i++)
+                {
+                    _generator.Generate(150);
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                }
+
+                await AssertCommittedVersionsConverge(committed, "before the handoff", minVersion: 2);
 
                 await substream1.PrepareHandoffAsync();
                 await AwaitBounded(substream1.StopAsync(), "handoff stop");
@@ -458,13 +473,17 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     _streams.Remove(substream1);
                 }
 
+                // Only the versions committed after the handoff say anything about it.
+                long beforeHandoff = committed.Values.DefaultIfEmpty(0).Max();
+                committed.Clear();
+
                 substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
                 await substream1.StartAsync();
 
                 _generator.Generate(250);
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
-                await AssertCommittedVersionsConverge(committed, "after the handoff");
+                await AssertCommittedVersionsConverge(committed, "after the handoff", minVersion: beforeHandoff);
 
                 await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
             }
@@ -563,7 +582,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 _generator.Generate(150);
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
             }
-            AssertEgressIdsAgree(egressSequences, "while running");
+            await AssertEgressIdsAgree(egressSequences, "while running");
 
             // A handoff must not change what the sinks see, they still write to one destination.
             await substream1.PrepareHandoffAsync();
@@ -587,7 +606,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
             }
 
-            AssertEgressIdsAgree(egressSequences, "after the handoff");
+            await AssertEgressIdsAgree(egressSequences, "after the handoff");
 
             await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
         }
@@ -673,7 +692,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Rule 4: a failover restart must not drag the running peer backwards.
+        /// Rule 4: a failover restart must not reset either side to the start version.
         /// The peer answers with _selfInitializeVersion, set at its own start and never refreshed.
         /// </summary>
         [Fact]
@@ -703,20 +722,23 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream0.StartAsync();
                 await substream1.StartAsync();
 
-                // Run until the versions are well above the peer's start.
+                // Run until the versions are far above the start, that is the whole point.
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < 6; i++)
                 {
                     _generator.Generate(200);
                     await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
                 }
 
-                long highestBeforeRestart = commits.ToArray()
-                    .Where(c => c.Stream.EndsWith("substream_0", StringComparison.Ordinal))
+                long HighestFor(string name) => commits.ToArray()
+                    .Where(c => c.Stream.EndsWith(name, StringComparison.Ordinal))
                     .Select(c => c.Version)
                     .DefaultIfEmpty(0)
                     .Max();
-                Assert.True(highestBeforeRestart > 3, $"The peer did not run enough checkpoints to make the test meaningful, highest was {highestBeforeRestart}.");
+
+                long peerBeforeRestart = HighestFor("substream_0");
+                long restartingBeforeRestart = HighestFor("substream_1");
+                Assert.True(restartingBeforeRestart > 5, $"Not enough checkpoints to be meaningful, substream_1 was at {restartingBeforeRestart}.");
 
                 // A failover restart, no clean handoff announced, so the handshake reconciliation runs.
                 await substream1.StopAsync();
@@ -732,15 +754,23 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 _generator.Generate(200);
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
 
-                var afterRestart = commits.ToArray()
-                    .Where(c => c.Stream.EndsWith("substream_0", StringComparison.Ordinal))
+                long LowestAfterRestartFor(string name) => commits.ToArray()
+                    .Where(c => c.Stream.EndsWith(name, StringComparison.Ordinal))
                     .Select(c => c.Version)
                     .DefaultIfEmpty(-1)
                     .Min();
 
+                // The restarting substream must resume on its own last version. The peer answers the
+                // handshake with the version it started on, and Math.Min of that takes it to zero.
+                long restartingAfter = LowestAfterRestartFor("substream_1");
                 Assert.True(
-                    afterRestart >= highestBeforeRestart - 2,
-                    $"The running peer was dragged back on a failover restart: it was at {highestBeforeRestart} and resumed at {afterRestart}.");
+                    restartingAfter >= restartingBeforeRestart - 2,
+                    $"The restarting substream was reset: it was at {restartingBeforeRestart} and resumed at {restartingAfter}.");
+
+                long peerAfter = LowestAfterRestartFor("substream_0");
+                Assert.True(
+                    peerAfter >= peerBeforeRestart - 2,
+                    $"The running peer was dragged back: it was at {peerBeforeRestart} and resumed at {peerAfter}.");
 
                 await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
             }
@@ -850,27 +880,31 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Every egress checkpoints the same versions in the same order.
-        /// One substream is often a cycle ahead, so compare as a prefix, not for equality.
+        /// Every egress checkpoints the same versions, so the whole sequences must match.
+        /// Comparing position by position proves nothing, every counter runs 1,2,3 by itself.
+        /// A substream that runs a cycle the others do not shows up as a longer sequence.
         /// </summary>
-        private static void AssertEgressIdsAgree(ConcurrentDictionary<string, ConcurrentQueue<long>> sequences, string phase)
+        private static async Task AssertEgressIdsAgree(ConcurrentDictionary<string, ConcurrentQueue<long>> sequences, string phase)
         {
-            var observed = sequences.ToArray().OrderBy(x => x.Key).Select(x => (x.Key, Ids: x.Value.ToArray())).ToList();
-            Assert.True(observed.Count > 1, $"Expected more than one egress point {phase}, saw {observed.Count}.");
-
-            var description = string.Join("; ", observed.Select(x => $"{x.Key}: {string.Join(",", x.Ids)}"));
-            var longest = observed.OrderByDescending(x => x.Ids.Length).First();
-            Assert.True(longest.Ids.Length >= 3, $"Too few checkpoints reached the egress points {phase} to prove anything: {description}");
-            Assert.True(observed.All(x => x.Ids.Length >= 2), $"An egress point barely checkpointed {phase}: {description}");
-            foreach (var (key, ids) in observed)
+            var deadline = DateTime.UtcNow.AddSeconds(20);
+            string description = string.Empty;
+            while (DateTime.UtcNow < deadline)
             {
-                for (int i = 0; i < ids.Length; i++)
+                await Task.Delay(250);
+                var observed = sequences.ToArray().OrderBy(x => x.Key).Select(x => (x.Key, Ids: x.Value.ToArray())).ToList();
+                description = string.Join("; ", observed.Select(x => $"{x.Key}: {string.Join(",", x.Ids)}"));
+
+                if (observed.Count < 2 || observed.Any(x => x.Ids.Length < 3))
                 {
-                    Assert.True(
-                        ids[i] == longest.Ids[i],
-                        $"Egress points did not checkpoint the same versions {phase}, {key} differs at position {i}: {description}");
+                    continue;
+                }
+                var first = observed[0].Ids;
+                if (observed.All(x => x.Ids.SequenceEqual(first)))
+                {
+                    return;
                 }
             }
+            Assert.Fail($"Egress points did not checkpoint the same versions {phase}: {description}");
         }
 
         private void DumpLogBuffers(string phase)
