@@ -33,10 +33,7 @@ namespace FlowtideDotNet.Base
 
         /// <summary>
         /// Gets the state manager version this checkpoint is written under.
-        /// Unlike the times, it is reused when a stream rolls back, so it identifies the epoch rather than the
-        /// attempt, which is what lets replayed data be written with the id it had before the rollback.
-        /// The substreams of a distributed stream share the version, a paired cycle commits under the same number
-        /// on every substream.
+        /// Reused on rollback, unlike the times, and shared by every substream.
         /// </summary>
         long CheckpointVersion { get; }
     }

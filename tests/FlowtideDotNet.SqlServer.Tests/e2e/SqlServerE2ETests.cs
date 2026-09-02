@@ -1090,7 +1090,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             INSERT INTO [test-db].[dbo].[test-table11] ([id], [created]) VALUES (1, '2024-01-03 00:00:00+01:00');
             ");
 
-            // Rows left behind by a previous run that the hook must clear out.
+            // Left behind by a previous run, the hook clears them.
             await _fixture.RunCommand(@"
             INSERT INTO [test-db].[dbo].[teststaging11] ([id], [created]) VALUES
                 (998, '2020-01-01 00:00:00+01:00'),
@@ -1151,7 +1151,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             Assert.Single(stagedIds);
             Assert.Equal(1, stagedIds[0]);
 
-            // A custom destination table skips the merge into, so the destination stays empty.
+            // A custom table skips the merge into, the destination stays empty.
             var destinationCount = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[test-dest11]", (reader) =>
             {
                 reader.Read();
@@ -1244,11 +1244,10 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 firstUploadId = uploadIds[0];
             }
 
-            // The id is a checkpoint version counter, not a wall clock time. Before this was fixed the
-            // upload hooks saw a unix millisecond value while OnInitialize saw a version.
+            // A version counter, not a wall clock time.
             Assert.InRange(firstUploadId, 1, 1_000);
 
-            // All three hooks agree on the id for the same batch of rows.
+            // All three hooks agree on the id.
             Assert.Equal(firstUploadId, initIds[0]);
             Assert.Equal(firstUploadId, modifyIds[0]);
 
@@ -1273,7 +1272,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 [md_checkpoint] [bigint] NOT NULL
             )");
 
-            // Committed by an epoch that was later rolled back, the reconcile must remove it.
+            // From a rolled back epoch, the reconcile must remove it.
             await _fixture.RunCommand(@"
             INSERT INTO [test-db].[dbo].[test-dest13] ([id], [created], [md_checkpoint]) VALUES (777, '2020-01-01 00:00:00+01:00', 4242);
             ");
@@ -1331,8 +1330,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 {
                     reconciledLastCommitted = lastCommittedId;
 
-                    // Recovery, commit anything the stream committed but this hook never saw, and drop
-                    // staged rows from epochs that were rolled back.
+                    // Recovery, redo the lost commit and drop rolled back epochs.
                     using var commit = connection.CreateCommand();
                     commit.CommandText = @"
                         DELETE FROM [test-db].[dbo].[test-dest13] WHERE [md_checkpoint] > @lastCommitted;

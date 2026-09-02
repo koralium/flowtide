@@ -59,7 +59,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             ";
 
         /// <summary>
-        /// Two outputs, so a distributed plan has more than one egress point to compare.
+        /// Two outputs, so there is more than one egress to compare.
         /// </summary>
         private const string TwoSinkJoinSql = @"
             INSERT INTO output
@@ -376,8 +376,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         private readonly ConcurrentDictionary<string, RingBufferLoggerProvider> _logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
 
         /// <summary>
-        /// Rule 1: every substream commits the same checkpoint versions. In normal running the
-        /// barrier pairing keeps the cycles in lockstep, so the counters stay equal.
+        /// Rule 1: the barrier pairing keeps every substream on the same version.
         /// </summary>
         [Fact]
         public async Task AllSubstreamsCommitTheSameCheckpointVersionsWhileRunning()
@@ -419,10 +418,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Rule 1 across a clean handoff: a substream that stops and is rebuilt must come back on
-        /// the version its peer is on. The stop drain commits a checkpoint per cycle while only the
-        /// first stop barrier reaches the peer, so today the returning substream is ahead and the
-        /// handoff accepts it without reconciling.
+        /// Rule 1: a rebuilt substream comes back on its peer's version.
         /// </summary>
         [Fact]
         public async Task AllSubstreamsCommitTheSameCheckpointVersionsAfterACleanHandoff()
@@ -479,8 +475,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Waits for the commits to settle and then requires every substream to be on the same
-        /// checkpoint version. Settling matters because a cycle can be in flight on one side.
+        /// Lets the commits settle, then requires one version everywhere.
         /// </summary>
         private static Task AssertCommittedVersionsConverge(
             ConcurrentDictionary<string, long> committed,
@@ -496,9 +491,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// The snapshot is taken again on every poll, so the caller must hand in a live view. A
-        /// minimum version keeps a set of substreams that all happen to sit at the first version
-        /// from counting as converged.
+        /// Re-snapshots every poll, so hand in a live view.
+        /// The minimum version stops everyone sitting at version one counting as converged.
         /// </summary>
         private static async Task AssertCommittedVersionsConverge(
             Func<Dictionary<string, long>> takeSnapshot,
@@ -534,8 +528,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Rule 3: every egress point checkpoints the same version. Measured at the sinks rather
-        /// than at the state manager, because that is the value a connector stamps into its output.
+        /// Rule 3: measured at the sinks, that is what a connector stamps.
         /// </summary>
         [Fact]
         public async Task AllEgressPointsCheckpointTheSameVersion()
@@ -549,10 +542,13 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var hub = new LocalSubstreamCommunicationHub();
             var egressIds = new ConcurrentDictionary<string, long>();
 
+            var egressSequences = new ConcurrentDictionary<string, ConcurrentQueue<long>>();
+
             void RecordEgressId(string substream, string sink, long id)
             {
-                egressIds.AddOrUpdate($"{substream}/{sink}", id, (_, existing) => Math.Max(existing, id));
+                egressSequences.GetOrAdd($"{substream}/{sink}", _ => new ConcurrentQueue<long>()).Enqueue(id);
             }
+
 
             var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false, onCheckpointId: RecordEgressId, sql: TwoSinkJoinSql);
             var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false, onCheckpointId: RecordEgressId, sql: TwoSinkJoinSql);
@@ -560,7 +556,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await substream1.StartAsync();
 
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-            await AssertEgressIdsConverge(egressIds, "while running");
+
+            // Several cycles are needed before the sequences say anything.
+            for (int i = 0; i < 3; i++)
+            {
+                _generator.Generate(150);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+            AssertEgressIdsAgree(egressSequences, "while running");
 
             // A handoff must not change what the sinks see, they still write to one destination.
             await substream1.PrepareHandoffAsync();
@@ -577,17 +580,21 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             _generator.Generate(250);
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
-            await AssertEgressIdsConverge(egressIds, "after the handoff");
+            // Keep data flowing, otherwise the sinks freeze at different ids.
+            for (int i = 0; i < 3; i++)
+            {
+                _generator.Generate(150);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+
+            AssertEgressIdsAgree(egressSequences, "after the handoff");
 
             await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
         }
 
         /// <summary>
-        /// Rule 4: on failure every substream rolls back to the same version. The failure is taken
-        /// after a clean handoff, because that is what pulls the substream versions apart in the
-        /// first place; a failure from a lockstep state cannot show the rule breaking.
-        /// Asserts the restored data as well as the numbers: two substreams can agree on a version
-        /// number while that number names a different cut on each of them.
+        /// Rule 4: a failure after a handoff still lands everyone on one version.
+        /// Asserts the data too, the same number can name a different cut on each side.
         /// </summary>
         [Fact]
         public async Task AllSubstreamsRollBackToTheSameVersionOnFailure()
@@ -644,8 +651,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
                 _generator.Generate(250);
 
-                // The data has to survive the rollback. Two substreams restoring different cuts
-                // under the same version number shows up here, not in the numbers.
+                // The data has to survive the rollback, the numbers alone would not show it.
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
 
                 commits.Clear();
@@ -667,10 +673,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Rule 4: a substream that restarts without a clean handoff must not be dragged back past
-        /// the versions its running peer holds. The peer answers the handshake with
-        /// _selfInitializeVersion, which it set at its own start and never refreshes, so a long
-        /// running peer offers a stale low version and Math.Min takes it.
+        /// Rule 4: a failover restart must not drag the running peer backwards.
+        /// The peer answers with _selfInitializeVersion, set at its own start and never refreshed.
         /// </summary>
         [Fact]
         public async Task AFailoverRestartDoesNotDragTheSubstreamsBackToTheStartVersion()
@@ -699,7 +703,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream0.StartAsync();
                 await substream1.StartAsync();
 
-                // Run long enough that the versions are well above where the peer started.
+                // Run until the versions are well above the peer's start.
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
                 for (int i = 0; i < 3; i++)
                 {
@@ -805,9 +809,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Rule 2: the negotiated rollback version is available on every substream, so the rollback
-        /// is clean. An unavailable version surfaces as a recovery failure and a stream that never
-        /// gets going again.
+        /// Rule 2: every substream has the negotiated version, so the rollback is clean.
+        /// A missing one shows up as a recovery failure and a stream that never resumes.
         /// </summary>
         [Fact]
         public async Task TheNegotiatedRollbackVersionIsAvailableOnEverySubstream()
@@ -847,24 +850,27 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Waits for the sinks to settle and then requires every egress point to be on the same
-        /// checkpoint id.
+        /// Every egress checkpoints the same versions in the same order.
+        /// One substream is often a cycle ahead, so compare as a prefix, not for equality.
         /// </summary>
-        private static async Task AssertEgressIdsConverge(ConcurrentDictionary<string, long> egressIds, string phase)
+        private static void AssertEgressIdsAgree(ConcurrentDictionary<string, ConcurrentQueue<long>> sequences, string phase)
         {
-            var deadline = DateTime.UtcNow.AddSeconds(20);
-            string snapshot = string.Empty;
-            while (DateTime.UtcNow < deadline)
+            var observed = sequences.ToArray().OrderBy(x => x.Key).Select(x => (x.Key, Ids: x.Value.ToArray())).ToList();
+            Assert.True(observed.Count > 1, $"Expected more than one egress point {phase}, saw {observed.Count}.");
+
+            var description = string.Join("; ", observed.Select(x => $"{x.Key}: {string.Join(",", x.Ids)}"));
+            var longest = observed.OrderByDescending(x => x.Ids.Length).First();
+            Assert.True(longest.Ids.Length >= 3, $"Too few checkpoints reached the egress points {phase} to prove anything: {description}");
+            Assert.True(observed.All(x => x.Ids.Length >= 2), $"An egress point barely checkpointed {phase}: {description}");
+            foreach (var (key, ids) in observed)
             {
-                await Task.Delay(250);
-                var pairs = egressIds.ToArray().OrderBy(x => x.Key).ToList();
-                snapshot = string.Join(", ", pairs.Select(x => $"{x.Key}={x.Value}"));
-                if (pairs.Count > 1 && pairs.Select(x => x.Value).Distinct().Count() == 1)
+                for (int i = 0; i < ids.Length; i++)
                 {
-                    return;
+                    Assert.True(
+                        ids[i] == longest.Ids[i],
+                        $"Egress points did not checkpoint the same versions {phase}, {key} differs at position {i}: {description}");
                 }
             }
-            Assert.Fail($"Egress checkpoint ids did not converge {phase}: {snapshot}");
         }
 
         private void DumpLogBuffers(string phase)

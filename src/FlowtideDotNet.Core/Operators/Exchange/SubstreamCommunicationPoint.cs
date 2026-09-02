@@ -58,6 +58,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         // Send checkpoint fields
         private long _lastSentCheckpointVersion;
+        // Whether the last ack already carried the stop attestation.
+        private bool _lastSentCoversStopBarrier;
         private readonly object _sendCheckpointLock = new object();
 
         /// <summary>
@@ -742,29 +744,33 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public Task SendCheckpointDone(long checkpointVersion)
         {
-            lock (_sendCheckpointLock)
-            {
-                if (checkpointVersion <= _lastSentCheckpointVersion)
-                {
-                    // Already sent this checkpoint or a later one
-                    return Task.CompletedTask;
-                }
-                _lastSentCheckpointVersion = checkpointVersion;
-            }
-            long targetEpoch;
-            lock (_initializeLock)
-            {
-                targetEpoch = _peerCheckpointEpoch;
-            }
             // Whether this committed checkpoint covers consuming the peer's stop barriers,
             // used by a stopping peer to confirm its drain. Every read operator's OnCheckpoint
             // ran before any CheckpointDone fires, so the flags are final for this version.
             // Vacuously true without read operators: the peer only checks the flag on targets,
             // and a target here is always paired with a read operator on the peer.
+            // Read before the dedup, a drain cycle turns this true without moving the version.
             bool coversPeerStopBarrier;
             lock (_readOperators)
             {
                 coversPeerStopBarrier = _readOperators.All(r => r.PeerStopConsumedCommitted);
+            }
+            lock (_sendCheckpointLock)
+            {
+                // A new attestation is news even at an already sent version.
+                bool newStopAttestation = coversPeerStopBarrier && !_lastSentCoversStopBarrier;
+                if (checkpointVersion <= _lastSentCheckpointVersion && !newStopAttestation)
+                {
+                    // Already sent this checkpoint or a later one
+                    return Task.CompletedTask;
+                }
+                _lastSentCheckpointVersion = Math.Max(_lastSentCheckpointVersion, checkpointVersion);
+                _lastSentCoversStopBarrier = coversPeerStopBarrier;
+            }
+            long targetEpoch;
+            lock (_initializeLock)
+            {
+                targetEpoch = _peerCheckpointEpoch;
             }
             _logger.LogDebug("Sending checkpoint done to target: {substreamName} from {selfSubstreamName}", substreamName, _selfSubstreamName);
             return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion, targetEpoch, coversPeerStopBarrier);

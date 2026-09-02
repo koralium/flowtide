@@ -30,8 +30,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly WriteRelation writeRelation;
         private readonly Action<EventBatchData> onDataChange;
         private readonly Action<int>? onChangeRowsReceived;
-        // Reports the checkpoint id this sink staged under, so a test can check that every
-        // egress point checkpoints the same version.
+        // Reports the checkpoint id this sink staged under.
         private readonly Action<string, long>? onCheckpointId;
         private int crashOnCheckpointCount;
         private int _checkpointsBeforeCrash;

@@ -24,6 +24,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private Checkpoint? _currentCheckpoint;
         private long _stoppingStartedTimestamp;
         private int _stopAllStarted;
+        // Drain cycles must not commit, the peer never matches them.
+        private bool _stopCommitTaken;
+        private ulong _pageCommitsAtLastStopCommit;
 
         public override Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
         {
@@ -122,26 +125,38 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         await commitHook(run._context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
                     }
 
-                    // Write the latest state
-                    run._context._lastState = new StreamState(
-                        run._currentCheckpoint.CheckpointTime,
-                        _context._streamVersionInformation?.Hash ?? string.Empty);
-
-                    run._context._stateManager.Metadata = run._context._lastState;
-
-                    long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
-                    var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
-
-                    // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
-                    if (changesSinceLastCompaction > compactionThreshold)
+                    var pageCommits = run._context._stateManager.PageCommits;
+                    if (run._stopCommitTaken && pageCommits == run._pageCommitsAtLastStopCommit)
                     {
-                        await run._context._stateManager.Compact();
+                        // Nothing new, keep the version where the peer is.
+                        _context._logger.LogDebug("Stop drain cycle on stream {stream} had nothing new to persist, keeping checkpoint version {version}.", _context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
                     }
+                    else
+                    {
+                        // Write the latest state
+                        run._context._lastState = new StreamState(
+                            run._currentCheckpoint.CheckpointTime,
+                            _context._streamVersionInformation?.Hash ?? string.Empty);
 
-                    // Take state checkpoint
-                    _context._logger.StartingStateManagerCheckpoint(_context.streamName);
-                    await run._context._stateManager.CheckpointAsync(false);
-                    _context._logger.StateManagerCheckpointDone(_context.streamName);
+                        run._context._stateManager.Metadata = run._context._lastState;
+
+                        long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
+                        var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
+
+                        // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
+                        if (changesSinceLastCompaction > compactionThreshold)
+                        {
+                            await run._context._stateManager.Compact();
+                        }
+
+                        // Take state checkpoint
+                        _context._logger.StartingStateManagerCheckpoint(_context.streamName);
+                        await run._context._stateManager.CheckpointAsync(false);
+                        _context._logger.StateManagerCheckpointDone(_context.streamName);
+
+                        run._stopCommitTaken = true;
+                        run._pageCommitsAtLastStopCommit = run._context._stateManager.PageCommits;
+                    }
                 }
                 finally
                 {

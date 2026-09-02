@@ -200,8 +200,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override Task CheckpointDone(long checkpointVersion)
         {
-            // Only this stream has committed here, in a distributed stream the peer substreams
-            // may not have. The commit hook waits for Compact.
+            // Only this stream committed here, the hook waits for Compact.
             m_committedCheckpointVersion = checkpointVersion;
             return base.CheckpointDone(checkpointVersion);
         }
@@ -211,7 +210,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             if (m_sqlServerSinkOptions.OnCheckpointComplete != null &&
                 m_committedCheckpointVersion >= 0)
             {
-                // Runs on the checkpoint thread, the sink connection can be busy uploading.
+                // Own connection, the sink one can be uploading.
                 using var connection = new SqlConnection(m_connectionStringFunc());
                 await connection.OpenAsync();
                 await m_sqlServerSinkOptions.OnCheckpointComplete(connection, m_committedCheckpointVersion, m_tmpTableName, m_writeRelation.NamedObject.Names);

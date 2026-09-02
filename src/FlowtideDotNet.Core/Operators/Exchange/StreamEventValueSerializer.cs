@@ -36,8 +36,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // Marker without payload: everything before it in the queue is the sending
         // substream's initial data.
         private const byte InitialDataDoneEventType = 6;
-        // Checkpoints that also carry the state manager version. Written under their own type
-        // ids so state stored before the version existed still deserializes.
+        // Own type ids so state without the version still deserializes.
         private const byte CheckpointWithVersionType = 7;
         private const byte StopCheckpointWithVersionType = 8;
 
