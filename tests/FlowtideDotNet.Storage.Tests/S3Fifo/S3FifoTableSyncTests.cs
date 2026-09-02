@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, new TestCacheObject(i), handler);
             }
             // Key 0 counts one reuse before eviction, key 1 none.
-            Assert.True(table.TryGetValue(0, out var hit));
+            Assert.True(table.TryRead(0, out var hit));
             hit!.Return();
             await table.ForceCleanup();
             Assert.True(table.IsInGhostForTests(0));
@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.False(table.IsInGhostForTests(1));
 
             // One counted hit completes the pair, the scan promotes on 2.
-            Assert.True(table.TryGetValue(1, out var pairHit));
+            Assert.True(table.TryRead(1, out var pairHit));
             pairHit!.Return();
             Assert.Equal(2, coldEntry.Frequency);
 
@@ -130,7 +130,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 for (var i = 0; i < 3; i++)
                 {
-                    Assert.True(table.TryGetValue(i, out var cacheObject));
+                    Assert.True(table.TryRead(i, out var cacheObject));
                     cacheObject!.Return();
                 }
             }
@@ -158,7 +158,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
             // One access is the first event, main needs two.
             // It leaves through ghost with the reuse recorded.
-            Assert.True(table.TryGetValue(0, out var cacheObject));
+            Assert.True(table.TryRead(0, out var cacheObject));
             cacheObject!.Return();
 
             await table.ForceCleanup();
@@ -183,7 +183,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 for (var i = 0; i < 4; i++)
                 {
-                    Assert.True(table.TryGetValue(i, out var cacheObject));
+                    Assert.True(table.TryRead(i, out var cacheObject));
                     cacheObject!.Return();
                 }
             }
@@ -568,14 +568,14 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             // Keys 0..4 count two spaced reuses, so the scan promotes them.
             for (var i = 0; i < 5; i++)
             {
-                Assert.True(table.TryGetValue(i, out var reused));
+                Assert.True(table.TryRead(i, out var reused));
                 reused!.Return();
             }
             table.Add(71, new TestCacheObject(71), handler);
             table.Add(72, new TestCacheObject(72), handler);
             for (var i = 0; i < 5; i++)
             {
-                Assert.True(table.TryGetValue(i, out var reusedAgain));
+                Assert.True(table.TryRead(i, out var reusedAgain));
                 reusedAgain!.Return();
             }
 
@@ -668,11 +668,11 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, new TestCacheObject(i), handler);
             }
             // Key 0 earns two spaced reuses and is promoted.
-            Assert.True(table.TryGetValue(0, out var first));
+            Assert.True(table.TryRead(0, out var first));
             first!.Return();
             table.Add(71, new TestCacheObject(71), handler);
             table.Add(72, new TestCacheObject(72), handler);
-            Assert.True(table.TryGetValue(0, out var second));
+            Assert.True(table.TryRead(0, out var second));
             second!.Return();
 
             await table.ForceCleanup();
@@ -687,7 +687,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 {
                     table.Add(1000 + (round * 100) + i, new TestCacheObject(0), handler);
                 }
-                Assert.True(table.TryGetValue(1000 + (round * 100), out var keepAlive));
+                Assert.True(table.TryRead(1000 + (round * 100), out var keepAlive));
                 keepAlive!.Return();
                 await table.ForceCleanup();
             }
@@ -708,11 +708,11 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            Assert.True(table.TryGetValue(0, out var first));
+            Assert.True(table.TryRead(0, out var first));
             first!.Return();
             table.Add(71, new TestCacheObject(71), handler);
             table.Add(72, new TestCacheObject(72), handler);
-            Assert.True(table.TryGetValue(0, out var second));
+            Assert.True(table.TryRead(0, out var second));
             second!.Return();
             await table.ForceCleanup();
 
@@ -766,11 +766,11 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, new TestCacheObject(i), handler);
             }
             // Key 0 earns two spaced reuses, the first drain promotes it.
-            Assert.True(table.TryGetValue(0, out var first));
+            Assert.True(table.TryRead(0, out var first));
             first!.Return();
             table.Add(60, new TestCacheObject(60), handler);
             table.Add(61, new TestCacheObject(61), handler);
-            Assert.True(table.TryGetValue(0, out var second));
+            Assert.True(table.TryRead(0, out var second));
             second!.Return();
 
             await table.ForceCleanup();
@@ -785,7 +785,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 {
                     table.Add(1000 + (round * 100) + i, new TestCacheObject(0), handler);
                 }
-                Assert.True(table.TryGetValue(1000 + (round * 100), out var keepAlive));
+                Assert.True(table.TryRead(1000 + (round * 100), out var keepAlive));
                 keepAlive!.Return();
                 await table.ForceCleanup();
             }
@@ -844,13 +844,13 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, new TestCacheObject(i), handler);
             }
             // Two hits past the 250 wide window promote key 0.
-            Assert.True(table.TryGetValue(0, out var first));
+            Assert.True(table.TryRead(0, out var first));
             first!.Return();
             for (var i = 2000; i < 2400; i++)
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            Assert.True(table.TryGetValue(0, out var second));
+            Assert.True(table.TryRead(0, out var second));
             second!.Return();
 
             await table.ForceCleanup();
@@ -870,7 +870,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 }
                 // A hit on another key keeps it off the idle path.
                 // Reading key 0 would pump its frequency back up.
-                Assert.True(table.TryGetValue(10000 + (round * 1000), out var keepAlive));
+                Assert.True(table.TryRead(10000 + (round * 1000), out var keepAlive));
                 keepAlive!.Return();
                 await table.ForceCleanup();
             }
@@ -918,7 +918,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             // The two reads must straddle a window of them to both count.
             for (var i = 0; i < 200; i++)
             {
-                if (table.TryGetValue(i, out var v)) { v!.Return(); }
+                if (table.TryRead(i, out var v)) { v!.Return(); }
             }
             for (var i = 0; i < 100; i++)
             {
@@ -926,7 +926,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
             for (var i = 0; i < 200; i++)
             {
-                if (table.TryGetValue(i, out var v)) { v!.Return(); }
+                if (table.TryRead(i, out var v)) { v!.Return(); }
             }
             await table.ForceCleanup();
 
@@ -945,7 +945,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 {
                     table.Add(key++, new TestCacheObject(i), handler);
                 }
-                if (table.TryGetValue(0, out var hot)) { hot!.Return(); }
+                if (table.TryRead(0, out var hot)) { hot!.Return(); }
                 await table.ForceCleanup();
             }
 

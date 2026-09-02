@@ -303,6 +303,33 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
+        /// A checkpoint commit reads every dirty page, that is not reuse by the query.
+        /// </summary>
+        [Fact]
+        public async Task CommitPathRentDoesNotCountAsReuse()
+        {
+            // Window of two, so the filler below opens it for key 0.
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 4; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.Equal(0, entry!.Frequency);
+
+            Assert.True(table.TryGetValue(0, out var committed));
+            committed!.Return();
+            Assert.Equal(0, entry.Frequency);
+            Assert.Equal(1, table.CommitCacheHitsForTests);
+
+            // The read path still counts, so the window really was open.
+            Assert.True(table.TryGetCacheValue(0, out var read));
+            read!.Value.Return();
+            Assert.Equal(1, entry.Frequency);
+        }
+
+        /// <summary>
         /// Disposing the table must complete callers parked on the eviction gate.
         /// </summary>
         [Fact]

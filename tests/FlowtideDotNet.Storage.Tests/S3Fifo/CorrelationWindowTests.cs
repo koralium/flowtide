@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         {
             for (var i = 0; i < times; i++)
             {
-                Assert.True(table.TryGetValue(key, out var cacheObject));
+                Assert.True(table.TryRead(key, out var cacheObject));
                 cacheObject!.Return();
             }
         }
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             // Key 0 reached the small queue head with frequency 0, so it goes to ghost
             // instead of being promoted to main.
-            Assert.False(table.TryGetValue(0, out _));
+            Assert.False(table.TryRead(0, out _));
             Assert.True(table.IsInGhostForTests(0));
             Assert.True(obj.Disposed);
         }

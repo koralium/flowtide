@@ -15,6 +15,7 @@ using FlowtideDotNet.Storage.StateManager.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal.Sync;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.Tests.S3Fifo
@@ -175,6 +176,20 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
     internal static class S3FifoTestHelpers
     {
+        /// <summary>
+        /// A read on the read path, the one that records an access. TryGetValue is the commit path.
+        /// </summary>
+        public static bool TryRead(this S3FifoTableSync table, long key, [NotNullWhen(true)] out ICacheObject? value)
+        {
+            if (table.TryGetCacheValue(key, out var entry))
+            {
+                value = entry.Value;
+                return true;
+            }
+            value = null;
+            return false;
+        }
+
         public static S3FifoTableSync CreateRunningTable(
             int maxSize,
             int minSize = 0,

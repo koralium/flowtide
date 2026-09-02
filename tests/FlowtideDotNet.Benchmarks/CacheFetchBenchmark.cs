@@ -171,9 +171,10 @@ namespace FlowtideDotNet.Benchmarks
         [Benchmark]
         public bool TableHit_Production()
         {
-            if (_table.TryGetValue(Key, out var cacheObject))
+            // The read path, it records the access. TryGetValue is the commit path.
+            if (_table.TryRentCached(Key, out var entry))
             {
-                cacheObject!.Return();
+                entry!.Value.Return();
                 return true;
             }
             return false;

@@ -425,11 +425,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return false;
         }
 
+        /// <summary>
+        /// Commit path rent, counted separately and not recorded as an access.
+        /// </summary>
         public bool TryGetValue(long key, out ICacheObject? cacheObject)
         {
             if (m_cache.TryGetValue(key, out var entry))
             {
-                if (entry.TryRentValue())
+                if (entry.TryRentValueWithoutAccess())
                 {
                     cacheObject = entry.Value;
                     Interlocked.Increment(ref m_commitCacheHits);

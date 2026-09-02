@@ -97,16 +97,24 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         public bool TryRentValue()
         {
-            if (Volatile.Read(ref Removed))
-            {
-                return false;
-            }
-            if (!Value.TryRent())
+            if (!TryRentValueWithoutAccess())
             {
                 return false;
             }
             RecordAccess();
             return true;
+        }
+
+        /// <summary>
+        /// The same rent for the commit path. A checkpoint reads every dirty page, that is not reuse.
+        /// </summary>
+        public bool TryRentValueWithoutAccess()
+        {
+            if (Volatile.Read(ref Removed))
+            {
+                return false;
+            }
+            return Value.TryRent();
         }
 
         /// <summary>
