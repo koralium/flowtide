@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
-    internal class TemporarySyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler
+    internal class TemporarySyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ICacheEvictHandler
         where V : ICacheObject
         where TMetadata : class, IStorageMetadata
     {
@@ -53,6 +53,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public ValueTask Commit()
         {
+            // Temporary state is never persisted. With no commits the inherited PauseCommitsAsync
+            // no-op is correct, forwarding it would double-acquire the base client's lock.
             return ValueTask.CompletedTask;
         }
 
@@ -86,9 +88,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return baseClient.WaitForNotFullAsync();
         }
 
-        public void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict, bool isCleanup)
+        public int MaxHeldPages => baseClient.MaxHeldPages;
+
+        public bool TryGetCachedValue(in long key, out V? value)
         {
-            baseClient.Evict(valuesToEvict, isCleanup);
+            return baseClient.TryGetCachedValue(key, out value);
+        }
+
+        public bool Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+        {
+            return baseClient.Evict(valuesToEvict, isCleanup);
         }
 
         public Task InitializeSerializerAsync()

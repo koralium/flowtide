@@ -1,0 +1,234 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager.Internal;
+using FlowtideDotNet.Storage.StateManager.Internal.Sync;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Metrics;
+
+namespace FlowtideDotNet.Storage.Tests.S3Fifo
+{
+    /// <summary>
+    /// Cache object with the same rent semantics as a B+ tree node.
+    /// Rent count starts at 1, TryRent fails at 0, Return disposes at 0.
+    /// Tracks invariant violations so concurrency tests can assert on them.
+    /// </summary>
+    internal class TestCacheObject : ICacheObject
+    {
+        private int _rentCount = 1;
+        private int _disposeCount;
+        private int _rentAfterDisposeCount;
+        private int _negativeRentCount;
+
+        public TestCacheObject(long id)
+        {
+            Id = id;
+        }
+
+        public long Id { get; }
+
+        public int RentCount => Volatile.Read(ref _rentCount);
+
+        public int DisposeCount => Volatile.Read(ref _disposeCount);
+
+        public bool Disposed => DisposeCount > 0;
+
+        /// <summary>
+        /// Number of times a rent succeeded on an already disposed object. Must stay 0.
+        /// </summary>
+        public int RentAfterDisposeViolations => Volatile.Read(ref _rentAfterDisposeCount);
+
+        /// <summary>
+        /// Number of times the rent count went below zero (more returns than rents). Must stay 0.
+        /// </summary>
+        public int NegativeRentViolations => Volatile.Read(ref _negativeRentCount);
+
+        public bool RemovedFromCache { get; set; }
+
+        public bool TryRent()
+        {
+            var local = Volatile.Read(ref _rentCount);
+            while (true)
+            {
+                if (local == 0)
+                {
+                    return false;
+                }
+                var observed = Interlocked.CompareExchange(ref _rentCount, local + 1, local);
+                if (observed == local)
+                {
+                    if (Volatile.Read(ref _disposeCount) > 0)
+                    {
+                        Interlocked.Increment(ref _rentAfterDisposeCount);
+                    }
+                    return true;
+                }
+                local = observed;
+            }
+        }
+
+        public void Return()
+        {
+            var value = Interlocked.Decrement(ref _rentCount);
+            if (value == 0)
+            {
+                Interlocked.Increment(ref _disposeCount);
+            }
+            else if (value < 0)
+            {
+                Interlocked.Increment(ref _negativeRentCount);
+            }
+        }
+
+        /// <summary>
+        /// Invoked at the start of TryReclaimForEviction, lets a test hold the removal
+        /// phase open at a precise victim.
+        /// </summary>
+        public Action? OnTryReclaimForEviction { get; set; }
+
+        public bool TryReclaimForEviction()
+        {
+            OnTryReclaimForEviction?.Invoke();
+            if (Interlocked.CompareExchange(ref _rentCount, 0, 1) == 1)
+            {
+                Interlocked.Increment(ref _disposeCount);
+                return true;
+            }
+            return false;
+        }
+
+        public void EnterWriteLock()
+        {
+            Monitor.Enter(this);
+        }
+
+        public void ExitWriteLock()
+        {
+            Monitor.Exit(this);
+        }
+    }
+
+    internal class TestEvictHandler : ICacheEvictHandler
+    {
+        public ConcurrentQueue<(long Key, bool IsCleanup)> Evictions { get; } = new();
+
+        /// <summary>
+        /// Invoked on the eviction thread before evictions are recorded.
+        /// Mirrors where a state client would serialize the value.
+        /// </summary>
+        public Action<List<(S3FifoCacheEntry, long)>, bool>? OnEvict { get; set; }
+
+        public List<long> EvictedKeys => Evictions.Select(e => e.Key).ToList();
+
+        public bool Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+        {
+            OnEvict?.Invoke(valuesToEvict, isCleanup);
+            foreach (var value in valuesToEvict)
+            {
+                Evictions.Enqueue((value.Item1.Key, isCleanup));
+            }
+            return true;
+        }
+    }
+
+    internal class ZeroMemoryStats : IMemoryAllocationStats
+    {
+        public long GetAllocatedMemory()
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Fixed allocation figure, drives the memory based resize.
+    /// </summary>
+    internal class FixedMemoryStats : IMemoryAllocationStats
+    {
+        private long _allocated;
+
+        public FixedMemoryStats(long allocated)
+        {
+            _allocated = allocated;
+        }
+
+        public void Set(long allocated)
+        {
+            Volatile.Write(ref _allocated, allocated);
+        }
+
+        public long GetAllocatedMemory()
+        {
+            return Volatile.Read(ref _allocated);
+        }
+    }
+
+    internal static class S3FifoTestHelpers
+    {
+        /// <summary>
+        /// A read on the read path, the one that records an access. TryGetValue is the commit path.
+        /// </summary>
+        public static bool TryRead(this S3FifoTableSync table, long key, [NotNullWhen(true)] out ICacheObject? value)
+        {
+            if (table.TryGetCacheValue(key, out var entry))
+            {
+                value = entry.Value;
+                return true;
+            }
+            value = null;
+            return false;
+        }
+
+        /// <summary>
+        /// One meter for every test table. With an empty stream name a table registers no
+        /// instruments on it, so sharing is safe and there is nothing to dispose per table.
+        /// </summary>
+        private static readonly Meter s_meter = new Meter("FlowtideDotNet.Storage.Tests.S3Fifo");
+
+        public static S3FifoTableSync CreateRunningTable(
+            int maxSize,
+            int minSize = 0,
+            bool drainSmallQueueEarly = false,
+            bool adaptiveSmallQueueSize = false,
+            long maxMemoryUsageInBytes = -1,
+            IMemoryAllocationStats? memoryStats = null)
+        {
+            return new S3FifoTableSync(new CacheTableOptions("", NullLogger.Instance, s_meter, memoryStats ?? new ZeroMemoryStats())
+            {
+                MaxSize = maxSize,
+                MinSize = minSize,
+                DrainSmallQueueEarly = drainSmallQueueEarly,
+                AdaptiveSmallQueueSize = adaptiveSmallQueueSize,
+                MaxMemoryUsageInBytes = maxMemoryUsageInBytes
+            });
+        }
+
+        /// <summary>
+        /// Creates a table with the background cleanup task stopped, so tests drive
+        /// eviction deterministically through ForceCleanup.
+        /// </summary>
+        public static async Task<S3FifoTableSync> CreateStoppedTable(
+            int maxSize,
+            int minSize = 0,
+            bool drainSmallQueueEarly = false,
+            bool adaptiveSmallQueueSize = false,
+            long maxMemoryUsageInBytes = -1,
+            IMemoryAllocationStats? memoryStats = null)
+        {
+            var table = CreateRunningTable(maxSize, minSize, drainSmallQueueEarly, adaptiveSmallQueueSize, maxMemoryUsageInBytes, memoryStats);
+            await table.StopCleanupTask();
+            return table;
+        }
+    }
+}

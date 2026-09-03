@@ -401,3 +401,6 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Sample runtime state written by local runs
+samples/SqlSampleWithUI/stateData/

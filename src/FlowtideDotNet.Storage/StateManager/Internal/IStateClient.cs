@@ -27,6 +27,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 
         long CacheMisses { get; }
 
+        /// <summary>
+        /// How many pages the caller may hold rented at once. A held page is never evicted, so
+        /// the cache caps this at what it can spare.
+        /// </summary>
+        int MaxHeldPages { get; }
+
+        /// <summary>
+        /// Rents the page only when it is already cached, without reading from storage.
+        /// A page that is not cached cannot be evicted, so there is nothing to hold and the
+        /// caller fetches it on the normal path when it reaches it.
+        /// </summary>
+        bool TryGetCachedValue(in long key, out V? value);
+
         Task InitializeSerializerAsync();
     }
 }

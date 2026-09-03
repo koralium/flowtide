@@ -277,6 +277,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
                 _pageIds.Dispose();
                 _pageOffset.Dispose();
+                _crc32s.Dispose();
 
                 disposedValue = true;
             }

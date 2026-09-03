@@ -22,7 +22,6 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
-using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
 
 namespace FlowtideDotNet.Storage.StateManager
 {
@@ -61,13 +60,14 @@ namespace FlowtideDotNet.Storage.StateManager
 
     public abstract class StateManagerSync : IStateManager, IDisposable
     {
-        private LruTableSync? m_lruTable;
+        private S3FifoTableSync? m_cacheTable;
         //private readonly FasterKV<long, SpanByte> m_persistentStorage;
         private readonly IStateSerializer<StateManagerMetadata> m_metadataSerializer;
         private readonly StateManagerOptions options;
         private readonly ILoggerFactory m_loggerFactory;
         private readonly ILogger logger;
-        private readonly Meter meter;
+        private Meter meter;
+        private readonly string m_meterName;
         private readonly string streamName;
         private readonly IStreamMemoryManager _streamMemoryManager;
         private readonly object m_lock = new object();
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Storage.StateManager
         /// <summary>
         /// Used for unit testing only
         /// </summary>
-        internal LruTableSync LruTable => m_lruTable ?? throw new InvalidOperationException("Manager must be initialized before getting LRU table");
+        internal S3FifoTableSync CacheTable => m_cacheTable ?? throw new InvalidOperationException("Manager must be initialized before getting cache table");
 
         public bool Initialized { get; private set; }
 
@@ -119,19 +119,31 @@ namespace FlowtideDotNet.Storage.StateManager
             m_loggerFactory = loggerFactory;
             this.logger = loggerFactory.CreateLogger("StateManager");
             this.meter = meter;
+            this.m_meterName = meter.Name;
             this.streamName = streamName;
             this._streamMemoryManager = streamMemoryManager;
         }
 
         private void Setup()
         {
-            if (m_lruTable == null)
+            if (disposedValue)
             {
-                m_lruTable = new LruTableSync(new LruTableOptions(streamName, logger, meter, new MemoryStatsWithGC(_streamMemoryManager))
+                // The engine disposes the manager when a stream stops and initializes it again if
+                // the stream starts back up. A fresh meter replaces the instruments that went with
+                // the disposed one, the state clients register on it again as they are recreated.
+                meter = new Meter(m_meterName);
+                disposedValue = false;
+            }
+
+            if (m_cacheTable == null)
+            {
+                m_cacheTable = new S3FifoTableSync(new CacheTableOptions(streamName, logger, meter, new MemoryStatsWithGC(_streamMemoryManager))
                 {
                     MaxSize = options.CachePageCount,
                     MaxMemoryUsageInBytes = options.MaxProcessMemory,
-                    MinSize = options.MinCachePageCount
+                    MinSize = options.MinCachePageCount,
+                    DrainSmallQueueEarly = options.DrainSmallQueueEarly,
+                    AdaptiveSmallQueueSize = options.AdaptiveSmallQueueSize
                 });
             }
 
@@ -177,42 +189,77 @@ namespace FlowtideDotNet.Storage.StateManager
             return id;
         }
 
-        internal bool AddOrUpdate<V>(in long key, in V value, in ILruEvictHandler evictHandler)
+        internal bool AddOrUpdate<V>(in long key, in V value, in ICacheEvictHandler evictHandler)
             where V : ICacheObject
         {
-            Debug.Assert(m_lruTable != null);
-            return m_lruTable.Add(key, value, evictHandler);
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.Add(key, value, evictHandler);
         }
 
         internal Task WaitForNotFullAsync()
         {
-            Debug.Assert(m_lruTable != null);
-            return m_lruTable.Wait();
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.Wait();
         }
 
         internal void DeleteFromCache(in long key)
         {
-            Debug.Assert(m_lruTable != null);
-            m_lruTable.Delete(key);
+            Debug.Assert(m_cacheTable != null);
+            m_cacheTable.Delete(key);
         }
 
         internal void ClearCache()
         {
-            Debug.Assert(m_lruTable != null);
-            m_lruTable.Clear();
+            Debug.Assert(m_cacheTable != null);
+            m_cacheTable.Clear();
         }
 
-        internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out LinkedListNode<LinkedListValue>? value)
+        internal int MaxHeldPages => m_cacheTable?.MaxHeldPages ?? 1;
+
+        internal bool TryRentCachedValue(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
-            Debug.Assert(m_lruTable != null);
-            return m_lruTable.TryGetCacheValue(key, out value);
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.TryRentCached(key, out entry);
+        }
+
+        internal void RegisterExternalHitCounter(Func<long> hitCounter)
+        {
+            Debug.Assert(m_cacheTable != null);
+            m_cacheTable.RegisterExternalHitCounter(hitCounter);
+        }
+
+        /// <summary>
+        /// Pauses the background eviction task so recovery does not race an eviction.
+        /// Must be paired with ResumeEviction in a finally block.
+        /// </summary>
+        internal Task PauseEvictionAsync()
+        {
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.PauseEvictionAsync();
+        }
+
+        internal void ResumeEviction()
+        {
+            // A commit in flight during teardown resumes after Dispose already dropped the table.
+            var cacheTable = m_cacheTable;
+            if (cacheTable == null)
+            {
+                return;
+            }
+            cacheTable.ResumeEviction();
+        }
+
+        internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? value)
+        {
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.TryGetCacheValue(key, out value);
         }
 
         internal bool TryGetValueFromCache<T>(in long key, [NotNullWhen(true)] out T? value)
             where T : ICacheObject
         {
-            Debug.Assert(m_lruTable != null);
-            if (m_lruTable.TryGetValue(key, out var obj))
+            Debug.Assert(m_cacheTable != null);
+            if (m_cacheTable.TryGetValue(key, out var obj))
             {
                 value = (T)obj!;
                 return true;
@@ -424,43 +471,73 @@ namespace FlowtideDotNet.Storage.StateManager
         {
             bool newMetadata = false;
             Setup();
-            Debug.Assert(m_lruTable != null);
+            Debug.Assert(m_cacheTable != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
-            m_lruTable.Clear();
-            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
 
-            // Check that metadata exist, also that the checkpoint version is larger than 0
-            // If zero we revert back to an empty state
-            if (m_persistentStorage.TryGetValue(1, out var metadataBytes) && (!checkpointVersion.HasValue || (checkpointVersion.HasValue && checkpointVersion.Value > 0)))
+            // Pause eviction for the whole reset. An in-flight eviction could otherwise write a
+            // stale page after the reset and route later reads to it.
+            await PauseEvictionAsync();
+            // Drain in-flight client commits and hold new ones out for the whole reset.
+            // A detached parallel-mode checkpoint commit is not joined by the engine's
+            // block-completion wait, and one overlapping the revert would persist
+            // aborted-epoch pages into the recovered store.
+            var pausedClients = new List<StateClient>();
+            try
             {
-                lock (m_lock)
+                foreach (var stateClient in _stateClients)
                 {
-                    m_metadata = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(metadataBytes.Value), metadataBytes.Value.Length);
+                    await stateClient.Value.PauseCommitsAsync();
+                    pausedClients.Add(stateClient.Value);
                 }
-                await m_persistentStorage.RecoverAsync(!checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value).ConfigureAwait(false);
-                LastCompletedCheckpointVersion = !checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value;
-            }
-            else
-            {
-                lock (m_lock)
+
+                // Returns the cache rents, the clients are reset below so no lookup handle
+                // keeps serving a cleared entry.
+                m_cacheTable.ClearAndReturnRents();
+                await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
+
+                // Check that metadata exist, also that the checkpoint version is larger than 0
+                // If zero we revert back to an empty state
+                if (m_persistentStorage.TryGetValue(1, out var metadataBytes) && (!checkpointVersion.HasValue || (checkpointVersion.HasValue && checkpointVersion.Value > 0)))
                 {
-                    m_metadata = NewMetadata();
-                    // Increase the page counter to avoid using the same page id as the metadata page.
-                    if (_stateClients.Count > 0)
+                    // Never fall through, the else branch resets the stream.
+                    var metadata = metadataBytes ?? throw new InvalidOperationException("Metadata page was found but empty.");
+                    lock (m_lock)
                     {
-                        m_metadata.PageCounter = _stateClients.Max(x => x.Value.MetadataId) + 1;
+                        m_metadata = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(metadata), metadata.Length);
                     }
-                    newMetadata = true;
+                    await m_persistentStorage.RecoverAsync(!checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value).ConfigureAwait(false);
+                    LastCompletedCheckpointVersion = !checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value;
                 }
-                await m_persistentStorage.ResetAsync();
-                LastCompletedCheckpointVersion = 0;
-            }
+                else
+                {
+                    lock (m_lock)
+                    {
+                        m_metadata = NewMetadata();
+                        // Increase the page counter to avoid using the same page id as the metadata page.
+                        if (_stateClients.Count > 0)
+                        {
+                            m_metadata.PageCounter = _stateClients.Max(x => x.Value.MetadataId) + 1;
+                        }
+                        newMetadata = true;
+                    }
+                    await m_persistentStorage.ResetAsync();
+                    LastCompletedCheckpointVersion = 0;
+                }
 
-            // Reset cached values in the state clients
-            foreach (var stateClient in _stateClients)
+                // Reset cached values in the state clients
+                foreach (var stateClient in _stateClients)
+                {
+                    await stateClient.Value.Reset(newMetadata);
+                }
+            }
+            finally
             {
-                await stateClient.Value.Reset(newMetadata);
+                foreach (var pausedClient in pausedClients)
+                {
+                    pausedClient.ResumeCommits();
+                }
+                ResumeEviction();
             }
 
             logger.LogDebug("State manager initialized, requested version: {requestedVersion}, recovered version: {recoveredVersion}, new metadata: {newMetadata}, reset {stateClientCount} state clients", checkpointVersion, LastCompletedCheckpointVersion, newMetadata, _stateClients.Count);
@@ -474,23 +551,34 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 if (disposing)
                 {
-                    // A supplied storage is the callers, it outlives a stop.
-                    if (m_persistentStorage != null && m_ownsPersistentStorage)
+                    // Dispose the cache table first so it stops the cleanup task.
+                    // Otherwise an in-flight eviction writes through an already disposed client.
+                    // Cleared so a later initialize builds a fresh one, the disposed table's
+                    // eviction gate and cleanup task cannot be reused.
+                    if (m_cacheTable != null)
                     {
-                        m_persistentStorage.Dispose();
-                        m_persistentStorage = null;
+                        m_cacheTable.Dispose();
+                        m_cacheTable = null;
                     }
 
+                    // Before the storage, the clients return their sessions to it.
                     foreach (var stateClient in _stateClients)
                     {
                         stateClient.Value.Dispose();
                     }
                     _stateClients.Clear();
 
-                    if (m_lruTable != null)
+                    // A supplied storage belongs to the caller and must outlive a stop, otherwise
+                    // the next start has nothing to recover from. Setup resets it for restore.
+                    if (m_persistentStorage != null && m_ownsPersistentStorage)
                     {
-                        m_lruTable.Dispose();
+                        m_persistentStorage.Dispose();
+                        m_persistentStorage = null;
                     }
+
+                    // Released after the clients, they register instruments on it.
+                    meter.Dispose();
+                    Initialized = false;
                 }
 
                 disposedValue = true;

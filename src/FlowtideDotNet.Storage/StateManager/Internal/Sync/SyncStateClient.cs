@@ -18,11 +18,10 @@ using FlowtideDotNet.Storage.Utils;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
-    internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler, IStateSerializerInitializeReader, IStateSerializerCheckpointWriter
+    internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ICacheEvictHandler, IStateSerializerInitializeReader, IStateSerializerCheckpointWriter
         where V : ICacheObject
         where TMetadata : class, IStorageMetadata
     {
@@ -37,16 +36,41 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly int m_bplusTreePageSize;
         private readonly int m_bplusTreePageSizeBytes;
         private readonly IMemoryAllocator memoryAllocator;
-        private readonly Dictionary<long, int> m_modified;
+        private readonly Dictionary<long, long> m_modified;
         private readonly object m_lock = new object();
+
+        /// <summary>
+        /// Serializes this client's Commit against its Evict, both go through the same
+        /// non-thread-safe value serializer and file-cache version state.
+        /// Never disposed, a commit still in flight during teardown must be able to release it.
+        /// </summary>
+        private readonly SemaphoreSlim m_commitEvictLock = new SemaphoreSlim(1, 1);
+
+        /// <summary>
+        /// Debug tripwire for the single writer contract. A commit walks m_modified without m_lock,
+        /// so a write from another thread during it would corrupt the checkpoint silently.
+        /// </summary>
+        private int m_commitInFlight;
         private readonly FlowtideDotNet.Storage.FileCache.IFileCache m_fileCache;
-        private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
+        private readonly ConcurrentDictionary<long, long> m_fileCacheVersion;
+
+        /// <summary>
+        /// Monotonic write generation, guarded by m_lock and never reset.
+        /// The eviction dedup compares it against m_fileCacheVersion. Resetting it per commit
+        /// would let a straddling eviction collide with a later write and drop a modified page.
+        /// </summary>
+        private long m_writeSequence;
         private readonly Histogram<float>? m_persistenceReadMsHistogram;
         private readonly Histogram<float>? m_temporaryReadMsHistogram;
         private readonly Histogram<float>? m_temporaryWriteMsHistogram;
         private readonly TagList tagList;
 
-        private CacheValue[] _lookupTable;
+        /// <summary>
+        /// Direct mapped cache of entry references in front of the shared table.
+        /// Slots are single references read atomically, the key is validated on the entry.
+        /// Writes happen under m_lock, the GetValue fast path reads lock-free.
+        /// </summary>
+        private S3FifoCacheEntry?[] _lookupTable;
 
         /// <summary>
         /// Value of how many pages have changed since last commit.
@@ -60,6 +84,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// Volatile by the metric callback.
         /// </summary>
         private long m_lookupTableHits;
+
 
         public long CacheMisses => cacheMisses;
 
@@ -90,8 +115,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.m_bplusTreePageSizeBytes = bplusTreePageSizeBytes;
             this.memoryAllocator = memoryAllocator;
             m_fileCache = fileCacheFactory.Create(name, memoryAllocator);
-            m_modified = new Dictionary<long, int>();
-            m_fileCacheVersion = new ConcurrentDictionary<long, int>();
+            m_modified = new Dictionary<long, long>();
+            m_fileCacheVersion = new ConcurrentDictionary<long, long>();
             if (!string.IsNullOrEmpty(name))
             {
                 m_persistenceReadMsHistogram = meter.CreateHistogram<float>("flowtide_persistence_read_ms");
@@ -109,7 +134,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 });
             }
 
-            _lookupTable = new CacheValue[1009];
+            _lookupTable = new S3FifoCacheEntry?[1009];
+            // The fast path bypasses the table's hit counters, feed its count to the idle check.
+            stateManager.RegisterExternalHitCounter(() => Volatile.Read(ref m_lookupTableHits));
         }
 
         public TMetadata? Metadata
@@ -130,26 +157,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public bool AddOrUpdate(in long key, V value)
         {
+            ThrowIfCommitInFlight(nameof(AddOrUpdate));
             lock (m_lock)
             {
-                if (m_modified.TryGetValue(key, out var old))
-                {
-                    m_modified[key] = old + 1;
-                }
-                else
-                {
-                    m_modified[key] = 0;
-                }
+                m_modified[key] = ++m_writeSequence;
 
                 var modLookup = key % _lookupTable.Length;
-                if (_lookupTable[modLookup].Key == key)
+                var entry = _lookupTable[modLookup];
+                if (entry != null && entry.Key == key)
                 {
-                    var node = _lookupTable[modLookup].Value!;
-                    lock (node)
+                    lock (entry)
                     {
-                        node.ValueRef.version = node.ValueRef.version + 1;
+                        entry.Version = entry.Version + 1;
                         // If it is not removed, we can return directly, otherwise it needs to be readded
-                        if (!node.ValueRef.removed)
+                        if (!entry.Removed)
                         {
                             return false;
                         }
@@ -165,10 +186,99 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return stateManager.WaitForNotFullAsync();
         }
 
+        /// <summary>
+        /// Highest number of pages the caller may hold at once while working through a batch.
+        /// Held pages cannot be evicted, so the cache decides how many it can spare.
+        /// </summary>
+        public int MaxHeldPages => stateManager.MaxHeldPages;
+
+        /// <summary>
+        /// Rents the page only when it is already cached, so a caller can hold pages it is
+        /// certain to read without paying a read for the ones that are not there.
+        /// </summary>
+        public bool TryGetCachedValue(in long key, out V? value)
+        {
+            var modLookup = key % _lookupTable.Length;
+            var entry = Volatile.Read(ref _lookupTable[modLookup]);
+            if (entry != null && entry.Key == key && entry.TryRentValue())
+            {
+                m_lookupTableHits++;
+                value = (V)entry.Value;
+                return true;
+            }
+            // Lock-free probe, a miss never waits behind a commit.
+            if (stateManager.TryRentCachedValue(key, out var cached))
+            {
+                // Publish under the lock like every other slot write.
+                // A delete racing this leaves a stale slot the fast path already tolerates.
+                lock (m_lock)
+                {
+                    Volatile.Write(ref _lookupTable[modLookup], cached);
+                }
+                value = (V)cached.Value;
+                return true;
+            }
+            value = default;
+            return false;
+        }
+
+        internal override Task PauseCommitsAsync()
+        {
+            return m_commitEvictLock.WaitAsync();
+        }
+
+        internal override void ResumeCommits()
+        {
+            m_commitEvictLock.Release();
+        }
+
         public async ValueTask Commit()
         {
             Debug.Assert(options.ValueSerializer != null);
 
+            // Eviction serializes pages through the same value serializer this commit uses.
+            // Exclusion is per client: the eviction pass declines this client's batch while
+            // the commit holds the lock, other clients' commits and evictions proceed freely.
+            await m_commitEvictLock.WaitAsync();
+            EnterCommitForDebug();
+            try
+            {
+                await CommitInternal();
+            }
+            finally
+            {
+                ExitCommitForDebug();
+                m_commitEvictLock.Release();
+            }
+        }
+
+        [Conditional("DEBUG")]
+        private void EnterCommitForDebug()
+        {
+            Volatile.Write(ref m_commitInFlight, 1);
+        }
+
+        [Conditional("DEBUG")]
+        private void ExitCommitForDebug()
+        {
+            Volatile.Write(ref m_commitInFlight, 0);
+        }
+
+        [Conditional("DEBUG")]
+        private void ThrowIfCommitInFlight(string operation)
+        {
+            if (Volatile.Read(ref m_commitInFlight) == 1)
+            {
+                throw new InvalidOperationException($"{operation} on state client '{name}' while its commit is in flight, a client has one writer.");
+            }
+        }
+
+        private async ValueTask CommitInternal()
+        {
+            Debug.Assert(options.ValueSerializer != null);
+
+            // Walked without m_lock. The operator that owns this client is the only writer and
+            // it is inside its checkpoint here, recovery holds m_commitEvictLock before Reset.
             foreach (var kv in m_modified)
             {
                 if (kv.Value == -1)
@@ -179,26 +289,37 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // Remove a page from the new pages counter
                     Interlocked.Decrement(ref newPages);
 
+                    // Free before removing the version entry, as in the modified branch below.
                     m_fileCache.Free(kv.Key);
+                    m_fileCacheVersion.Remove(kv.Key, out _);
                     continue;
                 }
                 if (stateManager.TryGetValueFromCache<V>(kv.Key, out var val))
                 {
-                    // Write to persistence
-                    await session.Write(kv.Key, new SerializableObject(val, options.ValueSerializer));
+                    // Return the lookup's rent even when the write throws, a leaked rent keeps the page unevictable forever.
+                    try
+                    {
+                        // Write to persistence
+                        await session.Write(kv.Key, new SerializableObject(val, options.ValueSerializer));
 
-                    if (!useReadCache)
-                    {
-                        m_fileCache.Free(kv.Key);
+                        if (!useReadCache)
+                        {
+                            m_fileCache.Free(kv.Key);
+                        }
+                        else
+                        {
+                            // Remove it from file cache version and file cache
+                            // This is required since the data can have been modified since it was written to the cache.
+                            // Free before removing the version entry, see Evict.
+                            // The pairing keeps a surviving version entry pointing at live spill data.
+                            m_fileCache.Free(kv.Key);
+                            m_fileCacheVersion.Remove(kv.Key, out _);
+                        }
                     }
-                    else
+                    finally
                     {
-                        // Remove it from file cache version and file cache
-                        // This is required since the data can have been modified since it was written to the cache.
-                        m_fileCacheVersion.Remove(kv.Key, out _);
-                        m_fileCache.Free(kv.Key);
+                        val.Return();
                     }
-                    val.Return();
                     continue;
                 }
                 {
@@ -270,11 +391,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public void Delete(in long key)
         {
+            ThrowIfCommitInFlight(nameof(Delete));
             lock (m_lock)
             {
                 m_modified[key] = -1;
-                m_fileCacheVersion.Remove(key, out _);
+                // Free before removing the version entry, mirroring Commit (see Evict).
                 m_fileCache.Free(key);
+                m_fileCacheVersion.Remove(key, out _);
                 stateManager.DeleteFromCache(key);
             }
         }
@@ -288,32 +411,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public ValueTask<V?> GetValue(in long key)
         {
+            var modLookup = key % _lookupTable.Length;
+
+            // Lock-free fast path. The slot is one reference, the key is validated on the entry,
+            // and TryRentValue is safe against eviction. A stale slot falls through to the lock.
+            var entry = Volatile.Read(ref _lookupTable[modLookup]);
+            if (entry != null && entry.Key == key && entry.TryRentValue())
+            {
+                m_lookupTableHits++;
+                return ValueTask.FromResult<V?>((V)entry.Value);
+            }
+
             lock (m_lock)
             {
-                var modLookup = key % _lookupTable.Length;
-
-                if (_lookupTable[modLookup].Key == key)
-                {
-                    var node = _lookupTable[modLookup].Value!;
-                    lock (node)
-                    {
-                        if (!node.ValueRef.removed)
-                        {
-                            if (!node.ValueRef.value.TryRent())
-                            {
-                                throw new InvalidOperationException("Could not rent value from cache");
-                            }
-                            m_lookupTableHits++;
-                            node.ValueRef.useCount = Math.Min(node.ValueRef.useCount + 1, 5);
-                            return ValueTask.FromResult<V?>((V)_lookupTable[modLookup].Value!.ValueRef.value);
-                        }
-                    }
-                }
-
                 if (stateManager.TryGetCacheValueFromCache(key, out var cacheVal))
                 {
-                    _lookupTable[modLookup] = new CacheValue { Key = key, Value = cacheVal };
-                    return ValueTask.FromResult<V?>((V)cacheVal.ValueRef.value);
+                    Volatile.Write(ref _lookupTable[modLookup], cacheVal);
+                    return ValueTask.FromResult<V?>((V)cacheVal.Value);
                 }
                 Interlocked.Increment(ref cacheMisses);
                 // Read from temporary file storage
@@ -386,6 +500,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         options.ValueSerializer.Dispose();
                     }
+                    // The client owns the session it was created with. A supplied storage
+                    // outlives a stop, so an undisposed session would be stranded in it.
+                    session.Dispose();
                 }
 
                 disposedValue = true;
@@ -401,6 +518,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public override async ValueTask Reset(bool clearMetadata)
         {
+            ThrowIfCommitInFlight(nameof(Reset));
             lock (m_lock)
             {
                 foreach (var kv in m_modified)
@@ -410,8 +528,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 for (int i = 0; i < _lookupTable.Length; i++)
                 {
-                    _lookupTable[i].Value = default;
-                    _lookupTable[i].Key = 0;
+                    Volatile.Write(ref _lookupTable[i], null);
                 }
                 m_fileCache.FreeAll(m_modified.Keys);
                 m_modified.Clear();
@@ -433,20 +550,41 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        public void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict, bool isCleanup)
+        public bool Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+        {
+            Debug.Assert(options.ValueSerializer != null);
+            // Declined while this client's commit is in flight, the table requeues the victims
+            // and a later pass retries them, so the eviction pass never stalls behind commit I/O.
+            if (!m_commitEvictLock.Wait(0))
+            {
+                return false;
+            }
+            try
+            {
+                EvictInternal(valuesToEvict, isCleanup);
+            }
+            finally
+            {
+                m_commitEvictLock.Release();
+            }
+            return true;
+        }
+
+        private void EvictInternal(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
         {
             Debug.Assert(options.ValueSerializer != null);
             foreach (var value in valuesToEvict)
             {
-                var modLookup = value.Item1.ValueRef.key % _lookupTable.Length;
+                var entry = value.Item1;
+                var modLookup = entry.Key % _lookupTable.Length;
                 bool isModified;
-                int val;
+                long val;
                 lock (m_lock)
                 {
-                    isModified = m_modified.TryGetValue(value.Item1.ValueRef.key, out val);
-                    if (_lookupTable[modLookup].Key == value.Item1.ValueRef.key)
+                    isModified = m_modified.TryGetValue(entry.Key, out val);
+                    if (ReferenceEquals(_lookupTable[modLookup], entry))
                     {
-                        _lookupTable[modLookup] = new CacheValue { Key = -1, Value = null };
+                        Volatile.Write(ref _lookupTable[modLookup], null);
                     }
                 }
                 if (!useReadCache)
@@ -473,34 +611,45 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                 }
 
-                if (m_fileCacheVersion.TryGetValue(value.Item1.ValueRef.key, out var storedVersion) && storedVersion == val)
+                if (m_fileCacheVersion.TryGetValue(entry.Key, out var storedVersion) && storedVersion == val)
                 {
                     continue;
                 }
-                value.Item1.ValueRef.value.EnterWriteLock();
+                entry.Value.EnterWriteLock();
                 var sw = ValueStopwatch.StartNew();
                 try
                 {
-                    // Must lock the linked list value here since it can be deleted and disposed
+                    // Must lock the cache entry here since it can be deleted and disposed
                     // So we check if it is already removed from the cache, then we skip serialization
-                    lock (value.Item1)
+                    lock (entry)
                     {
-                        if (!value.Item1.ValueRef.removed)
+                        if (!entry.Removed)
                         {
-                            m_fileCache.Write(value.Item1.ValueRef.key, new SerializableObject(value.Item1.ValueRef.value, options.ValueSerializer));
+                            // Record the version entry before the spill write.
+                            // A surviving version entry then always points at live spill data,
+                            // so a read never hits freed data and throws Segment not found.
+                            m_fileCacheVersion[entry.Key] = val;
+                            try
+                            {
+                                m_fileCache.Write(entry.Key, new SerializableObject(entry.Value, options.ValueSerializer));
+                            }
+                            catch
+                            {
+                                // A failed spill write must not leave a version entry behind.
+                                m_fileCacheVersion.TryRemove(new KeyValuePair<long, long>(entry.Key, val));
+                                throw;
+                            }
                         }
                     }
                 }
                 finally
                 {
-                    value.Item1.ValueRef.value.ExitWriteLock();
+                    entry.Value.ExitWriteLock();
                 }
                 if (m_temporaryWriteMsHistogram != null)
                 {
                     m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                 }
-
-                m_fileCacheVersion[value.Item1.ValueRef.key] = val;
             }
             m_fileCache.Flush();
 
@@ -541,10 +690,5 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return session.Delete(pageId);
         }
 
-        private struct CacheValue
-        {
-            public long Key;
-            public LinkedListNode<LinkedListValue>? Value;
-        }
     }
 }
