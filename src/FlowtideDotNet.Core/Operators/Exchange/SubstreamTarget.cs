@@ -24,9 +24,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     /// <summary>
     /// Exchange target that stores events for another substream. The queue is transient (never part
-    /// of a checkpoint): a checkpoint only completes once the other substream consumed the barrier
-    /// and acked, so the queue is always ahead of the latest checkpoint. After a failure both roll
+    /// of a checkpoint): a cycle only closes once the other substream consumed the barrier and
+    /// acked, so the queue is always ahead of the latest closed cycle. After a failure both roll
     /// back to a common checkpoint and this stream regenerates the queue by replaying from it.
+    /// The durable write itself is gated on the local egresses only, the peer ack gates the cycle
+    /// closing, so a stored barrier can outlive the commit of the cycle that produced it.
     /// </summary>
     internal class SubstreamTarget : IExchangeTarget
     {

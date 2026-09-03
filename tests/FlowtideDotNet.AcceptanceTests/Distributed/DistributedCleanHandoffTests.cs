@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -54,19 +54,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         private const string JoinSql = @"
             INSERT INTO output
-            SELECT u.userkey FROM users u
-            INNER JOIN orders o ON u.userkey = o.userkey;
-            ";
-
-        /// <summary>
-        /// Two outputs, so there is more than one egress to compare.
-        /// </summary>
-        private const string TwoSinkJoinSql = @"
-            INSERT INTO output
-            SELECT u.userkey FROM users u
-            INNER JOIN orders o ON u.userkey = o.userkey;
-
-            INSERT INTO output2
             SELECT u.userkey FROM users u
             INNER JOIN orders o ON u.userkey = o.userkey;
             ";
@@ -547,68 +534,114 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Rule 3: measured at the sinks, that is what a connector stamps.
+        /// Rule 3: a paired checkpoint carries the same version on both substreams.
+        /// Asserted where the pairing happens, comparing sink sequences proves nothing,
+        /// every substream counts 1,2,3 on its own whether or not it is coordinating.
         /// </summary>
         [Fact]
-        public async Task AllEgressPointsCheckpointTheSameVersion()
+        public async Task PairedCheckpointsCarryTheSameVersionOnBothSubstreams()
         {
-            var testName = "e2e_rule3_egress";
+            var testName = "e2e_rule3_pairing";
             _generator.Generate(500);
 
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
             var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
             var hub = new LocalSubstreamCommunicationHub();
-            var egressIds = new ConcurrentDictionary<string, long>();
+            var pairings = new ConcurrentQueue<(string Stream, long Peer, long Local)>();
+            var discarded = new ConcurrentQueue<(string Stream, long Version, long Floor)>();
 
-            var egressSequences = new ConcurrentDictionary<string, ConcurrentQueue<long>>();
-
-            void RecordEgressId(string substream, string sink, long id)
+            SubstreamReadOperator.PairedCheckpointHookForTests = (streamName, peerVersion, localVersion) =>
             {
-                egressSequences.GetOrAdd($"{substream}/{sink}", _ => new ConcurrentQueue<long>()).Enqueue(id);
-            }
-
-
-            var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false, onCheckpointId: RecordEgressId, sql: TwoSinkJoinSql);
-            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false, onCheckpointId: RecordEgressId, sql: TwoSinkJoinSql);
-            await substream0.StartAsync();
-            await substream1.StartAsync();
-
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-
-            // Several cycles are needed before the sequences say anything.
-            for (int i = 0; i < 3; i++)
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    pairings.Enqueue((streamName, peerVersion, localVersion));
+                }
+            };
+            SubstreamReadOperator.CoveredPeerBarrierHookForTests = (streamName, version, floor) =>
             {
-                _generator.Generate(150);
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    discarded.Enqueue((streamName, version, floor));
+                }
+            };
+            try
+            {
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-            }
-            await AssertEgressIdsAgree(egressSequences, "while running");
+                for (int i = 0; i < 3; i++)
+                {
+                    _generator.Generate(150);
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                }
+                AssertPairedVersionsMatch(pairings, "while running");
 
-            // A handoff must not change what the sinks see, they still write to one destination.
-            await substream1.PrepareHandoffAsync();
-            await AwaitBounded(substream1.StopAsync(), "handoff stop");
-            await substream1.DisposeAsync();
-            lock (_streams)
-            {
-                _streams.Remove(substream1);
-            }
+                // A handoff must not change what a paired checkpoint carries.
+                await substream1.PrepareHandoffAsync();
+                // Tight bound, AwaitBounded would hide a reintroduced stop drain timeout.
+                var handoffStop = Stopwatch.StartNew();
+                await AwaitBounded(substream1.StopAsync(), "handoff stop");
+                handoffStop.Stop();
+                Assert.True(
+                    handoffStop.Elapsed < TimeSpan.FromSeconds(10),
+                    $"The handoff stop took {handoffStop.Elapsed}, a drain timeout is being burned.");
+                await substream1.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream1);
+                }
 
-            substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true, onCheckpointId: RecordEgressId, sql: TwoSinkJoinSql);
-            await substream1.StartAsync();
+                pairings.Clear();
+                substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+                await substream1.StartAsync();
 
-            _generator.Generate(250);
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-
-            // Keep data flowing, otherwise the sinks freeze at different ids.
-            for (int i = 0; i < 3; i++)
-            {
-                _generator.Generate(150);
+                _generator.Generate(250);
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                for (int i = 0; i < 3; i++)
+                {
+                    _generator.Generate(150);
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                }
+                AssertPairedVersionsMatch(pairings, "after the handoff");
+
+                // Green pairings alone cannot tell the leftover apart from one never arriving.
+                var leftovers = discarded.ToArray();
+                Assert.True(
+                    leftovers.Length > 0,
+                    "The returning substream never discarded a leftover peer barrier, so the pairings prove nothing about the handoff.");
+                Assert.All(leftovers, x => Assert.True(
+                    x.Version <= x.Floor,
+                    $"Discarded a peer barrier with version {x.Version} above the restore floor {x.Floor} on {x.Stream}."));
+
+                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
             }
+            finally
+            {
+                SubstreamReadOperator.PairedCheckpointHookForTests = null;
+                SubstreamReadOperator.CoveredPeerBarrierHookForTests = null;
+            }
+        }
 
-            await AssertEgressIdsAgree(egressSequences, "after the handoff");
+        /// <summary>
+        /// Every pairing must have matched the two versions, and there must be enough of them
+        /// that the substreams were really exchanging.
+        /// </summary>
+        private static void AssertPairedVersionsMatch(ConcurrentQueue<(string Stream, long Peer, long Local)> pairings, string phase)
+        {
+            var observed = pairings.ToArray();
+            Assert.True(observed.Length >= 4, $"Too few paired checkpoints {phase} to prove anything, saw {observed.Length}.");
+            Assert.True(
+                observed.Select(x => x.Stream).Distinct().Count() > 1,
+                $"Only one substream paired {phase}, the plan is not exchanging: {string.Join("; ", observed.Select(x => x.Stream).Distinct())}");
 
-            await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+            var mismatched = observed.Where(x => x.Peer != x.Local).ToList();
+            Assert.True(
+                mismatched.Count == 0,
+                $"Paired checkpoints carried different versions {phase}: {string.Join("; ", mismatched.Select(x => $"{x.Stream} peer={x.Peer} local={x.Local}"))}");
         }
 
         /// <summary>
@@ -880,31 +913,218 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Every egress checkpoints the same versions, so the whole sequences must match.
-        /// Comparing position by position proves nothing, every counter runs 1,2,3 by itself.
-        /// A substream that runs a cycle the others do not shows up as a longer sequence.
+        /// A handoff closes the peer's cycle without the departing substream consuming its
+        /// answering barrier, so that version counts rows the departing side never received.
+        /// They live only in the target queue, which is never checkpointed, so a failure while
+        /// the substream is away rolls both back onto that version and loses them.
         /// </summary>
-        private static async Task AssertEgressIdsAgree(ConcurrentDictionary<string, ConcurrentQueue<long>> sequences, string phase)
+        [Fact]
+        public async Task AFailureDuringACleanHandoffKeepsTheRowsInFlight()
         {
-            var deadline = DateTime.UtcNow.AddSeconds(20);
-            string description = string.Empty;
-            while (DateTime.UtcNow < deadline)
-            {
-                await Task.Delay(250);
-                var observed = sequences.ToArray().OrderBy(x => x.Key).Select(x => (x.Key, Ids: x.Value.ToArray())).ToList();
-                description = string.Join("; ", observed.Select(x => $"{x.Key}: {string.Join(",", x.Ids)}"));
+            await RunFailureUnderLoad("e2e_handoff_loss", HandoffFailureMode.WhilePeerIsAway);
+        }
 
-                if (observed.Count < 2 || observed.Any(x => x.Ids.Length < 3))
+        /// <summary>
+        /// Control: the same failure, no handoff at all. Green, or a red result above says
+        /// nothing more than that crashing loses data.
+        /// </summary>
+        [Fact]
+        public async Task AFailureWithoutACleanHandoffKeepsTheRowsInFlight()
+        {
+            await RunFailureUnderLoad("e2e_nohandoff_loss", HandoffFailureMode.NoHandoff);
+        }
+
+        /// <summary>
+        /// Control: the same handoff, dispose and rebuild, but the pair is let past the handoff
+        /// version before the failure. Green, so a red result above is the rollback landing on
+        /// that version and not the rebuild.
+        /// </summary>
+        [Fact]
+        public async Task AFailureAfterAHandoffHasSettledKeepsTheRowsInFlight()
+        {
+            await RunFailureUnderLoad("e2e_settled_loss", HandoffFailureMode.AfterHandoffSettled);
+        }
+
+        private enum HandoffFailureMode
+        {
+            // Fail with the peer gone, pinned on the handoff version.
+            WhilePeerIsAway,
+            // Fail with no handoff anywhere in the run.
+            NoHandoff,
+            // Hand off, bring it back, let the pair commit on before failing.
+            AfterHandoffSettled,
+        }
+
+        // How long the departing substream is held after it stops fetching from its peer.
+        private static readonly TimeSpan HandoffStrandingWindow = TimeSpan.FromSeconds(1);
+
+        private const string InjectedFailureMessage = "Injected failure for the handoff loss test";
+
+        /// <summary>
+        /// Loads continuously, optionally hands substream_1 off, then fails the substream that
+        /// stayed while its peer is away. That peer cannot commit past the handoff version
+        /// without an ack, so this is the version both roll back to.
+        /// </summary>
+        private async Task RunFailureUnderLoad(string testName, HandoffFailureMode mode)
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var commits = new ConcurrentQueue<(string Stream, long Version)>();
+            var restores = new ConcurrentQueue<(string Stream, long Version)>();
+            bool withHandoff = mode != HandoffFailureMode.NoHandoff;
+
+            Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
                 {
-                    continue;
+                    commits.Enqueue((streamName, lastVersion));
                 }
-                var first = observed[0].Ids;
-                if (observed.All(x => x.Ids.SequenceEqual(first)))
+                return Task.CompletedTask;
+            };
+            Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = (streamName, version) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
                 {
-                    return;
+                    restores.Enqueue((streamName, version));
                 }
+            };
+            try
+            {
+
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                // The stranded rows are whatever is produced while the peer is not consuming, so
+                // the load has to run right through the handoff.
+                using var loadDone = new CancellationTokenSource();
+                var load = Task.Run(async () =>
+                {
+                    while (!loadDone.IsCancellationRequested)
+                    {
+                        _generator.Generate(25);
+                        await Task.Delay(25);
+                    }
+                });
+
+                if (withHandoff)
+                {
+                    // Unsubscribes, so from here the peer produces for a substream that no longer
+                    // fetches. Held open so the stranded span covers many source polls: the poll
+                    // interval is 50 ms and the span is about that, so it is otherwise a coin flip.
+                    await substream1.PrepareHandoffAsync();
+                    await Task.Delay(HandoffStrandingWindow);
+                    await AwaitBounded(substream1.StopAsync(), "handoff stop");
+                    await substream1.DisposeAsync();
+                    lock (_streams)
+                    {
+                        _streams.Remove(substream1);
+                    }
+                }
+                else
+                {
+                    // Same shape as the handoff run, so only the handoff differs between them.
+                    await Task.Delay(HandoffStrandingWindow);
+                }
+
+                int StayingCommits() => commits.Count(x => x.Stream.Contains("substream_0", StringComparison.Ordinal));
+                var commitsAtHandoff = StayingCommits();
+
+                if (mode == HandoffFailureMode.AfterHandoffSettled)
+                {
+                    // Back first, and past the handoff version, so the rollback cannot land on it.
+                    substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+                    await substream1.StartAsync();
+                    await WaitForCommitsToAdvance(commits, "substream_0", 3);
+                }
+
+                var commitsAtFailure = StayingCommits();
+
+                await substream0.InjectFailureForTests(new CrashException(InjectedFailureMessage));
+
+                if (mode == HandoffFailureMode.WhilePeerIsAway)
+                {
+                    substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+                    await substream1.StartAsync();
+                }
+
+                loadDone.Cancel();
+                await load;
+
+                // Nothing below means anything unless the injected failure is what landed.
+                var failureDeadline = DateTime.UtcNow.AddSeconds(30);
+                while (!failures.Any(f => f.Exception != null && f.Exception.ToString().Contains(InjectedFailureMessage, StringComparison.Ordinal))
+                    && DateTime.UtcNow < failureDeadline)
+                {
+                    await Task.Delay(100);
+                }
+                Assert.True(
+                    failures.Any(f => f.Exception != null && f.Exception.ToString().Contains(InjectedFailureMessage, StringComparison.Ordinal)),
+                    $"The injected failure was never reported, so nothing rolled back and the run proves nothing. Reported: {string.Join(" | ", failures.Where(f => f.Exception != null).Select(f => f.Substream + ": " + f.Exception!.Message))}");
+
+                // The substream that failed has to have actually rolled back. Only it takes the
+                // failure path, a rebuilt peer restores through its own start instead.
+                var restoreDeadline = DateTime.UtcNow.AddSeconds(30);
+                while (!restores.Any(r => r.Stream.Contains("substream_0", StringComparison.Ordinal)) && DateTime.UtcNow < restoreDeadline)
+                {
+                    await Task.Delay(100);
+                }
+                var restored = restores.ToArray();
+                Assert.True(
+                    restored.Any(r => r.Stream.Contains("substream_0", StringComparison.Ordinal)),
+                    $"The staying substream never rolled back, so nothing was restored and the run proves nothing. Saw: {string.Join(", ", restored.Select(r => r.Stream + "=" + r.Version))}");
+
+                if (mode == HandoffFailureMode.WhilePeerIsAway)
+                {
+                    // Where the rollback lands is the whole point. With its partner gone the
+                    // peer cannot commit, so it is pinned on the handoff version; a commit here
+                    // means the run never entered the state the loss needs.
+                    Assert.True(
+                        commitsAtFailure == commitsAtHandoff,
+                        $"The staying substream committed {commitsAtFailure - commitsAtHandoff} times while its peer was away, so the rollback did not land on the handoff version and this run proves nothing.");
+                }
+                else if (mode == HandoffFailureMode.AfterHandoffSettled)
+                {
+                    // The counterpart: this one only means something past the handoff version.
+                    Assert.True(
+                        commitsAtFailure > commitsAtHandoff,
+                        "The staying substream never committed after the handoff, so the rollback landed on the handoff version and this is not the settled case.");
+                }
+
+                // Every generated row has to survive the rollback, the versions alone would agree
+                // either way. A shortfall here is the stranded rows never coming back.
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
             }
-            Assert.Fail($"Egress points did not checkpoint the same versions {phase}: {description}");
+            finally
+            {
+                Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = null;
+                Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// Waits for a substream to commit a number of further cycles, so a test can put the
+        /// pair past a version before it does anything else.
+        /// </summary>
+        private static async Task WaitForCommitsToAdvance(ConcurrentQueue<(string Stream, long Version)> commits, string substreamName, int count)
+        {
+            int Seen() => commits.Count(x => x.Stream.Contains(substreamName, StringComparison.Ordinal));
+            var target = Seen() + count;
+            var deadline = DateTime.UtcNow.AddSeconds(30);
+            while (Seen() < target && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(50);
+            }
+            Assert.True(Seen() >= target, $"{substreamName} did not commit {count} more cycles within the deadline.");
         }
 
         private void DumpLogBuffers(string phase)
@@ -924,8 +1144,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             ConcurrentBag<(string Substream, Exception? Exception)> failures,
             bool announceCleanHandoff,
             int egressCrashOnCheckpointCount = 0,
-            Action<string, string, long>? onCheckpointId = null,
-            string? sql = null,
             int substreamCount = 2)
         {
             var connectorManager = new ConnectorManager();
@@ -934,12 +1152,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 "*",
                 data => latestData[substreamName] = data,
                 egressCrashOnCheckpointCount,
-                _ => { },
-                onCheckpointId: onCheckpointId == null ? null : (sinkName, id) => onCheckpointId(substreamName, sinkName, id)));
+                _ => { }));
 
             var logProvider = _logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
             var builder = new FlowtideBuilder($"{testName.Length}_{testName}_{substreamName}")
-                .AddPlan(CreateDistributedPlan(sql ?? JoinSql, substreamCount), false)
+                .AddPlan(CreateDistributedPlan(JoinSql, substreamCount), false)
                 .WithStateOptions(CreateStateOptions(testName, substreamName, fileProviders))
                 .AddConnectorManager(connectorManager);
             builder.WithLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
