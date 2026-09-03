@@ -427,6 +427,31 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
+        /// A rent that fails because the entry is going away is a miss, the caller reloads.
+        /// </summary>
+        [Fact]
+        public async Task RentFailureCountsAsAMissOnBothPaths()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
+            var handler = new TestEvictHandler();
+            table.Add(0, new TestCacheObject(0), handler);
+            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+
+            // Eviction flags the entry before it leaves the dictionary, readers can see this state.
+            Volatile.Write(ref entry!.Removed, true);
+
+            Assert.False(table.TryGetCacheValue(0, out var read));
+            Assert.Null(read);
+            Assert.Equal(0, table.ReadCacheHitsForTests);
+            Assert.Equal(1, table.ReadCacheMissesForTests);
+
+            Assert.False(table.TryGetValue(0, out var committed));
+            Assert.Null(committed);
+            Assert.Equal(0, table.CommitCacheHitsForTests);
+            Assert.Equal(1, table.CommitCacheMissesForTests);
+        }
+
+        /// <summary>
         /// Disposing the table must complete callers parked on the eviction gate.
         /// </summary>
         [Fact]

@@ -396,16 +396,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public bool TryGetCacheValue(long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
-            // Lock-free read, a failed rent means it is being evicted.
-            if (m_cache.TryGetValue(key, out entry))
+            // Lock-free read. A failed rent means it is being evicted, the caller reloads, a miss.
+            if (m_cache.TryGetValue(key, out entry) && entry.TryRentValue())
             {
-                if (entry.TryRentValue())
-                {
-                    Interlocked.Increment(ref m_readCacheHits);
-                    return true;
-                }
-                return false;
+                Interlocked.Increment(ref m_readCacheHits);
+                return true;
             }
+            entry = null;
             Interlocked.Increment(ref m_readCacheMisses);
             return false;
         }
@@ -430,19 +427,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         public bool TryGetValue(long key, out ICacheObject? cacheObject)
         {
-            if (m_cache.TryGetValue(key, out var entry))
+            if (m_cache.TryGetValue(key, out var entry) && entry.TryRentValueWithoutAccess())
             {
-                if (entry.TryRentValueWithoutAccess())
-                {
-                    cacheObject = entry.Value;
-                    Interlocked.Increment(ref m_commitCacheHits);
-                    return true;
-                }
-                cacheObject = default;
-                return false;
+                cacheObject = entry.Value;
+                Interlocked.Increment(ref m_commitCacheHits);
+                return true;
             }
-            Interlocked.Increment(ref m_commitCacheMisses);
             cacheObject = default;
+            Interlocked.Increment(ref m_commitCacheMisses);
             return false;
         }
 
