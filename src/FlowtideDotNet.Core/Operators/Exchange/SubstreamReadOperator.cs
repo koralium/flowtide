@@ -85,9 +85,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // True after the first local checkpoint barrier since the last restore, before it an
         // unpairable barrier means the stream is still starting up, not an epoch mismatch.
         private volatile bool _localCheckpointSeen;
-        // During a handoff drain no peer events arrive to pair local checkpoints with, so
-        // they are self-forwarded like a stop checkpoint.
-        private volatile bool _handoffDraining;
         // Cancels the escape when the epoch ends.
         private CancellationTokenSource? _stopAlignmentCancel;
         // True while events forwarded after the last checkpoint barrier await a covering
@@ -175,7 +172,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _peerStopConsumedCommitted = false;
                 _swallowNextInitWatermarks = false;
                 _localCheckpointSeen = false;
-                _handoffDraining = false;
                 _uncoveredForwards = false;
                 // Cycles up to here are committed, a barrier answering one is a leftover.
                 // Only a clean handoff leaves one behind, every other restore either restarts
@@ -458,6 +454,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // means the barrier streams have drifted apart.
                         Logger.LogWarning("Substream read {name} paired a peer barrier with version {peerVersion} against a local checkpoint with version {localVersion}, the substreams are no longer on the same checkpoint version.", Name, checkpointEvent.CheckpointVersion, inStreamCheckpoint.CheckpointVersion);
                     }
+                    if (inStreamCheckpoint is StopStreamCheckpoint)
+                    {
+                        // The stop barrier paired against a peer barrier, so everything the peer
+                        // sent before it is consumed and inside this stop checkpoint. That is the
+                        // clean cut, whether or not the peer is stopping too. Stop fetching here,
+                        // anything after it belongs to the substream that takes over.
+                        _peerStopConsumed = true;
+                        _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
+                        Logger.LogDebug("Substream read {name} drained up to the other substreams barrier with version {version} and stops fetching", Name, checkpointEvent.CheckpointVersion);
+                    }
                     PairedCheckpointHookForTests?.Invoke(StreamName, checkpointEvent.CheckpointVersion, inStreamCheckpoint.CheckpointVersion);
                     await OnCheckpoint(inStreamCheckpoint.CheckpointTime);
                     // Forward this streams own checkpoint event, the other substreams
@@ -675,55 +681,24 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// First handoff drain phase: stop taking in new peer events. Already-fetched events
-        /// stay in the channel and drain through the pipeline, and local checkpoints are
-        /// self-forwarded from here since no peer event will arrive to pair them.
+        /// First handoff drain phase: nothing to quiesce here. The peer is not an input that can
+        /// be closed off, it keeps running and keeps sending, so cutting it here would strand
+        /// everything it sends until the stop - and the stop would then have to attest a
+        /// consumption that never happened. The stop barrier is the cut instead, see
+        /// DoLockingEvent.
         /// </summary>
         public override void BeginHandoffDrain()
         {
-            _handoffDraining = true;
-            _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
-            // Nudge a checkpoint stored before the drain to forward behind the buffered events.
-            bool pendingCheckpoint;
-            lock (_lock)
-            {
-                pendingCheckpoint = _currentCheckpoint != null;
-            }
-            var channel = _channel;
-            if (pendingCheckpoint && channel != null)
-            {
-                _ = channel.Writer.WriteAsync(s_localStopCheckpointMarker).AsTask()
-                    .ContinueWith(t => Logger.LogWarning(t.Exception, "Substream read {name} could not queue the stop checkpoint marker.", Name), TaskContinuationOptions.OnlyOnFaulted);
-            }
         }
 
         /// <summary>
-        /// Second handoff drain phase: waits for the fetch loop to go idle and the channel to
-        /// drain, then marks the peer consumption finished so the following stop completes
-        /// after one committed cycle, like a consumed peer stop barrier would. The peer never
-        /// sends one here, it keeps running, so the attestation is asserted and not earned:
-        /// the peer answers the stop barrier after this and that barrier is left in its queue,
-        /// discarded against the restore floor when this substream returns.
+        /// Second handoff drain phase: nothing to wait for. Draining the peer before the stop
+        /// would only cut it at an arbitrary point; the stop barrier pairs against the peer's
+        /// answering barrier and that pairing consumes everything ahead of it.
         /// </summary>
-        public override async Task CompleteHandoffDrainAsync()
+        public override Task CompleteHandoffDrainAsync()
         {
-            await _communicationPoint.WaitForFetchLoopIdleAsync(HandoffDrainTimeout);
-
-            var channel = _channel;
-            if (channel != null)
-            {
-                var deadline = Environment.TickCount64 + (long)HandoffDrainTimeout.TotalMilliseconds;
-                while (channel.Reader.Count > 0)
-                {
-                    if (Environment.TickCount64 >= deadline)
-                    {
-                        throw new TimeoutException($"The read channel of {Name} did not drain within {HandoffDrainTimeout} during the handoff drain.");
-                    }
-                    await Task.Delay(10);
-                }
-            }
-
-            _peerStopConsumed = true;
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -826,22 +801,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 if (checkpointEvent is StopStreamCheckpoint)
                 {
-                    // The barrier seals the outbox, so align it first.
+                    // The barrier seals the outbox, so align it first. A handoff aligns like
+                    // any other stop: the peer answers this barrier with one of its own, and
+                    // pairing against it is what makes everything it sent ours.
                     // Nothing is coming when the subscription is already gone.
-                    if (_peerStopConsumed || _handoffDraining || !_communicationPoint.IsSubscribed(_exchangeReferenceRelation.ExchangeTargetId))
+                    if (_peerStopConsumed || !_communicationPoint.IsSubscribed(_exchangeReferenceRelation.ExchangeTargetId))
                     {
                         SelfForwardStopCheckpoint();
                     }
                     else
                     {
-                        // Bounded, a peer that is not stopping never answers.
+                        // Bounded, a peer that never answers must not hold the stop.
                         ScheduleStopAlignmentEscape(checkpointEvent);
                     }
-                }
-                else if (_handoffDraining)
-                {
-                    // The subscription is gone, nothing pairs this.
-                    SelfForwardStopCheckpoint();
                 }
             }
             lock (_lock)

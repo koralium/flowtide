@@ -608,12 +608,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 }
                 AssertPairedVersionsMatch(pairings, "after the handoff");
 
-                // Green pairings alone cannot tell the leftover apart from one never arriving.
-                var leftovers = discarded.ToArray();
-                Assert.True(
-                    leftovers.Length > 0,
-                    "The returning substream never discarded a leftover peer barrier, so the pairings prove nothing about the handoff.");
-                Assert.All(leftovers, x => Assert.True(
+                // The stop barrier now pairs against the peer's answering barrier, so a handoff
+                // leaves nothing behind and there is normally nothing to discard. The guard only
+                // still fires on the escape path, where the peer never answered - if it does fire
+                // it must only ever drop barriers the restore already covers.
+                Assert.All(discarded.ToArray(), x => Assert.True(
                     x.Version <= x.Floor,
                     $"Discarded a peer barrier with version {x.Version} above the restore floor {x.Floor} on {x.Stream}."));
 
