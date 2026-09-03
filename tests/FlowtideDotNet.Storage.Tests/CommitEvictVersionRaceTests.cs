@@ -307,7 +307,7 @@ namespace FlowtideDotNet.Storage.Tests
             // Freeze the eviction right after its spill write and start a commit against it.
             // The per-client lock must hold the commit back until the eviction finishes, a
             // commit running through the window would share the non-thread-safe serializer.
-            var gate = new ManualResetEventSlim(false);
+            using var gate = new ManualResetEventSlim(false);
             var fileCache = factory.Created.Single();
             fileCache.ArmGateAfterWrite(gate);
             var cleanup = Task.Run(() => manager.CacheTable.ForceCleanup());
@@ -361,7 +361,7 @@ namespace FlowtideDotNet.Storage.Tests
             // Freeze the eviction inside its spill write and start a commit against it.
             // The per-client lock holds the commit back until the eviction finishes, so the
             // eviction's version bookkeeping is complete before the commit clears it.
-            var gate = new ManualResetEventSlim(false);
+            using var gate = new ManualResetEventSlim(false);
             var fileCache = factory.Created.Single();
             fileCache.ArmGate(gate);
             var cleanup = Task.Run(() => manager.CacheTable.ForceCleanup());
@@ -578,7 +578,7 @@ namespace FlowtideDotNet.Storage.Tests
 
             // Freeze the commit inside its persistent page write, off the test thread since the
             // gate blocks synchronously, then start a recovery against it.
-            var gate = new ManualResetEventSlim(false);
+            using var gate = new ManualResetEventSlim(false);
             var session = persist.Sessions.Single();
             session.ArmGate(gate);
             var commit = Task.Run(() => client.Commit().AsTask());

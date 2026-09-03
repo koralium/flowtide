@@ -93,6 +93,7 @@ namespace FlowtideDotNet.Benchmarks
 
         private readonly object _plainLock = new object();
         private readonly object _clientLock = new object();
+        private Meter _meter = null!;
         private S3FifoTableSync _table = null!;
         private S3FifoCacheEntry _entry = null!;
         private PairSlot[] _pairSlots = null!;
@@ -106,7 +107,9 @@ namespace FlowtideDotNet.Benchmarks
         [GlobalSetup]
         public void Setup()
         {
-            _table = new S3FifoTableSync(new CacheTableOptions("", NullLogger.Instance, new Meter(Guid.NewGuid().ToString()), new NoMemoryStats())
+            // The table does not own the meter, so it is disposed here.
+            _meter = new Meter(Guid.NewGuid().ToString());
+            _table = new S3FifoTableSync(new CacheTableOptions("", NullLogger.Instance, _meter, new NoMemoryStats())
             {
                 MaxSize = 100_000,
                 MinSize = 0
@@ -151,6 +154,7 @@ namespace FlowtideDotNet.Benchmarks
         public void Cleanup()
         {
             _table.Dispose();
+            _meter.Dispose();
         }
 
         [Benchmark(Baseline = true)]

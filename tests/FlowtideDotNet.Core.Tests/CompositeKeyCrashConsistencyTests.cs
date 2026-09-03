@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Core.Tests
             }
 
             using var crashGate = new SemaphoreSlim(1);
-            var stop = new CancellationTokenSource();
+            using var stop = new CancellationTokenSource();
             var evictor = Task.Run(async () =>
             {
                 while (!stop.IsCancellationRequested)
