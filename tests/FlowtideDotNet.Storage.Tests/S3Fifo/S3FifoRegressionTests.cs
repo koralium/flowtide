@@ -330,6 +330,103 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
+        /// Aging is paced by inserts, so it must not wait for a pass that saw a hit.
+        /// </summary>
+        [Fact]
+        public async Task AgingRunsOnPassesWithoutHits()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100, minSize: 0);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 71; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            // Two spaced reads, the next pass promotes key 0 into main.
+            Assert.True(table.TryRead(0, out var first));
+            first!.Return();
+            table.Add(71, new TestCacheObject(71), handler);
+            table.Add(72, new TestCacheObject(72), handler);
+            Assert.True(table.TryRead(0, out var second));
+            second!.Return();
+            await table.ForceCleanup();
+
+            Assert.True(table.TryPeekEntryForTests(0, out var promoted));
+            Assert.Equal(S3FifoQueueLocation.Main, promoted!.Location);
+            var frequencyAfterPromotion = promoted.Frequency;
+            Assert.Equal(70, table.Count);
+
+            // Three turnovers of inserts and no reads, the count held at the threshold.
+            var key = 1000L;
+            for (var pass = 0; pass < 6; pass++)
+            {
+                for (var i = 0; i < 35; i++)
+                {
+                    table.Add(key, new TestCacheObject(key), handler);
+                    table.Delete(key);
+                    key++;
+                }
+                await table.ForceCleanup();
+            }
+
+            // One sweep per turnover of a one page main, three sweeps in all.
+            Assert.Equal(2, frequencyAfterPromotion);
+            Assert.Equal(3, table.AgingStepsForTests);
+            Assert.Equal(0, promoted.Frequency);
+        }
+
+        /// <summary>
+        /// Ghost evidence must move the split on the pass that follows it, hits or not.
+        /// </summary>
+        [Fact]
+        public async Task AdaptationAppliesOnPassesWithoutHits()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(1000, adaptiveSmallQueueSize: true);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 1000; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            await table.ForceCleanup();
+            Assert.Equal(700, table.Count);
+
+            // Make room, then bring back evicted keys. Those are ghost hits, none is a read.
+            for (var i = 300; i < 400; i++)
+            {
+                table.Delete(i);
+            }
+            for (var i = 0; i < 100; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+            var before = table.SmallTargetPermilleForTests;
+            Assert.Equal(700, table.Count);
+
+            await table.ForceCleanup();
+
+            Assert.True(table.SmallTargetPermilleForTests > before,
+                $"the split stayed at {before} after 100 ghost hits on a pass without reads");
+        }
+
+        /// <summary>
+        /// The drain holds small at its share below the threshold, a write only phase included.
+        /// </summary>
+        [Fact]
+        public async Task EarlyDrainRunsOnPassesWithoutHits()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100, drainSmallQueueEarly: true);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 60; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+
+            await table.ForceCleanup();
+
+            // Small target is 10% of the cache and nothing was ever read.
+            Assert.Equal(10, table.Count);
+        }
+
+        /// <summary>
         /// Disposing the table must complete callers parked on the eviction gate.
         /// </summary>
         [Fact]

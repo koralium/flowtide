@@ -114,14 +114,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         /// <summary>
         /// Applies the movement earned since the last pass, capped on the net.
-        /// Must be called under the queue lock.
+        /// Must be called under the queue lock, only with the adaptive split on.
         /// </summary>
         private void AdaptSmallTarget()
         {
-            if (!tableOptions.AdaptiveSmallQueueSize)
-            {
-                return;
-            }
             var net = m_pendingGrowPermille - m_pendingShrinkPermille;
             m_pendingGrowPermille = 0;
             m_pendingShrinkPermille = 0;

@@ -642,7 +642,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // A hit keeps it off the idle deep clean.
+            // A hit, the pass runs the same without one.
             Assert.True(table.TryGetValue(0, out var hit));
             hit!.Return();
 
@@ -742,7 +742,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            // A hit keeps it off the idle deep clean.
+            // A hit, the pass runs the same without one.
             Assert.True(table.TryGetValue(0, out var hit));
             hit!.Return();
 
@@ -1098,7 +1098,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             table.Clear();
 
-            // Activity so the next pass reaches the adaptation step.
+            // A hit, adaptation runs on every pass either way.
             for (var i = 0; i < 10; i++)
             {
                 table.Add(5000 + i, new TestCacheObject(i), handler);

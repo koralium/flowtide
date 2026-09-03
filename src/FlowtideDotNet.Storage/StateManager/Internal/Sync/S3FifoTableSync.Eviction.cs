@@ -118,10 +118,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private async Task Cleanup()
         {
             var currentCount = Volatile.Read(ref m_count);
-            if (!TryPlanEviction(currentCount, out var toBeRemovedCount, out var isCleanup))
+
+            // Insert paced, so they run before the pass is judged idle on hits.
+            if (tableOptions.AdaptiveSmallQueueSize)
             {
-                return;
+                lock (m_queueLock)
+                {
+                    AdaptSmallTarget();
+                }
             }
+            AgeMainQueue(currentCount);
+
+            PlanEviction(currentCount, out var toBeRemovedCount, out var isCleanup);
             try
             {
                 await CleanupCore(currentCount, toBeRemovedCount, isCleanup);
@@ -150,15 +158,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private async Task CleanupCore(int currentCount, int toBeRemovedCount, bool isCleanup)
         {
-            // Move the split at most one step per pass.
-            lock (m_queueLock)
-            {
-                AdaptSmallTarget();
-            }
-
-            // Age main whether or not this pass evicts.
-            AgeMainQueue(currentCount);
-
             var smallQueueOverflow = 0;
             if (toBeRemovedCount <= 0)
             {
@@ -262,9 +261,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// <summary>
         /// Decides how much this pass evicts.
         /// Covers the idle deep clean and the memory driven resize.
-        /// False when the pass has nothing left to do.
+        /// Idle on hits plans nothing, the drain below the threshold still runs.
         /// </summary>
-        private bool TryPlanEviction(int currentCount, out int toBeRemovedCount, out bool isCleanup)
+        private void PlanEviction(int currentCount, out int toBeRemovedCount, out bool isCleanup)
         {
             int cleanupStartLocal = cleanupStart;
             isCleanup = false;
@@ -290,9 +289,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             CollectIfPagesFreed();
                             m_sameCacheHitsCount = 0;
                         }
-                        CompactQueuesIfNeeded();
                         toBeRemovedCount = 0;
-                        return false;
+                        return;
                     }
                 }
                 else
@@ -336,8 +334,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                 }
             }
-
-            return true;
         }
 
         /// <summary>
