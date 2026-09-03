@@ -190,6 +190,12 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             return false;
         }
 
+        /// <summary>
+        /// One meter for every test table. With an empty stream name a table registers no
+        /// instruments on it, so sharing is safe and there is nothing to dispose per table.
+        /// </summary>
+        private static readonly Meter s_meter = new Meter("FlowtideDotNet.Storage.Tests.S3Fifo");
+
         public static S3FifoTableSync CreateRunningTable(
             int maxSize,
             int minSize = 0,
@@ -198,7 +204,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             long maxMemoryUsageInBytes = -1,
             IMemoryAllocationStats? memoryStats = null)
         {
-            return new S3FifoTableSync(new CacheTableOptions("", NullLogger.Instance, new Meter(Guid.NewGuid().ToString()), memoryStats ?? new ZeroMemoryStats())
+            return new S3FifoTableSync(new CacheTableOptions("", NullLogger.Instance, s_meter, memoryStats ?? new ZeroMemoryStats())
             {
                 MaxSize = maxSize,
                 MinSize = minSize,

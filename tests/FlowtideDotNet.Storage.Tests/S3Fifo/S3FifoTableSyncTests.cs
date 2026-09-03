@@ -1483,8 +1483,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
             var handler = new TestEvictHandler();
 
-            var gateEntered = new SemaphoreSlim(0);
-            var gateRelease = new ManualResetEventSlim(false);
+            using var gateEntered = new SemaphoreSlim(0);
+            using var gateRelease = new ManualResetEventSlim(false);
 
             var objects = new TestCacheObject[10];
             for (var i = 0; i < 10; i++)

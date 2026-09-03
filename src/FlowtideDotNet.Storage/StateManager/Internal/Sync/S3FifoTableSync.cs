@@ -386,10 +386,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         }
                     }
                 }
-                // Wait for the entry lock with the queue lock dropped.
-                lock (entry)
-                {
-                }
+                // Wait for the entry lock with the queue lock dropped, then retry.
+                Monitor.Enter(entry);
+                Monitor.Exit(entry);
                 Thread.Yield();
             }
         }

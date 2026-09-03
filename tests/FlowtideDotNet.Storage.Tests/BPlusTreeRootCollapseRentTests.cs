@@ -46,8 +46,7 @@ namespace FlowtideDotNet.Storage.Tests
             where TKeyContainer : IKeyContainer<K>
             where TValueContainer : IValueContainer<V>
         {
-            var root = await tree.m_stateClient.GetValue(tree.m_stateClient.Metadata!.Root) as InternalNode<K, V, TKeyContainer>;
-            Assert.NotNull(root);
+            var root = Assert.IsType<InternalNode<K, V, TKeyContainer>>(await tree.m_stateClient.GetValue(tree.m_stateClient.Metadata!.Root));
             Assert.Equal(2, root.children.Count);
             root.Return();
             Assert.Equal(1, root.RentCount);
