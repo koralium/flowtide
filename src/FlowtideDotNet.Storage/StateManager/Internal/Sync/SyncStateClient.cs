@@ -45,6 +45,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// Never disposed, a commit still in flight during teardown must be able to release it.
         /// </summary>
         private readonly SemaphoreSlim m_commitEvictLock = new SemaphoreSlim(1, 1);
+
+        /// <summary>
+        /// Debug tripwire for the single writer contract. A commit walks m_modified without m_lock,
+        /// so a write from another thread during it would corrupt the checkpoint silently.
+        /// </summary>
+        private int m_commitInFlight;
         private readonly FlowtideDotNet.Storage.FileCache.IFileCache m_fileCache;
         private readonly ConcurrentDictionary<long, long> m_fileCacheVersion;
 
@@ -151,6 +157,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public bool AddOrUpdate(in long key, V value)
         {
+            ThrowIfCommitInFlight(nameof(AddOrUpdate));
             lock (m_lock)
             {
                 m_modified[key] = ++m_writeSequence;
@@ -233,13 +240,36 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             // Exclusion is per client: the eviction pass declines this client's batch while
             // the commit holds the lock, other clients' commits and evictions proceed freely.
             await m_commitEvictLock.WaitAsync();
+            EnterCommitForDebug();
             try
             {
                 await CommitInternal();
             }
             finally
             {
+                ExitCommitForDebug();
                 m_commitEvictLock.Release();
+            }
+        }
+
+        [Conditional("DEBUG")]
+        private void EnterCommitForDebug()
+        {
+            Volatile.Write(ref m_commitInFlight, 1);
+        }
+
+        [Conditional("DEBUG")]
+        private void ExitCommitForDebug()
+        {
+            Volatile.Write(ref m_commitInFlight, 0);
+        }
+
+        [Conditional("DEBUG")]
+        private void ThrowIfCommitInFlight(string operation)
+        {
+            if (Volatile.Read(ref m_commitInFlight) == 1)
+            {
+                throw new InvalidOperationException($"{operation} on state client '{name}' while its commit is in flight, a client has one writer.");
             }
         }
 
@@ -247,6 +277,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             Debug.Assert(options.ValueSerializer != null);
 
+            // Walked without m_lock. The operator that owns this client is the only writer and
+            // it is inside its checkpoint here, recovery holds m_commitEvictLock before Reset.
             foreach (var kv in m_modified)
             {
                 if (kv.Value == -1)
@@ -359,6 +391,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public void Delete(in long key)
         {
+            ThrowIfCommitInFlight(nameof(Delete));
             lock (m_lock)
             {
                 m_modified[key] = -1;
@@ -485,6 +518,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public override async ValueTask Reset(bool clearMetadata)
         {
+            ThrowIfCommitInFlight(nameof(Reset));
             lock (m_lock)
             {
                 foreach (var kv in m_modified)
