@@ -102,8 +102,8 @@ namespace FlowtideDotNet.Storage.Tests
             // Stop the built-in cleanup task so this test drives eviction through a single
             // evictor thread. Production has one background evictor, two would be unrealistic.
             await stateManager.CacheTable.StopCleanupTask();
-            var crashGate = new SemaphoreSlim(1);
-            var stop = new CancellationTokenSource();
+            using var crashGate = new SemaphoreSlim(1);
+            using var stop = new CancellationTokenSource();
             int transientEvictorErrors = 0;
             var evictor = Task.Run(async () =>
             {

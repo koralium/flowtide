@@ -209,7 +209,9 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         public async Task MemoryAdaptiveResizeUpdatesTheWindowInBothDirections()
         {
             var stats = new FixedMemoryStats();
-            using var table = new S3FifoTableSync(new CacheTableOptions("", NullLogger.Instance, new Meter(Guid.NewGuid().ToString()), stats)
+            // Declared first, so it is disposed after the table that uses it.
+            using var meter = new Meter(Guid.NewGuid().ToString());
+            using var table = new S3FifoTableSync(new CacheTableOptions("", NullLogger.Instance, meter, stats)
             {
                 MaxSize = 1000,
                 MinSize = 0,

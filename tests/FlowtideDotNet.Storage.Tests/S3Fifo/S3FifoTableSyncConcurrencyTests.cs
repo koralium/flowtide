@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             };
             var allObjects = new ConcurrentQueue<TestCacheObject>();
             var failures = new ConcurrentQueue<Exception>();
-            var stop = new CancellationTokenSource(StormDuration);
+            using var stop = new CancellationTokenSource(StormDuration);
 
             Func<Task> Owner(int ownerIndex) => async () =>
             {
@@ -185,7 +185,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             };
             var objectsByKey = new TestCacheObject[keyCount];
             var failures = new ConcurrentQueue<Exception>();
-            var stop = new CancellationTokenSource(StormDuration);
+            using var stop = new CancellationTokenSource(StormDuration);
 
             for (var key = 0; key < keyCount; key++)
             {
@@ -283,7 +283,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var handler = new TestEvictHandler();
             var allObjects = new ConcurrentQueue<TestCacheObject>();
             var failures = new ConcurrentQueue<Exception>();
-            var stop = new CancellationTokenSource(StormDuration);
+            using var stop = new CancellationTokenSource(StormDuration);
             long churnedKeys = 0;
 
             Func<Task> Owner(int ownerIndex) => () =>
@@ -368,7 +368,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             using var table = S3FifoTestHelpers.CreateRunningTable(maxSize: 32);
             var failures = new ConcurrentQueue<Exception>();
             var allObjects = new ConcurrentQueue<TestCacheObject>();
-            var stop = new CancellationTokenSource(StormDuration);
+            using var stop = new CancellationTokenSource(StormDuration);
 
             var handler = new TestEvictHandler();
             handler.OnEvict = (values, _) =>
@@ -461,7 +461,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var handler = new TestEvictHandler();
             var allObjects = new ConcurrentQueue<TestCacheObject>();
             var failures = new ConcurrentQueue<Exception>();
-            var stop = new CancellationTokenSource(StormDuration);
+            using var stop = new CancellationTokenSource(StormDuration);
 
             Func<Task> Owner(int ownerIndex) => () =>
             {
