@@ -536,27 +536,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// Completes when the fetch loop is idle. Used by the handoff drain: once all readers
-        /// unsubscribed the loop exits after its in-flight fetch, taking no more peer events.
-        /// </summary>
-        internal async Task WaitForFetchLoopIdleAsync(TimeSpan timeout)
-        {
-            var deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
-            while (Environment.TickCount64 < deadline)
-            {
-                lock (_fetchDataLock)
-                {
-                    if (_fetchDataTask == null)
-                    {
-                        return;
-                    }
-                }
-                await Task.Delay(10);
-            }
-            throw new TimeoutException($"The fetch loop for substream {substreamName} did not go idle within {timeout} during the handoff drain.");
-        }
-
-        /// <summary>
         /// Fetches events from multiple exchange targets.
         /// The max event count is distributed as equally as possible across the different targets
         /// to fetch data from all of them if possible.

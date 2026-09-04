@@ -36,8 +36,6 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             // reach the grains.
             FlowtideDotNet.Base.Engine.Internal.StateMachine.FailureStreamState.RecoveryRestartDelay = TimeSpan.FromMilliseconds(50);
             FlowtideDotNet.Core.Operators.Exchange.SubstreamCommunicationPoint.NotStartedRetrySliceMs = 50;
-            // Handoff drain must survive parallel-load starvation.
-            FlowtideDotNet.Core.Operators.Exchange.SubstreamReadOperator.HandoffDrainTimeout = TimeSpan.FromSeconds(30);
 
             var builder = new TestClusterBuilder(siloCount);
             if (durableStreamState)

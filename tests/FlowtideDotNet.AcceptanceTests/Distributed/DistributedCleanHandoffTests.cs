@@ -608,13 +608,13 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 }
                 AssertPairedVersionsMatch(pairings, "after the handoff");
 
-                // The stop barrier now pairs against the peer's answering barrier, so a handoff
-                // leaves nothing behind and there is normally nothing to discard. The guard only
-                // still fires on the escape path, where the peer never answered - if it does fire
-                // it must only ever drop barriers the restore already covers.
-                Assert.All(discarded.ToArray(), x => Assert.True(
-                    x.Version <= x.Floor,
-                    $"Discarded a peer barrier with version {x.Version} above the restore floor {x.Floor} on {x.Stream}."));
+                // The stop barrier pairs against the peer's answering barrier, so a clean handoff
+                // must leave nothing behind at all. A discard here means it stranded a barrier
+                // again and the restore floor is covering for it.
+                var leftovers = discarded.ToArray();
+                Assert.True(
+                    leftovers.Length == 0,
+                    $"The handoff stranded peer barriers instead of draining them: {string.Join("; ", leftovers.Select(x => $"{x.Stream} version={x.Version} floor={x.Floor}"))}");
 
                 await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
             }

@@ -59,9 +59,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // A handoff leaves one answering barrier behind, more means the peer is really behind.
         private const int MaxCoveredPeerBarrierDiscards = 8;
 
-        // Handoff drain patience; raised in tests.
-        internal static TimeSpan HandoffDrainTimeout = TimeSpan.FromSeconds(10);
-
         private readonly SubstreamCommunicationPoint _communicationPoint;
         private readonly SubstreamExchangeReferenceRelation _exchangeReferenceRelation;
         private readonly object _lock = new object();
@@ -74,8 +71,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private int _pendingCheckpointDoneSignals;
         private Channel<IStreamEvent>? _channel;
         private IObjectState<SubstreamReadState>? _state;
-        // Set when the other substreams stop barrier has been consumed, the stream may
-        // first finish stopping when the consumption is part of a committed checkpoint.
+        // Set when the stop barrier paired against a peer barrier, so the peer's events are
+        // drained. The stream may first finish stopping once that pairing is committed.
         private volatile bool _peerStopConsumed;
         private volatile bool _peerStopConsumedCommitted;
         // A returning peer's restarted pipeline sends one init watermarks event that must be
@@ -127,9 +124,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         internal IMemoryAllocator ReceiveMemoryAllocator => MemoryAllocator;
 
         /// <summary>
-        /// True once this operator has consumed the other substreams stop barrier and committed a
-        /// checkpoint covering it. The stopping stream runs stop cycles until then, bounded by a
-        /// drain timeout in case the other substream never stops.
+        /// True once the stop barrier paired against a peer barrier and that cycle committed.
+        /// The stopping stream runs stop cycles until then, bounded by the alignment escape in
+        /// case the peer never answers.
         /// </summary>
         public override bool ReadyToStop => _peerStopConsumedCommitted;
 
@@ -555,6 +552,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <summary>
         /// Forwards the parked stop barrier.
         /// </summary>
+        /// <summary>
+        /// Forwards without the peers barrier if it never arrives.
+        /// </summary>
         private void SelfForwardStopCheckpoint()
         {
             var channel = _channel;
@@ -565,9 +565,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        /// <summary>
-        /// Forwards without the peers barrier if it never arrives.
-        /// </summary>
         /// <summary>
         /// Half the streams drain timeout, so the escape always fires before it.
         /// </summary>
@@ -641,11 +638,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// True once this operator has consumed the peer's clean-handoff stop barrier. The
-        /// consumption need not be committed - its cycle can only complete with the returning
-        /// peer's acks, so requiring the commit here would deadlock the handoff; a failure
-        /// before it falls back to normal recovery. Version safety is checked by the
-        /// communication point against the peer's acked commit versions.
+        /// True once this operator drained the peer up to one of its barriers. The consumption
+        /// need not be committed - its cycle can only complete with the returning peer's acks,
+        /// so requiring the commit here would deadlock the handoff; a failure before it falls
+        /// back to normal recovery. Version safety is checked by the communication point
+        /// against the peer's acked commit versions.
         /// </summary>
         internal bool HasCleanPeerStop => _peerStopConsumed;
 
