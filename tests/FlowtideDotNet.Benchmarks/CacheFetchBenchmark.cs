@@ -189,15 +189,14 @@ namespace FlowtideDotNet.Benchmarks
         {
             // Same dictionary lookup, but the removed-check + rent handoff and the
             // frequency bump run without the entry lock.
-            if (_table.TryPeekEntryForTests(Key, out var entry))
+            if (_table.TryPeekEntryForTests(Key, out var entry) &&
+                !Volatile.Read(ref entry!.Removed) &&
+                entry.Value.TryRent())
             {
-                if (!Volatile.Read(ref entry!.Removed) && entry.Value.TryRent())
-                {
-                    BumpFrequency(entry);
-                    Interlocked.Increment(ref _hits);
-                    entry.Value.Return();
-                    return true;
-                }
+                BumpFrequency(entry);
+                Interlocked.Increment(ref _hits);
+                entry.Value.Return();
+                return true;
             }
             return false;
         }
