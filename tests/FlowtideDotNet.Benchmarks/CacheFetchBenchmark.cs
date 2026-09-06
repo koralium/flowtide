@@ -238,14 +238,14 @@ namespace FlowtideDotNet.Benchmarks
         public bool FastPath_Production()
         {
             var entry = Volatile.Read(ref _refSlots[Key & (_refSlots.Length - 1)]);
-            if (entry != null && entry.Key == Key)
+            if (entry != null &&
+                entry.Key == Key &&
+                !Volatile.Read(ref entry.Removed) &&
+                entry.Value.TryRent())
             {
-                if (!Volatile.Read(ref entry.Removed) && entry.Value.TryRent())
-                {
-                    BumpFrequency(entry);
-                    entry.Value.Return();
-                    return true;
-                }
+                BumpFrequency(entry);
+                entry.Value.Return();
+                return true;
             }
             return false;
         }
