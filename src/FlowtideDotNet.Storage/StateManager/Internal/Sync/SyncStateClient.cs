@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// Slots are single references read atomically, the key is validated on the entry.
         /// Writes happen under m_lock, the GetValue fast path reads lock-free.
         /// </summary>
-        private S3FifoCacheEntry?[] _lookupTable;
+        private readonly S3FifoCacheEntry?[] _lookupTable;
 
         /// <summary>
         /// Value of how many pages have changed since last commit.
