@@ -498,7 +498,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
                 // Check that metadata exist, also that the checkpoint version is larger than 0
                 // If zero we revert back to an empty state
-                if (m_persistentStorage.TryGetValue(1, out var metadataBytes) && (!checkpointVersion.HasValue || (checkpointVersion.HasValue && checkpointVersion.Value > 0)))
+                if (m_persistentStorage.TryGetValue(1, out var metadataBytes) && (!checkpointVersion.HasValue || checkpointVersion.Value > 0))
                 {
                     // Never fall through, the else branch resets the stream.
                     var metadata = metadataBytes ?? throw new InvalidOperationException("Metadata page was found but empty.");
