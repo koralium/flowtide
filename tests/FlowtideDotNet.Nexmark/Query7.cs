@@ -17,7 +17,6 @@ namespace FlowtideDotNet.Nexmark
 {
     [EventCountDiagnoser]
     [CacheHitRateDiagnoser]
-    [SimpleJob(launchCount: 1, warmupCount: 1, iterationCount: 1, invocationCount: 1)]
     public class Query7 : QueryBase
     {
         [Benchmark]

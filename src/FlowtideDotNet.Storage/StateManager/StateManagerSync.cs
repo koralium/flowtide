@@ -228,27 +228,6 @@ namespace FlowtideDotNet.Storage.StateManager
             m_cacheTable.RegisterExternalHitCounter(hitCounter);
         }
 
-        /// <summary>
-        /// Pauses the background eviction task so recovery does not race an eviction.
-        /// Must be paired with ResumeEviction in a finally block.
-        /// </summary>
-        internal Task PauseEvictionAsync()
-        {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.PauseEvictionAsync();
-        }
-
-        internal void ResumeEviction()
-        {
-            // A commit in flight during teardown resumes after Dispose already dropped the table.
-            var cacheTable = m_cacheTable;
-            if (cacheTable == null)
-            {
-                return;
-            }
-            cacheTable.ResumeEviction();
-        }
-
         internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? value)
         {
             Debug.Assert(m_cacheTable != null);
@@ -477,23 +456,31 @@ namespace FlowtideDotNet.Storage.StateManager
 
             // Pause eviction for the whole reset. An in-flight eviction could otherwise write a
             // stale page after the reset and route later reads to it.
-            await PauseEvictionAsync();
+            // The instance is captured, the finally must resume the table it paused.
+            var cacheTable = m_cacheTable;
+            await cacheTable.PauseEvictionAsync();
             // Drain in-flight client commits and hold new ones out for the whole reset.
             // A detached parallel-mode checkpoint commit is not joined by the engine's
             // block-completion wait, and one overlapping the revert would persist
             // aborted-epoch pages into the recovered store.
             var pausedClients = new List<StateClient>();
+            // A snapshot, a teardown that gave up waiting can clear the dictionary meanwhile.
+            List<StateClient> stateClients;
+            lock (m_lock)
+            {
+                stateClients = _stateClients.Values.ToList();
+            }
             try
             {
-                foreach (var stateClient in _stateClients)
+                foreach (var stateClient in stateClients)
                 {
-                    await stateClient.Value.PauseCommitsAsync();
-                    pausedClients.Add(stateClient.Value);
+                    await stateClient.PauseCommitsAsync();
+                    pausedClients.Add(stateClient);
                 }
 
                 // Returns the cache rents, the clients are reset below so no lookup handle
                 // keeps serving a cleared entry.
-                m_cacheTable.ClearAndReturnRents();
+                cacheTable.ClearAndReturnRents();
                 await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
 
                 // Check that metadata exist, also that the checkpoint version is larger than 0
@@ -526,9 +513,9 @@ namespace FlowtideDotNet.Storage.StateManager
                 }
 
                 // Reset cached values in the state clients
-                foreach (var stateClient in _stateClients)
+                foreach (var stateClient in stateClients)
                 {
-                    await stateClient.Value.Reset(newMetadata);
+                    await stateClient.Reset(newMetadata);
                 }
             }
             finally
@@ -537,7 +524,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     pausedClient.ResumeCommits();
                 }
-                ResumeEviction();
+                cacheTable.ResumeEviction();
             }
 
             logger.LogDebug("State manager initialized, requested version: {requestedVersion}, recovered version: {recoveredVersion}, new metadata: {newMetadata}, reset {stateClientCount} state clients", checkpointVersion, LastCompletedCheckpointVersion, newMetadata, _stateClients.Count);

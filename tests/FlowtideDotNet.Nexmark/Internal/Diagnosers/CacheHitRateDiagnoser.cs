@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
     /// </summary>
     internal class CacheHitRateDiagnoser : IInProcessDiagnoser
     {
-        private readonly Dictionary<BenchmarkCase, (long ReadHits, long ReadMisses, long CommitHits, long CommitMisses, double AvgSize, long MaxSize, long Promotions, double AvgMain, long Refills)> results = [];
+        private readonly Dictionary<BenchmarkCase, (long ReadHits, long ReadMisses, long CommitHits, long CommitMisses, double AvgSize, long MaxSize, long Promotions, double AvgMain)> results = [];
 
         public IEnumerable<string> Ids => [nameof(CacheHitRateDiagnoser)];
 
@@ -58,8 +58,7 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
                 double.Parse(parts[4], CultureInfo.InvariantCulture),
                 long.Parse(parts[5], CultureInfo.InvariantCulture),
                 long.Parse(parts[6], CultureInfo.InvariantCulture),
-                double.Parse(parts[7], CultureInfo.InvariantCulture),
-                long.Parse(parts[8], CultureInfo.InvariantCulture)));
+                double.Parse(parts[7], CultureInfo.InvariantCulture)));
         }
 
         public void DisplayResults(ILogger logger)
@@ -110,8 +109,6 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
                     // Shows whether the promotion machinery participates at all.
                     yield return new Metric(new PromotionsMetricDescriptor(), counts.Promotions);
                     yield return new Metric(new AvgMainPagesMetricDescriptor(), counts.AvgMain);
-                    // Only nonzero when the long usage credit design is active.
-                    yield return new Metric(new RefillsMetricDescriptor(), counts.Refills);
                 }
             }
         }
@@ -219,19 +216,6 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
                 => true;
         }
 
-        internal class RefillsMetricDescriptor() : IMetricDescriptor
-        {
-            public string Id => "CacheLongRefills";
-            public string DisplayName => "Refills";
-            public string Legend => "Long usage credit refills in the main queue scan";
-            public string NumberFormat => "#0";
-            public UnitType UnitType => UnitType.Dimensionless;
-            public string Unit => "Count";
-            public bool TheGreaterTheBetter => false;
-            public int PriorityInCategory => 8;
-            public bool GetIsAvailable(Metric metric)
-                => true;
-        }
     }
 
     public class CacheHitRateHandler : IInProcessDiagnoserHandler
@@ -280,7 +264,6 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
                     instrument.Name == "flowtide_cache_commit_misses" ||
                     instrument.Name == "flowtide_state_client_lookup_hits" ||
                     instrument.Name == "flowtide_s3fifo_small_queue_promotions" ||
-                    instrument.Name == "flowtide_s3fifo_long_usage_refills" ||
                     instrument.Name == "flowtide_s3fifo_main_queue_size" ||
                     instrument.Name == "flowtide_lru_table_size")
                 {
@@ -339,7 +322,6 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
             long commitHits = 0;
             long commitMisses = 0;
             long promotions = 0;
-            long refills = 0;
             foreach (var kv in _counterValues)
             {
                 switch (kv.Key.Name)
@@ -360,16 +342,13 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
                     case "flowtide_s3fifo_small_queue_promotions":
                         promotions += kv.Value;
                         break;
-                    case "flowtide_s3fifo_long_usage_refills":
-                        refills += kv.Value;
-                        break;
                 }
             }
             var samples = Volatile.Read(ref _sizeSamples);
             var avgSize = samples > 0 ? (double)Volatile.Read(ref _sizeSum) / samples : 0;
             var mainSamples = Volatile.Read(ref _mainSizeSamples);
             var avgMain = mainSamples > 0 ? (double)Volatile.Read(ref _mainSizeSum) / mainSamples : 0;
-            return string.Create(CultureInfo.InvariantCulture, $"{readHits}|{readMisses}|{commitHits}|{commitMisses}|{avgSize:0.##}|{Volatile.Read(ref _sizeMax)}|{promotions}|{avgMain:0.##}|{refills}");
+            return string.Create(CultureInfo.InvariantCulture, $"{readHits}|{readMisses}|{commitHits}|{commitMisses}|{avgSize:0.##}|{Volatile.Read(ref _sizeMax)}|{promotions}|{avgMain:0.##}");
         }
     }
 }

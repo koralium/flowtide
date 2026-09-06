@@ -169,6 +169,8 @@ namespace FlowtideDotNet.Core.Tests
 
             using var crashGate = new SemaphoreSlim(1);
             using var stop = new CancellationTokenSource();
+            int evictorErrors = 0;
+            Exception? lastEvictorError = null;
             var evictor = Task.Run(async () =>
             {
                 while (!stop.IsCancellationRequested)
@@ -178,7 +180,12 @@ namespace FlowtideDotNet.Core.Tests
                     {
                         await stateManager.CacheTable.ForceCleanup();
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        // Transient segment errors are a separate concern, keep the evictor alive.
+                        Interlocked.Increment(ref evictorErrors);
+                        lastEvictorError = e;
+                    }
                     finally
                     {
                         crashGate.Release();
@@ -257,6 +264,10 @@ namespace FlowtideDotNet.Core.Tests
 
             stop.Cancel();
             await evictor;
+
+            // The evictor must have done its job, otherwise this only tested an in-memory tree.
+            Assert.True(stateManager.CacheTable.SmallQueueEvictionsForTests > 0,
+                $"no page was ever evicted, {evictorErrors} evictor errors, last: {lastEvictorError}");
 
             await stateManager.InitializeAsync();
             tree = await GetTree();

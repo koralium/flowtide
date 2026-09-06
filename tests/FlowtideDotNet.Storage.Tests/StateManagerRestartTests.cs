@@ -25,9 +25,18 @@ using System.Diagnostics.Metrics;
 namespace FlowtideDotNet.Storage.Tests
 {
     /// <summary>
+    /// Runs after the parallel collections, one test here reads the process wide allocator.
+    /// </summary>
+    [CollectionDefinition("NonParallel", DisableParallelization = true)]
+    public class NonParallelCollection
+    {
+    }
+
+    /// <summary>
     /// The engine keeps one state manager per stream and disposes it on stop, then calls
     /// InitializeAsync again if the stream starts back up.
     /// </summary>
+    [Collection("NonParallel")]
     public class StateManagerRestartTests
     {
         private static StateManagerSync<object> CreateStateManager(string name)

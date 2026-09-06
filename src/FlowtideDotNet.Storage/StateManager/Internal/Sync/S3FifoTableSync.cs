@@ -166,7 +166,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             _memoryAllocationStats = tableOptions.MemoryAllocationStats;
             cleanupStart = (int)Math.Ceiling(maxSize * 0.7);
             m_correlationClock.SetWindowSize(CorrelationWindowSize());
-            _fullLock = new SemaphoreSlim(1);
+            // Max one, an unbalanced release throws instead of silently doubling the gate.
+            _fullLock = new SemaphoreSlim(1, 1);
             m_cleanupTokenSource = new CancellationTokenSource();
             this.tableOptions = tableOptions;
             StartCleanupTask();
@@ -361,7 +362,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             }
                             // Write Removed before Return so lock-free readers see it once a rent fails.
                             Volatile.Write(ref entry.Removed, true);
-                            if (m_cache.TryRemove(key, out _))
+                            // By pair, a re-added entry under the same key stays.
+                            if (m_cache.TryRemove(new KeyValuePair<long, S3FifoCacheEntry>(key, entry)))
                             {
                                 // Flagged before removal so a racing re-add takes a new rent.
                                 entry.Value.RemovedFromCache = true;
@@ -474,11 +476,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             catch (ObjectDisposedException)
             {
-                // Disposed while parked, the stream is tearing down.
+                // Entered after Dispose, the token sources are gone.
             }
             catch (OperationCanceledException)
             {
-                // Cleanup cancelled, disposal is in progress.
+                // Dispose cancelled the parked wait, the stream is tearing down.
             }
             logger.LruTableNoLongerFull(m_streamName);
         }
@@ -486,7 +488,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// <summary>
         /// Blocks the eviction task until ResumeEviction, used by recovery.
         /// Takes the cleanup task's lock, so it drains any in-flight eviction.
-        /// Cancelled by Dispose, a parked pause must not outlive the table.
+        /// Dispose cancels a parked pause, and throws for one requested after it.
         /// </summary>
         internal Task PauseEvictionAsync()
         {
@@ -495,14 +497,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         internal void ResumeEviction()
         {
-            try
-            {
-                _fullLock.Release();
-            }
-            catch (ObjectDisposedException)
-            {
-                // Dispose won the race, nothing left to release.
-            }
+            _fullLock.Release();
         }
 
         /// <summary>
@@ -665,9 +660,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         Volatile.Write(ref entry.Removed, true);
                         // Flagged before removal so a racing re-add takes a new rent.
                         entry.Value.RemovedFromCache = true;
-                        m_cache.TryRemove(entry.Key, out _);
+                        m_cache.TryRemove(new KeyValuePair<long, S3FifoCacheEntry>(entry.Key, entry));
                         entry.Value.Return();
                         Interlocked.Decrement(ref m_count);
+                        // A recovery drain frees the whole cache, the next idle collect must see it.
+                        Interlocked.Increment(ref m_pagesFreedSinceCollect);
                     }
                 }
             }

@@ -240,7 +240,13 @@ namespace FlowtideDotNet.Storage.Tests
 
             public void FreeAll(IEnumerable<long> keys) => _inner.FreeAll(keys);
 
-            public void Flush() => _inner.Flush();
+            public int FlushCount;
+
+            public void Flush()
+            {
+                Interlocked.Increment(ref FlushCount);
+                _inner.Flush();
+            }
 
             public void ClearTemporaryAllocations() => _inner.ClearTemporaryAllocations();
 
@@ -326,6 +332,54 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.Equal(1, after!.Value);
             after.Return();
             manager.Dispose();
+        }
+
+        /// <summary>
+        /// Flush is an fsync. A batch that spilled nothing must not pay for one.
+        /// </summary>
+        [Fact]
+        public async Task EvictBatchThatWritesNothingDoesNotFlush()
+        {
+            // Supplied storage is not owned by the manager, so it is disposed here, after it.
+            using var persist = new FileCachePersistentStorage(new FileCacheOptions()
+            {
+                DirectoryPath = "./evictNoWriteNoFlush"
+            });
+            var factory = new GatedFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions()
+            {
+                DirectoryPath = "./evictNoWriteNoFlushTmp"
+            }));
+            var options = new StateManagerOptions()
+            {
+                PersistentStorage = persist,
+                CachePageCount = 0,
+                MinCachePageCount = 0,
+                FileCacheFactory = factory
+            };
+            using var manager = new StateManagerSync<StateManagerMetadata>(options, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmpNoFlush"), "test", GlobalMemoryManager.Instance);
+            await manager.InitializeAsync();
+            await manager.CacheTable.StopCleanupTask();
+
+            var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
+                "client",
+                new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
+                GlobalMemoryManager.Instance);
+            var fileCache = factory.Created.Single();
+
+            // A dirty page spills, so this batch flushes.
+            var key = client.GetNewPageId();
+            client.AddOrUpdate(key, new TestPage(1));
+            await manager.CacheTable.ForceCleanup();
+            Assert.Equal(1, fileCache.FlushCount);
+
+            // Committed, so the reloaded page is clean and the next batch spills nothing.
+            await client.Commit();
+            var reloaded = await client.GetValue(key);
+            Assert.NotNull(reloaded);
+            reloaded!.Return();
+            await manager.CacheTable.ForceCleanup();
+
+            Assert.Equal(1, fileCache.FlushCount);
         }
 
         [Fact]
@@ -593,5 +647,53 @@ namespace FlowtideDotNet.Storage.Tests
             await recovery;
             manager.Dispose();
         }
+
+#if DEBUG
+        /// <summary>
+        /// The debug tripwire: a write during this client's commit is a contract violation.
+        /// </summary>
+        [Fact]
+        public async Task WriteDuringCommitTripsTheDebugGuard()
+        {
+            var persist = new GatedPersistentStorage(new FileCachePersistentStorage(new FileCacheOptions()
+            {
+                DirectoryPath = "./commitWriteTripwire"
+            }));
+            var options = new StateManagerOptions()
+            {
+                PersistentStorage = persist,
+                CachePageCount = 0,
+                MinCachePageCount = 0
+            };
+            using var manager = new StateManagerSync<StateManagerMetadata>(options, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmpTripwire"), "test", GlobalMemoryManager.Instance);
+            await manager.InitializeAsync();
+            await manager.CacheTable.StopCleanupTask();
+
+            var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
+                "client",
+                new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
+                GlobalMemoryManager.Instance);
+
+            var key = client.GetNewPageId();
+            client.AddOrUpdate(key, new TestPage(1));
+
+            // Freeze the commit inside its page write, then write from the test thread.
+            using var gate = new ManualResetEventSlim(false);
+            var session = persist.Sessions.Single();
+            session.ArmGate(gate);
+            var commit = Task.Run(() => client.Commit().AsTask());
+            await session.WaitForBlockedWriterAsync();
+
+            var other = client.GetNewPageId();
+            Assert.Throws<InvalidOperationException>(() => client.AddOrUpdate(other, new TestPage(2)));
+            Assert.Throws<InvalidOperationException>(() => client.Delete(key));
+
+            gate.Set();
+            await commit;
+
+            // Released with the commit, a later write is fine.
+            client.AddOrUpdate(other, new TestPage(2));
+        }
+#endif
     }
 }

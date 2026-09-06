@@ -73,6 +73,10 @@ namespace FlowtideDotNet.DependencyInjection.Internal
 
         public int? MaxPageCount { get; set; }
 
+        public bool DrainSmallQueueEarly { get; set; } = true;
+
+        public bool AdaptiveSmallQueueSize { get; set; } = true;
+
         internal StateManagerOptions Build(IServiceProvider serviceProvider)
         {
             var persistentStorage = serviceProvider.GetKeyedService<IPersistentStorage>(name);
@@ -100,7 +104,9 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 MaxProcessMemory = MaxProcessMemory ?? -1,
                 MinCachePageCount = MinPageCount,
                 FileCacheFactory = fileCacheFactory,
-                CachePageCount = MaxPageCount ?? 1000
+                CachePageCount = MaxPageCount ?? 1000,
+                DrainSmallQueueEarly = DrainSmallQueueEarly,
+                AdaptiveSmallQueueSize = AdaptiveSmallQueueSize
             };
         }
 

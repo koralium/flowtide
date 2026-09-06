@@ -105,6 +105,7 @@ namespace FlowtideDotNet.Storage.Tests
             using var crashGate = new SemaphoreSlim(1);
             using var stop = new CancellationTokenSource();
             int transientEvictorErrors = 0;
+            Exception? lastEvictorError = null;
             var evictor = Task.Run(async () =>
             {
                 while (!stop.IsCancellationRequested)
@@ -114,12 +115,13 @@ namespace FlowtideDotNet.Storage.Tests
                     {
                         await stateManager.CacheTable.ForceCleanup();
                     }
-                    catch
+                    catch (Exception e)
                     {
                         // A real background cleanup task restarts on fault rather than dying.
                         // Transient file-cache segment errors are a separate concern, keep going
                         // so this test isolates crash-consistency corruption.
                         Interlocked.Increment(ref transientEvictorErrors);
+                        lastEvictorError = e;
                     }
                     finally
                     {
@@ -212,6 +214,10 @@ namespace FlowtideDotNet.Storage.Tests
 
             stop.Cancel();
             await evictor;
+
+            // The evictor must have done its job, otherwise this only tested an in-memory tree.
+            Assert.True(stateManager.CacheTable.SmallQueueEvictionsForTests > 0,
+                $"no page was ever evicted, {transientEvictorErrors} evictor errors, last: {lastEvictorError}");
 
             // Final crash + verify.
             await stateManager.InitializeAsync();

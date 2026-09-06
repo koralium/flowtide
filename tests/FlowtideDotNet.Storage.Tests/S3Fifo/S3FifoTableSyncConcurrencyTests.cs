@@ -85,7 +85,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 {
                     for (var key = ownerIndex; key < keyCount; key += ownerCount)
                     {
-                        if (table.TryGetValue(key, out var cacheObject))
+                        if (table.TryRead(key, out var cacheObject))
                         {
                             if (((TestCacheObject)cacheObject!).Disposed)
                             {
@@ -115,7 +115,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                     var key = random.Next(keyCount);
                     if (random.Next(2) == 0)
                     {
-                        if (table.TryGetValue(key, out var cacheObject))
+                        if (table.TryRead(key, out var cacheObject))
                         {
                             if (((TestCacheObject)cacheObject!).Disposed)
                             {
@@ -203,7 +203,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 {
                     for (var key = ownerIndex; key < keyCount; key += ownerCount)
                     {
-                        if (!table.TryGetValue(key, out var cacheObject))
+                        if (!table.TryRead(key, out var cacheObject))
                         {
                             // A held page must never be evicted out of the cache.
                             throw new InvalidOperationException($"Held page {key} disappeared from the cache");
@@ -224,7 +224,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 while (!stop.IsCancellationRequested)
                 {
                     var key = random.Next(keyCount);
-                    if (table.TryGetValue(key, out var cacheObject))
+                    if (table.TryRead(key, out var cacheObject))
                     {
                         if (((TestCacheObject)cacheObject!).Disposed)
                         {
@@ -309,7 +309,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 while (!stop.IsCancellationRequested)
                 {
                     var key = random.Next(ownerCount * keysPerOwner);
-                    if (table.TryGetValue(key, out var cacheObject))
+                    if (table.TryRead(key, out var cacheObject))
                     {
                         if (((TestCacheObject)cacheObject!).Disposed)
                         {
@@ -389,7 +389,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 {
                     for (var key = 0; key < keyCount; key++)
                     {
-                        if (table.TryGetValue(key, out var cacheObject))
+                        if (table.TryRead(key, out var cacheObject))
                         {
                             cacheObject!.Return();
                         }
@@ -412,7 +412,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 while (!stop.IsCancellationRequested)
                 {
                     var key = random.Next(keyCount);
-                    if (table.TryGetValue(key, out var cacheObject))
+                    if (table.TryRead(key, out var cacheObject))
                     {
                         if (((TestCacheObject)cacheObject!).Disposed)
                         {
@@ -538,7 +538,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 var iteration = 0L;
                 while (true)
                 {
-                    if (table.TryGetValue(key, out var cacheObject))
+                    if (table.TryRead(key, out var cacheObject))
                     {
                         if (((TestCacheObject)cacheObject!).Disposed)
                         {

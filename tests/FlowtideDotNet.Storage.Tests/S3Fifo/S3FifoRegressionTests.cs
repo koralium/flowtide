@@ -452,6 +452,122 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         }
 
         /// <summary>
+        /// A stale victim must not take a re-added entry under the same key with it.
+        /// </summary>
+        [Fact]
+        public async Task ClearDuringRemovalDoesNotEvictAReAddedEntry()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
+            var handler = new TestEvictHandler();
+            using var gateEntered = new SemaphoreSlim(0);
+            using var gateRelease = new ManualResetEventSlim(false);
+
+            var first = new TestCacheObject(0);
+            table.Add(0, first, handler);
+            for (var i = 1; i < 10; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+
+            // Holds the removal phase open on key 0, after selection dequeued it.
+            first.OnTryReclaimForEviction = () =>
+            {
+                gateEntered.Release();
+                gateRelease.Wait();
+            };
+            var cleanup = Task.Run(() => table.ForceCleanup());
+            Assert.True(await gateEntered.WaitAsync(5000));
+
+            // The key comes back as a fresh entry while the old one is still a victim.
+            table.Clear();
+            var second = new TestCacheObject(0);
+            table.Add(0, second, handler);
+
+            gateRelease.Set();
+            await cleanup;
+
+            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.Same(second, entry!.Value);
+            Assert.Equal(1, table.Count);
+        }
+
+        /// <summary>
+        /// A pass that throws past selection must leave its victims queued, not stranded.
+        /// </summary>
+        [Fact]
+        public async Task PassThatThrowsMidRemovalRequeuesTheRest()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
+            var handler = new TestEvictHandler();
+            var objects = new TestCacheObject[10];
+            for (var i = 0; i < 10; i++)
+            {
+                objects[i] = new TestCacheObject(i);
+                table.Add(i, objects[i], handler);
+            }
+
+            // Three victims, the second one blows up inside the removal phase.
+            objects[1].OnTryReclaimForEviction = () => throw new InvalidOperationException("reclaim failed");
+            await Assert.ThrowsAsync<InvalidOperationException>(() => table.ForceCleanup());
+
+            // Key 0 went and keeps its ghost record, the rest must still be reachable by a later pass.
+            Assert.Equal(9, table.Count);
+            Assert.True(table.IsInGhostForTests(0));
+            var counts = table.GetQueueCountsForTests();
+            Assert.Equal(table.Count, counts.SmallCount - counts.SmallStale + counts.MainCount - counts.MainStale);
+
+            objects[1].OnTryReclaimForEviction = null;
+            await table.ForceCleanup();
+            Assert.Equal(7, table.Count);
+            counts = table.GetQueueCountsForTests();
+            Assert.Equal(table.Count, counts.SmallCount - counts.SmallStale + counts.MainCount - counts.MainStale);
+        }
+
+        /// <summary>
+        /// A recovery drain frees every page, the next idle collect must hand that memory back.
+        /// </summary>
+        [Fact]
+        public async Task RecoveryDrainFeedsTheCollectGate()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(100, minSize: 10);
+            var handler = new TestEvictHandler();
+            for (var i = 0; i < 20; i++)
+            {
+                table.Add(i, new TestCacheObject(i), handler);
+            }
+
+            table.ClearAndReturnRents();
+            Assert.Equal(0, table.Count);
+
+            // Idle and empty for the whole threshold, one collect for the drained pages.
+            for (var i = 0; i < 1001; i++)
+            {
+                await table.ForceCleanup();
+            }
+            Assert.Equal(1, table.CollectCallsForTests);
+
+            // Nothing freed since, so the re-armed check stays quiet.
+            for (var i = 0; i < 1001; i++)
+            {
+                await table.ForceCleanup();
+            }
+            Assert.Equal(1, table.CollectCallsForTests);
+        }
+
+        /// <summary>
+        /// The gate has one permit, an extra resume is a bug and must not go quiet.
+        /// </summary>
+        [Fact]
+        public async Task ResumingAnUnpausedGateThrows()
+        {
+            using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
+            await table.PauseEvictionAsync();
+            table.ResumeEviction();
+
+            Assert.Throws<SemaphoreFullException>(() => table.ResumeEviction());
+        }
+
+        /// <summary>
         /// Disposing the table must complete callers parked on the eviction gate.
         /// </summary>
         [Fact]

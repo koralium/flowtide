@@ -25,15 +25,23 @@ namespace FlowtideDotNet.Storage.Tests
 {
     public class BPlusTreeRootCollapseRentTests
     {
-        private static async Task<StateManagerSync<object>> CreateStateManager(string name)
+        /// <summary>
+        /// The caller owns the storage, a supplied one is not disposed by the manager.
+        /// </summary>
+        private static FileCachePersistentStorage CreateStorage(string name)
+        {
+            return new FileCachePersistentStorage(new FileCacheOptions()
+            {
+                DirectoryPath = $"./data/temp/{name}"
+            });
+        }
+
+        private static async Task<StateManagerSync<object>> CreateStateManager(string name, FileCachePersistentStorage storage)
         {
             var stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = 1000000,
-                PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions()
-                {
-                    DirectoryPath = $"./data/temp/{name}"
-                })
+                PersistentStorage = storage
             }, NullLoggerFactory.Instance, new Meter(name), name, GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
             return stateManager;
@@ -59,7 +67,8 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task RootCollapseReturnsTheFetchRent()
         {
-            using var stateManager = await CreateStateManager("root_collapse_rent");
+            using var storage = CreateStorage("root_collapse_rent");
+            using var stateManager = await CreateStateManager("root_collapse_rent", storage);
             var tree = (BPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>)await stateManager.GetOrCreateClient("node1")
                 .GetOrCreateTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>("tree",
                 new BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
@@ -96,7 +105,8 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task RootCollapseReturnsTheFetchRentByteBased()
         {
-            using var stateManager = await CreateStateManager("root_collapse_rent_bytes");
+            using var storage = CreateStorage("root_collapse_rent_bytes");
+            using var stateManager = await CreateStateManager("root_collapse_rent_bytes", storage);
             var tree = (BPlusTree<KeyValuePair<long, long>, string, ListKeyContainerWithSize, ListValueContainer<string>>)await stateManager.GetOrCreateClient("node1")
                 .GetOrCreateTree<KeyValuePair<long, long>, string, ListKeyContainerWithSize, ListValueContainer<string>>("tree",
                 new BPlusTreeOptions<KeyValuePair<long, long>, string, ListKeyContainerWithSize, ListValueContainer<string>>()

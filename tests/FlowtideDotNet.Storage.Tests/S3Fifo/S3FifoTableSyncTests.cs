@@ -781,12 +781,14 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             // The drain takes it instead of paying from small.
             for (var round = 0; round < 40 && !handler.EvictedKeys.Contains(0); round++)
             {
-                for (var i = 0; i < 100; i++)
+                for (var i = 0; i < 40; i++)
                 {
                     table.Add(1000 + (round * 100) + i, new TestCacheObject(0), handler);
                 }
                 Assert.True(table.TryRead(1000 + (round * 100), out var keepAlive));
                 keepAlive!.Return();
+                // Under the threshold, so only the drain can evict on this pass.
+                Assert.True(table.Count <= 70, $"count {table.Count} crossed the threshold, the regular pass would run");
                 await table.ForceCleanup();
             }
 
@@ -798,12 +800,14 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         /// Re-adds a key only when it is no longer cached.
         /// A second instance for a cached key is a caller error.
         /// </summary>
-        private static void ReAddIfEvicted(S3FifoTableSync table, long key, TestEvictHandler handler)
+        private static bool ReAddIfEvicted(S3FifoTableSync table, long key, TestEvictHandler handler)
         {
-            if (!table.TryPeekEntryForTests(key, out _))
+            if (table.TryPeekEntryForTests(key, out _))
             {
-                table.Add(key, new TestCacheObject(key), handler);
+                return false;
             }
+            table.Add(key, new TestCacheObject(key), handler);
+            return true;
         }
 
         /// <summary>
@@ -1001,25 +1005,34 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var handler = new TestEvictHandler();
 
             var key = 1000000L;
-            var previous = table.SmallTargetPermilleForTests;
+            var start = table.SmallTargetPermilleForTests;
+            var previous = start;
             for (var round = 0; round < 15; round++)
             {
                 for (var i = 0; i < 1000; i++)
                 {
                     table.Add(key++, new TestCacheObject(i), handler);
                 }
-                // Bring back just evicted keys, a burst of evidence.
-                for (var i = 1; i <= 200; i++)
-                {
-                    ReAddIfEvicted(table, key - i, handler);
-                }
+                var evictedBefore = handler.Evictions.Count;
                 await table.ForceCleanup();
 
                 var now = table.SmallTargetPermilleForTests;
                 Assert.True(Math.Abs(now - previous) <= 8,
                     $"split moved from {previous} to {now} in one pass, the slew rate is not bounded");
                 previous = now;
+
+                // Bring back the newest keys this pass evicted, the ghost still remembers those.
+                // A burst of evidence for the next pass, far more than one step is worth.
+                var evictedNow = handler.Evictions.Count;
+                foreach (var evicted in handler.Evictions.Skip(Math.Max(evictedBefore, evictedNow - 200)))
+                {
+                    ReAddIfEvicted(table, evicted.Key, handler);
+                }
             }
+
+            // The evidence arrived every round and the clamp is what limited the moves.
+            Assert.True(table.AdaptEvidenceForTests.SmallHits > 8 * 15, $"only {table.AdaptEvidenceForTests.SmallHits} ghost hits, the clamp was never exercised");
+            Assert.True(table.SmallTargetPermilleForTests > start, "the split never moved");
         }
 
         /// <summary>
@@ -1120,19 +1133,27 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var handler = new TestEvictHandler();
 
             var key = 0L;
+            var readded = 0;
             for (var round = 0; round < 10; round++)
             {
                 for (var i = 0; i < 1000; i++)
                 {
                     table.Add(key++, new TestCacheObject(i), handler);
                 }
-                for (var i = 1; i <= 200; i++)
-                {
-                    ReAddIfEvicted(table, key - i, handler);
-                }
+                var evictedBefore = handler.Evictions.Count;
                 await table.ForceCleanup();
+                // Bring back the newest keys this pass evicted, ghost hits the fixed split must ignore.
+                var evictedNow = handler.Evictions.Count;
+                foreach (var evicted in handler.Evictions.Skip(Math.Max(evictedBefore, evictedNow - 200)))
+                {
+                    if (ReAddIfEvicted(table, evicted.Key, handler))
+                    {
+                        readded++;
+                    }
+                }
             }
 
+            Assert.True(readded > 0, "no evicted key was brought back, nothing tested the split");
             Assert.Equal(100, table.SmallTargetPermilleForTests);
         }
 
@@ -1265,9 +1286,14 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
             for (var touch = 0; touch < 2; touch++)
             {
+                // Past the correlation window, so both reads count and the set promotes.
+                for (var i = 0; i < 50; i++)
+                {
+                    table.Add(key++, new TestCacheObject(i), handler);
+                }
                 for (var i = 0; i < HotCount; i++)
                 {
-                    if (table.TryGetValue(hotStart + i, out var hot))
+                    if (table.TryRead(hotStart + i, out var hot))
                     {
                         hot!.Return();
                     }
@@ -1285,7 +1311,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 }
                 for (var i = 0; i < HotCount; i++)
                 {
-                    if (table.TryGetValue(hotStart + i, out var hot))
+                    if (table.TryRead(hotStart + i, out var hot))
                     {
                         hot!.Return();
                     }
@@ -1296,6 +1322,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             var smallGaveUp = after.SmallEvictions - before.SmallEvictions;
             var mainGaveUp = after.MainEvictions - before.MainEvictions;
+            Assert.True(table.GetQueueCountsForTests().MainCount > 0, "the hot set never reached main, the rule would be untested");
             Assert.True(smallGaveUp > 0, "nothing was evicted, so the rule was never exercised");
             Assert.True(mainGaveUp == 0,
                 $"main gave up {mainGaveUp} proven pages while the small queue gave up " +

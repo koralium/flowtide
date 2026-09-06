@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             if (Interlocked.Exchange(ref m_pagesFreedSinceCollect, 0) > 0)
             {
-                m_collectCalls++;
+                Interlocked.Increment(ref m_collectCalls);
                 FlowtideMemoryAllocation.Collect();
             }
         }
@@ -178,14 +178,34 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             var scratch = Interlocked.Exchange(ref m_cleanupScratch, null) ?? new CleanupScratch();
             try
             {
-                SelectVictims(scratch, toBeRemovedCount, currentCount - toBeRemovedCount, smallQueueOverflow);
-                if (scratch.Victims.Count == 0)
+                Exception? evictException;
+                try
                 {
-                    return;
-                }
+                    SelectVictims(scratch, toBeRemovedCount, currentCount - toBeRemovedCount, smallQueueOverflow);
+                    if (scratch.Victims.Count == 0)
+                    {
+                        return;
+                    }
 
-                var (failedVictims, evictException) = await RunEvictHandlers(scratch, isCleanup);
-                RemoveOrRequeueVictims(scratch, failedVictims);
+                    HashSet<S3FifoCacheEntry>? failedVictims;
+                    (failedVictims, evictException) = await RunEvictHandlers(scratch, isCleanup);
+                    RemoveOrRequeueVictims(scratch, failedVictims);
+                }
+                catch
+                {
+                    // Selected victims are out of the queues. Stranded, they could never be evicted again.
+                    // Handlers still running would race the salvage and the scratch reset.
+                    try
+                    {
+                        await Task.WhenAll(scratch.EvictTasks);
+                    }
+                    catch
+                    {
+                        // Their failures are the ones being handled.
+                    }
+                    RequeueUnprocessedVictims(scratch);
+                    throw;
+                }
 
                 if (evictException != null)
                 {
@@ -197,6 +217,58 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 scratch.Reset();
                 Volatile.Write(ref m_cleanupScratch, scratch);
+            }
+        }
+
+        /// <summary>
+        /// Puts back every victim the failed pass neither removed nor requeued, and records
+        /// the ghost entries of the ones it did remove.
+        /// </summary>
+        private void RequeueUnprocessedVictims(CleanupScratch scratch)
+        {
+            var index = 0;
+            var ghostIndex = 0;
+            while (index < scratch.Victims.Count || ghostIndex < scratch.GhostInserts.Count)
+            {
+                lock (m_queueLock)
+                {
+                    var operationBudget = SelectionOperationBudget;
+                    while (index < scratch.Victims.Count && operationBudget > 0)
+                    {
+                        operationBudget--;
+                        var candidate = scratch.Victims[index++];
+                        var entry = candidate.Entry;
+                        lock (entry)
+                        {
+                            // Removed or already rehomed by the phase that threw.
+                            if (entry.Removed || entry.Location != S3FifoQueueLocation.None)
+                            {
+                                continue;
+                            }
+                            if (candidate.FromSmallQueue)
+                            {
+                                entry.Location = S3FifoQueueLocation.Small;
+                                m_smallQueue.Enqueue(entry);
+                            }
+                            else
+                            {
+                                entry.Location = S3FifoQueueLocation.Main;
+                                m_mainQueue.Enqueue(entry);
+                            }
+                        }
+                    }
+                    while (ghostIndex < scratch.GhostInserts.Count && operationBudget > 0)
+                    {
+                        operationBudget--;
+                        var ghostInsert = scratch.GhostInserts[ghostIndex++];
+                        // A record already applied by the phase that threw is replaced, not doubled.
+                        AddToGhost(ghostInsert.Key, ghostInsert.Reused, ghostInsert.FromMain, ref operationBudget);
+                    }
+                }
+                if (index < scratch.Victims.Count || ghostIndex < scratch.GhostInserts.Count)
+                {
+                    Thread.Yield();
+                }
             }
         }
 
@@ -480,7 +552,27 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     // Only evict pages nothing else references.
                     // Evicting a held page lets a reload make a second diverging copy.
-                    if (!entry.Value.TryReclaimForEviction())
+                    bool reclaimed;
+                    try
+                    {
+                        reclaimed = entry.Value.TryReclaimForEviction();
+                    }
+                    catch
+                    {
+                        // The claim won and the dispose threw. The page is gone either way, a
+                        // requeue would poison its key with an entry no rent can take.
+                        if (entry.Value.RentCount == 0)
+                        {
+                            Volatile.Write(ref entry.Removed, true);
+                            entry.Value.RemovedFromCache = true;
+                            if (m_cache.TryRemove(new KeyValuePair<long, S3FifoCacheEntry>(entry.Key, entry)))
+                            {
+                                Interlocked.Decrement(ref m_count);
+                            }
+                        }
+                        throw;
+                    }
+                    if (!reclaimed)
                     {
                         // Being held is not proven reuse, back where it came from.
                         if (candidate.FromSmallQueue)
@@ -495,7 +587,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     Volatile.Write(ref entry.Removed, true);
                     entry.Value.RemovedFromCache = true;
-                    if (m_cache.TryRemove(entry.Key, out _))
+                    // By pair, a stale victim must not take a re-added entry with it.
+                    if (m_cache.TryRemove(new KeyValuePair<long, S3FifoCacheEntry>(entry.Key, entry)))
                     {
                         Interlocked.Decrement(ref m_count);
                         Interlocked.Increment(ref m_pagesFreedSinceCollect);
