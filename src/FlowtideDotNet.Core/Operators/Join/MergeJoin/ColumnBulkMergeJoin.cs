@@ -115,6 +115,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private const int joinWeightsByteSize = 8;
         private readonly int _leftInputColumnCount;
         private readonly int _rightInputColumnCount;
+        private ColumnRowReference[] _columnRowReferences = Array.Empty<ColumnRowReference>();
+        private JoinWeights[] _insertValues = Array.Empty<JoinWeights>();
+
+        private readonly List<Column> _leftColumnScratch = new List<Column>();
+        private readonly List<Column> _rightColumnScratch = new List<Column>();
+        private PrimitiveList<int>? _leafIndicesToCopy;
+        private PrimitiveList<int>? _targetPositions;
 
 #if DEBUG_WRITE
         // Debug data
@@ -250,6 +257,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 throw new InvalidOperationException("Deferred join data pending at checkpoint, OnCheckpointFlush should have flushed it.");
             }
 
+            ReleaseNativeScratch();
+
             await _leftTree.Commit();
             await _rightTree.Commit();
 
@@ -381,7 +390,17 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             _leftDefer.ReturnPending();
             _rightDefer.ReturnPending();
+            ReleaseNativeScratch();
             return base.DisposeAsync();
+        }
+
+        // Frees the native scratch, the next batch recreates it
+        private void ReleaseNativeScratch()
+        {
+            _leafIndicesToCopy?.Dispose();
+            _leafIndicesToCopy = null;
+            _targetPositions?.Dispose();
+            _targetPositions = null;
         }
 
         private void CopyCollectedIndices(
@@ -440,13 +459,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 yield break;
             }
 
-            List<Column> rightColumns = new List<Column>();
+            List<Column> rightColumns = _rightColumnScratch;
+            rightColumns.Clear();
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager, keyLength);
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager, keyLength);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager, keyLength);
 
-            PrimitiveList<int> leafIndicesToCopy = new PrimitiveList<int>(memoryManager, keyLength);
-            PrimitiveList<int> targetPositions = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<int> leafIndicesToCopy = _leafIndicesToCopy ??= new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<int> targetPositions = _targetPositions ??= new PrimitiveList<int>(memoryManager, keyLength);
+            leafIndicesToCopy.Clear();
 
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
@@ -454,17 +475,25 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
 
             var batchSize = msg.Data.EventBatchData.GetByteSize() + (keyLength * joinWeightsByteSize);
-            ColumnRowReference[] keys = new ColumnRowReference[keyLength];
-            JoinWeights[] insertValues = new JoinWeights[keyLength];
+
+            if (_columnRowReferences.Length < keyLength)
+            {
+                _columnRowReferences = new ColumnRowReference[keyLength];
+            }
+
+            if (_insertValues.Length < keyLength)
+            {
+                _insertValues = new JoinWeights[keyLength];
+            }
 
             for (int i = 0; i < keyLength; i++)
             {
-                keys[i] = new ColumnRowReference()
+                _columnRowReferences[i] = new ColumnRowReference()
                 {
                     referenceBatch = msg.Data.EventBatchData,
                     RowIndex = i
                 };
-                insertValues[i] = new JoinWeights()
+                _insertValues[i] = new JoinWeights()
                 {
                     weight = msg.Data.Weights[i],
                     joinWeight = 0
@@ -473,7 +502,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             var sortedIndices = SortBatch(msg.Data.EventBatchData, keyLength, _leftInsertComparer, _leftBatchSorter, _leftSortColumns);
 
-            await _rightSearcher.Start(keys, keyLength, sortedIndices);
+            await _rightSearcher.Start(_columnRowReferences, keyLength, sortedIndices);
 
             bool emitLeftAlways = _mergeJoinRelation.Type == JoinType.Left || _mergeJoinRelation.Type == JoinType.Outer;
             int leafTransitionsCount = 0;
@@ -498,14 +527,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                     for (int k = lowerBound; k <= upperBound; k++)
                     {
-                        if (_postCondition != null && !_postCondition(keys[keyIndex].referenceBatch, keys[keyIndex].RowIndex, pageKeyStorage._data, k))
+                        if (_postCondition != null && !_postCondition(_columnRowReferences[keyIndex].referenceBatch, _columnRowReferences[keyIndex].RowIndex, pageKeyStorage._data, k))
                         {
                             continue;
                         }
 
                         var joinStorageValue = pageValues.Get(k);
                         int outWeight = joinStorageValue.weight * weight;
-                        insertValues[keyIndex].joinWeight += outWeight;
+                        _insertValues[keyIndex].joinWeight += outWeight;
 
                         if (_mergeJoinRelation.Type != JoinType.LeftMark)
                         {
@@ -573,7 +602,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 for (int i = 0; i < keyLength; i++)
                 {
-                    var mark = insertValues[i].joinWeight != 0;
+                    var mark = _insertValues[i].joinWeight != 0;
                     foundOffsets.Add(i);
                     iterations.Add(msg.Data.Iterations[i]);
                     weights.Add(msg.Data.Weights[i]);
@@ -603,7 +632,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     for (int i = 0; i < keyLength; i++)
                     {
-                        if (insertValues[i].joinWeight == 0)
+                        if (_insertValues[i].joinWeight == 0)
                         {
                             foundOffsets.Add(i);
                             iterations.Add(msg.Data.Iterations[i]);
@@ -642,10 +671,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
             }
 
-            leafIndicesToCopy.Dispose();
-            targetPositions.Dispose();
-
-            await _leftInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, _duplicatesTagBuffer, new JoinWeightsMutator(_leftInputColumnCount), batchSize);
+            await _leftInserter.ApplyBatch(_columnRowReferences, _insertValues, keyLength, sortedIndices, _duplicatesTagBuffer, new JoinWeightsMutator(_leftInputColumnCount), batchSize);
 
             _leftDefer.OnBatchApplied(keyLength, _leftInserter.LeafHitCount);
         }
@@ -666,13 +692,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 yield break;
             }
 
-            List<Column> leftColumns = new List<Column>();
+            List<Column> leftColumns = _leftColumnScratch;
+            leftColumns.Clear();
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager, keyLength);
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager, keyLength);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager, keyLength);
 
-            PrimitiveList<int> leafIndicesToCopy = new PrimitiveList<int>(memoryManager, keyLength);
-            PrimitiveList<int> targetPositions = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<int> leafIndicesToCopy = _leafIndicesToCopy ??= new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<int> targetPositions = _targetPositions ??= new PrimitiveList<int>(memoryManager, keyLength);
+            leafIndicesToCopy.Clear();
 
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
@@ -680,7 +708,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
 
             bool isLeftMark = _mergeJoinRelation.Type == JoinType.LeftMark;
-            List<Column> rightColumns = new List<Column>();
+            List<Column> rightColumns = _rightColumnScratch;
+            rightColumns.Clear();
             if (isLeftMark)
             {
                 for (int i = 0; i < _rightOutputColumns.Count; i++)
@@ -690,17 +719,25 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
 
             var batchSize = msg.Data.EventBatchData.GetByteSize() + (keyLength * joinWeightsByteSize);
-            ColumnRowReference[] keys = new ColumnRowReference[keyLength];
-            JoinWeights[] insertValues = new JoinWeights[keyLength];
+
+            if (_columnRowReferences.Length < keyLength)
+            {
+                _columnRowReferences = new ColumnRowReference[keyLength];
+            }
+
+            if (_insertValues.Length < keyLength)
+            {
+                _insertValues = new JoinWeights[keyLength];
+            }
 
             for (int i = 0; i < keyLength; i++)
             {
-                keys[i] = new ColumnRowReference()
+                _columnRowReferences[i] = new ColumnRowReference()
                 {
                     referenceBatch = msg.Data.EventBatchData,
                     RowIndex = i
                 };
-                insertValues[i] = new JoinWeights()
+                _insertValues[i] = new JoinWeights()
                 {
                     weight = msg.Data.Weights[i],
                     joinWeight = 0
@@ -709,7 +746,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             var sortedIndices = SortBatch(msg.Data.EventBatchData, keyLength, _rightInsertComparer, _rightBatchSorter, _rightSortColumns);
 
-            await _leftSearcher.Start(keys, keyLength, sortedIndices);
+            await _leftSearcher.Start(_columnRowReferences, keyLength, sortedIndices);
 
             bool emitRightAlways = _mergeJoinRelation.Type == JoinType.Right || _mergeJoinRelation.Type == JoinType.Outer;
             while (await _leftSearcher.MoveNextLeaf())
@@ -732,14 +769,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                     for (int k = lowerBound; k <= upperBound; k++)
                     {
-                        if (_postCondition != null && !_postCondition(pageKeyStorage._data, k, keys[keyIndex].referenceBatch, keys[keyIndex].RowIndex))
+                        if (_postCondition != null && !_postCondition(pageKeyStorage._data, k, _columnRowReferences[keyIndex].referenceBatch, _columnRowReferences[keyIndex].RowIndex))
                         {
                             continue;
                         }
 
                         var joinStorageValue = pageValues.Get(k);
                         int outWeight = joinStorageValue.weight * weight;
-                        insertValues[keyIndex].joinWeight += outWeight;
+                        _insertValues[keyIndex].joinWeight += outWeight;
 
                         if (isLeftMark)
                         {
@@ -848,7 +885,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 for (int i = 0; i < keyLength; i++)
                 {
-                    if (insertValues[i].joinWeight == 0)
+                    if (_insertValues[i].joinWeight == 0)
                     {
                         foundOffsets.Add(i);
                         iterations.Add(msg.Data.Iterations[i]);
@@ -893,10 +930,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 iterations.Dispose();
             }
 
-            leafIndicesToCopy.Dispose();
-            targetPositions.Dispose();
-
-            await _rightInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, _duplicatesTagBuffer, new JoinWeightsMutator(_rightInputColumnCount), batchSize);
+            await _rightInserter.ApplyBatch(_columnRowReferences, _insertValues, keyLength, sortedIndices, _duplicatesTagBuffer, new JoinWeightsMutator(_rightInputColumnCount), batchSize);
 
             _rightDefer.OnBatchApplied(keyLength, _rightInserter.LeafHitCount);
         }
