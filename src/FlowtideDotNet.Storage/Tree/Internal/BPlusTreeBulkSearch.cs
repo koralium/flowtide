@@ -44,6 +44,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         // Results for the current leaf.
         private readonly List<BulkSearchKeyResult> _currentResults = new List<BulkSearchKeyResult>();
 
+        /// <summary>
+        /// Mapped leaves that were already cached when the search started, held so eviction
+        /// cannot drop one before the traversal reaches it. Holding takes no read, a leaf that
+        /// is not cached has nothing to protect and is read at its turn.
+        /// </summary>
+        private LeafNode<K, V, TKeyContainer, TValueContainer>?[] _heldLeaves = Array.Empty<LeafNode<K, V, TKeyContainer, TValueContainer>?>();
+        private int _heldLeafCount;
+
         public BPlusTreeBulkSearch(BPlusTree<K, V, TKeyContainer, TValueContainer> tree, TComparer comparer)
         {
             _tree = tree;
@@ -103,6 +111,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _currentLeaf.Return();
                 _currentLeaf = null;
             }
+            // A pass the consumer abandoned part way still holds leaves, let them go.
+            ReleaseHeldLeaves();
             _mappings.Clear();
             if (keyLength > _lowerBounds.Length)
             {
@@ -112,6 +122,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             if (_comparer is IRouteToLeftmost routeToLeftmost && routeToLeftmost.RouteToLeftmost)
             {
+                // One mapping, the traversal follows next pointers from the leftmost leaf, so
+                // there is nothing mapped ahead to hold.
                 _mappings.Add(new BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping(_tree.m_stateClient.Metadata!.Left, 0, keyLength, -1));
                 return ValueTask.CompletedTask;
             }
@@ -123,6 +135,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     _mappings.Reverse();
                 }
+                HoldMappedLeaves();
                 return ValueTask.CompletedTask;
             }
             return StartSlow(task);
@@ -135,6 +148,63 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 _mappings.Reverse();
             }
+            HoldMappedLeaves();
+        }
+
+        /// <summary>
+        /// Every mapped leaf will be read before the search ends, so the ones already cached are
+        /// held for its duration. The traversal still fetches each leaf at its turn, which now
+        /// finds it cached, the extra rent is only what keeps it there.
+        /// </summary>
+        private void HoldMappedLeaves()
+        {
+            var holdCount = Math.Min(_mappings.Count, _tree.m_stateClient.MaxHeldPages);
+            if (_heldLeaves.Length < holdCount)
+            {
+                _heldLeaves = new LeafNode<K, V, TKeyContainer, TValueContainer>?[holdCount];
+            }
+            for (int i = 0; i < holdCount; i++)
+            {
+                _heldLeaves[i] = _tree.m_stateClient.TryGetCachedValue(_mappings[i].LeafId, out var cached)
+                            ? cached as LeafNode<K, V, TKeyContainer, TValueContainer>
+                            : null;
+            }
+            _heldLeafCount = holdCount;
+        }
+
+        /// <summary>
+        /// Hands over the leaf held for a mapping, leaving the slot empty so the rent is not
+        /// released twice. Null when it was not cached at the start, or when the mapping no
+        /// longer points at it.
+        /// </summary>
+        private LeafNode<K, V, TKeyContainer, TValueContainer>? TakeHeldLeaf(int mappingIndex, long leafId)
+        {
+            if (mappingIndex >= _heldLeafCount)
+            {
+                return null;
+            }
+            var held = _heldLeaves[mappingIndex];
+            if (held == null)
+            {
+                return null;
+            }
+            _heldLeaves[mappingIndex] = null;
+            if (held.Id != leafId)
+            {
+                held.Return();
+                return null;
+            }
+            return held;
+        }
+
+        private void ReleaseHeldLeaves()
+        {
+            for (int i = 0; i < _heldLeafCount; i++)
+            {
+                _heldLeaves[i]?.Return();
+                _heldLeaves[i] = null;
+            }
+            _heldLeafCount = 0;
         }
 
         /// <summary>
@@ -180,7 +250,23 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 // else: next/prev leaf IS the mapping's leaf - fall through to process both.
             }
 
+            var mappingIndex = _mappingIndex;
             _mappingIndex++;
+
+            // Held since the search started, so it is already the current page for this mapping.
+            // Taking it hands the rent over to _currentLeaf, fetching again would only repeat the
+            // lookup and count the same read twice.
+            var held = TakeHeldLeaf(mappingIndex, mapping.LeafId);
+            if (held != null)
+            {
+                if (_currentLeaf != null)
+                {
+                    _currentLeaf.Return();
+                }
+                _currentLeaf = held;
+                ProcessLeaf(mapping);
+                return ValueTask.FromResult(true);
+            }
 
             var getLeafTask = _tree.m_stateClient.GetValue(mapping.LeafId);
             if (!getLeafTask.IsCompletedSuccessfully)
@@ -394,6 +480,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _currentLeaf.Return();
                 _currentLeaf = null;
             }
+            ReleaseHeldLeaves();
             _carryOverRead.Clear();
             _carryOverWrite.Clear();
             _currentResults.Clear();

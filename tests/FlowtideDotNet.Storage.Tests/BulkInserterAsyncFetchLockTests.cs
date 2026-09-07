@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Storage.Tests
             await stateManager.InitializeAsync();
 
             // The test decides when pages leave memory, the background eviction thread would make it timing dependent.
-            await stateManager.LruTable.StopCleanupTask();
+            await stateManager.CacheTable.StopCleanupTask();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
             var tree = (BPlusTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>)
@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.NotEqual(0, secondLeafId);
 
             // Push all pages out of memory, the next leaf now has to be read back from the file cache.
-            await stateManager.LruTable.ForceCleanup();
+            await stateManager.CacheTable.ForceCleanup();
 
             fileCacheFactory.SetTrappedPage(secondLeafId);
 
