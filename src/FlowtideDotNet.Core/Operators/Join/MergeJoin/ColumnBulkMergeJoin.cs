@@ -673,6 +673,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             await _leftInserter.ApplyBatch(_columnRowReferences, _insertValues, keyLength, sortedIndices, _duplicatesTagBuffer, new JoinWeightsMutator(_leftInputColumnCount), batchSize);
 
+            // Drop the batch references so the pooled array does not keep old batches alive
+            Array.Clear(_columnRowReferences, 0, keyLength);
+
             _leftDefer.OnBatchApplied(keyLength, _leftInserter.LeafHitCount);
         }
 
@@ -931,6 +934,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
 
             await _rightInserter.ApplyBatch(_columnRowReferences, _insertValues, keyLength, sortedIndices, _duplicatesTagBuffer, new JoinWeightsMutator(_rightInputColumnCount), batchSize);
+
+            // Drop the batch references so the pooled array does not keep old batches alive
+            Array.Clear(_columnRowReferences, 0, keyLength);
 
             _rightDefer.OnBatchApplied(keyLength, _rightInserter.LeafHitCount);
         }
