@@ -139,6 +139,72 @@ Interface IFlowtideStorageBuilder  <a class="header-action link-secondary" title
 </h2>
 
 
+  <a id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_AdaptiveSmallQueueSize_" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.AdaptiveSmallQueueSize*"></a>
+
+  <h3 id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_AdaptiveSmallQueueSize" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.AdaptiveSmallQueueSize">
+  AdaptiveSmallQueueSize
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L50"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Let the small queue's share follow what the ghost queue observes instead of a fixed 10%.
+Default: true</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool AdaptiveSmallQueueSize { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_DrainSmallQueueEarly_" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.DrainSmallQueueEarly*"></a>
+
+  <h3 id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_DrainSmallQueueEarly" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.DrainSmallQueueEarly">
+  DrainSmallQueueEarly
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Hold the cache's small queue at its share even below the eviction threshold, trading
+resident pages for memory. Default: true</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool DrainSmallQueueEarly { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_MaxPageCount_" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.MaxPageCount*"></a>
 
   <h3 id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_MaxPageCount" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.MaxPageCount">
@@ -238,7 +304,7 @@ Interface IFlowtideStorageBuilder  <a class="header-action link-secondary" title
 
   <h3 id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_Name" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.Name">
   Name
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L50"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L62"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -269,7 +335,7 @@ Interface IFlowtideStorageBuilder  <a class="header-action link-secondary" title
 
   <h3 id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_ServiceCollection" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.ServiceCollection">
   ServiceCollection
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L48"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L60"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -338,7 +404,7 @@ Default: false</p>
 
   <h3 id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_SetCompression_FlowtideDotNet_Storage_StateSerializeOptions_" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.SetCompression(FlowtideDotNet.Storage.StateSerializeOptions)">
   SetCompression(StateSerializeOptions)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L58"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -374,7 +440,7 @@ Default: false</p>
 
   <h3 id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_SetPersistentStorage_FlowtideDotNet_Storage_Persistence_IPersistentStorage_" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.SetPersistentStorage(FlowtideDotNet.Storage.Persistence.IPersistentStorage)">
   SetPersistentStorage(IPersistentStorage)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L52"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -410,7 +476,7 @@ Default: false</p>
 
   <h3 id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_SetPersistentStorage_System_Func_System_IServiceProvider_FlowtideDotNet_Storage_Persistence_IPersistentStorage__" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.SetPersistentStorage(System.Func{System.IServiceProvider,FlowtideDotNet.Storage.Persistence.IPersistentStorage})">
   SetPersistentStorage(Func&lt;IServiceProvider, IPersistentStorage&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L56"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -446,7 +512,7 @@ Default: false</p>
 
   <h3 id="FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_SetPersistentStorage__1" data-uid="FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.SetPersistentStorage``1">
   SetPersistentStorage&lt;TStorage&gt;()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/IFlowtideStorageBuilder.cs/#L54"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>

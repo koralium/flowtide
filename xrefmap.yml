@@ -36899,6 +36899,32 @@ references:
   commentId: T:FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder
   fullName: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder
   nameWithType: IFlowtideStorageBuilder
+- uid: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.AdaptiveSmallQueueSize
+  name: AdaptiveSmallQueueSize
+  href: api/FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_AdaptiveSmallQueueSize
+  commentId: P:FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.AdaptiveSmallQueueSize
+  fullName: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.AdaptiveSmallQueueSize
+  nameWithType: IFlowtideStorageBuilder.AdaptiveSmallQueueSize
+- uid: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.AdaptiveSmallQueueSize*
+  name: AdaptiveSmallQueueSize
+  href: api/FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_AdaptiveSmallQueueSize_
+  commentId: Overload:FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.AdaptiveSmallQueueSize
+  isSpec: "True"
+  fullName: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.AdaptiveSmallQueueSize
+  nameWithType: IFlowtideStorageBuilder.AdaptiveSmallQueueSize
+- uid: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.DrainSmallQueueEarly
+  name: DrainSmallQueueEarly
+  href: api/FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_DrainSmallQueueEarly
+  commentId: P:FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.DrainSmallQueueEarly
+  fullName: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.DrainSmallQueueEarly
+  nameWithType: IFlowtideStorageBuilder.DrainSmallQueueEarly
+- uid: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.DrainSmallQueueEarly*
+  name: DrainSmallQueueEarly
+  href: api/FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_DrainSmallQueueEarly_
+  commentId: Overload:FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.DrainSmallQueueEarly
+  isSpec: "True"
+  fullName: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.DrainSmallQueueEarly
+  nameWithType: IFlowtideStorageBuilder.DrainSmallQueueEarly
 - uid: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.MaxPageCount
   name: MaxPageCount
   href: api/FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_MaxPageCount
@@ -46854,6 +46880,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.Return
   nameWithType: ICacheObject.Return
+- uid: FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.TryReclaimForEviction
+  name: TryReclaimForEviction()
+  href: api/FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.html#FlowtideDotNet_Storage_StateManager_Internal_ICacheObject_TryReclaimForEviction
+  commentId: M:FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.TryReclaimForEviction
+  fullName: FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.TryReclaimForEviction()
+  nameWithType: ICacheObject.TryReclaimForEviction()
+- uid: FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.TryReclaimForEviction*
+  name: TryReclaimForEviction
+  href: api/FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.html#FlowtideDotNet_Storage_StateManager_Internal_ICacheObject_TryReclaimForEviction_
+  commentId: Overload:FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.TryReclaimForEviction
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.TryReclaimForEviction
+  nameWithType: ICacheObject.TryReclaimForEviction
 - uid: FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.TryRent
   name: TryRent()
   href: api/FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.html#FlowtideDotNet_Storage_StateManager_Internal_ICacheObject_TryRent
@@ -47133,6 +47172,19 @@ references:
   commentId: T:FlowtideDotNet.Storage.StateManager.StateManagerOptions
   fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions
   nameWithType: StateManagerOptions
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.AdaptiveSmallQueueSize
+  name: AdaptiveSmallQueueSize
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_AdaptiveSmallQueueSize
+  commentId: P:FlowtideDotNet.Storage.StateManager.StateManagerOptions.AdaptiveSmallQueueSize
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions.AdaptiveSmallQueueSize
+  nameWithType: StateManagerOptions.AdaptiveSmallQueueSize
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.AdaptiveSmallQueueSize*
+  name: AdaptiveSmallQueueSize
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_AdaptiveSmallQueueSize_
+  commentId: Overload:FlowtideDotNet.Storage.StateManager.StateManagerOptions.AdaptiveSmallQueueSize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions.AdaptiveSmallQueueSize
+  nameWithType: StateManagerOptions.AdaptiveSmallQueueSize
 - uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.CachePageCount
   name: CachePageCount
   href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_CachePageCount
@@ -47172,6 +47224,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions.DefaultBPlusTreePageSizeBytes
   nameWithType: StateManagerOptions.DefaultBPlusTreePageSizeBytes
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.DrainSmallQueueEarly
+  name: DrainSmallQueueEarly
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_DrainSmallQueueEarly
+  commentId: P:FlowtideDotNet.Storage.StateManager.StateManagerOptions.DrainSmallQueueEarly
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions.DrainSmallQueueEarly
+  nameWithType: StateManagerOptions.DrainSmallQueueEarly
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.DrainSmallQueueEarly*
+  name: DrainSmallQueueEarly
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_DrainSmallQueueEarly_
+  commentId: Overload:FlowtideDotNet.Storage.StateManager.StateManagerOptions.DrainSmallQueueEarly
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions.DrainSmallQueueEarly
+  nameWithType: StateManagerOptions.DrainSmallQueueEarly
 - uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.FileCacheFactory
   name: FileCacheFactory
   href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_FileCacheFactory
@@ -49741,6 +49806,23 @@ references:
   fullName.vb: FlowtideDotNet.Storage.Tree.Internal.BaseNode(Of K, TKeyContainer).Return
   nameWithType: BaseNode<K, TKeyContainer>.Return
   nameWithType.vb: BaseNode(Of K, TKeyContainer).Return
+- uid: FlowtideDotNet.Storage.Tree.Internal.BaseNode`2.TryReclaimForEviction
+  name: TryReclaimForEviction()
+  href: api/FlowtideDotNet.Storage.Tree.Internal.BaseNode-2.html#FlowtideDotNet_Storage_Tree_Internal_BaseNode_2_TryReclaimForEviction
+  commentId: M:FlowtideDotNet.Storage.Tree.Internal.BaseNode`2.TryReclaimForEviction
+  fullName: FlowtideDotNet.Storage.Tree.Internal.BaseNode<K, TKeyContainer>.TryReclaimForEviction()
+  fullName.vb: FlowtideDotNet.Storage.Tree.Internal.BaseNode(Of K, TKeyContainer).TryReclaimForEviction()
+  nameWithType: BaseNode<K, TKeyContainer>.TryReclaimForEviction()
+  nameWithType.vb: BaseNode(Of K, TKeyContainer).TryReclaimForEviction()
+- uid: FlowtideDotNet.Storage.Tree.Internal.BaseNode`2.TryReclaimForEviction*
+  name: TryReclaimForEviction
+  href: api/FlowtideDotNet.Storage.Tree.Internal.BaseNode-2.html#FlowtideDotNet_Storage_Tree_Internal_BaseNode_2_TryReclaimForEviction_
+  commentId: Overload:FlowtideDotNet.Storage.Tree.Internal.BaseNode`2.TryReclaimForEviction
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.Tree.Internal.BaseNode<K, TKeyContainer>.TryReclaimForEviction
+  fullName.vb: FlowtideDotNet.Storage.Tree.Internal.BaseNode(Of K, TKeyContainer).TryReclaimForEviction
+  nameWithType: BaseNode<K, TKeyContainer>.TryReclaimForEviction
+  nameWithType.vb: BaseNode(Of K, TKeyContainer).TryReclaimForEviction
 - uid: FlowtideDotNet.Storage.Tree.Internal.BaseNode`2.TryRent
   name: TryRent()
   href: api/FlowtideDotNet.Storage.Tree.Internal.BaseNode-2.html#FlowtideDotNet_Storage_Tree_Internal_BaseNode_2_TryRent

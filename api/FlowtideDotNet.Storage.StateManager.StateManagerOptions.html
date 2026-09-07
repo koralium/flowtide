@@ -152,6 +152,39 @@ Class StateManagerOptions  <a class="header-action link-secondary" title="View s
 </h2>
 
 
+  <a id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_AdaptiveSmallQueueSize_" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.AdaptiveSmallQueueSize*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_AdaptiveSmallQueueSize" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.AdaptiveSmallQueueSize">
+  AdaptiveSmallQueueSize
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Size the small queue from what the ghost queue observes.
+On by default. Off holds the fixed 10% share from the paper.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool AdaptiveSmallQueueSize { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_CachePageCount_" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.CachePageCount*"></a>
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_CachePageCount" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.CachePageCount">
@@ -187,7 +220,7 @@ Class StateManagerOptions  <a class="header-action link-secondary" title="View s
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_DefaultBPlusTreePageSize" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.DefaultBPlusTreePageSize">
   DefaultBPlusTreePageSize
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L54"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L66"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -218,7 +251,7 @@ Class StateManagerOptions  <a class="header-action link-secondary" title="View s
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_DefaultBPlusTreePageSizeBytes" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.DefaultBPlusTreePageSizeBytes">
   DefaultBPlusTreePageSizeBytes
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L68"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -245,11 +278,44 @@ Class StateManagerOptions  <a class="header-action link-secondary" title="View s
 
 
 
+  <a id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_DrainSmallQueueEarly_" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.DrainSmallQueueEarly*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_DrainSmallQueueEarly" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.DrainSmallQueueEarly">
+  DrainSmallQueueEarly
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Hold the small queue at its share below the threshold too.
+On by default. Off keeps more pages resident for a better hit rate.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool DrainSmallQueueEarly { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_FileCacheFactory_" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.FileCacheFactory*"></a>
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_FileCacheFactory" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.FileCacheFactory">
   FileCacheFactory
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L55"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -280,7 +346,7 @@ Class StateManagerOptions  <a class="header-action link-secondary" title="View s
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_MaxProcessMemory" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.MaxProcessMemory">
   MaxProcessMemory
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L46"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Optional: Set a maximum process memory limit for the state manager. If the limit is reached, the state manager will start evicting pages from the cache.
@@ -347,7 +413,7 @@ Setting this value increases cache page count if memory usage is low.</p>
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_PersistentStorage" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.PersistentStorage">
   PersistentStorage
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L36"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L48"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -378,7 +444,7 @@ Setting this value increases cache page count if memory usage is low.</p>
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_SerializeOptions" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.SerializeOptions">
   SerializeOptions
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L45"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L57"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -409,7 +475,7 @@ Setting this value increases cache page count if memory usage is low.</p>
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_TemporaryStorageOptions" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.TemporaryStorageOptions">
   TemporaryStorageOptions
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L41"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L53"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Used if file cache factory is not set, with the default file cache</p>
@@ -441,7 +507,7 @@ Setting this value increases cache page count if memory usage is low.</p>
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerOptions_UseReadCache" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerOptions.UseReadCache">
   UseReadCache
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerOptions.cs/#L64"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Uses temporary cache as a read cache.

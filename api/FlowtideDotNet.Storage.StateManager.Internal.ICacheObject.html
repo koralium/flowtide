@@ -134,7 +134,7 @@ Interface ICacheObject  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_Internal_ICacheObject_RemovedFromCache" data-uid="FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.RemovedFromCache">
   RemovedFromCache
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/Internal/ICacheObject.cs/#L28"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/Internal/ICacheObject.cs/#L35"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -165,7 +165,7 @@ Interface ICacheObject  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_Internal_ICacheObject_RentCount" data-uid="FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.RentCount">
   RentCount
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/Internal/ICacheObject.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/Internal/ICacheObject.cs/#L33"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -211,6 +211,40 @@ Interface ICacheObject  <a class="header-action link-secondary" title="View sour
   </div>
 
 
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_StateManager_Internal_ICacheObject_TryReclaimForEviction_" data-uid="FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.TryReclaimForEviction*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_StateManager_Internal_ICacheObject_TryReclaimForEviction" data-uid="FlowtideDotNet.Storage.StateManager.Internal.ICacheObject.TryReclaimForEviction">
+  TryReclaimForEviction()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/Internal/ICacheObject.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Claims the object for eviction only if the cache holds the sole reference.
+Disposes and returns true on success, otherwise leaves it untouched and returns false
+so a page still in use is never evicted.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool TryReclaimForEviction()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
 
 
 
