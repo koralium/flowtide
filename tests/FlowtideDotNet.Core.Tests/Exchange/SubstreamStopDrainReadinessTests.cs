@@ -114,5 +114,40 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             await pointB.SendCheckpointDone(5);
             Assert.True(target.ReadyToStop);
         }
+
+        /// <summary>
+        /// The alignment escape exists for a peer that never fetches the stop barrier. A peer
+        /// that fetched it and is merely late with the covering ack must still be waited for,
+        /// the fetch response can have been lost after the dequeue.
+        /// </summary>
+        [Fact]
+        public async Task EscapeDoesNotReleaseAFetchedButUnackedStopBarrier()
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var handlerA = hub.CreateFactory("subA").GetCommunicationHandler("subB", "subA");
+            var handlerB = hub.CreateFactory("subB").GetCommunicationHandler("subA", "subB");
+
+            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA);
+            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB);
+
+            // Short drain timeout, the escape fires at half of it.
+            var stopDrainTimeout = TimeSpan.FromMilliseconds(200);
+            var target = new SubstreamTarget(1, 1, pointA, () => { });
+            await target.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, _ => Task.CompletedTask, stopDrainTimeout);
+            await pointB.InitializeOperator(0);
+
+            await target.OnLockingEvent(new StopStreamCheckpoint(1, 2, 1));
+            var fetched = new List<SubstreamEventData>();
+            await target.ReadData(fetched, 100);
+            Assert.Contains(fetched, e => e.StreamEvent is StopStreamCheckpoint);
+            SubstreamEventWireSerializer.ReturnEvents(fetched);
+
+            // Past the escape deadline, fetched but not yet acked.
+            await Task.Delay(stopDrainTimeout);
+            Assert.False(target.ReadyToStop, "The escape released a stop barrier the peer already fetched, the covering ack that confirms the fetch reached the peer was never waited for");
+
+            await pointB.SendCheckpointDone(5);
+            Assert.True(target.ReadyToStop);
+        }
     }
 }

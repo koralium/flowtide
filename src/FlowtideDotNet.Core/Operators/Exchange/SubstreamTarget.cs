@@ -56,8 +56,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private volatile bool _stopBarrierStored;
         private volatile bool _stopBarrierFetched;
         private volatile bool _stopBarrierFetchAcked;
-        // A stopping peer got its last barrier, everything behind it waits for its return.
-        private volatile bool _peerStopCutTaken;
         // When the stop barrier was stored, the escape below is measured from it.
         private long _stopBarrierStoredTimestamp;
         private TimeSpan _stopDrainTimeout = TimeSpan.FromSeconds(30);
@@ -244,18 +242,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _stopBarrierStored = false;
             _stopBarrierFetched = false;
             _stopBarrierFetchAcked = false;
-            _peerStopCutTaken = false;
             _stopAlignmentEscapeReported = 0;
             _lockSemaphore.Release();
-        }
-
-        /// <summary>
-        /// Reopens the fetch for a peer that stopped cleanly and came back. Everything held
-        /// behind its cut is still queued, so it resumes exactly where its state ended.
-        /// </summary>
-        public void ResumeAfterPeerReconnect()
-        {
-            _peerStopCutTaken = false;
         }
 
         /// <summary>
@@ -268,14 +256,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public bool ReadyToStop => !_stopBarrierStored || (_stopBarrierFetched && _stopBarrierFetchAcked) || StopAlignmentEscaped();
 
         /// <summary>
-        /// Half the streams drain timeout, so the escape always fires before it, mirroring the
-        /// read side. The other substream cuts its fetch on any barrier of ours, not only on our
-        /// stop barrier, so it can leave before it ever sees one; then nothing will ever fetch it
-        /// and the wait above can never end. Releasing here turns that into a clean stop instead
-        /// of a hard fault at the drain timeout.
+        /// Half the streams drain timeout, so the escape always fires before it. Only for a stop
+        /// barrier the other substream never fetched: it cuts its fetch on any barrier of ours,
+        /// not only on our stop barrier, so it can leave before it ever sees one; then nothing
+        /// will ever fetch it and the wait above can never end. A fetched barrier is waited for,
+        /// its covering ack is the only proof the fetch response reached the other side.
         /// </summary>
         private bool StopAlignmentEscaped()
         {
+            if (_stopBarrierFetched)
+            {
+                return false;
+            }
             var deadline = TimeSpan.FromTicks(_stopDrainTimeout.Ticks / 2);
             if (Stopwatch.GetElapsedTime(_stopBarrierStoredTimestamp) < deadline)
             {
@@ -394,14 +386,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// completes when the other substream has consumed its barrier, so after a failure
         /// both substreams roll back to a common checkpoint and the events are regenerated.
         /// </summary>
-        public async ValueTask<bool> ReadData(List<SubstreamEventData> outputList, int maxCount, bool peerIsStopping = false)
+        public async ValueTask<bool> ReadData(List<SubstreamEventData> outputList, int maxCount)
         {
             // the target is not yet initialized
             if (_queue == null)
-            {
-                return false;
-            }
-            if (_peerStopCutTaken)
             {
                 return false;
             }
@@ -436,15 +424,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     count++;
                     if (val is ICheckpointEvent)
                     {
-                        // End the response here so the reader can unsubscribe on this barrier
-                        // before anything behind it is handed out. The dequeue is destructive,
-                        // so a shipped event is gone from here whether or not it wanted it.
-                        if (peerIsStopping)
-                        {
-                            // No later barrier covers a stopping peer, so hold the rest for it.
-                            _peerStopCutTaken = true;
-                            _substreamCommunication.Logger.LogDebug("Target {targetId} cut the stopping substream off at its last barrier, {eventCount} events wait for its return.", _exchangeTargetId, _queue.Count);
-                        }
+                        // End the response here, the reader holds its fetch at a barrier until
+                        // it knows whether that barrier ends its stream. The dequeue is
+                        // destructive, so nothing behind it may be handed out before that.
                         break;
                     }
                 }

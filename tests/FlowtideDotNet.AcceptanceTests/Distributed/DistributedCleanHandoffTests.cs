@@ -1098,6 +1098,491 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }
         }
 
+        // Past the alignment escape, inside the drain timeout.
+        private static readonly TimeSpan LatePeerInterval = TimeSpan.FromMilliseconds(3200);
+        // Long enough that a stop lands while a peer barrier is parked.
+        private static readonly TimeSpan ParkedBarrierInterval = TimeSpan.FromSeconds(3);
+
+        private sealed record HandoffObservation(
+            ConcurrentDictionary<string, EventBatchData> LatestData,
+            ConcurrentBag<(string Substream, Exception? Exception)> Failures,
+            List<(string Stream, long Peer, long Local)> PairingsDuringStop,
+            TimeSpan StopDuration,
+            RingBufferLoggerProvider LeavingLog);
+
+        /// <summary>
+        /// Finding: a stop that gave up waiting forwarded its barrier alone and committed, and
+        /// a later drain cycle then paired the peer's late barrier at a version the stream
+        /// never commits. The stop must wait for the answer and pair at the shared version.
+        /// </summary>
+        [Fact]
+        public async Task StopDrainCycleMustNotPairAtAVersionItNeverCommits()
+        {
+            var run = await RunHandoffUnderLoad("e2e_drain_attest", LatePeerInterval, null, TimeSpan.FromMilliseconds(100));
+
+            Assert.True(
+                run.StopDuration > FastEngineTimings.StopDrainTimeout / 2,
+                $"The peer answered within {run.StopDuration}, the late answer was not exercised.");
+            Assert.True(run.PairingsDuringStop.Count > 0, "The stop never paired the late peer barrier.");
+            var mismatched = run.PairingsDuringStop.Where(p => p.Peer != p.Local).ToList();
+            Assert.True(
+                mismatched.Count == 0,
+                $"A stop drain cycle paired the peer's barrier at a version it never commits and attested it as covered: {string.Join("; ", mismatched.Select(p => $"peer={p.Peer} local={p.Local}"))}");
+        }
+
+        /// <summary>
+        /// Finding: giving up on the peer's barrier by forwarding the stop without it committed
+        /// a cut the peer never took and kept fetching past it. A peer that never answers must
+        /// fail the stop instead, so both substreams recover to the checkpoint they share.
+        /// </summary>
+        [Fact]
+        public async Task StopWithoutAPeerAnswerMustNotCommitAnUnmatchedCut()
+        {
+            var testName = "e2e_unanswered_stop";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var commits = new ConcurrentQueue<(string Stream, long Version)>();
+            var pairings = new ConcurrentQueue<(string Stream, long Peer, long Local)>();
+            var restores = new ConcurrentQueue<(string Stream, long Version)>();
+            var peerGate = new FetchGate();
+
+            Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    commits.Enqueue((streamName, lastVersion));
+                }
+                return Task.CompletedTask;
+            };
+            Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = (streamName, version) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    restores.Enqueue((streamName, version));
+                }
+            };
+            SubstreamReadOperator.PairedCheckpointHookForTests = (streamName, peerVersion, localVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    pairings.Enqueue((streamName, peerVersion, localVersion));
+                }
+            };
+            try
+            {
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false,
+                    communicationFactory: new GatedCommunicationFactory(hub.CreateFactory("substream_0"), peerGate));
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                // Quiet, then the peer's fetch is held: it never sees the stop barrier and never answers.
+                await Task.Delay(500);
+                peerGate.Close();
+
+                var pairingsBefore = pairings.ToArray().Length;
+                var commitsBefore = commits.ToArray().Length;
+                var stopwatch = Stopwatch.StartNew();
+                await AwaitBounded(substream1.StopAsync(), "stop against a peer that never answers");
+                stopwatch.Stop();
+                var pairingsDuringStop = pairings.ToArray().Skip(pairingsBefore)
+                    .Where(p => p.Stream.Contains("substream_1", StringComparison.Ordinal))
+                    .ToList();
+                var cyclesDuringStop = commits.ToArray().Skip(commitsBefore)
+                    .Where(c => c.Stream.Contains("substream_1", StringComparison.Ordinal))
+                    .ToList();
+                peerGate.Open();
+
+                Assert.True(
+                    stopwatch.Elapsed >= FastEngineTimings.StopDrainTimeout,
+                    $"The stop finished after {stopwatch.Elapsed} without the peer's barrier, before the drain timeout.");
+                Assert.True(pairingsDuringStop.Count == 0, "The stop paired a barrier the peer never sent.");
+                Assert.True(
+                    cyclesDuringStop.Count == 0,
+                    $"The stop committed {cyclesDuringStop.Count} cycle(s) without the peer's barrier, a cut the peer never took.");
+                Assert.NotEmpty(_logBuffers["substream_1"].LinesContaining("failing the stop so both substreams recover"));
+
+                // Not a clean handoff, the peer never took the cut. Both must continue from one
+                // version, with every row.
+                await substream1.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream1);
+                }
+                pairings.Clear();
+                substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream1.StartAsync();
+                _generator.Generate(250);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+
+                var rollbackVersions = restores.Select(r => r.Version).Distinct().ToList();
+                Assert.True(
+                    rollbackVersions.Count <= 1,
+                    $"The substreams rolled back to different versions: {string.Join(", ", restores.Select(r => r.Stream + "=" + r.Version))}");
+                var afterRestart = pairings.ToArray();
+                Assert.True(afterRestart.Length > 0, "The substreams never paired a checkpoint after the recovery.");
+                var mismatched = afterRestart.Where(p => p.Peer != p.Local).ToList();
+                Assert.True(
+                    mismatched.Count == 0,
+                    $"The substreams continue on different versions after the failed stop: {string.Join("; ", mismatched.Select(p => $"{p.Stream} peer={p.Peer} local={p.Local}"))}");
+            }
+            finally
+            {
+                Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = null;
+                Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = null;
+                SubstreamReadOperator.PairedCheckpointHookForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// Finding: a stop drain cycle that skips the commit still notifies checkpoint
+        /// complete and re-delivers checkpoint done. Every notification must be backed by a
+        /// version the stream actually wrote.
+        /// </summary>
+        [Fact]
+        public async Task StopDrainCyclesWithoutACommitMustNotNotifyCheckpointComplete()
+        {
+            var testName = "e2e_drain_notify";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var commits = new ConcurrentQueue<(string Stream, long Version)>();
+            int notifications = 0;
+            var peerGate = new FetchGate();
+
+            Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    commits.Enqueue((streamName, lastVersion));
+                }
+                return Task.CompletedTask;
+            };
+            try
+            {
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false,
+                    communicationFactory: new GatedCommunicationFactory(hub.CreateFactory("substream_0"), peerGate));
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false,
+                    configure: builder =>
+                    {
+                        // A parked peer barrier pairs the stop at once, only the target waits.
+                        builder.SetMinimumTimeBetweenCheckpoint(ParkedBarrierInterval);
+                        builder.WithCheckpointListener(new NotificationReciever(() => Interlocked.Increment(ref notifications)));
+                    });
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                using var loadDone = new CancellationTokenSource();
+                var load = Task.Run(async () =>
+                {
+                    while (!loadDone.IsCancellationRequested)
+                    {
+                        _generator.Generate(25);
+                        await Task.Delay(25);
+                    }
+                });
+                await WaitForCommitsToAdvance(commits, "substream_1", 1);
+                await Task.Delay(500);
+
+                // The peer never fetches the stop barrier, so the drain polls until its timeout.
+                peerGate.Close();
+                var commitsBefore = commits.ToArray().Length;
+                var notificationsBefore = Volatile.Read(ref notifications);
+                await AwaitBounded(substream1.StopAsync(), "stop against a peer that never fetches");
+                // The commit hook runs once per stop cycle, committed or not.
+                var cyclesDuringStop = commits.ToArray().Skip(commitsBefore)
+                    .Where(c => c.Stream.Contains("substream_1", StringComparison.Ordinal))
+                    .Select(c => c.Version)
+                    .ToList();
+                var versionsSeen = cyclesDuringStop.Distinct().Count();
+                var notificationsDuringStop = Volatile.Read(ref notifications) - notificationsBefore;
+                peerGate.Open();
+                loadDone.Cancel();
+                await load;
+
+                Assert.True(cyclesDuringStop.Count > 1, "The stop finished in a single cycle, no drain cycle ran.");
+                Assert.True(
+                    notificationsDuringStop <= versionsSeen,
+                    $"The stop raised {notificationsDuringStop} checkpoint complete notifications while the commit hook reported only {versionsSeen} distinct versions, drain cycles that wrote nothing notified as if they had committed.");
+            }
+            finally
+            {
+                Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// Finding: the fetch cut is decided when a peer barrier is written to the channel,
+        /// against a stop that may not be parked yet. A barrier already parked when the stop
+        /// lands is paired by it, and everything fetched behind it is forwarded past the stop
+        /// barrier into cycles that never commit.
+        /// </summary>
+        [Fact]
+        public async Task StopMustNotForwardRowsFetchedBehindAParkedPeerBarrier()
+        {
+            var run = await RunHandoffUnderLoad("e2e_parked_cut", null, ParkedBarrierInterval, TimeSpan.FromMilliseconds(500));
+
+            Assert.Empty(run.LeavingLog.LinesContaining("failing the stop so both substreams recover"));
+            Assert.True(run.PairingsDuringStop.Count > 0, "The stop did not pair a parked peer barrier, the window was missed.");
+            var leaked = run.LeavingLog.LinesContaining("rows after the stop barrier");
+            Assert.True(
+                leaked.Count == 0,
+                $"Rows fetched behind the barrier the stop paired against were forwarded past the stop barrier and are committed by nobody: {string.Join(" | ", leaked.Take(3))}");
+        }
+
+        /// <summary>
+        /// Finding: the sender only holds its queue for a stopping peer once its own read
+        /// operator consumed that peer's stop barrier, which is after the peer already
+        /// fetched past the barrier it pairs against. Those rows are handed out, never
+        /// committed on the stopping side and never held for its return.
+        /// </summary>
+        [Fact]
+        public async Task RowsBehindTheBarrierAStopPairedAgainstMustSurviveTheHandoff()
+        {
+            var run = await RunHandoffUnderLoad("e2e_parked_rows", null, ParkedBarrierInterval, TimeSpan.FromMilliseconds(500));
+
+            Assert.True(run.PairingsDuringStop.Count > 0, "The stop did not pair a parked peer barrier, the window was missed.");
+            await AssertRowsSurvived(run, "parked_rows");
+            Assert.Empty(run.Failures);
+        }
+
+        /// <summary>
+        /// Loads continuously, hands substream_1 off right after a commit on the clamped
+        /// side, brings it back through a clean handoff and records what the stop did. A
+        /// clamp on the staying peer delays its answer past the alignment escape, one on the
+        /// leaving side leaves a peer barrier parked at its read operator when the stop lands.
+        /// </summary>
+        private async Task<HandoffObservation> RunHandoffUnderLoad(
+            string testName,
+            TimeSpan? stayingInterval,
+            TimeSpan? leavingInterval,
+            TimeSpan settleBeforeStop)
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var commits = new ConcurrentQueue<(string Stream, long Version)>();
+            var pairings = new ConcurrentQueue<(string Stream, long Peer, long Local)>();
+
+            Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    commits.Enqueue((streamName, lastVersion));
+                }
+                return Task.CompletedTask;
+            };
+            SubstreamReadOperator.PairedCheckpointHookForTests = (streamName, peerVersion, localVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    pairings.Enqueue((streamName, peerVersion, localVersion));
+                }
+            };
+            try
+            {
+                Action<FlowtideBuilder> configureStaying = builder =>
+                {
+                    if (stayingInterval.HasValue)
+                    {
+                        builder.SetMinimumTimeBetweenCheckpoint(stayingInterval.Value);
+                    }
+                };
+                Action<FlowtideBuilder> configureLeaving = builder =>
+                {
+                    if (leavingInterval.HasValue)
+                    {
+                        builder.SetMinimumTimeBetweenCheckpoint(leavingInterval.Value);
+                    }
+                };
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false, configure: configureStaying);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false, configure: configureLeaving);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                using var loadDone = new CancellationTokenSource();
+                var load = Task.Run(async () =>
+                {
+                    while (!loadDone.IsCancellationRequested)
+                    {
+                        _generator.Generate(25);
+                        await Task.Delay(25);
+                    }
+                });
+
+                // Right after a commit on the clamped side its next cycle is a full interval away.
+                var clampedSide = stayingInterval.HasValue ? "substream_0" : "substream_1";
+                await WaitForCommitsToAdvance(commits, clampedSide, 1);
+                await Task.Delay(settleBeforeStop);
+
+                var pairingsBefore = pairings.ToArray().Length;
+
+                await substream1.PrepareHandoffAsync();
+                var stopwatch = Stopwatch.StartNew();
+                await AwaitBounded(substream1.StopAsync(), "handoff stop");
+                stopwatch.Stop();
+
+                var pairingsDuringStop = pairings.ToArray().Skip(pairingsBefore)
+                    .Where(p => p.Stream.Contains("substream_1", StringComparison.Ordinal))
+                    .ToList();
+
+                await substream1.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream1);
+                }
+
+                substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true, configure: configureLeaving);
+                await substream1.StartAsync();
+
+                loadDone.Cancel();
+                await load;
+                // The sink publishes on a watermark, nudge the final state out.
+                _generator.Generate(50);
+
+                return new HandoffObservation(latestData, failures, pairingsDuringStop, stopwatch.Elapsed, _logBuffers["substream_1"]);
+            }
+            finally
+            {
+                Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = null;
+                SubstreamReadOperator.PairedCheckpointHookForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// Every generated row must be in the sink after the handoff, with nothing failed.
+        /// </summary>
+        private async Task AssertRowsSurvived(HandoffObservation run, string phase)
+        {
+            try
+            {
+                await WaitForSinkData(run.LatestData, run.Failures, "substream_0", GetExpectedJoinResult());
+            }
+            catch (Exception sinkFailure)
+            {
+                DumpLogBuffers(phase);
+                if (run.LatestData.TryGetValue("substream_0", out var actualRows))
+                {
+                    using var expectedRows = BatchConverter.ConvertToBatchSorted(GetExpectedJoinResult(), GlobalMemoryManager.Instance);
+                    throw new Exception($"{sinkFailure.Message} | {DescribeRowDifference(expectedRows, actualRows)}", sinkFailure);
+                }
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Holds a substream's fetches while closed, so a test can order the peer's commit
+        /// before the dequeue of the barrier that commit snapshots.
+        /// </summary>
+        private sealed class FetchGate
+        {
+            private volatile TaskCompletionSource _open = Completed();
+
+            private static TaskCompletionSource Completed()
+            {
+                var source = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                source.SetResult();
+                return source;
+            }
+
+            public void Close()
+            {
+                _open = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+
+            public void Open()
+            {
+                _open.TrySetResult();
+            }
+
+            public Task WaitAsync(CancellationToken cancellationToken)
+            {
+                return _open.Task.WaitAsync(cancellationToken);
+            }
+        }
+
+        private sealed class GatedCommunicationFactory : ISubstreamCommunicationHandlerFactory
+        {
+            private readonly ISubstreamCommunicationHandlerFactory _inner;
+            private readonly FetchGate _gate;
+
+            public GatedCommunicationFactory(ISubstreamCommunicationHandlerFactory inner, FetchGate gate)
+            {
+                _inner = inner;
+                _gate = gate;
+            }
+
+            public ISubstreamCommunicationHandler GetCommunicationHandler(string targetSubstreamName, string selfSubstreamName)
+            {
+                return new GatedHandler(_inner.GetCommunicationHandler(targetSubstreamName, selfSubstreamName), _gate);
+            }
+        }
+
+        private sealed class GatedHandler : ISubstreamCommunicationHandler
+        {
+            private readonly ISubstreamCommunicationHandler _inner;
+            private readonly FetchGate _gate;
+
+            public GatedHandler(ISubstreamCommunicationHandler inner, FetchGate gate)
+            {
+                _inner = inner;
+                _gate = gate;
+            }
+
+            public void SetReceiveAllocatorResolver(Func<int, IMemoryAllocator> allocatorResolver)
+            {
+                _inner.SetReceiveAllocatorResolver(allocatorResolver);
+            }
+
+            public void OnStreamFailure()
+            {
+                _inner.OnStreamFailure();
+            }
+
+            public void Initialize(
+                Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
+                Func<long, Task> callFailAndRecover,
+                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<long, long, bool, Task> callRecieveCheckpointDone)
+            {
+                _inner.Initialize(getDataFunction, callFailAndRecover, initializeFromTarget, callRecieveCheckpointDone);
+            }
+
+            public async Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
+            {
+                await _gate.WaitAsync(cancellationToken);
+                return await _inner.FetchData(targetIds, numberOfEvents, cancellationToken);
+            }
+
+            public Task SendFailAndRecover(long restoreVersion)
+            {
+                return _inner.SendFailAndRecover(restoreVersion);
+            }
+
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+            {
+                return _inner.SendInitializeRequest(restoreVersion, checkpointEpoch, cleanHandoff, cancellationToken);
+            }
+
+            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
+            {
+                return _inner.SendCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
+            }
+        }
+
         /// <summary>
         /// Waits for a substream to commit a number of further cycles, so a test can put the
         /// pair past a version before it does anything else.
@@ -1188,7 +1673,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             ConcurrentBag<(string Substream, Exception? Exception)> failures,
             bool announceCleanHandoff,
             int egressCrashOnCheckpointCount = 0,
-            int substreamCount = 2)
+            int substreamCount = 2,
+            Action<FlowtideBuilder>? configure = null,
+            ISubstreamCommunicationHandlerFactory? communicationFactory = null)
         {
             var connectorManager = new ConnectorManager();
             connectorManager.AddSource(new MockSourceFactory("*", _db, false));
@@ -1212,10 +1699,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             builder.SetDistributedOptions(new DistributedOptions(
                 substreamName,
                 default,
-                hub.CreateFactory(substreamName))
+                communicationFactory ?? hub.CreateFactory(substreamName))
             {
                 AnnounceCleanHandoff = announceCleanHandoff
             });
+            configure?.Invoke(builder);
 
             var stream = builder.Build();
             lock (_streams)

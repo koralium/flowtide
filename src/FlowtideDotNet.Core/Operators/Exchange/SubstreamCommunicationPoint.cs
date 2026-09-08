@@ -34,6 +34,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private Task? _fetchDataTask;
         private readonly object _fetchDataLock = new object();
         private readonly Dictionary<int, Func<IStreamEvent, Task>> _subscribedTargets = new Dictionary<int, Func<IStreamEvent, Task>>();
+        // Subscribed targets whose fetch is held at a barrier, see PauseFetch. Guarded by _fetchDataLock.
+        private readonly HashSet<int> _pausedTargets = new HashSet<int>();
         private long _subscribeTargetsVersion = 0;
         private bool _dataHandled = false;
         private readonly object _dataHandledLock = new object();
@@ -58,8 +60,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         // Send checkpoint fields
         private long _lastSentCheckpointVersion;
-        // Whether the last ack already carried the stop attestation.
-        private bool _lastSentCoversStopBarrier;
         private readonly object _sendCheckpointLock = new object();
 
         /// <summary>
@@ -532,10 +532,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 readOperator.ResumeAfterPeerReconnect();
             }
-            foreach (var targetInfo in _targetInfos.Values)
-            {
-                targetInfo.Target.ResumeAfterPeerReconnect();
-            }
             return CleanHandoffResult.Accepted;
         }
 
@@ -555,19 +551,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             int maxCountPerTarget = Math.Max(1, maxEventCount / targetIds.Count);
 
-            // This point serves one peer, so any reader that consumed its stop barrier speaks
-            // for all of them. The targets then hand out the last barrier and nothing after it.
-            bool peerIsStopping;
-            lock (_readOperators)
-            {
-                peerIsStopping = _readOperators.Any(r => r.PeerIsStopping);
-            }
-
             foreach (var targetId in targetIds)
             {
                 if (_targetInfos.TryGetValue(targetId, out var targetInfo))
                 {
-                    await targetInfo.Target.ReadData(outputList, maxCountPerTarget, peerIsStopping);
+                    await targetInfo.Target.ReadData(outputList, maxCountPerTarget);
                 }
             }
 
@@ -735,33 +723,29 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public Task SendCheckpointDone(long checkpointVersion)
         {
-            // Whether this committed checkpoint covers consuming the peer's stop barriers,
-            // used by a stopping peer to confirm its drain. Every read operator's OnCheckpoint
-            // ran before any CheckpointDone fires, so the flags are final for this version.
-            // Vacuously true without read operators: the peer only checks the flag on targets,
-            // and a target here is always paired with a read operator on the peer.
-            // Read before the dedup, a drain cycle turns this true without moving the version.
-            bool coversPeerStopBarrier;
-            lock (_readOperators)
-            {
-                coversPeerStopBarrier = _readOperators.All(r => r.PeerStopConsumedCommitted);
-            }
             lock (_sendCheckpointLock)
             {
-                // A new attestation is news even at an already sent version.
-                bool newStopAttestation = coversPeerStopBarrier && !_lastSentCoversStopBarrier;
-                if (checkpointVersion <= _lastSentCheckpointVersion && !newStopAttestation)
+                if (checkpointVersion <= _lastSentCheckpointVersion)
                 {
                     // Already sent this checkpoint or a later one
                     return Task.CompletedTask;
                 }
-                _lastSentCheckpointVersion = Math.Max(_lastSentCheckpointVersion, checkpointVersion);
-                _lastSentCoversStopBarrier = coversPeerStopBarrier;
+                _lastSentCheckpointVersion = checkpointVersion;
             }
             long targetEpoch;
             lock (_initializeLock)
             {
                 targetEpoch = _peerCheckpointEpoch;
+            }
+            // Whether this committed checkpoint covers consuming the peer's stop barriers,
+            // used by a stopping peer to confirm its drain. Every read operator's OnCheckpoint
+            // ran before any CheckpointDone fires, so the flags are final for this version.
+            // Vacuously true without read operators: the peer only checks the flag on targets,
+            // and a target here is always paired with a read operator on the peer.
+            bool coversPeerStopBarrier;
+            lock (_readOperators)
+            {
+                coversPeerStopBarrier = _readOperators.All(r => r.PeerStopConsumedCommitted);
             }
             _logger.LogDebug("Sending checkpoint done to target: {substreamName} from {selfSubstreamName}", substreamName, _selfSubstreamName);
             return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion, targetEpoch, coversPeerStopBarrier);
@@ -778,13 +762,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 // Use the indexer so a re-subscribe after a failure replaces the old callback
                 _subscribedTargets[exchangeTarget] = onData;
+                // A fresh subscription starts fetching, whatever the old one held at.
+                _pausedTargets.Remove(exchangeTarget);
                 _subscribeTargetsVersion++;
             }
             TryStartFetchTask();
         }
 
         /// <summary>
-        /// True while events are still fetched from that target in the other substream.
+        /// True while events are still wanted from that target in the other substream. A
+        /// fetch held at a barrier by PauseFetch still counts, only Unsubscribe ends it.
         /// </summary>
         public bool IsSubscribed(int exchangeTarget)
         {
@@ -799,7 +786,35 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             lock (_fetchDataLock)
             {
                 _subscribedTargets.Remove(exchangeTarget);
+                _pausedTargets.Remove(exchangeTarget);
                 _subscribeTargetsVersion++;
+            }
+        }
+
+        /// <summary>
+        /// Holds the fetch for a target without giving up its subscription. The dequeue off
+        /// the other substream is destructive, so a reader that has to decide what to do at a
+        /// barrier holds here until it knows, and nothing behind the barrier leaves the peer.
+        /// </summary>
+        public void PauseFetch(int exchangeTarget)
+        {
+            lock (_fetchDataLock)
+            {
+                if (_subscribedTargets.ContainsKey(exchangeTarget) && _pausedTargets.Add(exchangeTarget))
+                {
+                    _subscribeTargetsVersion++;
+                }
+            }
+        }
+
+        public void ResumeFetch(int exchangeTarget)
+        {
+            lock (_fetchDataLock)
+            {
+                if (_pausedTargets.Remove(exchangeTarget))
+                {
+                    _subscribeTargetsVersion++;
+                }
             }
         }
 
@@ -975,7 +990,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         foreach (var kvp in _subscribedTargets)
                         {
                             currentSubscribedTargets[kvp.Key] = kvp.Value;
-                            targetIds.Add(kvp.Key);
+                            if (!_pausedTargets.Contains(kvp.Key))
+                            {
+                                targetIds.Add(kvp.Key);
+                            }
                         }
                     }
                     if (currentSubscribedTargets.Count == 0)
@@ -985,6 +1003,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         _fetchDataTask = null;
                         return;
                     }
+                }
+
+                if (targetIds.Count == 0)
+                {
+                    // Every subscriber holds its fetch at a barrier, wait for a resume.
+                    await Task.Delay(emptyPollDelayMs);
+                    continue;
                 }
 
                 IReadOnlyList<SubstreamEventData> data;

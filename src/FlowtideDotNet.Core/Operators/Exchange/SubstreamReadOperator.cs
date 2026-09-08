@@ -70,12 +70,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // drained. The stream may first finish stopping once that pairing is committed.
         private volatile bool _peerStopConsumed;
         private volatile bool _peerStopConsumedCommitted;
-        // Set only by the peer's own stop barrier, unlike _peerStopConsumed which any paired
-        // barrier satisfies. A stopping peer never fetches again, see SubstreamTarget.
-        private volatile bool _peerIsStopping;
-        // The escape gave up on the peer's barrier. Kept apart from _peerStopConsumed, which
-        // attests a barrier this stream really consumed and is read by the handoff and the acks.
-        private volatile bool _stopAlignmentEscaped;
         // A returning peer's restarted pipeline sends one init watermarks event that must be
         // consumed without forwarding, a second init downstream would skew barrier alignment.
         private volatile bool _swallowNextInitWatermarks;
@@ -119,10 +113,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         /// <summary>
         /// True once the stop barrier paired against a peer barrier and that cycle committed.
-        /// The stopping stream runs stop cycles until then, bounded by the alignment escape in
-        /// case the peer never answers.
+        /// The stopping stream runs stop cycles until then. A peer that never answers fails
+        /// the stop at the drain timeout, see ScheduleStopAlignmentDeadline.
         /// </summary>
-        public override bool ReadyToStop => _peerStopConsumedCommitted || _stopAlignmentEscaped;
+        public override bool ReadyToStop => _peerStopConsumedCommitted;
 
         public override Task Compact()
         {
@@ -161,8 +155,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _initWatermarksHandled = false;
                 _peerStopConsumed = false;
                 _peerStopConsumedCommitted = false;
-                _peerIsStopping = false;
-                _stopAlignmentEscaped = false;
                 _swallowNextInitWatermarks = false;
                 _localCheckpointSeen = false;
                 _uncoveredForwards = false;
@@ -247,11 +239,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             var channel = _channel;
 
-            _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, async (ev) =>
-            {
-                await channel.Writer.WriteAsync(ev);
-                StopFetchingIfBarrierEndsTheStop(ev);
-            });
+            SubscribeToPeer(channel);
 
             if (_communicationPoint.CleanReconnect && !_initWatermarksHandled)
             {
@@ -334,7 +322,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // received, stop fetching from it. Never filtered below, every stop
                         // gate hangs off consuming this.
                         _peerStopConsumed = true;
-                        _peerIsStopping = true;
                         _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
                         Logger.LogDebug("Substream read {name} consumed the other substreams stop barrier", Name);
                     }
@@ -450,6 +437,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // Replay a signal that arrived before this stream finished starting
                         SetDependenciesDone();
                     }
+                    if (!_peerStopConsumed && !output.CancellationToken.IsCancellationRequested)
+                    {
+                        // Paired and forwarded, what the peer sent behind it is wanted again.
+                        _communicationPoint.ResumeFetch(_exchangeReferenceRelation.ExchangeTargetId);
+                    }
                 }
                 else if (ev is InitWatermarksEvent initWatermarksEvent)
                 {
@@ -525,9 +517,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <summary>
         /// Forwards the parked stop barrier.
         /// </summary>
-        /// <summary>
-        /// Forwards without the peers barrier if it never arrives.
-        /// </summary>
         private void SelfForwardStopCheckpoint()
         {
             var channel = _channel;
@@ -539,14 +528,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// Half the streams drain timeout, so the escape always fires before it.
+        /// Fails the stop if the peer's barrier never arrives. The stream checks its drain
+        /// timeout only when a stop cycle completes, and a parked stop cycle never does, so
+        /// this is what bounds it. Forwarding the stop without the barrier would commit a cut
+        /// the peer never took and leave the versions apart; failing rolls both substreams
+        /// back to the checkpoint they share instead, where everything is regenerated.
         /// </summary>
-        private TimeSpan StopAlignmentDeadline()
-        {
-            return TimeSpan.FromTicks(StopDrainTimeout.Ticks / 2);
-        }
-
-        private void ScheduleStopAlignmentEscape(ICheckpointEvent stopCheckpoint)
+        private void ScheduleStopAlignmentDeadline(ICheckpointEvent stopCheckpoint)
         {
             var cancelSource = _stopAlignmentCancel;
             if (cancelSource == null)
@@ -559,7 +547,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 try
                 {
-                    await Task.Delay(StopAlignmentDeadline(), cancellationToken).ConfigureAwait(false);
+                    await Task.Delay(StopDrainTimeout, cancellationToken).ConfigureAwait(false);
                     if (_peerStopConsumed)
                     {
                         return;
@@ -572,11 +560,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             return;
                         }
                     }
-                    Logger.LogWarning("Substream read {name} did not receive the other substreams stop barrier, forwarding the stop checkpoint without it. Events produced after it may be dropped, so the stop is not clean.", Name);
-                    // Nothing more will ever arrive, so further stop cycles only pay this wait
-                    // again and end at the drain timeout. This is as drained as it gets.
-                    _stopAlignmentEscaped = true;
-                    SelfForwardStopCheckpoint();
+                    Logger.LogWarning("Substream read {name} did not receive the other substreams barrier within the stop drain timeout, failing the stop so both substreams recover to a common checkpoint instead of committing a cut the other substream never took.", Name);
+                    DispatchFailAndRollback();
                 }
                 catch (OperationCanceledException)
                 {
@@ -584,7 +569,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 catch (Exception e)
                 {
-                    Logger.LogDebug(e, "Substream read {name} stop alignment escape ended early.", Name);
+                    Logger.LogDebug(e, "Substream read {name} stop alignment deadline ended early.", Name);
                 }
             });
         }
@@ -622,9 +607,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         internal bool HasCleanPeerStop => _peerStopConsumed;
 
-        // True once the peer's own stop barrier was consumed, so it will never fetch again.
-        internal bool PeerIsStopping => _peerIsStopping;
-
         /// <summary>
         /// True when a committed checkpoint covers the consumed stop barrier. Stamped onto
         /// outgoing checkpoint done acks so the stopping peer only confirms its drain on an
@@ -644,18 +626,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _peerStopConsumed = false;
                 _peerStopConsumedCommitted = false;
-                _peerIsStopping = false;
-                _stopAlignmentEscaped = false;
                 _swallowNextInitWatermarks = true;
             }
             var channel = _channel;
             if (channel != null)
             {
-                _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, async (ev) =>
-                {
-                    await channel.Writer.WriteAsync(ev);
-                    StopFetchingIfBarrierEndsTheStop(ev);
-                });
+                SubscribeToPeer(channel);
             }
         }
 
@@ -681,38 +657,30 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
+        /// Subscribes to the peer, holding the fetch at every delivered barrier until the read
+        /// loop paired it. The dequeue off the peer is destructive and the read loop may pair
+        /// the barrier with a stop, after which nothing behind it may leave the peer: it stays
+        /// queued there for this stream's return. An ordinary pairing resumes the fetch.
+        /// </summary>
+        private void SubscribeToPeer(Channel<IStreamEvent> channel)
+        {
+            _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, async (ev) =>
+            {
+                await channel.Writer.WriteAsync(ev);
+                if (ev is ICheckpointEvent)
+                {
+                    _communicationPoint.PauseFetch(_exchangeReferenceRelation.ExchangeTargetId);
+                }
+            });
+        }
+
+        /// <summary>
         /// Events from another substream must eventually be covered by a checkpoint in this
         /// stream, even when no local source change triggers one - uncovered, they would wait
         /// forever once the substreams paired their cycles. Latched to one covering cycle per
         /// barrier: scheduling on every event would make the substreams checkpoint forever,
         /// each cycle's barriers re-trigger cycles at the peers.
         /// </summary>
-        /// <summary>
-        /// Stops the fetch as soon as a barrier arrives while this stream is stopping. The fetch
-        /// loop knows nothing of the stop and keeps pulling until the read loop reaches the
-        /// barrier, but the dequeue is destructive and the stop is the last cycle: anything taken
-        /// past that barrier is committed by nobody, and a peer resuming from a clean handoff
-        /// never rolls back to regenerate it. Every other barrier is fine, the next cycle covers
-        /// what follows it, see EnsureCoveringCheckpoint.
-        /// </summary>
-        private void StopFetchingIfBarrierEndsTheStop(IStreamEvent ev)
-        {
-            if (ev is not ICheckpointEvent)
-            {
-                return;
-            }
-            bool stopping;
-            lock (_lock)
-            {
-                stopping = _currentCheckpoint is StopStreamCheckpoint;
-            }
-            if (stopping)
-            {
-                _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
-                Logger.LogDebug("Substream read {name} stops fetching at the barrier that ends its stop", Name);
-            }
-        }
-
         private void EnsureCoveringCheckpoint()
         {
             if (!_uncoveredForwards)
@@ -808,16 +776,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     // The barrier seals the outbox, so align it first. A handoff aligns like
                     // any other stop: the peer answers this barrier with one of its own, and
-                    // pairing against it is what makes everything it sent ours.
-                    // Nothing is coming when the subscription is already gone.
+                    // pairing against it is what makes everything it sent ours. A barrier the
+                    // fetch is holding at pairs as soon as the read loop reaches it, a paused
+                    // fetch is still subscribed. Nothing is coming when the subscription is gone.
                     if (_peerStopConsumed || !_communicationPoint.IsSubscribed(_exchangeReferenceRelation.ExchangeTargetId))
                     {
                         SelfForwardStopCheckpoint();
                     }
                     else
                     {
-                        // Bounded, a peer that never answers must not hold the stop.
-                        ScheduleStopAlignmentEscape(checkpointEvent);
+                        // Bounded, a peer that never answers must not hold the stop forever.
+                        ScheduleStopAlignmentDeadline(checkpointEvent);
                     }
                 }
             }

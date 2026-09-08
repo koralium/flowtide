@@ -108,6 +108,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 Debug.Assert(run._context != null, nameof(_context));
                 Debug.Assert(run._currentCheckpoint != null, nameof(_context));
 
+                bool committed = false;
                 try
                 {
                     // Holds the task in the window between being scheduled and starting its
@@ -129,8 +130,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         // Only the first stop cycle commits. The ones after it are polling for
                         // the other substreams to drain, and the peer takes no matching cycle
                         // for them, so committing would leave this stream a version ahead of it.
-                        // Nothing arrives past the stop barrier to commit anyway, the other
-                        // substream cuts the fetch there and holds the rest for the return.
+                        // Nothing arrives past the stop barrier to commit anyway, the fetch is
+                        // held at the barrier the stop paired and the rest stays with the peer.
                         _context._logger.LogDebug("Stop drain cycle on stream {stream} is waiting for the other substreams, keeping checkpoint version {version}.", _context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
                     }
                     else
@@ -157,11 +158,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _context._logger.StateManagerCheckpointDone(_context.streamName);
 
                         run._stopCommitTaken = true;
+                        committed = true;
                     }
                 }
                 finally
                 {
                     System.Threading.Interlocked.Decrement(ref run._context._stateManagerWriteCount);
+                }
+
+                if (!committed)
+                {
+                    // A drain poll is a checkpoint to nobody: nothing was written, the
+                    // listeners and the vertices heard about the committed cycle already, and
+                    // its acknowledgements to the other substreams went out with it.
+                    return;
                 }
 
                 if (_context._notificationReciever != null)
