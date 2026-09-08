@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Engine.Internal;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Core.Operators.Exchange;
 
@@ -27,6 +28,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         private static int _applied;
 
+        // What the acceptance streams drain for. Bound a stop against this, never a literal,
+        // or shortening it silently retires the assertion that catches a burned drain.
+        internal static readonly TimeSpan StopDrainTimeout = TimeSpan.FromSeconds(5);
+
         public static void Apply()
         {
             if (Interlocked.Exchange(ref _applied, 1) == 1)
@@ -36,6 +41,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             FailureStreamState.RecoveryRestartDelay = TimeSpan.FromMilliseconds(50);
             SubstreamCommunicationPoint.NotStartedRetrySliceMs = 50;
             RunningStreamState.DeferredWishWatchdogPollInterval = TimeSpan.FromMilliseconds(100);
+            // A drain that wedges on a peer otherwise costs the whole 30s before it is visible.
+            DataflowStreamOptions.DefaultStopDrainTimeout = StopDrainTimeout;
         }
     }
 }

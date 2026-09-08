@@ -52,7 +52,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             IStateManagerClient stateManagerClient, 
             ExchangeOperatorState exchangeOperatorState, 
             IMemoryAllocator memoryAllocator,
-            Func<long, Task> failAndRecoverFunc)
+            Func<long, Task> failAndRecoverFunc,
+            TimeSpan stopDrainTimeout)
         {
             _eventCounter = exchangeOperatorState.EventCounter;
 

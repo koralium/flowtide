@@ -36,11 +36,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         Task Initialize(
             long restoreVersion,
-            int targetId, 
-            IStateManagerClient stateManagerClient, 
-            ExchangeOperatorState state, 
+            int targetId,
+            IStateManagerClient stateManagerClient,
+            ExchangeOperatorState state,
             IMemoryAllocator memoryAllocator,
-            Func<long, Task> failAndRecoverFunc);
+            Func<long, Task> failAndRecoverFunc,
+            TimeSpan stopDrainTimeout);
 
         /// <summary>
         /// Called when a event batch has been partitioned.

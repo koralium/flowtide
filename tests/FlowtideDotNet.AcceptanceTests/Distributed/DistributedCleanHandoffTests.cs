@@ -549,20 +549,12 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
             var hub = new LocalSubstreamCommunicationHub();
             var pairings = new ConcurrentQueue<(string Stream, long Peer, long Local)>();
-            var discarded = new ConcurrentQueue<(string Stream, long Version, long Floor)>();
 
             SubstreamReadOperator.PairedCheckpointHookForTests = (streamName, peerVersion, localVersion) =>
             {
                 if (streamName.Contains(testName, StringComparison.Ordinal))
                 {
                     pairings.Enqueue((streamName, peerVersion, localVersion));
-                }
-            };
-            SubstreamReadOperator.CoveredPeerBarrierHookForTests = (streamName, version, floor) =>
-            {
-                if (streamName.Contains(testName, StringComparison.Ordinal))
-                {
-                    discarded.Enqueue((streamName, version, floor));
                 }
             };
             try
@@ -587,7 +579,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await AwaitBounded(substream1.StopAsync(), "handoff stop");
                 handoffStop.Stop();
                 Assert.True(
-                    handoffStop.Elapsed < TimeSpan.FromSeconds(10),
+                    handoffStop.Elapsed < FastEngineTimings.StopDrainTimeout,
                     $"The handoff stop took {handoffStop.Elapsed}, a drain timeout is being burned.");
                 await substream1.DisposeAsync();
                 lock (_streams)
@@ -608,20 +600,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 }
                 AssertPairedVersionsMatch(pairings, "after the handoff");
 
-                // The stop barrier pairs against the peer's answering barrier, so a clean handoff
-                // must leave nothing behind at all. A discard here means it stranded a barrier
-                // again and the restore floor is covering for it.
-                var leftovers = discarded.ToArray();
-                Assert.True(
-                    leftovers.Length == 0,
-                    $"The handoff stranded peer barriers instead of draining them: {string.Join("; ", leftovers.Select(x => $"{x.Stream} version={x.Version} floor={x.Floor}"))}");
-
                 await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
             }
             finally
             {
                 SubstreamReadOperator.PairedCheckpointHookForTests = null;
-                SubstreamReadOperator.CoveredPeerBarrierHookForTests = null;
             }
         }
 
@@ -954,9 +937,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             AfterHandoffSettled,
         }
 
-        // How long the departing substream is held after it stops fetching from its peer.
-        private static readonly TimeSpan HandoffStrandingWindow = TimeSpan.FromSeconds(1);
-
         private const string InjectedFailureMessage = "Injected failure for the handoff loss test";
 
         /// <summary>
@@ -1016,10 +996,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 if (withHandoff)
                 {
                     // Unsubscribes, so from here the peer produces for a substream that no longer
-                    // fetches. Held open so the stranded span covers many source polls: the poll
-                    // interval is 50 ms and the span is about that, so it is otherwise a coin flip.
+                    // fetches. Held open by the peer's own commits, not a sleep: each committed
+                    // cycle is a barrier and a batch it produced for us, so waiting for two of
+                    // them puts real rows in the stranded span instead of hoping they land there.
                     await substream1.PrepareHandoffAsync();
-                    await Task.Delay(HandoffStrandingWindow);
+                    await WaitForCommitsToAdvance(commits, "substream_0", 2);
                     await AwaitBounded(substream1.StopAsync(), "handoff stop");
                     await substream1.DisposeAsync();
                     lock (_streams)
@@ -1030,7 +1011,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 else
                 {
                     // Same shape as the handoff run, so only the handoff differs between them.
-                    await Task.Delay(HandoffStrandingWindow);
+                    await WaitForCommitsToAdvance(commits, "substream_0", 2);
                 }
 
                 int StayingCommits() => commits.Count(x => x.Stream.Contains("substream_0", StringComparison.Ordinal));
@@ -1057,28 +1038,21 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 loadDone.Cancel();
                 await load;
 
+                // The sink only publishes on a watermark, and an idle stream sends none, so it
+                // would sit on whatever it last published. Nudge it so the final state comes out.
+                _generator.Generate(50);
+
                 // Nothing below means anything unless the injected failure is what landed.
-                var failureDeadline = DateTime.UtcNow.AddSeconds(30);
-                while (!failures.Any(f => f.Exception != null && f.Exception.ToString().Contains(InjectedFailureMessage, StringComparison.Ordinal))
-                    && DateTime.UtcNow < failureDeadline)
-                {
-                    await Task.Delay(100);
-                }
-                Assert.True(
-                    failures.Any(f => f.Exception != null && f.Exception.ToString().Contains(InjectedFailureMessage, StringComparison.Ordinal)),
-                    $"The injected failure was never reported, so nothing rolled back and the run proves nothing. Reported: {string.Join(" | ", failures.Where(f => f.Exception != null).Select(f => f.Substream + ": " + f.Exception!.Message))}");
+                bool InjectedFailureSeen() => failures.Any(f => f.Exception != null && f.Exception.ToString().Contains(InjectedFailureMessage, StringComparison.Ordinal));
+                await WaitUntil(
+                    InjectedFailureSeen,
+                    () => $"the injected failure to be reported, so nothing rolled back and the run proves nothing. Reported: {string.Join(" | ", failures.Where(f => f.Exception != null).Select(f => f.Substream + ": " + f.Exception!.Message))}");
 
                 // The substream that failed has to have actually rolled back. Only it takes the
                 // failure path, a rebuilt peer restores through its own start instead.
-                var restoreDeadline = DateTime.UtcNow.AddSeconds(30);
-                while (!restores.Any(r => r.Stream.Contains("substream_0", StringComparison.Ordinal)) && DateTime.UtcNow < restoreDeadline)
-                {
-                    await Task.Delay(100);
-                }
-                var restored = restores.ToArray();
-                Assert.True(
-                    restored.Any(r => r.Stream.Contains("substream_0", StringComparison.Ordinal)),
-                    $"The staying substream never rolled back, so nothing was restored and the run proves nothing. Saw: {string.Join(", ", restored.Select(r => r.Stream + "=" + r.Version))}");
+                await WaitUntil(
+                    () => restores.Any(r => r.Stream.Contains("substream_0", StringComparison.Ordinal)),
+                    () => $"the staying substream to roll back. Saw: {string.Join(", ", restores.Select(r => r.Stream + "=" + r.Version))}");
 
                 if (mode == HandoffFailureMode.WhilePeerIsAway)
                 {
@@ -1099,7 +1073,21 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
                 // Every generated row has to survive the rollback, the versions alone would agree
                 // either way. A shortfall here is the stranded rows never coming back.
-                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                try
+                {
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                }
+                catch (Exception sinkFailure)
+                {
+                    // Rare and load dependent, so the logs have to come from the run that failed.
+                    DumpLogBuffers($"rows_in_flight_{mode}");
+                    if (latestData.TryGetValue("substream_0", out var actualRows))
+                    {
+                        using var expectedRows = BatchConverter.ConvertToBatchSorted(GetExpectedJoinResult(), GlobalMemoryManager.Instance);
+                        throw new Exception($"{sinkFailure.Message} | {DescribeRowDifference(expectedRows, actualRows)}", sinkFailure);
+                    }
+                    throw;
+                }
 
                 await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
             }
@@ -1114,16 +1102,73 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         /// Waits for a substream to commit a number of further cycles, so a test can put the
         /// pair past a version before it does anything else.
         /// </summary>
-        private static async Task WaitForCommitsToAdvance(ConcurrentQueue<(string Stream, long Version)> commits, string substreamName, int count)
+        private static Task WaitForCommitsToAdvance(ConcurrentQueue<(string Stream, long Version)> commits, string substreamName, int count)
         {
             int Seen() => commits.Count(x => x.Stream.Contains(substreamName, StringComparison.Ordinal));
             var target = Seen() + count;
-            var deadline = DateTime.UtcNow.AddSeconds(30);
-            while (Seen() < target && DateTime.UtcNow < deadline)
+            return WaitUntil(() => Seen() >= target, () => $"{substreamName} to commit {count} more cycles, it committed {Seen() - (target - count)}");
+        }
+
+        /// <summary>
+        /// Waits for something to be observed rather than for a duration. The deadline is only a
+        /// hang guard: reaching it means the thing never happened, not that the wait was too short.
+        /// </summary>
+        private static async Task WaitUntil(Func<bool> condition, Func<string> describeWhat)
+        {
+            var hangGuard = DateTime.UtcNow.AddSeconds(60);
+            while (!condition())
             {
-                await Task.Delay(50);
+                if (DateTime.UtcNow >= hangGuard)
+                {
+                    Assert.Fail($"Hung waiting for {describeWhat()}.");
+                }
+                await Task.Delay(25);
             }
-            Assert.True(Seen() >= target, $"{substreamName} did not commit {count} more cycles within the deadline.");
+        }
+
+        /// <summary>
+        /// Names which rows are wrong, not just how many. A cut the two substreams disagree on
+        /// leaves gaps and duplicates at the same time, so the direction of each difference is
+        /// what tells them apart. Both batches are sorted, so one merge walk finds both.
+        /// </summary>
+        private string DescribeRowDifference(EventBatchData expected, EventBatchData actual)
+        {
+            var comparer = new FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer();
+            var missing = new List<string>();
+            var extra = new List<string>();
+            int i = 0;
+            int j = 0;
+            while (i < expected.Count && j < actual.Count)
+            {
+                var order = comparer.Compare(expected.Columns[0].GetValueAt(i, default), actual.Columns[0].GetValueAt(j, default));
+                if (order == 0)
+                {
+                    i++;
+                    j++;
+                }
+                else if (order < 0)
+                {
+                    missing.Add(expected.Columns[0].GetValueAt(i, default).ToString() ?? "?");
+                    i++;
+                }
+                else
+                {
+                    extra.Add(actual.Columns[0].GetValueAt(j, default).ToString() ?? "?");
+                    j++;
+                }
+            }
+            for (; i < expected.Count; i++)
+            {
+                missing.Add(expected.Columns[0].GetValueAt(i, default).ToString() ?? "?");
+            }
+            for (; j < actual.Count; j++)
+            {
+                extra.Add(actual.Columns[0].GetValueAt(j, default).ToString() ?? "?");
+            }
+            // The key alone says nothing, its position in the generated order says which
+            // source fetch window it came from and so which side of the handoff lost it.
+            var origins = missing.Distinct().Select(k => $"{k}@{_generator.Users.FindIndex(u => u.UserKey.ToString() == k)}");
+            return $"missing {missing.Count} [{string.Join(",", missing.Take(25))}] gen [{string.Join(",", origins.Take(25))}] extra {extra.Count} [{string.Join(",", extra.Take(25))}]";
         }
 
         private void DumpLogBuffers(string phase)

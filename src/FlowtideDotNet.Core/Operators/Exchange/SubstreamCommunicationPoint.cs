@@ -532,6 +532,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 readOperator.ResumeAfterPeerReconnect();
             }
+            foreach (var targetInfo in _targetInfos.Values)
+            {
+                targetInfo.Target.ResumeAfterPeerReconnect();
+            }
             return CleanHandoffResult.Accepted;
         }
 
@@ -551,11 +555,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             int maxCountPerTarget = Math.Max(1, maxEventCount / targetIds.Count);
 
+            // This point serves one peer, so any reader that consumed its stop barrier speaks
+            // for all of them. The targets then hand out the last barrier and nothing after it.
+            bool peerIsStopping;
+            lock (_readOperators)
+            {
+                peerIsStopping = _readOperators.Any(r => r.PeerIsStopping);
+            }
+
             foreach (var targetId in targetIds)
             {
                 if (_targetInfos.TryGetValue(targetId, out var targetInfo))
                 {
-                    await targetInfo.Target.ReadData(outputList, maxCountPerTarget);
+                    await targetInfo.Target.ReadData(outputList, maxCountPerTarget, peerIsStopping);
                 }
             }
 

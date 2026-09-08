@@ -53,11 +53,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // must match, that is the checkpoint version being shared across the substreams.
         internal static Action<string, long, long>? PairedCheckpointHookForTests;
 
-        // Reports a discarded leftover peer barrier as stream, barrier version, restore floor.
-        internal static Action<string, long, long>? CoveredPeerBarrierHookForTests;
-
-        // A handoff leaves one answering barrier behind, more means the peer is really behind.
-        private const int MaxCoveredPeerBarrierDiscards = 8;
 
         private readonly SubstreamCommunicationPoint _communicationPoint;
         private readonly SubstreamExchangeReferenceRelation _exchangeReferenceRelation;
@@ -75,6 +70,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // drained. The stream may first finish stopping once that pairing is committed.
         private volatile bool _peerStopConsumed;
         private volatile bool _peerStopConsumedCommitted;
+        // Set only by the peer's own stop barrier, unlike _peerStopConsumed which any paired
+        // barrier satisfies. A stopping peer never fetches again, see SubstreamTarget.
+        private volatile bool _peerIsStopping;
+        // The escape gave up on the peer's barrier. Kept apart from _peerStopConsumed, which
+        // attests a barrier this stream really consumed and is read by the handoff and the acks.
+        private volatile bool _stopAlignmentEscaped;
         // A returning peer's restarted pipeline sends one init watermarks event that must be
         // consumed without forwarding, a second init downstream would skew barrier alignment.
         private volatile bool _swallowNextInitWatermarks;
@@ -89,13 +90,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // schedules exactly one cycle; scheduling on every event would make the substreams
         // checkpoint forever, each cycle's barriers re-trigger cycles at the peers.
         private bool _uncoveredForwards;
-        // Version this stream restored at. Peer barriers at or below it answer cycles that
-        // are already committed here, see the discard in the fetch loop.
-        private long _peerBarrierFloor;
-        // Latched off by the first barrier past the floor, the leftovers only sit at the
-        // head of the backlog. Only touched from the fetch loop and the restore.
-        private bool _peerBarrierFloorActive;
-        private int _peerBarriersDiscarded;
 
         public SubstreamReadOperator(SubstreamCommunicationPoint communicationPoint, SubstreamExchangeReferenceRelation referenceRelation, DataflowBlockOptions options) : base(options)
         {
@@ -128,7 +122,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// The stopping stream runs stop cycles until then, bounded by the alignment escape in
         /// case the peer never answers.
         /// </summary>
-        public override bool ReadyToStop => _peerStopConsumedCommitted;
+        public override bool ReadyToStop => _peerStopConsumedCommitted || _stopAlignmentEscaped;
 
         public override Task Compact()
         {
@@ -167,15 +161,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _initWatermarksHandled = false;
                 _peerStopConsumed = false;
                 _peerStopConsumedCommitted = false;
+                _peerIsStopping = false;
+                _stopAlignmentEscaped = false;
                 _swallowNextInitWatermarks = false;
                 _localCheckpointSeen = false;
                 _uncoveredForwards = false;
-                // Cycles up to here are committed, a barrier answering one is a leftover.
-                // Only a clean handoff leaves one behind, every other restore either restarts
-                // the peer too or rolls both back, and then a low barrier is a real one.
-                _peerBarrierFloor = restoreTime;
-                _peerBarrierFloorActive = _communicationPoint.CleanReconnect;
-                _peerBarriersDiscarded = 0;
                 // Signals from before the restore belong to the aborted epoch, replaying
                 // them would complete a new cycle too early.
                 _pendingCheckpointDoneSignals = 0;
@@ -260,6 +250,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, async (ev) =>
             {
                 await channel.Writer.WriteAsync(ev);
+                StopFetchingIfBarrierEndsTheStop(ev);
             });
 
             if (_communicationPoint.CleanReconnect && !_initWatermarksHandled)
@@ -343,34 +334,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // received, stop fetching from it. Never filtered below, every stop
                         // gate hangs off consuming this.
                         _peerStopConsumed = true;
+                        _peerIsStopping = true;
                         _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
                         Logger.LogDebug("Substream read {name} consumed the other substreams stop barrier", Name);
-                    }
-                    else if (_peerBarrierFloorActive)
-                    {
-                        // A handoff unsubscribes mid stream, so the peer's answering barrier is
-                        // left in its queue and returns as the head of the backlog. Pairing it
-                        // with the next local cycle would offset every pairing after it.
-                        // Version zero is a barrier from before the version went on the wire.
-                        if (checkpointEvent.CheckpointVersion > 0 && checkpointEvent.CheckpointVersion <= _peerBarrierFloor)
-                        {
-                            _peerBarriersDiscarded++;
-                            if (_peerBarriersDiscarded > MaxCoveredPeerBarrierDiscards)
-                            {
-                                // The peer is behind for real, not leftovers. Discarding on would
-                                // park the local cycle forever, the fetch loop keeps ticking so no
-                                // watchdog sees it. Reconcile through the initialize handshake.
-                                Logger.LogWarning("Substream read {name} discarded {count} peer barriers at or below its restore version {version}, failing and recovering to reconcile the substreams.", Name, _peerBarriersDiscarded, _peerBarrierFloor);
-                                DispatchFailAndRollback();
-                                return;
-                            }
-                            Logger.LogInformation("Substream read {name} discarded a peer barrier with version {version}, already covered by its restore version {floor}.", Name, checkpointEvent.CheckpointVersion, _peerBarrierFloor);
-                            CoveredPeerBarrierHookForTests?.Invoke(StreamName, checkpointEvent.CheckpointVersion, _peerBarrierFloor);
-                            SubstreamCommunicationPoint.DisposeEvent(ev);
-                            continue;
-                        }
-                        // Past the restore, so the leftovers are gone.
-                        _peerBarrierFloorActive = false;
                     }
                     ICheckpointEvent? inStreamCheckpoint = default;
                     bool scheduleCheckpoint = false;
@@ -524,6 +490,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 else if (ev is StreamMessage<StreamEventBatch> streamMessage)
                 {
+                    if (_peerStopConsumed)
+                    {
+                        // Past the cut, so this was fetched off the peer after the barrier that
+                        // ended this streams state. Nothing commits it here and the peer already
+                        // gave it away, so it is lost. Never silently, see SubstreamTarget.ReadData.
+                        Logger.LogWarning("Substream read {name} received {rowCount} rows after the stop barrier, they are in no committed state on either substream.", Name, streamMessage.Data.Data.Count);
+                    }
                     Logger.SubstreamReadRecievedDataBatch(Name, streamMessage.Data.Data.Count);
                     await output.SendAsync(streamMessage.Data);
                     // SendAsync rents for the pipeline, the read claim is returned after
@@ -600,6 +573,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         }
                     }
                     Logger.LogWarning("Substream read {name} did not receive the other substreams stop barrier, forwarding the stop checkpoint without it. Events produced after it may be dropped, so the stop is not clean.", Name);
+                    // Nothing more will ever arrive, so further stop cycles only pay this wait
+                    // again and end at the drain timeout. This is as drained as it gets.
+                    _stopAlignmentEscaped = true;
                     SelfForwardStopCheckpoint();
                 }
                 catch (OperationCanceledException)
@@ -646,6 +622,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         internal bool HasCleanPeerStop => _peerStopConsumed;
 
+        // True once the peer's own stop barrier was consumed, so it will never fetch again.
+        internal bool PeerIsStopping => _peerIsStopping;
+
         /// <summary>
         /// True when a committed checkpoint covers the consumed stop barrier. Stamped onto
         /// outgoing checkpoint done acks so the stopping peer only confirms its drain on an
@@ -665,6 +644,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _peerStopConsumed = false;
                 _peerStopConsumedCommitted = false;
+                _peerIsStopping = false;
+                _stopAlignmentEscaped = false;
                 _swallowNextInitWatermarks = true;
             }
             var channel = _channel;
@@ -673,6 +654,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, async (ev) =>
                 {
                     await channel.Writer.WriteAsync(ev);
+                    StopFetchingIfBarrierEndsTheStop(ev);
                 });
             }
         }
@@ -705,6 +687,32 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// barrier: scheduling on every event would make the substreams checkpoint forever,
         /// each cycle's barriers re-trigger cycles at the peers.
         /// </summary>
+        /// <summary>
+        /// Stops the fetch as soon as a barrier arrives while this stream is stopping. The fetch
+        /// loop knows nothing of the stop and keeps pulling until the read loop reaches the
+        /// barrier, but the dequeue is destructive and the stop is the last cycle: anything taken
+        /// past that barrier is committed by nobody, and a peer resuming from a clean handoff
+        /// never rolls back to regenerate it. Every other barrier is fine, the next cycle covers
+        /// what follows it, see EnsureCoveringCheckpoint.
+        /// </summary>
+        private void StopFetchingIfBarrierEndsTheStop(IStreamEvent ev)
+        {
+            if (ev is not ICheckpointEvent)
+            {
+                return;
+            }
+            bool stopping;
+            lock (_lock)
+            {
+                stopping = _currentCheckpoint is StopStreamCheckpoint;
+            }
+            if (stopping)
+            {
+                _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
+                Logger.LogDebug("Substream read {name} stops fetching at the barrier that ends its stop", Name);
+            }
+        }
+
         private void EnsureCoveringCheckpoint()
         {
             if (!_uncoveredForwards)

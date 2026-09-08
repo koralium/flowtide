@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _state.Value = new ExchangeOperatorState();
             }
 
-            await _executor.Initialize(restoreVersion, exchangeRelation, stateManagerClient, _state.Value, MemoryAllocator, FailAndRecoverMethod);
+            await _executor.Initialize(restoreVersion, exchangeRelation, stateManagerClient, _state.Value, MemoryAllocator, FailAndRecoverMethod, StopDrainTimeout);
 
             foreach(var pullTarget in exchangeRelation.Targets)
             {

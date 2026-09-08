@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB);
 
             var target = new SubstreamTarget(1, 1, pointA, () => { });
-            await target.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, _ => Task.CompletedTask);
+            await target.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, _ => Task.CompletedTask, TimeSpan.FromSeconds(30));
             await pointB.InitializeOperator(0);
 
             // The stream is stopping: the stop barrier is stored, the target must hold the
@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB);
 
             var target = new SubstreamTarget(1, 1, pointA, () => { });
-            await target.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, _ => Task.CompletedTask);
+            await target.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, _ => Task.CompletedTask, TimeSpan.FromSeconds(30));
             await pointB.InitializeOperator(0);
 
             // An acknowledgement for an earlier cycle arrives before the stop barrier is

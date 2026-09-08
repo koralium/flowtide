@@ -104,7 +104,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             IStateManagerClient stateManagerClient, 
             ExchangeOperatorState state, 
             IMemoryAllocator memoryAllocator,
-            Func<long, Task> failAndRecoverFunc)
+            Func<long, Task> failAndRecoverFunc,
+            TimeSpan stopDrainTimeout)
         {
             _memoryAllocator = memoryAllocator;
             //_offsets = new PrimitiveList<int>(memoryAllocator);

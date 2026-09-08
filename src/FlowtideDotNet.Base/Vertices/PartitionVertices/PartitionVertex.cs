@@ -46,6 +46,12 @@ namespace FlowtideDotNet.Base.Vertices
         private bool _isHealthy = true;
         private IVertexHandler? _vertexHandler;
         private IMemoryAllocator? _memoryAllocator;
+
+        /// <summary>
+        /// The streams drain timeout.
+        /// </summary>
+        protected TimeSpan StopDrainTimeout => _vertexHandler?.StopDrainTimeout ?? TimeSpan.FromSeconds(30);
+
         private readonly PauseGate _pauseGate = new PauseGate();
         private StreamVersionInformation? _streamVersion;
 

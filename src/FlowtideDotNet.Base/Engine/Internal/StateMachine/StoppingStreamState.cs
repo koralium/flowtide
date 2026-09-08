@@ -26,7 +26,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private int _stopAllStarted;
         // Drain cycles must not commit, the peer never matches them.
         private bool _stopCommitTaken;
-        private ulong _pageCommitsAtLastStopCommit;
 
         public override Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
         {
@@ -125,11 +124,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         await commitHook(run._context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
                     }
 
-                    var pageCommits = run._context._stateManager.PageCommits;
-                    if (run._stopCommitTaken && pageCommits == run._pageCommitsAtLastStopCommit)
+                    if (run._stopCommitTaken)
                     {
-                        // Nothing new, keep the version where the peer is.
-                        _context._logger.LogDebug("Stop drain cycle on stream {stream} had nothing new to persist, keeping checkpoint version {version}.", _context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
+                        // Only the first stop cycle commits. The ones after it are polling for
+                        // the other substreams to drain, and the peer takes no matching cycle
+                        // for them, so committing would leave this stream a version ahead of it.
+                        // Nothing arrives past the stop barrier to commit anyway, the other
+                        // substream cuts the fetch there and holds the rest for the return.
+                        _context._logger.LogDebug("Stop drain cycle on stream {stream} is waiting for the other substreams, keeping checkpoint version {version}.", _context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
                     }
                     else
                     {
@@ -155,7 +157,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _context._logger.StateManagerCheckpointDone(_context.streamName);
 
                         run._stopCommitTaken = true;
-                        run._pageCommitsAtLastStopCommit = run._context._stateManager.PageCommits;
                     }
                 }
                 finally

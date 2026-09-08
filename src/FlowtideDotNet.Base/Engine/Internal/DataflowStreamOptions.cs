@@ -18,12 +18,15 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
 
+        // Internal so tests can shorten it, a drain that never completes burns the whole wait.
+        internal static TimeSpan DefaultStopDrainTimeout = TimeSpan.FromSeconds(30);
+
         /// <summary>
         /// How long a stopping stream waits for vertices that exchange data with other
         /// substreams to drain before it finishes stopping anyway. Protects the stop from
         /// waiting forever when another substream has crashed or never started.
         /// </summary>
-        public TimeSpan StopDrainTimeout { get; set; } = TimeSpan.FromSeconds(30);
+        public TimeSpan StopDrainTimeout { get; set; } = DefaultStopDrainTimeout;
 
         /// <summary>
         /// Failures restarted at the base delay before the wait grows.
