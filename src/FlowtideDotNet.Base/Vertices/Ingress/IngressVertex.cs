@@ -800,23 +800,6 @@ namespace FlowtideDotNet.Base.Vertices
         public virtual bool ReadyToStop => true;
 
         /// <summary>
-        /// First phase of a planned handoff stop: stop taking in new external input while the
-        /// stream keeps running. Overridden by substream read vertices. Default no-op.
-        /// </summary>
-        public virtual void BeginHandoffDrain()
-        {
-        }
-
-        /// <summary>
-        /// Second phase of a planned handoff stop: completes when input taken before
-        /// <see cref="BeginHandoffDrain"/> has drained into the pipeline. Default no-op.
-        /// </summary>
-        public virtual Task CompleteHandoffDrainAsync()
-        {
-            return Task.CompletedTask;
-        }
-
-        /// <summary>
         /// Indicates a rollback behavior hook whenever a previous version is targeted for restoring due to errors.
         /// </summary>
         /// <param name="rollbackVersion">The version that the stream will be rolled back to.</param>

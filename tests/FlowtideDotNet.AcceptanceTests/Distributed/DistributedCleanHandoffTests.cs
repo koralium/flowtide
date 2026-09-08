@@ -163,9 +163,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
-            // The handoff a migrating grain runs: drain consumption from the peer, stop at a
-            // final checkpoint the peer acknowledges, dispose. The peer keeps running.
-            await substream1.PrepareHandoffAsync();
+            // The handoff a migrating grain runs: stop at a final checkpoint the peer
+            // acknowledges, dispose. The peer keeps running.
             await AwaitBounded(substream1.StopAsync(), "handoff stop");
             await substream1.DisposeAsync();
             lock (_streams)
@@ -199,9 +198,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         /// <summary>
         /// A handoff that begins while checkpoints are in flight must neither wedge the stop
-        /// nor roll anything back: a checkpoint stored when the drain unsubscribes the readers
-        /// has no peer event left to pair with and must be self-forwarded, else it defers the
-        /// stop until the watchdog fails the stream. Runs several rounds to widen the window.
+        /// nor roll anything back: the stop barrier lands behind a running cycle on both sides
+        /// and still has to pair with the peer's answer. Runs several rounds to widen the window.
         /// </summary>
         [Fact]
         public async Task HandoffWithCheckpointsInFlightResumesWithoutAnyRollback()
@@ -223,12 +221,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             for (int round = 0; round < 3; round++)
             {
-                // Checkpoints racing the drain on both sides: the triggers are not awaited so
-                // the barriers are in flight when the drain begins.
+                // Checkpoints racing the stop on both sides: the triggers are not awaited so
+                // the barriers are in flight when the stop begins.
                 _ = substream0.TriggerCheckpoint();
                 _ = substream1.TriggerCheckpoint();
 
-                await substream1.PrepareHandoffAsync();
                 await AwaitBounded(substream1.StopAsync(), $"handoff stop (round {round})");
                 await substream1.DisposeAsync();
                 lock (_streams)
@@ -279,7 +276,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
-            await substream1.PrepareHandoffAsync();
             await AwaitBounded(substream1.StopAsync(), "handoff stop");
             await substream1.DisposeAsync();
             lock (_streams)
@@ -452,7 +448,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
                 await AssertCommittedVersionsConverge(committed, "before the handoff", minVersion: 2);
 
-                await substream1.PrepareHandoffAsync();
                 await AwaitBounded(substream1.StopAsync(), "handoff stop");
                 await substream1.DisposeAsync();
                 lock (_streams)
@@ -573,7 +568,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 AssertPairedVersionsMatch(pairings, "while running");
 
                 // A handoff must not change what a paired checkpoint carries.
-                await substream1.PrepareHandoffAsync();
                 // Tight bound, AwaitBounded would hide a reintroduced stop drain timeout.
                 var handoffStop = Stopwatch.StartNew();
                 await AwaitBounded(substream1.StopAsync(), "handoff stop");
@@ -660,7 +654,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
                 // A clean handoff first, this is what makes the substream versions differ.
-                await substream1.PrepareHandoffAsync();
                 await AwaitBounded(substream1.StopAsync(), "handoff stop");
                 await substream1.DisposeAsync();
                 lock (_streams)
@@ -995,11 +988,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
                 if (withHandoff)
                 {
-                    // Unsubscribes, so from here the peer produces for a substream that no longer
-                    // fetches. Held open by the peer's own commits, not a sleep: each committed
-                    // cycle is a barrier and a batch it produced for us, so waiting for two of
-                    // them puts real rows in the stranded span instead of hoping they land there.
-                    await substream1.PrepareHandoffAsync();
+                    // Held open by the peer's own commits, not a sleep: each committed cycle is
+                    // a barrier and a batch it produced for us, so waiting for two of them puts
+                    // real rows in flight at the stop instead of hoping they land there.
                     await WaitForCommitsToAdvance(commits, "substream_0", 2);
                     await AwaitBounded(substream1.StopAsync(), "handoff stop");
                     await substream1.DisposeAsync();
@@ -1195,6 +1186,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 var cyclesDuringStop = commits.ToArray().Skip(commitsBefore)
                     .Where(c => c.Stream.Contains("substream_1", StringComparison.Ordinal))
                     .ToList();
+                // Reopen before the restart below needs the peer, and before the asserts so a
+                // failing one cannot leave the peer's fetch parked in the gate. Idempotent.
                 peerGate.Open();
 
                 Assert.True(
@@ -1232,6 +1225,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }
             finally
             {
+                // Belt and braces if the stop itself timed out before the reopen above.
+                peerGate.Open();
                 Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = null;
                 Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = null;
                 SubstreamReadOperator.PairedCheckpointHookForTests = null;
@@ -1355,6 +1350,90 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// Finding: a substream that is itself draining accepts a returning peer's clean
+        /// handoff. The accept resets its reader's stop tracking and re-subscribes it, so the
+        /// drain fetches the returned peer's rows into cycles that never commit, and the peer
+        /// is told nothing needs resending. A stopping substream must answer retry instead.
+        /// </summary>
+        [Fact]
+        public async Task StoppingSubstreamMustNotAcceptACleanHandoff()
+        {
+            var testName = "e2e_handoff_into_drain";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+
+            var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            await substream0.StartAsync();
+            await substream1.StartAsync();
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // substream_1 hands off cleanly, the peer consumes its stop barrier. Quiet, so
+            // the peer has no cycle left waiting on a gone substream when it is told to stop.
+            await AwaitBounded(substream1.StopAsync(), "handoff stop");
+            await substream1.DisposeAsync();
+            lock (_streams)
+            {
+                _streams.Remove(substream1);
+            }
+
+            // The peer starts stopping with nobody left to fetch its stop barrier, so it
+            // drains until its target gives up; the handoff returns into that drain.
+            var peerStop = substream0.StopAsync();
+            await WaitUntil(
+                () => _logBuffers["substream_0"].LinesContaining("Stopping stream:").Count > 0,
+                () => "the peer to enter its stop");
+            substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+            await substream1.StartAsync();
+
+            // Rows produced while the peer drains, what a resumed reader would dequeue.
+            using var loadDone = new CancellationTokenSource();
+            var load = Task.Run(async () =>
+            {
+                while (!loadDone.IsCancellationRequested)
+                {
+                    _generator.Generate(25);
+                    await Task.Delay(25);
+                }
+            });
+            await AwaitBounded(peerStop, "peer stop during the handoff return");
+            loadDone.Cancel();
+            await load;
+
+            Assert.NotEmpty(_logBuffers["substream_0"].LinesContaining("while this stream is stopping, answering retry"));
+            Assert.Empty(_logBuffers["substream_0"].LinesContaining("reconnected from a clean handoff"));
+
+            // The peer comes back cleanly too. Every row must be there, without a failure
+            // having regenerated them.
+            await substream0.DisposeAsync();
+            lock (_streams)
+            {
+                _streams.Remove(substream0);
+            }
+            substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+            await substream0.StartAsync();
+            _generator.Generate(50);
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+            }
+            catch (Exception sinkFailure)
+            {
+                DumpLogBuffers("handoff_into_drain");
+                if (latestData.TryGetValue("substream_0", out var actualRows))
+                {
+                    using var expectedRows = BatchConverter.ConvertToBatchSorted(GetExpectedJoinResult(), GlobalMemoryManager.Instance);
+                    throw new Exception($"{sinkFailure.Message} | {DescribeRowDifference(expectedRows, actualRows)}", sinkFailure);
+                }
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Loads continuously, hands substream_1 off right after a commit on the clamped
         /// side, brings it back through a clean handoff and records what the stop did. A
         /// clamp on the staying peer delays its answer past the alignment escape, one on the
@@ -1430,7 +1509,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
                 var pairingsBefore = pairings.ToArray().Length;
 
-                await substream1.PrepareHandoffAsync();
                 var stopwatch = Stopwatch.StartNew();
                 await AwaitBounded(substream1.StopAsync(), "handoff stop");
                 stopwatch.Stop();

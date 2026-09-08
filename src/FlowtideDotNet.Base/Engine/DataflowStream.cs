@@ -86,32 +86,6 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
-        /// Prepares the stream for a planned handoff stop (e.g. a grain migration): ingress
-        /// vertices stop taking in new input and drain what they have, so a following
-        /// <see cref="StopAsync"/> covers everything consumed and the stream can resume
-        /// elsewhere from that checkpoint without any peer rolling back.
-        /// </summary>
-        internal async Task PrepareHandoffAsync()
-        {
-            await streamContext.ForEachIngressBlockAsync((key, block) =>
-            {
-                if (block is IStreamIngressVertex ingress)
-                {
-                    ingress.BeginHandoffDrain();
-                }
-                return Task.CompletedTask;
-            });
-            await streamContext.ForEachIngressBlockAsync((key, block) =>
-            {
-                if (block is IStreamIngressVertex ingress)
-                {
-                    return ingress.CompleteHandoffDrainAsync();
-                }
-                return Task.CompletedTask;
-            });
-        }
-
-        /// <summary>
         /// Gets the current high-level state machine value of the stream.
         /// </summary>
         /// <remarks>

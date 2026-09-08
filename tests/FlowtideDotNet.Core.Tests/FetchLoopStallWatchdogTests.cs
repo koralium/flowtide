@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Operators.Exchange;
 using Microsoft.Extensions.Logging;
 
@@ -115,6 +116,62 @@ namespace FlowtideDotNet.Core.Tests
             {
                 SubstreamCommunicationPoint.StallLimit = previousLimit;
                 SubstreamCommunicationPoint.StallCheckInterval = previousInterval;
+            }
+        }
+
+        /// <summary>
+        /// A fetch held at a barrier keeps the loop iterating in the paused branch, so the
+        /// ordinary liveness tick stays fresh. A hold that never ends - a read loop wedged
+        /// downstream so the paired barrier is never consumed - must still be caught, bounded
+        /// by the longer paused limit.
+        /// </summary>
+        [Fact]
+        public async Task AFetchPausedForeverTriggersTheWatchdog()
+        {
+            var previousLimit = SubstreamCommunicationPoint.StallLimit;
+            var previousInterval = SubstreamCommunicationPoint.StallCheckInterval;
+            var previousPausedLimit = SubstreamCommunicationPoint.PausedStallLimit;
+            SubstreamCommunicationPoint.StallLimit = TimeSpan.FromSeconds(30);
+            SubstreamCommunicationPoint.PausedStallLimit = TimeSpan.FromMilliseconds(500);
+            SubstreamCommunicationPoint.StallCheckInterval = TimeSpan.FromMilliseconds(100);
+            try
+            {
+                var logger = new RecordingLogger();
+                var handler = new SingleEventHandler();
+                var communicationPoint = new SubstreamCommunicationPoint(logger, "substream_0", "substream_1", handler);
+
+                // The reader pauses at the delivered barrier (like the real read operator) and
+                // never resumes, modelling a pipeline wedged behind that barrier. The fetch
+                // loop then only ever iterates the paused branch, so the ordinary tick stays
+                // fresh and only the paused limit can catch it.
+                communicationPoint.Subscribe(1, ev =>
+                {
+                    if (ev is ICheckpointEvent)
+                    {
+                        communicationPoint.PauseFetch(1);
+                    }
+                    return Task.CompletedTask;
+                });
+
+                var deadline = DateTime.UtcNow.AddSeconds(10);
+                while (DateTime.UtcNow < deadline)
+                {
+                    lock (logger.Warnings)
+                    {
+                        if (logger.Warnings.Any(w => w.Contains("stalled")))
+                        {
+                            return;
+                        }
+                    }
+                    await Task.Delay(50);
+                }
+                Assert.Fail("The stall watchdog did not detect the fetch held at a barrier forever");
+            }
+            finally
+            {
+                SubstreamCommunicationPoint.StallLimit = previousLimit;
+                SubstreamCommunicationPoint.StallCheckInterval = previousInterval;
+                SubstreamCommunicationPoint.PausedStallLimit = previousPausedLimit;
             }
         }
     }

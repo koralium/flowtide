@@ -509,6 +509,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     substreamName, restorePoint, peerLastCommitted);
                 return CleanHandoffResult.Rejected;
             }
+            // A drain must not take a returning peer in: the resume would re-subscribe its
+            // readers and the drain would dequeue the peer's rows into cycles that never
+            // commit. The peer retries, and the handshake with whatever replaces this
+            // stream reconciles the two.
+            bool stopping = readOperators.Any(r => r.IsStopping) || _targetInfos.Values.Any(t => t.Target.StopBarrierStored);
+            if (stopping)
+            {
+                _logger.LogInformation(
+                    "Substream {substreamName} announced a clean handoff at restore point {restorePoint} while this stream is stopping, answering retry.",
+                    substreamName, restorePoint);
+                return CleanHandoffResult.RetryLater;
+            }
             foreach (var readOperator in readOperators)
             {
                 if (!readOperator.HasCleanPeerStop)
@@ -520,6 +532,26 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
             }
 
+            // A stop can begin between the checks above and the resume below; ResumeAfterPeerReconnect
+            // refuses under the read operator's lock when this stream is stopping. Any refusal turns
+            // the whole handoff into a retry - a reader already resumed is safe, its own stop pairs
+            // the returned peer's barrier in a committing cycle - so the peer comes back once the
+            // stop is done rather than being resumed into the drain.
+            bool resumed = true;
+            foreach (var readOperator in readOperators)
+            {
+                if (!readOperator.ResumeAfterPeerReconnect())
+                {
+                    resumed = false;
+                }
+            }
+            if (!resumed)
+            {
+                _logger.LogInformation(
+                    "Substream {substreamName} announced a clean handoff at restore point {restorePoint} but this stream began stopping, answering retry.",
+                    substreamName, restorePoint);
+                return CleanHandoffResult.RetryLater;
+            }
             _logger.LogInformation(
                 "Substream {substreamName} reconnected from a clean handoff at restore point {restorePoint}, resuming without a rollback.",
                 substreamName, restorePoint);
@@ -527,10 +559,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 // Fresh data epoch: a later real restart of the peer fails over on what flows from here.
                 _dataHandled = false;
-            }
-            foreach (var readOperator in readOperators)
-            {
-                readOperator.ResumeAfterPeerReconnect();
             }
             return CleanHandoffResult.Accepted;
         }
@@ -823,11 +851,20 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // gap means the loop is blocked, for example delivering an event into a pipeline that
         // deadlocked on checkpoint barrier alignment with another substream.
         private long _lastFetchLoopTick;
+        // TickCount64 at which every subscribed target became paused at a barrier, -1 while at
+        // least one is fetched. The loop keeps ticking while all targets are paused (it is not
+        // blocked, it is holding), so _lastFetchLoopTick alone cannot catch a pipeline that
+        // deadlocked behind a paused barrier; this bounds the pause separately.
+        private long _allPausedSince = -1;
         private Timer? _stallWatchdog;
         // Internal so tests can shorten them, a stall test would otherwise take over a
         // minute.
         internal static TimeSpan StallLimit = TimeSpan.FromSeconds(60);
         internal static TimeSpan StallCheckInterval = TimeSpan.FromSeconds(15);
+        // Longer than StallLimit and above the startup pairing budget (24 pairing slices) so a
+        // legitimately long hold - a local checkpoint clamped by the minimum interval, a stop
+        // drain - is not mistaken for a deadlock, only a fetch held at a barrier forever is.
+        internal static TimeSpan PausedStallLimit = TimeSpan.FromSeconds(180);
 
         private void TryStartFetchTask()
         {
@@ -886,12 +923,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     TryStartFetchTask();
                     return;
                 }
-                if (TimeSpan.FromMilliseconds(Environment.TickCount64 - _lastFetchLoopTick) < StallLimit)
+                bool loopMovedRecently = TimeSpan.FromMilliseconds(Environment.TickCount64 - _lastFetchLoopTick) < StallLimit;
+                var pausedSince = Volatile.Read(ref _allPausedSince);
+                bool pausedTooLong = pausedSince >= 0 && TimeSpan.FromMilliseconds(Environment.TickCount64 - pausedSince) >= PausedStallLimit;
+                if (loopMovedRecently && !pausedTooLong)
                 {
                     return;
                 }
                 // Reset so the watchdog does not fire again while the recovery runs.
                 _lastFetchLoopTick = Environment.TickCount64;
+                Volatile.Write(ref _allPausedSince, -1);
             }
             _logger.LogWarning("The fetch loop for substream {substreamName} has been stalled for over {limit}, failing and recovering to break a possible deadlock between the substreams.", substreamName, StallLimit);
             _ = Task.Run(async () =>
@@ -1007,10 +1048,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
                 if (targetIds.Count == 0)
                 {
-                    // Every subscriber holds its fetch at a barrier, wait for a resume.
+                    // Every subscriber holds its fetch at a barrier, wait for a resume. Record
+                    // when the hold began so the watchdog can bound it, this branch keeps the
+                    // loop alive so the ordinary tick check cannot.
+                    if (Volatile.Read(ref _allPausedSince) < 0)
+                    {
+                        Volatile.Write(ref _allPausedSince, Environment.TickCount64);
+                    }
                     await Task.Delay(emptyPollDelayMs);
                     continue;
                 }
+                // At least one target is being fetched, the hold (if any) is over.
+                Volatile.Write(ref _allPausedSince, -1);
 
                 IReadOnlyList<SubstreamEventData> data;
                 try

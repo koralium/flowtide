@@ -256,6 +256,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public bool ReadyToStop => !_stopBarrierStored || (_stopBarrierFetched && _stopBarrierFetchAcked) || StopAlignmentEscaped();
 
         /// <summary>
+        /// True once this stream's stop barrier is queued for the other substream, so the
+        /// stream is draining and must not accept a returning peer into that drain.
+        /// </summary>
+        public bool StopBarrierStored => _stopBarrierStored;
+
+        /// <summary>
         /// Half the streams drain timeout, so the escape always fires before it. Only for a stop
         /// barrier the other substream never fetched: it cuts its fetch on any barrier of ours,
         /// not only on our stop barrier, so it can leave before it ever sees one; then nothing

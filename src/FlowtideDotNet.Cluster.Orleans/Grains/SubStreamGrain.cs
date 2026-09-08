@@ -392,15 +392,15 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 _migrating = true;
                 try
                 {
-                    // Drain, then stop: the peers fetch and ack the final barrier and the
-                    // stream ends at a checkpoint they match, so the new activation reconnects
-                    // without a rollback. A failure during the drain also ends not started but
-                    // via a rollback, so the failure count is checked before claiming clean.
+                    // Stop: the peers fetch and ack the final barrier and the stream ends at a
+                    // checkpoint they match, so the new activation reconnects without a
+                    // rollback. A failure during the stop also ends not started but via a
+                    // rollback, so the failure count is checked before claiming clean.
                     var failuresBeforeHandoff = Volatile.Read(ref _failureCount);
-                    var handoff = RunHandoff(stream);
-                    // The handoff is internally bounded (drain and stop drain timeouts), the
-                    // outer bound is a last resort against a genuine hang and is set above the
-                    // default stop drain timeout so the handoff normally settles on its own.
+                    var handoff = stream.StopAsync();
+                    // The stop is internally bounded by the stop drain timeout, the outer bound
+                    // is a last resort against a genuine hang and is set above the default stop
+                    // drain timeout so the handoff normally settles on its own.
                     var finished = await Task.WhenAny(handoff, Task.Delay(TimeSpan.FromSeconds(60)));
                     // Take ownership of the stream teardown either way: null it so a following
                     // OnDeactivateAsync does not dispose it concurrently with the handoff's own
@@ -413,33 +413,27 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                     {
                         _handoffCompletedCleanly = true;
                         await stream.DisposeAsync();
-                        _logger.LogInformation("Substream {substream} completed its handoff drain and migrates cleanly.", this.GetPrimaryKeyString());
+                        _logger.LogInformation("Substream {substream} completed its handoff stop and migrates cleanly.", this.GetPrimaryKeyString());
                     }
                     else
                     {
-                        // Drain did not finish (e.g. a peer never fetched the stop barrier).
+                        // The stop did not finish (e.g. a peer never fetched the stop barrier).
                         // Migrate as an unplanned restart, the handshake reconciles on recovery.
                         // Dispose once the handoff settles rather than abandoning it, so its
                         // stop never runs concurrently with the dispose.
-                        _logger.LogWarning("Substream {substream} could not complete its handoff drain, migrating through the recovery path instead.", this.GetPrimaryKeyString());
+                        _logger.LogWarning("Substream {substream} could not complete its handoff stop, migrating through the recovery path instead.", this.GetPrimaryKeyString());
                         _migrating = false;
                         _ = DisposeAfterHandoff(handoff, stream);
                     }
                 }
                 catch (Exception e)
                 {
-                    _logger.LogWarning(e, "Substream {substream} handoff drain failed, migrating through the recovery path instead.", this.GetPrimaryKeyString());
+                    _logger.LogWarning(e, "Substream {substream} handoff stop failed, migrating through the recovery path instead.", this.GetPrimaryKeyString());
                     _migrating = false;
                 }
             }
             // Migrate once the current calls complete; the runtime rehydrates and OnActivate resumes.
             this.MigrateOnIdle();
-        }
-
-        private static async Task RunHandoff(Base.Engine.DataflowStream stream)
-        {
-            await stream.PrepareHandoffAsync();
-            await stream.StopAsync();
         }
 
         // Disposes a handed-off stream once its (possibly still running) handoff has settled,

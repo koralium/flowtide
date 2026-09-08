@@ -328,17 +328,18 @@ checkpoint, and each committed version produces exactly one acknowledgement. The
 therefore reached only once every substream has durably committed that same checkpoint, which is why the
 commit hook runs from there rather than from the checkpoint completion notification.
 
-There is one exception, and it is narrow. A substream that is shutting down runs a stop drain cycle every
-25 ms until its drain finishes, and each of those commits a version and acknowledges it, while the receiving
-side only needs the first stop barrier. The extra acknowledgements are real, and they can let a later cycle
-on the other substream complete slightly early. If that shutting down substream then fails rather than
-stopping cleanly, the stream can roll back below a version the other substream already committed, leaving
-rows for that epoch in the destination table.
+A graceful stop keeps that property. A substream that is shutting down commits exactly one stop checkpoint,
+paired with the other substream's barrier like any running checkpoint; the drain cycles after it only poll
+for the other side's confirmation and commit nothing. If the other substream does not confirm the drain
+within the stop drain timeout, the stop does not extend the committed version any further; the other
+substream is rolled back to the checkpoint they share, and this stream reconciles to it on its next start.
+Your `OnInitialize` reconciliation discards anything staged above the last committed id, so the rows for
+the unconfirmed epoch are cleaned up there either way.
 
-Usually nothing extra is needed even then. The write operator's own output state rolls back with the stream,
-so after the rollback every key touched since the restored checkpoint is sent to the sink again. A commit
-that upserts and deletes by primary key, which is the normal shape for this sink, simply overwrites those
-rows on the replay.
+What a rollback does replay is everything since the restored checkpoint. The write operator's own output
+state rolls back with the stream, so after the rollback every key touched since that checkpoint is sent to
+the sink again. A commit that upserts and deletes by primary key, which is the normal shape for this sink,
+simply overwrites those rows on the replay.
 
 It only needs handling when the commit is not idempotent under a replay, for example an append only insert
 or an `INSERT ... WHERE NOT EXISTS` that skips rows already present. In that case store the `checkpointId`

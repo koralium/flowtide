@@ -344,6 +344,31 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
             await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
 
+            if (faultBlocks)
+            {
+                // The stop is failing rather than completing. Tell every block, so the exchange
+                // operators roll the other substream back to the version this stream keeps and
+                // reset the handshake state - otherwise a peer that already consumed this
+                // stream's stop barrier and committed against it stays a version ahead, and on
+                // a same instance restart (which skips the handshake) the substreams silently
+                // diverge. Decide the version the way the failure state does: the last durable
+                // checkpoint, capped by any peer requested rollback captured through FailAndRollback.
+                long restoreVersion;
+                lock (_context._checkpointLock)
+                {
+                    var completed = _context._stateManager.LastCompletedCheckpointVersion;
+                    if (!_context._restoreCheckpointVersion.HasValue || _context._restoreCheckpointVersion.Value > completed)
+                    {
+                        _context._restoreCheckpointVersion = completed;
+                    }
+                    restoreVersion = _context._restoreCheckpointVersion.Value;
+                }
+                await _context.ForEachBlockAsync(async (key, block) =>
+                {
+                    await block.OnFailure(restoreVersion);
+                });
+            }
+
             await _context.ForEachBlockAsync(async (key, block) =>
             {
                 await block.DisposeAsync();

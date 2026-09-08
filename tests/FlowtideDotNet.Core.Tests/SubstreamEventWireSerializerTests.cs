@@ -225,8 +225,9 @@ namespace FlowtideDotNet.Core.Tests
         }
 
         /// <summary>
-        /// Checkpoints stored before the version existed must still deserialize.
-        /// Their type ids carry no version, so it reads back as zero.
+        /// A checkpoint persisted by an older build carries no version (type ids 4 and 5). The
+        /// reader must still deserialize it - a durable store such as a pull bucket exchange
+        /// tree can hold one - reading the version back as zero rather than throwing.
         /// </summary>
         [Theory]
         [InlineData((byte)4, false)]

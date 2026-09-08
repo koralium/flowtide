@@ -70,6 +70,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // drained. The stream may first finish stopping once that pairing is committed.
         private volatile bool _peerStopConsumed;
         private volatile bool _peerStopConsumedCommitted;
+        // Set by the first stop barrier of this stream, only a restore clears it. A returning
+        // peer must not be resumed into a drain, see SubstreamCommunicationPoint.
+        private volatile bool _stopping;
         // A returning peer's restarted pipeline sends one init watermarks event that must be
         // consumed without forwarding, a second init downstream would skew barrier alignment.
         private volatile bool _swallowNextInitWatermarks;
@@ -155,6 +158,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _initWatermarksHandled = false;
                 _peerStopConsumed = false;
                 _peerStopConsumedCommitted = false;
+                _stopping = false;
                 _swallowNextInitWatermarks = false;
                 _localCheckpointSeen = false;
                 _uncoveredForwards = false;
@@ -576,6 +580,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public override Task OnFailure(long rollbackVersion)
         {
+            // A parked stop deadline from this epoch must not fire into the next one.
+            _stopAlignmentCancel?.Cancel();
             _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
             _communicationPoint.OnStreamFailure();
             // Best effort, the other substream may be unreachable and waiting for its response
@@ -588,6 +594,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public override ValueTask DisposeAsync()
         {
             // The fetch loop must not keep delivering events after the operator is disposed
+            _stopAlignmentCancel?.Cancel();
             _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
             return base.DisposeAsync();
         }
@@ -608,6 +615,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         internal bool HasCleanPeerStop => _peerStopConsumed;
 
         /// <summary>
+        /// True from this stream's first stop barrier on. A peer returning through a clean
+        /// handoff must not be resumed into the drain: the resume resets the stop tracking and
+        /// re-subscribes, so the drain would dequeue the peer's rows into cycles that never
+        /// commit and the peer would be told nothing needs resending.
+        /// </summary>
+        internal bool IsStopping => _stopping;
+
+        /// <summary>
         /// True when a committed checkpoint covers the consumed stop barrier. Stamped onto
         /// outgoing checkpoint done acks so the stopping peer only confirms its drain on an
         /// ack that attests the barrier consumption, not on one that merely raced in after
@@ -618,42 +633,29 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <summary>
         /// Resumes consumption from a peer that returned through a clean handoff: resets the
         /// stop tracking, re-subscribes on the same channel, and arms the swallow of the
-        /// returning peer's init watermarks event.
+        /// returning peer's init watermarks event. Returns false without touching anything when
+        /// this stream is itself stopping, so the returning peer is not resumed into the drain;
+        /// the reset and the re-subscribe are under _lock together with DoLockingEvent's stop
+        /// decision so the two cannot interleave.
         /// </summary>
-        internal void ResumeAfterPeerReconnect()
+        internal bool ResumeAfterPeerReconnect()
         {
             lock (_lock)
             {
+                if (_stopping)
+                {
+                    return false;
+                }
                 _peerStopConsumed = false;
                 _peerStopConsumedCommitted = false;
                 _swallowNextInitWatermarks = true;
+                var channel = _channel;
+                if (channel != null)
+                {
+                    SubscribeToPeer(channel);
+                }
             }
-            var channel = _channel;
-            if (channel != null)
-            {
-                SubscribeToPeer(channel);
-            }
-        }
-
-        /// <summary>
-        /// First handoff drain phase: nothing to quiesce here. The peer is not an input that can
-        /// be closed off, it keeps running and keeps sending, so cutting it here would strand
-        /// everything it sends until the stop - and the stop would then have to attest a
-        /// consumption that never happened. The stop barrier is the cut instead, see
-        /// DoLockingEvent.
-        /// </summary>
-        public override void BeginHandoffDrain()
-        {
-        }
-
-        /// <summary>
-        /// Second handoff drain phase: nothing to wait for. Draining the peer before the stop
-        /// would only cut it at an arbitrary point; the stop barrier pairs against the peer's
-        /// answering barrier and that pairing consumes everything ahead of it.
-        /// </summary>
-        public override Task CompleteHandoffDrainAsync()
-        {
-            return Task.CompletedTask;
+            return true;
         }
 
         /// <summary>
@@ -666,11 +668,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, async (ev) =>
             {
-                await channel.Writer.WriteAsync(ev);
+                // Pause before publishing. Once the barrier is in the channel the read loop can
+                // pair it and call ResumeFetch; recording the pause after the write can invert
+                // the two and leave the target paused with nothing left to resume it, a silent
+                // permanent stall.
                 if (ev is ICheckpointEvent)
                 {
                     _communicationPoint.PauseFetch(_exchangeReferenceRelation.ExchangeTargetId);
                 }
+                await channel.Writer.WriteAsync(ev);
             });
         }
 
@@ -779,7 +785,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // pairing against it is what makes everything it sent ours. A barrier the
                     // fetch is holding at pairs as soon as the read loop reaches it, a paused
                     // fetch is still subscribed. Nothing is coming when the subscription is gone.
-                    if (_peerStopConsumed || !_communicationPoint.IsSubscribed(_exchangeReferenceRelation.ExchangeTargetId))
+                    // The flag and the decision are taken under _lock so a returning peer's
+                    // ResumeAfterPeerReconnect cannot reset _peerStopConsumed and re-subscribe
+                    // between this read and the decision, which would resume the peer into the
+                    // drain; it sees _stopping and answers retry instead.
+                    bool selfForward;
+                    lock (_lock)
+                    {
+                        _stopping = true;
+                        selfForward = _peerStopConsumed || !_communicationPoint.IsSubscribed(_exchangeReferenceRelation.ExchangeTargetId);
+                    }
+                    if (selfForward)
                     {
                         SelfForwardStopCheckpoint();
                     }

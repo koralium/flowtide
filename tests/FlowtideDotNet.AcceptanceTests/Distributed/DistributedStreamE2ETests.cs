@@ -2562,12 +2562,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Stopping a single substream while the other substream keeps running must not hang.
-        /// The drain waits for the other substreams stop barrier which never comes, after the
-        /// configured drain timeout the stop finishes anyway.
+        /// Stopping a single substream while the other keeps running must not hang. The running
+        /// peer consumes the stop barrier and answers it with a checkpoint of its own, so the
+        /// stop pairs and finishes without waiting for the drain timeout. A peer that fetches
+        /// the barrier but never confirms it is covered by
+        /// StopWithoutAPeerAnswerMustNotCommitAnUnmatchedCut in the clean-handoff tests.
         /// </summary>
         [Fact]
-        public async Task LoneSubstreamStopFinishesAfterDrainTimeout()
+        public async Task LoneSubstreamStopFinishesWhileThePeerKeepsRunning()
         {
             _generator.Generate(200);
 
