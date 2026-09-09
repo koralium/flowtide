@@ -2039,6 +2039,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             {
                 AnnounceCleanHandoff = announceCleanHandoff
             });
+            // Test drain timeout, a test's configure may override.
+            builder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
             configure?.Invoke(builder);
 
             var stream = builder.Build();

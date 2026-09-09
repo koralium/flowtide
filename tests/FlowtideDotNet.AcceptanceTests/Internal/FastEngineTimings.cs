@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Engine.Internal;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Core.Operators.Exchange;
 
@@ -28,7 +27,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         private static int _applied;
 
-        // Bound stop assertions against this, never a literal.
+        // Set per test stream, bound stop assertions against it.
         internal static readonly TimeSpan StopDrainTimeout = TimeSpan.FromSeconds(5);
 
         public static void Apply()
@@ -42,8 +41,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             // A peer stuck answering draining otherwise costs five minutes.
             SubstreamCommunicationPoint.PeerDrainingWaitLimit = TimeSpan.FromSeconds(30);
             RunningStreamState.DeferredWishWatchdogPollInterval = TimeSpan.FromMilliseconds(100);
-            // Wedged drain otherwise hides for the whole 30s.
-            DataflowStreamOptions.DefaultStopDrainTimeout = StopDrainTimeout;
         }
     }
 }

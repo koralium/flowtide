@@ -400,10 +400,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 flowtideBuilder.SetMinimumTimeBetweenCheckpoint(MinimumTimeBetweenCheckpoints.Value);
             }
 
-            if (StopDrainTimeout.HasValue)
-            {
-                flowtideBuilder.SetStopDrainTimeout(StopDrainTimeout.Value);
-            }
+            // Per stream, never a mutated process wide default.
+            flowtideBuilder.SetStopDrainTimeout(StopDrainTimeout ?? FastEngineTimings.StopDrainTimeout);
 
             var stream = flowtideBuilder.Build();
             _stream = stream;

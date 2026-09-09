@@ -1684,10 +1684,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, crash.CrashCount, watermark => onWatermark?.Invoke(substreamName, watermark), crash.CheckpointsBeforeCrash));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
-                    if (stopDrainTimeout.HasValue)
-                    {
-                        substreamBuilder.SetStopDrainTimeout(stopDrainTimeout.Value);
-                    }
+                    substreamBuilder.SetStopDrainTimeout(stopDrainTimeout ?? FastEngineTimings.StopDrainTimeout);
                     if (loggerFactory != null)
                     {
                         substreamBuilder.WithLoggerFactory(loggerFactory(substreamName));
