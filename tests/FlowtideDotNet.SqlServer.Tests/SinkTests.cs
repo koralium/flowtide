@@ -65,6 +65,7 @@ namespace FlowtideDotNet.SqlServer.Tests
             var sink = new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
             {
                 ConnectionStringFunc = () => "",
+                CustomBulkCopyDestinationTable = _ => "staging",
                 OnCheckpointComplete = (_, _, _, _) => ValueTask.CompletedTask
             }, CreateWriteRelation(), new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
 
@@ -73,6 +74,21 @@ namespace FlowtideDotNet.SqlServer.Tests
             await Assert.ThrowsAsync<InvalidOperationException>(() => sink.Compact());
             // Nothing left to commit, no connection is opened.
             await sink.Compact();
+        }
+
+        /// <summary>
+        /// Commit hook without a staging table is refused.
+        /// </summary>
+        [Fact]
+        public void CommitHookWithoutAStagingTableIsRefused()
+        {
+            var e = Assert.Throws<InvalidOperationException>(() => new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => "",
+                OnCheckpointComplete = (_, _, _, _) => ValueTask.CompletedTask
+            }, CreateWriteRelation(), new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions()));
+
+            Assert.Contains("CustomBulkCopyDestinationTable", e.Message);
         }
 
         [Fact]

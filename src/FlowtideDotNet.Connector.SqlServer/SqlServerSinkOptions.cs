@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Connector.SqlServer
         public Func<SqlConnection, long, long, string, IReadOnlyList<string>, ValueTask>? OnInitialize { get; set; }
 
         /// <summary>
-        /// Commit phase after checkpoint and clean stop, OnInitialize redoes misses.
+        /// Commit phase after checkpoint or clean stop, staging table required.
         /// </summary>
         public Func<SqlConnection, long, string, IReadOnlyList<string>, ValueTask>? OnCheckpointComplete { get; set; }
     }

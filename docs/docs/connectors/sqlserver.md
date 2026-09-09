@@ -198,7 +198,7 @@ and the merge into statement.
 | ModifyRow                       |  false   |         | Hook that is run for each row, allows setting the extra columns.                |
 | OnDataUploaded                  |  false   |         | Hook that is run after a batch has been uploaded.                               |
 | OnInitialize                    |  false   |         | Hook that is run when the sink is initializing.                                 |
-| OnCheckpointComplete            |  false   |         | Hook that is run after the stream has durably committed a checkpoint.           |
+| OnCheckpointComplete            |  false   |         | Hook that is run after the stream has durably committed a checkpoint. Requires `CustomBulkCopyDestinationTable`. |
 
 Every hook is passed the name of the table that is bulk copied into and the destination table name as a list of
 name parts. A stream can write to several tables with a single `SqlServerSinkOptions`, so these arguments are how a
@@ -307,7 +307,9 @@ connectorManager.AddSqlServerSink(new SqlServerSinkOptions()
 `OnCheckpointComplete` runs after the stream has durably committed a checkpoint, and in a distributed stream
 only once every substream has committed it. Everything the sink uploaded for that checkpoint is already
 written at that point and the stream will not roll back past it, which makes the hook the commit phase of a
-two phase commit:
+two phase commit. The hook runs on its own connection, so it needs a real staging table from
+`CustomBulkCopyDestinationTable`: the default temporary table is scoped to the sink's connection and the sink
+refuses the hook without one.
 
 1. **Prepare.** The sink bulk copies rows into a staging table during the checkpoint. Tag each row with the
    `checkpointId` in `ModifyRow` so it is known which checkpoint the row belongs to.

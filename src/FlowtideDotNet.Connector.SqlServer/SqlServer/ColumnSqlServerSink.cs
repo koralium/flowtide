@@ -53,6 +53,11 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             var customTableName = sqlServerSinkOptions.CustomBulkCopyDestinationTable?.Invoke(writeRelation.NamedObject.Names);
             m_gotCustomTmpTableName = customTableName != null;
             m_tmpTableName = customTableName ?? GetTmpTableName();
+            if (sqlServerSinkOptions.OnCheckpointComplete != null && !m_gotCustomTmpTableName)
+            {
+                // Own connection, a temp table is invisible there.
+                throw new InvalidOperationException($"OnCheckpointComplete on sink '{writeRelation.NamedObject.DotSeperated}' needs a staging table from CustomBulkCopyDestinationTable, the default temporary table is scoped to the sink's connection and invisible to the hook.");
+            }
         }
 
         internal string GetTmpTableName()
