@@ -1196,7 +1196,21 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     }
                 }
             }
-            
+            if (restoreVersion.HasValue && currentState == StreamStateValue.NotStarted)
+            {
+                lock (_checkpointLock)
+                {
+                    // Stopped, capped by what is stored, applied at next start.
+                    var completed = _stateManager.LastCompletedCheckpointVersion;
+                    if (_restoreCheckpointVersion.HasValue && _restoreCheckpointVersion.Value > completed)
+                    {
+                        _restoreCheckpointVersion = completed;
+                    }
+                }
+                _logger.LogDebug("Stream {stream} is stopped, a peer requested a rollback to {version}, it applies at the next start.", streamName, restoreVersion.Value);
+                return Task.CompletedTask;
+            }
+
             return OnFailure(exception);
         }
     }

@@ -1118,7 +1118,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }
         }
 
-        // Peer answers past half the drain timeout, still inside it.
+        // Peer answers late, still inside the drain timeout.
         private static readonly TimeSpan LatePeerInterval = TimeSpan.FromMilliseconds(3200);
         // Long enough that a stop lands on a parked barrier.
         private static readonly TimeSpan ParkedBarrierInterval = TimeSpan.FromSeconds(3);
@@ -1327,7 +1327,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await load;
 
                 Assert.True(
-                    stopwatch.Elapsed >= FastEngineTimings.StopDrainTimeout / 2,
+                    stopwatch.Elapsed >= FastEngineTimings.StopDrainTimeout,
                     $"The stop finished after {stopwatch.Elapsed}, the drain never had to wait for the peer.");
                 Assert.True(
                     cyclesDuringStop.Count == 1,
@@ -1402,8 +1402,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             // Peer drains with nobody fetching, the handoff returns into it.
             var peerStop = substream0.StopAsync();
             await WaitUntil(
-                () => _logBuffers["substream_0"].LinesContaining("Stopping stream:").Count > 0,
-                () => "the peer to enter its stop");
+                () => _logBuffers["substream_0"].LinesContaining("Shutdown checkpoint done").Count > 0,
+                () => "the peer's committing stop cycle to finish");
             substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
             await substream1.StartAsync();
 
@@ -1465,7 +1465,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             // Start budget in slices: 1+2+3, then 4 slice cap.
             var slice = TimeSpan.FromMilliseconds(SubstreamCommunicationPoint.NotStartedRetrySliceMs);
             var startBudget = slice * (6 + 4 * 29);
-            // Half the drain timeout must outlast the start budget.
+            // The drain timeout must outlast the start budget.
             var peerDrainTimeout = startBudget * 3;
 
             var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false,
@@ -1488,8 +1488,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var stopwatch = Stopwatch.StartNew();
             var peerStop = substream0.StopAsync();
             await WaitUntil(
-                () => _logBuffers["substream_0"].LinesContaining("Stopping stream:").Count > 0,
-                () => "the peer to enter its stop");
+                () => _logBuffers["substream_0"].LinesContaining("Shutdown checkpoint done").Count > 0,
+                () => "the peer's committing stop cycle to finish");
             substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
             var returningStart = substream1.StartAsync();
             await AwaitBounded(peerStop, "peer stop");
@@ -1654,6 +1654,37 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = null;
                 Base.Engine.Internal.StateMachine.StreamContext.BeforeFailureDisposeForTests = null;
             }
+        }
+
+        /// <summary>
+        /// Rollback of a stopped peer is not a failure.
+        /// </summary>
+        [Fact]
+        public async Task RollbackOfAStoppedPeerIsNotAFailure()
+        {
+            var testName = "e2e_stopped_rollback";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+
+            var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            await substream0.StartAsync();
+            await substream1.StartAsync();
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            // substream_0 stops first and stays stopped, nobody fetches substream_1's barrier.
+            await AwaitBounded(substream0.StopAsync(), "first stop");
+            await AwaitBounded(substream1.StopAsync(), "stop against a stopped peer");
+            Assert.NotEmpty(_logBuffers["substream_1"].LinesContaining("timed out waiting for other substreams to drain"));
+            // Lets the rollback notification land before the check.
+            await Task.Delay(1500);
+
+            Assert.Equal(Base.Engine.StreamStateValue.NotStarted, substream0.State);
+            Assert.DoesNotContain(failures, f => f.Substream == "substream_0");
         }
 
         /// <summary>

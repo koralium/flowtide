@@ -116,10 +116,10 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         }
 
         /// <summary>
-        /// Escape never releases a fetched but unacked stop barrier.
+        /// Time never releases a fetched but unacked stop barrier.
         /// </summary>
         [Fact]
-        public async Task EscapeDoesNotReleaseAFetchedButUnackedStopBarrier()
+        public async Task AFetchedButUnackedStopBarrierIsNeverReleased()
         {
             var hub = new LocalSubstreamCommunicationHub();
             var handlerA = hub.CreateFactory("subA").GetCommunicationHandler("subB", "subA");
@@ -128,7 +128,6 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA);
             var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB);
 
-            // Short drain timeout, the escape fires at half of it.
             var stopDrainTimeout = TimeSpan.FromMilliseconds(200);
             var target = new SubstreamTarget(1, 1, pointA, () => { });
             await target.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, _ => Task.CompletedTask, stopDrainTimeout);
@@ -140,12 +139,37 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             Assert.Contains(fetched, e => e.StreamEvent is StopStreamCheckpoint);
             SubstreamEventWireSerializer.ReturnEvents(fetched);
 
-            // Past the escape deadline, fetched but not yet acked.
+            // Past the drain timeout, fetched but not yet acked.
             await Task.Delay(stopDrainTimeout);
-            Assert.False(target.ReadyToStop, "The escape released a stop barrier the peer already fetched, the covering ack that confirms the fetch reached the peer was never waited for");
+            Assert.False(target.ReadyToStop, "A stop barrier the peer already fetched was released by time, the covering ack that confirms the fetch reached the peer was never waited for");
 
             await pointB.SendCheckpointDone(5);
             Assert.True(target.ReadyToStop);
+        }
+
+        /// <summary>
+        /// Time never releases an unfetched stop barrier.
+        /// </summary>
+        [Fact]
+        public async Task ANeverFetchedStopBarrierIsNeverReleased()
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var handlerA = hub.CreateFactory("subA").GetCommunicationHandler("subB", "subA");
+            var handlerB = hub.CreateFactory("subB").GetCommunicationHandler("subA", "subB");
+
+            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA);
+            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB);
+
+            var stopDrainTimeout = TimeSpan.FromMilliseconds(200);
+            var target = new SubstreamTarget(1, 1, pointA, () => { });
+            await target.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, _ => Task.CompletedTask, stopDrainTimeout);
+            await pointB.InitializeOperator(0);
+
+            await target.OnLockingEvent(new StopStreamCheckpoint(1, 2, 1));
+
+            // Well past the drain timeout, nobody ever fetched it.
+            await Task.Delay(stopDrainTimeout * 2);
+            Assert.False(target.ReadyToStop, "A stop barrier nobody fetched was released by time, the queued events would be dropped in no committed state; only the stream drain timeout may end this, by rolling the peer back");
         }
     }
 }
