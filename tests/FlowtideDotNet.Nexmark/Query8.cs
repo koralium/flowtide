@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 namespace FlowtideDotNet.Nexmark
 {
     [EventCountDiagnoser]
+    [CacheHitRateDiagnoser]
     public class Query8 : QueryBase
     {
         [Benchmark]

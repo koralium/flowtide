@@ -63,8 +63,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
         Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Used in local cache, returns the data file ids currently on disk.
-        /// It is used to populate the cache list after a restart so the files do not need to be redownloaded if they already exist.
+        /// Returns all data file ids that exist in the storage.
+        /// It is used to populate the local cache after a restart so existing files are not redownloaded, and to delete files left by a previous stream timeline.
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>

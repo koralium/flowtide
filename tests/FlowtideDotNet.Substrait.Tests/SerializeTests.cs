@@ -1004,6 +1004,20 @@ namespace FlowtideDotNet.Substrait.Tests
             Assert.Null(writeRelation.PrimaryKeyNames);
         }
 
+
+        [Fact]
+        public void TestSerializeListAggNamedStructAggregate()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                insert into out
+                select a, list_agg(named_struct('b', b)) as list FROM table1 GROUP BY a;
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
         private void AssertPlanCanSerializeDeserialize(Plan plan)
         {
             var json = SubstraitSerializer.SerializeToJson(plan);
