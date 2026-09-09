@@ -525,15 +525,15 @@ references:
   commentId: T:FlowtideDotNet.Base.Checkpoint
   fullName: FlowtideDotNet.Base.Checkpoint
   nameWithType: Checkpoint
-- uid: FlowtideDotNet.Base.Checkpoint.#ctor(System.Int64,System.Int64)
-  name: Checkpoint(long, long)
-  href: api/FlowtideDotNet.Base.Checkpoint.html#FlowtideDotNet_Base_Checkpoint__ctor_System_Int64_System_Int64_
-  commentId: M:FlowtideDotNet.Base.Checkpoint.#ctor(System.Int64,System.Int64)
-  name.vb: New(Long, Long)
-  fullName: FlowtideDotNet.Base.Checkpoint.Checkpoint(long, long)
-  fullName.vb: FlowtideDotNet.Base.Checkpoint.New(Long, Long)
-  nameWithType: Checkpoint.Checkpoint(long, long)
-  nameWithType.vb: Checkpoint.New(Long, Long)
+- uid: FlowtideDotNet.Base.Checkpoint.#ctor(System.Int64,System.Int64,System.Int64)
+  name: Checkpoint(long, long, long)
+  href: api/FlowtideDotNet.Base.Checkpoint.html#FlowtideDotNet_Base_Checkpoint__ctor_System_Int64_System_Int64_System_Int64_
+  commentId: M:FlowtideDotNet.Base.Checkpoint.#ctor(System.Int64,System.Int64,System.Int64)
+  name.vb: New(Long, Long, Long)
+  fullName: FlowtideDotNet.Base.Checkpoint.Checkpoint(long, long, long)
+  fullName.vb: FlowtideDotNet.Base.Checkpoint.New(Long, Long, Long)
+  nameWithType: Checkpoint.Checkpoint(long, long, long)
+  nameWithType.vb: Checkpoint.New(Long, Long, Long)
 - uid: FlowtideDotNet.Base.Checkpoint.#ctor*
   name: Checkpoint
   href: api/FlowtideDotNet.Base.Checkpoint.html#FlowtideDotNet_Base_Checkpoint__ctor_
@@ -557,6 +557,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Base.Checkpoint.CheckpointTime
   nameWithType: Checkpoint.CheckpointTime
+- uid: FlowtideDotNet.Base.Checkpoint.CheckpointVersion
+  name: CheckpointVersion
+  href: api/FlowtideDotNet.Base.Checkpoint.html#FlowtideDotNet_Base_Checkpoint_CheckpointVersion
+  commentId: P:FlowtideDotNet.Base.Checkpoint.CheckpointVersion
+  fullName: FlowtideDotNet.Base.Checkpoint.CheckpointVersion
+  nameWithType: Checkpoint.CheckpointVersion
+- uid: FlowtideDotNet.Base.Checkpoint.CheckpointVersion*
+  name: CheckpointVersion
+  href: api/FlowtideDotNet.Base.Checkpoint.html#FlowtideDotNet_Base_Checkpoint_CheckpointVersion_
+  commentId: Overload:FlowtideDotNet.Base.Checkpoint.CheckpointVersion
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Checkpoint.CheckpointVersion
+  nameWithType: Checkpoint.CheckpointVersion
 - uid: FlowtideDotNet.Base.Checkpoint.NewTime
   name: NewTime
   href: api/FlowtideDotNet.Base.Checkpoint.html#FlowtideDotNet_Base_Checkpoint_NewTime
@@ -1778,6 +1791,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Base.ICheckpointEvent.CheckpointTime
   nameWithType: ICheckpointEvent.CheckpointTime
+- uid: FlowtideDotNet.Base.ICheckpointEvent.CheckpointVersion
+  name: CheckpointVersion
+  href: api/FlowtideDotNet.Base.ICheckpointEvent.html#FlowtideDotNet_Base_ICheckpointEvent_CheckpointVersion
+  commentId: P:FlowtideDotNet.Base.ICheckpointEvent.CheckpointVersion
+  fullName: FlowtideDotNet.Base.ICheckpointEvent.CheckpointVersion
+  nameWithType: ICheckpointEvent.CheckpointVersion
+- uid: FlowtideDotNet.Base.ICheckpointEvent.CheckpointVersion*
+  name: CheckpointVersion
+  href: api/FlowtideDotNet.Base.ICheckpointEvent.html#FlowtideDotNet_Base_ICheckpointEvent_CheckpointVersion_
+  commentId: Overload:FlowtideDotNet.Base.ICheckpointEvent.CheckpointVersion
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.ICheckpointEvent.CheckpointVersion
+  nameWithType: ICheckpointEvent.CheckpointVersion
 - uid: FlowtideDotNet.Base.ICheckpointEvent.NewTime
   name: NewTime
   href: api/FlowtideDotNet.Base.ICheckpointEvent.html#FlowtideDotNet_Base_ICheckpointEvent_NewTime
@@ -4784,19 +4810,6 @@ references:
   commentId: T:FlowtideDotNet.Base.Vertices.IStreamIngressVertex
   fullName: FlowtideDotNet.Base.Vertices.IStreamIngressVertex
   nameWithType: IStreamIngressVertex
-- uid: FlowtideDotNet.Base.Vertices.IStreamIngressVertex.BeginHandoffDrain
-  name: BeginHandoffDrain()
-  href: api/FlowtideDotNet.Base.Vertices.IStreamIngressVertex.html#FlowtideDotNet_Base_Vertices_IStreamIngressVertex_BeginHandoffDrain
-  commentId: M:FlowtideDotNet.Base.Vertices.IStreamIngressVertex.BeginHandoffDrain
-  fullName: FlowtideDotNet.Base.Vertices.IStreamIngressVertex.BeginHandoffDrain()
-  nameWithType: IStreamIngressVertex.BeginHandoffDrain()
-- uid: FlowtideDotNet.Base.Vertices.IStreamIngressVertex.BeginHandoffDrain*
-  name: BeginHandoffDrain
-  href: api/FlowtideDotNet.Base.Vertices.IStreamIngressVertex.html#FlowtideDotNet_Base_Vertices_IStreamIngressVertex_BeginHandoffDrain_
-  commentId: Overload:FlowtideDotNet.Base.Vertices.IStreamIngressVertex.BeginHandoffDrain
-  isSpec: "True"
-  fullName: FlowtideDotNet.Base.Vertices.IStreamIngressVertex.BeginHandoffDrain
-  nameWithType: IStreamIngressVertex.BeginHandoffDrain
 - uid: FlowtideDotNet.Base.Vertices.IStreamIngressVertex.CheckpointDone(System.Int64)
   name: CheckpointDone(long)
   href: api/FlowtideDotNet.Base.Vertices.IStreamIngressVertex.html#FlowtideDotNet_Base_Vertices_IStreamIngressVertex_CheckpointDone_System_Int64_
@@ -4813,19 +4826,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Base.Vertices.IStreamIngressVertex.CheckpointDone
   nameWithType: IStreamIngressVertex.CheckpointDone
-- uid: FlowtideDotNet.Base.Vertices.IStreamIngressVertex.CompleteHandoffDrainAsync
-  name: CompleteHandoffDrainAsync()
-  href: api/FlowtideDotNet.Base.Vertices.IStreamIngressVertex.html#FlowtideDotNet_Base_Vertices_IStreamIngressVertex_CompleteHandoffDrainAsync
-  commentId: M:FlowtideDotNet.Base.Vertices.IStreamIngressVertex.CompleteHandoffDrainAsync
-  fullName: FlowtideDotNet.Base.Vertices.IStreamIngressVertex.CompleteHandoffDrainAsync()
-  nameWithType: IStreamIngressVertex.CompleteHandoffDrainAsync()
-- uid: FlowtideDotNet.Base.Vertices.IStreamIngressVertex.CompleteHandoffDrainAsync*
-  name: CompleteHandoffDrainAsync
-  href: api/FlowtideDotNet.Base.Vertices.IStreamIngressVertex.html#FlowtideDotNet_Base_Vertices_IStreamIngressVertex_CompleteHandoffDrainAsync_
-  commentId: Overload:FlowtideDotNet.Base.Vertices.IStreamIngressVertex.CompleteHandoffDrainAsync
-  isSpec: "True"
-  fullName: FlowtideDotNet.Base.Vertices.IStreamIngressVertex.CompleteHandoffDrainAsync
-  nameWithType: IStreamIngressVertex.CompleteHandoffDrainAsync
 - uid: FlowtideDotNet.Base.Vertices.IStreamIngressVertex.InitializationCompleted
   name: InitializationCompleted()
   href: api/FlowtideDotNet.Base.Vertices.IStreamIngressVertex.html#FlowtideDotNet_Base_Vertices_IStreamIngressVertex_InitializationCompleted
@@ -5261,23 +5261,6 @@ references:
   fullName.vb: FlowtideDotNet.Base.Vertices.IngressVertex(Of TData).BeforeSaveCheckpoint
   nameWithType: IngressVertex<TData>.BeforeSaveCheckpoint
   nameWithType.vb: IngressVertex(Of TData).BeforeSaveCheckpoint
-- uid: FlowtideDotNet.Base.Vertices.IngressVertex`1.BeginHandoffDrain
-  name: BeginHandoffDrain()
-  href: api/FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_BeginHandoffDrain
-  commentId: M:FlowtideDotNet.Base.Vertices.IngressVertex`1.BeginHandoffDrain
-  fullName: FlowtideDotNet.Base.Vertices.IngressVertex<TData>.BeginHandoffDrain()
-  fullName.vb: FlowtideDotNet.Base.Vertices.IngressVertex(Of TData).BeginHandoffDrain()
-  nameWithType: IngressVertex<TData>.BeginHandoffDrain()
-  nameWithType.vb: IngressVertex(Of TData).BeginHandoffDrain()
-- uid: FlowtideDotNet.Base.Vertices.IngressVertex`1.BeginHandoffDrain*
-  name: BeginHandoffDrain
-  href: api/FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_BeginHandoffDrain_
-  commentId: Overload:FlowtideDotNet.Base.Vertices.IngressVertex`1.BeginHandoffDrain
-  isSpec: "True"
-  fullName: FlowtideDotNet.Base.Vertices.IngressVertex<TData>.BeginHandoffDrain
-  fullName.vb: FlowtideDotNet.Base.Vertices.IngressVertex(Of TData).BeginHandoffDrain
-  nameWithType: IngressVertex<TData>.BeginHandoffDrain
-  nameWithType.vb: IngressVertex(Of TData).BeginHandoffDrain
 - uid: FlowtideDotNet.Base.Vertices.IngressVertex`1.CheckpointDone(System.Int64)
   name: CheckpointDone(long)
   href: api/FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_CheckpointDone_System_Int64_
@@ -5330,23 +5313,6 @@ references:
   fullName.vb: FlowtideDotNet.Base.Vertices.IngressVertex(Of TData).Complete
   nameWithType: IngressVertex<TData>.Complete
   nameWithType.vb: IngressVertex(Of TData).Complete
-- uid: FlowtideDotNet.Base.Vertices.IngressVertex`1.CompleteHandoffDrainAsync
-  name: CompleteHandoffDrainAsync()
-  href: api/FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_CompleteHandoffDrainAsync
-  commentId: M:FlowtideDotNet.Base.Vertices.IngressVertex`1.CompleteHandoffDrainAsync
-  fullName: FlowtideDotNet.Base.Vertices.IngressVertex<TData>.CompleteHandoffDrainAsync()
-  fullName.vb: FlowtideDotNet.Base.Vertices.IngressVertex(Of TData).CompleteHandoffDrainAsync()
-  nameWithType: IngressVertex<TData>.CompleteHandoffDrainAsync()
-  nameWithType.vb: IngressVertex(Of TData).CompleteHandoffDrainAsync()
-- uid: FlowtideDotNet.Base.Vertices.IngressVertex`1.CompleteHandoffDrainAsync*
-  name: CompleteHandoffDrainAsync
-  href: api/FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_CompleteHandoffDrainAsync_
-  commentId: Overload:FlowtideDotNet.Base.Vertices.IngressVertex`1.CompleteHandoffDrainAsync
-  isSpec: "True"
-  fullName: FlowtideDotNet.Base.Vertices.IngressVertex<TData>.CompleteHandoffDrainAsync
-  fullName.vb: FlowtideDotNet.Base.Vertices.IngressVertex(Of TData).CompleteHandoffDrainAsync
-  nameWithType: IngressVertex<TData>.CompleteHandoffDrainAsync
-  nameWithType.vb: IngressVertex(Of TData).CompleteHandoffDrainAsync
 - uid: FlowtideDotNet.Base.Vertices.IngressVertex`1.Completion
   name: Completion
   href: api/FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Completion
@@ -7384,6 +7350,23 @@ references:
   fullName.vb: FlowtideDotNet.Base.Vertices.PartitionVertex(Of T).Sources
   nameWithType: PartitionVertex<T>.Sources
   nameWithType.vb: PartitionVertex(Of T).Sources
+- uid: FlowtideDotNet.Base.Vertices.PartitionVertex`1.StopDrainTimeout
+  name: StopDrainTimeout
+  href: api/FlowtideDotNet.Base.Vertices.PartitionVertex-1.html#FlowtideDotNet_Base_Vertices_PartitionVertex_1_StopDrainTimeout
+  commentId: P:FlowtideDotNet.Base.Vertices.PartitionVertex`1.StopDrainTimeout
+  fullName: FlowtideDotNet.Base.Vertices.PartitionVertex<T>.StopDrainTimeout
+  fullName.vb: FlowtideDotNet.Base.Vertices.PartitionVertex(Of T).StopDrainTimeout
+  nameWithType: PartitionVertex<T>.StopDrainTimeout
+  nameWithType.vb: PartitionVertex(Of T).StopDrainTimeout
+- uid: FlowtideDotNet.Base.Vertices.PartitionVertex`1.StopDrainTimeout*
+  name: StopDrainTimeout
+  href: api/FlowtideDotNet.Base.Vertices.PartitionVertex-1.html#FlowtideDotNet_Base_Vertices_PartitionVertex_1_StopDrainTimeout_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.PartitionVertex`1.StopDrainTimeout
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.PartitionVertex<T>.StopDrainTimeout
+  fullName.vb: FlowtideDotNet.Base.Vertices.PartitionVertex(Of T).StopDrainTimeout
+  nameWithType: PartitionVertex<T>.StopDrainTimeout
+  nameWithType.vb: PartitionVertex(Of T).StopDrainTimeout
 - uid: FlowtideDotNet.Base.Vertices.PartitionVertex`1.StreamVersion
   name: StreamVersion
   href: api/FlowtideDotNet.Base.Vertices.PartitionVertex-1.html#FlowtideDotNet_Base_Vertices_PartitionVertex_1_StreamVersion
@@ -9297,15 +9280,15 @@ references:
   commentId: T:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse
   fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse
   nameWithType: InitSubstreamResponse
-- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Int64,System.Boolean)
-  name: InitSubstreamResponse(bool, bool, long, long, long, long, bool)
-  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Int64_System_Boolean_
-  commentId: M:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Int64,System.Boolean)
-  name.vb: New(Boolean, Boolean, Long, Long, Long, Long, Boolean)
-  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.InitSubstreamResponse(bool, bool, long, long, long, long, bool)
-  fullName.vb: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.New(Boolean, Boolean, Long, Long, Long, Long, Boolean)
-  nameWithType: InitSubstreamResponse.InitSubstreamResponse(bool, bool, long, long, long, long, bool)
-  nameWithType.vb: InitSubstreamResponse.New(Boolean, Boolean, Long, Long, Long, Long, Boolean)
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean)
+  name: InitSubstreamResponse(bool, bool, long, long, long, long, bool, bool)
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Int64_System_Boolean_System_Boolean_
+  commentId: M:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean)
+  name.vb: New(Boolean, Boolean, Long, Long, Long, Long, Boolean, Boolean)
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.InitSubstreamResponse(bool, bool, long, long, long, long, bool, bool)
+  fullName.vb: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.New(Boolean, Boolean, Long, Long, Long, Long, Boolean, Boolean)
+  nameWithType: InitSubstreamResponse.InitSubstreamResponse(bool, bool, long, long, long, long, bool, bool)
+  nameWithType.vb: InitSubstreamResponse.New(Boolean, Boolean, Long, Long, Long, Long, Boolean, Boolean)
 - uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor*
   name: InitSubstreamResponse
   href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse__ctor_
@@ -9355,6 +9338,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.NotStarted
   nameWithType: InitSubstreamResponse.NotStarted
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerDraining
+  name: PeerDraining
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_PeerDraining
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerDraining
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerDraining
+  nameWithType: InitSubstreamResponse.PeerDraining
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerDraining*
+  name: PeerDraining
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_PeerDraining_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerDraining
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerDraining
+  nameWithType: InitSubstreamResponse.PeerDraining
 - uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.RecordedCheckpointEpoch
   name: RecordedCheckpointEpoch
   href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_RecordedCheckpointEpoch
@@ -14515,6 +14511,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.ModifyRow
   nameWithType: SqlServerSinkOptions.ModifyRow
+- uid: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnCheckpointComplete
+  name: OnCheckpointComplete
+  href: api/FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.html#FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnCheckpointComplete
+  commentId: P:FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnCheckpointComplete
+  fullName: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnCheckpointComplete
+  nameWithType: SqlServerSinkOptions.OnCheckpointComplete
+- uid: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnCheckpointComplete*
+  name: OnCheckpointComplete
+  href: api/FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.html#FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnCheckpointComplete_
+  commentId: Overload:FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnCheckpointComplete
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnCheckpointComplete
+  nameWithType: SqlServerSinkOptions.OnCheckpointComplete
 - uid: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnDataTableCreation
   name: OnDataTableCreation
   href: api/FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.html#FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnDataTableCreation
@@ -14541,6 +14550,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnDataUploaded
   nameWithType: SqlServerSinkOptions.OnDataUploaded
+- uid: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnInitialize
+  name: OnInitialize
+  href: api/FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.html#FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnInitialize
+  commentId: P:FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnInitialize
+  fullName: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnInitialize
+  nameWithType: SqlServerSinkOptions.OnInitialize
+- uid: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnInitialize*
+  name: OnInitialize
+  href: api/FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.html#FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnInitialize_
+  commentId: Overload:FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnInitialize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnInitialize
+  nameWithType: SqlServerSinkOptions.OnInitialize
 - uid: FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.UseDatabaseDefinedInConnectionStringOnly
   name: UseDatabaseDefinedInConnectionStringOnly
   href: api/FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.html#FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_UseDatabaseDefinedInConnectionStringOnly
@@ -32376,15 +32398,15 @@ references:
   commentId: T:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse
   fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse
   nameWithType: SubstreamInitializeResponse
-- uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Boolean)
-  name: SubstreamInitializeResponse(bool, bool, long, long, long, bool)
-  href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Boolean_
-  commentId: M:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Boolean)
-  name.vb: New(Boolean, Boolean, Long, Long, Long, Boolean)
-  fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.SubstreamInitializeResponse(bool, bool, long, long, long, bool)
-  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.New(Boolean, Boolean, Long, Long, Long, Boolean)
-  nameWithType: SubstreamInitializeResponse.SubstreamInitializeResponse(bool, bool, long, long, long, bool)
-  nameWithType.vb: SubstreamInitializeResponse.New(Boolean, Boolean, Long, Long, Long, Boolean)
+- uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean)
+  name: SubstreamInitializeResponse(bool, bool, long, long, long, bool, bool)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Boolean_System_Boolean_
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean)
+  name.vb: New(Boolean, Boolean, Long, Long, Long, Boolean, Boolean)
+  fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.SubstreamInitializeResponse(bool, bool, long, long, long, bool, bool)
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.New(Boolean, Boolean, Long, Long, Long, Boolean, Boolean)
+  nameWithType: SubstreamInitializeResponse.SubstreamInitializeResponse(bool, bool, long, long, long, bool, bool)
+  nameWithType.vb: SubstreamInitializeResponse.New(Boolean, Boolean, Long, Long, Long, Boolean, Boolean)
 - uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor*
   name: SubstreamInitializeResponse
   href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse__ctor_
@@ -32434,6 +32456,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.NotStarted
   nameWithType: SubstreamInitializeResponse.NotStarted
+- uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerDraining
+  name: PeerDraining
+  href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_PeerDraining
+  commentId: P:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerDraining
+  fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerDraining
+  nameWithType: SubstreamInitializeResponse.PeerDraining
+- uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerDraining*
+  name: PeerDraining
+  href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_PeerDraining_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerDraining
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerDraining
+  nameWithType: SubstreamInitializeResponse.PeerDraining
 - uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.RecordedCheckpointEpoch
   name: RecordedCheckpointEpoch
   href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_RecordedCheckpointEpoch

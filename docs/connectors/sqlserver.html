@@ -230,6 +230,305 @@ table. When both are given, the keys declared in the statement are used.</p>
 });
 </code></pre>
 </div>
+<h3 id="sink-hooks">Sink hooks</h3>
+<p>The sink exposes a set of hooks on <code>SqlServerSinkOptions</code> that allow adding custom logic around the bulk copy
+and the merge into statement.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Option</th>
+<th style="text-align: center;">required</th>
+<th style="text-align: center;">default</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">CustomBulkCopyDestinationTable</td>
+<td style="text-align: center;">false</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">Selects a table to bulk copy into instead of a temporary table. No merge into is run.</td>
+</tr>
+<tr>
+<td style="text-align: left;">OnDataTableCreation</td>
+<td style="text-align: center;">false</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">Hook that is run when the data table is created, allows adding extra columns.</td>
+</tr>
+<tr>
+<td style="text-align: left;">ModifyRow</td>
+<td style="text-align: center;">false</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">Hook that is run for each row, allows setting the extra columns.</td>
+</tr>
+<tr>
+<td style="text-align: left;">OnDataUploaded</td>
+<td style="text-align: center;">false</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">Hook that is run after a batch has been uploaded.</td>
+</tr>
+<tr>
+<td style="text-align: left;">OnInitialize</td>
+<td style="text-align: center;">false</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">Hook that is run when the sink is initializing.</td>
+</tr>
+<tr>
+<td style="text-align: left;">OnCheckpointComplete</td>
+<td style="text-align: center;">false</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">Hook that is run after the stream has durably committed a checkpoint. Requires <code>CustomBulkCopyDestinationTable</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Every hook is passed the name of the table that is bulk copied into and the destination table name as a list of
+name parts. A stream can write to several tables with a single <code>SqlServerSinkOptions</code>, so these arguments are how a
+hook tells the destinations apart.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>OnInitialize</code> is called again every time the stream restarts, so its logic must be safe to run more than once.
+The destination table, and any table returned by <code>CustomBulkCopyDestinationTable</code>, must already exist, their
+schemas are read before the hook runs.</p>
+</div>
+<h3 id="the-checkpoint-id">The checkpoint id</h3>
+<p><code>ModifyRow</code>, <code>OnDataUploaded</code> and <code>OnInitialize</code> are all given a <code>checkpointId</code>. It is the <em>SQL Server</em>
+sink's view of the Flowtide checkpoint version that the rows belong to, and it is stable in the way a
+stored column needs to be:</p>
+<ul>
+<li>It is <strong>reused when the stream rolls back</strong>. If a checkpoint fails and Flowtide replays the epoch, the
+replayed rows carry the same id as the rows written before the failure. That makes it usable as a key
+for overwriting or cleaning up replayed data.</li>
+<li>It is <strong>not a wall clock time</strong>. It is the state manager checkpoint version, a counter that advances by
+one per committed checkpoint.</li>
+</ul>
+<p>Which checkpoint the id refers to depends on the execution mode:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">ExecutionMode</th>
+<th style="text-align: left;">Rows are uploaded</th>
+<th style="text-align: left;">The <code>checkpointId</code> is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>OnCheckpoint</code></td>
+<td style="text-align: left;">Inside the checkpoint</td>
+<td style="text-align: left;">The checkpoint that is about to make the rows durable</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>OnWatermark</code></td>
+<td style="text-align: left;">Between checkpoints, on each watermark</td>
+<td style="text-align: left;">The checkpoint that will commit the rows next</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Hybrid</code> (default)</td>
+<td style="text-align: left;">Inside the checkpoint for the initial data, on watermarks after that</td>
+<td style="text-align: left;">Either of the above, depending on which phase the stream is in</td>
+</tr>
+</tbody>
+</table>
+<p><code>OnInitialize</code> receives the id that the first upload of the run will use, so it can be compared against
+ids that <code>ModifyRow</code> stored in a previous run.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The version is only durable if the stream uses a durable state storage. With the default in-memory
+development storage the counter restarts from 1 on every process start, which is consistent with that
+storage replaying the whole stream from scratch, but means the ids repeat across restarts.</p>
+</div>
+<h3 id="example-writing-to-a-custom-table">Example writing to a custom table</h3>
+<p><code>CustomBulkCopyDestinationTable</code> writes the data into a table you control instead of a temporary table, and skips
+the merge into statement. Returning <em>null</em> leaves that destination to the default behaviour, which makes it possible
+to only take over some of the tables a stream writes to:</p>
+<pre><code class="lang-csharp">connectorManager.AddSqlServerSink(new SqlServerSinkOptions()
+{
+    ConnectionStringFunc = () =&gt; connectionString,
+
+    // only take over 'orders', all other tables use a temporary table and merge into
+    CustomBulkCopyDestinationTable = (destinationTable) =&gt;
+        destinationTable[^1] == &quot;orders&quot; ? &quot;dbo.orders_staging&quot; : null,
+
+    // add a column that does not exist in the destination table, only for the table taken over
+    OnDataTableCreation = (dataTable, bulkCopyTable, destinationTable) =&gt;
+    {
+        if (destinationTable[^1] == &quot;orders&quot;)
+        {
+            dataTable.Columns.Add(&quot;md_checkpoint&quot;);
+        }
+        return ValueTask.CompletedTask;
+    },
+
+    // fill the column for each row
+    ModifyRow = (row, isDeleted, watermark, checkpointId, isInitialData, bulkCopyTable, destinationTable) =&gt;
+    {
+        if (destinationTable[^1] == &quot;orders&quot;)
+        {
+            row[&quot;md_checkpoint&quot;] = checkpointId;
+        }
+    },
+
+    // run the merge into logic yourself after each batch
+    OnDataUploaded = async (connection, watermark, checkpointId, isInitialData, bulkCopyTable, destinationTable) =&gt;
+    {
+        if (destinationTable[^1] != &quot;orders&quot;)
+        {
+            return;
+        }
+        using var command = connection.CreateCommand();
+        command.CommandText = $&quot;EXEC merge_orders @staging = '{bulkCopyTable}'&quot;;
+        await command.ExecuteNonQueryAsync();
+    },
+
+    // clear out rows left behind by a previous run
+    OnInitialize = async (connection, checkpointId, lastCommittedCheckpointId, bulkCopyTable, destinationTable) =&gt;
+    {
+        if (destinationTable[^1] != &quot;orders&quot;)
+        {
+            return;
+        }
+        using var command = connection.CreateCommand();
+        command.CommandText = $&quot;DELETE FROM {bulkCopyTable}&quot;;
+        await command.ExecuteNonQueryAsync();
+    }
+});
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>When a custom table is used, the operation metadata column that tells an upsert from a delete is not added.
+If your merge logic needs it, add the column in <code>OnDataTableCreation</code> and set it in <code>ModifyRow</code> from the
+<code>isDeleted</code> argument.</p>
+</div>
+<h3 id="exactly-once-with-a-two-phase-commit">Exactly once with a two phase commit</h3>
+<p><code>OnCheckpointComplete</code> runs after the stream has durably committed a checkpoint, and in a distributed stream
+only once every substream has committed it. Everything the sink uploaded for that checkpoint is already
+written at that point and the stream will not roll back past it, which makes the hook the commit phase of a
+two phase commit. The hook runs on its own connection, so it needs a real staging table from
+<code>CustomBulkCopyDestinationTable</code>: the default temporary table is scoped to the sink's connection and the sink
+refuses the hook without one.</p>
+<ol>
+<li><strong>Prepare.</strong> The sink bulk copies rows into a staging table during the checkpoint. Tag each row with the
+<code>checkpointId</code> in <code>ModifyRow</code> so it is known which checkpoint the row belongs to.</li>
+<li><strong>Commit.</strong> <code>OnCheckpointComplete</code> runs once the checkpoint is durable. Move the rows tagged with that
+<code>checkpointId</code> into the destination table.</li>
+<li><strong>Recover.</strong> <code>OnInitialize</code> is given the last committed checkpointId. Commit anything <strong>staged</strong> with a
+lower or equal id, since the commit hook may never have run for it, and discard the rest of the staging
+table.</li>
+</ol>
+<p>Step 3 is not optional. <code>OnCheckpointComplete</code> is never called again for a checkpoint it missed (a crash
+between the commit and the hook, or a stop that timed out waiting for the other substream), so the
+reconciliation is the only thing that commits those rows. A clean stop runs the hook for its final checkpoint.</p>
+<h4 id="rolling-back-past-a-commit">Rolling back past a commit</h4>
+<p>In a stream running normally, including a distributed one, this cannot happen. Substreams pair their
+checkpoint cycles one to one: a substream will not consume a peer's barrier without pairing it to a local
+checkpoint, and each committed version produces exactly one acknowledgement. The compaction step is
+therefore reached only once every substream has durably committed that same checkpoint, which is why the
+commit hook runs from there rather than from the checkpoint completion notification.</p>
+<p>A graceful stop keeps that property. A substream that is shutting down commits exactly one stop checkpoint,
+paired with the other substream's barrier like any running checkpoint; the drain after it only polls
+for the other side's confirmation and commits nothing. If the other substream does not confirm the drain
+within the stop drain timeout, the stop does not extend the committed version any further; the other
+substream is rolled back to the checkpoint they share, and this stream reconciles to it on its next start.
+Your <code>OnInitialize</code> reconciliation discards anything staged above the last committed id, so the rows for
+the unconfirmed epoch are cleaned up there either way.</p>
+<p>What a rollback does replay is everything since the restored checkpoint. The write operator's own output
+state rolls back with the stream, so after the rollback every key touched since that checkpoint is sent to
+the sink again. A commit that upserts and deletes by primary key, which is the normal shape for this sink,
+simply overwrites those rows on the replay.</p>
+<p>It only needs handling when the commit is not idempotent under a replay, for example an append only insert
+or an <code>INSERT ... WHERE NOT EXISTS</code> that skips rows already present. In that case store the <code>checkpointId</code>
+alongside the committed rows, and delete the rows above the last committed id in <code>OnInitialize</code> before the
+replay writes them again. The checkpoint version is reused after a rollback, so the replayed epoch writes
+the same ids and the result converges.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>The commit must be idempotent. It is redone whenever the stream cannot tell that it already ran, which
+happens on more than the obvious crash, see below.</p>
+</div>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>This only works with <code>ExecutionMode.OnCheckpoint</code> together with <code>CustomBulkCopyDestinationTable</code>.
+In the other execution modes rows are uploaded between checkpoints, so there is no well defined set of
+rows belonging to a checkpoint, and the default temporary table path merges into the destination table
+while it uploads, which leaves nothing to commit.</p>
+</div>
+<h4 id="the-commit-must-be-idempotent">The commit must be idempotent</h4>
+<p><code>OnCheckpointComplete</code> itself runs at most once per checkpoint, but the work it does can be repeated:</p>
+<ul>
+<li>If the commit writes the destination table and clears the staging rows as separate statements, a stop
+between them leaves both, and the reconciliation in <code>OnInitialize</code> commits those rows a second time.</li>
+<li>The reconciliation runs on every start, including a start that follows a completely clean run.</li>
+<li>A rolled back epoch is replayed and committed again under the same <code>checkpointId</code>.</li>
+<li>A commit that is interrupted part way through is redone from the start.</li>
+</ul>
+<p>Put the destination write and the staging cleanup in one transaction, so the first case cannot happen at
+all, and make the destination write itself idempotent, with a <code>MERGE</code> on the primary key or an
+<code>INSERT ... WHERE NOT EXISTS</code>, so the remaining cases converge.</p>
+<p>Both hooks commit the same way, they only differ in how far they commit, so write the commit once and call
+it from both. That is also what keeps the recovery half from being forgotten:</p>
+<pre><code class="lang-csharp">// Commits every staged row up to and including the given checkpoint. Idempotent, and the write and the
+// staging cleanup are one transaction.
+static async Task CommitUpTo(SqlConnection connection, long checkpointId)
+{
+    using var command = connection.CreateCommand();
+    command.CommandText = &quot;EXEC commit_orders @upTo&quot;;
+    command.Parameters.AddWithValue(&quot;@upTo&quot;, checkpointId);
+    await command.ExecuteNonQueryAsync();
+}
+
+connectorManager.AddSqlServerSink(new SqlServerSinkOptions()
+{
+    ConnectionStringFunc = () =&gt; connectionString,
+    ExecutionMode = ExecutionMode.OnCheckpoint,
+    CustomBulkCopyDestinationTable = (destinationTable) =&gt; &quot;dbo.orders_staging&quot;,
+
+    OnDataTableCreation = (dataTable, stagingTable, destinationTable) =&gt;
+    {
+        dataTable.Columns.Add(&quot;md_checkpoint&quot;, typeof(long));
+        return ValueTask.CompletedTask;
+    },
+
+    // 1. prepare, tag every staged row with the checkpoint it belongs to
+    ModifyRow = (row, isDeleted, watermark, checkpointId, isInitialData, stagingTable, destinationTable) =&gt;
+    {
+        row[&quot;md_checkpoint&quot;] = checkpointId;
+    },
+
+    // 2. commit, only reached once the stream has committed the checkpoint
+    OnCheckpointComplete = (connection, checkpointId, stagingTable, destinationTable) =&gt;
+        new ValueTask(CommitUpTo(connection, checkpointId)),
+
+    // 3. recover, redo any commit that was lost, then drop what belongs to a rolled back epoch
+    OnInitialize = async (connection, checkpointId, lastCommittedCheckpointId, stagingTable, destinationTable) =&gt;
+    {
+        await CommitUpTo(connection, lastCommittedCheckpointId);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $&quot;DELETE FROM {stagingTable} WHERE [md_checkpoint] &gt; @lastCommitted&quot;;
+        command.Parameters.AddWithValue(&quot;@lastCommitted&quot;, lastCommittedCheckpointId);
+        await command.ExecuteNonQueryAsync();
+    }
+});
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Only the discard in step 3 is specific to recovery. Staged rows above the last committed checkpoint belong
+to an epoch that was rolled back, and they must not be removed on the <code>OnCheckpointComplete</code> path, where a
+later epoch may already be staging.</p>
+</div>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>OnCheckpointComplete</code> runs on the stream's checkpoint thread rather than the operator thread, so it is
+given its own connection instead of the one the sink uploads with. A session scoped temporary table is
+therefore not visible inside the hook, which is another reason the pattern needs a real staging table.</p>
+</div>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The hook deliberately runs from the stream's compaction step rather than from the checkpoint completion
+notification. A distributed stream rolls its substreams back to the lowest version they all share, which
+can be lower than a version a single substream already committed on its own. Compaction is reached only
+after every substream acknowledged the checkpoint, so it is the first point where committing to an
+external system is safe.</p>
+</div>
 <h2 id="sql-table-provider">SQL Table Provider</h2>
 <p>The SQL table provider is added to the <em>SQL plan builder</em> which will try and look after used tables in its configured <em>SQL Server</em>.
 It provides metadata information about what the column names are in the table.</p>

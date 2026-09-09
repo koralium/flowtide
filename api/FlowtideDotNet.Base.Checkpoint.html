@@ -167,9 +167,9 @@ across different vertices and operators. This ensures fault tolerance and data c
 
   <a id="FlowtideDotNet_Base_Checkpoint__ctor_" data-uid="FlowtideDotNet.Base.Checkpoint.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Base_Checkpoint__ctor_System_Int64_System_Int64_" data-uid="FlowtideDotNet.Base.Checkpoint.#ctor(System.Int64,System.Int64)">
-  Checkpoint(long, long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Checkpoint.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Base_Checkpoint__ctor_System_Int64_System_Int64_System_Int64_" data-uid="FlowtideDotNet.Base.Checkpoint.#ctor(System.Int64,System.Int64,System.Int64)">
+  Checkpoint(long, long, long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Checkpoint.cs/#L43"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="FlowtideDotNet.Base.Checkpoint.html">Checkpoint</a> class.</p>
@@ -177,7 +177,7 @@ across different vertices and operators. This ensures fault tolerance and data c
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public Checkpoint(long checkpointTime, long newTime)</code></pre>
+    <pre><code class="lang-csharp hljs">public Checkpoint(long checkpointTime, long newTime, long checkpointVersion)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -187,6 +187,9 @@ across different vertices and operators. This ensures fault tolerance and data c
 </dd>
     <dt><code>newTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
     <dd><p>The time for the newly created checkpoint span.</p>
+</dd>
+    <dt><code>checkpointVersion</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The state manager version this checkpoint is written under.</p>
 </dd>
   </dl>
 
@@ -218,6 +221,38 @@ across different vertices and operators. This ensures fault tolerance and data c
 
   <div class="codewrapper">
     <pre><code class="lang-csharp hljs">public long CheckpointTime { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Checkpoint_CheckpointVersion_" data-uid="FlowtideDotNet.Base.Checkpoint.CheckpointVersion*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Checkpoint_CheckpointVersion" data-uid="FlowtideDotNet.Base.Checkpoint.CheckpointVersion">
+  CheckpointVersion
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Checkpoint.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>State manager version, reused on rollback, equal across substreams.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long CheckpointVersion { get; }</code></pre>
   </div>
 
 

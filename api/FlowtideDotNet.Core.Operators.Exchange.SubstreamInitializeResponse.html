@@ -154,8 +154,8 @@ Class SubstreamInitializeResponse  <a class="header-action link-secondary" title
 
   <a id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse__ctor_" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Boolean_" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Boolean)">
-  SubstreamInitializeResponse(bool, bool, long, long, long, bool)
+  <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Boolean_System_Boolean_" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean)">
+  SubstreamInitializeResponse(bool, bool, long, long, long, bool, bool)
   <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L23"><i class="bi bi-code-slash"></i></a>
   </h3>
 
@@ -163,7 +163,7 @@ Class SubstreamInitializeResponse  <a class="header-action link-secondary" title
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false)</code></pre>
+    <pre><code class="lang-csharp hljs">public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false, bool peerDraining = false)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -179,6 +179,8 @@ Class SubstreamInitializeResponse  <a class="header-action link-secondary" title
     <dt><code>recordedCheckpointEpoch</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
     <dd></dd>
     <dt><code>cleanReconnect</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>peerDraining</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
     <dd></dd>
   </dl>
 
@@ -201,7 +203,7 @@ Class SubstreamInitializeResponse  <a class="header-action link-secondary" title
 
   <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_CheckpointEpoch" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.CheckpointEpoch">
   CheckpointEpoch
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L50"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The responding substream's current checkpoint epoch. The requester records it as the
@@ -235,7 +237,7 @@ restart carries an old epoch and is dropped by the receiver.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_CleanReconnect" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.CleanReconnect">
   CleanReconnect
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L62"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L68"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The responder accepted the requestors clean handoff reconnect and kept running. The
@@ -268,7 +270,7 @@ requestor then completes startup from restored state instead of waiting for a re
 
   <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_NotStarted" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.NotStarted">
   NotStarted
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L33"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L34"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -295,11 +297,43 @@ requestor then completes startup from restored state instead of waiting for a re
 
 
 
+  <a id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_PeerDraining_" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerDraining*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_PeerDraining" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerDraining">
+  PeerDraining
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Peer draining, wait it out, start retry budget not spent.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool PeerDraining { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_RecordedCheckpointEpoch_" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.RecordedCheckpointEpoch*"></a>
 
   <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_RecordedCheckpointEpoch" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.RecordedCheckpointEpoch">
   RecordedCheckpointEpoch
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L62"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The checkpoint epoch the responder has recorded for the REQUESTOR after handling this
@@ -338,7 +372,7 @@ permanently fenced out of its acks.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_RestoreVersion" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.RestoreVersion">
   RestoreVersion
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L43"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -369,7 +403,7 @@ permanently fenced out of its acks.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_Success" data-uid="FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.Success">
   Success
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Exchange/SubstreamInitializeResponse.cs/#L41"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>

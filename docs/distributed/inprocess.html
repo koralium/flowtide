@@ -132,7 +132,7 @@ await stream.DisposeAsync();
 <p><em>StartAsync</em> starts all substreams and also drives their recurring connector triggers, there is no need to call <em>RunAsync</em> on the individual substreams.</p>
 <p>Failures inside a substream, for example a connector that can not initialize, do not fail the start call, the substream retries in the background. Failures can be seen with <em>WithFailureListener</em> on the substream builders and through the <em>Health</em> property.</p>
 <h2 id="stopping">Stopping</h2>
-<p><em>StopAsync</em> does the coordinated stop. The substreams run stop checkpoints until the data they exchanged has been drained on both sides. The drain is bounded by the stop drain timeout, default 30 seconds, which can be changed with <em>SetStopDrainTimeout</em> on the substream builders.</p>
+<p><em>StopAsync</em> does the coordinated stop. Each substream commits one stop checkpoint and then waits until the data they exchanged has been drained on both sides. The drain is bounded by the stop drain timeout, default 30 seconds, which can be changed with <em>SetStopDrainTimeout</em> on the substream builders.</p>
 <p><em>DeleteAsync</em> deletes the state of every substream and completes when the deletion has finished.</p>
 <h2 id="other-members">Other members</h2>
 <ul>

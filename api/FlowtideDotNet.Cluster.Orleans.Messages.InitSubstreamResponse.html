@@ -156,8 +156,8 @@ public class InitSubstreamResponse</code></pre>
 
   <a id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse__ctor_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Int64_System_Boolean_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Int64,System.Boolean)">
-  InitSubstreamResponse(bool, bool, long, long, long, long, bool)
+  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Int64_System_Boolean_System_Boolean_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean)">
+  InitSubstreamResponse(bool, bool, long, long, long, long, bool, bool)
   <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L25"><i class="bi bi-code-slash"></i></a>
   </h3>
 
@@ -165,7 +165,7 @@ public class InitSubstreamResponse</code></pre>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedFetchEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false)</code></pre>
+    <pre><code class="lang-csharp hljs">public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedFetchEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false, bool peerDraining = false)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -183,6 +183,8 @@ public class InitSubstreamResponse</code></pre>
     <dt><code>recordedCheckpointEpoch</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
     <dd></dd>
     <dt><code>cleanReconnect</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>peerDraining</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
     <dd></dd>
   </dl>
 
@@ -205,7 +207,7 @@ public class InitSubstreamResponse</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_CheckpointEpoch" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.CheckpointEpoch">
   CheckpointEpoch
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L56"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The responding substream's checkpoint epoch, recorded by the requestor as the peer epoch
@@ -239,7 +241,7 @@ public long CheckpointEpoch { get; }</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_CleanReconnect" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.CleanReconnect">
   CleanReconnect
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L79"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L86"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The responder accepted the requestors clean handoff reconnect and kept running. The
@@ -273,7 +275,7 @@ public bool CleanReconnect { get; }</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_NotStarted" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.NotStarted">
   NotStarted
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L36"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L43"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -301,11 +303,44 @@ public bool NotStarted { get; }</code></pre>
 
 
 
+  <a id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_PeerDraining_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerDraining*"></a>
+
+  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_PeerDraining" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerDraining">
+  PeerDraining
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>With NotStarted, the substream is stopping, budget not spent.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Id(7)]
+public bool PeerDraining { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_RecordedCheckpointEpoch_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.RecordedCheckpointEpoch*"></a>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_RecordedCheckpointEpoch" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.RecordedCheckpointEpoch">
   RecordedCheckpointEpoch
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L72"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L79"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The checkpoint epoch the responding substream has recorded for the requestor, the
@@ -342,7 +377,7 @@ public long RecordedCheckpointEpoch { get; }</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_RecordedFetchEpoch" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.RecordedFetchEpoch">
   RecordedFetchEpoch
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L62"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L69"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The fetch epoch the responding grain has recorded for the requestor after handling this
@@ -382,7 +417,7 @@ public long RecordedFetchEpoch { get; }</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_RestoreVersion" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.RestoreVersion">
   RestoreVersion
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L49"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -414,7 +449,7 @@ public long RestoreVersion { get; }</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_Success" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.Success">
   Success
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamResponse.cs/#L46"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>

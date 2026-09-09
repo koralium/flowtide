@@ -187,18 +187,15 @@ Class SqlServerSinkOptions  <a class="header-action link-secondary" title="View 
 
   <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_CustomBulkCopyDestinationTable" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.CustomBulkCopyDestinationTable">
   CustomBulkCopyDestinationTable
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L41"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>If set, the sink writes data to the custom table and does not trigger any merge into to another table.
-For custom merge into logic with custom destination table you can use OnDataUploaded event to run any sql code.
-When using a custom destination table, the metadata if it's an upsert or delete is not sent, that can be
-added manually using ModifyRow.</p>
+  <div class="markdown level1 summary"><p>Bulk copy table per destination, no merge, no md_operation column.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public string? CustomBulkCopyDestinationTable { get; set; }</code></pre>
+    <pre><code class="lang-csharp hljs">public Func&lt;IReadOnlyList&lt;string&gt;, string?&gt;? CustomBulkCopyDestinationTable { get; set; }</code></pre>
   </div>
 
 
@@ -207,7 +204,7 @@ added manually using ModifyRow.</p>
 
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
-    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
     <dd></dd>
   </dl>
 
@@ -287,17 +284,15 @@ public List&lt;string&gt;? CustomPrimaryKeys { get; set; }</code></pre>
 
   <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_ModifyRow" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.ModifyRow">
   ModifyRow
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L51"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Allows modifying a data row adding extra metadata columns if required.
-First argument is the actual data row, the second is if it is a deletion row, third is the watermark, fourth is the checkpointId.
-The last argument is if this is the initial data upload.</p>
+  <div class="markdown level1 summary"><p>Modifies rows, args: deleted, watermark, checkpointId, initial, tmp table, destination.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public Action&lt;DataRow, bool, Watermark, long, bool&gt;? ModifyRow { get; set; }</code></pre>
+    <pre><code class="lang-csharp hljs">public Action&lt;DataRow, bool, Watermark, long, bool, string, IReadOnlyList&lt;string&gt;&gt;? ModifyRow { get; set; }</code></pre>
   </div>
 
 
@@ -306,7 +301,39 @@ The last argument is if this is the initial data upload.</p>
 
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
-    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-5">Action</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datarow">DataRow</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>, <a class="xref" href="FlowtideDotNet.Base.Watermark.html">Watermark</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-7">Action</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datarow">DataRow</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>, <a class="xref" href="FlowtideDotNet.Base.Watermark.html">Watermark</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnCheckpointComplete_" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnCheckpointComplete*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnCheckpointComplete" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnCheckpointComplete">
+  OnCheckpointComplete
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L66"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Commit phase after checkpoint or clean stop, staging table required.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Func&lt;SqlConnection, long, string, IReadOnlyList&lt;string&gt;, ValueTask&gt;? OnCheckpointComplete { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.data.sqlclient.sqlconnection">SqlConnection</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a>&gt;</dt>
     <dd></dd>
   </dl>
 
@@ -321,15 +348,15 @@ The last argument is if this is the initial data upload.</p>
 
   <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnDataTableCreation" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnDataTableCreation">
   OnDataTableCreation
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L46"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Allows adding extra columns to the data table that will be bulk uploaded</p>
+  <div class="markdown level1 summary"><p>Adds extra columns, args: data table, tmp table, destination parts.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public Func&lt;DataTable, ValueTask&gt;? OnDataTableCreation { get; set; }</code></pre>
+    <pre><code class="lang-csharp hljs">public Func&lt;DataTable, string, IReadOnlyList&lt;string&gt;, ValueTask&gt;? OnDataTableCreation { get; set; }</code></pre>
   </div>
 
 
@@ -338,7 +365,7 @@ The last argument is if this is the initial data upload.</p>
 
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
-    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable">DataTable</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a>&gt;</dt>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable">DataTable</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a>&gt;</dt>
     <dd></dd>
   </dl>
 
@@ -353,16 +380,15 @@ The last argument is if this is the initial data upload.</p>
 
   <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnDataUploaded" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnDataUploaded">
   OnDataUploaded
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L62"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L56"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Called when all data in a batch has been uploaded.
-First argument is the sql connection, second the watermark, third the checkpointId, fourth if it is the initial data upload or not.</p>
+  <div class="markdown level1 summary"><p>After batch upload, args: watermark, checkpointId, initial, tmp table, destination.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public Func&lt;SqlConnection, Watermark, long, bool, ValueTask&gt;? OnDataUploaded { get; set; }</code></pre>
+    <pre><code class="lang-csharp hljs">public Func&lt;SqlConnection, Watermark, long, bool, string, IReadOnlyList&lt;string&gt;, ValueTask&gt;? OnDataUploaded { get; set; }</code></pre>
   </div>
 
 
@@ -371,7 +397,39 @@ First argument is the sql connection, second the watermark, third the checkpoint
 
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
-    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.data.sqlclient.sqlconnection">SqlConnection</a>, <a class="xref" href="FlowtideDotNet.Base.Watermark.html">Watermark</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a>&gt;</dt>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.data.sqlclient.sqlconnection">SqlConnection</a>, <a class="xref" href="FlowtideDotNet.Base.Watermark.html">Watermark</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnInitialize_" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnInitialize*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_OnInitialize" data-uid="FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions.OnInitialize">
+  OnInitialize
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SqlServer/SqlServerSinkOptions.cs/#L61"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Runs each start: next checkpointId, last committed, tmp table, destination.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Func&lt;SqlConnection, long, long, string, IReadOnlyList&lt;string&gt;, ValueTask&gt;? OnInitialize { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.data.sqlclient.sqlconnection">SqlConnection</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a>&gt;</dt>
     <dd></dd>
   </dl>
 

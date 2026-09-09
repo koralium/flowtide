@@ -253,12 +253,6 @@ Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title
       <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_ReadyToStop">IngressVertex&lt;StreamEventBatch&gt;.ReadyToStop</a>
     </div>
     <div>
-      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_BeginHandoffDrain">IngressVertex&lt;StreamEventBatch&gt;.BeginHandoffDrain()</a>
-    </div>
-    <div>
-      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_CompleteHandoffDrainAsync">IngressVertex&lt;StreamEventBatch&gt;.CompleteHandoffDrainAsync()</a>
-    </div>
-    <div>
       <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_OnFailure_System_Int64_">IngressVertex&lt;StreamEventBatch&gt;.OnFailure(long)</a>
     </div>
     <div>
@@ -810,7 +804,7 @@ The lock is released after the data has been sent out completely on the stream.<
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>restoreTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
-    <dd><p>The time to restore from.</p>
+    <dd><p>The checkpoint version to restore from.</p>
 </dd>
     <dt><code>stateManagerClient</code> <a class="xref" href="FlowtideDotNet.Storage.StateManager.IStateManagerClient.html">IStateManagerClient</a></dt>
     <dd><p>The state manager client used to access persistent state.</p>
