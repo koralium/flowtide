@@ -595,6 +595,67 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// Drifted peer barrier is fatal, both substreams recover.
+        /// </summary>
+        [Fact]
+        public async Task ADriftedPeerBarrierFailsAndRecovers()
+        {
+            var testName = "e2e_drift_fatal";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var restores = new ConcurrentQueue<(string Stream, long Version)>();
+            int drifted = 0;
+
+            Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = (streamName, version) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    restores.Enqueue((streamName, version));
+                }
+            };
+            try
+            {
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                // One drifted barrier at substream_0, then versions must reconcile.
+                SubstreamReadOperator.PeerBarrierVersionForTests = (streamName, version) =>
+                {
+                    if (streamName.Contains(testName, StringComparison.Ordinal)
+                        && streamName.Contains("substream_0", StringComparison.Ordinal)
+                        && Interlocked.CompareExchange(ref drifted, 1, 0) == 0)
+                    {
+                        return version + 1;
+                    }
+                    return version;
+                };
+                _generator.Generate(150);
+                await WaitUntil(() => Volatile.Read(ref drifted) == 1, () => "a peer barrier to pair at substream_0");
+                await WaitUntil(
+                    () => failures.Any(f => f.Substream == "substream_0" && f.Exception != null),
+                    () => "substream_0 to fail on the drifted barrier");
+                await WaitUntil(
+                    () => restores.Any(r => r.Stream.Contains("substream_0", StringComparison.Ordinal)),
+                    () => "substream_0 to roll back");
+
+                _generator.Generate(150);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+            }
+            finally
+            {
+                SubstreamReadOperator.PeerBarrierVersionForTests = null;
+                Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = null;
+            }
+        }
+
+        /// <summary>
         /// Every pairing matched, enough of them to prove exchange.
         /// </summary>
         private static void AssertPairedVersionsMatch(ConcurrentQueue<(string Stream, long Peer, long Local)> pairings, string phase)

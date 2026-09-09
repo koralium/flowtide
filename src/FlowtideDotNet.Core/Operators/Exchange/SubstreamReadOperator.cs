@@ -53,6 +53,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         internal static Action<string, long, long>? PairedCheckpointHookForTests;
         // Test hook: stream, reader; fires under the reader locks.
         internal static Action<string, SubstreamReadOperator>? ResumedHookForTests;
+        // Test hook: stream, peer version; simulates a drifted peer.
+        internal static Func<string, long, long>? PeerBarrierVersionForTests;
 
 
         private readonly SubstreamCommunicationPoint _communicationPoint;
@@ -395,10 +397,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         DispatchFailAndRollback();
                         return;
                     }
-                    if (checkpointEvent.CheckpointVersion != inStreamCheckpoint.CheckpointVersion)
+                    var peerVersion = checkpointEvent.CheckpointVersion;
+                    var driftHook = PeerBarrierVersionForTests;
+                    if (driftHook != null)
                     {
-                        // Versions equal across substreams, a mismatch means they drifted apart.
-                        Logger.LogWarning("Substream read {name} paired a peer barrier with version {peerVersion} against a local checkpoint with version {localVersion}, the substreams are no longer on the same checkpoint version.", Name, checkpointEvent.CheckpointVersion, inStreamCheckpoint.CheckpointVersion);
+                        peerVersion = driftHook(StreamName, peerVersion);
+                    }
+                    if (peerVersion != inStreamCheckpoint.CheckpointVersion)
+                    {
+                        // Drifted apart, never forward a cycle under two versions.
+                        Logger.LogError("Substream read {name} paired a peer barrier with version {peerVersion} against a local checkpoint with version {localVersion}, the substreams are no longer on the same checkpoint version, failing and recovering to reconcile them.", Name, peerVersion, inStreamCheckpoint.CheckpointVersion);
+                        DispatchFailAndRollback(new InvalidOperationException($"Substream read {Name} paired a peer barrier with version {peerVersion} against a local checkpoint with version {inStreamCheckpoint.CheckpointVersion}, the substreams drifted apart."));
+                        return;
                     }
                     if (inStreamCheckpoint is StopStreamCheckpoint)
                     {
@@ -711,13 +721,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// this operators own fetch task to complete, so a rollback initiated from inside
         /// that task must never be awaited there, the await would deadlock the recovery.
         /// </summary>
-        private void DispatchFailAndRollback()
+        private void DispatchFailAndRollback(Exception? exception = null)
         {
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await FailAndRollback();
+                    await FailAndRollback(exception);
                 }
                 catch (Exception e)
                 {
