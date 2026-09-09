@@ -207,13 +207,15 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override async Task Compact()
         {
+            // Once per committed version, a failed attempt is not retried.
+            var committedVersion = Interlocked.Exchange(ref m_committedCheckpointVersion, -1);
             if (m_sqlServerSinkOptions.OnCheckpointComplete != null &&
-                m_committedCheckpointVersion >= 0)
+                committedVersion >= 0)
             {
                 // Own connection, the sink one can be uploading.
                 using var connection = new SqlConnection(m_connectionStringFunc());
                 await connection.OpenAsync();
-                await m_sqlServerSinkOptions.OnCheckpointComplete(connection, m_committedCheckpointVersion, m_tmpTableName, m_writeRelation.NamedObject.Names);
+                await m_sqlServerSinkOptions.OnCheckpointComplete(connection, committedVersion, m_tmpTableName, m_writeRelation.NamedObject.Names);
             }
             await base.Compact();
         }
