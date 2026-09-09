@@ -1524,6 +1524,78 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// Peer confirms during the timeout teardown, the stop ends cleanly.
+        /// </summary>
+        [Fact]
+        public async Task DrainConfirmedDuringTheTimeoutTeardownStopsCleanly()
+        {
+            var testName = "e2e_late_confirm";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var restores = new ConcurrentQueue<(string Stream, long Version)>();
+            var ackGate = new FetchGate();
+            int confirmed = 0;
+
+            Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = (streamName, version) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    restores.Enqueue((streamName, version));
+                }
+            };
+            // Teardown claimed by timeout, held ack lands before fault.
+            Base.Engine.Internal.StateMachine.StreamContext.BeforeFailureDisposeForTests = streamName =>
+            {
+                if (!streamName.Contains(testName, StringComparison.Ordinal) || !streamName.Contains("substream_1", StringComparison.Ordinal))
+                {
+                    return;
+                }
+                if (Interlocked.Exchange(ref confirmed, 1) == 1)
+                {
+                    return;
+                }
+                var acked = _logBuffers["substream_1"].LinesContaining("dependencies done from target").Count;
+                ackGate.Open();
+                var deadline = DateTime.UtcNow.AddSeconds(10);
+                while (_logBuffers["substream_1"].LinesContaining("dependencies done from target").Count == acked && DateTime.UtcNow < deadline)
+                {
+                    Thread.Sleep(10);
+                }
+            };
+            try
+            {
+                // substream_0 pairs the stop barrier, its acks are held.
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false,
+                    communicationFactory: new GatedCommunicationFactory(hub.CreateFactory("substream_0"), new FetchGate(), ackGate));
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                await Task.Delay(300);
+
+                ackGate.Close();
+                await AwaitBounded(substream1.StopAsync(), "stop confirmed during its teardown");
+                // Lets a rollback notification land before the check.
+                await Task.Delay(1500);
+
+                Assert.Equal(1, Volatile.Read(ref confirmed));
+                Assert.NotEmpty(_logBuffers["substream_1"].LinesContaining("timed out waiting for other substreams to drain"));
+                Assert.DoesNotContain(restores, r => r.Stream.Contains("substream_0", StringComparison.Ordinal));
+                Assert.DoesNotContain(failures, f => f.Substream == "substream_0" && f.Exception != null);
+            }
+            finally
+            {
+                ackGate.Open();
+                Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = null;
+                Base.Engine.Internal.StateMachine.StreamContext.BeforeFailureDisposeForTests = null;
+            }
+        }
+
+        /// <summary>
         /// Peer never acks, timed out stop rolls the peer back.
         /// </summary>
         [Fact]
