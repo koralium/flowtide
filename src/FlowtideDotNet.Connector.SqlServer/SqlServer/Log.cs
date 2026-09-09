@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         public static partial void SelectingChanges(this ILogger logger, string tableName, string stream, string operatorId);
 
         [LoggerMessage(
-           EventId = 2,
+           EventId = 11,
            Level = LogLevel.Error,
            Message = "Exception fetching initial data from sql server. `{stream}`, operator: `{operatorId}`")]
         public static partial void ExceptionFetchingInitialData(this ILogger logger, Exception e, string stream, string operatorId);

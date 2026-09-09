@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     }
                     catch (Exception ex)
                     {
-                        state.logger.ExceptionFetchingInitialData(ex, state.streamName, state.operatorId);
+                        state.Logger.ExceptionFetchingInitialData(ex, state.StreamName, state.OperatorId);
                         return Outcome.FromException<ResilienceResult>(ex);
                     }
 
@@ -194,9 +194,9 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             string? Filter,
             Dictionary<string, object> PrimaryKeyValues,
             Dictionary<string, int> PrimaryKeyToOrdinal,
-            ILogger logger,
-            string streamName,
-            string operatorId)
+            ILogger Logger,
+            string StreamName,
+            string OperatorId)
         {
 
         }
