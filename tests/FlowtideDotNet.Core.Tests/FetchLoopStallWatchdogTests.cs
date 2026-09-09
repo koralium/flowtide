@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Core.Tests
                 {
                     lock (logger.Warnings)
                     {
-                        if (logger.Warnings.Any(w => w.Contains("stalled")))
+                        if (logger.Warnings.Any(w => w.Contains($"stalled for over {SubstreamCommunicationPoint.StallLimit}")))
                         {
                             return;
                         }
@@ -152,14 +152,14 @@ namespace FlowtideDotNet.Core.Tests
                 {
                     lock (logger.Warnings)
                     {
-                        if (logger.Warnings.Any(w => w.Contains("stalled")))
+                        if (logger.Warnings.Any(w => w.Contains($"held at a barrier for over {SubstreamCommunicationPoint.PausedStallLimit}")))
                         {
                             return;
                         }
                     }
                     await Task.Delay(50);
                 }
-                Assert.Fail("The stall watchdog did not detect the fetch held at a barrier forever");
+                Assert.Fail("The stall watchdog did not report the fetch held at a barrier past PausedStallLimit");
             }
             finally
             {

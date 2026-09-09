@@ -900,6 +900,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         private void CheckFetchLoopStall(object? state)
         {
+            string reason;
             lock (_fetchDataLock)
             {
                 if (_fetchDataTask == null)
@@ -928,11 +929,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     return;
                 }
+                // Names the limit that fired, the two hangs differ.
+                reason = loopMovedRecently ? $"held at a barrier for over {PausedStallLimit}" : $"stalled for over {StallLimit}";
                 // Reset so the watchdog does not fire again while the recovery runs.
                 _lastFetchLoopTick = Environment.TickCount64;
                 Volatile.Write(ref _allPausedSince, -1);
             }
-            _logger.LogWarning("The fetch loop for substream {substreamName} has been stalled for over {limit}, failing and recovering to break a possible deadlock between the substreams.", substreamName, StallLimit);
+            _logger.LogWarning("The fetch loop for substream {substreamName} has been {reason}, failing and recovering to break a possible deadlock between the substreams.", substreamName, reason);
             _ = Task.Run(async () =>
             {
                 SubstreamReadOperator? readOperator;
@@ -946,7 +949,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     try
                     {
-                        await readOperator.FailAndRecoverOnFetchError(new TimeoutException($"The fetch loop was stalled for over {StallLimit}."));
+                        await readOperator.FailAndRecoverOnFetchError(new TimeoutException($"The fetch loop was {reason}."));
                     }
                     catch (Exception e)
                     {
