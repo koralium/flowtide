@@ -23,13 +23,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
-        /// The minimum time between checkpoints throttles regular running checkpoints so a
-        /// chatty source cannot trigger a checkpoint storm. It must not apply to the stop
-        /// drain: a stop schedules its drain checkpoint cycles on a tight cadence, and
-        /// clamping those up to the minimum interval delays every stop by that interval, and
-        /// when the interval is at or above the stop drain timeout a distributed stop that
-        /// needs another drain cycle force-faults instead of draining gracefully. The stop
-        /// must complete promptly regardless of the minimum interval.
+        /// Minimum interval throttles running checkpoints, never the stop.
         /// </summary>
         [Fact]
         public async Task StopIsNotDelayedByTheMinimumCheckpointInterval()
@@ -54,6 +48,25 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.True(
                 stopwatch.Elapsed < TimeSpan.FromSeconds(10),
                 $"The stop took {stopwatch.Elapsed.TotalSeconds:F1}s, it was delayed by the minimum checkpoint interval instead of draining on its own cadence.");
+        }
+
+        /// <summary>
+        /// Clean stop runs the sinks' Compact for the stop checkpoint.
+        /// </summary>
+        [Fact]
+        public async Task CleanStopCompactsTheSinksForTheStopCheckpoint()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+            await WaitForUpdate();
+
+            await StopStream();
+
+            Assert.Equal(StreamStateValue.NotStarted, State);
+            Assert.True(SinkLastCheckpointDoneVersion >= 0, "The stop never committed a checkpoint.");
+            Assert.Equal(SinkLastCheckpointDoneVersion, SinkLastCompactedVersion);
         }
 
         /// <summary>

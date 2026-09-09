@@ -685,17 +685,17 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             }, new SqlServerSinkOptions()
             {
                 ConnectionStringFunc = () => _fixture.ConnectionString,
-                CustomBulkCopyDestinationTable = "testdest6",
-                OnDataTableCreation = (dataTable) =>
+                CustomBulkCopyDestinationTable = (table) => "testdest6",
+                OnDataTableCreation = (dataTable, tmpTable, tableName) =>
                 {
                     dataTable.Columns.Add("my_column");
                     return ValueTask.CompletedTask;
                 },
-                ModifyRow = (row, isDeleted, watermark, checkpointId, isInitialData) =>
+                ModifyRow = (row, isDeleted, watermark, checkpointId, isInitialData, tmpTable, tableName) =>
                 {
                     row["my_column"] = "val";
                 },
-                OnDataUploaded = (connection, watermark, checkpointId, isInitialData) =>
+                OnDataUploaded = (connection, watermark, checkpointId, isInitialData, tmpTable, tableName) =>
                 {
                     using var cmd = connection.CreateCommand();
                     cmd.CommandText = "UPDATE testdest6 SET my_column = 'val2' WHERE my_column = 'val'";
@@ -771,7 +771,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             {
                 ConnectionStringFunc = () => _fixture.ConnectionString,
                 ExecutionMode = Core.Operators.Write.ExecutionMode.OnWatermark,
-                OnDataUploaded = (connection, watermark, checkpointId, isInitialData) =>
+                OnDataUploaded = (connection, watermark, checkpointId, isInitialData, tmpTable, tableName) =>
                 {
                     batchCount++;
                     if (batchCount == expectedBatchCount)
@@ -973,5 +973,544 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             });
             Assert.Equal(1, count);
         }
+        [Fact]
+        public async Task OnInitializeCalled()
+        {
+            var testName = nameof(OnInitializeCalled);
+
+
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-table10] (
+                [id] [int] primary key,
+                [created] [datetimeoffset] NOT NULL
+            )");
+            await _fixture.RunCommand("ALTER TABLE [test-db].[dbo].[test-table10] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-dest10] (
+                [id] [int] PRIMARY KEY,
+                [created] [datetimeoffset] NOT NULL
+            )");
+
+            // Insert some data
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[test-table10] ([id], [created]) VALUES (1, '2024-01-03 00:00:00+01:00');
+            ");
+
+            int initializeCount = 0;
+            int connectionProbe = 0;
+            string? initializeTmpTable = null;
+            IReadOnlyList<string>? initializeTableName = null;
+            using SemaphoreSlim waitSemaphore = new SemaphoreSlim(0);
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString
+            }, new SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                OnInitialize = async (connection, checkpointId, lastCommittedId, tmpTable, tableName) =>
+                {
+                    initializeCount++;
+                    initializeTmpTable = tmpTable;
+                    initializeTableName = tableName;
+
+                    // Hook connection must be open and usable.
+                    using var cmd = connection.CreateCommand();
+                    cmd.CommandText = "SELECT 1";
+                    connectionProbe = (int)(await cmd.ExecuteScalarAsync())!;
+                },
+                OnDataUploaded = (connection, watermark, checkpointId, isInitialData, tmpTable, tableName) =>
+                {
+                    waitSemaphore.Release();
+                    return ValueTask.CompletedTask;
+                }
+            });
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+            await testStream.StartStream(@"
+                INSERT INTO [test-db].[dbo].[test-dest10]
+                SELECT
+                    id,
+                    created
+                FROM [test-db].[dbo].[test-table10]
+            ");
+
+            Assert.True(await waitSemaphore.WaitAsync(TimeSpan.FromSeconds(30)));
+
+            Assert.Equal(1, initializeCount);
+            Assert.Equal(1, connectionProbe);
+
+            // No custom table, hook gets the generated temporary table.
+            Assert.NotNull(initializeTmpTable);
+            Assert.StartsWith("#tmp_", initializeTmpTable);
+
+            Assert.NotNull(initializeTableName);
+            Assert.Equal(3, initializeTableName.Count);
+            Assert.Equal("test-db", initializeTableName[0]);
+            Assert.Equal("dbo", initializeTableName[1]);
+            Assert.Equal("test-dest10", initializeTableName[2]);
+
+            // Hook must not disturb the merge into path.
+            var count = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[test-dest10]", (reader) =>
+            {
+                reader.Read();
+                return reader.GetInt32(0);
+            });
+            Assert.Equal(1, count);
+        }
+
+        [Fact]
+        public async Task OnInitializeClearsCustomDestinationTable()
+        {
+            var testName = nameof(OnInitializeClearsCustomDestinationTable);
+
+
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-table11] (
+                [id] [int] primary key,
+                [created] [datetimeoffset] NOT NULL
+            )");
+            await _fixture.RunCommand("ALTER TABLE [test-db].[dbo].[test-table11] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-dest11] (
+                [id] [int] PRIMARY KEY,
+                [created] [datetimeoffset] NOT NULL
+            )");
+            // Staging table replaces the temporary table for bulk copy.
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[teststaging11] (
+                [id] [int] NOT NULL,
+                [created] [datetimeoffset] NOT NULL
+            )");
+
+            // Insert some data
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[test-table11] ([id], [created]) VALUES (1, '2024-01-03 00:00:00+01:00');
+            ");
+
+            // Stale rows from a previous run, hook clears them.
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[teststaging11] ([id], [created]) VALUES
+                (998, '2020-01-01 00:00:00+01:00'),
+                (999, '2020-01-01 00:00:00+01:00');
+            ");
+
+            string? clearedTable = null;
+            using SemaphoreSlim waitSemaphore = new SemaphoreSlim(0);
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString
+            }, new SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                CustomBulkCopyDestinationTable = (table) => "teststaging11",
+                OnInitialize = async (connection, checkpointId, lastCommittedId, tmpTable, tableName) =>
+                {
+                    clearedTable = tmpTable;
+                    using var cmd = connection.CreateCommand();
+                    cmd.CommandText = $"DELETE FROM {tmpTable}";
+                    await cmd.ExecuteNonQueryAsync();
+                },
+                OnDataUploaded = (connection, watermark, checkpointId, isInitialData, tmpTable, tableName) =>
+                {
+                    waitSemaphore.Release();
+                    return ValueTask.CompletedTask;
+                }
+            });
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+            await testStream.StartStream(@"
+                INSERT INTO [test-db].[dbo].[test-dest11]
+                SELECT
+                    id,
+                    created
+                FROM [test-db].[dbo].[test-table11]
+            ");
+
+            Assert.True(await waitSemaphore.WaitAsync(TimeSpan.FromSeconds(30)));
+
+            // Hook gets the custom table, not a temporary one.
+            Assert.Equal("teststaging11", clearedTable);
+
+            var stagedIds = await _fixture.ExecuteReader("SELECT [id] from [test-db].[dbo].[teststaging11]", (reader) =>
+            {
+                var ids = new List<int>();
+                while (reader.Read())
+                {
+                    ids.Add(reader.GetInt32(0));
+                }
+                return ids;
+            });
+
+            // Stale rows gone, only the streamed row remains.
+            Assert.Single(stagedIds);
+            Assert.Equal(1, stagedIds[0]);
+
+            // Custom table skips merge into, destination stays empty.
+            var destinationCount = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[test-dest11]", (reader) =>
+            {
+                reader.Read();
+                return reader.GetInt32(0);
+            });
+            Assert.Equal(0, destinationCount);
+        }
+
+        [Fact]
+        public async Task CheckpointIdIsTheCheckpointVersion()
+        {
+            var testName = nameof(CheckpointIdIsTheCheckpointVersion);
+
+
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-table12] (
+                [id] [int] primary key,
+                [created] [datetimeoffset] NOT NULL
+            )");
+            await _fixture.RunCommand("ALTER TABLE [test-db].[dbo].[test-table12] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-dest12] (
+                [id] [int] PRIMARY KEY,
+                [created] [datetimeoffset] NOT NULL
+            )");
+
+            // Insert some data
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[test-table12] ([id], [created]) VALUES (1, '2024-01-03 00:00:00+01:00');
+            ");
+
+            var initIds = new List<long>();
+            var modifyIds = new List<long>();
+            var uploadIds = new List<long>();
+            using SemaphoreSlim waitSemaphore = new SemaphoreSlim(0);
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString
+            }, new SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                // Upload inside the checkpoint, id is the durable checkpoint.
+                ExecutionMode = Core.Operators.Write.ExecutionMode.OnCheckpoint,
+                OnInitialize = (connection, checkpointId, lastCommittedId, tmpTable, tableName) =>
+                {
+                    lock (initIds)
+                    {
+                        initIds.Add(checkpointId);
+                    }
+                    return ValueTask.CompletedTask;
+                },
+                ModifyRow = (row, isDeleted, watermark, checkpointId, isInitialData, tmpTable, tableName) =>
+                {
+                    lock (modifyIds)
+                    {
+                        if (modifyIds.Count == 0 || modifyIds[^1] != checkpointId)
+                        {
+                            modifyIds.Add(checkpointId);
+                        }
+                    }
+                },
+                OnDataUploaded = (connection, watermark, checkpointId, isInitialData, tmpTable, tableName) =>
+                {
+                    lock (uploadIds)
+                    {
+                        uploadIds.Add(checkpointId);
+                    }
+                    waitSemaphore.Release();
+                    return ValueTask.CompletedTask;
+                }
+            });
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+            await testStream.StartStream(@"
+                INSERT INTO [test-db].[dbo].[test-dest12]
+                SELECT
+                    id,
+                    created
+                FROM [test-db].[dbo].[test-table12]
+            ");
+
+            Assert.True(await waitSemaphore.WaitAsync(TimeSpan.FromSeconds(30)));
+
+            long firstUploadId;
+            lock (uploadIds)
+            {
+                firstUploadId = uploadIds[0];
+            }
+
+            // A version counter, not a wall clock time.
+            Assert.InRange(firstUploadId, 1, 1_000);
+
+            // All three hooks agree on the id.
+            Assert.Equal(firstUploadId, initIds[0]);
+            Assert.Equal(firstUploadId, modifyIds[0]);
+
+        }
+
+        [Fact]
+        public async Task TwoPhaseCommitWithOnCheckpointComplete()
+        {
+            var testName = nameof(TwoPhaseCommitWithOnCheckpointComplete);
+
+
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-table13] (
+                [id] [int] primary key,
+                [created] [datetimeoffset] NOT NULL
+            )");
+            await _fixture.RunCommand("ALTER TABLE [test-db].[dbo].[test-table13] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-dest13] (
+                [id] [int] PRIMARY KEY,
+                [created] [datetimeoffset] NOT NULL,
+                [md_checkpoint] [bigint] NOT NULL
+            )");
+
+            // From a rolled back epoch, the reconcile must remove it.
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[test-dest13] ([id], [created], [md_checkpoint]) VALUES (777, '2020-01-01 00:00:00+01:00', 4242);
+            ");
+            // Staging table, rows land here tagged with their checkpoint.
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[teststaging13] (
+                [id] [int] NOT NULL,
+                [created] [datetimeoffset] NOT NULL,
+                [md_checkpoint] [bigint] NOT NULL
+            )");
+
+            // Insert some data
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[test-table13] ([id], [created]) VALUES (1, '2024-01-03 00:00:00+01:00');
+            ");
+
+            // Staged in a rolled back epoch, never committed.
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[teststaging13] ([id], [created], [md_checkpoint]) VALUES (999, '2020-01-01 00:00:00+01:00', 9999);
+            ");
+
+            var uploadedIds = new List<long>();
+            var committedIds = new List<long>();
+            long reconciledLastCommitted = -1;
+            using SemaphoreSlim commitSemaphore = new SemaphoreSlim(0);
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString
+            }, new SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                // Staging only well defined for uploads inside the checkpoint.
+                ExecutionMode = Core.Operators.Write.ExecutionMode.OnCheckpoint,
+                CustomBulkCopyDestinationTable = (table) => "teststaging13",
+                OnDataTableCreation = (dataTable, tmpTable, tableName) =>
+                {
+                    dataTable.Columns.Add("md_checkpoint", typeof(long));
+                    return ValueTask.CompletedTask;
+                },
+                ModifyRow = (row, isDeleted, watermark, checkpointId, isInitialData, tmpTable, tableName) =>
+                {
+                    // Phase 1, tag the staged row with its checkpoint.
+                    row["md_checkpoint"] = checkpointId;
+                },
+                OnDataUploaded = (connection, watermark, checkpointId, isInitialData, tmpTable, tableName) =>
+                {
+                    lock (uploadedIds)
+                    {
+                        uploadedIds.Add(checkpointId);
+                    }
+                    return ValueTask.CompletedTask;
+                },
+                OnInitialize = async (connection, checkpointId, lastCommittedId, tmpTable, tableName) =>
+                {
+                    reconciledLastCommitted = lastCommittedId;
+
+                    // Recovery, redo the lost commit and drop rolled back epochs.
+                    using var commit = connection.CreateCommand();
+                    commit.CommandText = @"
+                        DELETE FROM [test-db].[dbo].[test-dest13] WHERE [md_checkpoint] > @lastCommitted;
+                        INSERT INTO [test-db].[dbo].[test-dest13] ([id], [created], [md_checkpoint])
+                        SELECT s.[id], s.[created], s.[md_checkpoint] FROM [test-db].[dbo].[teststaging13] s
+                        WHERE s.[md_checkpoint] <= @lastCommitted
+                          AND NOT EXISTS (SELECT 1 FROM [test-db].[dbo].[test-dest13] d WHERE d.[id] = s.[id]);
+                        DELETE FROM [test-db].[dbo].[teststaging13];";
+                    commit.Parameters.AddWithValue("@lastCommitted", lastCommittedId);
+                    await commit.ExecuteNonQueryAsync();
+                },
+                OnCheckpointComplete = async (connection, checkpointId, tmpTable, tableName) =>
+                {
+                    // Phase 2, checkpoint durable, move its staged rows into destination.
+                    using var commit = connection.CreateCommand();
+                    commit.CommandText = @"
+                        INSERT INTO [test-db].[dbo].[test-dest13] ([id], [created], [md_checkpoint])
+                        SELECT s.[id], s.[created], s.[md_checkpoint] FROM [test-db].[dbo].[teststaging13] s
+                        WHERE s.[md_checkpoint] = @checkpoint
+                          AND NOT EXISTS (SELECT 1 FROM [test-db].[dbo].[test-dest13] d WHERE d.[id] = s.[id]);
+                        DELETE FROM [test-db].[dbo].[teststaging13] WHERE [md_checkpoint] = @checkpoint;";
+                    commit.Parameters.AddWithValue("@checkpoint", checkpointId);
+                    var moved = await commit.ExecuteNonQueryAsync();
+
+                    if (moved > 0)
+                    {
+                        lock (committedIds)
+                        {
+                            committedIds.Add(checkpointId);
+                        }
+                        commitSemaphore.Release();
+                    }
+                }
+            });
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+            await testStream.StartStream(@"
+                INSERT INTO [test-db].[dbo].[test-dest13]
+                SELECT
+                    id,
+                    created
+                FROM [test-db].[dbo].[test-table13]
+            ");
+
+            Assert.True(await commitSemaphore.WaitAsync(TimeSpan.FromSeconds(60)));
+
+            // Fresh stream, nothing committed, the stale staged row is discarded.
+            Assert.Equal(0, reconciledLastCommitted);
+
+            var destination = await _fixture.ExecuteReader("SELECT [id] from [test-db].[dbo].[test-dest13]", (reader) =>
+            {
+                var ids = new List<int>();
+                while (reader.Read())
+                {
+                    ids.Add(reader.GetInt32(0));
+                }
+                return ids;
+            });
+
+            // Only the streamed row survives, rolled back rows are gone.
+            Assert.Single(destination);
+            Assert.Equal(1, destination[0]);
+
+            // Commit only for a checkpoint that was staged first.
+            long committed;
+            lock (committedIds)
+            {
+                committed = committedIds[0];
+            }
+            lock (uploadedIds)
+            {
+                Assert.Contains(committed, uploadedIds);
+            }
+        }
+
+        [Fact]
+        public async Task CustomDestinationTableReturningNullUsesTheDefaultPath()
+        {
+            var testName = nameof(CustomDestinationTableReturningNullUsesTheDefaultPath);
+
+
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-table14] (
+                [id] [int] primary key,
+                [name] [nvarchar](50) NOT NULL
+            )");
+            await _fixture.RunCommand("ALTER TABLE [test-db].[dbo].[test-table14] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-dest14] (
+                [id] [int] PRIMARY KEY,
+                [name] [nvarchar](50) NOT NULL
+            )");
+
+            // Insert some data
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[test-table14] ([id], [name]) VALUES (1, 'first');
+            ");
+
+            var seenTableNames = new List<string>();
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString
+            }, new SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                // Null return, sink falls back to the default path.
+                CustomBulkCopyDestinationTable = (table) =>
+                {
+                    lock (seenTableNames)
+                    {
+                        seenTableNames.Add(string.Join(".", table));
+                    }
+                    return null;
+                }
+            });
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+            await testStream.StartStream(@"
+                INSERT INTO [test-db].[dbo].[test-dest14]
+                SELECT
+                    id,
+                    name
+                FROM [test-db].[dbo].[test-table14]
+            ");
+
+            // Insert reaches destination via temporary table and merge into.
+            var insertDeadline = DateTime.UtcNow.AddSeconds(60);
+            while (true)
+            {
+                await testStream.SchedulerTick();
+                var count = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[test-dest14]", (reader) =>
+                {
+                    reader.Read();
+                    return reader.GetInt32(0);
+                });
+                if (count > 0)
+                {
+                    break;
+                }
+                if (DateTime.UtcNow > insertDeadline)
+                {
+                    Assert.Fail("The row never reached the destination table, the null return did not fall back to the default path.");
+                }
+            }
+
+            // Updates need the operation metadata column and prepared merge.
+            await _fixture.RunCommand(@"
+            UPDATE [test-db].[dbo].[test-table14] SET [name] = 'second' WHERE [id] = 1;
+            ");
+
+            var updateDeadline = DateTime.UtcNow.AddSeconds(60);
+            while (true)
+            {
+                await testStream.SchedulerTick();
+                var name = await _fixture.ExecuteReader("SELECT [name] from [test-db].[dbo].[test-dest14] WHERE [id] = 1", (reader) =>
+                {
+                    reader.Read();
+                    return reader.GetString(0);
+                });
+                if (name == "second")
+                {
+                    break;
+                }
+                if (DateTime.UtcNow > updateDeadline)
+                {
+                    Assert.Fail($"The update never reached the destination table, name was '{name}'.");
+                }
+            }
+
+            // Callback was consulted with the destination table name.
+            lock (seenTableNames)
+            {
+                Assert.Contains("test-db.dbo.test-dest14", seenTableNames);
+            }
+        }
+
     }
 }

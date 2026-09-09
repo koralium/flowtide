@@ -27,6 +27,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         private static int _applied;
 
+        // Set per test stream, bound stop assertions against it.
+        internal static readonly TimeSpan StopDrainTimeout = TimeSpan.FromSeconds(5);
+
         public static void Apply()
         {
             if (Interlocked.Exchange(ref _applied, 1) == 1)
@@ -35,6 +38,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             FailureStreamState.RecoveryRestartDelay = TimeSpan.FromMilliseconds(50);
             SubstreamCommunicationPoint.NotStartedRetrySliceMs = 50;
+            // A peer stuck answering draining otherwise costs five minutes.
+            SubstreamCommunicationPoint.PeerDrainingWaitLimit = TimeSpan.FromSeconds(30);
             RunningStreamState.DeferredWishWatchdogPollInterval = TimeSpan.FromMilliseconds(100);
         }
     }

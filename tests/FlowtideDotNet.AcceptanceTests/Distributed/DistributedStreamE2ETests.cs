@@ -1684,10 +1684,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, crash.CrashCount, watermark => onWatermark?.Invoke(substreamName, watermark), crash.CheckpointsBeforeCrash));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
-                    if (stopDrainTimeout.HasValue)
-                    {
-                        substreamBuilder.SetStopDrainTimeout(stopDrainTimeout.Value);
-                    }
+                    substreamBuilder.SetStopDrainTimeout(stopDrainTimeout ?? FastEngineTimings.StopDrainTimeout);
                     if (loggerFactory != null)
                     {
                         substreamBuilder.WithLoggerFactory(loggerFactory(substreamName));
@@ -2562,12 +2559,10 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Stopping a single substream while the other substream keeps running must not hang.
-        /// The drain waits for the other substreams stop barrier which never comes, after the
-        /// configured drain timeout the stop finishes anyway.
+        /// Lone stop pairs with the peer's answer, no drain timeout.
         /// </summary>
         [Fact]
-        public async Task LoneSubstreamStopFinishesAfterDrainTimeout()
+        public async Task LoneSubstreamStopFinishesWhileThePeerKeepsRunning()
         {
             _generator.Generate(200);
 

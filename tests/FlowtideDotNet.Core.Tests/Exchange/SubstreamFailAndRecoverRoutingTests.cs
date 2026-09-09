@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
                     recovered.Add(point);
                 }
                 return Task.CompletedTask;
-            });
+            }, TimeSpan.FromSeconds(30));
 
             await pointB.SendFailAndRecover(5);
 
@@ -127,9 +127,9 @@ namespace FlowtideDotNet.Core.Tests.Exchange
                 return Task.CompletedTask;
             };
             var first = new SubstreamTarget(1, 1, pointA, () => { });
-            await first.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, record);
+            await first.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, record, TimeSpan.FromSeconds(30));
             var second = new SubstreamTarget(2, 1, pointA, () => { });
-            await second.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, record);
+            await second.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, record, TimeSpan.FromSeconds(30));
 
             await pointB.SendFailAndRecover(5);
 

@@ -129,6 +129,20 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         }
 
         [Fact]
+        public async Task PeerDrainingFromThePointSurvivesTheWireMapping()
+        {
+            var grain = CreateGrainWithPointResponse(
+                new SubstreamInitializeResponse(notStarted: true, success: false, restoreVersion: 4, peerDraining: true));
+
+            var response = await grain.InitializeSubstreamRequest(
+                new InitSubstreamRequest("peer", restorePoint: 4, fetchEpoch: 1, checkpointEpoch: 0, cleanHandoff: true));
+
+            // Mapped away, the requestor burns its start budget draining.
+            Assert.True(response.NotStarted);
+            Assert.True(response.PeerDraining, "The point answered draining but the grain mapped it away.");
+        }
+
+        [Fact]
         public async Task AcceptedCleanReconnectSurvivesTheWireMappingWithAllFields()
         {
             bool? receivedCleanHandoff = null;

@@ -46,29 +46,8 @@ namespace FlowtideDotNet.Base.Vertices
         internal void SetDependenciesDoneFunction(Action<string> dependenciesDone);
 
         /// <summary>
-        /// True when the vertex has everything it needs for the stream to finish stopping.
-        /// Ingress vertices that read from other substreams return false until they have
-        /// consumed the other substreams stop barrier, the stopping stream then runs
-        /// additional stop checkpoint cycles until all vertices are ready.
+        /// Substream readers stay false until consuming the peer stop barrier.
         /// </summary>
         bool ReadyToStop => true;
-
-        /// <summary>
-        /// First phase of a planned handoff stop (e.g. before a grain migration): stop taking
-        /// in new external input while the stream still runs, so input already taken can drain
-        /// and be covered by the following stop checkpoint. Default no-op.
-        /// </summary>
-        void BeginHandoffDrain()
-        {
-        }
-
-        /// <summary>
-        /// Second phase of a planned handoff stop: completes once input taken before
-        /// <see cref="BeginHandoffDrain"/> has drained into the pipeline. Default no-op.
-        /// </summary>
-        Task CompleteHandoffDrainAsync()
-        {
-            return Task.CompletedTask;
-        }
     }
 }

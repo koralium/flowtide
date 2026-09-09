@@ -75,6 +75,20 @@ namespace FlowtideDotNet.Base.Engine
         // Test seam: current block-created flag.
         internal int BlocksCreatedForTests => streamContext._blocksCreated;
 
+        // Test seam: no cycle or schedule left by a stop.
+        internal bool CheckpointSchedulingIdleForTests
+        {
+            get
+            {
+                lock (streamContext._checkpointLock)
+                {
+                    return streamContext.checkpointTask == null
+                        && streamContext._scheduleCheckpointTask == null
+                        && streamContext.inQueueCheckpoint == null;
+                }
+            }
+        }
+
         /// <summary>
         /// Test seam: delivers an egress checkpoint done into the current state as if an egress
         /// vertex fired it, so tests can reproduce a spurious or stale acknowledgement arriving
@@ -83,32 +97,6 @@ namespace FlowtideDotNet.Base.Engine
         internal void InjectEgressCheckpointDoneForTests(string operatorName, ILockingEvent? lockingEvent)
         {
             streamContext.EgressCheckpointDone(operatorName, lockingEvent);
-        }
-
-        /// <summary>
-        /// Prepares the stream for a planned handoff stop (e.g. a grain migration): ingress
-        /// vertices stop taking in new input and drain what they have, so a following
-        /// <see cref="StopAsync"/> covers everything consumed and the stream can resume
-        /// elsewhere from that checkpoint without any peer rolling back.
-        /// </summary>
-        internal async Task PrepareHandoffAsync()
-        {
-            await streamContext.ForEachIngressBlockAsync((key, block) =>
-            {
-                if (block is IStreamIngressVertex ingress)
-                {
-                    ingress.BeginHandoffDrain();
-                }
-                return Task.CompletedTask;
-            });
-            await streamContext.ForEachIngressBlockAsync((key, block) =>
-            {
-                if (block is IStreamIngressVertex ingress)
-                {
-                    return ingress.CompleteHandoffDrainAsync();
-                }
-                return Task.CompletedTask;
-            });
         }
 
         /// <summary>

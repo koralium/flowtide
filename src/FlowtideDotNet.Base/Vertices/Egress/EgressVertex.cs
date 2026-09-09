@@ -97,7 +97,7 @@ namespace FlowtideDotNet.Base.Vertices
         public abstract string DisplayName { get; }
 
         /// <summary>
-        /// Gets the logical checkpoint time identifier of the most recently processed checkpoint.
+        /// Checkpoint version of the data in flight, reused after rollback.
         /// </summary>
         public long CurrentCheckpointId { get; private set; }
 
@@ -204,8 +204,11 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async Task HandleCheckpoint(ICheckpointEvent checkpointEvent)
         {
-            CurrentCheckpointId = checkpointEvent.CheckpointTime;
+            // Data staged inside the barrier belongs to its version.
+            CurrentCheckpointId = checkpointEvent.CheckpointVersion;
             await OnCheckpoint(checkpointEvent.CheckpointTime);
+            // Everything after belongs to the next checkpoint.
+            CurrentCheckpointId = checkpointEvent.CheckpointVersion + 1;
         }
 
         /// <summary>
@@ -293,8 +296,8 @@ namespace FlowtideDotNet.Base.Vertices
         /// Asynchronously initializes the vertex, wiring up metrics, memory, logging, and persistent state retrieval.
         /// </summary>
         /// <param name="name">The name assigned to this vertex.</param>
-        /// <param name="restoreTime">The logical time representing the last known good state to restore from.</param>
-        /// <param name="newTime">The new logical stream execution time after initialization.</param>
+        /// <param name="restoreTime">The checkpoint version to restore from.</param>
+        /// <param name="newTime">The version the next checkpoint commits as.</param>
         /// <param name="vertexHandler">The handler providing state clients, memory managers, logger factories, and metrics.</param>
         /// <param name="streamVersionInformation">Optional version information used to handle stream upgrades or downgrades.</param>
         /// <returns>A task representing the asynchronous initialization and state restore operation.</returns>

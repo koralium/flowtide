@@ -90,6 +90,10 @@ namespace FlowtideDotNet.AcceptanceTests
         /// </summary>
         protected int SinkDeleteFailCount { set => flowtideTestStream.SinkDeleteFailCount = value; }
 
+        protected long SinkLastCheckpointDoneVersion => flowtideTestStream.SinkLastCheckpointDoneVersion;
+
+        protected long SinkLastCompactedVersion => flowtideTestStream.SinkLastCompactedVersion;
+
         /// <summary>
         /// Enables the checkpoint-after-initial-data stream option, set before StartStream.
         /// </summary>

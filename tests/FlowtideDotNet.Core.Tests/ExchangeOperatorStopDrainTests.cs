@@ -160,7 +160,7 @@ namespace FlowtideDotNet.Core.Tests
             Assert.True(op.ReadyToStop);
 
             // The stop cycle stores the stop barrier into the target queue.
-            await ((ITargetBlock<IStreamEvent>)op).SendAsync(new StopStreamCheckpoint(1, 2));
+            await ((ITargetBlock<IStreamEvent>)op).SendAsync(new StopStreamCheckpoint(1, 2, 1));
             await WaitUntilAsync(() => !op.ReadyToStop, "The stop barrier was never stored in the exchange target");
 
             // The peer fetches the barrier; the fetch alone must not finish the stop, the

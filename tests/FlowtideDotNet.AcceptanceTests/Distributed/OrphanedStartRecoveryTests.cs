@@ -161,6 +161,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                 })
                 .DistributeAutomatically(2)
                 .Build();
@@ -213,6 +214,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                 })
                 .DistributeAutomatically(2)
                 .Build();
@@ -285,6 +287,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                        substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                     })
                     .DistributeAutomatically(2)
                     .Build();
@@ -357,6 +360,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                        substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                     })
                     .DistributeAutomatically(2)
                     .Build();
@@ -450,6 +454,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                        substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                     })
                     .DistributeAutomatically(2)
                     .Build();

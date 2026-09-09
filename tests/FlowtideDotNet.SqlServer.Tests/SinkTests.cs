@@ -22,10 +22,9 @@ namespace FlowtideDotNet.SqlServer.Tests
     /// </summary>
     public class SinkTests
     {
-        [Fact]
-        public void TempTableIsTemporary()
+        private static WriteRelation CreateWriteRelation()
         {
-            var sink = new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => "" }, new Substrait.Relations.WriteRelation()
+            return new WriteRelation()
             {
                 Input = new ReadRelation()
                 {
@@ -46,9 +45,50 @@ namespace FlowtideDotNet.SqlServer.Tests
                 {
                     Names = new List<string>() { "c1" }
                 }
-            }, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
+            };
+        }
+
+        [Fact]
+        public void TempTableIsTemporary()
+        {
+            var sink = new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => "" }, CreateWriteRelation(), new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
             var tableName = sink.GetTmpTableName();
             Assert.StartsWith("#", tableName);
+        }
+
+        /// <summary>
+        /// Compact attempts the commit hook once per committed version.
+        /// </summary>
+        [Fact]
+        public async Task CompactAttemptsTheCommitHookOncePerCommittedVersion()
+        {
+            var sink = new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => "",
+                CustomBulkCopyDestinationTable = _ => "staging",
+                OnCheckpointComplete = (_, _, _, _) => ValueTask.CompletedTask
+            }, CreateWriteRelation(), new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
+
+            await sink.CheckpointDone(7);
+            // Empty connection string fails the attempt, the version is spent.
+            await Assert.ThrowsAsync<InvalidOperationException>(() => sink.Compact());
+            // Nothing left to commit, no connection is opened.
+            await sink.Compact();
+        }
+
+        /// <summary>
+        /// Commit hook without a staging table is refused.
+        /// </summary>
+        [Fact]
+        public void CommitHookWithoutAStagingTableIsRefused()
+        {
+            var e = Assert.Throws<InvalidOperationException>(() => new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => "",
+                OnCheckpointComplete = (_, _, _, _) => ValueTask.CompletedTask
+            }, CreateWriteRelation(), new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions()));
+
+            Assert.Contains("CustomBulkCopyDestinationTable", e.Message);
         }
 
         [Fact]

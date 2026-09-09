@@ -26,11 +26,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     {
         Task Initialize(
             long restoreVersion,
-            ExchangeRelation exchangeRelation, 
-            IStateManagerClient stateManagerClient, 
-            ExchangeOperatorState exchangeOperatorState, 
+            ExchangeRelation exchangeRelation,
+            IStateManagerClient stateManagerClient,
+            ExchangeOperatorState exchangeOperatorState,
             IMemoryAllocator memoryAllocator,
-            Func<long, Task> failAndRecoverFunc);
+            Func<long, Task> failAndRecoverFunc,
+            TimeSpan stopDrainTimeout);
 
         IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time);
 

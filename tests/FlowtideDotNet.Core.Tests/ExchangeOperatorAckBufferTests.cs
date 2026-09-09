@@ -174,11 +174,7 @@ namespace FlowtideDotNet.Core.Tests
         }
 
         /// <summary>
-        /// A peer can only have one un-acknowledged cycle in flight, but a stopping peer
-        /// runs stop checkpoint cycles that each send an acknowledgement, and they can all
-        /// arrive before this streams callback is wired. Buffering more than one per peer
-        /// would make a later local cycle complete its dependencies without a real
-        /// acknowledgement.
+        /// One buffered ack per peer, duplicates never complete cycles.
         /// </summary>
         [Fact]
         public async Task BufferedAckSignalsAreCappedAtOnePerPeer()
@@ -259,8 +255,7 @@ namespace FlowtideDotNet.Core.Tests
             var peerB = handlerFactory.Handlers["peerB"];
             var peerC = handlerFactory.Handlers["peerC"];
 
-            // Peer B runs its own stop drain cycles and acknowledges twice with increasing
-            // versions while peer C stays silent. The cycle must not complete on those.
+            // B acks twice, C silent, cycle must not complete.
             await peerB.DeliverCheckpointDone(1);
             await peerB.DeliverCheckpointDone(2);
             Assert.Equal(0, Volatile.Read(ref fired));
@@ -269,9 +264,7 @@ namespace FlowtideDotNet.Core.Tests
             await peerC.DeliverCheckpointDone(1);
             Assert.Equal(1, Volatile.Read(ref fired));
 
-            // B's second acknowledgement was a real one (its own stop cycle) and must carry
-            // over to the next cycle instead of being silently dropped: with C's next
-            // acknowledgement the following cycle completes without another one from B.
+            // B's second ack carries over to the next cycle.
             await peerC.DeliverCheckpointDone(2);
             Assert.Equal(2, Volatile.Read(ref fired));
         }

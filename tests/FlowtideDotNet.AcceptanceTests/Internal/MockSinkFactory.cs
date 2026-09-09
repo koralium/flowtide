@@ -29,8 +29,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly int checkpointsBeforeCrash;
         private readonly int deleteFailCount;
         private readonly Action<int>? onChangeRowsReceived;
+        private readonly Action<long>? onCheckpointDone;
+        private readonly Action<long>? onCompact;
 
-        public MockSinkFactory(string regexPattern, Action<EventBatchData> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark, int checkpointsBeforeCrash = 0, int deleteFailCount = 0, Action<int>? onChangeRowsReceived = null) : base(regexPattern)
+        public MockSinkFactory(string regexPattern, Action<EventBatchData> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark, int checkpointsBeforeCrash = 0, int deleteFailCount = 0, Action<int>? onChangeRowsReceived = null, Action<long>? onCheckpointDone = null, Action<long>? onCompact = null) : base(regexPattern)
         {
             this.onDataUpdate = onDataUpdate;
             this.egressCrashOnCheckpointCount = egressCrashOnCheckpointCount;
@@ -38,11 +40,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             this.checkpointsBeforeCrash = checkpointsBeforeCrash;
             this.deleteFailCount = deleteFailCount;
             this.onChangeRowsReceived = onChangeRowsReceived;
+            this.onCheckpointDone = onCheckpointDone;
+            this.onCompact = onCompact;
         }
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new MockDataSink(writeRelation, dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark, checkpointsBeforeCrash, deleteFailCount, onChangeRowsReceived);
+            return new MockDataSink(writeRelation, dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark, checkpointsBeforeCrash, deleteFailCount, onChangeRowsReceived, onCheckpointDone, onCompact);
         }
 
         public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)

@@ -177,7 +177,7 @@ namespace FlowtideDotNet.Base.Tests
             var collector = await SetupVertex(vertex);
 
             await vertex.SendAsync(new StreamMessage<string>("a", 1));
-            await vertex.SendAsync(new Checkpoint(0, 1));
+            await vertex.SendAsync(new Checkpoint(0, 1, 1));
 
             var first = await ReceiveWithTimeout(collector, vertex);
             var flushed = Assert.IsType<StreamMessage<string>>(first);
@@ -216,12 +216,12 @@ namespace FlowtideDotNet.Base.Tests
             await vertex.Targets[1].SendAsync(new StreamMessage<string>("b", 1));
 
             // The barrier gates its input, this send waits for alignment
-            await vertex.Targets[0].SendAsync(new Checkpoint(0, 1));
+            await vertex.Targets[0].SendAsync(new Checkpoint(0, 1, 1));
             var gatedSend = vertex.Targets[0].SendAsync(new StreamMessage<string>("gated", 1));
             Assert.False(gatedSend.IsCompleted, "The barrier did not gate its input");
 
             // Second barrier completes alignment, flush must precede the checkpoint event
-            await vertex.Targets[1].SendAsync(new Checkpoint(0, 1));
+            await vertex.Targets[1].SendAsync(new Checkpoint(0, 1, 1));
 
             var first = await ReceiveWithTimeout(collector, vertex);
             var flushedA = Assert.IsType<StreamMessage<string>>(first);
@@ -249,7 +249,7 @@ namespace FlowtideDotNet.Base.Tests
             var collector = await SetupVertex(vertex);
 
             await vertex.Targets[0].SendAsync(new StreamMessage<string>("a", 1));
-            var prepare = new LockingEventPrepare(new Checkpoint(0, 1), isInitEvent: true);
+            var prepare = new LockingEventPrepare(new Checkpoint(0, 1, 1), isInitEvent: true);
             await vertex.Targets[0].SendAsync(prepare);
 
             var first = await ReceiveWithTimeout(collector, vertex);

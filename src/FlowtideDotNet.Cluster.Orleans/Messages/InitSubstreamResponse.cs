@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Messages
     [Immutable]
     public class InitSubstreamResponse
     {
-        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedFetchEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false)
+        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedFetchEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false, bool peerDraining = false)
         {
             NotStarted = notStarted;
             Success = success;
@@ -31,7 +31,14 @@ namespace FlowtideDotNet.Cluster.Orleans.Messages
             RecordedFetchEpoch = recordedFetchEpoch;
             RecordedCheckpointEpoch = recordedCheckpointEpoch;
             CleanReconnect = cleanReconnect;
+            PeerDraining = peerDraining;
         }
+
+        /// <summary>
+        /// With NotStarted, the substream is stopping, budget not spent.
+        /// </summary>
+        [Id(7)]
+        public bool PeerDraining { get; }
 
         [Id(2)]
         public bool NotStarted { get; }

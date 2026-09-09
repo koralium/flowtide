@@ -345,7 +345,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context.checkpointTask.SetResult();
                     _context.checkpointTask = null;
                     _currentCheckpoint = null;
-                    _context._currentProvidedCheckpointVersion = default;
+                    _context._currentProvidedCheckpointToken = default;
 
                     if (_context._wantedState == StreamStateValue.NotStarted ||
                         _context._wantedState == StreamStateValue.Deleting)
@@ -421,10 +421,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 span = TimeSpan.FromMilliseconds(1);
             }
             // A version would leak past the stop.
-            var providedVersion = forStopDrain ? default : _context._scheduledProvidedCheckpointVersion;
-            if (_context.TryScheduleCheckpointIn_NoLock(span, providedVersion, forStopDrain))
+            var providedToken = forStopDrain ? default : _context._scheduledProvidedCheckpointToken;
+            if (_context.TryScheduleCheckpointIn_NoLock(span, providedToken, forStopDrain))
             {
-                _context._scheduledProvidedCheckpointVersion = default;
+                _context._scheduledProvidedCheckpointToken = default;
                 _context.inQueueCheckpoint = null;
                 return true;
             }
@@ -598,7 +598,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         // Enqueue the checkpoint as soon as possible. The scheduled provided
                         // version must not be cleared here, the queued cycle is later promoted
                         // with it and the same version dedup would break without it.
-                        _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1), _context._scheduledProvidedCheckpointVersion);
+                        _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1), _context._scheduledProvidedCheckpointToken);
                         return _context.checkpointTask.Task;
                     }
                     _context._logger.StartingCheckpoint(_context.streamName);
@@ -622,10 +622,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     }
                     _preCompletedDependencies.Clear();
                     _context._logger.LogDebug("Checkpoint started on stream {Stream}, waiting for dependencies: [{Waiting}]", _context.streamName, string.Join(",", waitingForDependencies));
-
                     _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                     var newTime = _context.producingTime + 1;
-                    var checkpoint = new Checkpoint(_context.producingTime, newTime);
+                    var checkpoint = new Checkpoint(_context.producingTime, newTime, _context._stateManager.CurrentVersion);
                     _context.producingTime = newTime;
                     _currentCheckpoint = checkpoint;
 
@@ -720,9 +719,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private static void ArmDeferredWishWatchdog(StreamContext context, RunningStreamState run, TaskCompletionSource? observedTask, bool forDelete)
         {
             var operation = forDelete ? "delete" : "stop";
+            // A stop keeps the checkpoint, a delete needs no grace.
+            var grace = forDelete ? DeferredWishWatchdogPollInterval : context._dataflowStreamOptions.StopDrainTimeout;
             _ = Task.Run(async () =>
             {
-                await Task.Delay(context._dataflowStreamOptions.StopDrainTimeout);
+                await Task.Delay(grace);
                 while (WatchdogStillWaiting(context, run, observedTask, forDelete) && context.currentState == StreamStateValue.Running)
                 {
                     if (System.Threading.Volatile.Read(ref context._stateManagerWriteCount) > 0)
@@ -786,11 +787,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
             _context._logger.LogDebug("Stop requested, transitioning to stopping");
 
-            // The transition takes the context lock and must not run under the checkpoint
-            // lock: checkpoint done acknowledgements from other substreams take the context
-            // lock first and the checkpoint lock second, transitioning under the checkpoint
-            // lock deadlocks with them. A checkpoint that starts between the release and the
-            // transition is harmless, the stopping state runs its own stop checkpoint cycles.
+            // Never transition under the checkpoint lock, acks take context first.
             TransitionTo(StreamStateValue.Stopping);
             return Task.CompletedTask;
         }
