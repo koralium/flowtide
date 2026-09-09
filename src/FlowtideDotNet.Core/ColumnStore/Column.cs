@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -62,6 +62,27 @@ namespace FlowtideDotNet.Core.ColumnStore
         private ArrowTypeId _type = ArrowTypeId.Null;
         private bool disposedValue;
         private int _rentCounter;
+
+#if DEBUG
+        // DIAGNOSTIC - REVERT. Set when this column is handed downstream inside a batch. Any mutation
+        // after that point means someone kept a reference and is writing through it while a reader
+        // may hold an already loaded base pointer.
+        internal bool _handoffSealed;
+
+        internal void SealForHandoff()
+        {
+            _handoffSealed = true;
+        }
+#endif
+
+        [global::System.Diagnostics.Conditional("DEBUG")]
+        private void AssertNotSealed([global::System.Runtime.CompilerServices.CallerMemberName] string? member = null)
+        {
+#if DEBUG
+            Debug.Assert(!_handoffSealed, $"Column.{member} mutated a column already handed downstream in a batch.");
+#endif
+        }
+
 
         public int ByteSize => GetByteSize();
 
@@ -276,6 +297,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void Add<T>(in T value)
             where T : IDataValue
         {
+            AssertNotSealed();
             if (!CompareValueType(value))
             {
                 if (_type == ArrowTypeId.Null)
@@ -379,6 +401,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void InsertAt<T>(in int index, in T value)
             where T : IDataValue
         {
+            AssertNotSealed();
             if (!CompareValueType(value))
             {
                 if (_type == ArrowTypeId.Null)
@@ -452,6 +475,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void UpdateAt<T>(in int index, in T value)
             where T : IDataValue
         {
+            AssertNotSealed();
             if (_type == ArrowTypeId.Union)
             {
                 _dataColumn!.Update<T>(index, value, _memoryAllocator!);
@@ -512,6 +536,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveAt(in int index)
         {
+            AssertNotSealed();
             if (_nullCounter > 0)
             {
                 if (_type == ArrowTypeId.Null)
@@ -535,6 +560,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveRange(in int index, in int count)
         {
+            AssertNotSealed();
             if (count == 0)
             {
                 return;
@@ -855,6 +881,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void Clear()
         {
+            AssertNotSealed();
             if (_nullCounter > 0)
             {
                 _validityList.Clear();
@@ -868,6 +895,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void AddToNewList<T>(in T value) where T : IDataValue
         {
+            AssertNotSealed();
             if (_type == ArrowTypeId.List)
             {
                 _dataColumn!.AddToNewList(value, _memoryAllocator!);
@@ -994,19 +1022,19 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertNullRange(int index, int count)
         {
+            AssertNotSealed();
             if (_type == ArrowTypeId.Null)
             {
                 _nullCounter += count;
                 return;
             }
-            if (_nullCounter > 0)
+            // A union keeps its nulls in its own type list, so the validity bitmap must stay empty.
+            if (_type != ArrowTypeId.Union)
             {
-                _validityList.InsertFalseInRange(index, count, _memoryAllocator!);
-                _nullCounter += count;
-            }
-            else
-            {
-                CheckNullInitialization();
+                if (_nullCounter == 0)
+                {
+                    CheckNullInitialization();
+                }
                 _validityList.InsertFalseInRange(index, count, _memoryAllocator!);
                 _nullCounter += count;
             }
@@ -1018,6 +1046,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
         {
+            AssertNotSealed();
             if (count == 0)
             {
                 return;
@@ -1381,6 +1410,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertFrom(IColumn column, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
+            AssertNotSealed();
 
             if (column is Column other)
             {
@@ -1589,6 +1619,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void DeleteBatch(ReadOnlySpan<int> targets)
         {
+            AssertNotSealed();
 
             if (targets.Length == 0) return;
 

@@ -283,6 +283,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void Update(int index, int item)
         {
+            Debug.Assert(index >= 0 && index < _length);
             ((int*)_memory.Pointer)[index] = item;
         }
 
@@ -302,6 +303,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly int Get(in int index)
         {
+            Debug.Assert(index >= 0 && index < _length);
             return ((int*)_memory.Pointer)[index];
         }
 

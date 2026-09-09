@@ -37,6 +37,32 @@ namespace FlowtideDotNet.Core.ColumnStore
             return columns[index];
         }
 
+#if DEBUG
+        // DIAGNOSTIC - REVERT. Seals every column this batch carries when the batch is handed
+        // downstream, so any later Add/Insert/Update/Clear on them asserts at the writer.
+        internal void SealForHandoff()
+        {
+            for (int i = 0; i < columns.Length; i++)
+            {
+                SealColumn(columns[i]);
+            }
+        }
+
+        private static void SealColumn(IColumn? column)
+        {
+            switch (column)
+            {
+                case Column c:
+                    c.SealForHandoff();
+                    break;
+                case ColumnWithOffset cwo:
+                    cwo.Offsets.SealForHandoff();
+                    SealColumn(cwo.InnerColumn);
+                    break;
+            }
+        }
+#endif
+
         /// <summary>
         /// Returns the raw array of columns, this array MUST not be modified
         /// since that will break thread safety.

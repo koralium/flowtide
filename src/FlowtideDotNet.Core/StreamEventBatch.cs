@@ -72,6 +72,11 @@ namespace FlowtideDotNet.Core
 
         public StreamEventBatch(EventBatchWeighted data)
         {
+#if DEBUG
+            data.EventBatchData.SealForHandoff();
+            data.Weights.SealForHandoff();
+            data.Iterations.SealForHandoff();
+#endif
             _data = data;
             _columnCount = _data.EventBatchData.Columns.Count;
         }

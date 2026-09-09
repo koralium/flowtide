@@ -23,6 +23,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Collections;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
@@ -353,6 +354,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
+            Debug.Assert(_offsets.Count == _typeList.Count);
             var valueColumnIndex = _typeList[index];
             var valueColumn = _valueColumns[valueColumnIndex];
             valueColumn.GetValueAt(_offsets.Get(index), dataValueContainer, child);
