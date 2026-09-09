@@ -174,28 +174,91 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return _tree.RouteBatchRootAsync(keys, keyLength, _sortedIndices, _tree.m_keyComparer, _mappings, _lowerBounds, _upperBounds, _lookupBuffer);
         }
 
+        /// <summary>
+        /// Leaves of the chunk being worked through, fetched before the first one is mutated.
+        /// Holding them is what keeps them cached, a page nothing else references is the only
+        /// kind eviction can reclaim, so every routed leaf in the chunk is safe until it is done.
+        /// </summary>
+        private LeafNode<K, V, TKeyContainer, TValueContainer>?[] _heldLeaves = Array.Empty<LeafNode<K, V, TKeyContainer, TValueContainer>?>();
+
+        /// <summary>
+        /// Every leaf the routing mapped will be read before this batch ends, so the ones already
+        /// cached are held from the start instead of being left evictable until their turn.
+        /// Holding costs no read and no extra cache work, it is the same lookup the old loop did
+        /// and it takes only what is already there. Leaves that are not cached are read at their
+        /// turn as before. A batch mapping more leaves than the cache can spare is worked through
+        /// in chunks, past that point no scheme could keep them all resident.
+        /// </summary>
         private async ValueTask MutateBatch<TMutator>(TMutator mutator)
             where TMutator : IRowMutator<K, V>
         {
-            for (int i = 0; i < _mappings.Count; i++)
+            var chunkSize = Math.Min(_mappings.Count, _tree.m_stateClient.MaxHeldPages);
+            if (chunkSize <= 0)
             {
-                var mapping = _mappings[i];
-                var leafTask = _tree.m_stateClient.GetValue(mapping.LeafId);
-                var leaf = (leafTask.IsCompletedSuccessfully ? leafTask.Result : await leafTask)
-                            as LeafNode<K, V, TKeyContainer, TValueContainer>;
-                Debug.Assert(leaf != null, "Expected leaf node");
-                var insertCount = LeafMutateFromBatch(leaf, mutator, in mapping, _tree.m_keyComparer);
+                return;
+            }
+            if (_heldLeaves.Length < chunkSize)
+            {
+                _heldLeaves = new LeafNode<K, V, TKeyContainer, TValueContainer>?[chunkSize];
+            }
 
-                if (insertCount > 0)
+            var chunkStart = 0;
+            try
+            {
+                while (chunkStart < _mappings.Count)
                 {
-                    // Do a NWay split here, data has not been inserted yet
-                    // But all data is in the buffers etc
-                    var leafByteSize = leaf.ByteSize;
-                    var incomingSize = _prefixSumBuffer[insertCount - 1];
-                    await NWaySplitAndMutate(leaf, mutator, mapping, insertCount, leafByteSize, incomingSize, _tree.m_stateClient.Metadata!.PageSizeBytes);
-                }
+                    var chunkEnd = Math.Min(chunkStart + chunkSize, _mappings.Count);
+                    // Hold the ones already cached. This reads nothing, a leaf that is not
+                    // cached cannot be evicted, so there is nothing to hold and it is fetched
+                    // below when its turn comes.
+                    for (int i = chunkStart; i < chunkEnd; i++)
+                    {
+                        _heldLeaves[i - chunkStart] = _tree.m_stateClient.TryGetCachedValue(_mappings[i].LeafId, out var cached)
+                                    ? cached as LeafNode<K, V, TKeyContainer, TValueContainer>
+                                    : null;
+                    }
 
-                leaf.Return();
+                    for (int i = chunkStart; i < chunkEnd; i++)
+                    {
+                        var mapping = _mappings[i];
+                        var slot = i - chunkStart;
+                        var leaf = _heldLeaves[slot];
+                        if (leaf == null)
+                        {
+                            // Was not cached when the chunk started, so it is read now.
+                            var leafTask = _tree.m_stateClient.GetValue(mapping.LeafId);
+                            leaf = (leafTask.IsCompletedSuccessfully ? leafTask.Result : await leafTask)
+                                        as LeafNode<K, V, TKeyContainer, TValueContainer>;
+                            _heldLeaves[slot] = leaf;
+                        }
+                        Debug.Assert(leaf != null, "Expected leaf node");
+                        var insertCount = LeafMutateFromBatch(leaf, mutator, in mapping, _tree.m_keyComparer);
+
+                        if (insertCount > 0)
+                        {
+                            // Do a NWay split here, data has not been inserted yet
+                            // But all data is in the buffers etc
+                            var leafByteSize = leaf.ByteSize;
+                            var incomingSize = _prefixSumBuffer[insertCount - 1];
+                            await NWaySplitAndMutate(leaf, mutator, mapping, insertCount, leafByteSize, incomingSize, _tree.m_stateClient.Metadata!.PageSizeBytes);
+                        }
+
+                        // Returned only once it is done, so it stays unevictable until then.
+                        leaf.Return();
+                        _heldLeaves[slot] = null;
+                    }
+                    chunkStart = chunkEnd;
+                }
+            }
+            finally
+            {
+                // A throw part way through must not strand rents, a page nobody returns is
+                // never evicted again.
+                for (int slot = 0; slot < chunkSize; slot++)
+                {
+                    _heldLeaves[slot]?.Return();
+                    _heldLeaves[slot] = null;
+                }
             }
         }
 

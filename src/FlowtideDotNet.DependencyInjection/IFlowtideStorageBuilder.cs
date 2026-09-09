@@ -37,6 +37,18 @@ namespace FlowtideDotNet.DependencyInjection
 
         int MinPageCount { get; set; }
 
+        /// <summary>
+        /// Hold the cache's small queue at its share even below the eviction threshold, trading
+        /// resident pages for memory. Default: true
+        /// </summary>
+        bool DrainSmallQueueEarly { get; set; }
+
+        /// <summary>
+        /// Let the small queue's share follow what the ghost queue observes instead of a fixed 10%.
+        /// Default: true
+        /// </summary>
+        bool AdaptiveSmallQueueSize { get; set; }
+
         IFlowtideStorageBuilder SetPersistentStorage(IPersistentStorage persistentStorage);
 
         IFlowtideStorageBuilder SetPersistentStorage<TStorage>() where TStorage : class, IPersistentStorage;
