@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -1826,6 +1826,90 @@ namespace FlowtideDotNet.AcceptanceTests
             {
                 var u = Users.First(uu => uu.UserKey == i);
                 u.Visits = (u.Visits ?? 0) + 50000;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// Computed group key through a crash restore. InitializeOrRestore runs a second time on the
+        /// same operator instance, so the groupExpressions guard must not skip rebuilding
+        /// m_groupDirectFields / m_groupValues.
+        /// </summary>
+        [Fact]
+        public async Task AggregateComputedGroupKey_ThroughCrash()
+        {
+            SetPageSizeBytes(256);
+            for (int i = 0; i < 600; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 3).ToString("D4"), FirstName = "n" + i, Visits = i });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT concat(companyId, '_grp'), sum(visits)
+                FROM users
+                GROUP BY concat(companyId, '_grp')");
+
+            void AssertExpected()
+            {
+                var expected = Users
+                    .GroupBy(x => x.CompanyId + "_grp")
+                    .OrderBy(x => x.Key)
+                    .Select(x => new { Key = x.Key, Sum = x.Sum(y => (long)(y.Visits ?? 0)) });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            await Crash();
+
+            for (int i = 0; i < 600; i += 3)
+            {
+                var u = Users.First(uu => uu.UserKey == i);
+                u.Visits = (u.Visits ?? 0) + 50000;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// Mixed grouping through a crash restore: one direct field plus one computed expression. The
+        /// direct slot must not mask the computed one.
+        /// </summary>
+        [Fact]
+        public async Task AggregateMixedGroupKey_ThroughCrash()
+        {
+            for (int i = 0; i < 60; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 6).ToString("D4"), FirstName = "n" + i, Visits = i });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, visits % 2, sum(visits)
+                FROM users
+                GROUP BY companyId, visits % 2");
+
+            void AssertExpected()
+            {
+                var expected = Users
+                    .GroupBy(x => new { x.CompanyId, Parity = (x.Visits ?? 0) % 2 })
+                    .OrderBy(x => x.Key.CompanyId).ThenBy(x => x.Key.Parity)
+                    .Select(x => new { Key = x.Key.CompanyId, Parity = (long)x.Key.Parity, Sum = x.Sum(y => (long)(y.Visits ?? 0)) });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            await Crash();
+
+            for (int i = 0; i < 60; i += 6)
+            {
+                var u = Users.First(uu => uu.UserKey == i);
+                u.Visits = (u.Visits ?? 0) + 500;
                 AddOrUpdateUser(u);
             }
             await WaitForUpdate();
