@@ -18,6 +18,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using Polly;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -80,7 +81,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     batchSize,
                     Filter,
                     primaryKeyValues,
-                    PrimaryKeyToOrdinal);
+                    PrimaryKeyToOrdinal,
+                    Logger,
+                    StreamName,
+                    Name);
 
                 var pipelineResult = await Options.ResiliencePipeline.ExecuteOutcomeAsync(static async (ctx, state) =>
                 {
@@ -109,6 +113,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     }
                     catch (Exception ex)
                     {
+                        state.logger.ExceptionFetchingInitialData(ex, state.streamName, state.operatorId);
                         return Outcome.FromException<ResilienceResult>(ex);
                     }
 
@@ -184,7 +189,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             int BatchSize,
             string? Filter,
             Dictionary<string, object> PrimaryKeyValues,
-            Dictionary<string, int> PrimaryKeyToOrdinal)
+            Dictionary<string, int> PrimaryKeyToOrdinal,
+            ILogger logger,
+            string streamName,
+            string operatorId)
         {
 
         }
