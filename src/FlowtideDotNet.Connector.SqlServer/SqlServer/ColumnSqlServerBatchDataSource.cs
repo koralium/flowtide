@@ -111,6 +111,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
                         return Outcome.FromResult(new ResilienceResult(reader, connection, command));
                     }
+                    catch (Exception ex) when (ex is OperationCanceledException && ctx.CancellationToken.IsCancellationRequested)
+                    {
+                        return Outcome.FromException<ResilienceResult>(ex);
+                    }
                     catch (Exception ex)
                     {
                         state.logger.ExceptionFetchingInitialData(ex, state.streamName, state.operatorId);
