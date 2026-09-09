@@ -631,9 +631,25 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// </summary>
         public int SinkDeleteFailCount { get; set; }
 
+        private long _sinkLastCheckpointDone = -1;
+        private long _sinkLastCompacted = -1;
+
+        // Versions the sinks last saw in CheckpointDone and Compact.
+        public long SinkLastCheckpointDoneVersion => Volatile.Read(ref _sinkLastCheckpointDone);
+
+        public long SinkLastCompactedVersion => Volatile.Read(ref _sinkLastCompacted);
+
         protected virtual void AddWriteResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark, deleteFailCount: SinkDeleteFailCount, onChangeRowsReceived: OnChangeRowsReceived));
+            connectorManger.AddSink(new MockSinkFactory(
+                "*",
+                OnDataUpdate,
+                _egressCrashOnCheckpointCount,
+                OnWatermark,
+                deleteFailCount: SinkDeleteFailCount,
+                onChangeRowsReceived: OnChangeRowsReceived,
+                onCheckpointDone: version => Volatile.Write(ref _sinkLastCheckpointDone, version),
+                onCompact: version => Volatile.Write(ref _sinkLastCompacted, version)));
         }
 
         protected virtual void OnWatermark(Watermark watermark)

@@ -348,6 +348,36 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
+        /// <summary>
+        /// Runs the sinks' Compact for the durable stop checkpoint.
+        /// </summary>
+        private async Task CompactEgressBlocks()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+
+            // Claimed like the running compaction, a dispose waits for it.
+            Interlocked.Increment(ref _context._stateManagerWriteCount);
+            try
+            {
+                foreach (var block in _context.egressBlocks)
+                {
+                    try
+                    {
+                        await block.Value.Compact();
+                    }
+                    catch (Exception e)
+                    {
+                        // A failed hook must not wedge the stop, OnInitialize reconciles.
+                        _context._logger.LogError(e, "Compaction of {operator} on stream {stream} failed during the stop.", block.Key, _context.streamName);
+                    }
+                }
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _context._stateManagerWriteCount);
+            }
+        }
+
         private async Task StopAll(bool faultBlocks)
         {
             Debug.Assert(_context != null, nameof(_context));
@@ -410,6 +440,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
             else
             {
+                // Clean stop, sinks commit from Compact, peers confirmed.
+                await CompactEgressBlocks();
                 _context.ForEachBlock((key, block) =>
                 {
                     block.Complete();

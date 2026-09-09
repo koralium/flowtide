@@ -44,6 +44,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 #endif
 
         private int _deleteFailCount;
+        private readonly Action<long>? _onCheckpointDone;
+        private readonly Action<long>? _onCompact;
+        private long _lastCheckpointDone = -1;
 
         public MockDataSink(
             WriteRelation writeRelation,
@@ -53,7 +56,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             Action<Watermark> onWatermark,
             int checkpointsBeforeCrash = 0,
             int deleteFailCount = 0,
-            Action<int>? onChangeRowsReceived = null) : base(executionDataflowBlockOptions)
+            Action<int>? onChangeRowsReceived = null,
+            Action<long>? onCheckpointDone = null,
+            Action<long>? onCompact = null) : base(executionDataflowBlockOptions)
         {
             this.writeRelation = writeRelation;
             this.onDataChange = onDataChange;
@@ -62,12 +67,23 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _checkpointsBeforeCrash = checkpointsBeforeCrash;
             _deleteFailCount = deleteFailCount;
             this.onChangeRowsReceived = onChangeRowsReceived;
+            _onCheckpointDone = onCheckpointDone;
+            _onCompact = onCompact;
         }
 
         public override string DisplayName => "Mock Data Sink";
 
+        public override Task CheckpointDone(long checkpointVersion)
+        {
+            _lastCheckpointDone = checkpointVersion;
+            _onCheckpointDone?.Invoke(checkpointVersion);
+            return base.CheckpointDone(checkpointVersion);
+        }
+
         public override Task Compact()
         {
+            // Reports the version Compact ran for, a sink commits here.
+            _onCompact?.Invoke(_lastCheckpointDone);
             return Task.CompletedTask;
         }
 

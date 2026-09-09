@@ -317,8 +317,9 @@ two phase commit:
    lower or equal id, since the commit hook may never have run for it, and discard the rest of the staging
    table.
 
-Step 3 is not optional. `OnCheckpointComplete` is never called again for a checkpoint it missed, and it does
-not run on a graceful stop at all, so the reconciliation is the only thing that commits those rows.
+Step 3 is not optional. `OnCheckpointComplete` is never called again for a checkpoint it missed (a crash
+between the commit and the hook, or a stop that timed out waiting for the other substream), so the
+reconciliation is the only thing that commits those rows. A clean stop runs the hook for its final checkpoint.
 
 #### Rolling back past a commit
 

@@ -51,6 +51,25 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
+        /// Clean stop runs the sinks' Compact for the stop checkpoint.
+        /// </summary>
+        [Fact]
+        public async Task CleanStopCompactsTheSinksForTheStopCheckpoint()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+            await WaitForUpdate();
+
+            await StopStream();
+
+            Assert.Equal(StreamStateValue.NotStarted, State);
+            Assert.True(SinkLastCheckpointDoneVersion >= 0, "The stop never committed a checkpoint.");
+            Assert.Equal(SinkLastCheckpointDoneVersion, SinkLastCompactedVersion);
+        }
+
+        /// <summary>
         /// The first checkpoint should be instant, not wait the interval.
         /// </summary>
         [Fact]
