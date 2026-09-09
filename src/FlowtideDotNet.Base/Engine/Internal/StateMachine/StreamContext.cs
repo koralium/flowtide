@@ -575,11 +575,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 return false;
             }
 
-            // Check if minimum time has been set, if so default it to the minimum time. The
-            // minimum throttles regular running checkpoints so a chatty source cannot trigger
-            // a checkpoint storm; a stop drain schedules its cycles on a tight cadence and
-            // bypasses it, clamping those would delay every stop by the interval and force a
-            // distributed drain to time out when the interval is at or above the drain timeout.
+            // Minimum interval throttles running checkpoints only, a stop bypasses it.
             if (!bypassMinimumInterval &&
                 _dataflowStreamOptions.MinimumTimeBetweenCheckpoints != null &&
                 _minimumIntervalThrottleArmed &&

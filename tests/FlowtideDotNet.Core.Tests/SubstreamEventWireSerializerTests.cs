@@ -225,16 +225,14 @@ namespace FlowtideDotNet.Core.Tests
         }
 
         /// <summary>
-        /// A checkpoint persisted by an older build carries no version (type ids 4 and 5). The
-        /// reader must still deserialize it - a durable store such as a pull bucket exchange
-        /// tree can hold one - reading the version back as zero rather than throwing.
+        /// Legacy type ids 4/5 still deserialize, version reads 0.
         /// </summary>
         [Theory]
         [InlineData((byte)4, false)]
         [InlineData((byte)5, true)]
         public void CheckpointWithoutAVersionStillDeserializes(byte typeId, bool isStopCheckpoint)
         {
-            // One event, target 3, then the pre version checkpoint record: type, time, new time.
+            // One event, target 3, legacy record: type, time, new time.
             var payload = new byte[4 + 4 + 1 + 8 + 8];
             BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(0), 1);
             BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(4), 3);

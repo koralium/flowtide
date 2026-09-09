@@ -719,10 +719,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private static void ArmDeferredWishWatchdog(StreamContext context, RunningStreamState run, TaskCompletionSource? observedTask, bool forDelete)
         {
             var operation = forDelete ? "delete" : "stop";
-            // A stop keeps the in progress checkpoint as its final state, so it is worth the
-            // whole drain timeout. A delete throws that state away, so waiting for a cycle the
-            // peer may never acknowledge only delays the teardown; one poll is enough, the loop
-            // below still holds off while the state manager is actually writing.
+            // A stop keeps the checkpoint, a delete needs no grace.
             var grace = forDelete ? DeferredWishWatchdogPollInterval : context._dataflowStreamOptions.StopDrainTimeout;
             _ = Task.Run(async () =>
             {
@@ -790,11 +787,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
             _context._logger.LogDebug("Stop requested, transitioning to stopping");
 
-            // The transition takes the context lock and must not run under the checkpoint
-            // lock: checkpoint done acknowledgements from other substreams take the context
-            // lock first and the checkpoint lock second, transitioning under the checkpoint
-            // lock deadlocks with them. A checkpoint that starts between the release and the
-            // transition is harmless, the stopping state runs its own stop checkpoint cycles.
+            // Never transition under the checkpoint lock, acks take context first.
             TransitionTo(StreamStateValue.Stopping);
             return Task.CompletedTask;
         }

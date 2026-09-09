@@ -182,7 +182,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
                 Interlocked.Exchange(ref _fetchEpoch, announcedEpoch);
                 response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch, cleanHandoff));
             }
-            return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, response.RecordedCheckpointEpoch, response.CleanReconnect);
+            return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, response.RecordedCheckpointEpoch, response.CleanReconnect, response.PeerDraining);
         }
 
         public Task<SubstreamInitializeResponse> TargetInitializeRequest(long restoreVersion, long peerCheckpointEpoch, bool cleanHandoff)

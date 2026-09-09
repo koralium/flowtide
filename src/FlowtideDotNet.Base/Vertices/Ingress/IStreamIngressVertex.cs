@@ -46,10 +46,7 @@ namespace FlowtideDotNet.Base.Vertices
         internal void SetDependenciesDoneFunction(Action<string> dependenciesDone);
 
         /// <summary>
-        /// True when the vertex has everything it needs for the stream to finish stopping.
-        /// Ingress vertices that read from other substreams return false until they have
-        /// consumed the other substreams stop barrier, the stopping stream then runs
-        /// additional stop checkpoint cycles until all vertices are ready.
+        /// Substream readers stay false until consuming the peer stop barrier.
         /// </summary>
         bool ReadyToStop => true;
     }

@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
 
-        // Internal so tests can shorten it, a drain that never completes burns the whole wait.
+        // Internal so tests can shorten the drain wait.
         internal static TimeSpan DefaultStopDrainTimeout = TimeSpan.FromSeconds(30);
 
         /// <summary>

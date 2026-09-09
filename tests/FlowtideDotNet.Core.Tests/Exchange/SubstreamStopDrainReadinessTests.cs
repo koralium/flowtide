@@ -116,9 +116,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         }
 
         /// <summary>
-        /// The alignment escape exists for a peer that never fetches the stop barrier. A peer
-        /// that fetched it and is merely late with the covering ack must still be waited for,
-        /// the fetch response can have been lost after the dequeue.
+        /// Escape never releases a fetched but unacked stop barrier.
         /// </summary>
         [Fact]
         public async Task EscapeDoesNotReleaseAFetchedButUnackedStopBarrier()

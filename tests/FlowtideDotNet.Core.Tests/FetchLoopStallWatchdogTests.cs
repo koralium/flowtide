@@ -120,10 +120,7 @@ namespace FlowtideDotNet.Core.Tests
         }
 
         /// <summary>
-        /// A fetch held at a barrier keeps the loop iterating in the paused branch, so the
-        /// ordinary liveness tick stays fresh. A hold that never ends - a read loop wedged
-        /// downstream so the paired barrier is never consumed - must still be caught, bounded
-        /// by the longer paused limit.
+        /// Paused fetch forever trips the watchdog, bounded by PausedStallLimit.
         /// </summary>
         [Fact]
         public async Task AFetchPausedForeverTriggersTheWatchdog()
@@ -140,10 +137,7 @@ namespace FlowtideDotNet.Core.Tests
                 var handler = new SingleEventHandler();
                 var communicationPoint = new SubstreamCommunicationPoint(logger, "substream_0", "substream_1", handler);
 
-                // The reader pauses at the delivered barrier (like the real read operator) and
-                // never resumes, modelling a pipeline wedged behind that barrier. The fetch
-                // loop then only ever iterates the paused branch, so the ordinary tick stays
-                // fresh and only the paused limit can catch it.
+                // Paused at the barrier forever, ordinary tick stays fresh.
                 communicationPoint.Subscribe(1, ev =>
                 {
                     if (ev is ICheckpointEvent)

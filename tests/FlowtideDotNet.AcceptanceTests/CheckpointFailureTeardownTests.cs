@@ -461,12 +461,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
-        /// The stopping path has its own checkpoint commit (the stop drain cycles), and a
-        /// failure during the stop tears down through StopAll(faultBlocks) instead of the
-        /// failure state. That teardown must also wait for an in-flight stop checkpoint
-        /// commit: faulting and disposing the blocks and the state manager while the commit
-        /// is writing corrupts the persisted checkpoint, the same hazard the failure state's
-        /// write wait exists to prevent.
+        /// Stop failure teardown waits for the in-flight stop commit.
         /// </summary>
         [Fact]
         public async Task StopFailureTeardownWaitsForInFlightStopCheckpointCommit()
@@ -485,8 +480,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
                 await WaitForUpdate();
 
-                // Armed after the initial checkpoint; the next commit the hook sees is the
-                // stop drain cycle's.
+                // Armed after initial checkpoint, next commit is the stop cycle's.
                 StreamContext.CheckpointCommitHookForTests = async (streamName, lastVersion) =>
                 {
                     if (!streamName.Contains(Token))

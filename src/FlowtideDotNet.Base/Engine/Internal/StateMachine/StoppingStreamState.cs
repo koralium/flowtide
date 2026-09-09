@@ -24,8 +24,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private Checkpoint? _currentCheckpoint;
         private long _stoppingStartedTimestamp;
         private int _stopAllStarted;
-        // Drain cycles must not commit, the peer never matches them.
+        // Drain minted cycles never commit, the peer never matches them.
         private bool _stopCommitTaken;
+        // Drain polls readiness, mints no cycles.
+        private int _drainPollStarted;
+        internal static TimeSpan DrainPollInterval = TimeSpan.FromMilliseconds(25);
 
         public override Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
         {
@@ -86,8 +89,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override void EgressDependenciesDone(string name, ILockingEvent? lockingEvent)
         {
-            // TODO: Implement waiting for dependencies
-            // Stopping a stream might need to be rethought how it will behave in a distributed setup.
+            // Peer ack landed, the drain re-checks readiness at once.
+            if (Volatile.Read(ref _drainPollStarted) == 1)
+            {
+                // The ack thread holds exchange and context locks.
+                _ = Task.Run(FinishStopGuarded);
+            }
         }
 
         private void StartCheckpointDoneTask()
@@ -127,11 +134,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                     if (run._stopCommitTaken)
                     {
-                        // Only the first stop cycle commits. The ones after it are polling for
-                        // the other substreams to drain, and the peer takes no matching cycle
-                        // for them, so committing would leave this stream a version ahead of it.
-                        // Nothing arrives past the stop barrier to commit anyway, the fetch is
-                        // held at the barrier the stop paired and the rest stays with the peer.
+                        // Only the first stop cycle commits.
                         _context._logger.LogDebug("Stop drain cycle on stream {stream} is waiting for the other substreams, keeping checkpoint version {version}.", _context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
                     }
                     else
@@ -168,9 +171,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                 if (!committed)
                 {
-                    // A drain poll is a checkpoint to nobody: nothing was written, the
-                    // listeners and the vertices heard about the committed cycle already, and
-                    // its acknowledgements to the other substreams went out with it.
+                    // Checkpoint to nobody, nothing written, listeners already notified.
                     return;
                 }
 
@@ -224,18 +225,90 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      }
                      else
                      {
-                         // Vertices that exchange data with other substreams are not drained
-                         // yet, either an ingress has not consumed the other substreams stop
-                         // barrier or another substream has not fetched this streams stop
-                         // barrier. Another stop checkpoint cycle runs so the exchanged events
-                         // are part of the final state on both sides. The drain cadence must
-                         // not be clamped to the minimum checkpoint interval, that would delay
-                         // the stop and, when the interval is at or above the drain timeout,
-                         // force the drain to time out and fault instead of finishing.
-                         _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(25), default, bypassMinimumInterval: true);
+                         // Waiting on the peer, another cycle cannot help, poll readiness.
+                         @this.EnsureDrainPoll();
                      }
                  }, this)
                  .Unwrap();
+        }
+
+        /// <summary>
+        /// Starts the readiness poll after the committing cycle, runs once.
+        /// </summary>
+        private void EnsureDrainPoll()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+
+            if (Interlocked.Exchange(ref _drainPollStarted, 1) == 1)
+            {
+                return;
+            }
+            var context = _context;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // Dispose leaves the state, poll must not outlive it.
+                    while (Volatile.Read(ref _stopAllStarted) == 0 && !context.IsDisposed && context.currentState == StreamStateValue.Stopping)
+                    {
+                        await Task.Delay(DrainPollInterval);
+                        if (await TryFinishStop())
+                        {
+                            return;
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    context._logger.LogError(e, "The stop drain poll on stream {stream} failed.", context.streamName);
+                    await context.OnFailure(e);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Readiness re-check off the caller's thread, failures reach OnFailure.
+        /// </summary>
+        private async Task FinishStopGuarded()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+
+            try
+            {
+                await TryFinishStop();
+            }
+            catch (Exception e)
+            {
+                _context._logger.LogError(e, "The stop drain on stream {stream} failed.", _context.streamName);
+                await _context.OnFailure(e);
+            }
+        }
+
+        /// <summary>
+        /// Ends the drain on ready or timeout, StopAll runs once.
+        /// </summary>
+        private async Task<bool> TryFinishStop()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+
+            // Dispose tore the blocks down, nothing left to stop.
+            if (Volatile.Read(ref _stopAllStarted) == 1 || _context.IsDisposed)
+            {
+                return true;
+            }
+            if (AllVerticesReadyToStop())
+            {
+                await StopAll(faultBlocks: false);
+                return true;
+            }
+            if (Stopwatch.GetElapsedTime(_stoppingStartedTimestamp) > _context._dataflowStreamOptions.StopDrainTimeout)
+            {
+                // Peer stalled, stop anyway, the fault path rolls it back.
+                _context._logger.LogWarning("Stopping stream {stream} timed out waiting for other substreams to drain, stopping anyway.", _context.streamName);
+                await StopAll(faultBlocks: true);
+                return true;
+            }
+            return false;
         }
 
         private bool AllVerticesReadyToStop()
@@ -247,12 +320,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (block is IStreamIngressVertex ingressVertex && !ingressVertex.ReadyToStop)
                 {
-                    _context._logger.LogDebug("Ingress {operator} is not ready to stop, running another stop checkpoint cycle.", key);
+                    _context._logger.LogDebug("Ingress {operator} is not ready to stop, the drain keeps polling.", key);
                     ready = false;
                 }
                 else if (block is IStreamEgressVertex egressVertex && !egressVertex.ReadyToStop)
                 {
-                    _context._logger.LogDebug("Egress {operator} is not ready to stop, running another stop checkpoint cycle.", key);
+                    _context._logger.LogDebug("Egress {operator} is not ready to stop, the drain keeps polling.", key);
                     ready = false;
                 }
             });
@@ -346,13 +419,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             if (faultBlocks)
             {
-                // The stop is failing rather than completing. Tell every block, so the exchange
-                // operators roll the other substream back to the version this stream keeps and
-                // reset the handshake state - otherwise a peer that already consumed this
-                // stream's stop barrier and committed against it stays a version ahead, and on
-                // a same instance restart (which skips the handshake) the substreams silently
-                // diverge. Decide the version the way the failure state does: the last durable
-                // checkpoint, capped by any peer requested rollback captured through FailAndRollback.
+                // Failing stop, roll peers back like the failure state does.
                 long restoreVersion;
                 lock (_context._checkpointLock)
                 {
@@ -376,6 +443,23 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _context._stateManager.Dispose();
 
+            // A teardown minted cycle reached nobody, drop its state.
+            lock (_context._checkpointLock)
+            {
+                _context.checkpointTask?.TrySetCanceled();
+                _context.checkpointTask = null;
+                _context.inQueueCheckpoint = null;
+                _context._currentProvidedCheckpointToken = default;
+                _context._scheduledProvidedCheckpointToken = default;
+                if (_context._scheduleCheckpointCancelSource != null)
+                {
+                    _context._scheduleCheckpointCancelSource.Cancel();
+                    _context._scheduleCheckpointCancelSource.Dispose();
+                    _context._scheduleCheckpointCancelSource = null;
+                }
+                _context._scheduleCheckpointTask = null;
+                _context._triggerCheckpointTime = null;
+            }
 
             await TransitionTo(StreamStateValue.NotStarted);
             _context._logger.StoppedStream(_context.streamName);
@@ -427,6 +511,17 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (_context.checkpointTask != null)
                 {
                     return _context.checkpointTask.Task;
+                }
+                if (Volatile.Read(ref _stopAllStarted) == 1)
+                {
+                    // Teardown began, a cycle now reaches nobody.
+                    if (isScheduled)
+                    {
+                        _context._scheduleCheckpointTask = null;
+                        _context._triggerCheckpointTime = null;
+                        _context._scheduleCheckpointCancelSource = null;
+                    }
+                    return Task.CompletedTask;
                 }
                 _context._logger.StartingShutdownCheckpoint(_context.streamName);
                 nonCheckpointedEgresses = new HashSet<string>();

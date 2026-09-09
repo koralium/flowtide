@@ -28,8 +28,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         private static int _applied;
 
-        // What the acceptance streams drain for. Bound a stop against this, never a literal,
-        // or shortening it silently retires the assertion that catches a burned drain.
+        // Bound stop assertions against this, never a literal.
         internal static readonly TimeSpan StopDrainTimeout = TimeSpan.FromSeconds(5);
 
         public static void Apply()
@@ -40,8 +39,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             FailureStreamState.RecoveryRestartDelay = TimeSpan.FromMilliseconds(50);
             SubstreamCommunicationPoint.NotStartedRetrySliceMs = 50;
+            // A peer stuck answering draining otherwise costs five minutes.
+            SubstreamCommunicationPoint.PeerDrainingWaitLimit = TimeSpan.FromSeconds(30);
             RunningStreamState.DeferredWishWatchdogPollInterval = TimeSpan.FromMilliseconds(100);
-            // A drain that wedges on a peer otherwise costs the whole 30s before it is visible.
+            // Wedged drain otherwise hides for the whole 30s.
             DataflowStreamOptions.DefaultStopDrainTimeout = StopDrainTimeout;
         }
     }

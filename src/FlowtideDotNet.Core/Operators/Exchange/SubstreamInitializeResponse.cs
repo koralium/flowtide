@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     public class SubstreamInitializeResponse
     {
-        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false)
+        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false, bool peerDraining = false)
         {
             NotStarted = notStarted;
             Success = success;
@@ -28,9 +28,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             CheckpointEpoch = checkpointEpoch;
             RecordedCheckpointEpoch = recordedCheckpointEpoch;
             CleanReconnect = cleanReconnect;
+            PeerDraining = peerDraining;
         }
 
         public bool NotStarted { get; }
+
+        /// <summary>
+        /// Peer draining, wait it out, start retry budget not spent.
+        /// </summary>
+        public bool PeerDraining { get; }
 
         public bool Success { get; }
 

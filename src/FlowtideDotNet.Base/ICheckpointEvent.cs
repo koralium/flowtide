@@ -32,8 +32,7 @@ namespace FlowtideDotNet.Base
         long NewTime { get; }
 
         /// <summary>
-        /// Gets the state manager version this checkpoint is written under.
-        /// Reused on rollback, unlike the times, and shared by every substream.
+        /// State manager version, reused on rollback, equal across substreams.
         /// </summary>
         long CheckpointVersion { get; }
     }

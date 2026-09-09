@@ -329,8 +329,8 @@ therefore reached only once every substream has durably committed that same chec
 commit hook runs from there rather than from the checkpoint completion notification.
 
 A graceful stop keeps that property. A substream that is shutting down commits exactly one stop checkpoint,
-paired with the other substream's barrier like any running checkpoint; the drain cycles after it only poll
-for the other side's confirmation and commit nothing. If the other substream does not confirm the drain
+paired with the other substream's barrier like any running checkpoint; the drain after it only polls
+for the other side's confirmation and commits nothing. If the other substream does not confirm the drain
 within the stop drain timeout, the stop does not extend the committed version any further; the other
 substream is rolled back to the checkpoint they share, and this stream reconciles to it on its next start.
 Your `OnInitialize` reconciliation discards anything staged above the last committed id, so the rows for

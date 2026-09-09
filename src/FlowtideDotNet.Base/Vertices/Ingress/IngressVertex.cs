@@ -320,10 +320,7 @@ namespace FlowtideDotNet.Base.Vertices
             {
                 if (checkpoint is StopStreamCheckpoint)
                 {
-                    // Stop new data from being emitted, the stop checkpoint covers everything
-                    // emitted before it. The checkpoint lock is still released, a stopping
-                    // stream can run multiple stop checkpoint cycles while it drains data
-                    // exchanged with other substreams.
+                    // Stop emitting, checkpoint lock still releases for a pairing cycle.
                     output.Stop();
                 }
                 await OnCheckpoint(checkpoint.CheckpointTime);

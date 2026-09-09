@@ -75,6 +75,20 @@ namespace FlowtideDotNet.Base.Engine
         // Test seam: current block-created flag.
         internal int BlocksCreatedForTests => streamContext._blocksCreated;
 
+        // Test seam: no cycle or schedule left by a stop.
+        internal bool CheckpointSchedulingIdleForTests
+        {
+            get
+            {
+                lock (streamContext._checkpointLock)
+                {
+                    return streamContext.checkpointTask == null
+                        && streamContext._scheduleCheckpointTask == null
+                        && streamContext.inQueueCheckpoint == null;
+                }
+            }
+        }
+
         /// <summary>
         /// Test seam: delivers an egress checkpoint done into the current state as if an egress
         /// vertex fired it, so tests can reproduce a spurious or stale acknowledgement arriving

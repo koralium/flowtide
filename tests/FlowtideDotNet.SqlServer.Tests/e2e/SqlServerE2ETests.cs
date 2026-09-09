@@ -1014,7 +1014,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                     initializeTmpTable = tmpTable;
                     initializeTableName = tableName;
 
-                    // The connection handed to the hook must be open and usable.
+                    // Hook connection must be open and usable.
                     using var cmd = connection.CreateCommand();
                     cmd.CommandText = "SELECT 1";
                     connectionProbe = (int)(await cmd.ExecuteScalarAsync())!;
@@ -1042,7 +1042,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             Assert.Equal(1, initializeCount);
             Assert.Equal(1, connectionProbe);
 
-            // Without a custom destination table the hook gets the generated temporary table.
+            // No custom table, hook gets the generated temporary table.
             Assert.NotNull(initializeTmpTable);
             Assert.StartsWith("#tmp_", initializeTmpTable);
 
@@ -1052,7 +1052,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             Assert.Equal("dbo", initializeTableName[1]);
             Assert.Equal("test-dest10", initializeTableName[2]);
 
-            // The hook must not disturb the normal merge into path.
+            // Hook must not disturb the merge into path.
             var count = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[test-dest10]", (reader) =>
             {
                 reader.Read();
@@ -1078,7 +1078,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 [id] [int] PRIMARY KEY,
                 [created] [datetimeoffset] NOT NULL
             )");
-            // Staging table the sink bulk copies into instead of a temporary table.
+            // Staging table replaces the temporary table for bulk copy.
             await _fixture.RunCommand(@"
             CREATE TABLE [test-db].[dbo].[teststaging11] (
                 [id] [int] NOT NULL,
@@ -1090,7 +1090,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             INSERT INTO [test-db].[dbo].[test-table11] ([id], [created]) VALUES (1, '2024-01-03 00:00:00+01:00');
             ");
 
-            // Left behind by a previous run, the hook clears them.
+            // Stale rows from a previous run, hook clears them.
             await _fixture.RunCommand(@"
             INSERT INTO [test-db].[dbo].[teststaging11] ([id], [created]) VALUES
                 (998, '2020-01-01 00:00:00+01:00'),
@@ -1134,7 +1134,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
 
             Assert.True(await waitSemaphore.WaitAsync(TimeSpan.FromSeconds(30)));
 
-            // The hook gets the custom destination table, not a generated temporary table.
+            // Hook gets the custom table, not a temporary one.
             Assert.Equal("teststaging11", clearedTable);
 
             var stagedIds = await _fixture.ExecuteReader("SELECT [id] from [test-db].[dbo].[teststaging11]", (reader) =>
@@ -1147,11 +1147,11 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 return ids;
             });
 
-            // The stale rows are gone and only the streamed row remains.
+            // Stale rows gone, only the streamed row remains.
             Assert.Single(stagedIds);
             Assert.Equal(1, stagedIds[0]);
 
-            // A custom table skips the merge into, the destination stays empty.
+            // Custom table skips merge into, destination stays empty.
             var destinationCount = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[test-dest11]", (reader) =>
             {
                 reader.Read();
@@ -1194,7 +1194,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             }, new SqlServerSinkOptions()
             {
                 ConnectionStringFunc = () => _fixture.ConnectionString,
-                // Uploads inside the checkpoint, so the id is the checkpoint that makes the rows durable.
+                // Upload inside the checkpoint, id is the durable checkpoint.
                 ExecutionMode = Core.Operators.Write.ExecutionMode.OnCheckpoint,
                 OnInitialize = (connection, checkpointId, lastCommittedId, tmpTable, tableName) =>
                 {
@@ -1276,7 +1276,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             await _fixture.RunCommand(@"
             INSERT INTO [test-db].[dbo].[test-dest13] ([id], [created], [md_checkpoint]) VALUES (777, '2020-01-01 00:00:00+01:00', 4242);
             ");
-            // Staging table, rows land here tagged with the checkpoint they belong to.
+            // Staging table, rows land here tagged with their checkpoint.
             await _fixture.RunCommand(@"
             CREATE TABLE [test-db].[dbo].[teststaging13] (
                 [id] [int] NOT NULL,
@@ -1289,7 +1289,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             INSERT INTO [test-db].[dbo].[test-table13] ([id], [created]) VALUES (1, '2024-01-03 00:00:00+01:00');
             ");
 
-            // Left over from an epoch that was rolled back, it must never be committed.
+            // Staged in a rolled back epoch, never committed.
             await _fixture.RunCommand(@"
             INSERT INTO [test-db].[dbo].[teststaging13] ([id], [created], [md_checkpoint]) VALUES (999, '2020-01-01 00:00:00+01:00', 9999);
             ");
@@ -1305,7 +1305,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             }, new SqlServerSinkOptions()
             {
                 ConnectionStringFunc = () => _fixture.ConnectionString,
-                // Staging is only well defined when the upload happens inside the checkpoint.
+                // Staging only well defined for uploads inside the checkpoint.
                 ExecutionMode = Core.Operators.Write.ExecutionMode.OnCheckpoint,
                 CustomBulkCopyDestinationTable = (table) => "teststaging13",
                 OnDataTableCreation = (dataTable, tmpTable, tableName) =>
@@ -1315,7 +1315,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 },
                 ModifyRow = (row, isDeleted, watermark, checkpointId, isInitialData, tmpTable, tableName) =>
                 {
-                    // Phase 1, tag the staged row with the checkpoint it belongs to.
+                    // Phase 1, tag the staged row with its checkpoint.
                     row["md_checkpoint"] = checkpointId;
                 },
                 OnDataUploaded = (connection, watermark, checkpointId, isInitialData, tmpTable, tableName) =>
@@ -1344,8 +1344,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 },
                 OnCheckpointComplete = async (connection, checkpointId, tmpTable, tableName) =>
                 {
-                    // Phase 2, the stream has durably committed this checkpoint so the staged rows for it
-                    // can be moved into the destination table.
+                    // Phase 2, checkpoint durable, move its staged rows into destination.
                     using var commit = connection.CreateCommand();
                     commit.CommandText = @"
                         INSERT INTO [test-db].[dbo].[test-dest13] ([id], [created], [md_checkpoint])
@@ -1380,7 +1379,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
 
             Assert.True(await commitSemaphore.WaitAsync(TimeSpan.FromSeconds(60)));
 
-            // On a fresh stream nothing had been committed before, so the stale staged row is discarded.
+            // Fresh stream, nothing committed, the stale staged row is discarded.
             Assert.Equal(0, reconciledLastCommitted);
 
             var destination = await _fixture.ExecuteReader("SELECT [id] from [test-db].[dbo].[test-dest13]", (reader) =>
@@ -1393,12 +1392,11 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 return ids;
             });
 
-            // The streamed row was committed. The staged row from a rolled back epoch was never
-            // committed, and the destination row left behind by one was removed by the reconcile.
+            // Only the streamed row survives, rolled back rows are gone.
             Assert.Single(destination);
             Assert.Equal(1, destination[0]);
 
-            // The commit happened for a checkpoint that had already been staged, never for one that had not.
+            // Commit only for a checkpoint that was staged first.
             long committed;
             lock (committedIds)
             {
@@ -1441,8 +1439,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             }, new SqlServerSinkOptions()
             {
                 ConnectionStringFunc = () => _fixture.ConnectionString,
-                // The callback is set but opts this table out, the sink must fall back to a temporary
-                // table and a merge into exactly as if no callback had been given at all.
+                // Null return, sink falls back to the default path.
                 CustomBulkCopyDestinationTable = (table) =>
                 {
                     lock (seenTableNames)
@@ -1464,7 +1461,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 FROM [test-db].[dbo].[test-table14]
             ");
 
-            // The insert reaches the destination through the generated temporary table and the merge into.
+            // Insert reaches destination via temporary table and merge into.
             var insertDeadline = DateTime.UtcNow.AddSeconds(60);
             while (true)
             {
@@ -1484,8 +1481,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 }
             }
 
-            // An update must propagate too, which only happens if the operation metadata column was added
-            // and the merge into statement was prepared.
+            // Updates need the operation metadata column and prepared merge.
             await _fixture.RunCommand(@"
             UPDATE [test-db].[dbo].[test-table14] SET [name] = 'second' WHERE [id] = 1;
             ");
@@ -1509,7 +1505,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 }
             }
 
-            // The callback really was consulted, and with the destination table name.
+            // Callback was consulted with the destination table name.
             lock (seenTableNames)
             {
                 Assert.Contains("test-db.dbo.test-dest14", seenTableNames);

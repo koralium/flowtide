@@ -29,9 +29,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private const byte WatermarkType = 1;
         private const byte LockingEventPrepareType = 2;
         private const byte InitWatermarksEventType = 3;
-        // The versionless checkpoint ids. No longer written, but still read: a durable store
-        // written by an older build (e.g. a pull bucket exchange tree) can hold them, and the
-        // reader must not throw on its own persisted state. Do not reuse these ids.
+        // Versionless ids from old stores, never written or reused.
         private const byte LegacyCheckpointType = 4;
         private const byte LegacyStopCheckpointType = 5;
         // Marker without payload: everything before it in the queue is the sending
@@ -145,7 +143,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 throw new InvalidOperationException("Failed to read new time");
             }
 
-            // A legacy record carries no version, it reads back as zero.
+            // Legacy record carries no version, reads back as zero.
             long checkpointVersion = 0;
             if (hasVersion && !reader.TryReadLittleEndian(out checkpointVersion))
             {

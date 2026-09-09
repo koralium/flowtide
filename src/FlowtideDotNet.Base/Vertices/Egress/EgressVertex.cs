@@ -97,8 +97,7 @@ namespace FlowtideDotNet.Base.Vertices
         public abstract string DisplayName { get; }
 
         /// <summary>
-        /// Gets the checkpoint version the data being processed belongs to.
-        /// Reused after a rollback, so replayed data keeps its id. Not a wall clock time.
+        /// Checkpoint version of the data in flight, reused after rollback.
         /// </summary>
         public long CurrentCheckpointId { get; private set; }
 

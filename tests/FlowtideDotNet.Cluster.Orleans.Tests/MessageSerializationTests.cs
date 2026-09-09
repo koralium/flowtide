@@ -114,6 +114,20 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         }
 
         [Fact]
+        public void InitSubstreamResponseRoundTripsPeerDraining()
+        {
+            var serializer = CreateSerializer();
+            var original = new InitSubstreamResponse(notStarted: true, success: false, restoreVersion: 4, peerDraining: true);
+
+            var bytes = serializer.SerializeToArray(original);
+            var roundTripped = serializer.Deserialize<InitSubstreamResponse>(bytes);
+
+            // Dropped, a long drain burns the returning peer's start budget.
+            Assert.True(roundTripped.PeerDraining, "InitSubstreamResponse.PeerDraining did not survive serialization (missing [Id]).");
+            Assert.True(roundTripped.NotStarted);
+        }
+
+        [Fact]
         public void CheckpointDoneRequestRoundTripsCoversPeerStopBarrier()
         {
             var serializer = CreateSerializer();

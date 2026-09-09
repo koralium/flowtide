@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Base.Vertices
         private IMemoryAllocator? _memoryAllocator;
 
         /// <summary>
-        /// The streams drain timeout.
+        /// The streams stop drain timeout.
         /// </summary>
         protected TimeSpan StopDrainTimeout => _vertexHandler?.StopDrainTimeout ?? TimeSpan.FromSeconds(30);
 
