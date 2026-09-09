@@ -550,16 +550,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
             }
 
-            // Resume refuses under lock when stopping, any refusal answers retry.
-            bool resumed = true;
-            foreach (var readOperator in readOperators)
-            {
-                if (!readOperator.ResumeAfterPeerReconnect())
-                {
-                    resumed = false;
-                }
-            }
-            if (!resumed)
+            // Readers resume all or none, a stop refuses under locks.
+            if (!SubstreamReadOperator.TryResumeAllAfterPeerReconnect(readOperators))
             {
                 _logger.LogInformation(
                     "Substream {substreamName} announced a clean handoff at restore point {restorePoint} but this stream began stopping, answering retry.",

@@ -1451,6 +1451,79 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// Handoff accept resumes every reader or none, never half.
+        /// </summary>
+        [Fact]
+        public async Task HandoffAcceptResumesEveryReaderOrNone()
+        {
+            var testName = "e2e_half_resume";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            Base.Engine.DataflowStream? staying = null;
+            Task? peerStop = null;
+            int armed = 1;
+            int fired = 0;
+
+            // First reader resumed, a stop lands before the next one.
+            SubstreamReadOperator.ResumedHookForTests = (streamName, readOperator) =>
+            {
+                if (!streamName.Contains(testName, StringComparison.Ordinal) || !streamName.Contains("substream_0", StringComparison.Ordinal))
+                {
+                    return;
+                }
+                if (Interlocked.CompareExchange(ref armed, 0, 1) != 1)
+                {
+                    return;
+                }
+                peerStop = staying!.StopAsync();
+                Volatile.Write(ref fired, 1);
+                var deadline = DateTime.UtcNow.AddMilliseconds(500);
+                while (!readOperator.IsStopping && DateTime.UtcNow < deadline)
+                {
+                    Thread.Sleep(5);
+                }
+                // The sibling readers see the barrier right after this one.
+                Thread.Sleep(50);
+            };
+            try
+            {
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                staying = substream0;
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                await AwaitBounded(substream1.StopAsync(), "handoff stop");
+                await substream1.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream1);
+                }
+                await Task.Delay(300);
+                // Two readers on the peer, else no half resume.
+                var readers = _logBuffers["substream_0"].LinesContaining("consumed the other substreams stop barrier").Distinct().Count();
+                Assert.True(readers >= 2, $"substream_0 has {readers} reader on substream_1, the scenario needs two.");
+
+                substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+                var returningStart = substream1.StartAsync();
+                await WaitUntil(() => Volatile.Read(ref fired) == 1, () => "the handoff to resume a reader");
+                await AwaitBounded(peerStop!, "peer stop");
+
+                Assert.Empty(_logBuffers["substream_0"].LinesContaining("failing the stop so both substreams recover"));
+                Assert.DoesNotContain(failures, f => f.Substream == "substream_0" && f.Exception != null);
+            }
+            finally
+            {
+                SubstreamReadOperator.ResumedHookForTests = null;
+            }
+        }
+
+        /// <summary>
         /// Peer never acks, timed out stop rolls the peer back.
         /// </summary>
         [Fact]

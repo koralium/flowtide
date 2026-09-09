@@ -51,6 +51,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         // Test hook: stream, peer version, local version; versions must match.
         internal static Action<string, long, long>? PairedCheckpointHookForTests;
+        // Test hook: stream, reader; fires under the reader locks.
+        internal static Action<string, SubstreamReadOperator>? ResumedHookForTests;
 
 
         private readonly SubstreamCommunicationPoint _communicationPoint;
@@ -605,26 +607,54 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         internal bool PeerStopConsumedCommitted => _peerStopConsumedCommitted;
 
         /// <summary>
-        /// Resumes a returning peer, false and untouched while stopping.
+        /// Resumes every reader or none, a stop refuses under locks.
         /// </summary>
-        internal bool ResumeAfterPeerReconnect()
+        internal static bool TryResumeAllAfterPeerReconnect(IReadOnlyList<SubstreamReadOperator> readOperators)
         {
-            lock (_lock)
+            var taken = new bool[readOperators.Count];
+            try
             {
-                if (_stopping)
+                // List order, a stop holds one lock at most.
+                for (int i = 0; i < readOperators.Count; i++)
                 {
-                    return false;
+                    Monitor.Enter(readOperators[i]._lock, ref taken[i]);
                 }
-                _peerStopConsumed = false;
-                _peerStopConsumedCommitted = false;
-                _swallowNextInitWatermarks = true;
-                var channel = _channel;
-                if (channel != null)
+                for (int i = 0; i < readOperators.Count; i++)
                 {
-                    SubscribeToPeer(channel);
+                    if (readOperators[i]._stopping)
+                    {
+                        return false;
+                    }
+                }
+                foreach (var readOperator in readOperators)
+                {
+                    readOperator.ResumeLocked();
+                    ResumedHookForTests?.Invoke(readOperator.StreamName, readOperator);
+                }
+                return true;
+            }
+            finally
+            {
+                for (int i = taken.Length - 1; i >= 0; i--)
+                {
+                    if (taken[i])
+                    {
+                        Monitor.Exit(readOperators[i]._lock);
+                    }
                 }
             }
-            return true;
+        }
+
+        private void ResumeLocked()
+        {
+            _peerStopConsumed = false;
+            _peerStopConsumedCommitted = false;
+            _swallowNextInitWatermarks = true;
+            var channel = _channel;
+            if (channel != null)
+            {
+                SubscribeToPeer(channel);
+            }
         }
 
         /// <summary>
