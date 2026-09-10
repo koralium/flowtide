@@ -799,11 +799,8 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 bool pageDirty = false;
                 var keyBatch = page.Keys.Data;
                 var values = page.Values;
+                var leaf = page.CurrentPage;
 
-                // Leaf write lock taken once per page.
-                _pageLock.Enter(page);
-                try
-                {
                 for (int i = startIndex; i <= endIndex; i++)
                 {
                     bool consumedMarker = false;
@@ -841,7 +838,7 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                     }
 
                     var rowDistance = nextRowDistance;
-                    var rowChanged = await ProcessLogicalRows(keyBatch, values, i, weight, rowDistance);
+                    var rowChanged = await ProcessLogicalRows(leaf, keyBatch, values, i, weight, rowDistance);
                     pageDirty |= rowChanged;
 
                     // A changed row can hide a weight change.
@@ -872,11 +869,6 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                         }
                     }
                 }
-                }
-                finally
-                {
-                    _pageLock.Release();
-                }
 
                 // Emitter references this page's batch, copy out before release.
                 _emitter.FlushPending();
@@ -905,79 +897,12 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
         }
 
         /// <summary>
-        /// Holds a leaf write lock for one page, tracks release for the async path.
-        /// </summary>
-        private sealed class PageWriteLockScope
-        {
-            private ILockableObject? _page;
-
-            public bool Held { get; private set; }
-
-            public void Enter(ILockableObject page)
-            {
-                Debug.Assert(!Held, "The previous page's lock must be released first");
-                _page = page;
-                page.EnterWriteLock();
-                Held = true;
-            }
-
-            /// <summary>
-            /// Releases the lock if held.
-            /// </summary>
-            public void Release()
-            {
-                if (Held)
-                {
-                    Held = false;
-                    _page!.ExitWriteLock();
-                }
-            }
-
-            public void Reacquire()
-            {
-                if (!Held)
-                {
-                    _page!.EnterWriteLock();
-                    Held = true;
-                }
-            }
-        }
-
-        private readonly PageWriteLockScope _pageLock = new PageWriteLockScope();
-
-        /// <summary>
-        /// Drops the page lock only when the operation actually suspends.
-        /// Requires storage waits to suspend rather than block synchronously.
-        /// </summary>
-        private ValueTask AwaitWithPageLock(ValueTask task)
-        {
-            if (task.IsCompleted)
-            {
-                // Propagates exceptions without releasing.
-                task.GetAwaiter().GetResult();
-                return ValueTask.CompletedTask;
-            }
-            return AwaitSuspendedWithPageLock(task);
-        }
-
-        private async ValueTask AwaitSuspendedWithPageLock(ValueTask task)
-        {
-            _pageLock.Release();
-            try
-            {
-                await task;
-            }
-            finally
-            {
-                _pageLock.Reacquire();
-            }
-        }
-
-        /// <summary>
         /// Computes and emits every duplicate of a row, true when the page changed.
-        /// Caller must hold the page lock, functions never mutate the page themselves.
+        /// The leaf lock is a thread affine monitor, so every enter and exit sits in this frame
+        /// with no await between them, it is only dropped around a compute that suspends.
         /// </summary>
         private async ValueTask<bool> ProcessLogicalRows(
+            ILockableObject leaf,
             EventBatchData keyBatch,
             BulkWindowValueContainer values,
             int rowIndex,
@@ -1001,76 +926,100 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
                 _rowValueStable[f] = true;
             }
 
-            for (int dup = 0; dup < weight; dup++)
+            leaf.EnterWriteLock();
+            try
             {
-                context.DupIndex = dup;
-                context.RowsSinceLastChange = rowsSinceChange + dup;
-
-                bool anyChanged = false;
-                for (int f = 0; f < _functions.Length; f++)
+                for (int dup = 0; dup < weight; dup++)
                 {
-                    context.ResetPendingAux();
-                    if (!_functions[f].TryComputeRow(context, _resultContainers[f]))
-                    {
-                        // Async path may load pages, drops the lock only if it suspends.
-                        await AwaitWithPageLock(_functions[f].ComputeRow(context, _resultContainers[f]));
-                    }
-                    if (context._pendingAuxCount > 0 && ApplyPendingAux(values, rowIndex, dup))
-                    {
-                        _rowValueStable[f] = false;
-                        pageDirty = true;
-                    }
-                }
+                    context.DupIndex = dup;
+                    context.RowsSinceLastChange = rowsSinceChange + dup;
 
-                if (dup < storedLength)
-                {
-                    bool valueChanged = false;
+                    bool anyChanged = false;
                     for (int f = 0; f < _functions.Length; f++)
                     {
-                        _oldValueScratch[f] = values._functionStates[f].GetListElementValue(rowIndex, dup);
-                        if (DataValueComparer.Instance.Compare(_oldValueScratch[f], _resultContainers[f]) != 0)
+                        context.ResetPendingAux();
+                        if (!_functions[f].TryComputeRow(context, _resultContainers[f]))
                         {
-                            valueChanged = true;
+                            var compute = _functions[f].ComputeRow(context, _resultContainers[f]);
+                            if (compute.IsCompleted)
+                            {
+                                compute.GetAwaiter().GetResult();
+                            }
+                            else
+                            {
+                                // The continuation may resume on another thread, never await holding the lock.
+                                leaf.ExitWriteLock();
+                                try
+                                {
+                                    await compute;
+                                }
+                                finally
+                                {
+                                    leaf.EnterWriteLock();
+                                }
+                            }
+                        }
+                        if (context._pendingAuxCount > 0 && ApplyPendingAux(values, rowIndex, dup))
+                        {
                             _rowValueStable[f] = false;
+                            pageDirty = true;
                         }
                     }
-                    if (valueChanged)
+
+                    if (dup < storedLength)
                     {
-                        anyChanged = true;
-                        // A suppressed row was never sent, nothing to retract.
-                        if (ShouldEmitRow(_oldValueScratch))
-                        {
-                            _emitter.AddOutputRow(keyBatch, rowIndex, _oldValueScratch, -1);
-                        }
+                        bool valueChanged = false;
                         for (int f = 0; f < _functions.Length; f++)
                         {
-                            values._functionStates[f].UpdateListElement(rowIndex, dup, _resultContainers[f]);
+                            _oldValueScratch[f] = values._functionStates[f].GetListElementValue(rowIndex, dup);
+                            if (DataValueComparer.Instance.Compare(_oldValueScratch[f], _resultContainers[f]) != 0)
+                            {
+                                valueChanged = true;
+                                _rowValueStable[f] = false;
+                            }
+                        }
+                        if (valueChanged)
+                        {
+                            anyChanged = true;
+                            // A suppressed row was never sent, nothing to retract.
+                            if (ShouldEmitRow(_oldValueScratch))
+                            {
+                                _emitter.AddOutputRow(keyBatch, rowIndex, _oldValueScratch, -1);
+                            }
+                            for (int f = 0; f < _functions.Length; f++)
+                            {
+                                values._functionStates[f].UpdateListElement(rowIndex, dup, _resultContainers[f]);
+                            }
+                            if (ShouldEmitRow(_resultValues))
+                            {
+                                _emitter.AddOutputRow(keyBatch, rowIndex, _resultValues, 1);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        anyChanged = true;
+                        for (int f = 0; f < _functions.Length; f++)
+                        {
+                            values._functionStates[f].AppendToList(rowIndex, _resultContainers[f]);
+                            _rowValueStable[f] = false;
                         }
                         if (ShouldEmitRow(_resultValues))
                         {
                             _emitter.AddOutputRow(keyBatch, rowIndex, _resultValues, 1);
                         }
                     }
-                }
-                else
-                {
-                    anyChanged = true;
-                    for (int f = 0; f < _functions.Length; f++)
-                    {
-                        values._functionStates[f].AppendToList(rowIndex, _resultContainers[f]);
-                        _rowValueStable[f] = false;
-                    }
-                    if (ShouldEmitRow(_resultValues))
-                    {
-                        _emitter.AddOutputRow(keyBatch, rowIndex, _resultValues, 1);
-                    }
-                }
 
-                if (anyChanged)
-                {
-                    values.SetPreviousValueSent(rowIndex);
-                    pageDirty = true;
+                    if (anyChanged)
+                    {
+                        values.SetPreviousValueSent(rowIndex);
+                        pageDirty = true;
+                    }
                 }
+            }
+            finally
+            {
+                leaf.ExitWriteLock();
             }
 
             return pageDirty;
@@ -1142,57 +1091,49 @@ namespace FlowtideDotNet.Core.Operators.Window.Bulk
 
                 var keyBatch = page.Keys.Data;
                 var values = page.Values;
+                var leaf = page.CurrentPage;
                 bool pageDirty = false;
                 _initialComputeSawData = true;
 
-                // Leaf write lock taken once per page.
-                _pageLock.Enter(page);
-                try
+                int index = 0;
+                while (index < page.Keys.Count)
                 {
-                    int index = 0;
-                    while (index < page.Keys.Count)
+                    int endIndex;
+                    if (hasPartition)
                     {
-                        int endIndex;
-                        if (hasPartition)
+                        _partitionRangeComparer.FindIndex(in partitionRow, page.Keys);
+                        if (!_partitionRangeComparer.noMatch && index >= _partitionRangeComparer.start && index <= _partitionRangeComparer.end)
                         {
-                            _partitionRangeComparer.FindIndex(in partitionRow, page.Keys);
-                            if (!_partitionRangeComparer.noMatch && index >= _partitionRangeComparer.start && index <= _partitionRangeComparer.end)
-                            {
-                                endIndex = _partitionRangeComparer.end;
-                            }
-                            else
-                            {
-                                // Starting a partition can read other pages.
-                                await AwaitWithPageLock(StartNewPartition(keyBatch, index));
-                                _partitionRangeComparer.FindIndex(in partitionRow, page.Keys);
-                                endIndex = _partitionRangeComparer.end;
-                            }
+                            endIndex = _partitionRangeComparer.end;
                         }
                         else
                         {
-                            await AwaitWithPageLock(StartNewPartition(keyBatch, index));
-                            hasPartition = true;
+                            // Starting a partition can read other pages.
+                            await StartNewPartition(keyBatch, index);
                             _partitionRangeComparer.FindIndex(in partitionRow, page.Keys);
                             endIndex = _partitionRangeComparer.end;
                         }
-
-                        for (int i = index; i <= endIndex; i++)
-                        {
-                            var weight = values._weights.Get(i);
-                            if (weight <= 0)
-                            {
-                                continue;
-                            }
-                            var rowChanged = await ProcessLogicalRows(keyBatch, values, i, weight, long.MaxValue / 2);
-                            pageDirty |= rowChanged;
-                        }
-
-                        index = endIndex + 1;
                     }
-                }
-                finally
-                {
-                    _pageLock.Release();
+                    else
+                    {
+                        await StartNewPartition(keyBatch, index);
+                        hasPartition = true;
+                        _partitionRangeComparer.FindIndex(in partitionRow, page.Keys);
+                        endIndex = _partitionRangeComparer.end;
+                    }
+
+                    for (int i = index; i <= endIndex; i++)
+                    {
+                        var weight = values._weights.Get(i);
+                        if (weight <= 0)
+                        {
+                            continue;
+                        }
+                        var rowChanged = await ProcessLogicalRows(leaf, keyBatch, values, i, weight, long.MaxValue / 2);
+                        pageDirty |= rowChanged;
+                    }
+
+                    index = endIndex + 1;
                 }
 
                 // Emitter references this page's batch, copy out before release.

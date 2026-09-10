@@ -125,6 +125,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// </summary>
         public bool? UseColumnStore { get; set; }
 
+        /// <summary>
+        /// Runs every dataflow task on this scheduler. Set before starting the stream.
+        /// </summary>
+        public TaskScheduler? TaskScheduler { get; set; }
+
         public Watermark? LastWatermark => _lastWatermark;
 
         public StreamStateValue State => _stream!.State;
@@ -378,6 +383,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (UseColumnStore.HasValue)
             {
                 flowtideBuilder.ColumnStore(UseColumnStore.Value);
+            }
+
+            if (TaskScheduler != null)
+            {
+                flowtideBuilder.SetTaskScheduler(TaskScheduler);
             }
 
             if (distributedOptions != null)

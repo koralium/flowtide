@@ -56,6 +56,11 @@ namespace FlowtideDotNet.AcceptanceTests
         /// </summary>
         protected int CachePageCount { set => flowtideTestStream.CachePageCount = value; }
 
+        /// <summary>
+        /// Scheduler for every dataflow task, set before starting.
+        /// </summary>
+        protected TaskScheduler? TaskScheduler { set => flowtideTestStream.TaskScheduler = value; }
+
         protected Task StartStream(
             string sql,
             int parallelism = 1,
