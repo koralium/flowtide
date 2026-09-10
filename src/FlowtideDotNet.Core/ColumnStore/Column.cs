@@ -62,6 +62,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         private ArrowTypeId _type = ArrowTypeId.Null;
         private bool disposedValue;
         private int _rentCounter;
+        private bool _handoffSealed;
 
         public int ByteSize => GetByteSize();
 
@@ -78,6 +79,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _type = ArrowTypeId.Null;
             _rentCounter = 0;
             disposedValue = false;
+            _handoffSealed = false;
         }
 
         internal void Assign(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
@@ -92,6 +94,24 @@ namespace FlowtideDotNet.Core.ColumnStore
             _memoryAllocator = memoryAllocator;
             _rentCounter = 0;
             disposedValue = false;
+            _handoffSealed = false;
+        }
+
+        /// <summary>
+        /// Blocks further writes, called when the column is handed downstream in a batch.
+        /// </summary>
+        internal void SealForHandoff()
+        {
+            _handoffSealed = true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ThrowIfSealed([CallerMemberName] string? member = null)
+        {
+            if (HandoffSeal.Enabled && _handoffSealed)
+            {
+                HandoffSeal.Throw(nameof(Column), member);
+            }
         }
 
         public static Column Create(IMemoryAllocator memoryAllocator)
@@ -276,6 +296,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void Add<T>(in T value)
             where T : IDataValue
         {
+            ThrowIfSealed();
             if (!CompareValueType(value))
             {
                 if (_type == ArrowTypeId.Null)
@@ -379,6 +400,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void InsertAt<T>(in int index, in T value)
             where T : IDataValue
         {
+            ThrowIfSealed();
             if (!CompareValueType(value))
             {
                 if (_type == ArrowTypeId.Null)
@@ -452,6 +474,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void UpdateAt<T>(in int index, in T value)
             where T : IDataValue
         {
+            ThrowIfSealed();
             if (_type == ArrowTypeId.Union)
             {
                 _dataColumn!.Update<T>(index, value, _memoryAllocator!);
@@ -512,6 +535,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveAt(in int index)
         {
+            ThrowIfSealed();
             if (_nullCounter > 0)
             {
                 if (_type == ArrowTypeId.Null)
@@ -535,6 +559,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveRange(in int index, in int count)
         {
+            ThrowIfSealed();
             if (count == 0)
             {
                 return;
@@ -855,6 +880,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void Clear()
         {
+            ThrowIfSealed();
             if (_nullCounter > 0)
             {
                 _validityList.Clear();
@@ -868,6 +894,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void AddToNewList<T>(in T value) where T : IDataValue
         {
+            ThrowIfSealed();
             if (_type == ArrowTypeId.List)
             {
                 _dataColumn!.AddToNewList(value, _memoryAllocator!);
@@ -908,6 +935,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int EndNewList()
         {
+            ThrowIfSealed();
             if (_type == ArrowTypeId.List)
             {
                 return _dataColumn!.EndNewList(_memoryAllocator!);
@@ -994,6 +1022,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertNullRange(int index, int count)
         {
+            ThrowIfSealed();
             if (_type == ArrowTypeId.Null)
             {
                 _nullCounter += count;
@@ -1018,6 +1047,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
         {
+            ThrowIfSealed();
             if (count == 0)
             {
                 return;
@@ -1381,6 +1411,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertFrom(IColumn column, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
+            ThrowIfSealed();
 
             if (column is Column other)
             {
@@ -1589,6 +1620,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void DeleteBatch(ReadOnlySpan<int> targets)
         {
+            ThrowIfSealed();
 
             if (targets.Length == 0) return;
 
