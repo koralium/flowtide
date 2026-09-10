@@ -251,6 +251,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             // Buffered batches must be in state before emitting results
             await foreach (var batch in FlushPending())
             {
+                CancellationToken.ThrowIfCancellationRequested();
                 yield return batch;
             }
             _defer.ExitBuffering();
@@ -303,6 +304,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 await iterator.SeekFirst();
                 await foreach (var page in iterator)
                 {
+                    CancellationToken.ThrowIfCancellationRequested();
                     var currentLeaf = page.CurrentPage;
                     totalProcessed += currentLeaf.keys.Count;
 
@@ -391,6 +393,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 await iterator.SeekFirst();
                 await foreach (var page in iterator)
                 {
+                    CancellationToken.ThrowIfCancellationRequested();
                     var currentLeaf = page.CurrentPage;
                     totalProcessed += currentLeaf.keys.Count;
 
@@ -444,6 +447,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
                     while (await _treeBulkSearch.MoveNextLeaf())
                     {
+                        CancellationToken.ThrowIfCancellationRequested();
                         var persistedLeaf = _treeBulkSearch.CurrentLeaf;
                         var currentResults = _treeBulkSearch.CurrentResults;
                         var previousValueSent = persistedLeaf.values._previousValueSent;

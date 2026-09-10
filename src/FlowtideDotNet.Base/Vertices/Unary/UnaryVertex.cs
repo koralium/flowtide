@@ -80,6 +80,9 @@ namespace FlowtideDotNet.Base.Vertices
         /// Gets the version information of the currently running stream.
         /// </summary>
         public StreamVersionInformation? StreamVersion => _streamVersion;
+        private CancellationTokenSource _cancelToken = new CancellationTokenSource();
+
+        protected CancellationToken CancellationToken => _cancelToken.Token;
 
         protected IMemoryAllocator MemoryAllocator => _vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
 
@@ -96,6 +99,7 @@ namespace FlowtideDotNet.Base.Vertices
         [MemberNotNull(nameof(_transformBlock), nameof(_targetBlock), nameof(_sourceBlock))]
         private void InitializeBlocks()
         {
+            _cancelToken = new CancellationTokenSource();
             _transformBlock = new TransformManyBlock<IStreamEvent, IStreamEvent>((streamEvent) =>
             {
                 // Check if it is a checkpoint event
@@ -485,7 +489,24 @@ namespace FlowtideDotNet.Base.Vertices
                 // storage initialization) has nothing to fault.
                 return;
             }
+            if (!_cancelToken.IsCancellationRequested)
+            {
+                _cancelToken.Cancel();
+            }
             (_transformBlock as IDataflowBlock).Fault(exception);
+if (_transformBlock.TryReceiveAll(out var pendingMessages))
+            {
+                foreach (var pendingMessage in pendingMessages)
+                {
+                    if (pendingMessage is StreamMessage<T> streamMessage && streamMessage.Data is IRentable rentable)
+                    {
+                        for (var i = 0; i < _links.Count; i++)
+                        {
+                            rentable.Return();
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
