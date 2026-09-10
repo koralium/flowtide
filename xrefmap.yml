@@ -7560,6 +7560,23 @@ references:
   fullName.vb: FlowtideDotNet.Base.Vertices.UnaryVertex(Of T).BeforeSaveCheckpoint
   nameWithType: UnaryVertex<T>.BeforeSaveCheckpoint
   nameWithType.vb: UnaryVertex(Of T).BeforeSaveCheckpoint
+- uid: FlowtideDotNet.Base.Vertices.UnaryVertex`1.CancellationToken
+  name: CancellationToken
+  href: api/FlowtideDotNet.Base.Vertices.UnaryVertex-1.html#FlowtideDotNet_Base_Vertices_UnaryVertex_1_CancellationToken
+  commentId: P:FlowtideDotNet.Base.Vertices.UnaryVertex`1.CancellationToken
+  fullName: FlowtideDotNet.Base.Vertices.UnaryVertex<T>.CancellationToken
+  fullName.vb: FlowtideDotNet.Base.Vertices.UnaryVertex(Of T).CancellationToken
+  nameWithType: UnaryVertex<T>.CancellationToken
+  nameWithType.vb: UnaryVertex(Of T).CancellationToken
+- uid: FlowtideDotNet.Base.Vertices.UnaryVertex`1.CancellationToken*
+  name: CancellationToken
+  href: api/FlowtideDotNet.Base.Vertices.UnaryVertex-1.html#FlowtideDotNet_Base_Vertices_UnaryVertex_1_CancellationToken_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.UnaryVertex`1.CancellationToken
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.UnaryVertex<T>.CancellationToken
+  fullName.vb: FlowtideDotNet.Base.Vertices.UnaryVertex(Of T).CancellationToken
+  nameWithType: UnaryVertex<T>.CancellationToken
+  nameWithType.vb: UnaryVertex(Of T).CancellationToken
 - uid: FlowtideDotNet.Base.Vertices.UnaryVertex`1.Compact
   name: Compact()
   href: api/FlowtideDotNet.Base.Vertices.UnaryVertex-1.html#FlowtideDotNet_Base_Vertices_UnaryVertex_1_Compact
