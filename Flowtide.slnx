@@ -71,4 +71,5 @@
     <Project Path="tests/FlowtideDotNet.TestFramework.Tests/FlowtideDotNet.TestFramework.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.TestFramework.WebTesting/FlowtideDotNet.TestFramework.WebTesting.csproj" />
   </Folder>
+  <Project Path="../../Sweco/AppDev-SwecoAppsMetricsDataLake/SwecoAppsMetricsIntegration/SwecoAppsMetricsIntegration.csproj" />
 </Solution>
