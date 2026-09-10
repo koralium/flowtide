@@ -143,6 +143,44 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
 
     public class GenericReadOperatorTests
     {
+        /// <summary>
+        /// A full reload sends its deletes in batches of 100, and an emitted column at or past the emit count used to be appended to after its batch was sent.
+        /// </summary>
+        [Fact]
+        public async Task FullLoadDeletesSpanningBatchesWithSparseEmit()
+        {
+            var source = new TestDataSource(default);
+            for (int i = 1; i <= 150; i++)
+            {
+                source.AddChange(new FlowtideGenericObject<User>(i.ToString(), new User { UserKey = i, FirstName = "F", LastName = $"Last{i}" }, i, false));
+            }
+
+            var stream = new GenericDataTestStream<User>(source, nameof(FullLoadDeletesSpanningBatchesWithSparseEmit));
+            stream.RegisterTableProviders(builder =>
+            {
+                builder.AddGenericDataTable<User>("users");
+            });
+
+            // The pushed down filter keeps FirstName in the base schema without emitting it, so LastName is base index 2 of 2 emitted.
+            await stream.StartStream(@"
+                INSERT INTO output
+                SELECT
+                    UserKey,
+                    LastName
+                FROM users
+                WHERE FirstName = 'F'
+            ");
+            await stream.WaitForUpdate();
+            stream.AssertCurrentDataEqual(Enumerable.Range(1, 150).Select(i => new { UserKey = i, LastName = $"Last{i}" }));
+
+            // Every row disappears, so the next full load emits 150 deletes across two batches.
+            source.ClearChanges();
+            await stream.Trigger("full_load");
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual(Enumerable.Empty<object>().Select(x => new { UserKey = 0, LastName = "" }));
+        }
+
         [Fact]
         public async Task TestGenericDataSource()
         {
