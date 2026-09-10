@@ -20,6 +20,7 @@ using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk;
 using FlowtideDotNet.Core.Operators.Window.Bulk;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using Xunit.Abstractions;
 
@@ -35,7 +36,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
     /// stream through a scheduler that never resumes a continuation on the thread that queued it,
     /// which makes the failure deterministic instead of a race.
     /// </summary>
-    public class BulkWindowLockThreadAffinityTests : FlowtideAcceptanceBase
+    public class BulkWindowLockThreadAffinityTests : FlowtideAcceptanceBase, IDisposable
     {
         private const string RowNumberQuery = @"
             INSERT INTO output
@@ -57,6 +58,12 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
                 FunctionsArithmetic.Uri,
                 FunctionsArithmetic.RowNumber,
                 _rowNumber);
+        }
+
+        // Runs after the base has disposed the stream.
+        public void Dispose()
+        {
+            _scheduler.Dispose();
         }
 
         private void AddUser(string companyId, int userKey)
@@ -105,36 +112,87 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
 
     /// <summary>
     /// Never inlines and never runs a task on the thread that queued it, every continuation hops threads.
+    /// Dedicated workers make the hop a guarantee, the thread pool could hand a requeued item back to the same thread.
     /// </summary>
-    internal sealed class ForeignThreadTaskScheduler : TaskScheduler
+    internal sealed class ForeignThreadTaskScheduler : TaskScheduler, IDisposable
     {
+        private readonly BlockingCollection<Task>[] _queues;
+        private readonly Thread[] _workers;
+        private readonly CancellationTokenSource _stop = new CancellationTokenSource();
         private int _queuedTasks;
+        private int _nextWorker;
+
+        public ForeignThreadTaskScheduler(int workerCount = 8)
+        {
+            _queues = new BlockingCollection<Task>[workerCount];
+            _workers = new Thread[workerCount];
+            for (int i = 0; i < workerCount; i++)
+            {
+                var queue = new BlockingCollection<Task>();
+                _queues[i] = queue;
+                _workers[i] = new Thread(() => Work(queue))
+                {
+                    IsBackground = true,
+                    Name = $"foreign-scheduler-{i}"
+                };
+                _workers[i].Start();
+            }
+        }
 
         public int QueuedTasks => Volatile.Read(ref _queuedTasks);
+
+        public override int MaximumConcurrencyLevel => _workers.Length;
 
         protected override void QueueTask(Task task)
         {
             Interlocked.Increment(ref _queuedTasks);
-            Dispatch(task, Environment.CurrentManagedThreadId);
+            var index = (Interlocked.Increment(ref _nextWorker) & int.MaxValue) % _workers.Length;
+            if (_workers[index] == Thread.CurrentThread)
+            {
+                index = (index + 1) % _workers.Length;
+            }
+            _queues[index].Add(task);
+            if (_stop.IsCancellationRequested)
+            {
+                // Stopped workers must not strand a task, the stream still disposes after the test.
+                DrainToThreadPool();
+            }
         }
 
-        private void Dispatch(Task task, int queuingThreadId)
+        private void Work(BlockingCollection<Task> queue)
         {
-            ThreadPool.UnsafeQueueUserWorkItem(_ =>
+            try
             {
-                if (Environment.CurrentManagedThreadId == queuingThreadId)
+                foreach (var task in queue.GetConsumingEnumerable(_stop.Token))
                 {
-                    // The queuing thread picked it up, hand it to another one.
-                    Dispatch(task, queuingThreadId);
-                    return;
+                    TryExecuteTask(task);
                 }
-                TryExecuteTask(task);
-            }, null);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        private void DrainToThreadPool()
+        {
+            foreach (var queue in _queues)
+            {
+                while (queue.TryTake(out var task))
+                {
+                    ThreadPool.UnsafeQueueUserWorkItem(t => TryExecuteTask(t), task, preferLocal: false);
+                }
+            }
         }
 
         protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued) => false;
 
-        protected override IEnumerable<Task> GetScheduledTasks() => Array.Empty<Task>();
+        protected override IEnumerable<Task> GetScheduledTasks() => _queues.SelectMany(q => q).ToArray();
+
+        public void Dispose()
+        {
+            _stop.Cancel();
+            DrainToThreadPool();
+        }
     }
 
     internal sealed class SuspendingRowNumberDefinition : BulkWindowFunctionDefinition
