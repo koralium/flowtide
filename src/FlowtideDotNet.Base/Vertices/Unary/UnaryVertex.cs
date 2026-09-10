@@ -494,7 +494,19 @@ namespace FlowtideDotNet.Base.Vertices
                 _cancelToken.Cancel();
             }
             (_transformBlock as IDataflowBlock).Fault(exception);
-            _transformBlock.TryReceiveAll(out _);
+if (_transformBlock.TryReceiveAll(out var pendingMessages))
+            {
+                foreach (var pendingMessage in pendingMessages)
+                {
+                    if (pendingMessage is StreamMessage<T> streamMessage && streamMessage.Data is IRentable rentable)
+                    {
+                        for (var i = 0; i < _links.Count; i++)
+                        {
+                            rentable.Return();
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
