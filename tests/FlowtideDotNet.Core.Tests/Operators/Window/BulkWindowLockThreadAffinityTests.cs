@@ -119,6 +119,8 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
         private readonly BlockingCollection<Task>[] _queues;
         private readonly Thread[] _workers;
         private readonly CancellationTokenSource _stop = new CancellationTokenSource();
+        private readonly object _sync = new object();
+        private bool _disposed;
         private int _queuedTasks;
         private int _nextWorker;
 
@@ -146,17 +148,21 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
         protected override void QueueTask(Task task)
         {
             Interlocked.Increment(ref _queuedTasks);
-            var index = (Interlocked.Increment(ref _nextWorker) & int.MaxValue) % _workers.Length;
-            if (_workers[index] == Thread.CurrentThread)
+            lock (_sync)
             {
-                index = (index + 1) % _workers.Length;
+                if (!_disposed)
+                {
+                    var index = (Interlocked.Increment(ref _nextWorker) & int.MaxValue) % _workers.Length;
+                    if (_workers[index] == Thread.CurrentThread)
+                    {
+                        index = (index + 1) % _workers.Length;
+                    }
+                    _queues[index].Add(task);
+                    return;
+                }
             }
-            _queues[index].Add(task);
-            if (_stop.IsCancellationRequested)
-            {
-                // Stopped workers must not strand a task, the stream still disposes after the test.
-                DrainToThreadPool();
-            }
+            // Stopped workers must not strand a task, the stream still disposes after the test.
+            ThreadPool.UnsafeQueueUserWorkItem(t => TryExecuteTask(t), task, preferLocal: false);
         }
 
         private void Work(BlockingCollection<Task> queue)
@@ -168,8 +174,10 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
                     TryExecuteTask(task);
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (_stop.IsCancellationRequested)
             {
+                // Shutdown, the worker exits and Dispose drains what is left.
+                return;
             }
         }
 
@@ -190,8 +198,30 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
 
         public void Dispose()
         {
+            lock (_sync)
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+                _disposed = true;
+            }
             _stop.Cancel();
+            bool allExited = true;
+            foreach (var worker in _workers)
+            {
+                allExited &= worker.Join(TimeSpan.FromSeconds(10));
+            }
+            // Workers stop on cancellation even with items left, run those on the pool.
             DrainToThreadPool();
+            if (allExited)
+            {
+                foreach (var queue in _queues)
+                {
+                    queue.Dispose();
+                }
+                _stop.Dispose();
+            }
         }
     }
 
