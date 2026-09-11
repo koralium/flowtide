@@ -143,6 +143,11 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         public async ValueTask Clear()
         {
             Debug.Assert(m_options.BucketSize.HasValue);
+            if (m_rightNode != null)
+            {
+                // Cached like Commit does it, so the reset disposes a right leaf the cache never saw.
+                m_stateClient.AddOrUpdate(m_rightNode.Id, m_rightNode);
+            }
             // Clear the current state from the state storage
             await m_stateClient.Reset(true);
 

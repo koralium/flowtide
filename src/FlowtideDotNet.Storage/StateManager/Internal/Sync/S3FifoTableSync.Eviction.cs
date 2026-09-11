@@ -468,14 +468,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             foreach (var group in groupedValues)
             {
                 evictTaskGroups.Add(group.Value);
-                // The state overload spares a closure per handler.
+                // The state overload spares a closure per handler, the handlers wait for their locks without a thread.
                 evictTasks.Add(Task.Factory.StartNew(
                     static state =>
                     {
                         var (handler, victimsForHandler, cleanup) = ((ICacheEvictHandler, List<(S3FifoCacheEntry, long)>, bool))state!;
                         return handler.Evict(victimsForHandler, cleanup);
                     },
-                    (group.Key, group.Value, isCleanup)));
+                    (group.Key, group.Value, isCleanup)).Unwrap());
             }
 
             Exception? evictException = null;

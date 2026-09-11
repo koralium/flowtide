@@ -39,99 +39,6 @@ namespace FlowtideDotNet.Storage.Tests
     /// </summary>
     public class BackgroundCommitTests
     {
-        private class TestPage : ICacheObject
-        {
-            private int _rentCount = 1;
-
-            public TestPage(int value)
-            {
-                Value = value;
-            }
-
-            public int Value { get; set; }
-
-            public bool RemovedFromCache { get; set; }
-
-            public int RentCount => Volatile.Read(ref _rentCount);
-
-            public bool TryRent()
-            {
-                var local = Volatile.Read(ref _rentCount);
-                while (true)
-                {
-                    if (local == 0)
-                    {
-                        return false;
-                    }
-                    var observed = Interlocked.CompareExchange(ref _rentCount, local + 1, local);
-                    if (observed == local)
-                    {
-                        return true;
-                    }
-                    local = observed;
-                }
-            }
-
-            public void Return()
-            {
-                Interlocked.Decrement(ref _rentCount);
-            }
-
-            public bool TryReclaimForEviction()
-            {
-                return Interlocked.CompareExchange(ref _rentCount, 0, 1) == 1;
-            }
-
-            public void EnterWriteLock() => Monitor.Enter(this);
-
-            public void ExitWriteLock() => Monitor.Exit(this);
-        }
-
-        private class TestPageSerializer : IStateSerializer<TestPage>
-        {
-            public void Serialize(in IBufferWriter<byte> bufferWriter, in TestPage value)
-            {
-                var span = bufferWriter.GetSpan(4);
-                BinaryPrimitives.WriteInt32LittleEndian(span, value.Value);
-                bufferWriter.Advance(4);
-            }
-
-            public TestPage Deserialize(ReadOnlySequence<byte> bytes, int length)
-            {
-                var reader = new SequenceReader<byte>(bytes);
-                if (!reader.TryReadLittleEndian(out int value))
-                {
-                    throw new InvalidOperationException("Corrupt test page");
-                }
-                return new TestPage(value);
-            }
-
-            public void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value)
-                => Serialize(bufferWriter, (TestPage)value);
-
-            public ICacheObject DeserializeCacheObject(ReadOnlySequence<byte> bytes, int length)
-                => Deserialize(bytes, length);
-
-            public Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)
-                where TMetadata : IStorageMetadata => Task.CompletedTask;
-
-            public Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata)
-                where TMetadata : IStorageMetadata => Task.CompletedTask;
-
-            public void ClearTemporaryAllocations()
-            {
-            }
-
-            public void Dispose()
-            {
-            }
-        }
-
-        private class TestMetadata : IStorageMetadata
-        {
-            public bool Updated { get; set; }
-        }
-
         /// <summary>
         /// Records every page write with the value it carried, and can fault the writes of chosen pages.
         /// </summary>
@@ -249,9 +156,103 @@ namespace FlowtideDotNet.Storage.Tests
 
             public Task Delete(long key) => _inner.Delete(key);
 
-            public Task Commit() => _inner.Commit();
+            public volatile bool FaultCommit;
+
+            public Task Commit()
+            {
+                if (FaultCommit)
+                {
+                    throw new IOException("Injected commit failure");
+                }
+                return _inner.Commit();
+            }
+
+            public volatile bool Disposed;
+
+            public void Dispose()
+            {
+                Disposed = true;
+                _inner.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// A file cache whose Free can be held, to park a commit write inside its spill cleanup.
+        /// </summary>
+        private class RecordingFileCache : FlowtideDotNet.Storage.FileCache.IFileCache
+        {
+            private readonly FlowtideDotNet.Storage.FileCache.IFileCache _inner;
+
+            public RecordingFileCache(FlowtideDotNet.Storage.FileCache.IFileCache inner)
+            {
+                _inner = inner;
+            }
+
+            private readonly TaskCompletionSource _freeEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            private ManualResetEventSlim? _freeGate;
+            private long _gatedFreeKey;
+
+            /// <summary>
+            /// Blocks the first Free of the key inside the call, the caller keeps whatever it holds.
+            /// </summary>
+            public void ArmFreeGate(ManualResetEventSlim gate, long key)
+            {
+                _gatedFreeKey = key;
+                Volatile.Write(ref _freeGate, gate);
+            }
+
+            public Task FreeEntered => _freeEntered.Task;
+
+            public void Write(long id, SerializableObject serializableObject) => _inner.Write(id, serializableObject);
+
+            public ValueTask<ReadOnlyMemory<byte>> Read(long pageKey) => _inner.Read(pageKey);
+
+            public ValueTask<T> Read<T>(long pageKey, IStateSerializer<T> serializer)
+                where T : ICacheObject => _inner.Read(pageKey, serializer);
+
+            public void Free(in long pageKey)
+            {
+                if (pageKey == _gatedFreeKey)
+                {
+                    var gate = Interlocked.Exchange(ref _freeGate, null);
+                    if (gate != null)
+                    {
+                        _freeEntered.TrySetResult();
+                        gate.Wait();
+                    }
+                }
+                _inner.Free(pageKey);
+            }
+
+            public void FreeAll(IEnumerable<long> keys) => _inner.FreeAll(keys);
+
+            public void Flush() => _inner.Flush();
+
+            public void ClearTemporaryAllocations() => _inner.ClearTemporaryAllocations();
 
             public void Dispose() => _inner.Dispose();
+        }
+
+        private class RecordingFileCacheFactory : IFileCacheFactory
+        {
+            private readonly IFileCacheFactory _inner;
+
+            public RecordingFileCacheFactory(IFileCacheFactory inner)
+            {
+                _inner = inner;
+            }
+
+            public List<RecordingFileCache> Created { get; } = new List<RecordingFileCache>();
+
+            public FlowtideDotNet.Storage.FileCache.IFileCache Create(string name, IMemoryAllocator memoryAllocator)
+            {
+                var cache = new RecordingFileCache(_inner.Create(name, memoryAllocator));
+                lock (Created)
+                {
+                    Created.Add(cache);
+                }
+                return cache;
+            }
         }
 
         private class RecordingStorage : IPersistentStorage
@@ -340,7 +341,7 @@ namespace FlowtideDotNet.Storage.Tests
 
         private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
-        private static async Task<(StateManagerSync<StateManagerMetadata> manager, RecordingStorage storage)> CreateManager(string name, int cachePageCount = 1000, bool useReadCache = false, bool backgroundCommit = true, bool threadSafeSession = false, bool reservoir = false, TimeSpan? stopCommitsTimeout = null)
+        private static async Task<(StateManagerSync<StateManagerMetadata> manager, RecordingStorage storage)> CreateManager(string name, int cachePageCount = 1000, bool useReadCache = false, bool backgroundCommit = true, bool threadSafeSession = false, bool reservoir = false, TimeSpan? stopCommitsTimeout = null, IFileCacheFactory? fileCacheFactory = null)
         {
             IPersistentStorage inner = reservoir
                 ? new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() })
@@ -357,7 +358,8 @@ namespace FlowtideDotNet.Storage.Tests
                 UseReadCache = useReadCache,
                 BackgroundCommit = backgroundCommit,
                 StopCommitsTimeout = stopCommitsTimeout ?? TimeSpan.FromSeconds(10),
-                TemporaryStorageOptions = new FileCacheOptions() { DirectoryPath = $"./data/bgcommit_{name}/temp" }
+                TemporaryStorageOptions = new FileCacheOptions() { DirectoryPath = $"./data/bgcommit_{name}/temp" },
+                FileCacheFactory = fileCacheFactory
             };
             var manager = new StateManagerSync<StateManagerMetadata>(options, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter($"bgcommit_{name}"), name, GlobalMemoryManager.Instance);
             await manager.InitializeAsync();
@@ -365,11 +367,11 @@ namespace FlowtideDotNet.Storage.Tests
             return (manager, storage);
         }
 
-        private static async Task<(IStateClient<TestPage, TestMetadata> client, RecordingSession session, List<long> keys)> CreateClientWithPages(StateManagerSync<StateManagerMetadata> manager, RecordingStorage storage, string clientName, int pageCount)
+        private static async Task<(IStateClient<TestPage, TestMetadata> client, RecordingSession session, List<long> keys)> CreateClientWithPages(StateManagerSync<StateManagerMetadata> manager, RecordingStorage storage, string clientName, int pageCount, TestPageSerializer? serializer = null)
         {
             var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
                 clientName,
-                new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
+                new StateClientOptions<TestPage>() { ValueSerializer = serializer ?? new TestPageSerializer() },
                 GlobalMemoryManager.Instance);
             var session = storage.Sessions.Last();
             var keys = new List<long>();
@@ -380,6 +382,16 @@ namespace FlowtideDotNet.Storage.Tests
                 keys.Add(key);
             }
             return (client, session, keys);
+        }
+
+        private static async Task WaitUntil(Func<bool> condition, string what)
+        {
+            var deadline = DateTime.UtcNow + Timeout;
+            while (!condition())
+            {
+                Assert.True(DateTime.UtcNow < deadline, $"timed out waiting for {what}");
+                await Task.Delay(10);
+            }
         }
 
         private static int ReadPersisted(RecordingStorage storage, long key)
@@ -531,7 +543,7 @@ namespace FlowtideDotNet.Storage.Tests
             await client.Commit().AsTask().WaitAsync(Timeout);
 
             Assert.All(keys, k => Assert.Equal(1, session.WriteCount(k)));
-            Assert.Null(((SyncStateClient<TestPage, TestMetadata>)client).CommitTaskForTests);
+            Assert.True(((SyncStateClient<TestPage, TestMetadata>)client).WaitForCommitAsync().IsCompletedSuccessfully);
             for (int i = 0; i < keys.Count; i++)
             {
                 Assert.Equal(i, ReadPersisted(storage, keys[i]));
@@ -554,14 +566,14 @@ namespace FlowtideDotNet.Storage.Tests
             await gate.Blocked.WaitAsync(Timeout);
 
             client.Delete(key);
-            Assert.True(manager.CacheTable.TryPeekEntryForTests(key, out _), "the delete must not drop a page that still owes its checkpoint write");
+            Assert.True(manager.CacheTable.TryPeekEntry(key, out _), "the delete must not drop a page that still owes its checkpoint write");
 
             gate.Release();
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
 
             Assert.Equal(1, session.WriteCount(key));
             Assert.Equal(7, ReadPersisted(storage, key));
-            Assert.False(manager.CacheTable.TryPeekEntryForTests(key, out _), "the held back delete must run once the page is written");
+            Assert.False(manager.CacheTable.TryPeekEntry(key, out _), "the held back delete must run once the page is written");
 
             await client.Commit().AsTask().WaitAsync(Timeout);
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
@@ -581,7 +593,7 @@ namespace FlowtideDotNet.Storage.Tests
 
             // Without read cache a clean page is dropped on eviction, a pending one must be spilled instead.
             await manager.CacheTable.ForceCleanup();
-            Assert.All(keys, k => Assert.False(manager.CacheTable.TryPeekEntryForTests(k, out _)));
+            Assert.All(keys, k => Assert.False(manager.CacheTable.TryPeekEntry(k, out _)));
 
             gate.Release();
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
@@ -663,7 +675,7 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
 
-        private static StateManagerSync<StateManagerMetadata> CreateReservoirManager(string name)
+        private static StateManagerSync<StateManagerMetadata> CreateReservoirManager(string name, IStreamMemoryManager? memoryManager = null)
         {
             return new StateManagerSync<StateManagerMetadata>(new StateManagerOptions()
             {
@@ -674,15 +686,20 @@ namespace FlowtideDotNet.Storage.Tests
                 CachePageCount = 1000,
                 MinCachePageCount = 100,
                 TemporaryStorageOptions = new FileCacheOptions() { DirectoryPath = $"./data/bgcommit_{name}/temp" }
-            }, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter($"bgcommit_{name}"), $"bgcommit_{name}", GlobalMemoryManager.Instance);
+            }, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter($"bgcommit_{name}"), $"bgcommit_{name}", memoryManager ?? GlobalMemoryManager.Instance);
         }
 
         private static ValueTask<IFlowtideQueue<long, PrimitiveListValueContainer<long>>> CreateQueue(StateManagerSync manager, int? pageSizeBytes = null)
         {
+            return CreateQueue(manager, GlobalMemoryManager.Instance, pageSizeBytes);
+        }
+
+        private static ValueTask<IFlowtideQueue<long, PrimitiveListValueContainer<long>>> CreateQueue(StateManagerSync manager, IMemoryAllocator allocator, int? pageSizeBytes)
+        {
             return manager.GetOrCreateClient("node").GetOrCreateQueue("queue", new FlowtideQueueOptions<long, PrimitiveListValueContainer<long>>()
             {
-                MemoryAllocator = GlobalMemoryManager.Instance,
-                ValueSerializer = new PrimitiveListValueContainerSerializer<long>(GlobalMemoryManager.Instance),
+                MemoryAllocator = allocator,
+                ValueSerializer = new PrimitiveListValueContainerSerializer<long>(allocator),
                 PageSizeBytes = pageSizeBytes
             });
         }
@@ -828,7 +845,7 @@ namespace FlowtideDotNet.Storage.Tests
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
             // Clean pages are dropped without read cache, so the next read of them goes to the session.
             await manager.CacheTable.ForceCleanup();
-            Assert.All(oldKeys, k => Assert.False(manager.CacheTable.TryPeekEntryForTests(k, out _)));
+            Assert.All(oldKeys, k => Assert.False(manager.CacheTable.TryPeekEntry(k, out _)));
 
             var newKeys = new HashSet<long>();
             for (int i = 0; i < 8; i++)
@@ -979,7 +996,7 @@ namespace FlowtideDotNet.Storage.Tests
             gate.Release();
             await dispose.WaitAsync(Timeout);
 
-            var walk = ((SyncStateClient<TestPage, TestMetadata>)client).CommitTaskForTests;
+            var walk = ((SyncStateClient<TestPage, TestMetadata>)client).WaitForCommitAsync();
             Assert.NotNull(walk);
             Assert.True(walk.IsCompleted);
             var fault = walk.Exception?.GetBaseException();
@@ -1179,8 +1196,10 @@ namespace FlowtideDotNet.Storage.Tests
             await client.Commit().AsTask().WaitAsync(Timeout);
             await session.WriterBlocked.WaitAsync(Timeout);
 
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
             var dispose = Task.Run(() => manager.Dispose());
             await dispose.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(1.6), $"dispose took {elapsed.Elapsed.TotalSeconds:F1}s against a 1s stop budget, the budget was spent more than once");
             gate.Set();
         }
 
@@ -1230,14 +1249,14 @@ namespace FlowtideDotNet.Storage.Tests
             session.WriteDelay = TimeSpan.FromMilliseconds(1);
 
             await client.Commit().AsTask().WaitAsync(Timeout);
-            var walk = ((SyncStateClient<TestPage, TestMetadata>)client).CommitTaskForTests;
+            var walk = ((SyncStateClient<TestPage, TestMetadata>)client).WaitForCommitAsync();
             Assert.NotNull(walk);
 
             var evictedDuringWalk = false;
             while (!walk.IsCompleted)
             {
                 await manager.CacheTable.ForceCleanup();
-                if (keys.Any(k => !manager.CacheTable.TryPeekEntryForTests(k, out _)) && !walk.IsCompleted)
+                if (keys.Any(k => !manager.CacheTable.TryPeekEntry(k, out _)) && !walk.IsCompleted)
                 {
                     evictedDuringWalk = true;
                     break;
@@ -1250,11 +1269,12 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
-        /// Review 2, finding 6: a page whose fetch-time write failed still owes its write, and the
-        /// walk writes it once the fault is gone.
+        /// A page whose fetch-time write failed still owes its write, and the generation is
+        /// failed there and then: the walk writes nothing more and reports that failure, a retry
+        /// could land after a half-written page in the reservoir's file.
         /// </summary>
         [Fact]
-        public async Task FailedOnFetchWriteLeavesThePageOwed()
+        public async Task FailedOnFetchWriteFailsTheGenerationWithoutRetrying()
         {
             var (manager, storage) = await CreateManager("fetchowed");
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "fetchowed", 8);
@@ -1270,8 +1290,9 @@ namespace FlowtideDotNet.Storage.Tests
 
             session.FaultingKeys.TryRemove(key, out _);
             gate.Release();
-            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
-            Assert.Equal(7, ReadPersisted(storage, key));
+            await Assert.ThrowsAsync<IOException>(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout));
+            Assert.Equal(0, session.WriteCount(keys[0]));
+            Assert.False(client.TryGetCachedValue(key, out _));
             manager.Dispose();
         }
 
@@ -1307,6 +1328,476 @@ namespace FlowtideDotNet.Storage.Tests
             manager.Dispose();
         }
 
+        // Third review, one red test each.
+
+        /// <summary>
+        /// Review 3: once a pending page was written, later reads of it must take the lock-free
+        /// path again instead of asking the pending set on every fetch.
+        /// </summary>
+        [Fact]
+        public async Task WrittenPendingPageLeavesTheLockedProbeBehind()
+        {
+            var (manager, storage) = await CreateManager("probe");
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "probe", 8);
+            var sync = (SyncStateClient<TestPage, TestMetadata>)client;
+            using var gate = new WalkGate(manager);
+            var key = keys[^1];
+
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+
+            var page = await client.GetValue(key).AsTask().WaitAsync(Timeout);
+            page!.Return();
+            var hits = sync.LookupTableHitsForTests;
+            for (int i = 0; i < 10; i++)
+            {
+                page = await client.GetValue(key).AsTask().WaitAsync(Timeout);
+                page!.Return();
+            }
+            Assert.Equal(hits + 10, sync.LookupTableHitsForTests);
+
+            gate.Release();
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Review 3: Commit must not allocate generation-sized buffers on the operator thread.
+        /// </summary>
+        [Fact]
+        public async Task CommitAllocatesNoGenerationSizedBuffers()
+        {
+            const int count = 8192;
+            var (manager, storage) = await CreateManager("alloc", cachePageCount: count * 2);
+            var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
+                "alloc",
+                new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
+                GlobalMemoryManager.Instance);
+            var keys = new long[count];
+            var pages = new TestPage[count];
+            for (int i = 0; i < count; i++)
+            {
+                keys[i] = client.GetNewPageId();
+                pages[i] = new TestPage(i);
+                client.AddOrUpdate(keys[i], pages[i]);
+            }
+
+            long allocated = 0;
+            for (int round = 0; round < 2; round++)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    client.AddOrUpdate(keys[i], pages[i]);
+                }
+                var before = GC.GetAllocatedBytesForCurrentThread();
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            }
+            Assert.True(allocated < 16 * 1024, $"Commit allocated {allocated} bytes for {count} pages on the caller's thread");
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Review 4: after a generation failed fast with its pages spilled, recovery leaves a client
+        /// that reads and commits again.
+        /// </summary>
+        [Fact]
+        public async Task RecoveryAfterAFailedWalkCommitsAgain()
+        {
+            var (manager, storage) = await CreateManager("failrecover", cachePageCount: 0, reservoir: true);
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "failrecover", 8);
+            using var gate = new WalkGate(manager);
+            session.FaultingKeys[keys[1]] = 1;
+
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+            // Every pending page is spilled before the walk gets to write any of them.
+            await manager.CacheTable.ForceCleanup();
+            gate.Release();
+            await Assert.ThrowsAsync<IOException>(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout));
+
+            await manager.InitializeAsync().WaitAsync(Timeout);
+            session.FaultingKeys.Clear();
+            var key = client.GetNewPageId();
+            client.AddOrUpdate(key, new TestPage(7));
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            var page = await client.GetValue(key).AsTask().WaitAsync(Timeout);
+            Assert.Equal(7, page!.Value);
+            page.Return();
+            Assert.Equal(7, ReadPersisted(storage, key));
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Review 3: Clear must dispose a right leaf that never reached the cache.
+        /// </summary>
+        [Fact]
+        public async Task AppendTreeClearDisposesAnUncachedRightLeaf()
+        {
+            var memory = new StreamMemoryManager("bgcommit_appendleak");
+            var allocator = memory.CreateOperatorMemoryManager("tree");
+            var manager = CreateReservoirManager("appendleak", memory);
+            await manager.InitializeAsync();
+            var tree = await manager.GetOrCreateClient("node").GetOrCreateAppendTree("append", new BPlusTreeOptions<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>()
+            {
+                BucketSize = 16,
+                Comparer = new PrimitiveListComparer<long>(),
+                KeySerializer = new PrimitiveListKeyContainerSerializer<long>(allocator),
+                ValueSerializer = new PrimitiveListValueContainerSerializer<long>(allocator),
+                MemoryAllocator = allocator
+            });
+            var baseline = memory.GetAllocatedMemory();
+
+            // Past one bucket, the right leaf is a fresh node the cache has not seen yet.
+            for (long i = 0; i < 40; i++)
+            {
+                await tree.Append(i, i);
+            }
+            await tree.Clear();
+
+            Assert.Equal(baseline, memory.GetAllocatedMemory());
+            manager.Dispose();
+        }
+
+        // Fourth review, one red test each.
+
+        /// <summary>
+        /// Review 4: a page the fast path hands out after its write must be writable, whatever
+        /// the walk is still doing with the key.
+        /// </summary>
+        [Fact]
+        public async Task WrittenPageCanBeWrittenBackWhileTheWalkFreesItsSpill()
+        {
+            var factory = new RecordingFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions() { DirectoryPath = "./data/bgcommit_freewindow/temp" }));
+            var (manager, storage) = await CreateManager("freewindow", fileCacheFactory: factory);
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "freewindow", 4);
+            var cache = factory.Created.Single();
+            using var freeGate = new ManualResetEventSlim(false);
+            cache.ArmFreeGate(freeGate, keys[0]);
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                // The walk wrote the page and is now inside FreeSpill.
+                await cache.FreeEntered.WaitAsync(Timeout);
+
+                var fetch = client.GetValue(keys[0]);
+                if (!fetch.IsCompleted)
+                {
+                    // Kept owed until the walk is done with it, let the walk finish.
+                    freeGate.Set();
+                }
+                var page = await fetch.AsTask().WaitAsync(Timeout);
+                Assert.NotNull(page);
+                page.Value = 42;
+                client.AddOrUpdate(keys[0], page);
+                page.Return();
+            }
+            finally
+            {
+                freeGate.Set();
+                manager.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Review 4: a walk the stop gave up on still owns the serializer and the session, they
+        /// go when the walk ends and not while it may be writing through them.
+        /// </summary>
+        [Fact]
+        public async Task DisposeLeavesTheSerializerAndSessionToTheWalkItGaveUp()
+        {
+            var serializer = new TestPageSerializer();
+            var (manager, storage) = await CreateManager("latedispose", stopCommitsTimeout: TimeSpan.FromSeconds(1));
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "latedispose", 8, serializer);
+            using var gate = new ManualResetEventSlim(false);
+            session.ArmWriteGate(gate, keys.ToHashSet());
+
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await session.WriterBlocked.WaitAsync(Timeout);
+            var walk = ((SyncStateClient<TestPage, TestMetadata>)client).WaitForCommitAsync();
+            Assert.NotNull(walk);
+
+            await Task.Run(() => manager.Dispose()).WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.False(walk.IsCompleted);
+            Assert.False(serializer.Disposed, "the serializer was disposed under a walk still writing");
+            Assert.False(session.Disposed, "the session was disposed under a walk still writing");
+
+            gate.Set();
+            try
+            {
+                await walk.WaitAsync(Timeout);
+            }
+            catch (Exception)
+            {
+            }
+            await WaitUntil(() => serializer.Disposed && session.Disposed, "the walk to dispose what it was left with");
+        }
+
+        /// <summary>
+        /// Review 4: a walk that gets the commit lock back after the stop gave it up exits there,
+        /// it must not write the page it was about to take.
+        /// </summary>
+        [Fact]
+        public async Task AbandonedWalkWritesNothingAfterItGetsTheLockBack()
+        {
+            var (manager, storage) = await CreateManager("relock", stopCommitsTimeout: TimeSpan.FromSeconds(1));
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "relock", 4);
+            using var walkGate = new WalkGate(manager);
+            using var writeGate = new ManualResetEventSlim(false);
+            session.ArmWriteGate(writeGate, new HashSet<long> { keys[1] });
+
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await walkGate.Blocked.WaitAsync(Timeout);
+            var walk = ((SyncStateClient<TestPage, TestMetadata>)client).WaitForCommitAsync();
+            Assert.NotNull(walk);
+            // A fetch-time write holds the commit lock, blocked inside the session.
+            var fetch = Task.Run(() => client.GetValue(keys[1]).AsTask());
+            await session.WriterBlocked.WaitAsync(Timeout);
+
+            await Task.Run(() => manager.Dispose()).WaitAsync(TimeSpan.FromSeconds(10));
+            // The walk passed its dispose check before the gate, now it queues on the lock.
+            walkGate.Release();
+            writeGate.Set();
+            try
+            {
+                (await fetch.WaitAsync(Timeout))?.Return();
+            }
+            catch (Exception)
+            {
+            }
+            var failure = await Record.ExceptionAsync(() => walk.WaitAsync(Timeout));
+
+            Assert.IsType<ObjectDisposedException>(failure);
+        }
+
+        /// <summary>
+        /// Review 4: Clear must dispose the queue's own nodes, the same leak Clear had on the append tree.
+        /// </summary>
+        [Fact]
+        public async Task QueueClearDisposesItsNodes()
+        {
+            var memory = new StreamMemoryManager("bgcommit_queueleak");
+            var allocator = memory.CreateOperatorMemoryManager("queue");
+            var manager = CreateReservoirManager("queueleak", memory);
+            await manager.InitializeAsync();
+            var queue = await CreateQueue(manager, allocator, pageSizeBytes: 256);
+            var baseline = memory.GetAllocatedMemory();
+
+            // Past one page, the right node is a fresh node the cache has not seen yet.
+            for (long i = 0; i < 200; i++)
+            {
+                await queue.Enqueue(i);
+            }
+            await queue.Clear();
+
+            Assert.Equal(baseline, memory.GetAllocatedMemory());
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Review 4: the recovered queue rents its right node once too often, so even a correct
+        /// Clear cannot dispose it.
+        /// </summary>
+        [Fact]
+        public async Task QueueClearAfterRecoveryDisposesItsNodes()
+        {
+            var memory = new StreamMemoryManager("bgcommit_queuerecover");
+            var allocator = memory.CreateOperatorMemoryManager("queue");
+            var manager = CreateReservoirManager("queuerecover", memory);
+            await manager.InitializeAsync();
+            var queue = await CreateQueue(manager, allocator, pageSizeBytes: 256);
+            for (long i = 0; i < 10; i++)
+            {
+                await queue.Enqueue(i);
+            }
+            await queue.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            manager.Dispose();
+
+            await manager.InitializeAsync();
+            var beforeRecovery = memory.GetAllocatedMemory();
+            var recovered = await CreateQueue(manager, allocator, pageSizeBytes: 256);
+            Assert.Equal(10, recovered.Count);
+            Assert.True(memory.GetAllocatedMemory() > beforeRecovery, "the recovered node holds memory");
+
+            await recovered.Clear();
+
+            Assert.Equal(beforeRecovery, memory.GetAllocatedMemory());
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Review 4: a second Commit after a failed one is refused before it touches the metadata,
+        /// so CommitedOnce keeps saying what the store has.
+        /// </summary>
+        [Fact]
+        public async Task RepeatedCommitAfterAFailedGenerationKeepsCommitedOnceFalse()
+        {
+            var (manager, storage) = await CreateManager("commitedonce");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "commitedonce", 4);
+            var sync = (SyncStateClient<TestPage, TestMetadata>)client;
+            var held = await client.GetValue(keys[^1]);
+            Assert.NotNull(held);
+            session.FaultingKeys[keys[^1]] = 1;
+
+            await Assert.ThrowsAsync<IOException>(() => client.Commit().AsTask().WaitAsync(Timeout));
+            Assert.False(sync.CommitedOnceForTests);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.Commit().AsTask().WaitAsync(Timeout));
+            Assert.False(sync.CommitedOnceForTests, "the refused commit left CommitedOnce set for a metadata page that never landed");
+            held.Return();
+            manager.Dispose();
+        }
+
+        // Fifth review, one red test each.
+
+        /// <summary>
+        /// Review 5: a drain that gave the walks up is followed by a restart on the same clients,
+        /// they must commit again afterwards.
+        /// </summary>
+        [Fact]
+        public async Task RecoveryAfterAnAbandonedDrainCommitsAgain()
+        {
+            var (manager, storage) = await CreateManager("abandon", reservoir: true);
+            var (client, _, _) = await CreateClientWithPages(manager, storage, "abandon", 8);
+            using var gate = new WalkGate(manager);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+
+            // The engine's drain ran out.
+            manager.RequestStopCommits();
+            gate.Release();
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout));
+
+            // A failure restart initializes the same manager and the same clients again.
+            await manager.InitializeAsync().WaitAsync(Timeout);
+            var key = client.GetNewPageId();
+            client.AddOrUpdate(key, new TestPage(5));
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            Assert.Equal(5, ReadPersisted(storage, key));
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Review 5: one abandoned drain must not make every later Dispose of the recovered
+        /// manager skip its wait.
+        /// </summary>
+        [Fact]
+        public async Task DisposeWaitsAgainAfterAnAbandonedDrainWasRecovered()
+        {
+            var (manager, storage) = await CreateManager("reabandon", reservoir: true, stopCommitsTimeout: TimeSpan.FromSeconds(2));
+            var (client, session, _) = await CreateClientWithPages(manager, storage, "reabandon", 8);
+            using var gate = new WalkGate(manager);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+            manager.RequestStopCommits();
+            gate.Release();
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout));
+            await manager.InitializeAsync().WaitAsync(Timeout);
+
+            // A later stop with a walk in flight gets the bounded wait back.
+            var key = client.GetNewPageId();
+            client.AddOrUpdate(key, new TestPage(1));
+            using var writeGate = new ManualResetEventSlim(false);
+            session.ArmWriteGate(writeGate, new HashSet<long> { key });
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await session.WriterBlocked.WaitAsync(Timeout);
+
+            var dispose = Task.Run(() => manager.Dispose());
+            await Task.Delay(300);
+            Assert.False(dispose.IsCompleted, "Dispose gave the walk up without waiting");
+            writeGate.Set();
+            await dispose.WaitAsync(Timeout);
+        }
+
+        /// <summary>
+        /// Review 5: a restart after the drain gave a wedged walk up must fail within the stop
+        /// budget instead of joining the walk forever.
+        /// </summary>
+        [Fact]
+        public async Task RecoveryDoesNotHangOnAWalkTheDrainGaveUp()
+        {
+            var (manager, storage) = await CreateManager("wedgedrecover", reservoir: true, stopCommitsTimeout: TimeSpan.FromSeconds(1));
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "wedgedrecover", 8);
+            using var writeGate = new ManualResetEventSlim(false);
+            session.ArmWriteGate(writeGate, keys.ToHashSet());
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await session.WriterBlocked.WaitAsync(Timeout);
+            manager.RequestStopCommits();
+
+            var failure = await Record.ExceptionAsync(() => manager.InitializeAsync().WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.IsType<InvalidOperationException>(failure);
+
+            writeGate.Set();
+            await Task.Delay(500);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Review 5: an idle checkpoint in between must not cost the next active commit a fresh buffer.
+        /// </summary>
+        [Fact]
+        public async Task CommitAllocatesNothingAfterAnIdleCommit()
+        {
+            const int count = 8192;
+            var (manager, storage) = await CreateManager("idlealloc", cachePageCount: count * 2);
+            var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
+                "idlealloc",
+                new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
+                GlobalMemoryManager.Instance);
+            var keys = new long[count];
+            var pages = new TestPage[count];
+            for (int i = 0; i < count; i++)
+            {
+                keys[i] = client.GetNewPageId();
+                pages[i] = new TestPage(i);
+                client.AddOrUpdate(keys[i], pages[i]);
+            }
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            // Nothing changed, an idle checkpoint.
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            for (int i = 0; i < count; i++)
+            {
+                client.AddOrUpdate(keys[i], pages[i]);
+            }
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            Assert.True(allocated < 16 * 1024, $"Commit allocated {allocated} bytes right after an idle commit");
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Review 5: a generation whose session commit failed is refused until a reset, even when
+        /// a recovery consumed the fault and then gave up before the reset.
+        /// </summary>
+        [Fact]
+        public async Task FailedSessionCommitRefusesTheNextCommitUntilReset()
+        {
+            var (manager, storage) = await CreateManager("sessionfail");
+            var (client, session, _) = await CreateClientWithPages(manager, storage, "sessionfail", 4);
+            var sync = (SyncStateClient<TestPage, TestMetadata>)client;
+            session.FaultCommit = true;
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await Assert.ThrowsAsync<IOException>(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout));
+            session.FaultCommit = false;
+
+            // Paused and resumed like a recovery that fails before it resets the clients.
+            await sync.PauseCommitsAsync(Timeout).WaitAsync(Timeout);
+            sync.ResumeCommits();
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.Commit().AsTask().WaitAsync(Timeout));
+            manager.Dispose();
+        }
+
         /// <summary>
         /// The checkpoint must hold the state as of Commit even though the tree keeps changing
         /// underneath the background walk.
@@ -1315,17 +1806,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task TreeCheckpointHoldsTheStateAsOfCommitUnderConcurrentWrites()
         {
             // The reservoir keeps its checkpoints across a recovery, the file cache storage does not.
-            var storage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
-            {
-                FileProvider = new MemoryFileProvider()
-            });
-            var manager = new StateManagerSync<StateManagerMetadata>(new StateManagerOptions()
-            {
-                PersistentStorage = storage,
-                CachePageCount = 1000,
-                MinCachePageCount = 100,
-                TemporaryStorageOptions = new FileCacheOptions() { DirectoryPath = "./data/bgcommit_tree/temp" }
-            }, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("bgcommit_tree"), "bgcommit_tree", GlobalMemoryManager.Instance);
+            var manager = CreateReservoirManager("tree");
             await manager.InitializeAsync();
 
             var client = manager.GetOrCreateClient("client");

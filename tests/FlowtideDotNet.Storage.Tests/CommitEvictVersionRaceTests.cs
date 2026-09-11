@@ -31,94 +31,6 @@ namespace FlowtideDotNet.Storage.Tests
     /// </summary>
     public class CommitEvictVersionRaceTests
     {
-        private class TestPage : ICacheObject
-        {
-            private int _rentCount = 1;
-
-            public TestPage(int value)
-            {
-                Value = value;
-            }
-
-            public int Value { get; set; }
-
-            public bool RemovedFromCache { get; set; }
-
-            public int RentCount => Volatile.Read(ref _rentCount);
-
-            public bool TryRent()
-            {
-                var local = Volatile.Read(ref _rentCount);
-                while (true)
-                {
-                    if (local == 0)
-                    {
-                        return false;
-                    }
-                    var observed = Interlocked.CompareExchange(ref _rentCount, local + 1, local);
-                    if (observed == local)
-                    {
-                        return true;
-                    }
-                    local = observed;
-                }
-            }
-
-            public void Return()
-            {
-                Interlocked.Decrement(ref _rentCount);
-            }
-
-            public bool TryReclaimForEviction()
-            {
-                return Interlocked.CompareExchange(ref _rentCount, 0, 1) == 1;
-            }
-
-            public void EnterWriteLock() => Monitor.Enter(this);
-
-            public void ExitWriteLock() => Monitor.Exit(this);
-        }
-
-        private class TestPageSerializer : IStateSerializer<TestPage>
-        {
-            public void Serialize(in IBufferWriter<byte> bufferWriter, in TestPage value)
-            {
-                var span = bufferWriter.GetSpan(4);
-                BinaryPrimitives.WriteInt32LittleEndian(span, value.Value);
-                bufferWriter.Advance(4);
-            }
-
-            public TestPage Deserialize(ReadOnlySequence<byte> bytes, int length)
-            {
-                var reader = new SequenceReader<byte>(bytes);
-                if (!reader.TryReadLittleEndian(out int value))
-                {
-                    throw new InvalidOperationException("Corrupt test page");
-                }
-                return new TestPage(value);
-            }
-
-            public void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value)
-                => Serialize(bufferWriter, (TestPage)value);
-
-            public ICacheObject DeserializeCacheObject(ReadOnlySequence<byte> bytes, int length)
-                => Deserialize(bytes, length);
-
-            public Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)
-                where TMetadata : IStorageMetadata => Task.CompletedTask;
-
-            public Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata)
-                where TMetadata : IStorageMetadata => Task.CompletedTask;
-
-            public void ClearTemporaryAllocations()
-            {
-            }
-
-            public void Dispose()
-            {
-            }
-        }
-
         /// <summary>
         /// Flags whenever two threads are inside Serialize at once.
         /// A commit and a background eviction both use the single client serializer, which is
@@ -172,11 +84,6 @@ namespace FlowtideDotNet.Storage.Tests
             public void Dispose()
             {
             }
-        }
-
-        private class TestMetadata : IStorageMetadata
-        {
-            public bool Updated { get; set; }
         }
 
         /// <summary>

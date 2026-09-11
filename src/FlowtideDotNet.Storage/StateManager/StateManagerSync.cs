@@ -93,6 +93,48 @@ namespace FlowtideDotNet.Storage.StateManager
         /// </summary>
         internal Func<string, long, Task>? PageWriteHookForTests { get; set; }
 
+        /// <summary>
+        /// Set once the caller drained the walks itself, Dispose then does not wait again.
+        /// </summary>
+        private bool m_commitsAbandoned;
+
+        /// <summary>
+        /// True while a client's background commit is still writing. A walk starts at the
+        /// operator's Commit and is only joined by the checkpoint, a teardown drains it here.
+        /// </summary>
+        public bool HasCommitsInFlight
+        {
+            get
+            {
+                lock (m_lock)
+                {
+                    foreach (var stateClient in _stateClients.Values)
+                    {
+                        if (!stateClient.WaitForCommitAsync().IsCompleted)
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Tells every walk to give up at its next page, for a caller whose own drain wait ran out.
+        /// </summary>
+        public void RequestStopCommits()
+        {
+            lock (m_lock)
+            {
+                m_commitsAbandoned = true;
+                foreach (var stateClient in _stateClients.Values)
+                {
+                    stateClient.RequestStopCommits();
+                }
+            }
+        }
+
         public bool Initialized { get; private set; }
 
         internal int LookupCacheSize => 0;
@@ -139,6 +181,8 @@ namespace FlowtideDotNet.Storage.StateManager
                 meter = new Meter(m_meterName);
                 disposedValue = false;
             }
+            // An abandoned drain belongs to the teardown that gave up, the next one waits again.
+            m_commitsAbandoned = false;
 
             if (m_cacheTable == null)
             {
@@ -201,6 +245,13 @@ namespace FlowtideDotNet.Storage.StateManager
             return m_cacheTable.Add(key, value, evictHandler);
         }
 
+        internal bool AddOrUpdate<V>(in long key, in V value, in ICacheEvictHandler evictHandler, out S3FifoCacheEntry entry)
+            where V : ICacheObject
+        {
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.Add(key, value, evictHandler, out entry);
+        }
+
         internal Task WaitForNotFullAsync()
         {
             Debug.Assert(m_cacheTable != null);
@@ -245,17 +296,10 @@ namespace FlowtideDotNet.Storage.StateManager
             return m_cacheTable.TryGetCacheValue(key, out value);
         }
 
-        internal bool TryGetValueFromCache<T>(in long key, [NotNullWhen(true)] out T? value)
-            where T : ICacheObject
+        internal bool TryRentCacheEntryForCommit(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
             Debug.Assert(m_cacheTable != null);
-            if (m_cacheTable.TryGetValue(key, out var obj))
-            {
-                value = (T)obj!;
-                return true;
-            }
-            value = default;
-            return false;
+            return m_cacheTable.TryRentForCommit(key, out entry);
         }
 
         public async ValueTask CheckpointAsync(bool includeIndex = false)
@@ -415,7 +459,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes.Value, bytes.Value.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.StopCommitsTimeout, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
 
                     lock (m_lock)
                     {
@@ -428,7 +472,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     // Temporary tree or similar, return an empty metadata with the same id
                     var clientMetadata = new StateClientMetadata<TMetadata>();
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.StopCommitsTimeout, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
                     lock (m_lock)
                     {
                         _stateClients.Add(client, stateClient);
@@ -447,7 +491,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 lock (m_lock)
                 {
                     var session = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.StopCommitsTimeout, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
                     _stateClients.Add(client, stateClient);
                     return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
                 }
@@ -501,7 +545,7 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 foreach (var stateClient in stateClients)
                 {
-                    await stateClient.PauseCommitsAsync();
+                    await stateClient.PauseCommitsAsync(options.StopCommitsTimeout);
                     pausedClients.Add(stateClient);
                 }
 
@@ -565,18 +609,26 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 if (disposing)
                 {
-                    // The walks first, they read the cache table and the clients' file caches.
-                    // Every walk is told before any is waited for, so the waits overlap, and the
-                    // wait is bounded, a walk wedged on storage must not hang the teardown.
-                    foreach (var stateClient in _stateClients)
+                    // The walks first, they read the cache table. Every walk is told before any is
+                    // waited for, so the waits overlap, and the wait is bounded, a walk wedged on
+                    // storage must not hang the teardown. A caller that drained already skips it.
+                    List<StateClient> stateClients;
+                    lock (m_lock)
                     {
-                        stateClient.Value.RequestStopCommits();
+                        stateClients = _stateClients.Values.ToList();
                     }
-                    var stopDeadline = Stopwatch.GetTimestamp();
-                    foreach (var stateClient in _stateClients)
+                    foreach (var stateClient in stateClients)
                     {
-                        var remaining = options.StopCommitsTimeout - Stopwatch.GetElapsedTime(stopDeadline);
-                        stateClient.Value.StopCommits(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero);
+                        stateClient.RequestStopCommits();
+                    }
+                    if (!m_commitsAbandoned)
+                    {
+                        var stopDeadline = Stopwatch.GetTimestamp();
+                        foreach (var stateClient in stateClients)
+                        {
+                            var remaining = options.StopCommitsTimeout - Stopwatch.GetElapsedTime(stopDeadline);
+                            stateClient.StopCommits(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero);
+                        }
                     }
 
                     // Dispose the cache table first so it stops the cleanup task.
@@ -590,11 +642,14 @@ namespace FlowtideDotNet.Storage.StateManager
                     }
 
                     // Before the storage, the clients return their sessions to it.
-                    foreach (var stateClient in _stateClients)
+                    foreach (var stateClient in stateClients)
                     {
-                        stateClient.Value.Dispose();
+                        stateClient.Dispose();
                     }
-                    _stateClients.Clear();
+                    lock (m_lock)
+                    {
+                        _stateClients.Clear();
+                    }
 
                     // A supplied storage belongs to the caller and must outlive a stop, otherwise
                     // the next start has nothing to recover from. Setup resets it for restore.

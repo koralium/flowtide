@@ -18,7 +18,7 @@ using FlowtideDotNet.Storage.Utils;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using System.Numerics;
+using System.Runtime.ExceptionServices;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -27,23 +27,29 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         where TMetadata : class, IStorageMetadata
     {
         /// <summary>
-        /// A modified page: its write sequence, -1 for a delete, and the page object as last written.
+        /// A modified page: its write sequence, -1 for a delete.
         /// </summary>
-        private readonly record struct Modified(long Sequence, ICacheObject? Page);
+        private readonly record struct Modified(long Sequence);
 
         /// <summary>
         /// One Commit's worth of pages, shared by the walk and the on-fetch writes under m_commitEvictLock.
         /// </summary>
         private sealed class CommitGeneration
         {
-            public CommitGeneration(long[] keys, long newPages, bool previousCommitedOnce)
+            public CommitGeneration(long[] keys, int count, long newPages, bool previousCommitedOnce)
             {
                 Keys = keys;
+                Count = count;
                 NewPages = newPages;
                 PreviousCommitedOnce = previousCommitedOnce;
             }
 
+            /// <summary>
+            /// The client's reusable buffer, only the first Count entries belong to this generation.
+            /// </summary>
             public long[] Keys { get; }
+
+            public int Count { get; }
 
             /// <summary>
             /// Net page count change, deletes in the walk take from it.
@@ -51,39 +57,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             public long NewPages;
 
             public bool PreviousCommitedOnce { get; }
-        }
 
-        /// <summary>
-        /// Lock-free membership pre-check for the read paths, one bit per hashed key, eight bits per key.
-        /// A miss is final, a hit falls through to the locked check.
-        /// </summary>
-        private sealed class GenerationFilter
-        {
-            private readonly ulong[] _bits;
-            private readonly int _shift;
-
-            public GenerationFilter(Dictionary<long, Modified>.KeyCollection keys, int count)
-            {
-                var bitCount = Math.Max(64UL, BitOperations.RoundUpToPowerOf2((ulong)count * 8));
-                _bits = new ulong[bitCount / 64];
-                _shift = 64 - BitOperations.Log2(bitCount);
-                foreach (var key in keys)
-                {
-                    var index = Index(key);
-                    _bits[index >> 6] |= 1UL << (int)(index & 63);
-                }
-            }
-
-            private ulong Index(long key)
-            {
-                return ((ulong)key * 0x9E3779B97F4A7C15UL) >> _shift;
-            }
-
-            public bool MayContain(long key)
-            {
-                var index = Index(key);
-                return (_bits[index >> 6] & (1UL << (int)(index & 63))) != 0;
-            }
+            /// <summary>
+            /// The first page write that failed, under m_commitEvictLock. Nothing is written after it.
+            /// </summary>
+            public Exception? Failure;
         }
 
         /// <summary>
@@ -100,7 +78,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly StateClientOptions<V> options;
         private readonly bool useReadCache;
         private readonly bool m_backgroundCommit;
-        private readonly TimeSpan m_stopCommitsTimeout;
         private readonly int m_bplusTreePageSize;
         private readonly int m_bplusTreePageSizeBytes;
         private readonly IMemoryAllocator memoryAllocator;
@@ -122,30 +99,34 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_pendingWriteKey = -1;
 
         /// <summary>
-        /// Set while m_pending may hold pages, read under m_lock by the write paths.
+        /// Snapshot of the generation's keys for the walk, one generation at a time so it is reused.
         /// </summary>
-        private int m_commitInFlight;
+        private long[] m_generationKeys = Array.Empty<long>();
 
         /// <summary>
-        /// The in-flight generation's keys, null when none. The read fast paths probe it lock-free.
+        /// Keys of the generation pages someone else holds, reused across commits.
         /// </summary>
-        private GenerationFilter? m_generationFilter;
+        private readonly List<long> m_heldKeys = new List<long>();
 
+        /// <summary>
+        /// The generation in flight, null when none, guarded by m_lock and read under m_commitEvictLock by the writers.
+        /// </summary>
         private CommitGeneration? m_generation;
         private Task? m_commitTask;
-        private bool m_disposeRequested;
 
         /// <summary>
-        /// Set by an eviction pass waiting for the lock, the walk yields after its next page so the pass gets in.
+        /// Set by a stop or an abandoned drain, the walk gives up at its next page. Cleared by the recovery pause.
         /// </summary>
-        private int m_evictWaiting;
+        private bool m_stopRequested;
+
+        /// <summary>
+        /// Consecutive generations under a quarter of the keys buffer, it shrinks after a run of them.
+        /// </summary>
+        private int m_smallGenerations;
         private readonly object m_lock = new object();
 
         /// <summary>
-        /// Serializes this client's checkpoint writes against its Evict, all go through the same
-        /// non-thread-safe value serializer and file-cache version state. Taken per page, so the
-        /// operator's fetches and the eviction pass slot in between the background writes.
-        /// Never disposed, a commit still in flight during teardown must be able to release it.
+        /// Per-page lock between the walk, the on-fetch writes and Evict, never disposed.
         /// </summary>
         private readonly SemaphoreSlim m_commitEvictLock = new SemaphoreSlim(1, 1);
 
@@ -209,7 +190,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             Meter meter,
             bool useReadCache,
             bool backgroundCommit,
-            TimeSpan stopCommitsTimeout,
             int bplusTreePageSize,
             int bplusTreePageSizeBytes,
             IMemoryAllocator memoryAllocator)
@@ -222,7 +202,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.options = options;
             this.useReadCache = useReadCache;
             this.m_backgroundCommit = backgroundCommit;
-            this.m_stopCommitsTimeout = stopCommitsTimeout;
             this.m_bplusTreePageSize = bplusTreePageSize;
             this.m_bplusTreePageSizeBytes = bplusTreePageSizeBytes;
             this.memoryAllocator = memoryAllocator;
@@ -273,12 +252,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_lock)
             {
-                if (Volatile.Read(ref m_commitInFlight) != 0 && OwesCheckpointWrite_NoLock(key))
+                if (m_generation != null && OwesCheckpointWrite_NoLock(key))
                 {
                     // Held pages are written at Commit, so this is a reference kept without a rent.
                     throw new InvalidOperationException($"Page '{key}' on state client '{name}' was written before its checkpoint write, a page kept across Commit must be rented.");
                 }
-                m_modified[key] = new Modified(++m_writeSequence, value);
+                m_modified[key] = new Modified(++m_writeSequence);
 
                 var modLookup = key % LookupTableSize;
                 var entry = _lookupTable[modLookup];
@@ -295,7 +274,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                 }
 
-                return stateManager.AddOrUpdate(key, value, this);
+                var full = stateManager.AddOrUpdate(key, value, this, out entry);
+                Volatile.Write(ref _lookupTable[modLookup], entry);
+                return full;
             }
         }
 
@@ -317,22 +298,31 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public bool TryGetCachedValue(in long key, out V? value)
         {
             // A page owing its checkpoint write is handed out by GetValue only, which writes it first.
-            if (MayOweCheckpointWrite(key) && OwesCheckpointWrite(key))
-            {
-                value = default;
-                return false;
-            }
             var modLookup = key % LookupTableSize;
             var entry = Volatile.Read(ref _lookupTable[modLookup]);
-            if (entry != null && entry.Key == key && entry.TryRentValue())
+            if (entry != null && entry.Key == key)
             {
-                m_lookupTableHits++;
-                value = (V)entry.Value;
-                return true;
+                if (Volatile.Read(ref entry.OwesCheckpointWrite))
+                {
+                    value = default;
+                    return false;
+                }
+                if (entry.TryRentValue())
+                {
+                    m_lookupTableHits++;
+                    value = (V)entry.Value;
+                    return true;
+                }
             }
             // Lock-free probe, a miss never waits behind a commit.
             if (stateManager.TryRentCachedValue(key, out var cached))
             {
+                if (Volatile.Read(ref cached.OwesCheckpointWrite))
+                {
+                    cached.Value.Return();
+                    value = default;
+                    return false;
+                }
                 // Publish under the lock like every other slot write.
                 // A delete racing this leaves a stale slot the fast path already tolerates.
                 lock (m_lock)
@@ -346,22 +336,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return false;
         }
 
-        /// <summary>
-        /// Lock-free pre-check, the generation's keys never grow so a miss is final.
-        /// </summary>
-        private bool MayOweCheckpointWrite(long key)
-        {
-            var filter = Volatile.Read(ref m_generationFilter);
-            return filter != null && filter.MayContain(key);
-        }
-
-        private bool OwesCheckpointWrite(long key)
-        {
-            lock (m_lock)
-            {
-                return OwesCheckpointWrite_NoLock(key);
-            }
-        }
+        internal long LookupTableHitsForTests => Volatile.Read(ref m_lookupTableHits);
 
         private bool OwesCheckpointWrite_NoLock(long key)
         {
@@ -379,11 +354,82 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_sessionLock?.Release();
         }
 
-        private static async Task JoinQuietlyAsync(Task? commitTask)
+        private async Task SessionWrite(long key, SerializableObject value)
+        {
+            await EnterSessionAsync();
+            try
+            {
+                await session.Write(key, value);
+            }
+            finally
+            {
+                ExitSession();
+            }
+        }
+
+        private async Task SessionDelete(long key)
+        {
+            await EnterSessionAsync();
+            try
+            {
+                await session.Delete(key);
+            }
+            finally
+            {
+                ExitSession();
+            }
+        }
+
+        private async ValueTask<ReadOnlyMemory<byte>> SessionRead(long key)
+        {
+            await EnterSessionAsync();
+            try
+            {
+                return await session.Read(key);
+            }
+            finally
+            {
+                ExitSession();
+            }
+        }
+
+        private async ValueTask<T> SessionRead<T>(long key, IStateSerializer<T> serializer)
+            where T : ICacheObject
+        {
+            await EnterSessionAsync();
+            try
+            {
+                return await session.Read(key, serializer);
+            }
+            finally
+            {
+                ExitSession();
+            }
+        }
+
+        private async Task SessionCommit()
+        {
+            await EnterSessionAsync();
+            try
+            {
+                await session.Commit();
+            }
+            finally
+            {
+                ExitSession();
+            }
+        }
+
+        private async Task JoinQuietlyAsync(Task? commitTask, TimeSpan timeout)
         {
             if (commitTask == null)
             {
                 return;
+            }
+            // A walk wedged on storage fails the recovery instead of hanging it, the retry joins again.
+            if (await Task.WhenAny(commitTask, Task.Delay(timeout)).ConfigureAwait(false) != commitTask)
+            {
+                throw new InvalidOperationException($"State client '{name}' is still writing its commit after {timeout}, storage may be wedged.");
             }
             try
             {
@@ -394,19 +440,21 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        internal override async Task PauseCommitsAsync()
+        internal override async Task PauseCommitsAsync(TimeSpan walkTimeout)
         {
             // The reset that follows is the response to a failed commit, its fault is not the caller's.
             // Commit publishes its walk under the lock, so a walk seen here after taking it is complete.
             while (true)
             {
                 var commitTask = Volatile.Read(ref m_commitTask);
-                await JoinQuietlyAsync(commitTask);
+                await JoinQuietlyAsync(commitTask, walkTimeout);
                 await m_commitEvictLock.WaitAsync();
                 if (ReferenceEquals(Volatile.Read(ref m_commitTask), commitTask))
                 {
                     // Consumed, the reset under this pause must not see the fault again.
                     Volatile.Write(ref m_commitTask, null);
+                    // A stop request from an abandoned drain is done with, the client runs on after the reset.
+                    Volatile.Write(ref m_stopRequested, false);
                     return;
                 }
                 // A commit slipped in between the join and the lock, join that one too.
@@ -427,7 +475,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         internal override void RequestStopCommits()
         {
             // The walk gives up at its next page, before the cache table goes away.
-            Volatile.Write(ref m_disposeRequested, true);
+            Volatile.Write(ref m_stopRequested, true);
         }
 
         internal override void StopCommits(TimeSpan timeout)
@@ -449,10 +497,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        /// <summary>
-        /// The last generation's walk, for test assertions on how it ended.
-        /// </summary>
-        internal Task? CommitTaskForTests => Volatile.Read(ref m_commitTask);
+        internal bool CommitedOnceForTests => metadata.CommitedOnce;
 
         public async ValueTask Commit()
         {
@@ -460,6 +505,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             // One generation in flight per client, a previous commit still running is joined first.
             await WaitForCommitAsync();
+            lock (m_lock)
+            {
+                // Refused before anything is written, a failed generation only leaves with a reset.
+                if (m_generation != null)
+                {
+                    throw new InvalidOperationException($"State client '{name}' must be reset after its last commit failed.");
+                }
+            }
 
             // The serializer checkpoint and the metadata are taken on the caller's thread, the
             // operator changes the tree metadata again as soon as this returns.
@@ -468,27 +521,44 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             await m_commitEvictLock.WaitAsync();
             try
             {
-                await options.ValueSerializer.CheckpointAsync(this, metadata);
-                await WriteMetadata();
-
-                CommitGeneration generation;
-                lock (m_lock)
-                {
-                    if (m_pending.Count != 0)
-                    {
-                        throw new InvalidOperationException($"State client '{name}' still has pages pending from a previous commit.");
-                    }
-                    (m_pending, m_modified) = (m_modified, m_pending);
-                    var keys = new long[m_pending.Count];
-                    m_pending.Keys.CopyTo(keys, 0);
-                    generation = new CommitGeneration(keys, Interlocked.Exchange(ref newPages, 0), previousCommitedOnce);
-                    m_generation = generation;
-                    Volatile.Write(ref m_generationFilter, new GenerationFilter(m_pending.Keys, m_pending.Count));
-                    Volatile.Write(ref m_commitInFlight, 1);
-                }
-
+                CommitGeneration? generation = null;
                 try
                 {
+                    await options.ValueSerializer.CheckpointAsync(this, metadata);
+                    await WriteMetadata();
+
+                    lock (m_lock)
+                    {
+                        (m_pending, m_modified) = (m_modified, m_pending);
+                        var count = m_pending.Count;
+                        var keys = m_generationKeys;
+                        if (keys.Length < count)
+                        {
+                            keys = m_generationKeys = new long[count + (count >> 1) + 16];
+                            m_smallGenerations = 0;
+                        }
+                        else if (count == 0)
+                        {
+                            // An idle checkpoint says nothing about the size the client needs.
+                        }
+                        else if (keys.Length > Math.Max(4 * count, 1024))
+                        {
+                            // Shrunk after a run of small generations, a burst must not keep its peak for good.
+                            if (++m_smallGenerations >= 8)
+                            {
+                                keys = m_generationKeys = new long[count + (count >> 1) + 16];
+                                m_smallGenerations = 0;
+                            }
+                        }
+                        else
+                        {
+                            m_smallGenerations = 0;
+                        }
+                        m_pending.Keys.CopyTo(keys, 0);
+                        generation = new CommitGeneration(keys, count, Interlocked.Exchange(ref newPages, 0), previousCommitedOnce);
+                        m_generation = generation;
+                    }
+
                     // A page someone still holds may be changed in place as soon as this returns, so
                     // its checkpoint copy is taken here. After this no pending page has a holder.
                     await WriteHeldPages(generation);
@@ -499,11 +569,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         return;
                     }
                 }
-                catch
+                catch (Exception e)
                 {
                     // The metadata went into the session with the flag set, a failure before
                     // the session commit must take the flag back or recovery reads a page that never landed.
                     metadata.CommitedOnce = previousCommitedOnce;
+                    if (generation != null)
+                    {
+                        // No walk follows, a fetch of a page left owed reports this instead of writing.
+                        generation.Failure ??= e;
+                    }
                     throw;
                 }
 
@@ -519,37 +594,26 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Writes every generation page rented by someone other than the cache, caller holds m_commitEvictLock.
+        /// Flags every cached generation page and writes the ones rented by someone other than
+        /// the cache, caller holds m_commitEvictLock.
         /// </summary>
         private async Task WriteHeldPages(CommitGeneration generation)
         {
-            // The page object as last written is enough for the rent count unless it left the
-            // cache since, then the table has the current one.
-            List<long>? held = null;
+            var held = m_heldKeys;
+            held.Clear();
             foreach (var kv in m_pending)
             {
-                var page = kv.Value.Page;
-                if (page == null)
+                // A delete has no page, an evicted one has no entry until a reload makes a fresh one.
+                if (kv.Value.Sequence == -1 || !stateManager.TryPeekCacheEntry(kv.Key, out var entry))
                 {
                     continue;
                 }
-                if (page.RemovedFromCache)
+                // The fast paths decline the page until its write clears this.
+                Volatile.Write(ref entry.OwesCheckpointWrite, true);
+                if (entry.Value.RentCount > 1)
                 {
-                    if (!stateManager.TryPeekCacheEntry(kv.Key, out var entry))
-                    {
-                        continue;
-                    }
-                    page = entry.Value;
-                }
-                if (page.RentCount > 1)
-                {
-                    held ??= new List<long>();
                     held.Add(kv.Key);
                 }
-            }
-            if (held == null)
-            {
-                return;
             }
             foreach (var key in held)
             {
@@ -567,9 +631,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             try
             {
                 var hook = stateManager.PageWriteHookForTests;
-                foreach (var key in generation.Keys)
+                var keys = generation.Keys;
+                for (int i = 0; i < generation.Count; i++)
                 {
-                    ThrowIfDisposeRequested();
+                    var key = keys[i];
+                    ThrowIfStopRequested();
                     if (hook != null)
                     {
                         await hook(name, key);
@@ -580,6 +646,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     try
                     {
+                        // Waited for the lock past a dispose, the table it reads from is gone.
+                        ThrowIfStopRequested();
+                        ThrowIfFailed(generation);
                         // Already written by a fetch or at Commit.
                         if (!TryTakePending(key, out var version))
                         {
@@ -594,13 +663,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             m_commitEvictLock.Release();
                         }
                     }
-                    if (!lockHeld && Volatile.Read(ref m_evictWaiting) != 0)
+                    if (!lockHeld && (i & 255) == 255)
                     {
-                        // An immediate retake beats the waiting pass, give it the lock.
+                        // Session writes mostly complete synchronously, hand the pool thread back now and then.
                         await Task.Yield();
                     }
                 }
-                ThrowIfDisposeRequested();
+                ThrowIfStopRequested();
 
                 // An on-fetch write still in flight holds the lock, it lands before the commit.
                 if (!lockHeld)
@@ -609,6 +678,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 try
                 {
+                    ThrowIfStopRequested();
+                    ThrowIfFailed(generation);
                     lock (m_lock)
                     {
                         Debug.Assert(m_pending.Count == 0);
@@ -616,25 +687,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                     Debug.Assert(stateManager.m_metadata != null);
                     // Add modified page count to the page commits counter
-                    Interlocked.Add(ref stateManager.m_metadata.PageCommits, (ulong)generation.Keys.Length);
+                    Interlocked.Add(ref stateManager.m_metadata.PageCommits, (ulong)generation.Count);
                     // Modify active pages
                     Interlocked.Add(ref stateManager.m_metadata.PageCount, generation.NewPages);
 
-                    await EnterSessionAsync();
-                    try
-                    {
-                        await session.Commit();
-                    }
-                    finally
-                    {
-                        ExitSession();
-                    }
+                    await SessionCommit();
 
                     lock (m_lock)
                     {
-                        Volatile.Write(ref m_generationFilter, null);
                         m_generation = null;
-                        Volatile.Write(ref m_commitInFlight, 0);
                     }
                 }
                 finally
@@ -648,19 +709,32 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_fileCache.ClearTemporaryAllocations();
                 options.ValueSerializer.ClearTemporaryAllocations();
             }
-            catch
+            catch (Exception e)
             {
                 metadata.CommitedOnce = generation.PreviousCommitedOnce;
+                // A failure past the pages, the session commit, leaves the generation marked too.
+                generation.Failure ??= e;
                 throw;
             }
         }
 
-        private void ThrowIfDisposeRequested()
+        private void ThrowIfStopRequested()
         {
             // Faulted, not returned, a checkpoint waiting on this walk must not take it as landed.
-            if (Volatile.Read(ref m_disposeRequested))
+            if (Volatile.Read(ref m_stopRequested))
             {
-                throw new ObjectDisposedException($"State client '{name}' was disposed with a commit in flight.");
+                throw new ObjectDisposedException($"State client '{name}'", "The commit was given up on a stop request.");
+            }
+        }
+
+        /// <summary>
+        /// Rethrows an earlier page write failure as is, the checkpoint sees the storage error.
+        /// </summary>
+        private static void ThrowIfFailed(CommitGeneration generation)
+        {
+            if (generation.Failure != null)
+            {
+                ExceptionDispatchInfo.Throw(generation.Failure);
             }
         }
 
@@ -688,45 +762,28 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private async Task WritePendingPage(long key, long version, CommitGeneration generation)
         {
             Debug.Assert(options.ValueSerializer != null);
+            S3FifoCacheEntry? entry = null;
             try
             {
                 if (version == -1)
                 {
                     // deleted
-                    await EnterSessionAsync();
-                    try
-                    {
-                        await session.Delete(key);
-                    }
-                    finally
-                    {
-                        ExitSession();
-                    }
+                    await SessionDelete(key);
 
                     // Remove a page from the new pages counter
                     generation.NewPages--;
                     FreeSpill(key);
-                    return;
                 }
-                if (stateManager.TryGetValueFromCache<V>(key, out var val))
+                else if (stateManager.TryRentCacheEntryForCommit(key, out entry))
                 {
                     // Return the lookup's rent even when the write throws, a leaked rent keeps the page unevictable forever.
                     try
                     {
-                        await EnterSessionAsync();
-                        try
-                        {
-                            // Write to persistence
-                            await session.Write(key, new SerializableObject(val, options.ValueSerializer));
-                        }
-                        finally
-                        {
-                            ExitSession();
-                        }
+                        await SessionWrite(key, new SerializableObject(entry.Value, options.ValueSerializer));
                     }
                     finally
                     {
-                        val.Return();
+                        entry.Value.Return();
                     }
                     // The spill is older than what was just written.
                     FreeSpill(key);
@@ -734,17 +791,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 else
                 {
                     var bytes = await m_fileCache.Read(key);
-
-                    await EnterSessionAsync();
-                    try
-                    {
-                        // Write to persistence
-                        await session.Write(key, new SerializableObject(bytes));
-                    }
-                    finally
-                    {
-                        ExitSession();
-                    }
+                    await SessionWrite(key, new SerializableObject(bytes));
 
                     if (!useReadCache)
                     {
@@ -757,16 +804,29 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                 }
             }
-            finally
+            catch (Exception e)
             {
+                // Still owed and never retried, the walk stops at its next page and reports this.
                 lock (m_lock)
                 {
                     m_pendingWriteKey = -1;
-                    if (m_modified.TryGetValue(key, out var current) && current.Sequence == -1)
-                    {
-                        // The delete waited for this write, see Delete.
-                        Delete_NoLock(key);
-                    }
+                    m_pending[key] = new Modified(version);
+                }
+                generation.Failure ??= e;
+                throw;
+            }
+            lock (m_lock)
+            {
+                m_pendingWriteKey = -1;
+                if (entry != null)
+                {
+                    // Handed out again only once the key is no longer owed, AddOrUpdate checks that under this lock.
+                    Volatile.Write(ref entry.OwesCheckpointWrite, false);
+                }
+                if (m_modified.TryGetValue(key, out var current) && current.Sequence == -1)
+                {
+                    // The delete waited for this write, see Delete.
+                    Delete_NoLock(key);
                 }
             }
         }
@@ -779,26 +839,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             await m_commitEvictLock.WaitAsync();
             try
             {
+                var generation = m_generation;
+                if (generation == null)
+                {
+                    // The walk finished first.
+                    return;
+                }
+                ThrowIfFailed(generation);
                 if (!TryTakePending(key, out var version))
                 {
                     return;
                 }
-                var generation = m_generation;
-                Debug.Assert(generation != null);
-                try
-                {
-                    await WritePendingPage(key, version, generation);
-                }
-                catch
-                {
-                    // Still owed. The walk has not passed it, it claims under this lock, so it
-                    // retries the write and faults the generation if that fails too.
-                    lock (m_lock)
-                    {
-                        m_pending[key] = new Modified(version, null);
-                    }
-                    throw;
-                }
+                await WritePendingPage(key, version, generation);
             }
             finally
             {
@@ -806,33 +858,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
+        /// <summary>
+        /// Sets CommitedOnce before the write, Commit takes it back on any failure.
+        /// </summary>
         private async Task WriteMetadata()
         {
             if (!metadata.CommitedOnce || (metadata.Metadata != null && metadata.Metadata.Updated))
             {
-                var previousCommitedOnce = metadata.CommitedOnce;
-                try
+                metadata.CommitedOnce = true;
+                var bytes = StateClientMetadataSerializer.Serialize(metadata);
+                await SessionWrite(metadataId, new SerializableObject(bytes));
+                if (metadata.Metadata != null)
                 {
-                    metadata.CommitedOnce = true;
-                    var bytes = StateClientMetadataSerializer.Serialize(metadata);
-                    await EnterSessionAsync();
-                    try
-                    {
-                        await session.Write(metadataId, new SerializableObject(bytes));
-                    }
-                    finally
-                    {
-                        ExitSession();
-                    }
-                    if (metadata.Metadata != null)
-                    {
-                        metadata.Metadata.Updated = false;
-                    }
-                }
-                catch (Exception)
-                {
-                    metadata.CommitedOnce = previousCommitedOnce;
-                    throw;
+                    metadata.Metadata.Updated = false;
                 }
             }
         }
@@ -841,8 +879,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_lock)
             {
-                m_modified[key] = new Modified(-1, null);
-                if (Volatile.Read(ref m_commitInFlight) != 0 && OwesCheckpointWrite_NoLock(key))
+                m_modified[key] = new Modified(-1);
+                if (m_generation != null && OwesCheckpointWrite_NoLock(key))
                 {
                     // Nobody holds a pending page, so it can stay until the walk has written it.
                     return;
@@ -876,18 +914,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public ValueTask<V?> GetValue(in long key)
         {
-            // A page owing its checkpoint write is written first, the caller may modify what it gets.
-            if (MayOweCheckpointWrite(key) && OwesCheckpointWrite(key))
-            {
-                return GetValue_CommitFirst(key);
-            }
-
             var modLookup = key % LookupTableSize;
 
             // Lock-free fast path. The slot is one reference, the key is validated on the entry,
-            // and TryRentValue is safe against eviction. A stale slot falls through to the lock.
+            // and TryRentValue is safe against eviction. A stale slot, or a page owing its
+            // checkpoint write, falls through to the lock.
             var entry = Volatile.Read(ref _lookupTable[modLookup]);
-            if (entry != null && entry.Key == key && entry.TryRentValue())
+            if (entry != null && entry.Key == key && !Volatile.Read(ref entry.OwesCheckpointWrite) && entry.TryRentValue())
             {
                 m_lookupTableHits++;
                 return ValueTask.FromResult<V?>((V)entry.Value);
@@ -895,20 +928,32 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             lock (m_lock)
             {
-                if (stateManager.TryGetCacheValueFromCache(key, out var cacheVal))
+                // The pending set is exact, asked only while a commit is in flight.
+                if (m_generation == null || !OwesCheckpointWrite_NoLock(key))
                 {
-                    Volatile.Write(ref _lookupTable[modLookup], cacheVal);
-                    return ValueTask.FromResult<V?>((V)cacheVal.Value);
+                    return GetValue_Locked(key, modLookup);
                 }
-                Interlocked.Increment(ref cacheMisses);
-                // Read from temporary file storage
-                if (m_fileCacheVersion.ContainsKey(key))
-                {
-                    return GetValue_FromCache(key);
-                }
-                // Read from persistent store
-                return GetValue_Persistent(key);
             }
+            // Written first, outside m_lock, the caller may modify what it gets.
+            return GetValue_CommitFirst(key);
+        }
+
+        private ValueTask<V?> GetValue_Locked(long key, long modLookup)
+        {
+            Debug.Assert(Monitor.IsEntered(m_lock));
+            if (stateManager.TryGetCacheValueFromCache(key, out var cacheVal))
+            {
+                Volatile.Write(ref _lookupTable[modLookup], cacheVal);
+                return ValueTask.FromResult<V?>((V)cacheVal.Value);
+            }
+            Interlocked.Increment(ref cacheMisses);
+            // Read from temporary file storage
+            if (m_fileCacheVersion.ContainsKey(key))
+            {
+                return GetValue_FromCache(key);
+            }
+            // Read from persistent store
+            return GetValue_Persistent(key);
         }
 
         private async ValueTask<V?> GetValue_CommitFirst(long key)
@@ -943,15 +988,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             V? value = default;
             try
             {
-                await EnterSessionAsync();
-                try
-                {
-                    value = await session.Read<V>(key, options.ValueSerializer);
-                }
-                finally
-                {
-                    ExitSession();
-                }
+                value = await SessionRead(key, options.ValueSerializer);
             }
             catch (Exception e)
             {
@@ -980,19 +1017,31 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 if (disposing)
                 {
-                    StopCommits(m_stopCommitsTimeout);
-                    m_fileCache.Dispose();
-                    if (options.ValueSerializer != null)
+                    // The manager waited as long as it will, a walk still running writes through the
+                    // serializer and the session, so the last one out disposes them.
+                    RequestStopCommits();
+                    var commitTask = Volatile.Read(ref m_commitTask);
+                    if (commitTask != null && !commitTask.IsCompleted)
                     {
-                        options.ValueSerializer.Dispose();
+                        commitTask.ContinueWith(static (_, state) => ((SyncStateClient<V, TMetadata>)state!).DisposeResources(), this, TaskScheduler.Default);
                     }
-                    // The client owns the session it was created with. A supplied storage
-                    // outlives a stop, so an undisposed session would be stranded in it.
-                    session.Dispose();
+                    else
+                    {
+                        DisposeResources();
+                    }
                 }
 
                 disposedValue = true;
             }
+        }
+
+        private void DisposeResources()
+        {
+            m_fileCache.Dispose();
+            options.ValueSerializer?.Dispose();
+            // The client owns the session it was created with. A supplied storage
+            // outlives a stop, so an undisposed session would be stranded in it.
+            session.Dispose();
         }
 
         public override void Dispose()
@@ -1027,13 +1076,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     Volatile.Write(ref _lookupTable[i], null);
                 }
-                m_fileCache.FreeAll(m_modified.Keys);
+                m_fileCache.FreeAll(m_modified.Keys.Concat(m_pending.Keys));
                 m_modified.Clear();
                 m_pending.Clear();
                 m_pendingWriteKey = -1;
                 m_generation = null;
-                Volatile.Write(ref m_generationFilter, null);
-                Volatile.Write(ref m_commitInFlight, 0);
                 m_fileCacheVersion.Clear();
             }
             if (clearMetadata || !metadata.CommitedOnce)
@@ -1042,16 +1089,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             else
             {
-                await EnterSessionAsync();
-                try
-                {
-                    var bytes = await session.Read(metadataId);
-                    metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes, bytes.Length);
-                }
-                finally
-                {
-                    ExitSession();
-                }
+                var bytes = await SessionRead(metadataId);
+                metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes, bytes.Length);
             }
             m_fileCache.ClearTemporaryAllocations();
             if (options.ValueSerializer != null)
@@ -1060,23 +1099,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        public bool Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+        public async Task<bool> Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
         {
             Debug.Assert(options.ValueSerializer != null);
-            // Waits one page write at most. The walk yields to the raised flag, an immediate
-            // retake would otherwise win every time, and an inline commit lets this time out
-            // so the pass never stalls behind a whole commit's I/O.
-            bool acquired;
-            Volatile.Write(ref m_evictWaiting, 1);
-            try
-            {
-                acquired = m_commitEvictLock.Wait(EvictWaitBudget);
-            }
-            finally
-            {
-                Volatile.Write(ref m_evictWaiting, 0);
-            }
-            if (!acquired)
+            // One page write at most, an inline commit holds the lock throughout and lets this time out.
+            if (!await m_commitEvictLock.WaitAsync(EvictWaitBudget))
             {
                 return false;
             }
@@ -1212,17 +1239,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             await options.ValueSerializer.InitializeAsync(this, metadata);
         }
 
-        public async Task<ReadOnlyMemory<byte>> ReadPage(long pageId)
+        public Task<ReadOnlyMemory<byte>> ReadPage(long pageId)
         {
-            await EnterSessionAsync();
-            try
-            {
-                return await session.Read(pageId);
-            }
-            finally
-            {
-                ExitSession();
-            }
+            return SessionRead(pageId).AsTask();
         }
 
         Memory<byte> IStateSerializerCheckpointWriter.RequestPageMemory(int expectedSize)
@@ -1231,30 +1250,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return new byte[expectedSize];
         }
 
-        async Task IStateSerializerCheckpointWriter.WritePageMemory(long pageId, Memory<byte> memory)
+        Task IStateSerializerCheckpointWriter.WritePageMemory(long pageId, Memory<byte> memory)
         {
-            await EnterSessionAsync();
-            try
-            {
-                await session.Write(pageId, new SerializableObject(memory));
-            }
-            finally
-            {
-                ExitSession();
-            }
+            return SessionWrite(pageId, new SerializableObject(memory));
         }
 
-        async Task IStateSerializerCheckpointWriter.RemovePage(long pageId)
+        Task IStateSerializerCheckpointWriter.RemovePage(long pageId)
         {
-            await EnterSessionAsync();
-            try
-            {
-                await session.Delete(pageId);
-            }
-            finally
-            {
-                ExitSession();
-            }
+            return SessionDelete(pageId);
         }
 
     }

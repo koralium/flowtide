@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return baseClient.TryGetCachedValue(key, out value);
         }
 
-        public bool Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+        public Task<bool> Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
         {
             return baseClient.Evict(valuesToEvict, isCleanup);
         }

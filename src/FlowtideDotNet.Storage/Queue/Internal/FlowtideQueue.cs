@@ -71,14 +71,12 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             }
             else
             {
-                // Fetch left and right nodes
+                // Fetch left and right nodes, the fetch rent is the queue's rent.
                 _rightNode = (await _stateClient.GetValue(_stateClient.Metadata.Right)) as QueueNode<V, TValueContainer>;
-                _rightNode!.TryRent();
 
                 if (_stateClient.Metadata.Right != _stateClient.Metadata.Left)
                 {
                     _leftNode = (await _stateClient.GetValue(_stateClient.Metadata.Left)) as QueueNode<V, TValueContainer>;
-                    _leftNode!.TryRent();
                 }
                 else
                 {
@@ -168,8 +166,8 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                     {
                         return Dequeue_Slow(getNextNodeTask);
                     }
+                    // The fetch rent is the queue's rent, like the slow path.
                     _leftNode = (getNextNodeTask.Result) as QueueNode<V, TValueContainer>;
-                    _leftNode!.TryRent();
                 }
                 _stateClient.Metadata.Left = _leftNode.Id;
                 _stateClient.Metadata.DequeueIndex = 0;
@@ -275,7 +273,20 @@ namespace FlowtideDotNet.Storage.Queue.Internal
 
         public async ValueTask Clear()
         {
+            Debug.Assert(_rightNode != null);
+            Debug.Assert(_leftNode != null);
+            // Cached like Commit does it, so the reset returns the cache rents and the queue's own go below.
+            _stateClient.AddOrUpdate(_rightNode.Id, _rightNode);
+            if (!ReferenceEquals(_leftNode, _rightNode))
+            {
+                _stateClient.AddOrUpdate(_leftNode.Id, _leftNode);
+            }
             await _stateClient.Reset(true);
+            if (!ReferenceEquals(_leftNode, _rightNode))
+            {
+                _leftNode.Return();
+            }
+            _rightNode.Return();
             var nodeId = _stateClient.GetNewPageId();
             var emptyValues = _options.ValueSerializer.CreateEmpty();
             _rightNode = new QueueNode<V, TValueContainer>(nodeId, emptyValues);
@@ -314,8 +325,8 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                     {
                         return Pop_Slow(getPreviousNodeTask);
                     }
+                    // The fetch rent is the queue's rent, like the slow path.
                     _rightNode = (getPreviousNodeTask.Result) as QueueNode<V, TValueContainer>;
-                    _rightNode!.TryRent();
                 }
                 _stateClient.Metadata.InsertIndex = _rightNode.values.Count;
                 _stateClient.Delete(oldRightNode.Id);

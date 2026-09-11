@@ -18,12 +18,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         public abstract long MetadataId { get; }
 
         /// <summary>
-        /// Blocks this client's commits until ResumeCommits, draining an in-flight one first.
-        /// Recovery holds it across the whole reset, a commit overlapping the revert would
-        /// persist aborted-epoch pages into the recovered store.
-        /// Base is a no-op for clients whose commits do not race recovery.
+        /// Blocks this client's commits until ResumeCommits, joining an in-flight one for at most
+        /// the given time first. Recovery holds it across the whole reset.
         /// </summary>
-        internal virtual Task PauseCommitsAsync()
+        internal virtual Task PauseCommitsAsync(TimeSpan walkTimeout)
         {
             return Task.CompletedTask;
         }

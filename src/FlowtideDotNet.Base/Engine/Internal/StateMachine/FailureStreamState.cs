@@ -105,38 +105,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            // Wait for any in-flight checkpoint commit or compaction to finish before
-            // tearing anything down. Faulting or disposing blocks, or disposing the state
-            // manager, while the state manager is being written corrupts it. Bounded, a
-            // write wedged on unresponsive storage cannot be made safe by waiting and must
-            // not hang the recovery forever.
-            var writeWaitStart = Stopwatch.GetTimestamp();
-            while (true)
-            {
-                if (System.Threading.Volatile.Read(ref _context._stateManagerWriteCount) > 0)
-                {
-                    if (Stopwatch.GetElapsedTime(writeWaitStart) > _context._dataflowStreamOptions.StopDrainTimeout)
-                    {
-                        _context._logger.LogWarning("Failure teardown on stream {stream} proceeded while a state manager write was still active after {timeout}, the write may be wedged on storage.", _context.streamName, _context._dataflowStreamOptions.StopDrainTimeout);
-                        break;
-                    }
-                    await Task.Delay(10);
-                    continue;
-                }
-                // Commits and compactions claim their write count at the decision point, under
-                // the checkpoint lock, before their task is scheduled. Re-reading under that
-                // lock means every claim decided against the pre-failure state is visible, so a
-                // zero here cannot race a task that was scheduled but not yet counted.
-                bool settled;
-                lock (_context._checkpointLock)
-                {
-                    settled = System.Threading.Volatile.Read(ref _context._stateManagerWriteCount) == 0;
-                }
-                if (settled)
-                {
-                    break;
-                }
-            }
+            await _context.WaitForStateManagerToSettle("Failure teardown");
 
             // Decide the restore version now that any in-flight commit has settled. A
             // checkpoint that completed during the failure is a valid, more recent recovery

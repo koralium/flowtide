@@ -21,6 +21,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     /// </summary>
     internal interface ICacheEvictHandler
     {
-        bool Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup);
+        Task<bool> Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup);
     }
 }
