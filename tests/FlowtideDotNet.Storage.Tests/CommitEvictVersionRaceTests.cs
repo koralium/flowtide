@@ -491,8 +491,11 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 foreach (var (k, page) in held)
                 {
-                    page.Value += 1;
-                    client.AddOrUpdate(k, page);
+                    // Fetched again each round, a page still owing its checkpoint write is written by the fetch.
+                    var fetched = await client.GetValue(k);
+                    fetched!.Value += 1;
+                    client.AddOrUpdate(k, fetched);
+                    fetched.Return();
                 }
                 for (int j = 0; j < 32; j++)
                 {
@@ -647,53 +650,5 @@ namespace FlowtideDotNet.Storage.Tests
             await recovery;
             manager.Dispose();
         }
-
-#if DEBUG
-        /// <summary>
-        /// The debug tripwire: a write during this client's commit is a contract violation.
-        /// </summary>
-        [Fact]
-        public async Task WriteDuringCommitTripsTheDebugGuard()
-        {
-            var persist = new GatedPersistentStorage(new FileCachePersistentStorage(new FileCacheOptions()
-            {
-                DirectoryPath = "./commitWriteTripwire"
-            }));
-            var options = new StateManagerOptions()
-            {
-                PersistentStorage = persist,
-                CachePageCount = 0,
-                MinCachePageCount = 0
-            };
-            using var manager = new StateManagerSync<StateManagerMetadata>(options, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmpTripwire"), "test", GlobalMemoryManager.Instance);
-            await manager.InitializeAsync();
-            await manager.CacheTable.StopCleanupTask();
-
-            var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
-                "client",
-                new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
-                GlobalMemoryManager.Instance);
-
-            var key = client.GetNewPageId();
-            client.AddOrUpdate(key, new TestPage(1));
-
-            // Freeze the commit inside its page write, then write from the test thread.
-            using var gate = new ManualResetEventSlim(false);
-            var session = persist.Sessions.Single();
-            session.ArmGate(gate);
-            var commit = Task.Run(() => client.Commit().AsTask());
-            await session.WaitForBlockedWriterAsync();
-
-            var other = client.GetNewPageId();
-            Assert.Throws<InvalidOperationException>(() => client.AddOrUpdate(other, new TestPage(2)));
-            Assert.Throws<InvalidOperationException>(() => client.Delete(key));
-
-            gate.Set();
-            await commit;
-
-            // Released with the commit, a later write is fine.
-            client.AddOrUpdate(other, new TestPage(2));
-        }
-#endif
     }
 }

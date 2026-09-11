@@ -269,6 +269,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             {
                 _stateClient.AddOrUpdate(_rightNode.Id, _rightNode);
             }
+            // The held nodes are rented, the client writes them before it returns.
             return _stateClient.Commit();
         }
 

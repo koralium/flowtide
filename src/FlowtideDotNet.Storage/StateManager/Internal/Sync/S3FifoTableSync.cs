@@ -596,6 +596,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         internal bool TryPeekEntryForTests(long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
+            return TryPeekEntry(key, out entry);
+        }
+
+        /// <summary>
+        /// Looks up an entry without renting it.
+        /// </summary>
+        internal bool TryPeekEntry(long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
+        {
             return m_cache.TryGetValue(key, out entry);
         }
 

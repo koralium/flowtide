@@ -41,6 +41,16 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             SetupFileWriter();
         }
 
+        /// <summary>
+        /// Reads lock against the temporary locations, writers are serialized by the caller.
+        /// </summary>
+        public bool IsThreadSafe => true;
+
+        /// <summary>
+        /// Runs right before the file writer is finished, so a test can hold the roll open.
+        /// </summary>
+        internal Action? FileRollHookForTests { get; set; }
+
         [MemberNotNull(nameof(_fileWriter))]
         private void SetupFileWriter()
         {
@@ -189,6 +199,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public async Task Write(long key, SerializableObject value)
         {
+            BlobFileWriter? finished = null;
             lock (_lock)
             {
                 var sequence = _fileWriter.Write(key, value);
@@ -204,17 +215,20 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 }
                 // Add info to lookup so reads can find the written data before its flushed to storage
                 _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence, file = _fileWriter });
+
+                if (_fileWriter.WrittenLength >= _maxFileSize)
+                {
+                    FileRollHookForTests?.Invoke();
+                    // Finish shifts the segment indices a concurrent read measures its bytes with, so it stays under the lock.
+                    _fileWriter.Finish();
+                    finished = _fileWriter;
+                    SetupFileWriter();
+                }
             }
 
-            if (_fileWriter.WrittenLength >= _maxFileSize)
+            if (finished != null)
             {
-                // Finish the file writer, this adds the page ids and offsets
-                _fileWriter.Finish();
-
-                // TODO: Send the file to the blob writer
-                await _persistentStorage.AddCompleteBlobFile(_fileWriter);
-
-                SetupFileWriter();
+                await _persistentStorage.AddCompleteBlobFile(finished);
             }
         }
 
@@ -224,9 +238,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         /// <returns></returns>
         internal async Task SendBlobFile_Testing()
         {
-            _fileWriter.Finish();
-            await _persistentStorage.AddCompleteBlobFile(_fileWriter);
-            SetupFileWriter();
+            BlobFileWriter finished;
+            lock (_lock)
+            {
+                _fileWriter.Finish();
+                finished = _fileWriter;
+                SetupFileWriter();
+            }
+            await _persistentStorage.AddCompleteBlobFile(finished);
         }
 
         public void Reset()

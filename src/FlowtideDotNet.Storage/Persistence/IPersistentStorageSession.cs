@@ -16,6 +16,12 @@ namespace FlowtideDotNet.Storage.Persistence
 {
     public interface IPersistentStorageSession : IDisposable
     {
+        /// <summary>
+        /// True when a read may run while a write or commit is in progress on this session.
+        /// The state client serializes every call on a session that does not say so.
+        /// </summary>
+        bool IsThreadSafe => false;
+
         ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer)
             where T : ICacheObject;
 

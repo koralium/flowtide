@@ -31,5 +31,27 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         internal virtual void ResumeCommits()
         {
         }
+
+        /// <summary>
+        /// Completes once the last Commit's pages are in the session, faulted when that commit failed.
+        /// </summary>
+        internal virtual Task WaitForCommitAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Tells a walk in flight to give up at its next page, without waiting.
+        /// </summary>
+        internal virtual void RequestStopCommits()
+        {
+        }
+
+        /// <summary>
+        /// Waits at most the given time for the walk to end, the manager calls it before the cache table goes away.
+        /// </summary>
+        internal virtual void StopCommits(TimeSpan timeout)
+        {
+        }
     }
 }

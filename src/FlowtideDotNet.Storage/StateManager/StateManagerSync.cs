@@ -88,6 +88,11 @@ namespace FlowtideDotNet.Storage.StateManager
         /// </summary>
         internal S3FifoTableSync CacheTable => m_cacheTable ?? throw new InvalidOperationException("Manager must be initialized before getting cache table");
 
+        /// <summary>
+        /// Awaited by every client's background walk before it claims each page, with the client name and page id.
+        /// </summary>
+        internal Func<string, long, Task>? PageWriteHookForTests { get; set; }
+
         public bool Initialized { get; private set; }
 
         internal int LookupCacheSize => 0;
@@ -228,6 +233,12 @@ namespace FlowtideDotNet.Storage.StateManager
             m_cacheTable.RegisterExternalHitCounter(hitCounter);
         }
 
+        internal bool TryPeekCacheEntry(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
+        {
+            Debug.Assert(m_cacheTable != null);
+            return m_cacheTable.TryPeekEntry(key, out entry);
+        }
+
         internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? value)
         {
             Debug.Assert(m_cacheTable != null);
@@ -252,6 +263,22 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
+            if (disposedValue)
+            {
+                throw new ObjectDisposedException(nameof(StateManagerSync));
+            }
+
+            // Every client's background commit must have landed before the checkpoint seals them.
+            List<StateClient> stateClients;
+            lock (m_lock)
+            {
+                stateClients = _stateClients.Values.ToList();
+            }
+            foreach (var stateClient in stateClients)
+            {
+                await stateClient.WaitForCommitAsync();
+            }
+
             byte[] bytes;
             lock (m_lock)
             {
@@ -388,7 +415,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes.Value, bytes.Value.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.StopCommitsTimeout, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
 
                     lock (m_lock)
                     {
@@ -401,7 +428,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     // Temporary tree or similar, return an empty metadata with the same id
                     var clientMetadata = new StateClientMetadata<TMetadata>();
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.StopCommitsTimeout, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
                     lock (m_lock)
                     {
                         _stateClients.Add(client, stateClient);
@@ -420,7 +447,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 lock (m_lock)
                 {
                     var session = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.StopCommitsTimeout, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
                     _stateClients.Add(client, stateClient);
                     return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
                 }
@@ -538,6 +565,20 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 if (disposing)
                 {
+                    // The walks first, they read the cache table and the clients' file caches.
+                    // Every walk is told before any is waited for, so the waits overlap, and the
+                    // wait is bounded, a walk wedged on storage must not hang the teardown.
+                    foreach (var stateClient in _stateClients)
+                    {
+                        stateClient.Value.RequestStopCommits();
+                    }
+                    var stopDeadline = Stopwatch.GetTimestamp();
+                    foreach (var stateClient in _stateClients)
+                    {
+                        var remaining = options.StopCommitsTimeout - Stopwatch.GetElapsedTime(stopDeadline);
+                        stateClient.Value.StopCommits(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero);
+                    }
+
                     // Dispose the cache table first so it stops the cleanup task.
                     // Otherwise an in-flight eviction writes through an already disposed client.
                     // Cleared so a later initialize builds a fresh one, the disposed table's

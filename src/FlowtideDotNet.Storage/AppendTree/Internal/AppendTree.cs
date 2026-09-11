@@ -61,8 +61,8 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             }
             else
             {
+                // The fetch rent is the tree's rent.
                 m_rightNode = (await m_stateClient.GetValue(m_stateClient.Metadata.Right)) as LeafNode<K, V, TKeyContainer, TValueContainer>;
-                m_rightNode!.TryRent();
                 m_rightInternalNodes.Clear();
                 await CreateInternalNodesList(m_stateClient.Metadata.Root);
             }
@@ -107,6 +107,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             {
                 m_stateClient.AddOrUpdate(m_rightNode.Id, m_rightNode);
             }
+            // The right node is rented, the client writes it before it returns.
             return m_stateClient.Commit();
         }
 
@@ -157,7 +158,11 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
                 Left = rootId,
                 Right = rootId
             };
+            // Held like the root InitializeAsync installs, the previous tree is gone with the reset.
+            m_rightNode?.Return();
             m_rightNode = root;
+            m_rightNode.TryRent();
+            m_rightInternalNodes.Clear();
             m_stateClient.AddOrUpdate(rootId, root);
         }
     }
