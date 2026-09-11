@@ -1799,6 +1799,59 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
+        /// A node the queue drops while a walk is in flight was either written at Commit (the queue
+        /// held it) or on the fetch that made it the left node, so the walk never sees it disposed.
+        /// </summary>
+        [Fact]
+        public async Task QueueDequeuePastNodesDuringTheWalkNeverHandsTheWalkADisposedNode()
+        {
+            var manager = CreateReservoirManager("dequeuewalk");
+            await manager.InitializeAsync();
+            var queue = await CreateQueue(manager, pageSizeBytes: 256);
+            for (long i = 0; i < 200; i++)
+            {
+                await queue.Enqueue(i);
+            }
+            using var gate = new WalkGate(manager);
+            await queue.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+
+            // Drains past several nodes while the walk is parked, each drop is Delete then Dispose.
+            for (long i = 0; i < 100; i++)
+            {
+                Assert.Equal(i, await queue.Dequeue());
+            }
+
+            gate.Release();
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            manager.Dispose();
+
+            await manager.InitializeAsync();
+            var recovered = await CreateQueue(manager, pageSizeBytes: 256);
+            Assert.Equal(200, recovered.Count);
+            for (long i = 0; i < 200; i++)
+            {
+                Assert.Equal(i, await recovered.Dequeue());
+            }
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// A walk given up mid-page reaches the table after Dispose, it must see the stop and not a null.
+        /// </summary>
+        [Fact]
+        public async Task DisposedManagerRefusesTableAccessAsDisposed()
+        {
+            var (manager, storage) = await CreateManager("tablegone");
+            var (_, _, keys) = await CreateClientWithPages(manager, storage, "tablegone", 2);
+            manager.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() => manager.TryRentCacheEntryForCommit(keys[0], out _));
+            Assert.Throws<ObjectDisposedException>(() => manager.DeleteFromCache(keys[0]));
+            Assert.Throws<ObjectDisposedException>(() => manager.TryPeekCacheEntry(keys[0], out _));
+        }
+
+        /// <summary>
         /// The checkpoint must hold the state as of Commit even though the tree keeps changing
         /// underneath the background walk.
         /// </summary>

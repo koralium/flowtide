@@ -530,6 +530,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     lock (m_lock)
                     {
                         (m_pending, m_modified) = (m_modified, m_pending);
+                        // The last walk drained it before it cleared the generation this commit was refused on.
+                        Debug.Assert(m_modified.Count == 0);
                         var count = m_pending.Count;
                         var keys = m_generationKeys;
                         if (keys.Length < count)
@@ -1023,15 +1025,31 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     var commitTask = Volatile.Read(ref m_commitTask);
                     if (commitTask != null && !commitTask.IsCompleted)
                     {
-                        commitTask.ContinueWith(static (_, state) => ((SyncStateClient<V, TMetadata>)state!).DisposeResources(), this, TaskScheduler.Default);
+                        commitTask.ContinueWith(static (t, state) => ((SyncStateClient<V, TMetadata>)state!).DisposeAfterWalk(t), this, TaskScheduler.Default);
                     }
                     else
                     {
+                        // Nobody awaits a walk the stop gave up on, its fault ends here.
+                        _ = commitTask?.Exception;
                         DisposeResources();
                     }
                 }
 
                 disposedValue = true;
+            }
+        }
+
+        private void DisposeAfterWalk(Task walk)
+        {
+            // Nobody awaits a walk the stop gave up on, its fault ends here.
+            _ = walk.Exception;
+            try
+            {
+                DisposeResources();
+            }
+            catch
+            {
+                // A teardown fallback, there is nobody left to tell.
             }
         }
 

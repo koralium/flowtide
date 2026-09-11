@@ -168,6 +168,10 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                     }
                     // The fetch rent is the queue's rent, like the slow path.
                     _leftNode = (getNextNodeTask.Result) as QueueNode<V, TValueContainer>;
+                    if (_leftNode == null)
+                    {
+                        throw new InvalidOperationException("Could not fetch the next data page in queue.");
+                    }
                 }
                 _stateClient.Metadata.Left = _leftNode.Id;
                 _stateClient.Metadata.DequeueIndex = 0;
@@ -327,6 +331,10 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                     }
                     // The fetch rent is the queue's rent, like the slow path.
                     _rightNode = (getPreviousNodeTask.Result) as QueueNode<V, TValueContainer>;
+                    if (_rightNode == null)
+                    {
+                        throw new InvalidOperationException("Could not fetch the previous data page in queue.");
+                    }
                 }
                 _stateClient.Metadata.InsertIndex = _rightNode.values.Count;
                 _stateClient.Delete(oldRightNode.Id);

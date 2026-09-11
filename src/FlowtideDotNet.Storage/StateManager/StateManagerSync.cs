@@ -89,6 +89,11 @@ namespace FlowtideDotNet.Storage.StateManager
         internal S3FifoTableSync CacheTable => m_cacheTable ?? throw new InvalidOperationException("Manager must be initialized before getting cache table");
 
         /// <summary>
+        /// The table for the client paths, gone once Dispose ran so a walk given up sees the stop, not a null.
+        /// </summary>
+        private S3FifoTableSync TableForClients => m_cacheTable ?? throw new ObjectDisposedException(nameof(StateManagerSync));
+
+        /// <summary>
         /// Awaited by every client's background walk before it claims each page, with the client name and page id.
         /// </summary>
         internal Func<string, long, Task>? PageWriteHookForTests { get; set; }
@@ -241,65 +246,55 @@ namespace FlowtideDotNet.Storage.StateManager
         internal bool AddOrUpdate<V>(in long key, in V value, in ICacheEvictHandler evictHandler)
             where V : ICacheObject
         {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.Add(key, value, evictHandler);
+            return TableForClients.Add(key, value, evictHandler);
         }
 
         internal bool AddOrUpdate<V>(in long key, in V value, in ICacheEvictHandler evictHandler, out S3FifoCacheEntry entry)
             where V : ICacheObject
         {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.Add(key, value, evictHandler, out entry);
+            return TableForClients.Add(key, value, evictHandler, out entry);
         }
 
         internal Task WaitForNotFullAsync()
         {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.Wait();
+            return TableForClients.Wait();
         }
 
         internal void DeleteFromCache(in long key)
         {
-            Debug.Assert(m_cacheTable != null);
-            m_cacheTable.Delete(key);
+            TableForClients.Delete(key);
         }
 
         internal void ClearCache()
         {
-            Debug.Assert(m_cacheTable != null);
-            m_cacheTable.Clear();
+            TableForClients.Clear();
         }
 
         internal int MaxHeldPages => m_cacheTable?.MaxHeldPages ?? 1;
 
         internal bool TryRentCachedValue(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.TryRentCached(key, out entry);
+            return TableForClients.TryRentCached(key, out entry);
         }
 
         internal void RegisterExternalHitCounter(Func<long> hitCounter)
         {
-            Debug.Assert(m_cacheTable != null);
-            m_cacheTable.RegisterExternalHitCounter(hitCounter);
+            TableForClients.RegisterExternalHitCounter(hitCounter);
         }
 
         internal bool TryPeekCacheEntry(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.TryPeekEntry(key, out entry);
+            return TableForClients.TryPeekEntry(key, out entry);
         }
 
         internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? value)
         {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.TryGetCacheValue(key, out value);
+            return TableForClients.TryGetCacheValue(key, out value);
         }
 
         internal bool TryRentCacheEntryForCommit(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.TryRentForCommit(key, out entry);
+            return TableForClients.TryRentForCommit(key, out entry);
         }
 
         public async ValueTask CheckpointAsync(bool includeIndex = false)
