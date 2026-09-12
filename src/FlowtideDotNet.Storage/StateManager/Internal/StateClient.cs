@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -16,6 +16,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         public abstract void Dispose();
         public abstract ValueTask Reset(bool clearMetadata);
         public abstract long MetadataId { get; }
+        internal virtual bool HasCommitInFlight => false;
 
         /// <summary>
         /// Blocks this client's commits until ResumeCommits, joining an in-flight one for at most

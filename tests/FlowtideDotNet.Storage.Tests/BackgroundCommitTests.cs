@@ -2405,8 +2405,8 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task ResetWithClearMetadataClearsCommitedOnce()
         {
-            var (manager, storage) = await CreateManager("commitedonce", backgroundCommit: false);
-            var (client, _, _) = await CreateClientWithPages(manager, storage, "commitedonce", 1);
+            var (manager, storage) = await CreateManager("commitedonce_reset", backgroundCommit: false);
+            var (client, _, _) = await CreateClientWithPages(manager, storage, "commitedonce_reset", 1);
             await client.Commit().AsTask().WaitAsync(Timeout);
             var syncClient = (SyncStateClient<TestPage, TestMetadata>)client;
             Assert.True(syncClient.CommitedOnceForTests);

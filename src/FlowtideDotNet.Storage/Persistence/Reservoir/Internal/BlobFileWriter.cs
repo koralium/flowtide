@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -129,8 +129,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             {
                 var segmentSize = Math.Max(sizeHint, InitialSegmentSize);
                 var newSegment = new BufferSegment(_memoryPool.Rent(segmentSize), segmentSize);
-                _end.SetNext(newSegment);
+                // Truncate before linking so running index calculates correctly.
                 _end.End = endIndex;
+                _end.SetNext(newSegment);
                 _end = newSegment;
                 endIndex = 0;
             }

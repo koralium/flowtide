@@ -115,7 +115,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     foreach (var stateClient in _stateClients.Values)
                     {
-                        if (!stateClient.WaitForCommitAsync().IsCompleted)
+                        if (stateClient.HasCommitInFlight)
                         {
                             return true;
                         }
@@ -204,9 +204,8 @@ namespace FlowtideDotNet.Storage.StateManager
             if (m_persistentStorage != null)
             {
                 m_persistentStorage.ClearForRestore();
-                m_persistentStorage = null;
             }
-            if (options.PersistentStorage == null)
+            else if (options.PersistentStorage == null)
             {
                 m_persistentStorage = new FileCachePersistentStorage(new FileCacheOptions()
                 {
@@ -259,6 +258,8 @@ namespace FlowtideDotNet.Storage.StateManager
         {
             return TableForClients.Wait();
         }
+
+        internal bool IsOverCapacity => TableForClients.IsOverCapacity;
 
         internal void DeleteFromCache(in long key)
         {

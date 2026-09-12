@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -177,7 +177,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                 _stateClient.Metadata.DequeueIndex = 0;
 
                 _stateClient.Delete(oldLeftNode.Id);
-                oldLeftNode.Dispose();
+                oldLeftNode.Return();
             }
 
             var value = _leftNode.values.Get(_stateClient.Metadata.DequeueIndex);
@@ -203,7 +203,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             _stateClient.Metadata.DequeueIndex = 0; 
 
             _stateClient.Delete(oldLeftNode.Id);
-            oldLeftNode.Dispose();
+            oldLeftNode.Return();
 
             var value = _leftNode.values.Get(_stateClient.Metadata.DequeueIndex);
             _stateClient.Metadata.DequeueIndex++;
@@ -270,6 +270,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             if (_rightNodeUpdated)
             {
                 _stateClient.AddOrUpdate(_rightNode.Id, _rightNode);
+                _rightNodeUpdated = false;
             }
             // The held nodes are rented, the client writes them before it returns.
             return _stateClient.Commit();
@@ -338,7 +339,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                 }
                 _stateClient.Metadata.InsertIndex = _rightNode.values.Count;
                 _stateClient.Delete(oldRightNode.Id);
-                oldRightNode.Dispose();
+                oldRightNode.Return();
             }
             _stateClient.Metadata.InsertIndex--;
             _stateClient.Metadata.QueueSize--;
@@ -363,7 +364,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             _stateClient.Metadata.QueueSize--;
 
             _stateClient.Delete(oldRightNode.Id);
-            oldRightNode.Dispose();
+            oldRightNode.Return();
 
             return _rightNode.values.Get(_stateClient.Metadata.InsertIndex);
         }

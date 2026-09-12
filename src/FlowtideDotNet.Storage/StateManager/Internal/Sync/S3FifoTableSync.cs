@@ -443,7 +443,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         private const int MaxWaitPassesWhenFull = 16;
 
-        private bool IsOverCapacity => Volatile.Read(ref m_count) > Volatile.Read(ref maxSize);
+        internal bool IsOverCapacity => Volatile.Read(ref m_count) > Volatile.Read(ref maxSize);
 
         public async Task Wait()
         {

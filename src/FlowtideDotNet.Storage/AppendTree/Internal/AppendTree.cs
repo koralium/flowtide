@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -76,18 +76,23 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             }
         }
 
-        private async ValueTask CreateInternalNodesList(long id)
+        private async ValueTask CreateInternalNodesList(long pageId)
         {
-            if (m_stateClient.Metadata!.Right == id)
+            var currentId = pageId;
+            while (currentId != m_stateClient.Metadata!.Right)
             {
-                return;
-            }
-            var node = await GetChildNode(id);
-
-            if (node is InternalNode<K, V, TKeyContainer> internalNode)
-            {
-                m_rightInternalNodes.Add(internalNode.Id);
-                await CreateInternalNodesList(internalNode.children[internalNode.children.Count - 1]);
+                var node = await m_stateClient.GetValue(currentId);
+                if (node is InternalNode<K, V, TKeyContainer> internalNode)
+                {
+                    m_rightInternalNodes.Add(internalNode.Id);
+                    currentId = internalNode.children[internalNode.children.Count - 1];
+                    internalNode.Return();
+                }
+                else
+                {
+                    node?.Return();
+                    break;
+                }
             }
         }
 

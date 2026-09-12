@@ -36,12 +36,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         private sealed class CommitGeneration
         {
-            public CommitGeneration(long[] keys, int count, long newPages, bool previousCommitedOnce)
+            public CommitGeneration(long[] keys, int count, long newPages, bool previousCommitedOnce, bool previousMetadataUpdated)
             {
                 Keys = keys;
                 Count = count;
                 NewPages = newPages;
                 PreviousCommitedOnce = previousCommitedOnce;
+                PreviousMetadataUpdated = previousMetadataUpdated;
             }
 
             /// <summary>
@@ -57,6 +58,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             public long NewPages;
 
             public bool PreviousCommitedOnce { get; }
+
+            public bool PreviousMetadataUpdated { get; }
 
             /// <summary>
             /// The first page write that failed, under m_commitEvictLock. Nothing is written after it.
@@ -113,6 +116,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         private CommitGeneration? m_generation;
         private Task? m_commitTask;
+        private bool m_commitTaskObserved;
 
         /// <summary>
         /// Set by a stop or an abandoned drain, the walk gives up at its next page. Cleared by the recovery pause.
@@ -269,7 +273,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         // If it is not removed, we can return directly, otherwise it needs to be readded
                         if (!entry.Removed)
                         {
-                            return false;
+                            return stateManager.IsOverCapacity;
                         }
                     }
                 }
@@ -453,6 +457,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     // Consumed, the reset under this pause must not see the fault again.
                     Volatile.Write(ref m_commitTask, null);
+                    Volatile.Write(ref m_commitTaskObserved, false);
                     // A stop request from an abandoned drain is done with, the client runs on after the reset.
                     Volatile.Write(ref m_stopRequested, false);
                     return;
@@ -467,9 +472,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_commitEvictLock.Release();
         }
 
+        internal override bool HasCommitInFlight => Volatile.Read(ref m_commitTask) is { IsCompletedSuccessfully: false };
+
         internal override Task WaitForCommitAsync()
         {
-            return Volatile.Read(ref m_commitTask) ?? Task.CompletedTask;
+            var commitTask = Volatile.Read(ref m_commitTask);
+            if (commitTask == null)
+            {
+                return Task.CompletedTask;
+            }
+            Volatile.Write(ref m_commitTaskObserved, true);
+            return commitTask;
         }
 
         internal override void RequestStopCommits()
@@ -517,6 +530,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             // The serializer checkpoint and the metadata are taken on the caller's thread, the
             // operator changes the tree metadata again as soon as this returns.
             var previousCommitedOnce = metadata.CommitedOnce;
+            var previousMetadataUpdated = metadata.Metadata?.Updated ?? false;
             Task commitTask;
             await m_commitEvictLock.WaitAsync();
             try
@@ -566,7 +580,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             m_smallGenerations = 0;
                         }
                         m_pending.Keys.CopyTo(keys, 0);
-                        generation = new CommitGeneration(keys, count, Interlocked.Exchange(ref newPages, 0), previousCommitedOnce);
+                        generation = new CommitGeneration(keys, count, Interlocked.Exchange(ref newPages, 0), previousCommitedOnce, previousMetadataUpdated);
                         m_generation = generation;
                     }
 
@@ -585,6 +599,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // The metadata went into the session with the flag set, a failure before
                     // the session commit must take the flag back or recovery reads a page that never landed.
                     metadata.CommitedOnce = previousCommitedOnce;
+                    if (metadata.Metadata != null)
+                    {
+                        metadata.Metadata.Updated = previousMetadataUpdated;
+                    }
                     if (generation != null)
                     {
                         // No walk follows, a fetch of a page left owed reports this instead of writing.
@@ -596,6 +614,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 // Published while the lock is held, so a pause that holds the lock has seen every walk.
                 // Session writes mostly complete synchronously, run inline the walk would stay on the caller's thread.
                 commitTask = Task.Run(() => CommitGenerationAsync(generation, lockHeld: false));
+                Volatile.Write(ref m_commitTaskObserved, false);
                 Volatile.Write(ref m_commitTask, commitTask);
             }
             finally
@@ -723,6 +742,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             catch (Exception e)
             {
                 metadata.CommitedOnce = generation.PreviousCommitedOnce;
+                if (metadata.Metadata != null)
+                {
+                    metadata.Metadata.Updated = generation.PreviousMetadataUpdated;
+                }
                 // A failure past the pages, the session commit, leaves the generation marked too.
                 generation.Failure ??= e;
                 throw;
@@ -1083,46 +1106,63 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             // A structure clearing itself between checkpoints may still have a walk in flight.
             // A failed walk surfaces here, recovery consumed it in PauseCommitsAsync already.
             var commitTask = Volatile.Read(ref m_commitTask);
-            if (commitTask != null)
+            var wasObserved = Volatile.Read(ref m_commitTaskObserved);
+            try
             {
-                await commitTask;
+                if (commitTask != null)
+                {
+                    await commitTask;
+                }
+            }
+            catch when (wasObserved)
+            {
+                // A previously observed walk failure is ignored during reset.
+            }
+            finally
+            {
                 Volatile.Write(ref m_commitTask, null);
-            }
-            lock (m_lock)
-            {
-                foreach (var key in m_modified.Keys)
+                Volatile.Write(ref m_commitTaskObserved, false);
+                lock (m_lock)
                 {
-                    stateManager.DeleteFromCache(key);
+                    foreach (var key in m_modified.Keys)
+                    {
+                        stateManager.DeleteFromCache(key);
+                    }
+                    // A failed commit leaves its generation behind, those pages are reloaded from the recovered store.
+                    foreach (var key in m_pending.Keys)
+                    {
+                        stateManager.DeleteFromCache(key);
+                    }
+                    for (int i = 0; i < _lookupTable.Length; i++)
+                    {
+                        Volatile.Write(ref _lookupTable[i], null);
+                    }
+                    m_fileCache.FreeAll(m_modified.Keys.Concat(m_pending.Keys));
+                    m_modified.Clear();
+                    m_pending.Clear();
+                    m_pendingWriteKey = -1;
+                    m_generation = null;
+                    m_fileCacheVersion.Clear();
                 }
-                // A failed commit leaves its generation behind, those pages are reloaded from the recovered store.
-                foreach (var key in m_pending.Keys)
+                if (clearMetadata)
                 {
-                    stateManager.DeleteFromCache(key);
+                    Metadata = default;
+                    metadata.CommitedOnce = false;
                 }
-                for (int i = 0; i < _lookupTable.Length; i++)
+                else if (!metadata.CommitedOnce)
                 {
-                    Volatile.Write(ref _lookupTable[i], null);
+                    Metadata = default;
                 }
-                m_fileCache.FreeAll(m_modified.Keys.Concat(m_pending.Keys));
-                m_modified.Clear();
-                m_pending.Clear();
-                m_pendingWriteKey = -1;
-                m_generation = null;
-                m_fileCacheVersion.Clear();
-            }
-            if (clearMetadata || !metadata.CommitedOnce)
-            {
-                Metadata = default;
-            }
-            else
-            {
-                var bytes = await SessionRead(metadataId);
-                metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes, bytes.Length);
-            }
-            m_fileCache.ClearTemporaryAllocations();
-            if (options.ValueSerializer != null)
-            {
-                options.ValueSerializer.ClearTemporaryAllocations();
+                else
+                {
+                    var bytes = await SessionRead(metadataId);
+                    metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes, bytes.Length);
+                }
+                m_fileCache.ClearTemporaryAllocations();
+                if (options.ValueSerializer != null)
+                {
+                    options.ValueSerializer.ClearTemporaryAllocations();
+                }
             }
         }
 
