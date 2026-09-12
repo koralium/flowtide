@@ -2205,7 +2205,7 @@ namespace FlowtideDotNet.Storage.Tests
             }
 
             // Faulted commit task must not report settled clean.
-            Assert.True(manager.HasCommitsInFlight);
+            Assert.True(manager.HasCommitFaults);
             manager.Dispose();
         }
 
@@ -2497,6 +2497,99 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
+        /// Key deleted in prior generation can be re-added while commit runs.
+        /// </summary>
+        [Fact]
+        public async Task AddOrUpdateOnKeyDeletedInPriorGenerationSucceeds()
+        {
+            var (manager, storage) = await CreateManager("delete_prior_add");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "delete_prior_add", 4);
+            var key = keys[^1];
+
+            // Commit initial pages to storage.
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            using var gate = new WalkGate(manager);
+            client.Delete(key);
+
+            // Commit delete operation in the background.
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+
+            // Key deleted in prior generation can be re-added.
+            var ex = Record.Exception(() => client.AddOrUpdate(key, new TestPage(99)));
+            gate.Release();
+
+            Assert.Null(ex);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            var fetched = await client.GetValue(key);
+            Assert.NotNull(fetched);
+            Assert.Equal(99, fetched.Value);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Replaced pending page can be updated multiple times.
+        /// </summary>
+        [Fact]
+        public async Task MultipleAddOrUpdateOnReplacedPendingPageSucceeds()
+        {
+            var (manager, storage) = await CreateManager("multi_replace_race");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "multi_replace_race", 4);
+            using var gate = new WalkGate(manager);
+            var key = keys[^1];
+
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+
+            client.Delete(key);
+            var page = new TestPage(101);
+            client.AddOrUpdate(key, page);
+
+            // Replaced pending page can be updated multiple times.
+            page.Value = 102;
+            var ex = Record.Exception(() => client.AddOrUpdate(key, page));
+            gate.Release();
+
+            Assert.Null(ex);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            var fetched = await client.GetValue(key);
+            Assert.NotNull(fetched);
+            Assert.Equal(102, fetched.Value);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Fetching replaced page returns new instance without walk.
+        /// </summary>
+        [Fact]
+        public async Task GetValueOnReplacedPageReturnsNewValueWithoutEagerCommit()
+        {
+            var (manager, storage) = await CreateManager("get_replaced_page");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "get_replaced_page", 4);
+            using var gate = new WalkGate(manager);
+            var key = keys[^1];
+
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+
+            client.Delete(key);
+            client.AddOrUpdate(key, new TestPage(777));
+
+            // Fetching replaced page returns new instance without walk.
+            var fetched = await client.GetValue(key);
+            Assert.NotNull(fetched);
+            Assert.Equal(777, fetched.Value);
+
+            gate.Release();
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            manager.Dispose();
+        }
+
+        /// <summary>
         /// Failed session commit must not increment manager page commits counter.
         /// </summary>
         [Fact]
@@ -2528,7 +2621,7 @@ namespace FlowtideDotNet.Storage.Tests
             await client.Commit().AsTask().WaitAsync(Timeout);
 
             // Reset must discard unobserved background commit failure and succeed.
-            await client.Reset(true).AsTask().WaitAsync(Timeout);
+            await client.Reset(true, discardErrors: true).AsTask().WaitAsync(Timeout);
 
             manager.Dispose();
         }
@@ -2545,11 +2638,35 @@ namespace FlowtideDotNet.Storage.Tests
             await session.Write(42, new SerializableObject(new byte[] { 1, 2, 3 }));
             await session.Commit();
 
-            // Cleared storage for restore must not retain written pages.
-            storage.ClearForRestore();
+            // Reset store to empty state must not retain written pages.
+            await storage.ResetAsync();
             var found = storage.TryGetValue(42, out _);
             Assert.False(found);
             storage.Dispose();
+        }
+
+        /// <summary>
+        /// Deleted page in pending generation fetched during walk returns null.
+        /// </summary>
+        [Fact]
+        public async Task DeletedPendingPageFetchedDuringBackgroundCommitReturnsNull()
+        {
+            var (manager, storage) = await CreateManager("pending_delete_fetch");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "pending_delete_fetch", 2);
+            using var gate = new WalkGate(manager);
+            var key = keys[^1];
+
+            client.Delete(key);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+
+            // Deleted page in pending generation fetched during walk returns null.
+            var fetched = await client.GetValue(key);
+            Assert.Null(fetched);
+
+            gate.Release();
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            manager.Dispose();
         }
     }
 }

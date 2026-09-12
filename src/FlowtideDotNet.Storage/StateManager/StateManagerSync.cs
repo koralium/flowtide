@@ -126,6 +126,27 @@ namespace FlowtideDotNet.Storage.StateManager
         }
 
         /// <summary>
+        /// True if any state client has a commit fault.
+        /// </summary>
+        public bool HasCommitFaults
+        {
+            get
+            {
+                lock (m_lock)
+                {
+                    foreach (var stateClient in _stateClients.Values)
+                    {
+                        if (stateClient.HasCommitFault)
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
         /// Tells every walk to give up at its next page, for a caller whose own drain wait ran out.
         /// </summary>
         public void RequestStopCommits()

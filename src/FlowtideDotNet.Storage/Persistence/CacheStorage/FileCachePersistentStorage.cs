@@ -18,11 +18,13 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
     public class FileCachePersistentStorage : IPersistentStorage
     {
         private readonly bool _ignoreDispose;
+        private readonly FileCacheOptions _fileCacheOptions;
         private long _version;
         internal FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
 
         public FileCachePersistentStorage(FileCacheOptions fileCacheOptions, bool ignoreDispose = false)
         {
+            _fileCacheOptions = fileCacheOptions;
             // Start at version 1, since version 0 is reserved for empty state
             _version = 1;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, "persitent", GlobalMemoryManager.Instance);
@@ -75,6 +77,10 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public virtual ValueTask ResetAsync()
         {
+            // Reset file cache to an empty state.
+            m_fileCache.Dispose();
+            m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(_fileCacheOptions, "persitent", GlobalMemoryManager.Instance);
+            _version = 1;
             return ValueTask.CompletedTask;
         }
 

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         ValueTask<V?> GetValue(in long key);
         ValueTask Commit();
         void Delete(in long key);
-        ValueTask Reset(bool clearMetadata);
+        ValueTask Reset(bool clearMetadata, bool discardErrors = false);
         int BPlusTreePageSize { get; }
         int BPlusTreePageSizeBytes { get; }
 
