@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -302,7 +302,7 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
-            if (disposedValue)
+            if (disposedValue || m_commitsAbandoned)
             {
                 throw new ObjectDisposedException(nameof(StateManagerSync));
             }
@@ -315,7 +315,18 @@ namespace FlowtideDotNet.Storage.StateManager
             }
             foreach (var stateClient in stateClients)
             {
-                await stateClient.WaitForCommitAsync();
+                try
+                {
+                    await stateClient.WaitForCommitAsync();
+                }
+                catch (OperationCanceledException)
+                {
+                    throw new ObjectDisposedException(nameof(StateManagerSync), "The checkpoint was abandoned on a stop request.");
+                }
+            }
+            if (disposedValue || m_commitsAbandoned)
+            {
+                throw new ObjectDisposedException(nameof(StateManagerSync));
             }
 
             byte[] bytes;
@@ -515,20 +526,20 @@ namespace FlowtideDotNet.Storage.StateManager
         public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null, long? checkpointVersion = null)
         {
             bool newMetadata = false;
-            Setup();
-            Debug.Assert(m_cacheTable != null);
-            Debug.Assert(m_persistentStorage != null);
-            Debug.Assert(options != null);
 
             // Pause eviction for the whole reset. An in-flight eviction could otherwise write a
             // stale page after the reset and route later reads to it.
             // The instance is captured, the finally must resume the table it paused.
             var cacheTable = m_cacheTable;
-            await cacheTable.PauseEvictionAsync();
+            if (cacheTable != null)
+            {
+                await cacheTable.PauseEvictionAsync();
+            }
+
             // Drain in-flight client commits and hold new ones out for the whole reset.
-            // A detached parallel-mode checkpoint commit is not joined by the engine's
-            // block-completion wait, and one overlapping the revert would persist
-            // aborted-epoch pages into the recovered store.
+            // A recovery that starts under a walk must join the walk before it resets the
+            // sessions, or a page the walk writes afterwards lands in the new epoch's writer
+            // and the next checkpoint seals it over the checkpointed one.
             var pausedClients = new List<StateClient>();
             // A snapshot, a teardown that gave up waiting can clear the dictionary meanwhile.
             List<StateClient> stateClients;
@@ -544,9 +555,14 @@ namespace FlowtideDotNet.Storage.StateManager
                     pausedClients.Add(stateClient);
                 }
 
+                Setup();
+                Debug.Assert(m_cacheTable != null);
+                Debug.Assert(m_persistentStorage != null);
+                Debug.Assert(options != null);
+
                 // Returns the cache rents, the clients are reset below so no lookup handle
                 // keeps serving a cleared entry.
-                cacheTable.ClearAndReturnRents();
+                m_cacheTable.ClearAndReturnRents();
                 await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
 
                 // Check that metadata exist, also that the checkpoint version is larger than 0
@@ -590,7 +606,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     pausedClient.ResumeCommits();
                 }
-                cacheTable.ResumeEviction();
+                cacheTable?.ResumeEviction();
             }
 
             logger.LogDebug("State manager initialized, requested version: {requestedVersion}, recovered version: {recoveredVersion}, new metadata: {newMetadata}, reset {stateClientCount} state clients", checkpointVersion, LastCompletedCheckpointVersion, newMetadata, _stateClients.Count);

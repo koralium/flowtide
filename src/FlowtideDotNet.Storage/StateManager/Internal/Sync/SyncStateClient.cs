@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -521,6 +521,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             await m_commitEvictLock.WaitAsync();
             try
             {
+                lock (m_lock)
+                {
+                    if (m_generation != null)
+                    {
+                        throw new InvalidOperationException(m_generation.Failure != null
+                            ? $"State client '{name}' must be reset after its last commit failed."
+                            : $"State client '{name}' already has a commit in flight.");
+                    }
+                }
                 CommitGeneration? generation = null;
                 try
                 {
@@ -725,7 +734,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             // Faulted, not returned, a checkpoint waiting on this walk must not take it as landed.
             if (Volatile.Read(ref m_stopRequested))
             {
-                throw new ObjectDisposedException($"State client '{name}'", "The commit was given up on a stop request.");
+                throw new OperationCanceledException("The commit was given up on a stop request.");
             }
         }
 
@@ -1125,117 +1134,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 return false;
             }
+            var wroteAny = false;
             try
             {
-                EvictInternal(valuesToEvict, isCleanup);
+                foreach (var value in valuesToEvict)
+                {
+                    wroteAny |= EvictPage(value.Item1);
+                }
             }
             finally
             {
                 m_commitEvictLock.Release();
             }
-            return true;
-        }
 
-        private void EvictInternal(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
-        {
-            Debug.Assert(options.ValueSerializer != null);
-            // Flush is an fsync, a batch of clean or already spilled pages must not pay for one.
-            var wroteAny = false;
-            foreach (var value in valuesToEvict)
-            {
-                var entry = value.Item1;
-                var modLookup = entry.Key % LookupTableSize;
-                bool isModified;
-                long val;
-                lock (m_lock)
-                {
-                    // A page owing its checkpoint write spills at that version whatever the new
-                    // generation says about it, the commit reads the spill back.
-                    if (m_pending.TryGetValue(entry.Key, out var pending))
-                    {
-                        isModified = true;
-                        val = pending.Sequence;
-                    }
-                    else if (m_modified.TryGetValue(entry.Key, out var modified))
-                    {
-                        isModified = true;
-                        val = modified.Sequence;
-                    }
-                    else
-                    {
-                        isModified = false;
-                        val = default;
-                    }
-                    if (ReferenceEquals(_lookupTable[modLookup], entry))
-                    {
-                        Volatile.Write(ref _lookupTable[modLookup], null);
-                    }
-                }
-                if (!useReadCache)
-                {
-                    // Skip writing data if we dont use read cache and its not modified or deleted
-                    if (isModified == false || val == -1)
-                    {
-                        continue;
-                    }
-                }
-                else
-                {
-                    if (isModified)
-                    {
-                        if (val == -1)
-                        {
-                            // Deleted
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        val = -2;
-                    }
-                }
-
-                if (m_fileCacheVersion.TryGetValue(entry.Key, out var storedVersion) && storedVersion == val)
-                {
-                    continue;
-                }
-                entry.Value.EnterWriteLock();
-                var sw = ValueStopwatch.StartNew();
-                try
-                {
-                    // Must lock the cache entry here since it can be deleted and disposed
-                    // So we check if it is already removed from the cache, then we skip serialization
-                    lock (entry)
-                    {
-                        if (!entry.Removed)
-                        {
-                            // Record the version entry before the spill write.
-                            // A surviving version entry then always points at live spill data,
-                            // so a read never hits freed data and throws Segment not found.
-                            m_fileCacheVersion[entry.Key] = val;
-                            try
-                            {
-                                m_fileCache.Write(entry.Key, new SerializableObject(entry.Value, options.ValueSerializer));
-                                wroteAny = true;
-                            }
-                            catch
-                            {
-                                // A failed spill write must not leave a version entry behind.
-                                m_fileCacheVersion.TryRemove(new KeyValuePair<long, long>(entry.Key, val));
-                                throw;
-                            }
-                        }
-                    }
-                }
-                finally
-                {
-                    entry.Value.ExitWriteLock();
-                }
-                if (m_temporaryWriteMsHistogram != null)
-                {
-                    m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
-                }
-            }
             if (wroteAny)
             {
                 m_fileCache.Flush();
@@ -1249,6 +1160,105 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     options.ValueSerializer.ClearTemporaryAllocations();
                 }
             }
+            return true;
+        }
+
+        private bool EvictPage(S3FifoCacheEntry entry)
+        {
+            Debug.Assert(options.ValueSerializer != null);
+            var modLookup = entry.Key % LookupTableSize;
+            bool isModified;
+            long val;
+            lock (m_lock)
+            {
+                // A page owing its checkpoint write spills at that version whatever the new
+                // generation says about it, the commit reads the spill back.
+                if (m_pending.TryGetValue(entry.Key, out var pending))
+                {
+                    isModified = true;
+                    val = pending.Sequence;
+                }
+                else if (m_modified.TryGetValue(entry.Key, out var modified))
+                {
+                    isModified = true;
+                    val = modified.Sequence;
+                }
+                else
+                {
+                    isModified = false;
+                    val = default;
+                }
+                if (ReferenceEquals(_lookupTable[modLookup], entry))
+                {
+                    Volatile.Write(ref _lookupTable[modLookup], null);
+                }
+            }
+            if (!useReadCache)
+            {
+                // Skip writing data if we dont use read cache and its not modified or deleted
+                if (isModified == false || val == -1)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                if (isModified)
+                {
+                    if (val == -1)
+                    {
+                        // Deleted
+                        return false;
+                    }
+                }
+                else
+                {
+                    val = -2;
+                }
+            }
+
+            if (m_fileCacheVersion.TryGetValue(entry.Key, out var storedVersion) && storedVersion == val)
+            {
+                return false;
+            }
+            entry.Value.EnterWriteLock();
+            var sw = ValueStopwatch.StartNew();
+            var wrote = false;
+            try
+            {
+                // Must lock the cache entry here since it can be deleted and disposed
+                // So we check if it is already removed from the cache, then we skip serialization
+                lock (entry)
+                {
+                    if (!entry.Removed)
+                    {
+                        // Record the version entry before the spill write.
+                        // A surviving version entry then always points at live spill data,
+                        // so a read never hits freed data and throws Segment not found.
+                        m_fileCacheVersion[entry.Key] = val;
+                        try
+                        {
+                            m_fileCache.Write(entry.Key, new SerializableObject(entry.Value, options.ValueSerializer));
+                            wrote = true;
+                        }
+                        catch
+                        {
+                            // A failed spill write must not leave a version entry behind.
+                            m_fileCacheVersion.TryRemove(new KeyValuePair<long, long>(entry.Key, val));
+                            throw;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                entry.Value.ExitWriteLock();
+            }
+            if (m_temporaryWriteMsHistogram != null)
+            {
+                m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+            }
+            return wrote;
         }
 
         public async Task InitializeSerializerAsync()

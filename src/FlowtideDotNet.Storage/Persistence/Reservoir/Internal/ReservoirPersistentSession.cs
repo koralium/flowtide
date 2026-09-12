@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -199,10 +199,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public async Task Write(long key, SerializableObject value)
         {
+            var fileWriter = _fileWriter;
+            var sequence = fileWriter.Write(key, value);
             BlobFileWriter? finished = null;
             lock (_lock)
             {
-                var sequence = _fileWriter.Write(key, value);
                 // If the page is in deleted pages, remove it from the set
                 // Since it has been written again
                 if (_deletedPages.Contains(key))
@@ -214,14 +215,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     throw new FlowtidePersistentStorageException($"Key '{key}' has already been written.");
                 }
                 // Add info to lookup so reads can find the written data before its flushed to storage
-                _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence, file = _fileWriter });
+                _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence, file = fileWriter });
 
-                if (_fileWriter.WrittenLength >= _maxFileSize)
+                if (fileWriter.WrittenLength >= _maxFileSize)
                 {
                     FileRollHookForTests?.Invoke();
                     // Finish shifts the segment indices a concurrent read measures its bytes with, so it stays under the lock.
-                    _fileWriter.Finish();
-                    finished = _fileWriter;
+                    fileWriter.Finish();
+                    finished = fileWriter;
                     SetupFileWriter();
                 }
             }
