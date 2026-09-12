@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -17,6 +17,7 @@ using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Storage.AppendTree.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
 
@@ -258,5 +259,64 @@ namespace FlowtideDotNet.Storage.Tests.Append
 
             Assert.Equal(0, counter);
         }
+
+        /// <summary>
+        /// Iterator dispose must return rented leaf node reference.
+        /// </summary>
+        [Fact]
+        public async Task IteratorDisposeReleasesRentedNodeWhenNotEnumerated()
+        {
+            var tree = await CreateTree(bucketSize: 2);
+            for (int i = 0; i < 10; i++)
+            {
+                await tree.Append(i, i);
+            }
+            var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+            iterator.Dispose();
+
+            // Iterator dispose must return rented leaf node reference.
+            var appendTree = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            var node = await appendTree.FindLeafNode(0, new BPlusTreeListComparer<long>(new LongComparer()));
+            try
+            {
+                Assert.Equal(2, node.RentCount);
+            }
+            finally
+            {
+                node.Return();
+            }
+        }
+
+        /// <summary>
+        /// Multiple enumerations must not dispose active leaf node.
+        /// </summary>
+        [Fact]
+        public async Task IteratorMultipleEnumerationDoesNotDisposeCachedNode()
+        {
+            var tree = await CreateTree(bucketSize: 2);
+            for (int i = 0; i < 10; i++)
+            {
+                await tree.Append(i, i);
+            }
+            var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+
+            var e1 = iterator.GetAsyncEnumerator();
+            var e2 = iterator.GetAsyncEnumerator();
+            await e1.DisposeAsync();
+            await e2.DisposeAsync();
+
+            // Multiple enumerations must not dispose active leaf node.
+            var it2 = tree.CreateIterator();
+            await it2.Seek(0);
+            var count = 0;
+            await foreach (var _ in it2)
+            {
+                count++;
+            }
+            Assert.Equal(10, count);
+        }
     }
 }
+

@@ -2668,5 +2668,25 @@ namespace FlowtideDotNet.Storage.Tests
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
             manager.Dispose();
         }
+
+        /// <summary>
+        /// ClearForRestore resets existing persistent pages before restore.
+        /// </summary>
+        [Fact]
+        public async Task ClearForRestoreRemovesExistingPagesBeforeRestore()
+        {
+            var storage = new FileCachePersistentStorage(new FileCacheOptions() { DirectoryPath = "./data/bgcommit_clear_restore_bug/persist" });
+            await storage.InitializeAsync(new StorageInitializationMetadata("clear_restore_bug_test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+            var session = storage.CreateSession();
+            await session.Write(42, new SerializableObject(new byte[] { 1, 2, 3 }));
+            await session.Commit();
+
+            // ClearForRestore resets existing persistent pages before restore.
+            storage.ClearForRestore();
+            var found = storage.TryGetValue(42, out _);
+            Assert.False(found);
+            storage.Dispose();
+        }
     }
 }
+

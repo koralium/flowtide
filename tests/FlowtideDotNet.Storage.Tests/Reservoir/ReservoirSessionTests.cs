@@ -125,5 +125,65 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 Assert.Equal(new byte[] { 2 }, val2.ToArray());
             }
         }
+
+        /// <summary>
+        /// Concurrent writes during file roll must not throw.
+        /// </summary>
+        [Fact]
+        public async Task ConcurrentWritesDoNotThrowDuringFileRolling()
+        {
+            var provider = new TestDataProvider();
+            var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider,
+                MaxFileSize = 100
+            });
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("roll_race", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+
+            var session = persistentStorage.CreateSession();
+            var reservoirSession = Assert.IsType<ReservoirPersistentSession>(session);
+
+            var rollEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var secondWriteEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            reservoirSession.FileRollHookForTests = () =>
+            {
+                rollEntered.TrySetResult(true);
+                secondWriteEntered.Task.Wait();
+            };
+
+            var firstWrite = Task.Run(async () =>
+            {
+                await session.Write(1, new SerializableObject(new byte[150]));
+            });
+
+            await rollEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            var secondWrite = Task.Run(async () =>
+            {
+                await session.Write(2, new SerializableObject(new byte[50]));
+            });
+
+            await Task.Delay(50);
+            secondWriteEntered.TrySetResult(true);
+
+            // Concurrent writes during file roll must not throw.
+            await Task.WhenAll(firstWrite, secondWrite);
+        }
+
+        /// <summary>
+        /// BlobFileWriter finish must truncate last segment end index.
+        /// </summary>
+        [Fact]
+        public void BlobFileWriterFinishTruncatesLastSegmentEndIndex()
+        {
+            var writer = new BlobFileWriter(_ => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            writer.Write(1, new SerializableObject(new byte[] { 1, 2, 3 }));
+            writer.Finish();
+
+            // BlobFileWriter finish must truncate last segment end index.
+            Assert.Equal(writer.CurrentIndex, writer.CurrentSegment.End);
+        }
     }
 }
+
