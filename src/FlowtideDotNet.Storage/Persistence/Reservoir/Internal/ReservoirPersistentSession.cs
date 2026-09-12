@@ -24,6 +24,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private BlobFileWriter _fileWriter;
 
         private readonly object _lock = new object();
+        private readonly object _writeLock = new object();
         private readonly ReservoirPersistentStorage _persistentStorage;
         private readonly IMemoryAllocator _memoryAllocator;
         private readonly HashSet<long> _deletedPages;
@@ -199,31 +200,34 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public async Task Write(long key, SerializableObject value)
         {
-            var fileWriter = _fileWriter;
-            var sequence = fileWriter.Write(key, value);
             BlobFileWriter? finished = null;
-            lock (_lock)
+            lock (_writeLock)
             {
-                // If the page is in deleted pages, remove it from the set
-                // Since it has been written again
-                if (_deletedPages.Contains(key))
+                var fileWriter = _fileWriter;
+                var sequence = fileWriter.Write(key, value);
+                lock (_lock)
                 {
-                    _deletedPages.Remove(key);
-                }
-                if (_persistentStorage.TemporaryLocationExists(key))
-                {
-                    throw new FlowtidePersistentStorageException($"Key '{key}' has already been written.");
-                }
-                // Add info to lookup so reads can find the written data before its flushed to storage
-                _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence, file = fileWriter });
+                    // If the page is in deleted pages, remove it from the set
+                    // Since it has been written again
+                    if (_deletedPages.Contains(key))
+                    {
+                        _deletedPages.Remove(key);
+                    }
+                    if (_persistentStorage.TemporaryLocationExists(key))
+                    {
+                        throw new FlowtidePersistentStorageException($"Key '{key}' has already been written.");
+                    }
+                    // Add info to lookup so reads can find the written data before its flushed to storage
+                    _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence, file = fileWriter });
 
-                if (fileWriter.WrittenLength >= _maxFileSize)
-                {
-                    FileRollHookForTests?.Invoke();
-                    // Finish shifts the segment indices a concurrent read measures its bytes with, so it stays under the lock.
-                    fileWriter.Finish();
-                    finished = fileWriter;
-                    SetupFileWriter();
+                    if (fileWriter.WrittenLength >= _maxFileSize)
+                    {
+                        FileRollHookForTests?.Invoke();
+                        // Finish shifts the segment indices a concurrent read measures its bytes with, so it stays under the lock.
+                        fileWriter.Finish();
+                        finished = fileWriter;
+                        SetupFileWriter();
+                    }
                 }
             }
 

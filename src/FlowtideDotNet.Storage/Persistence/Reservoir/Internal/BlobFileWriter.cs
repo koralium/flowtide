@@ -154,6 +154,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 // add the last offset
                 _pageOffset.Add(WrittenLength);
                 _finished = true;
+                // Truncate final segment before calculating running indices.
+                _end.End = endIndex;
 
                 _pageIdsSegment.UpdateMemory_Unsafe(_pageIds.SlicedMemory);
                 _pageOffsetsSegment.UpdateMemory_Unsafe(_pageOffset.SlicedMemory);

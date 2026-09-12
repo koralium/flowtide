@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -16,10 +16,12 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 {
     internal class FileCachePersistentSession : IPersistentStorageSession
     {
+        private readonly FileCachePersistentStorage storage;
         private readonly FlowtideDotNet.Storage.FileCache.FileCache fileCache;
 
-        public FileCachePersistentSession(FlowtideDotNet.Storage.FileCache.FileCache fileCache)
+        public FileCachePersistentSession(FileCachePersistentStorage storage, FlowtideDotNet.Storage.FileCache.FileCache fileCache)
         {
+            this.storage = storage;
             this.fileCache = fileCache;
         }
 
@@ -35,6 +37,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public virtual Task Delete(long key)
         {
+            storage.OnKeyDeleted(key);
             fileCache.Free(key);
             return Task.CompletedTask;
         }
@@ -56,6 +59,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public virtual Task Write(long key, SerializableObject value)
         {
+            storage.OnKeyWritten(key);
             fileCache.Write(key, value);
             fileCache.Flush();
             return Task.CompletedTask;

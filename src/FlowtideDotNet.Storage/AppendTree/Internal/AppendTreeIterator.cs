@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -92,6 +92,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         private readonly AppendTree<K, V, TKeyContainer, TValueContainer> _tree;
         private LeafNode<K, V, TKeyContainer, TValueContainer>? _node;
         private int? _index;
+        private bool _enumeratorCreated;
 
         public AppendTreeIterator(AppendTree<K, V, TKeyContainer, TValueContainer> tree)
         {
@@ -103,6 +104,21 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             if (_node == null || _index == null)
             {
                 throw new NotSupportedException("You must call seek before iterating");
+            }
+            if (_enumeratorCreated)
+            {
+                // Rent additional reference to prevent double-return on multiple enumerations.
+                if (_node.Id != _tree.m_stateClient.Metadata!.Right)
+                {
+                    if (!_node.TryRent())
+                    {
+                        throw new InvalidOperationException("Cannot rent leaf node");
+                    }
+                }
+            }
+            else
+            {
+                _enumeratorCreated = true;
             }
             return new Enumerator(_tree, _node, _index.Value);
         }
@@ -116,6 +132,12 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
         private async ValueTask Seek_Slow(K key, IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
+            if (!_enumeratorCreated && _node != null && _node.Id != _tree.m_stateClient.Metadata!.Right)
+            {
+                // Release previously rented leaf node before seeking next.
+                _node.Return();
+            }
+            _enumeratorCreated = false;
             _node = await _tree.FindLeafNode(key, searchComparer);
             _node.EnterWriteLock();
             var i = searchComparer.FindIndex(key, _node.keys);
@@ -129,6 +151,12 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
         public void Dispose()
         {
+            if (!_enumeratorCreated && _node != null && _node.Id != _tree.m_stateClient.Metadata!.Right)
+            {
+                // Release rented leaf node when abandoned before enumeration.
+                _node.Return();
+                _node = null;
+            }
         }
     }
 }
