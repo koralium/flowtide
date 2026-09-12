@@ -2431,5 +2431,125 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.True(isFull);
             manager.Dispose();
         }
+
+        /// <summary>
+        /// Faulted background commit must not remain in flight.
+        /// </summary>
+        [Fact]
+        public async Task FaultedCommitDoesNotReportAsInFlight()
+        {
+            var (manager, storage) = await CreateManager("inflight_fault");
+            var (client, session, _) = await CreateClientWithPages(manager, storage, "inflight_fault", 4);
+
+            session.FaultCommit = true;
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await Assert.ThrowsAsync<IOException>(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout));
+
+            // Faulted background commit must not remain in flight.
+            Assert.False(manager.HasCommitsInFlight);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Deleted page fetched after eviction must return null.
+        /// </summary>
+        [Fact]
+        public async Task DeletedPageFetchedAfterEvictionReturnsNull()
+        {
+            var (manager, storage) = await CreateManager("resurrect_test", backgroundCommit: false);
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "resurrect_test", 1);
+            var key = keys[0];
+
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            client.Delete(key);
+
+            // Deleted page fetched after eviction must return null.
+            var fetched = await client.GetValue(key);
+            Assert.Null(fetched);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Deleted pending page can be re-added before write completes.
+        /// </summary>
+        [Fact]
+        public async Task AddOrUpdateAfterDeleteOnPendingPageSucceeds()
+        {
+            var (manager, storage) = await CreateManager("delete_add_race");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "delete_add_race", 4);
+            using var gate = new WalkGate(manager);
+            var key = keys[^1];
+
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+
+            client.Delete(key);
+
+            // Deleted pending page can be re-added before write completes.
+            var ex = Record.Exception(() => client.AddOrUpdate(key, new TestPage(42)));
+            gate.Release();
+
+            Assert.Null(ex);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Failed session commit must not increment manager page commits counter.
+        /// </summary>
+        [Fact]
+        public async Task SessionCommitFailureRollsBackMetadataCounters()
+        {
+            var (manager, storage) = await CreateManager("rollback_counters");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "rollback_counters", 4);
+            var pageCommitsBefore = manager.PageCommits;
+
+            session.FaultCommit = true;
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await Assert.ThrowsAsync<IOException>(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout));
+
+            // Failed session commit must not increment manager page commits counter.
+            Assert.Equal(pageCommitsBefore, manager.PageCommits);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Reset must discard unobserved background commit failure and succeed.
+        /// </summary>
+        [Fact]
+        public async Task ResetDiscardsUnobservedBackgroundCommitFailure()
+        {
+            var (manager, storage) = await CreateManager("reset_unobserved_fail");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "reset_unobserved_fail", 2);
+
+            session.FaultingKeys[keys[0]] = 1;
+            await client.Commit().AsTask().WaitAsync(Timeout);
+
+            // Reset must discard unobserved background commit failure and succeed.
+            await client.Reset(true).AsTask().WaitAsync(Timeout);
+
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Cleared storage for restore must not retain written pages.
+        /// </summary>
+        [Fact]
+        public async Task ClearForRestoreResetsPersistedPages()
+        {
+            var storage = new FileCachePersistentStorage(new FileCacheOptions() { DirectoryPath = "./data/bgcommit_clear_restore/persist" });
+            await storage.InitializeAsync(new StorageInitializationMetadata("clear_restore_test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+            var session = storage.CreateSession();
+            await session.Write(42, new SerializableObject(new byte[] { 1, 2, 3 }));
+            await session.Commit();
+
+            // Cleared storage for restore must not retain written pages.
+            storage.ClearForRestore();
+            var found = storage.TryGetValue(42, out _);
+            Assert.False(found);
+            storage.Dispose();
+        }
     }
 }
