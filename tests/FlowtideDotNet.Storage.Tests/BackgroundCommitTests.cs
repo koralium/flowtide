@@ -226,7 +226,29 @@ namespace FlowtideDotNet.Storage.Tests
 
             public void FreeAll(IEnumerable<long> keys) => _inner.FreeAll(keys);
 
-            public void Flush() => _inner.Flush();
+            private readonly TaskCompletionSource _flushEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            private ManualResetEventSlim? _flushGate;
+
+            /// <summary>
+            /// Blocks the first Flush inside the call, the caller keeps whatever it holds.
+            /// </summary>
+            public void ArmFlushGate(ManualResetEventSlim gate)
+            {
+                Volatile.Write(ref _flushGate, gate);
+            }
+
+            public Task FlushEntered => _flushEntered.Task;
+
+            public void Flush()
+            {
+                var gate = Interlocked.Exchange(ref _flushGate, null);
+                if (gate != null)
+                {
+                    _flushEntered.TrySetResult();
+                    gate.Wait();
+                }
+                _inner.Flush();
+            }
 
             public void ClearTemporaryAllocations() => _inner.ClearTemporaryAllocations();
 
@@ -1569,7 +1591,9 @@ namespace FlowtideDotNet.Storage.Tests
             }
             var failure = await Record.ExceptionAsync(() => walk.WaitAsync(Timeout));
 
-            Assert.IsType<ObjectDisposedException>(failure);
+            // A stop is a cancellation, the torn-down table throws disposed, so the two stay apart.
+            Assert.IsType<OperationCanceledException>(failure);
+            Assert.Equal(0, session.WriteCount(keys[0]));
         }
 
         /// <summary>
@@ -1759,9 +1783,12 @@ namespace FlowtideDotNet.Storage.Tests
             await client.Commit().AsTask().WaitAsync(Timeout);
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
 
-            // Nothing changed, an idle checkpoint.
-            await client.Commit().AsTask().WaitAsync(Timeout);
-            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            // A run of idle checkpoints, longer than the shrink hysteresis.
+            for (int i = 0; i < 10; i++)
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            }
 
             for (int i = 0; i < count; i++)
             {
@@ -1849,6 +1876,174 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.Throws<ObjectDisposedException>(() => manager.TryRentCacheEntryForCommit(keys[0], out _));
             Assert.Throws<ObjectDisposedException>(() => manager.DeleteFromCache(keys[0]));
             Assert.Throws<ObjectDisposedException>(() => manager.TryPeekCacheEntry(keys[0], out _));
+        }
+
+        // Sixth review, one red test each.
+
+        /// <summary>
+        /// Review 6: a recovery that starts under a walk must join the walk before it resets the
+        /// sessions, or a page the walk writes afterwards lands in the new epoch's writer and the
+        /// next checkpoint seals it over the checkpointed one.
+        /// </summary>
+        [Fact]
+        public async Task RecoveryJoinsTheWalkBeforeItResetsTheSessions()
+        {
+            var (manager, storage) = await CreateManager("resetorder", reservoir: true);
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "resetorder", 4);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            // The next epoch changes two pages, the walk is parked at each of them in turn.
+            foreach (var (key, value) in new[] { (keys[0], 42), (keys[1], 43) })
+            {
+                var page = await client.GetValue(key).AsTask().WaitAsync(Timeout);
+                page!.Value = value;
+                client.AddOrUpdate(key, page);
+                page.Return();
+            }
+            var page0Reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var page0Go = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var page1Reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var page1Go = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            manager.PageWriteHookForTests = async (_, key) =>
+            {
+                if (key == keys[0])
+                {
+                    page0Reached.TrySetResult();
+                    await page0Go.Task;
+                }
+                else if (key == keys[1])
+                {
+                    page1Reached.TrySetResult();
+                    await page1Go.Task;
+                }
+            };
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await page0Reached.Task.WaitAsync(Timeout);
+
+            // A failure recovery starts while the walk is parked, then the walk writes one page and is given up.
+            var recovery = manager.InitializeAsync();
+            page0Go.SetResult();
+            await page1Reached.Task.WaitAsync(Timeout);
+            manager.RequestStopCommits();
+            page1Go.SetResult();
+            await recovery.WaitAsync(Timeout);
+            manager.PageWriteHookForTests = null;
+
+            // The recovered epoch changes a third page only and checkpoints.
+            var page2 = await client.GetValue(keys[2]).AsTask().WaitAsync(Timeout);
+            page2!.Value = 44;
+            client.AddOrUpdate(keys[2], page2);
+            page2.Return();
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            manager.Dispose();
+            await manager.InitializeAsync().WaitAsync(Timeout);
+            Assert.Equal(0, ReadPersisted(storage, keys[0]));
+            Assert.Equal(44, ReadPersisted(storage, keys[2]));
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Review 6: a fetch of a page that owes its write must not queue behind the eviction
+        /// pass's flush, the lock is per page for the walk and must be for the pass too.
+        /// </summary>
+        [Fact]
+        public async Task FetchOfAnOwedPageDoesNotWaitForTheEvictionFlush()
+        {
+            var factory = new RecordingFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions() { DirectoryPath = "./data/bgcommit_evictflush/temp" }));
+            var (manager, storage) = await CreateManager("evictflush", cachePageCount: 0, fileCacheFactory: factory);
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "evictflush", 8);
+            var cache = factory.Created.Single();
+            using var walkGate = new WalkGate(manager);
+            using var flushGate = new ManualResetEventSlim(false);
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await walkGate.Blocked.WaitAsync(Timeout);
+                cache.ArmFlushGate(flushGate);
+                var cleanup = Task.Run(() => manager.CacheTable.ForceCleanup());
+                // The pass spilled its victims and is inside its flush.
+                await cache.FlushEntered.WaitAsync(Timeout);
+
+                var fetch = client.GetValue(keys[^1]).AsTask();
+                var first = await Task.WhenAny(fetch, Task.Delay(TimeSpan.FromSeconds(1)));
+                Assert.True(ReferenceEquals(first, fetch), "the fetch waited behind the eviction pass's flush");
+                (await fetch)?.Return();
+
+                flushGate.Set();
+                await cleanup.WaitAsync(Timeout);
+                walkGate.Release();
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            }
+            finally
+            {
+                flushGate.Set();
+                manager.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Review 6: the walk serializes a page inside the session on its own thread, a read on
+        /// the same session must not wait for that serialization.
+        /// </summary>
+        [Fact]
+        public async Task ReservoirReadDoesNotWaitForAWriteSerializingAPage()
+        {
+            var serializer = new TestPageSerializer();
+            var (manager, storage) = await CreateManager("serializelock", reservoir: true);
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "serializelock", 4, serializer);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            // Straight into the reservoir session, the way the walk writes a page from the cache.
+            var inner = session.Inner;
+            using var gate = new ManualResetEventSlim(false);
+            serializer.ArmSerializeGate(gate, 21);
+            var write = Task.Run(() => inner.Write(client.GetNewPageId(), new SerializableObject(new TestPage(21), serializer)));
+            try
+            {
+                await serializer.SerializeEntered.WaitAsync(Timeout);
+
+                // The session takes its lock before it hands the task back, so the read gets its own thread.
+                var read = Task.Run(() => inner.Read(keys[0]).AsTask());
+                var first = await Task.WhenAny(read, Task.Delay(TimeSpan.FromSeconds(1)));
+                Assert.True(ReferenceEquals(first, read), "a read waited for a write to serialize its page");
+                Assert.Equal(4, (await read).Length);
+            }
+            finally
+            {
+                gate.Set();
+            }
+            await write.WaitAsync(Timeout);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Review 6: a second Commit that got past the refusal before the first published its
+        /// generation must still be refused once it holds the lock.
+        /// </summary>
+        [Fact]
+        public async Task ConcurrentCommitIsRefusedUnderTheLock()
+        {
+            var serializer = new TestPageSerializer();
+            var (manager, storage) = await CreateManager("twocommits");
+            var (client, _, _) = await CreateClientWithPages(manager, storage, "twocommits", 8, serializer);
+            serializer.CheckpointHold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            // The first Commit parks inside its serializer checkpoint, holding the commit lock.
+            var first = Task.Run(() => client.Commit().AsTask());
+            await serializer.CheckpointEntered.WaitAsync(Timeout);
+            // The second passes the refusal, nothing is published yet, and queues on the lock.
+            var second = Task.Run(() => client.Commit().AsTask());
+            await Task.Delay(200);
+            serializer.CheckpointHold.SetResult();
+            await first.WaitAsync(Timeout);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => second.WaitAsync(Timeout));
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            manager.Dispose();
         }
 
         /// <summary>

@@ -70,8 +70,41 @@ namespace FlowtideDotNet.Storage.Tests
 
     internal class TestPageSerializer : IStateSerializer<TestPage>
     {
+        private readonly TaskCompletionSource _serializeEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        private ManualResetEventSlim? _serializeGate;
+        private int _gatedValue;
+
+        /// <summary>
+        /// Blocks the first serialization of a page with this value inside Serialize, the caller keeps whatever it holds.
+        /// </summary>
+        public void ArmSerializeGate(ManualResetEventSlim gate, int value)
+        {
+            _gatedValue = value;
+            Volatile.Write(ref _serializeGate, gate);
+        }
+
+        public Task SerializeEntered => _serializeEntered.Task;
+
+        private readonly TaskCompletionSource _checkpointEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>
+        /// When set, CheckpointAsync waits for it, so a Commit parks inside its serializer checkpoint.
+        /// </summary>
+        public TaskCompletionSource? CheckpointHold { get; set; }
+
+        public Task CheckpointEntered => _checkpointEntered.Task;
+
         public void Serialize(in IBufferWriter<byte> bufferWriter, in TestPage value)
         {
+            if (value.Value == _gatedValue)
+            {
+                var gate = Interlocked.Exchange(ref _serializeGate, null);
+                if (gate != null)
+                {
+                    _serializeEntered.TrySetResult();
+                    gate.Wait();
+                }
+            }
             var span = bufferWriter.GetSpan(4);
             BinaryPrimitives.WriteInt32LittleEndian(span, value.Value);
             bufferWriter.Advance(4);
@@ -93,8 +126,16 @@ namespace FlowtideDotNet.Storage.Tests
         public ICacheObject DeserializeCacheObject(ReadOnlySequence<byte> bytes, int length)
             => Deserialize(bytes, length);
 
-        public Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)
-            where TMetadata : IStorageMetadata => Task.CompletedTask;
+        public async Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)
+            where TMetadata : IStorageMetadata
+        {
+            var hold = CheckpointHold;
+            if (hold != null)
+            {
+                _checkpointEntered.TrySetResult();
+                await hold.Task;
+            }
+        }
 
         public Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata)
             where TMetadata : IStorageMetadata => Task.CompletedTask;
