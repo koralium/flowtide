@@ -25,6 +25,9 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal.Sync;
 using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Storage.AppendTree.Internal;
+using FlowtideDotNet.Storage.Queue.Internal;
+using FlowtideDotNet.Storage.Tree.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Buffers;
 using System.Buffers.Binary;
@@ -79,6 +82,13 @@ namespace FlowtideDotNet.Storage.Tests
                 return WrittenValues.TryGetValue(key, out var values) ? values.Count : 0;
             }
 
+            public ConcurrentDictionary<long, int> TotalWrites { get; } = new ConcurrentDictionary<long, int>();
+
+            public int TotalWriteCount(long key)
+            {
+                return TotalWrites.TryGetValue(key, out var count) ? count : 0;
+            }
+
             /// <summary>
             /// Blocks the first write of one of the keys inside Write, the writer keeps whatever lock it holds.
             /// </summary>
@@ -122,6 +132,7 @@ namespace FlowtideDotNet.Storage.Tests
 
             private Task WriteCore(long key, SerializableObject value)
             {
+                TotalWrites.AddOrUpdate(key, 1, (_, c) => c + 1);
                 var writer = new ArrayBufferWriter<byte>();
                 value.Serialize(writer);
                 if (writer.WrittenCount == 4)
@@ -2104,6 +2115,320 @@ namespace FlowtideDotNet.Storage.Tests
                 Assert.True(found, $"key {i} missing after second recovery");
                 Assert.Equal((int)i + 1, value);
             }
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// A failed commit must restore previous updated flag.
+        /// </summary>
+        [Fact]
+        public async Task FailedCommitRestoresMetadataUpdatedFlag()
+        {
+            var (manager, storage) = await CreateManager("metaupdated");
+            var (client, session, _) = await CreateClientWithPages(manager, storage, "metaupdated", 1);
+            client.Metadata = new TestMetadata();
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            client.Metadata.Updated = true;
+            var failKey = client.GetNewPageId();
+            client.AddOrUpdate(failKey, new TestPage(2));
+            session.FaultingKeys.TryAdd(failKey, 0);
+
+            var syncClient = (SyncStateClient<TestPage, TestMetadata>)client;
+            await Assert.ThrowsAsync<IOException>(async () =>
+            {
+                await client.Commit();
+                await syncClient.WaitForCommitAsync();
+            });
+
+            // A failed commit must restore previous updated flag.
+            Assert.True(client.Metadata.Updated);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Recovery reset disposes storage, old session cannot read.
+        /// </summary>
+        [Fact]
+        public async Task RecoveryResetDoesNotDangleOldStorageSession()
+        {
+            var options = new StateManagerOptions
+            {
+                PersistentStorage = null
+            };
+            using var manager = new StateManagerSync<object>(options, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("retained_session"), "test", GlobalMemoryManager.Instance);
+            await manager.InitializeAsync();
+
+            var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
+                "client",
+                new StateClientOptions<TestPage> { ValueSerializer = new TestPageSerializer() },
+                GlobalMemoryManager.Instance);
+
+            var key = client.GetNewPageId();
+            client.AddOrUpdate(key, new TestPage(100));
+            await client.Commit();
+            await manager.CheckpointAsync();
+
+            // Recovery reset disposes storage, old session cannot read.
+            await manager.InitializeAsync();
+            manager.CacheTable.Clear();
+
+            var val = await client.GetValue(key);
+            Assert.NotNull(val);
+            Assert.Equal(100, val.Value);
+        }
+
+        /// <summary>
+        /// Faulted commit task must not report settled clean.
+        /// </summary>
+        [Fact]
+        public async Task FaultedCommitDoesNotReportCleanSettle()
+        {
+            var (manager, storage) = await CreateManager("faultedsettle");
+            var (client, session, _) = await CreateClientWithPages(manager, storage, "faultedsettle", 1);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            var failKey = client.GetNewPageId();
+            client.AddOrUpdate(failKey, new TestPage(2));
+            session.FaultingKeys.TryAdd(failKey, 0);
+
+            await client.Commit();
+            var syncClient = (SyncStateClient<TestPage, TestMetadata>)client;
+            try
+            {
+                await syncClient.WaitForCommitAsync();
+            }
+            catch (IOException)
+            {
+            }
+
+            // Faulted commit task must not report settled clean.
+            Assert.True(manager.HasCommitsInFlight);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Dequeue must not dispose node while rent is held.
+        /// </summary>
+        [Fact]
+        public async Task QueueDequeueDoesNotDisposeNodeHeldByPeek()
+        {
+            var (manager, _) = await CreateManager("queueuaf", backgroundCommit: false);
+            var client = (SyncStateClient<IBPlusTreeNode, FlowtideQueueMetadata>)await manager.CreateClientAsync<IBPlusTreeNode, FlowtideQueueMetadata>(
+                "queue_client",
+                new StateClientOptions<IBPlusTreeNode>
+                {
+                    ValueSerializer = new FlowtideQueueSerializer<int, PrimitiveListValueContainer<int>>(
+                        new PrimitiveListValueContainerSerializer<int>(GlobalMemoryManager.Instance))
+                },
+                GlobalMemoryManager.Instance);
+            await client.InitializeSerializerAsync();
+
+            var queue = new FlowtideQueue<int, PrimitiveListValueContainer<int>>(
+                client,
+                new FlowtideQueueOptions<int, PrimitiveListValueContainer<int>>
+                {
+                    MemoryAllocator = GlobalMemoryManager.Instance,
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<int>(GlobalMemoryManager.Instance),
+                    PageSizeBytes = 64
+                });
+            await queue.InitializeAsync();
+
+            for (int i = 0; i < 50; i++)
+            {
+                await queue.Enqueue(i);
+            }
+
+            var leftNode = queue._leftNode!;
+            Assert.True(leftNode.TryRent());
+
+            while (ReferenceEquals(queue._leftNode, leftNode))
+            {
+                await queue.Dequeue();
+            }
+
+            // Dequeue must not dispose node while rent is held.
+            var val = leftNode.values.Get(0);
+            Assert.Equal(0, val);
+            leftNode.Return();
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Traverse internal nodes without leaking child rent count.
+        /// </summary>
+        [Fact]
+        public async Task AppendTreeCreateInternalNodesListDoesNotLeakChildRent()
+        {
+            var (manager, _) = await CreateManager("tree_leak", backgroundCommit: false);
+            var client = (SyncStateClient<IBPlusTreeNode, AppendTreeMetadata>)await manager.CreateClientAsync<IBPlusTreeNode, AppendTreeMetadata>(
+                "tree_client",
+                new StateClientOptions<IBPlusTreeNode>
+                {
+                    ValueSerializer = new BPlusTreeSerializer<long, long, ListKeyContainer<long>, ListValueContainer<long>>(
+                        new KeyListSerializer<long>(new LongSerializer()),
+                        new ValueListSerializer<long>(new LongSerializer()),
+                        GlobalMemoryManager.Instance)
+                },
+                GlobalMemoryManager.Instance);
+            await client.InitializeSerializerAsync();
+
+            var treeOptions = new BPlusTreeOptions<long, long, ListKeyContainer<long>, ListValueContainer<long>>
+            {
+                BucketSize = 2,
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<long>(new LongSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
+            };
+
+            var tree = new AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>(client, treeOptions);
+            await tree.InitializeAsync();
+
+            for (long i = 0; i < 8; i++)
+            {
+                await tree.Append(i, i);
+            }
+            await tree.Commit();
+            await manager.CheckpointAsync();
+
+            var tree2 = new AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>(client, treeOptions);
+            await tree2.InitializeAsync();
+
+            // Traverse internal nodes without leaking child rent count.
+            var rootId = client.Metadata!.Root;
+            Assert.True(manager.CacheTable.TryPeekEntry(rootId, out var rootEntry));
+            Assert.Equal(1, rootEntry.Value.RentCount);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Intermediate write sequence length must match byte count.
+        /// </summary>
+        [Fact]
+        public void BlobFileWriterEnsureCapacityDoesNotInflateRunningIndex()
+        {
+            var fileWriter = new BlobFileWriter(_ => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+
+            var firstChunk = new byte[10000];
+            fileWriter.Write(1, new SerializableObject(firstChunk));
+
+            var secondChunk = new byte[7000];
+            var location = fileWriter.Write(2, new SerializableObject(secondChunk));
+
+            var endSeg = (ReadOnlySequenceSegment<byte>)location.End.GetObject()!;
+
+            // Intermediate write sequence length must match byte count.
+            Assert.Equal(10064, endSeg.RunningIndex);
+        }
+
+        /// <summary>
+        /// Reset after failed commit must clear wedged generation.
+        /// </summary>
+        [Fact]
+        public async Task ResetAfterFailedCommitClearsWedgedState()
+        {
+            var (manager, storage) = await CreateManager("resetfailed");
+            var (client, session, _) = await CreateClientWithPages(manager, storage, "resetfailed", 1);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            var failKey = client.GetNewPageId();
+            client.AddOrUpdate(failKey, new TestPage(2));
+            session.FaultingKeys.TryAdd(failKey, 0);
+            await client.Commit();
+
+            var syncClient = (SyncStateClient<TestPage, TestMetadata>)client;
+            try
+            {
+                await syncClient.WaitForCommitAsync();
+            }
+            catch (IOException)
+            {
+            }
+
+            // Reset after failed commit must clear wedged generation.
+            await client.Reset(true);
+
+            client.AddOrUpdate(client.GetNewPageId(), new TestPage(3));
+            session.FaultingKeys.Clear();
+            await client.Commit();
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Clean commit must clear right node updated flag.
+        /// </summary>
+        [Fact]
+        public async Task QueueCommitClearsRightNodeUpdatedFlag()
+        {
+            var (manager, storage) = await CreateManager("queueflag", backgroundCommit: false);
+            var client = (SyncStateClient<IBPlusTreeNode, FlowtideQueueMetadata>)await manager.CreateClientAsync<IBPlusTreeNode, FlowtideQueueMetadata>(
+                "queue_client",
+                new StateClientOptions<IBPlusTreeNode>
+                {
+                    ValueSerializer = new FlowtideQueueSerializer<int, PrimitiveListValueContainer<int>>(
+                        new PrimitiveListValueContainerSerializer<int>(GlobalMemoryManager.Instance))
+                },
+                GlobalMemoryManager.Instance);
+            await client.InitializeSerializerAsync();
+
+            var queue = new FlowtideQueue<int, PrimitiveListValueContainer<int>>(
+                client,
+                new FlowtideQueueOptions<int, PrimitiveListValueContainer<int>>
+                {
+                    MemoryAllocator = GlobalMemoryManager.Instance,
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<int>(GlobalMemoryManager.Instance)
+                });
+            await queue.InitializeAsync();
+
+            await queue.Enqueue(1);
+            await queue.Commit();
+
+            var session = storage.Sessions.Last();
+            var rightId = queue._rightNode!.Id;
+            var writesBefore = session.TotalWriteCount(rightId);
+
+            // Clean commit must clear right node updated flag.
+            await queue.Commit();
+            var writesAfter = session.TotalWriteCount(rightId);
+
+            Assert.Equal(writesBefore, writesAfter);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Wiped metadata reset must clear commited once flag.
+        /// </summary>
+        [Fact]
+        public async Task ResetWithClearMetadataClearsCommitedOnce()
+        {
+            var (manager, storage) = await CreateManager("commitedonce", backgroundCommit: false);
+            var (client, _, _) = await CreateClientWithPages(manager, storage, "commitedonce", 1);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            var syncClient = (SyncStateClient<TestPage, TestMetadata>)client;
+            Assert.True(syncClient.CommitedOnceForTests);
+
+            // Wiped metadata reset must clear commited once flag.
+            await client.Reset(clearMetadata: true);
+            Assert.False(syncClient.CommitedOnceForTests);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Over capacity cache update must return full true.
+        /// </summary>
+        [Fact]
+        public async Task AddOrUpdateOnLookupHitReportsFullWhenOverCapacity()
+        {
+            var (manager, storage) = await CreateManager("backpressure", cachePageCount: 1);
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "backpressure", 2);
+
+            // Over capacity cache update must return full true.
+            var isFull = client.AddOrUpdate(keys[0], new TestPage(3));
+            Assert.True(isFull);
             manager.Dispose();
         }
     }
