@@ -34,7 +34,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         }
 
         /// <summary>
-        /// Completes once the last Commit's pages are in the session, faulted when that commit failed.
+        /// Joins the actual worker, including session commit and temporary-allocation cleanup.
+        /// Faulted when that commit failed. This does not establish checkpoint durability.
         /// </summary>
         internal virtual Task WaitForCommitAsync()
         {
@@ -49,7 +50,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         }
 
         /// <summary>
-        /// Waits at most the given time for the walk to end, the manager calls it before the cache table goes away.
+        /// Waits within the manager's remaining drain budget. A timeout ends the wait, not the
+        /// worker: the client retains its session and serializer until that worker exits.
         /// </summary>
         internal virtual void StopCommits(TimeSpan timeout)
         {

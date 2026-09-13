@@ -45,7 +45,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         /// <summary>
         /// Reads lock against the temporary locations, writers are serialized by the caller.
         /// </summary>
-        public bool IsThreadSafe => true;
+        public bool SupportsConcurrentReads => true;
+
+        public bool IsThreadSafe => SupportsConcurrentReads;
 
         /// <summary>
         /// Runs right before the file writer is finished, so a test can hold the roll open.

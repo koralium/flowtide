@@ -140,8 +140,11 @@ namespace FlowtideDotNet.Storage.Tests
         public Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata)
             where TMetadata : IStorageMetadata => Task.CompletedTask;
 
+        public Action? ClearTemporaryAllocationsHook { get; set; }
+
         public void ClearTemporaryAllocations()
         {
+            ClearTemporaryAllocationsHook?.Invoke();
         }
 
         public volatile bool Disposed;

@@ -28,7 +28,9 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
         /// <summary>
         /// The file cache locks every call.
         /// </summary>
-        public bool IsThreadSafe => true;
+        public bool SupportsConcurrentReads => true;
+
+        public bool IsThreadSafe => SupportsConcurrentReads;
 
         public virtual Task Commit()
         {

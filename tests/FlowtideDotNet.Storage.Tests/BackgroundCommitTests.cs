@@ -75,7 +75,9 @@ namespace FlowtideDotNet.Storage.Tests
             /// </summary>
             public volatile bool ReadDuringWrite;
 
-            public bool IsThreadSafe { get; set; }
+            public bool? ConcurrentReadsOverride { get; set; }
+
+            public bool SupportsConcurrentReads => ConcurrentReadsOverride ?? _inner.SupportsConcurrentReads;
 
             public int WriteCount(long key)
             {
@@ -299,11 +301,11 @@ namespace FlowtideDotNet.Storage.Tests
 
             public List<RecordingSession> Sessions { get; } = new List<RecordingSession>();
 
-            public bool ThreadSafeSessions { get; set; }
+            public bool? ThreadSafeSessions { get; set; }
 
             public IPersistentStorageSession CreateSession()
             {
-                var session = new RecordingSession(_inner.CreateSession()) { IsThreadSafe = ThreadSafeSessions };
+                var session = new RecordingSession(_inner.CreateSession()) { ConcurrentReadsOverride = ThreadSafeSessions };
                 lock (Sessions)
                 {
                     Sessions.Add(session);
@@ -374,7 +376,7 @@ namespace FlowtideDotNet.Storage.Tests
 
         private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
-        private static async Task<(StateManagerSync<StateManagerMetadata> manager, RecordingStorage storage)> CreateManager(string name, int cachePageCount = 1000, bool useReadCache = false, bool backgroundCommit = true, bool threadSafeSession = false, bool reservoir = false, TimeSpan? stopCommitsTimeout = null, IFileCacheFactory? fileCacheFactory = null)
+        private static async Task<(StateManagerSync<StateManagerMetadata> manager, RecordingStorage storage)> CreateManager(string name, int cachePageCount = 1000, bool useReadCache = false, bool backgroundCommit = true, bool? threadSafeSession = null, bool reservoir = true, TimeSpan? stopCommitsTimeout = null, IFileCacheFactory? fileCacheFactory = null)
         {
             IPersistentStorage inner = reservoir
                 ? new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() })
@@ -437,6 +439,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task CommitReturnsWhilePagesAreStillBeingWritten()
         {
             var (manager, storage) = await CreateManager("returns");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "returns", 8);
             using var gate = new WalkGate(manager);
 
@@ -460,6 +463,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task FetchOfPendingPageWritesTheCommittedContentFirst()
         {
             var (manager, storage) = await CreateManager("fetch");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "fetch", 8);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -492,6 +496,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task TryGetCachedValueDeclinesAPendingPage()
         {
             var (manager, storage) = await CreateManager("trycached");
+            using var storageLifetime = storage;
             var (client, _, keys) = await CreateClientWithPages(manager, storage, "trycached", 4);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -519,6 +524,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task WriteToPendingPageWithoutRentThrows()
         {
             var (manager, storage) = await CreateManager("held");
+            using var storageLifetime = storage;
             var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
                 "held",
                 new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
@@ -545,6 +551,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task HeldPageIsWrittenBeforeCommitReturns()
         {
             var (manager, storage) = await CreateManager("heldwrite");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "heldwrite", 4);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -571,6 +578,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task InlineCommitWritesEveryPageBeforeReturning()
         {
             var (manager, storage) = await CreateManager("inline", backgroundCommit: false);
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "inline", 8);
 
             await client.Commit().AsTask().WaitAsync(Timeout);
@@ -579,9 +587,122 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.True(((SyncStateClient<TestPage, TestMetadata>)client).WaitForCommitAsync().IsCompletedSuccessfully);
             for (int i = 0; i < keys.Count; i++)
             {
-                Assert.Equal(i, ReadPersisted(storage, keys[i]));
+                var bytes = await session.Read(keys[i]);
+                Assert.Equal(i, BinaryPrimitives.ReadInt32LittleEndian(bytes.Span));
             }
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            Assert.All(keys, key => Assert.True(storage.TryGetValue(key, out _)));
             manager.Dispose();
+        }
+
+        #if DEBUG
+        [Fact(Skip = "Allocation assertions require a Release build; Debug allocates async state machines.")]
+        #else
+        [Fact]
+        #endif
+        public async Task WarmInlineIdleCommitsAllocateNothing()
+        {
+            var (manager, storage) = await CreateManager("reusedcommit", backgroundCommit: false);
+            using var storageLifetime = storage;
+            using (manager)
+            {
+                var (client, _, _) = await CreateClientWithPages(manager, storage, "reusedcommit", 0);
+                for (int i = 0; i < 32; i++)
+                {
+                    await client.Commit();
+                }
+
+                // Inline idle commits isolate generation bookkeeping from scheduler and page IO.
+                var before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 256; i++)
+                {
+                    var commit = client.Commit();
+                    Assert.True(commit.IsCompletedSuccessfully);
+                }
+                var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+                Assert.Equal(0, allocated);
+            }
+        }
+
+        [Fact]
+        public async Task ReusedGenerationForgetsEarlierReplacementSnapshots()
+        {
+            var (manager, storage) = await CreateManager("reusereplaced");
+            using var storageLifetime = storage;
+            using (manager)
+            {
+                var (client, session, keys) = await CreateClientWithPages(manager, storage, "reusereplaced", 1);
+                var key = keys[0];
+                for (int generation = 0; generation < 4; generation++)
+                {
+                    using var gate = new WalkGate(manager);
+                    await client.Commit().AsTask().WaitAsync(Timeout);
+                    await gate.Blocked.WaitAsync(Timeout);
+                    client.Delete(key);
+                    client.AddOrUpdate(key, new TestPage(generation + 1));
+                    gate.Release();
+                    await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+                    Assert.Equal(generation, ReadPersisted(storage, key));
+                    Assert.Equal(generation + 1, session.WriteCount(key));
+                }
+                // The final replacement must now be written from cache, not an earlier spill.
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+                Assert.Equal(4, ReadPersisted(storage, key));
+                Assert.Equal(5, session.WriteCount(key));
+            }
+        }
+
+        /// <summary>
+        /// The worker still owns its buffers after publishing its session commit.
+        /// </summary>
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task NextCommitJoinsWorkerCleanupBeforeReusingGeneration(bool failCleanup)
+        {
+            var (manager, storage) = await CreateManager($"cleanup_join_{failCleanup}");
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            using var release = new ManualResetEventSlim(false);
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var failure = new IOException("Injected cleanup failure");
+            var serializer = new TestPageSerializer
+            {
+                ClearTemporaryAllocationsHook = () =>
+                {
+                    entered.TrySetResult();
+                    if (!release.Wait(Timeout)) throw new TimeoutException("Cleanup was not released");
+                    if (failCleanup) throw failure;
+                }
+            };
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "cleanup", 1, serializer);
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await entered.Task.WaitAsync(Timeout);
+                var nextCommit = client.Commit().AsTask();
+                Assert.False(nextCommit.IsCompleted);
+                Assert.True(manager.HasCommitsInFlight);
+                release.Set();
+
+                if (failCleanup)
+                {
+                    Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => nextCommit.WaitAsync(Timeout)));
+                    Assert.True(manager.HasCommitFaults);
+                    Assert.Same(failure, ((StateClient)client).CommitFault);
+                }
+                else
+                {
+                    await nextCommit.WaitAsync(Timeout);
+                    await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+                    Assert.Equal(0, ReadPersisted(storage, keys[0]));
+                }
+            }
+            finally
+            {
+                release.Set();
+            }
         }
 
         /// <summary>
@@ -591,6 +712,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task DeleteOfPendingPageIsHeldUntilItsWrite()
         {
             var (manager, storage) = await CreateManager("delete");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "delete", 8);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -618,6 +740,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task EvictionSpillsAPendingPageForItsCommit()
         {
             var (manager, storage) = await CreateManager("evict", cachePageCount: 0);
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "evict", 8);
             using var gate = new WalkGate(manager);
 
@@ -643,6 +766,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task CheckpointWaitsForTheBackgroundCommit()
         {
             var (manager, storage) = await CreateManager("checkpoint");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "checkpoint", 4);
             using var gate = new WalkGate(manager);
 
@@ -663,6 +787,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task BackgroundCommitFailureSurfacesAtTheCheckpoint()
         {
             var (manager, storage) = await CreateManager("fault");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "fault", 4);
             session.FaultingKeys[keys[1]] = 1;
 
@@ -677,6 +802,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task RecoveryWaitsForTheBackgroundCommit()
         {
             var (manager, storage) = await CreateManager("recover");
+            using var storageLifetime = storage;
             var (client, _, keys) = await CreateClientWithPages(manager, storage, "recover", 4);
             using var gate = new WalkGate(manager);
 
@@ -696,6 +822,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task DisposeGivesUpAnInFlightCommit()
         {
             var (manager, storage) = await CreateManager("dispose");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "dispose", 8);
             using var gate = new WalkGate(manager);
 
@@ -872,7 +999,8 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task SessionReadNeverOverlapsAWalkWrite()
         {
-            var (manager, storage) = await CreateManager("sessionoverlap", cachePageCount: 0);
+            var (manager, storage) = await CreateManager("sessionoverlap", cachePageCount: 0, threadSafeSession: false);
+            using var storageLifetime = storage;
             var (client, session, oldKeys) = await CreateClientWithPages(manager, storage, "sessionoverlap", 8);
             await client.Commit().AsTask().WaitAsync(Timeout);
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
@@ -912,6 +1040,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task ThreadSafeSessionReadDoesNotWaitForAWalkWrite()
         {
             var (manager, storage) = await CreateManager("sessionfree", cachePageCount: 0, threadSafeSession: true);
+            using var storageLifetime = storage;
             var (client, session, oldKeys) = await CreateClientWithPages(manager, storage, "sessionfree", 8);
             await client.Commit().AsTask().WaitAsync(Timeout);
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
@@ -947,6 +1076,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task ResetAfterAFailedWalkStillSurfacesTheFailure()
         {
             var (manager, storage) = await CreateManager("resetfault");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "resetfault", 8);
             session.FaultingKeys[keys[1]] = 1;
 
@@ -968,6 +1098,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task FailedOnFetchWriteFaultsTheWalk()
         {
             var (manager, storage) = await CreateManager("fetchfault");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "fetchfault", 8);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -991,6 +1122,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task CheckpointDoesNotSealAWalkThatDisposeGaveUp()
         {
             var (manager, storage) = await CreateManager("disposeseal");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "disposeseal", 8);
             using var gate = new ManualResetEventSlim(false);
             session.ArmWriteGate(gate, keys.ToHashSet());
@@ -1016,6 +1148,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task DisposeStopsTheWalkBeforeTheCacheTableGoesAway()
         {
             var (manager, storage) = await CreateManager("disposetable");
+            using var storageLifetime = storage;
             var (client, _, keys) = await CreateClientWithPages(manager, storage, "disposetable", 8);
             using var gate = new WalkGate(manager);
 
@@ -1044,6 +1177,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task HeldPageChangedInPlaceAfterCommitStaysOutOfTheCheckpoint()
         {
             var (manager, storage) = await CreateManager("heldinplace");
+            using var storageLifetime = storage;
             var (client, _, keys) = await CreateClientWithPages(manager, storage, "heldinplace", 8);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -1109,6 +1243,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task DeleteOfPendingPageDoesNotWaitForTheWalk()
         {
             var (manager, storage) = await CreateManager("deletewait");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "deletewait", 8);
             using var gate = new ManualResetEventSlim(false);
             session.ArmWriteGate(gate, keys.ToHashSet());
@@ -1199,6 +1334,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task HeldPageWriteFailureDoesNotStrandTheClientMetadata()
         {
             var (manager, storage) = await CreateManager("heldfault", reservoir: true);
+            using var storageLifetime = storage;
             // A checkpoint before the client exists, so recovery reads client metadata instead of clearing it.
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "heldfault", 4);
@@ -1222,6 +1358,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task DisposeGivesUpAWedgedWalkWithinTheStopTimeout()
         {
             var (manager, storage) = await CreateManager("wedged", stopCommitsTimeout: TimeSpan.FromSeconds(1));
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "wedged", 8);
             using var gate = new ManualResetEventSlim(false);
             session.ArmWriteGate(gate, keys.ToHashSet());
@@ -1234,6 +1371,8 @@ namespace FlowtideDotNet.Storage.Tests
             await dispose.WaitAsync(TimeSpan.FromSeconds(10));
             Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(1.6), $"dispose took {elapsed.Elapsed.TotalSeconds:F1}s against a 1s stop budget, the budget was spent more than once");
             gate.Set();
+            await Record.ExceptionAsync(() => ((StateClient)client).WaitForCommitAsync().WaitAsync(Timeout));
+            await WaitUntil(() => session.Disposed, "the abandoned worker to release its session");
         }
 
         /// <summary>
@@ -1243,6 +1382,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task DisposeDoesNotNeedTheCallersSynchronizationContext()
         {
             var (manager, storage) = await CreateManager("synccontext");
+            using var storageLifetime = storage;
             var (client, _, keys) = await CreateClientWithPages(manager, storage, "synccontext", 8);
             using var gate = new WalkGate(manager);
 
@@ -1278,6 +1418,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task EvictionRunsWhileTheWalkIsInFlight()
         {
             var (manager, storage) = await CreateManager("evictwalk", cachePageCount: 0);
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "evictwalk", 400);
             session.WriteDelay = TimeSpan.FromMilliseconds(1);
 
@@ -1310,6 +1451,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task FailedOnFetchWriteFailsTheGenerationWithoutRetrying()
         {
             var (manager, storage) = await CreateManager("fetchowed");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "fetchowed", 8);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -1371,6 +1513,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task WrittenPendingPageLeavesTheLockedProbeBehind()
         {
             var (manager, storage) = await CreateManager("probe");
+            using var storageLifetime = storage;
             var (client, _, keys) = await CreateClientWithPages(manager, storage, "probe", 8);
             var sync = (SyncStateClient<TestPage, TestMetadata>)client;
             using var gate = new WalkGate(manager);
@@ -1402,6 +1545,7 @@ namespace FlowtideDotNet.Storage.Tests
         {
             const int count = 8192;
             var (manager, storage) = await CreateManager("alloc", cachePageCount: count * 2);
+            using var storageLifetime = storage;
             var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
                 "alloc",
                 new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
@@ -1439,6 +1583,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task RecoveryAfterAFailedWalkCommitsAgain()
         {
             var (manager, storage) = await CreateManager("failrecover", cachePageCount: 0, reservoir: true);
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "failrecover", 8);
             using var gate = new WalkGate(manager);
             session.FaultingKeys[keys[1]] = 1;
@@ -1505,6 +1650,7 @@ namespace FlowtideDotNet.Storage.Tests
         {
             var factory = new RecordingFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions() { DirectoryPath = "./data/bgcommit_freewindow/temp" }));
             var (manager, storage) = await CreateManager("freewindow", fileCacheFactory: factory);
+            using var storageLifetime = storage;
             var (client, _, keys) = await CreateClientWithPages(manager, storage, "freewindow", 4);
             var cache = factory.Created.Single();
             using var freeGate = new ManualResetEventSlim(false);
@@ -1543,6 +1689,7 @@ namespace FlowtideDotNet.Storage.Tests
         {
             var serializer = new TestPageSerializer();
             var (manager, storage) = await CreateManager("latedispose", stopCommitsTimeout: TimeSpan.FromSeconds(1));
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "latedispose", 8, serializer);
             using var gate = new ManualResetEventSlim(false);
             session.ArmWriteGate(gate, keys.ToHashSet());
@@ -1576,6 +1723,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task AbandonedWalkWritesNothingAfterItGetsTheLockBack()
         {
             var (manager, storage) = await CreateManager("relock", stopCommitsTimeout: TimeSpan.FromSeconds(1));
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "relock", 4);
             using var walkGate = new WalkGate(manager);
             using var writeGate = new ManualResetEventSlim(false);
@@ -1671,6 +1819,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task RepeatedCommitAfterAFailedGenerationKeepsCommitedOnceFalse()
         {
             var (manager, storage) = await CreateManager("commitedonce");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "commitedonce", 4);
             var sync = (SyncStateClient<TestPage, TestMetadata>)client;
             var held = await client.GetValue(keys[^1]);
@@ -1696,6 +1845,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task RecoveryAfterAnAbandonedDrainCommitsAgain()
         {
             var (manager, storage) = await CreateManager("abandon", reservoir: true);
+            using var storageLifetime = storage;
             var (client, _, _) = await CreateClientWithPages(manager, storage, "abandon", 8);
             using var gate = new WalkGate(manager);
             await client.Commit().AsTask().WaitAsync(Timeout);
@@ -1724,6 +1874,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task DisposeWaitsAgainAfterAnAbandonedDrainWasRecovered()
         {
             var (manager, storage) = await CreateManager("reabandon", reservoir: true, stopCommitsTimeout: TimeSpan.FromSeconds(2));
+            using var storageLifetime = storage;
             var (client, session, _) = await CreateClientWithPages(manager, storage, "reabandon", 8);
             using var gate = new WalkGate(manager);
             await client.Commit().AsTask().WaitAsync(Timeout);
@@ -1756,6 +1907,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task RecoveryDoesNotHangOnAWalkTheDrainGaveUp()
         {
             var (manager, storage) = await CreateManager("wedgedrecover", reservoir: true, stopCommitsTimeout: TimeSpan.FromSeconds(1));
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "wedgedrecover", 8);
             using var writeGate = new ManualResetEventSlim(false);
             session.ArmWriteGate(writeGate, keys.ToHashSet());
@@ -1779,6 +1931,7 @@ namespace FlowtideDotNet.Storage.Tests
         {
             const int count = 8192;
             var (manager, storage) = await CreateManager("idlealloc", cachePageCount: count * 2);
+            using var storageLifetime = storage;
             var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
                 "idlealloc",
                 new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
@@ -1821,6 +1974,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task FailedSessionCommitRefusesTheNextCommitUntilReset()
         {
             var (manager, storage) = await CreateManager("sessionfail");
+            using var storageLifetime = storage;
             var (client, session, _) = await CreateClientWithPages(manager, storage, "sessionfail", 4);
             var sync = (SyncStateClient<TestPage, TestMetadata>)client;
             session.FaultCommit = true;
@@ -1881,6 +2035,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task DisposedManagerRefusesTableAccessAsDisposed()
         {
             var (manager, storage) = await CreateManager("tablegone");
+            using var storageLifetime = storage;
             var (_, _, keys) = await CreateClientWithPages(manager, storage, "tablegone", 2);
             manager.Dispose();
 
@@ -1900,6 +2055,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task RecoveryJoinsTheWalkBeforeItResetsTheSessions()
         {
             var (manager, storage) = await CreateManager("resetorder", reservoir: true);
+            using var storageLifetime = storage;
             var (client, _, keys) = await CreateClientWithPages(manager, storage, "resetorder", 4);
             await client.Commit().AsTask().WaitAsync(Timeout);
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
@@ -1965,6 +2121,7 @@ namespace FlowtideDotNet.Storage.Tests
         {
             var factory = new RecordingFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions() { DirectoryPath = "./data/bgcommit_evictflush/temp" }));
             var (manager, storage) = await CreateManager("evictflush", cachePageCount: 0, fileCacheFactory: factory);
+            using var storageLifetime = storage;
             var (client, _, keys) = await CreateClientWithPages(manager, storage, "evictflush", 8);
             var cache = factory.Created.Single();
             using var walkGate = new WalkGate(manager);
@@ -2004,6 +2161,7 @@ namespace FlowtideDotNet.Storage.Tests
         {
             var serializer = new TestPageSerializer();
             var (manager, storage) = await CreateManager("serializelock", reservoir: true);
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "serializelock", 4, serializer);
             await client.Commit().AsTask().WaitAsync(Timeout);
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
@@ -2040,6 +2198,7 @@ namespace FlowtideDotNet.Storage.Tests
         {
             var serializer = new TestPageSerializer();
             var (manager, storage) = await CreateManager("twocommits");
+            using var storageLifetime = storage;
             var (client, _, _) = await CreateClientWithPages(manager, storage, "twocommits", 8, serializer);
             serializer.CheckpointHold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -2125,6 +2284,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task FailedCommitRestoresMetadataUpdatedFlag()
         {
             var (manager, storage) = await CreateManager("metaupdated");
+            using var storageLifetime = storage;
             var (client, session, _) = await CreateClientWithPages(manager, storage, "metaupdated", 1);
             client.Metadata = new TestMetadata();
             await client.Commit().AsTask().WaitAsync(Timeout);
@@ -2186,6 +2346,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task FaultedCommitDoesNotReportCleanSettle()
         {
             var (manager, storage) = await CreateManager("faultedsettle");
+            using var storageLifetime = storage;
             var (client, session, _) = await CreateClientWithPages(manager, storage, "faultedsettle", 1);
             await client.Commit().AsTask().WaitAsync(Timeout);
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
@@ -2331,6 +2492,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task ResetAfterFailedCommitClearsWedgedState()
         {
             var (manager, storage) = await CreateManager("resetfailed");
+            using var storageLifetime = storage;
             var (client, session, _) = await CreateClientWithPages(manager, storage, "resetfailed", 1);
             await client.Commit().AsTask().WaitAsync(Timeout);
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
@@ -2365,6 +2527,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task QueueCommitClearsRightNodeUpdatedFlag()
         {
             var (manager, storage) = await CreateManager("queueflag", backgroundCommit: false);
+            using var storageLifetime = storage;
             var client = (SyncStateClient<IBPlusTreeNode, FlowtideQueueMetadata>)await manager.CreateClientAsync<IBPlusTreeNode, FlowtideQueueMetadata>(
                 "queue_client",
                 new StateClientOptions<IBPlusTreeNode>
@@ -2406,6 +2569,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task ResetWithClearMetadataClearsCommitedOnce()
         {
             var (manager, storage) = await CreateManager("commitedonce_reset", backgroundCommit: false);
+            using var storageLifetime = storage;
             var (client, _, _) = await CreateClientWithPages(manager, storage, "commitedonce_reset", 1);
             await client.Commit().AsTask().WaitAsync(Timeout);
             var syncClient = (SyncStateClient<TestPage, TestMetadata>)client;
@@ -2424,6 +2588,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task AddOrUpdateOnLookupHitReportsFullWhenOverCapacity()
         {
             var (manager, storage) = await CreateManager("backpressure", cachePageCount: 1);
+            using var storageLifetime = storage;
             var (client, _, keys) = await CreateClientWithPages(manager, storage, "backpressure", 2);
 
             // Over capacity cache update must return full true.
@@ -2439,6 +2604,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task FaultedCommitDoesNotReportAsInFlight()
         {
             var (manager, storage) = await CreateManager("inflight_fault");
+            using var storageLifetime = storage;
             var (client, session, _) = await CreateClientWithPages(manager, storage, "inflight_fault", 4);
 
             session.FaultCommit = true;
@@ -2457,6 +2623,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task DeletedPageFetchedAfterEvictionReturnsNull()
         {
             var (manager, storage) = await CreateManager("resurrect_test", backgroundCommit: false);
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "resurrect_test", 1);
             var key = keys[0];
 
@@ -2478,6 +2645,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task AddOrUpdateAfterDeleteOnPendingPageSucceeds()
         {
             var (manager, storage) = await CreateManager("delete_add_race");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "delete_add_race", 4);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -2503,6 +2671,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task AddOrUpdateOnKeyDeletedInPriorGenerationSucceeds()
         {
             var (manager, storage) = await CreateManager("delete_prior_add");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "delete_prior_add", 4);
             var key = keys[^1];
 
@@ -2537,6 +2706,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task MultipleAddOrUpdateOnReplacedPendingPageSucceeds()
         {
             var (manager, storage) = await CreateManager("multi_replace_race");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "multi_replace_race", 4);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -2569,6 +2739,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task GetValueOnReplacedPageReturnsNewValueWithoutEagerCommit()
         {
             var (manager, storage) = await CreateManager("get_replaced_page");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "get_replaced_page", 4);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -2596,6 +2767,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task SessionCommitFailureRollsBackMetadataCounters()
         {
             var (manager, storage) = await CreateManager("rollback_counters");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "rollback_counters", 4);
             var pageCommitsBefore = manager.PageCommits;
 
@@ -2615,6 +2787,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task ResetDiscardsUnobservedBackgroundCommitFailure()
         {
             var (manager, storage) = await CreateManager("reset_unobserved_fail");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "reset_unobserved_fail", 2);
 
             session.FaultingKeys[keys[0]] = 1;
@@ -2652,6 +2825,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task DeletedPendingPageFetchedDuringBackgroundCommitReturnsNull()
         {
             var (manager, storage) = await CreateManager("pending_delete_fetch");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "pending_delete_fetch", 2);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -2695,6 +2869,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task EvictionOfReplacedPendingPageDoesNotReclaimModifiedMemory()
         {
             var (manager, storage) = await CreateManager("p0_1_evict", cachePageCount: 0);
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "p0_1_evict", 4);
             using var gate = new WalkGate(manager);
             var key = keys[^1];
@@ -2733,6 +2908,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task CheckpointFailsWhenClientCommitThrowsBeforeStartingBackgroundTask()
         {
             var (manager, storage) = await CreateManager("p0_3_fail");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "p0_3_fail", 1);
             var metaId = ((StateClient)client).MetadataId;
 
@@ -2780,6 +2956,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task ReadCacheModeDoesNotReturnStaleVersionAfterPageIsModified()
         {
             var (manager, storage) = await CreateManager("p1_2_stale", useReadCache: true, cachePageCount: 0);
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "p1_2_stale", 1);
             var key = keys[0];
 
@@ -2808,6 +2985,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task GetValueOnDeletedPageReturnsNullAfterWalkClaimsIt()
         {
             var (manager, storage) = await CreateManager("p1_7_delete");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "p1_7_delete", 2);
 
             await client.Commit().AsTask().WaitAsync(Timeout);
@@ -2851,6 +3029,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task ResetClearsUncommittedNewPagesCounterSoNextCommitDoesNotInflatePageCount()
         {
             var (manager, storage) = await CreateManager("p2_4_count");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "p2_4_count", 0);
             await client.Commit().AsTask().WaitAsync(Timeout);
             await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
@@ -2880,6 +3059,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task ResetPurgesCacheEntriesWrittenBeforeBackgroundWalkFailed()
         {
             var (manager, storage) = await CreateManager("p1_3_reset_purge");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "p1_3_reset_purge", 2);
 
             // Fault the second page write during background commit walk.
@@ -2907,6 +3087,7 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task CheckpointAsyncPreservesInnerExceptionWhenCommitFaults()
         {
             var (manager, storage) = await CreateManager("p1_1_fault");
+            using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "p1_1_fault", 2);
 
             // Hold page rent to force synchronous write.
