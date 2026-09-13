@@ -345,6 +345,11 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     throw new ObjectDisposedException(nameof(StateManagerSync), "The checkpoint was abandoned on a stop request.");
                 }
+                if (stateClient.HasCommitFault)
+                {
+                    // Faulted commit on state client aborts checkpoint.
+                    throw new Exception("Commit failed on state client.");
+                }
             }
             if (disposedValue || m_commitsAbandoned)
             {

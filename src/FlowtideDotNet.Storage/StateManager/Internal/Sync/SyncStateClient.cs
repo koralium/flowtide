@@ -36,13 +36,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         private sealed class CommitGeneration
         {
-            public CommitGeneration(long[] keys, int count, long newPages, bool previousCommitedOnce, bool previousMetadataUpdated)
+            public CommitGeneration(long[] keys, int count, long newPages, bool previousCommitedOnce, bool previousMetadataUpdated, HashSet<long>? deletedKeys)
             {
                 Keys = keys;
                 Count = count;
                 NewPages = newPages;
                 PreviousCommitedOnce = previousCommitedOnce;
                 PreviousMetadataUpdated = previousMetadataUpdated;
+                DeletedKeys = deletedKeys;
             }
 
             /// <summary>
@@ -60,6 +61,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             public bool PreviousCommitedOnce { get; }
 
             public bool PreviousMetadataUpdated { get; }
+
+            public HashSet<long>? DeletedKeys { get; }
 
             /// <summary>
             /// The first page write that failed, under m_commitEvictLock. Nothing is written after it.
@@ -117,6 +120,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private CommitGeneration? m_generation;
         private Task? m_commitTask;
         private bool m_commitTaskObserved;
+        private Exception? m_commitFault;
 
         /// <summary>
         /// Set by a stop or an abandoned drain, the walk gives up at its next page. Cleared by the recovery pause.
@@ -287,6 +291,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         throw new InvalidOperationException($"Page '{key}' on state client '{name}' was written before its checkpoint write, a page kept across Commit must be rented.");
                     }
                 }
+                if (m_fileCacheVersion.TryGetValue(key, out var ver) && ver == -2)
+                {
+                    // Invalidate obsolete read cache before adding updated page.
+                    FreeSpill(key);
+                }
                 m_modified[key] = new Modified(++m_writeSequence);
 
                 var modLookup = key % LookupTableSize;
@@ -295,18 +304,37 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     lock (entry)
                     {
-                        entry.Version = entry.Version + 1;
-                        // If it is not removed, we can return directly, otherwise it needs to be readded
-                        if (!entry.Removed)
+                        if (!ReferenceEquals(entry.Value, value))
                         {
-                            return stateManager.IsOverCapacity;
+                            stateManager.DeleteFromCache(key);
+                            Volatile.Write(ref _lookupTable[modLookup], null);
+                            entry = null;
+                        }
+                        else
+                        {
+                            entry.Version = entry.Version + 1;
+                            // If it is not removed, we can return directly, otherwise it needs to be readded
+                            if (!entry.Removed)
+                            {
+                                return stateManager.IsOverCapacity;
+                            }
+                        }
+                    }
+                }
+                else if (stateManager.TryPeekCacheEntry(key, out var existingEntry))
+                {
+                    lock (existingEntry)
+                    {
+                        if (!ReferenceEquals(existingEntry.Value, value))
+                        {
+                            stateManager.DeleteFromCache(key);
                         }
                     }
                 }
 
                 var full = stateManager.AddOrUpdate(key, value, this, out entry);
                 Volatile.Write(ref _lookupTable[modLookup], entry);
-                return full;
+                return full || stateManager.IsOverCapacity;
             }
         }
 
@@ -499,7 +527,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         internal override bool HasCommitInFlight => Volatile.Read(ref m_commitTask) is { IsCompleted: false };
-        internal override bool HasCommitFault => Volatile.Read(ref m_commitTask) is { IsCompleted: true, IsCompletedSuccessfully: false } || m_generation?.Failure != null;
+        internal override bool HasCommitFault => m_commitFault != null || Volatile.Read(ref m_commitTask) is { IsCompleted: true, IsCompletedSuccessfully: false } || m_generation?.Failure != null;
 
         internal override Task WaitForCommitAsync()
         {
@@ -548,7 +576,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             lock (m_lock)
             {
                 // Refused before anything is written, a failed generation only leaves with a reset.
-                if (m_generation != null)
+                if (m_generation != null || m_commitFault != null)
                 {
                     throw new InvalidOperationException($"State client '{name}' must be reset after its last commit failed.");
                 }
@@ -564,9 +592,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 lock (m_lock)
                 {
-                    if (m_generation != null)
+                    if (m_generation != null || m_commitFault != null)
                     {
-                        throw new InvalidOperationException(m_generation.Failure != null
+                        throw new InvalidOperationException(m_generation?.Failure != null || m_commitFault != null
                             ? $"State client '{name}' must be reset after its last commit failed."
                             : $"State client '{name}' already has a commit in flight.");
                     }
@@ -607,7 +635,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             m_smallGenerations = 0;
                         }
                         m_pending.Keys.CopyTo(keys, 0);
-                        generation = new CommitGeneration(keys, count, Interlocked.Exchange(ref newPages, 0), previousCommitedOnce, previousMetadataUpdated);
+                        HashSet<long>? deletedKeys = null;
+                        foreach (var kv in m_pending)
+                        {
+                            if (kv.Value.Sequence == -1)
+                            {
+                                deletedKeys ??= new HashSet<long>();
+                                deletedKeys.Add(kv.Key);
+                            }
+                        }
+                        generation = new CommitGeneration(keys, count, Interlocked.Exchange(ref newPages, 0), previousCommitedOnce, previousMetadataUpdated, deletedKeys);
                         m_generation = generation;
                     }
 
@@ -635,6 +672,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         // No walk follows, a fetch of a page left owed reports this instead of writing.
                         generation.Failure ??= e;
                     }
+                    // Record synchronous commit fault for state manager.
+                    m_commitFault = e;
                     throw;
                 }
 
@@ -1013,6 +1052,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     else if (m_pendingWriteKey != key)
                     {
+                        if (m_generation.DeletedKeys != null && m_generation.DeletedKeys.Contains(key))
+                        {
+                            // Deleted page in active generation returns null.
+                            return ValueTask.FromResult<V?>(default);
+                        }
                         return GetValue_Locked(key, modLookup);
                     }
                 }
@@ -1036,6 +1080,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             if (m_modified.TryGetValue(key, out var modified) && modified.Sequence == -1)
             {
                 // Deleted page in modified set returns null.
+                return ValueTask.FromResult<V?>(default);
+            }
+            if (m_generation?.DeletedKeys != null && m_generation.DeletedKeys.Contains(key))
+            {
+                // Deleted page in active generation returns null.
                 return ValueTask.FromResult<V?>(default);
             }
             Interlocked.Increment(ref cacheMisses);
@@ -1180,6 +1229,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 Volatile.Write(ref m_commitTask, null);
                 Volatile.Write(ref m_commitTaskObserved, false);
+                // Reset clears recorded commit fault.
+                m_commitFault = null;
                 lock (m_lock)
                 {
                     foreach (var key in m_modified.Keys)
@@ -1201,6 +1252,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     m_pendingWriteKey = -1;
                     m_generation = null;
                     m_fileCacheVersion.Clear();
+                    // Reset clears uncommitted new page counter.
+                    Interlocked.Exchange(ref newPages, 0);
                 }
                 if (clearMetadata)
                 {
@@ -1233,11 +1286,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 return false;
             }
             var wroteAny = false;
+            var canEvictAll = true;
             try
             {
                 foreach (var value in valuesToEvict)
                 {
-                    wroteAny |= EvictPage(value.Item1);
+                    var (canEvict, wrote) = EvictPage(value.Item1);
+                    wroteAny |= wrote;
+                    if (!canEvict)
+                    {
+                        canEvictAll = false;
+                    }
                 }
             }
             finally
@@ -1258,10 +1317,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     options.ValueSerializer.ClearTemporaryAllocations();
                 }
             }
-            return true;
+            return canEvictAll;
         }
 
-        private bool EvictPage(S3FifoCacheEntry entry)
+        private (bool canEvict, bool wrote) EvictPage(S3FifoCacheEntry entry)
         {
             Debug.Assert(options.ValueSerializer != null);
             var modLookup = entry.Key % LookupTableSize;
@@ -1276,7 +1335,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (m_modified.TryGetValue(entry.Key, out var mod) && mod.Sequence > 0)
                     {
                         // Replaced page cannot overwrite pending generation spill.
-                        return false;
+                        return (false, false);
                     }
                     isModified = true;
                     val = pending.Sequence;
@@ -1301,7 +1360,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 // Skip writing data if we dont use read cache and its not modified or deleted
                 if (isModified == false || val == -1)
                 {
-                    return false;
+                    return (true, false);
                 }
             }
             else
@@ -1311,7 +1370,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (val == -1)
                     {
                         // Deleted
-                        return false;
+                        return (true, false);
                     }
                 }
                 else
@@ -1322,7 +1381,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             if (m_fileCacheVersion.TryGetValue(entry.Key, out var storedVersion) && storedVersion == val)
             {
-                return false;
+                return (true, false);
             }
             entry.Value.EnterWriteLock();
             var sw = ValueStopwatch.StartNew();
@@ -1361,7 +1420,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
             }
-            return wrote;
+            return (true, wrote);
         }
 
         public async Task InitializeSerializerAsync()

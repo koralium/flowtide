@@ -184,6 +184,103 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             // BlobFileWriter finish must truncate last segment end index.
             Assert.Equal(writer.CurrentIndex, writer.CurrentSegment.End);
         }
+
+        /// <summary>
+        /// Temporary read must not return pooled memory directly.
+        /// </summary>
+        [Fact]
+        public async Task TemporaryReadDoesNotReturnBufferFromDisposedFileWriter()
+        {
+            var provider = new TestDataProvider();
+            var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider
+            });
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+
+            var session1 = persistentStorage.CreateSession();
+            var payload = new byte[] { 1, 2, 3, 4 };
+            // Write payload and commit to temporary locations.
+            await session1.Write(100, new SerializableObject(payload));
+            await session1.Commit();
+
+            var session2 = persistentStorage.CreateSession();
+            // Read temporary location before storage checkpoint seals it.
+            var readMemory = await session2.Read(100);
+
+            // Checkpoint disposes temporary file writer and pooled buffers.
+            await persistentStorage.CheckpointAsync(new byte[] { 1 }, false);
+
+            // Returned memory must be an owned independent buffer.
+            Assert.True(System.Runtime.InteropServices.MemoryMarshal.TryGetArray(readMemory, out var segment));
+            Assert.Equal(payload.Length, segment.Array!.Length);
+        }
+
+        /// <summary>
+        /// Storage checkpoint failure must reset taking checkpoint flag.
+        /// </summary>
+        [Fact]
+        public async Task FailedStorageCheckpointResetsTakingCheckpointFlagForLaterCommits()
+        {
+            var provider = new TestDataProvider();
+            var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider
+            });
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+
+            var session1 = persistentStorage.CreateSession();
+            await session1.Write(100, new SerializableObject(new byte[] { 1 }));
+            await session1.Commit();
+
+            provider.InjectWriteException(_ => new IOException("Disk failure"));
+            // Injected failure during storage checkpoint leaves flag set.
+            await Assert.ThrowsAsync<IOException>(async () =>
+            {
+                await persistentStorage.CheckpointAsync(new byte[] { 1 }, false);
+            });
+
+            provider.InjectWriteException(null);
+            var session2 = persistentStorage.CreateSession();
+            await session2.Write(200, new SerializableObject(new byte[] { 2 }));
+
+            // Session commit must succeed after clearing injected fault.
+            var ex = await Record.ExceptionAsync(async () => await session2.Commit());
+            Assert.Null(ex);
+        }
+
+        /// <summary>
+        /// Recreated page must be readable after prior commit.
+        /// </summary>
+        [Fact]
+        public async Task RecreatedPageCanBeReadAfterPreviousCommitDeletedIt()
+        {
+            var provider = new TestDataProvider();
+            var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider
+            });
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+
+            var session1 = persistentStorage.CreateSession();
+            var session2 = persistentStorage.CreateSession();
+            // Initial page write and commit into persistent storage.
+            await session1.Write(100, new SerializableObject(new byte[] { 1 }));
+            await session1.Commit();
+
+            // Delete page and commit deletion to persistent storage.
+            await session1.Delete(100);
+            await session1.Commit();
+
+            // Recreate page with updated content from another session.
+            await session2.Write(100, new SerializableObject(new byte[] { 2 }));
+            await session2.Commit();
+            await persistentStorage.CheckpointAsync(new byte[] { 1 }, false);
+
+            // Recreated page must be readable after subsequent commit.
+            var memory = await session1.Read(100);
+            Assert.Equal(new byte[] { 2 }, memory.ToArray());
+        }
     }
 }
 

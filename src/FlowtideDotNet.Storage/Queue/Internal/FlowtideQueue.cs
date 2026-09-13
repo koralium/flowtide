@@ -93,6 +93,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             var nodeSize = _rightNode.GetByteSize();
             _rightNodeUpdated = true;
             _stateClient.Metadata.QueueSize++;
+            _stateClient.Metadata.Updated = true;
 
             if (_rightNode.values.Count > _stateClient.Metadata.InsertIndex)
             {
@@ -183,6 +184,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             var value = _leftNode.values.Get(_stateClient.Metadata.DequeueIndex);
             _stateClient.Metadata.DequeueIndex++;
             _stateClient.Metadata.QueueSize--;
+            _stateClient.Metadata.Updated = true;
             return ValueTask.FromResult(value);
         }
 
@@ -208,6 +210,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             var value = _leftNode.values.Get(_stateClient.Metadata.DequeueIndex);
             _stateClient.Metadata.DequeueIndex++;
             _stateClient.Metadata.QueueSize--;
+            _stateClient.Metadata.Updated = true;
             return value;
         }
 
@@ -338,11 +341,15 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                     }
                 }
                 _stateClient.Metadata.InsertIndex = _rightNode.values.Count;
+                // Updating right boundary metadata preserves crash recovery integrity.
+                _stateClient.Metadata.Right = _rightNode.Id;
+                _stateClient.Metadata.Updated = true;
                 _stateClient.Delete(oldRightNode.Id);
                 oldRightNode.Return();
             }
             _stateClient.Metadata.InsertIndex--;
             _stateClient.Metadata.QueueSize--;
+            _stateClient.Metadata.Updated = true;
             return ValueTask.FromResult(_rightNode.values.Get(_stateClient.Metadata.InsertIndex));
         }
 
@@ -362,6 +369,9 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             _rightNode = previousNode;
             _stateClient.Metadata.InsertIndex = _rightNode.values.Count - 1;
             _stateClient.Metadata.QueueSize--;
+            // Updating right boundary metadata preserves crash recovery integrity.
+            _stateClient.Metadata.Right = _rightNode.Id;
+            _stateClient.Metadata.Updated = true;
 
             _stateClient.Delete(oldRightNode.Id);
             oldRightNode.Return();

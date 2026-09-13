@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
         internal void ReturnNode(IBPlusTreeNode? node)
         {
-            if (node != null && node.Id != m_rightNode!.Id)
+            if (node != null)
             {
                 node.Return();
             }
@@ -140,6 +140,8 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             // Must always check if it is the right node since it is not commited to state before full.
             if (id == m_stateClient.Metadata!.Right)
             {
+                // Renting right leaf preserves reference during tree splits.
+                m_rightNode!.TryRent();
                 return m_rightNode!;
             }
             return await m_stateClient.GetValue(id);

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -337,49 +337,68 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             await _adminSession.Commit();
 
             Volatile.Write(ref _takingCheckpoint, true);
-            // If there is any data in the merged blob file writer, we need to finish it and send it to the checkpoint handler
-            await _mergedBlobLock.WaitAsync();
-            // Add compaction data
-            await CompactFiles();
-            if (_mergedBlobFileWriter.PageIds.Count > 0)
+            try
             {
-                _mergedBlobFileWriter.Finish();
-                // Send the file to checkpoint handler
-                if (Volatile.Read(ref _numberOfWrittenFiles) > 0)
-                {
-                    // If we already sent files, send another one since we will do a "big" checkpoint
-                    // If not we will do a bundle checkpoint to do a single write to the storage
-                    await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
-                    _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
-                }
-            }
-            _mergedBlobLock.Release();
-            if (Volatile.Read(ref _numberOfWrittenFiles) == 0)
-            {
-                bool finishedCheckpoint = false;
+                // If there is any data in the merged blob file writer, we need to finish it and send it to the checkpoint handler
                 await _mergedBlobLock.WaitAsync();
-                if (_mergedBlobFileWriter.PageIds.Count > 0)
+                try
                 {
-                    var file = _mergedBlobFileWriter;
-                    _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
-                    await _checkpointHandler.FinishCheckpoint(file);
-                    finishedCheckpoint = true;
+                    // Add compaction data
+                    await CompactFiles();
+                    if (_mergedBlobFileWriter.PageIds.Count > 0)
+                    {
+                        _mergedBlobFileWriter.Finish();
+                        // Send the file to checkpoint handler
+                        if (Volatile.Read(ref _numberOfWrittenFiles) > 0)
+                        {
+                            // If we already sent files, send another one since we will do a "big" checkpoint
+                            // If not we will do a bundle checkpoint to do a single write to the storage
+                            await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
+                            _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
+                        }
+                    }
                 }
-                _mergedBlobLock.Release();
-
-                if (!finishedCheckpoint)
+                finally
                 {
-                    // If we did not write any data at all, just finish with a normal checkpoint
+                    _mergedBlobLock.Release();
+                }
+
+                if (Volatile.Read(ref _numberOfWrittenFiles) == 0)
+                {
+                    bool finishedCheckpoint = false;
+                    await _mergedBlobLock.WaitAsync();
+                    try
+                    {
+                        if (_mergedBlobFileWriter.PageIds.Count > 0)
+                        {
+                            var file = _mergedBlobFileWriter;
+                            _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
+                            await _checkpointHandler.FinishCheckpoint(file);
+                            finishedCheckpoint = true;
+                        }
+                    }
+                    finally
+                    {
+                        _mergedBlobLock.Release();
+                    }
+
+                    if (!finishedCheckpoint)
+                    {
+                        // If we did not write any data at all, just finish with a normal checkpoint
+                        await _checkpointHandler.FinishCheckpoint(default);
+                    }
+                }
+                else
+                {
                     await _checkpointHandler.FinishCheckpoint(default);
                 }
             }
-            else
+            finally
             {
-                await _checkpointHandler.FinishCheckpoint(default);
+                // Storage checkpoint teardown must always reset checkpoint flags.
+                Volatile.Write(ref _numberOfWrittenFiles, 0);
+                Volatile.Write(ref _takingCheckpoint, false);
             }
-
-            Volatile.Write(ref _numberOfWrittenFiles, 0);
-            Volatile.Write(ref _takingCheckpoint, false);
             await TryDeleteOldStreamVersions(default);
         }
 

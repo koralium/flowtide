@@ -45,10 +45,8 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
             public ValueTask DisposeAsync()
             {
-                if (_node.Id != _tree.m_stateClient.Metadata!.Right)
-                {
-                    _node.Return();
-                }
+                // Return rented leaf node reference on enumerator disposal.
+                _node.Return();
                 return ValueTask.CompletedTask;
             }
 
@@ -75,11 +73,10 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
             private async ValueTask<bool> FetchNewPage()
             {
-                if (_node.Id != _tree.m_stateClient.Metadata!.Right)
-                {
-                    _node.Return();
-                }
-                _node = ((await _tree.GetChildNode(_node.next)) as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
+                var nextId = _node.next;
+                // Return rented leaf node reference before fetching next.
+                _node.Return();
+                _node = ((await _tree.GetChildNode(nextId)) as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
                 _index = 0;
                 if (_node.keys.Count == 0)
                 {
@@ -108,12 +105,9 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             if (_enumeratorCreated)
             {
                 // Rent additional reference to prevent double-return on multiple enumerations.
-                if (_node.Id != _tree.m_stateClient.Metadata!.Right)
+                if (!_node.TryRent())
                 {
-                    if (!_node.TryRent())
-                    {
-                        throw new InvalidOperationException("Cannot rent leaf node");
-                    }
+                    throw new InvalidOperationException("Cannot rent leaf node");
                 }
             }
             else
@@ -132,7 +126,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
         private async ValueTask Seek_Slow(K key, IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
-            if (!_enumeratorCreated && _node != null && _node.Id != _tree.m_stateClient.Metadata!.Right)
+            if (!_enumeratorCreated && _node != null)
             {
                 // Release previously rented leaf node before seeking next.
                 _node.Return();
@@ -151,7 +145,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
         public void Dispose()
         {
-            if (!_enumeratorCreated && _node != null && _node.Id != _tree.m_stateClient.Metadata!.Right)
+            if (!_enumeratorCreated && _node != null)
             {
                 // Release rented leaf node when abandoned before enumeration.
                 _node.Return();

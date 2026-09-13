@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -176,5 +176,68 @@ namespace FlowtideDotNet.Storage.Tests.Queue
             }
             
         }
+
+        /// <summary>
+        /// Queue pop must update right boundary metadata.
+        /// </summary>
+        [Fact]
+        public async Task QueuePopDoesNotLeaveMetadataPointingToDeletedPage()
+        {
+            var provider = new MemoryFileProvider();
+            var stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
+            {
+                CachePageCount = 1000000,
+                MinCachePageCount = 0,
+                PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
+                {
+                    FileProvider = provider
+                })
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
+            await stateManager.InitializeAsync();
+
+            var stateManagerClient = stateManager.GetOrCreateClient("test");
+            var queue = await stateManagerClient.GetOrCreateQueue("queue", new Storage.Queue.FlowtideQueueOptions<long, PrimitiveListValueContainer<long>>()
+            {
+                MemoryAllocator = GlobalMemoryManager.Instance,
+                ValueSerializer = new PrimitiveListValueContainerSerializer<long>(GlobalMemoryManager.Instance)
+            });
+
+            // Enqueue items across multiple queue data pages.
+            for (int i = 0; i < 10_000; i++)
+            {
+                await queue.Enqueue(i);
+            }
+            await queue.Commit();
+            await stateManager.CheckpointAsync();
+
+            // Pop items until previous right page is deleted.
+            for (int i = 0; i < 5_000; i++)
+            {
+                await queue.Pop();
+            }
+            await queue.Commit();
+            await stateManager.CheckpointAsync();
+
+            // Queue pop must update right boundary metadata.
+            var stateManager2 = new StateManager.StateManagerSync<object>(new StateManagerOptions()
+            {
+                CachePageCount = 1000000,
+                MinCachePageCount = 0,
+                PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
+                {
+                    FileProvider = provider
+                })
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
+            await stateManager2.InitializeAsync();
+            var client2 = stateManager2.GetOrCreateClient("test");
+            var queue2 = await client2.GetOrCreateQueue("queue", new Storage.Queue.FlowtideQueueOptions<long, PrimitiveListValueContainer<long>>()
+            {
+                MemoryAllocator = GlobalMemoryManager.Instance,
+                ValueSerializer = new PrimitiveListValueContainerSerializer<long>(GlobalMemoryManager.Instance)
+            });
+
+            Assert.Equal(5_000, queue2.Count);
+        }
     }
 }
+

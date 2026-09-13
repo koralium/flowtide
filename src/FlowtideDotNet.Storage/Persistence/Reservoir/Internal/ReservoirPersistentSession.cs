@@ -85,6 +85,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 if (_deletedPages.Count > 0)
                 {
                     _persistentStorage.DeletePages(_deletedPages);
+                    // Cleared deleted set allows subsequent reads after recreation.
+                    _deletedPages.Clear();
                 }
             }
         }
@@ -153,18 +155,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 }
                 if (_persistentStorage.TryGetTemporaryLocation(key, out var location) && location.file.TryRent())
                 {
-                    //location.data.
                     try
                     {
-                        if (location.data.FirstSpan.Length >= location.data.Length)
-                        {
-                            var start = location.data.Start;
-                            if (location.data.TryGet(ref start, out var value))
-                            {
-                                return ValueTask.FromResult(value);
-                            }
-                        }
-                        // If the data is not in the first span, we need to copy it to a new buffer
+                        // Copy temporary bytes to caller owned independent buffer.
                         var buffer = new byte[location.data.Length];
                         location.data.CopyTo(buffer);
                         return ValueTask.FromResult((ReadOnlyMemory<byte>)buffer);

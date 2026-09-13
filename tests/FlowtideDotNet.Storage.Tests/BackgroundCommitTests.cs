@@ -2687,6 +2687,191 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.False(found);
             storage.Dispose();
         }
+
+        /// <summary>
+        /// Eviction of replaced pending page must preserve memory.
+        /// </summary>
+        [Fact]
+        public async Task EvictionOfReplacedPendingPageDoesNotReclaimModifiedMemory()
+        {
+            var (manager, storage) = await CreateManager("p0_1_evict", cachePageCount: 0);
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "p0_1_evict", 4);
+            using var gate = new WalkGate(manager);
+            var key = keys[^1];
+
+            // Start background commit holding pending generation.
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+
+            // Foreground delete then recreate creates replaced version.
+            client.Delete(key);
+            client.AddOrUpdate(key, new TestPage(999));
+
+            // Cache cleanup must not evict modified replaced page.
+            await manager.CacheTable.ForceCleanup();
+
+            gate.Release();
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            // Evict slot from lookup table via colliding key.
+            var collisionKey = key + 1009;
+            client.AddOrUpdate(collisionKey, new TestPage(123));
+            await client.GetValue(collisionKey);
+
+            // Modified page must survive eviction and retain value.
+            var fetched = await client.GetValue(key);
+            Assert.NotNull(fetched);
+            Assert.Equal(999, fetched.Value);
+
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Checkpoint must fail if client commit threw synchronously.
+        /// </summary>
+        [Fact]
+        public async Task CheckpointFailsWhenClientCommitThrowsBeforeStartingBackgroundTask()
+        {
+            var (manager, storage) = await CreateManager("p0_3_fail");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "p0_3_fail", 1);
+            var metaId = ((StateClient)client).MetadataId;
+
+            // Inject write failure on metadata key during commit.
+            session.FaultingKeys[metaId] = 1;
+
+            // Commit must throw synchronously before starting background task.
+            await Assert.ThrowsAsync<IOException>(() => client.Commit().AsTask().WaitAsync(Timeout));
+
+            // Checkpoint must fail when a client commit faulted.
+            await Assert.ThrowsAsync<Exception>(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout));
+
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Restore must retain pages from previously committed checkpoints.
+        /// </summary>
+        [Fact]
+        public async Task RestoreDoesNotDeleteCheckpointedPagesThatWereUpdatedAfterCheckpoint()
+        {
+            var storage = new FileCachePersistentStorage(new FileCacheOptions() { DirectoryPath = "./data/bgcommit_restore_delete/persist" });
+            await storage.InitializeAsync(new StorageInitializationMetadata("restore_delete_test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+            var session = storage.CreateSession();
+            // Initial page write and checkpoint into persistent storage.
+            await session.Write(42, new SerializableObject(new byte[] { 1, 2, 3 }));
+            await session.Commit();
+            await storage.CheckpointAsync(new byte[] { 1 }, false);
+
+            // Update page after checkpoint adds to uncheckpointed set.
+            await session.Write(42, new SerializableObject(new byte[] { 4, 5, 6 }));
+            await session.Commit();
+
+            // Clear for restore must retain previously checkpointed pages.
+            storage.ClearForRestore();
+            var exists = storage.TryGetValue(42, out _);
+            Assert.True(exists);
+            storage.Dispose();
+        }
+
+        /// <summary>
+        /// Read cache must not return stale modified page.
+        /// </summary>
+        [Fact]
+        public async Task ReadCacheModeDoesNotReturnStaleVersionAfterPageIsModified()
+        {
+            var (manager, storage) = await CreateManager("p1_2_stale", useReadCache: true, cachePageCount: 0);
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "p1_2_stale", 1);
+            var key = keys[0];
+
+            // Initial commit and checkpoint in read cache mode.
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            // Foreground update modifies page after read cache populate.
+            client.AddOrUpdate(key, new TestPage(999));
+
+            // Eviction forces read cache fetch on next lookup.
+            await manager.CacheTable.ForceCleanup();
+
+            // Read cache must not return obsolete stale version.
+            var fetched = await client.GetValue(key);
+            Assert.NotNull(fetched);
+            Assert.Equal(999, fetched.Value);
+
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Deleted page must return null during active walk.
+        /// </summary>
+        [Fact]
+        public async Task GetValueOnDeletedPageReturnsNullAfterWalkClaimsIt()
+        {
+            var (manager, storage) = await CreateManager("p1_7_delete");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "p1_7_delete", 2);
+
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            var key0 = keys[0];
+            var key1 = keys[1];
+
+            var key1Reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var key1Go = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            manager.PageWriteHookForTests = async (_, key) =>
+            {
+                if (key == key1)
+                {
+                    key1Reached.TrySetResult();
+                    await key1Go.Task;
+                }
+            };
+
+            // Delete first page and start background commit walk.
+            client.Delete(key0);
+            client.AddOrUpdate(key1, new TestPage(42));
+            var commitTask = client.Commit().AsTask();
+            await key1Reached.Task.WaitAsync(Timeout);
+
+            // Deleted page must return null while walk blocked.
+            var fetched = await client.GetValue(key0);
+            Assert.Null(fetched);
+
+            key1Go.SetResult();
+            await commitTask.WaitAsync(Timeout);
+            manager.PageWriteHookForTests = null;
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Reset must clear uncommitted new page allocation counter.
+        /// </summary>
+        [Fact]
+        public async Task ResetClearsUncommittedNewPagesCounterSoNextCommitDoesNotInflatePageCount()
+        {
+            var (manager, storage) = await CreateManager("p2_4_count");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "p2_4_count", 0);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            var initialPageCount = manager.PageCount;
+
+            // Allocate new page IDs without committing any changes.
+            for (int i = 0; i < 10; i++)
+            {
+                client.GetNewPageId();
+            }
+
+            // Reset must clear uncommitted allocated page counter.
+            await client.Reset(false).AsTask().WaitAsync(Timeout);
+
+            // Subsequent commit must not inflate metadata page count.
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            Assert.Equal(initialPageCount, manager.PageCount);
+
+            manager.Dispose();
+        }
     }
 }
 

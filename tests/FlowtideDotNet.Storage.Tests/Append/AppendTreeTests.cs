@@ -317,6 +317,34 @@ namespace FlowtideDotNet.Storage.Tests.Append
             }
             Assert.Equal(10, count);
         }
+
+        /// <summary>
+        /// An iterator holds its node across tree appends.
+        /// </summary>
+        [Fact]
+        public async Task IteratorHeldRightNodeDoesNotGetEvictedWhenRightNodeSplits()
+        {
+            var tree = await CreateTree(bucketSize: 2, cachePageCount: 1);
+            for (int i = 0; i < 2; i++)
+            {
+                await tree.Append(i, i);
+            }
+            var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+
+            var appendTree = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            var heldNode = await appendTree.FindLeafNode(0, new BPlusTreeListComparer<long>(new LongComparer()));
+
+            // Appending more items splits right leaf node.
+            for (int i = 2; i < 6; i++)
+            {
+                await tree.Append(i, i);
+            }
+
+            // Iterator holds node so rent count must be positive.
+            Assert.True(heldNode.RentCount >= 1);
+        }
     }
 }
+
 

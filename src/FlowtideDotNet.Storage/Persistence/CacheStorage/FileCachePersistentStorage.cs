@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
         private readonly bool _ignoreDispose;
         private readonly FileCacheOptions _fileCacheOptions;
         private readonly HashSet<long> _uncheckpointedPages = new HashSet<long>();
+        private readonly HashSet<long> _checkpointedPages = new HashSet<long>();
         private readonly object _lock = new object();
         private long _version;
         internal FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
@@ -46,6 +47,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             lock (_lock)
             {
                 _uncheckpointedPages.Remove(key);
+                _checkpointedPages.Remove(key);
             }
         }
 
@@ -56,6 +58,10 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             await Write(1, metadata);
             lock (_lock)
             {
+                foreach (var page in _uncheckpointedPages)
+                {
+                    _checkpointedPages.Add(page);
+                }
                 _uncheckpointedPages.Clear();
                 _version++;
             }
@@ -78,6 +84,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
                 lock (_lock)
                 {
                     _uncheckpointedPages.Clear();
+                    _checkpointedPages.Clear();
                     m_fileCache.Dispose();
                 }
             }
@@ -91,6 +98,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             lock (_lock)
             {
                 _uncheckpointedPages.Clear();
+                _checkpointedPages.Clear();
                 m_fileCache.Dispose();
             }
         }
@@ -110,6 +118,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             lock (_lock)
             {
                 _uncheckpointedPages.Clear();
+                _checkpointedPages.Clear();
                 // Reset file cache to an empty state.
                 m_fileCache.Dispose();
                 m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(_fileCacheOptions, "persitent", GlobalMemoryManager.Instance);
@@ -141,10 +150,13 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
         {
             lock (_lock)
             {
-                // Free uncheckpointed pages before restoring from persistent checkpoint.
+                // Retain previously checkpointed pages across clear for restore.
                 foreach (var page in _uncheckpointedPages)
                 {
-                    m_fileCache.Free(page);
+                    if (!_checkpointedPages.Contains(page))
+                    {
+                        m_fileCache.Free(page);
+                    }
                 }
                 _uncheckpointedPages.Clear();
                 m_fileCache.ClearTemporaryAllocations();
