@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
@@ -31,7 +30,6 @@ namespace FlowtideDotNet.Storage.Queue.Internal
     internal class FlowtideQueue<V, TValueContainer> : IFlowtideQueue<V, TValueContainer>
         where TValueContainer : IValueContainer<V>
     {
-        private readonly PrimitiveListKeyContainerSerializer<long> _keySerializer;
         private readonly IStateClient<IBPlusTreeNode, FlowtideQueueMetadata> _stateClient;
         private readonly FlowtideQueueOptions<V, TValueContainer> _options;
         public QueueNode<V, TValueContainer>? _leftNode;
@@ -46,7 +44,6 @@ namespace FlowtideDotNet.Storage.Queue.Internal
         {
             _stateClient = stateClient;
             this._options = options;
-            _keySerializer = new PrimitiveListKeyContainerSerializer<long>(options.MemoryAllocator);
             _pageSizeBytes = options.PageSizeBytes ?? 16 * 1024;
         }
 
@@ -54,20 +51,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
         {
             if (_stateClient.Metadata == null)
             {
-                var nodeId = _stateClient.GetNewPageId();
-                var emptyKeys = _keySerializer.CreateEmpty();
-                var emptyValues = _options.ValueSerializer.CreateEmpty();
-                _rightNode = new QueueNode<V, TValueContainer>(nodeId, emptyValues);
-                _leftNode = _rightNode;
-                _rightNode.TryRent();
-                _stateClient.Metadata = new FlowtideQueueMetadata()
-                {
-                    DequeueIndex = 0,
-                    InsertIndex = 0,
-                    Left = nodeId,
-                    Right = nodeId,
-                    QueueSize = 0
-                };
+                CreateEmptyRoot();
             }
             else
             {
@@ -296,11 +280,18 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                 _leftNode.Return();
             }
             _rightNode.Return();
+            CreateEmptyRoot();
+        }
+
+        private void CreateEmptyRoot()
+        {
             var nodeId = _stateClient.GetNewPageId();
             var emptyValues = _options.ValueSerializer.CreateEmpty();
             _rightNode = new QueueNode<V, TValueContainer>(nodeId, emptyValues);
             _leftNode = _rightNode;
             _rightNode.TryRent();
+            // A new root must be persisted even when no enqueue follows its creation.
+            _rightNodeUpdated = true;
             _stateClient.Metadata = new FlowtideQueueMetadata()
             {
                 DequeueIndex = 0,

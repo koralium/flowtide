@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Storage.Tests
     /// Commit hands its pages to a background walk. A page fetched before the walk reaches it
     /// is written by the fetch, never twice, and the checkpoint joins the walk.
     /// </summary>
-    public class BackgroundCommitTests
+    public partial class BackgroundCommitTests
     {
         /// <summary>
         /// Records every page write with the value it carried, and can fault the writes of chosen pages.

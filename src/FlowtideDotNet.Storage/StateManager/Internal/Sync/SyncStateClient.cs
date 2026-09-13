@@ -65,6 +65,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             public HashSet<long>? DeletedKeys { get; }
 
             /// <summary>
+            /// Pages whose original checkpoint copy was spilled before replacing their cache entry.
+            /// Guarded by m_lock and retained even if the replacement is deleted again.
+            /// </summary>
+            public HashSet<long>? ReplacedKeys;
+
+            /// <summary>
             /// The first page write that failed, under m_commitEvictLock. Nothing is written after it.
             /// </summary>
             public Exception? Failure;
@@ -266,7 +272,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         if (modified.Sequence == -1)
                         {
-                            if (m_pending.TryGetValue(key, out var pending) && pending.Sequence > 0)
+                            if (m_pending.TryGetValue(key, out var pending) && pending.Sequence > 0 &&
+                                !(m_generation.ReplacedKeys?.Contains(key) ?? false))
                             {
                                 if (stateManager.TryPeekCacheEntry(key, out var oldEntry))
                                 {
@@ -275,6 +282,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                                     m_fileCacheVersion[key] = pending.Sequence;
                                     m_fileCache.Write(key, new SerializableObject(oldEntry.Value, options.ValueSerializer));
                                 }
+                                // An evicted original is already in the spill. Either way, later
+                                // replacements must keep that copy instead of spilling their own value.
+                                (m_generation.ReplacedKeys ??= new HashSet<long>()).Add(key);
                             }
                             stateManager.DeleteFromCache(key);
                         }
@@ -713,11 +723,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             foreach (var key in held)
             {
-                if (!TryTakePending(key, out var version, out var isReplaced))
+                if (!TryTakePending(key, out var version, out var isReplaced, out var entry))
                 {
                     continue;
                 }
-                await WritePendingPage(key, version, isReplaced, generation);
+                await WritePendingPage(key, version, isReplaced, entry, generation);
             }
         }
 
@@ -746,11 +756,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         ThrowIfStopRequested();
                         ThrowIfFailed(generation);
                         // Already written by a fetch or at Commit.
-                        if (!TryTakePending(key, out var version, out var isReplaced))
+                        if (!TryTakePending(key, out var version, out var isReplaced, out var entry))
                         {
                             continue;
                         }
-                        await WritePendingPage(key, version, isReplaced, generation);
+                        await WritePendingPage(key, version, isReplaced, entry, generation);
                     }
                     finally
                     {
@@ -838,32 +848,51 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Claims the page's checkpoint write, false when a fetch or the walk already took it.
+        /// Claims the page's checkpoint write and rents its cached snapshot under the same lock.
+        /// False when a fetch or the walk already took it.
         /// </summary>
-        private bool TryTakePending(long key, out long version, out bool isReplaced)
+        private bool TryTakePending(long key, out long version, out bool isReplaced, out S3FifoCacheEntry? entry)
         {
             lock (m_lock)
             {
-                if (!m_pending.Remove(key, out var pending))
+                entry = null;
+                if (!m_pending.TryGetValue(key, out var pending))
                 {
                     version = default;
                     isReplaced = default;
                     return false;
                 }
+                Debug.Assert(m_generation != null);
                 version = pending.Sequence;
-                isReplaced = m_modified.TryGetValue(key, out var current) && current.Sequence > 0;
+                isReplaced = m_generation.ReplacedKeys?.Contains(key) ?? false;
+                try
+                {
+                    if (version > 0 && !isReplaced)
+                    {
+                        // AddOrUpdate may replace the entry once this lock is released. Take
+                        // the writer's rent first so it cannot lose the original in that gap.
+                        stateManager.TryRentCacheEntryForCommit(key, out entry);
+                    }
+                }
+                catch (Exception e)
+                {
+                    // A failed on-fetch claim must fault the generation just like a failed write.
+                    m_generation.Failure ??= e;
+                    throw;
+                }
+                m_pending.Remove(key);
                 m_pendingWriteKey = key;
                 return true;
             }
         }
 
         /// <summary>
-        /// Writes one claimed page to the session, caller holds m_commitEvictLock.
+        /// Writes one claimed page to the session and returns its snapshot rent, if any.
+        /// Caller holds m_commitEvictLock.
         /// </summary>
-        private async Task WritePendingPage(long key, long version, bool isReplaced, CommitGeneration generation)
+        private async Task WritePendingPage(long key, long version, bool isReplaced, S3FifoCacheEntry? entry, CommitGeneration generation)
         {
             Debug.Assert(options.ValueSerializer != null);
-            S3FifoCacheEntry? entry = null;
             try
             {
                 if (version == -1)
@@ -875,7 +904,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     generation.NewPages--;
                     FreeSpill(key);
                 }
-                else if (!isReplaced && stateManager.TryRentCacheEntryForCommit(key, out entry))
+                else if (entry != null)
                 {
                     // Return the lookup's rent even when the write throws, a leaked rent keeps the page unevictable forever.
                     try
@@ -947,11 +976,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return;
                 }
                 ThrowIfFailed(generation);
-                if (!TryTakePending(key, out var version, out var isReplaced))
+                if (!TryTakePending(key, out var version, out var isReplaced, out var entry))
                 {
                     return;
                 }
-                await WritePendingPage(key, version, isReplaced, generation);
+                await WritePendingPage(key, version, isReplaced, entry, generation);
             }
             finally
             {
@@ -980,11 +1009,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_lock)
             {
+                var owesCheckpointWrite = m_generation != null && OwesCheckpointWrite_NoLock(key);
+                var hasReplacement = owesCheckpointWrite && m_modified.TryGetValue(key, out var current) && current.Sequence > 0;
                 m_modified[key] = new Modified(-1);
                 Volatile.Write(ref _lookupTable[key % LookupTableSize], null);
-                if (m_generation != null && OwesCheckpointWrite_NoLock(key))
+                if (owesCheckpointWrite)
                 {
-                    // Nobody holds a pending page, so it can stay until the walk has written it.
+                    if (hasReplacement)
+                    {
+                        // The checkpoint's original is spilled or rented by its writer (or is
+                        // a deletion). Discard the replacement without freeing that snapshot.
+                        stateManager.DeleteFromCache(key);
+                    }
+                    // Keep the original cache entry and spill until the checkpoint write lands.
                     return;
                 }
                 Delete_NoLock(key);
@@ -1077,12 +1114,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 Volatile.Write(ref _lookupTable[modLookup], cacheVal);
                 return ValueTask.FromResult<V?>((V)cacheVal.Value);
             }
-            if (m_modified.TryGetValue(key, out var modified) && modified.Sequence == -1)
+            var hasModification = m_modified.TryGetValue(key, out var modified);
+            if (hasModification && modified.Sequence == -1)
             {
                 // Deleted page in modified set returns null.
                 return ValueTask.FromResult<V?>(default);
             }
-            if (m_generation?.DeletedKeys != null && m_generation.DeletedKeys.Contains(key))
+            if (!hasModification && m_generation?.DeletedKeys != null && m_generation.DeletedKeys.Contains(key))
             {
                 // Deleted page in active generation returns null.
                 return ValueTask.FromResult<V?>(default);
@@ -1344,7 +1382,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 // generation says about it, the commit reads the spill back.
                 if (m_pending.TryGetValue(entry.Key, out var pending))
                 {
-                    if (m_modified.TryGetValue(entry.Key, out var mod) && mod.Sequence > 0)
+                    if ((m_generation?.ReplacedKeys?.Contains(entry.Key) ?? false) ||
+                        (m_modified.TryGetValue(entry.Key, out var mod) && mod.Sequence > 0))
                     {
                         // Replaced page cannot overwrite pending generation spill.
                         return (false, false);
