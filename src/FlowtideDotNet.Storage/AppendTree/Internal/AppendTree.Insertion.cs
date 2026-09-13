@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -67,6 +67,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
             // Set right node returns the previous node
             SetRightNode(newRightNode);
+            m_stateClient.AddOrUpdate(newRightNode.Id, newRightNode);
 
             bool updatedParent = true;
             // Iterate over the internal nodes but not the root node since that requires special handling.

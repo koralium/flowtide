@@ -102,7 +102,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 {
                     _persistentStorage.RemoveTemporaryLocation(key);
                 }
-                
                 _deletedPages.Add(key);
             }
             return Task.CompletedTask;
@@ -250,6 +249,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             lock (_lock)
             {
+                // Purge uncommitted temporary locations before returning file writer.
+                var pageIds = _fileWriter.PageIds;
+                for (int i = 0; i < pageIds.Count; i++)
+                {
+                    _persistentStorage.RemoveTemporaryLocation(pageIds[i]);
+                }
                 _deletedPages.Clear();
                 _fileWriter.Return();
                 SetupFileWriter();

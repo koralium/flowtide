@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
@@ -348,7 +349,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 if (stateClient.HasCommitFault)
                 {
                     // Faulted commit on state client aborts checkpoint.
-                    throw new Exception("Commit failed on state client.");
+                    throw new Exception("Commit failed on state client.", stateClient.CommitFault);
                 }
             }
             if (disposedValue || m_commitsAbandoned)

@@ -344,6 +344,41 @@ namespace FlowtideDotNet.Storage.Tests.Append
             // Iterator holds node so rent count must be positive.
             Assert.True(heldNode.RentCount >= 1);
         }
+
+        /// <summary>
+        /// Root split updates metadata across multiple checkpoints.
+        /// </summary>
+        [Fact]
+        public async Task AppendTreeRootSplitPersistsUpdatedMetadataOnSecondCommit()
+        {
+            var tree = await CreateTree(bucketSize: 2);
+            await tree.Append(1, 1);
+
+            // First commit persists initial single-leaf tree metadata.
+            await tree.Commit();
+            await stateManager!.CheckpointAsync();
+
+            // Insert enough elements to split leaf and create new root.
+            await tree.Append(2, 2);
+            await tree.Append(3, 3);
+            await tree.Append(4, 4);
+
+            // Second commit must persist updated root metadata.
+            await tree.Commit();
+            await stateManager.CheckpointAsync();
+
+            stateManager.Dispose();
+            stateManager = null;
+
+            // Reopen tree from storage to verify recovered root.
+            var recoveredTree = await CreateTree(bucketSize: 2);
+            var iterator = recoveredTree.CreateIterator();
+            await iterator.Seek(4);
+            var enumerator = iterator.GetAsyncEnumerator();
+            var hasValue = await enumerator.MoveNextAsync();
+            Assert.True(hasValue);
+            Assert.Equal(4, enumerator.Current.Key);
+        }
     }
 }
 

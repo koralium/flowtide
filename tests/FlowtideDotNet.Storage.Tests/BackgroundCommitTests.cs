@@ -2872,6 +2872,59 @@ namespace FlowtideDotNet.Storage.Tests
 
             manager.Dispose();
         }
+
+        /// <summary>
+        /// Walk failure reset purges pages written before failure occurred.
+        /// </summary>
+        [Fact]
+        public async Task ResetPurgesCacheEntriesWrittenBeforeBackgroundWalkFailed()
+        {
+            var (manager, storage) = await CreateManager("p1_3_reset_purge");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "p1_3_reset_purge", 2);
+
+            // Fault the second page write during background commit walk.
+            session.FaultingKeys.TryAdd(keys[1], 0);
+
+            // Commit begins background walk writing first page successfully.
+            await client.Commit().AsTask().WaitAsync(Timeout);
+
+            // Wait until the walk faults on the second page.
+            await Assert.ThrowsAnyAsync<Exception>(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout));
+
+            // Reset client to recover from failed commit walk.
+            await client.Reset(false).AsTask().WaitAsync(Timeout);
+
+            // Cache must purge pages written before walk failed.
+            Assert.False(manager.CacheTable.TryGetCacheValue(keys[0], out _));
+
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// Checkpoint exception preserves underlying commit failure exception.
+        /// </summary>
+        [Fact]
+        public async Task CheckpointAsyncPreservesInnerExceptionWhenCommitFaults()
+        {
+            var (manager, storage) = await CreateManager("p1_1_fault");
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "p1_1_fault", 2);
+
+            // Hold page rent to force synchronous write.
+            var page = await client.GetValue(keys[0]);
+
+            // Inject write failure on the held page.
+            session.FaultingKeys.TryAdd(keys[0], 0);
+
+            // State client commit records synchronous write fault.
+            await Record.ExceptionAsync(() => client.Commit().AsTask());
+
+            // State manager checkpoint must preserve root cause.
+            var ex = await Record.ExceptionAsync(() => manager.CheckpointAsync().AsTask());
+            Assert.NotNull(ex);
+            Assert.NotNull(ex.InnerException);
+
+            manager.Dispose();
+        }
     }
 }
 

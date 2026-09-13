@@ -15,6 +15,7 @@ using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.Queue;
+using FlowtideDotNet.Storage.Queue.Internal;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -237,6 +238,51 @@ namespace FlowtideDotNet.Storage.Tests.Queue
             });
 
             Assert.Equal(5_000, queue2.Count);
+        }
+
+        /// <summary>
+        /// Queue pop reclaims uncommitted right node reference count.
+        /// </summary>
+        [Fact]
+        public async Task QueuePopOnUncommittedRightNodeReclaimsNodeReference()
+        {
+            var provider = new MemoryFileProvider();
+            var stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
+            {
+                CachePageCount = 1000000,
+                MinCachePageCount = 0,
+                PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
+                {
+                    FileProvider = provider
+                })
+            }, NullLoggerFactory.Instance, new Meter("storage"), "storage", GlobalMemoryManager.Instance);
+            await stateManager.InitializeAsync();
+
+            var stateManagerClient = stateManager.GetOrCreateClient("test");
+            var queue = await stateManagerClient.GetOrCreateQueue("queue", new Storage.Queue.FlowtideQueueOptions<long, PrimitiveListValueContainer<long>>()
+            {
+                MemoryAllocator = GlobalMemoryManager.Instance,
+                PageSizeBytes = 64,
+                ValueSerializer = new PrimitiveListValueContainerSerializer<long>(GlobalMemoryManager.Instance)
+            });
+
+            var flowtideQueue = (FlowtideQueue<long, PrimitiveListValueContainer<long>>)queue;
+
+            // Enqueue elements until right node split occurs.
+            for (int i = 0; i < 9; i++)
+            {
+                await queue.Enqueue(i);
+            }
+
+            // Capture uncommitted right node created on split.
+            var uncommittedNode = flowtideQueue._rightNode!;
+
+            // Pop items until uncommitted node is discarded.
+            await queue.Pop();
+            await queue.Pop();
+
+            // Discarded node must release its rent count.
+            Assert.Equal(0, uncommittedNode.RentCount);
         }
     }
 }

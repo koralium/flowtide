@@ -133,6 +133,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
 
                     // Insert the new value in the queue
                     _rightNode.values.Insert(0, value);
+                    isFull |= _stateClient.AddOrUpdate(newNodeId, _rightNode);
 
                     if (isFull)
                     {

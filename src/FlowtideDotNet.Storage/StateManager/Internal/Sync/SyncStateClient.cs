@@ -299,22 +299,21 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_modified[key] = new Modified(++m_writeSequence);
 
                 var modLookup = key % LookupTableSize;
-                var entry = _lookupTable[modLookup];
-                if (entry != null && entry.Key == key)
+                var lookupEntry = _lookupTable[modLookup];
+                if (lookupEntry != null && lookupEntry.Key == key)
                 {
-                    lock (entry)
+                    lock (lookupEntry)
                     {
-                        if (!ReferenceEquals(entry.Value, value))
+                        if (!ReferenceEquals(lookupEntry.Value, value))
                         {
                             stateManager.DeleteFromCache(key);
                             Volatile.Write(ref _lookupTable[modLookup], null);
-                            entry = null;
                         }
                         else
                         {
-                            entry.Version = entry.Version + 1;
+                            lookupEntry.Version = lookupEntry.Version + 1;
                             // If it is not removed, we can return directly, otherwise it needs to be readded
-                            if (!entry.Removed)
+                            if (!lookupEntry.Removed)
                             {
                                 return stateManager.IsOverCapacity;
                             }
@@ -332,7 +331,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                 }
 
-                var full = stateManager.AddOrUpdate(key, value, this, out entry);
+                var full = stateManager.AddOrUpdate(key, value, this, out var entry);
                 Volatile.Write(ref _lookupTable[modLookup], entry);
                 return full || stateManager.IsOverCapacity;
             }
@@ -528,6 +527,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         internal override bool HasCommitInFlight => Volatile.Read(ref m_commitTask) is { IsCompleted: false };
         internal override bool HasCommitFault => m_commitFault != null || Volatile.Read(ref m_commitTask) is { IsCompleted: true, IsCompletedSuccessfully: false } || m_generation?.Failure != null;
+        internal override Exception? CommitFault => m_commitFault ?? Volatile.Read(ref m_commitTask)?.Exception?.InnerException ?? m_generation?.Failure;
 
         internal override Task WaitForCommitAsync()
         {
@@ -1237,16 +1237,28 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         stateManager.DeleteFromCache(key);
                     }
-                    // A failed commit leaves its generation behind, those pages are reloaded from the recovered store.
-                    foreach (var key in m_pending.Keys)
+                    if (m_generation != null)
                     {
-                        stateManager.DeleteFromCache(key);
+                        // Purge generation pages written before walk failed.
+                        for (int i = 0; i < m_generation.Count; i++)
+                        {
+                            stateManager.DeleteFromCache(m_generation.Keys[i]);
+                        }
+                    }
+                    else
+                    {
+                        // Purge uncommitted pending pages from cache table.
+                        foreach (var key in m_pending.Keys)
+                        {
+                            stateManager.DeleteFromCache(key);
+                        }
                     }
                     for (int i = 0; i < _lookupTable.Length; i++)
                     {
                         Volatile.Write(ref _lookupTable[i], null);
                     }
-                    m_fileCache.FreeAll(m_modified.Keys.Concat(m_pending.Keys));
+                    m_fileCache.FreeAll(m_modified.Keys);
+                    m_fileCache.FreeAll(m_pending.Keys);
                     m_modified.Clear();
                     m_pending.Clear();
                     m_pendingWriteKey = -1;

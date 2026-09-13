@@ -18,6 +18,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         public abstract long MetadataId { get; }
         internal virtual bool HasCommitInFlight => false;
         internal virtual bool HasCommitFault => false;
+        internal virtual Exception? CommitFault => null;
 
         /// <summary>
         /// Blocks this client's commits until ResumeCommits, joining an in-flight one for at most

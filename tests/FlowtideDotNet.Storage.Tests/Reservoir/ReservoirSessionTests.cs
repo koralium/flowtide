@@ -281,6 +281,32 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             var memory = await session1.Read(100);
             Assert.Equal(new byte[] { 2 }, memory.ToArray());
         }
+
+        /// <summary>
+        /// Session reset removes temporary locations allowing subsequent writes.
+        /// </summary>
+        [Fact]
+        public async Task ReservoirSessionResetRemovesTemporaryLocationsAllowingSubsequentWrites()
+        {
+            var provider = new TestDataProvider();
+            var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider
+            });
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+
+            var session = (ReservoirPersistentSession)persistentStorage.CreateSession();
+
+            // Write page to session without committing changes.
+            await session.Write(100, new SerializableObject(new byte[] { 1 }));
+
+            // Reset uncommitted session to discard written changes.
+            session.Reset();
+
+            // Rewriting discarded page must succeed after reset.
+            var ex = await Record.ExceptionAsync(async () => await session.Write(100, new SerializableObject(new byte[] { 2 })));
+            Assert.Null(ex);
+        }
     }
 }
 
