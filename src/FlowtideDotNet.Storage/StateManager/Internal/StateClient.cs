@@ -14,6 +14,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
     internal abstract class StateClient : IDisposable
     {
         public abstract void Dispose();
+        internal virtual Task DisposalTask => Task.CompletedTask;
         public abstract ValueTask Reset(bool clearMetadata, bool discardErrors = false);
         public abstract long MetadataId { get; }
         internal virtual bool HasCommitInFlight => false;

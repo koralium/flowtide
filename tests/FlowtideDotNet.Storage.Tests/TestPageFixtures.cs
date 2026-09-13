@@ -94,8 +94,11 @@ namespace FlowtideDotNet.Storage.Tests
 
         public Task CheckpointEntered => _checkpointEntered.Task;
 
+        public Action<TestPage>? SerializeHook { get; set; }
+
         public void Serialize(in IBufferWriter<byte> bufferWriter, in TestPage value)
         {
+            SerializeHook?.Invoke(value);
             if (value.Value == _gatedValue)
             {
                 var gate = Interlocked.Exchange(ref _serializeGate, null);
@@ -149,8 +152,11 @@ namespace FlowtideDotNet.Storage.Tests
 
         public volatile bool Disposed;
 
+        public Action? DisposeHook { get; set; }
+
         public void Dispose()
         {
+            DisposeHook?.Invoke();
             Disposed = true;
         }
     }

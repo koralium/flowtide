@@ -146,6 +146,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         // The worker can outlive the active snapshot during cleanup or a timed-out stop.
         // Keep its physical lifetime separate; disposal and recovery must join the actual task.
         private Task? m_commitTask;
+        private Task? m_disposalTask;
         private bool m_commitTaskObserved;
 
         /// <summary>
@@ -281,85 +282,119 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_lock)
             {
-                if (m_generation != null && OwesCheckpointWrite_NoLock(key))
+                if (m_generation == null ||
+                    !m_modified.TryGetValue(key, out var modified) || modified.Sequence != -1 ||
+                    !m_commit.Pending.TryGetValue(key, out var pending) || pending.Sequence <= 0 ||
+                    (m_generation.ReplacedKeys?.Contains(key) ?? false))
                 {
-                    if (m_modified.TryGetValue(key, out var modified))
+                    return AddOrUpdate_NoLock(key, value);
+                }
+            }
+
+            // Replacement spills share the existing serialization lock.
+            m_commitEvictLock.Wait();
+            try
+            {
+                lock (m_lock)
+                {
+                    return AddOrUpdate_NoLock(key, value);
+                }
+            }
+            finally
+            {
+                m_commitEvictLock.Release();
+            }
+        }
+
+        private bool AddOrUpdate_NoLock(in long key, V value)
+        {
+            Debug.Assert(Monitor.IsEntered(m_lock));
+            if (m_generation != null && OwesCheckpointWrite_NoLock(key))
+            {
+                if (m_modified.TryGetValue(key, out var modified))
+                {
+                    if (modified.Sequence == -1)
                     {
-                        if (modified.Sequence == -1)
+                        if (m_commit.Pending.TryGetValue(key, out var pending) && pending.Sequence > 0 &&
+                            !(m_generation.ReplacedKeys?.Contains(key) ?? false))
                         {
-                            if (m_commit.Pending.TryGetValue(key, out var pending) && pending.Sequence > 0 &&
-                                !(m_generation.ReplacedKeys?.Contains(key) ?? false))
+                            if (stateManager.TryPeekCacheEntry(key, out var oldEntry))
                             {
-                                if (stateManager.TryPeekCacheEntry(key, out var oldEntry))
+                                Debug.Assert(options.ValueSerializer != null);
+                                // Spill old version before replacing cache entry.
+                                m_fileCacheVersion[key] = pending.Sequence;
+                                try
                                 {
-                                    Debug.Assert(options.ValueSerializer != null);
-                                    // Spill old version before replacing cache entry.
-                                    m_fileCacheVersion[key] = pending.Sequence;
                                     m_fileCache.Write(key, new SerializableObject(oldEntry.Value, options.ValueSerializer));
                                 }
-                                // An evicted original is already in the spill. Either way, later
-                                // replacements must keep that copy instead of spilling their own value.
-                                (m_generation.ReplacedKeys ??= new HashSet<long>()).Add(key);
+                                catch
+                                {
+                                    // Failed spills must not advance the stored version.
+                                    m_fileCacheVersion.TryRemove(new KeyValuePair<long, long>(key, pending.Sequence));
+                                    throw;
+                                }
                             }
-                            stateManager.DeleteFromCache(key);
+                            // Replacements preserve the original page's existing spill.
+                            (m_generation.ReplacedKeys ??= new HashSet<long>()).Add(key);
                         }
-                        // Replaced page version already spilled to file cache.
-                    }
-                    else if (m_commit.Pending.TryGetValue(key, out var pending) && pending.Sequence == -1)
-                    {
-                        // Deleted in pending generation, does not conflict with SessionDelete.
                         stateManager.DeleteFromCache(key);
+                    }
+                    // Replaced page version already spilled to file cache.
+                }
+                else if (m_commit.Pending.TryGetValue(key, out var pending) && pending.Sequence == -1)
+                {
+                    // Deleted in pending generation, does not conflict with SessionDelete.
+                    stateManager.DeleteFromCache(key);
+                }
+                else
+                {
+                    // Pages retained across commits require a rent.
+                    throw new InvalidOperationException($"Page '{key}' on state client '{name}' was written before its checkpoint write, a page kept across Commit must be rented.");
+                }
+            }
+            if (m_fileCacheVersion.TryGetValue(key, out var ver) && ver == -2)
+            {
+                // Invalidate obsolete read cache before adding updated page.
+                FreeSpill(key);
+            }
+            m_modified[key] = new Modified(++m_writeSequence);
+
+            var modLookup = key % LookupTableSize;
+            var lookupEntry = _lookupTable[modLookup];
+            if (lookupEntry != null && lookupEntry.Key == key)
+            {
+                lock (lookupEntry)
+                {
+                    if (!ReferenceEquals(lookupEntry.Value, value))
+                    {
+                        stateManager.DeleteFromCache(key);
+                        Volatile.Write(ref _lookupTable[modLookup], null);
                     }
                     else
                     {
-                        // Held pages are written at Commit, so this is a reference kept without a rent.
-                        throw new InvalidOperationException($"Page '{key}' on state client '{name}' was written before its checkpoint write, a page kept across Commit must be rented.");
-                    }
-                }
-                if (m_fileCacheVersion.TryGetValue(key, out var ver) && ver == -2)
-                {
-                    // Invalidate obsolete read cache before adding updated page.
-                    FreeSpill(key);
-                }
-                m_modified[key] = new Modified(++m_writeSequence);
-
-                var modLookup = key % LookupTableSize;
-                var lookupEntry = _lookupTable[modLookup];
-                if (lookupEntry != null && lookupEntry.Key == key)
-                {
-                    lock (lookupEntry)
-                    {
-                        if (!ReferenceEquals(lookupEntry.Value, value))
+                        lookupEntry.Version = lookupEntry.Version + 1;
+                        // Live entries already belong to the cache.
+                        if (!lookupEntry.Removed)
                         {
-                            stateManager.DeleteFromCache(key);
-                            Volatile.Write(ref _lookupTable[modLookup], null);
-                        }
-                        else
-                        {
-                            lookupEntry.Version = lookupEntry.Version + 1;
-                            // If it is not removed, we can return directly, otherwise it needs to be readded
-                            if (!lookupEntry.Removed)
-                            {
-                                return stateManager.IsOverCapacity;
-                            }
+                            return stateManager.IsOverCapacity;
                         }
                     }
                 }
-                else if (stateManager.TryPeekCacheEntry(key, out var existingEntry))
-                {
-                    lock (existingEntry)
-                    {
-                        if (!ReferenceEquals(existingEntry.Value, value))
-                        {
-                            stateManager.DeleteFromCache(key);
-                        }
-                    }
-                }
-
-                var full = stateManager.AddOrUpdate(key, value, this, out var entry);
-                Volatile.Write(ref _lookupTable[modLookup], entry);
-                return full || stateManager.IsOverCapacity;
             }
+            else if (stateManager.TryPeekCacheEntry(key, out var existingEntry))
+            {
+                lock (existingEntry)
+                {
+                    if (!ReferenceEquals(existingEntry.Value, value))
+                    {
+                        stateManager.DeleteFromCache(key);
+                    }
+                }
+            }
+
+            var full = stateManager.AddOrUpdate(key, value, this, out var entry);
+            Volatile.Write(ref _lookupTable[modLookup], entry);
+            return full || stateManager.IsOverCapacity;
         }
 
         public Task WaitForNotFullAsync()
@@ -1155,7 +1190,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     var commitTask = Volatile.Read(ref m_commitTask);
                     if (commitTask != null && !commitTask.IsCompleted)
                     {
-                        commitTask.ContinueWith(static (t, state) => ((SyncStateClient<V, TMetadata>)state!).DisposeAfterWalk(t), this, TaskScheduler.Default);
+                        m_disposalTask = commitTask.ContinueWith(static (t, state) => ((SyncStateClient<V, TMetadata>)state!).DisposeAfterWalk(t), this, TaskScheduler.Default);
                     }
                     else
                     {
@@ -1168,6 +1203,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 disposedValue = true;
             }
         }
+
+        internal override Task DisposalTask => m_disposalTask ?? Task.CompletedTask;
 
         private void DisposeAfterWalk(Task walk)
         {
@@ -1185,11 +1222,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private void DisposeResources()
         {
-            m_fileCache.Dispose();
-            options.ValueSerializer?.Dispose();
-            // The client owns the session it was created with. A supplied storage
-            // outlives a stop, so an undisposed session would be stranded in it.
-            session.Dispose();
+            // Disposal failures must not skip other owned resources.
+            try
+            {
+                m_fileCache.Dispose();
+            }
+            finally
+            {
+                try
+                {
+                    options.ValueSerializer?.Dispose();
+                }
+                finally
+                {
+                    session.Dispose();
+                }
+            }
         }
 
         public override void Dispose()

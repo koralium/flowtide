@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Storage.Tests
         /// <summary>
         /// Records every page write with the value it carried, and can fault the writes of chosen pages.
         /// </summary>
-        private class RecordingSession : IPersistentStorageSession
+        internal class RecordingSession : IPersistentStorageSession
         {
             private readonly IPersistentStorageSession _inner;
 
@@ -290,7 +290,7 @@ namespace FlowtideDotNet.Storage.Tests
             }
         }
 
-        private class RecordingStorage : IPersistentStorage
+        internal class RecordingStorage : IPersistentStorage
         {
             private readonly IPersistentStorage _inner;
 
@@ -337,7 +337,7 @@ namespace FlowtideDotNet.Storage.Tests
         /// <summary>
         /// Holds the manager's next background walk before it claims its first page.
         /// </summary>
-        private sealed class WalkGate : IDisposable
+        internal sealed class WalkGate : IDisposable
         {
             private readonly StateManagerSync _manager;
             private readonly TaskCompletionSource _release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -376,7 +376,7 @@ namespace FlowtideDotNet.Storage.Tests
 
         private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
-        private static async Task<(StateManagerSync<StateManagerMetadata> manager, RecordingStorage storage)> CreateManager(string name, int cachePageCount = 1000, bool useReadCache = false, bool backgroundCommit = true, bool? threadSafeSession = null, bool reservoir = true, TimeSpan? stopCommitsTimeout = null, IFileCacheFactory? fileCacheFactory = null)
+        internal static async Task<(StateManagerSync<StateManagerMetadata> manager, RecordingStorage storage)> CreateManager(string name, int cachePageCount = 1000, bool useReadCache = false, bool backgroundCommit = true, bool? threadSafeSession = null, bool reservoir = true, TimeSpan? stopCommitsTimeout = null, IFileCacheFactory? fileCacheFactory = null)
         {
             IPersistentStorage inner = reservoir
                 ? new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() })
@@ -433,6 +433,280 @@ namespace FlowtideDotNet.Storage.Tests
         {
             Assert.True(storage.TryGetValue(key, out var bytes), $"page {key} is not in persistent storage");
             return BinaryPrimitives.ReadInt32LittleEndian(bytes.Value.Span);
+        }
+
+        [Fact]
+        [Trait("Category", "ReviewRoundRegression")]
+        public async Task PendingReplacementDoesNotSerializeAlongsideBackgroundWrite()
+        {
+            var (manager, storage) = await CreateManager("review_parallel_replace");
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            using var release = new ManualResetEventSlim(false);
+            var serializer = new TestPageSerializer();
+            var replacementStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var replacementSerialized = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            serializer.SerializeHook = page =>
+            {
+                if (page.Value == 2) replacementSerialized.TrySetResult();
+            };
+            serializer.ArmSerializeGate(release, 1);
+            var (client, _, _) = await CreateClientWithPages(manager, storage, "pages", 0, serializer);
+            var first = client.GetNewPageId();
+            var second = client.GetNewPageId();
+            client.AddOrUpdate(first, new TestPage(1));
+            client.AddOrUpdate(second, new TestPage(2));
+            Task? replace = null;
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await serializer.SerializeEntered.WaitAsync(Timeout);
+                replace = Task.Run(() =>
+                {
+                    replacementStarted.TrySetResult();
+                    client.Delete(second);
+                    client.AddOrUpdate(second, new TestPage(3));
+                });
+                await replacementStarted.Task.WaitAsync(Timeout);
+                // Replacement serialization must wait for the active writer.
+                await Task.WhenAny(replacementSerialized.Task, Task.Delay(TimeSpan.FromSeconds(1)));
+                var serializedConcurrently = replacementSerialized.Task.IsCompleted;
+                release.Set();
+                await replace.WaitAsync(Timeout);
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+                Assert.False(serializedConcurrently, "Pending replacement serialized while the background writer held the same serializer.");
+                Assert.Equal(1, ReadPersisted(storage, first));
+                Assert.Equal(2, ReadPersisted(storage, second));
+            }
+            finally
+            {
+                release.Set();
+                if (replace != null) await replace.WaitAsync(Timeout);
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "ReviewRoundRegression")]
+        public async Task RestartDoesNotExposeWritesFromAnAbandonedSession()
+        {
+            var factory = new RecordingFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions
+            {
+                DirectoryPath = "./data/bgcommit_review_abandoned_restart/temp"
+            }));
+            var (manager, storage) = await CreateManager("review_abandoned_restart", fileCacheFactory: factory);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var (client, session, _) = await CreateClientWithPages(manager, storage, "pages", 0);
+            var key = client.GetNewPageId();
+            client.AddOrUpdate(key, new TestPage(1));
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            var page = (await client.GetValue(key))!;
+            page.Value = 2;
+            client.AddOrUpdate(key, page);
+            page.Return();
+
+            using var beforeWrite = new ManualResetEventSlim(false);
+            using var afterWrite = new ManualResetEventSlim(false);
+            session.ArmWriteGate(beforeWrite, new HashSet<long> { key });
+            var cache = factory.Created.Single();
+            cache.ArmFreeGate(afterWrite, key);
+            Task? oldWorker = null;
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await session.WriterBlocked.WaitAsync(Timeout);
+                oldWorker = ((StateClient)client).WaitForCommitAsync();
+                manager.RequestStopCommits();
+                manager.Dispose();
+                Assert.False(oldWorker.IsCompleted);
+
+                var restart = manager.InitializeAsync();
+                await Task.WhenAny(restart, Task.Delay(TimeSpan.FromSeconds(1)));
+                if (!restart.IsCompleted) afterWrite.Set();
+                // Abandoned writes cannot alter recovered checkpoint values.
+                beforeWrite.Set();
+                await restart.WaitAsync(Timeout);
+                await Task.WhenAny(cache.FreeEntered, oldWorker).WaitAsync(Timeout);
+                using var recoveredSession = storage.CreateSession();
+                var recovered = await recoveredSession.Read(key);
+                Assert.Equal(1, BinaryPrimitives.ReadInt32LittleEndian(recovered.Span));
+            }
+            finally
+            {
+                beforeWrite.Set();
+                afterWrite.Set();
+                if (oldWorker != null) await Record.ExceptionAsync(() => oldWorker.WaitAsync(Timeout));
+                manager.Dispose();
+                await WaitUntil(() => session.Disposed, "abandoned session disposal");
+            }
+        }
+
+        [Fact]
+        public async Task RestartWaitsForAbandonedClientDisposal()
+        {
+            var (manager, storage) = await CreateManager("review_disposal_restart");
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            using var beforeWrite = new ManualResetEventSlim(false);
+            using var finishDisposal = new ManualResetEventSlim(false);
+            var disposalEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var serializer = new TestPageSerializer
+            {
+                DisposeHook = () =>
+                {
+                    disposalEntered.TrySetResult();
+                    if (!finishDisposal.Wait(Timeout)) throw new TimeoutException("Disposal was not released");
+                }
+            };
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "pages", 1, serializer);
+            session.ArmWriteGate(beforeWrite, keys.ToHashSet());
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await session.WriterBlocked.WaitAsync(Timeout);
+                manager.RequestStopCommits();
+                manager.Dispose();
+                beforeWrite.Set();
+                await disposalEntered.Task.WaitAsync(Timeout);
+
+                var restart = manager.InitializeAsync();
+                await Task.WhenAny(restart, Task.Delay(200));
+                Assert.False(restart.IsCompleted);
+                finishDisposal.Set();
+                await restart.WaitAsync(Timeout);
+                Assert.True(session.Disposed);
+                await CreateClientWithPages(manager, storage, "pages", 0);
+            }
+            finally
+            {
+                beforeWrite.Set();
+                finishDisposal.Set();
+                manager.Dispose();
+                await WaitUntil(() => session.Disposed, "abandoned session disposal");
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "FixReviewRegression")]
+        public async Task FailedReplacementSpillDoesNotPersistAnOlderPageAfterEviction()
+        {
+            var (manager, storage) = await CreateManager("review_failed_replacement_spill", cachePageCount: 0);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var serializer = new TestPageSerializer();
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "pages", 1, serializer);
+            var key = keys[0];
+            await manager.CacheTable.ForceCleanup().WaitAsync(Timeout);
+            Assert.False(manager.TryPeekCacheEntry(key, out _));
+            var page = (await client.GetValue(key))!;
+            page.Value = 20;
+            client.AddOrUpdate(key, page);
+            page.Return();
+            using var gate = new WalkGate(manager);
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await gate.Blocked.WaitAsync(Timeout);
+                client.Delete(key);
+                serializer.SerializeHook = _ => throw new IOException("Injected replacement spill failure");
+                var replacement = new TestPage(30);
+                Assert.Throws<IOException>(() => client.AddOrUpdate(key, replacement));
+                serializer.SerializeHook = null;
+                await manager.CacheTable.ForceCleanup().WaitAsync(Timeout);
+                Assert.False(manager.TryPeekCacheEntry(key, out _));
+                client.AddOrUpdate(key, replacement);
+                gate.Release();
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+                // Failed spills cannot mark older bytes as current.
+                Assert.Equal(20, ReadPersisted(storage, key));
+            }
+            finally
+            {
+                serializer.SerializeHook = null;
+                gate.Release();
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "FixReviewRegression")]
+        public async Task AbandonedSessionIsDisposedWhenSerializerDisposalFails()
+        {
+            var (manager, storage) = await CreateManager("review_failed_disposal");
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            using var beforeWrite = new ManualResetEventSlim(false);
+            var serializer = new TestPageSerializer
+            {
+                DisposeHook = () => throw new IOException("Injected serializer disposal failure")
+            };
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "pages", 1, serializer);
+            session.ArmWriteGate(beforeWrite, keys.ToHashSet());
+            Task? disposal = null;
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await session.WriterBlocked.WaitAsync(Timeout);
+                manager.RequestStopCommits();
+                manager.Dispose();
+                disposal = ((StateClient)client).DisposalTask;
+                beforeWrite.Set();
+                await Record.ExceptionAsync(() => disposal.WaitAsync(Timeout));
+                // Serializer disposal failures must not strand sessions.
+                Assert.True(session.Disposed);
+            }
+            finally
+            {
+                beforeWrite.Set();
+                if (disposal != null) await Record.ExceptionAsync(() => disposal.WaitAsync(Timeout));
+                session.Dispose();
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task ManagerDisposesAllClientsWhenClientDisposalFails(bool secondClientFails)
+        {
+            var (manager, storage) = await CreateManager($"review_manager_disposal_{secondClientFails}");
+            using var storageLifetime = storage;
+            var failure = new IOException("Injected first serializer disposal failure");
+            var firstSerializer = new TestPageSerializer { DisposeHook = () => throw failure };
+            var secondDisposalCount = 0;
+            var secondSerializer = new TestPageSerializer
+            {
+                DisposeHook = () =>
+                {
+                    secondDisposalCount++;
+                    if (secondClientFails) throw new IOException("Injected second serializer disposal failure");
+                }
+            };
+            var (firstClient, firstSession, _) = await CreateClientWithPages(manager, storage, "first", 0, firstSerializer);
+            var (secondClient, secondSession, _) = await CreateClientWithPages(manager, storage, "second", 0, secondSerializer);
+            try
+            {
+                var error = Record.Exception(manager.Dispose);
+                Assert.Same(failure, error);
+                Assert.True(firstSession.Disposed);
+                // One client failure must not skip remaining cleanup.
+                Assert.True(secondSession.Disposed);
+                Assert.Equal(1, secondDisposalCount);
+                Assert.False(manager.Initialized);
+                Assert.Null(Record.Exception(manager.Dispose));
+                Assert.Equal(1, secondDisposalCount);
+
+                await manager.InitializeAsync().WaitAsync(Timeout);
+                var (newFirstClient, _, _) = await CreateClientWithPages(manager, storage, "first", 0);
+                var (newSecondClient, _, _) = await CreateClientWithPages(manager, storage, "second", 0);
+                Assert.NotSame(firstClient, newFirstClient);
+                Assert.NotSame(secondClient, newSecondClient);
+            }
+            finally
+            {
+                firstSerializer.DisposeHook = null;
+                secondSerializer.DisposeHook = null;
+                manager.Dispose();
+            }
         }
 
         [Fact]
@@ -864,7 +1138,7 @@ namespace FlowtideDotNet.Storage.Tests
             });
         }
 
-        private static ValueTask<IAppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>> CreateAppendTree(StateManagerSync manager)
+        internal static ValueTask<IAppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>> CreateAppendTree(StateManagerSync manager)
         {
             return manager.GetOrCreateClient("node").GetOrCreateAppendTree("append", new BPlusTreeOptions<long, long, ListKeyContainer<long>, ListValueContainer<long>>()
             {
@@ -1903,24 +2177,33 @@ namespace FlowtideDotNet.Storage.Tests
         /// Review 5: a restart after the drain gave a wedged walk up must fail within the stop
         /// budget instead of joining the walk forever.
         /// </summary>
-        [Fact]
-        public async Task RecoveryDoesNotHangOnAWalkTheDrainGaveUp()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task RecoveryDoesNotHangOnAWalkTheDrainGaveUp(bool disposeBeforeRecovery)
         {
-            var (manager, storage) = await CreateManager("wedgedrecover", reservoir: true, stopCommitsTimeout: TimeSpan.FromSeconds(1));
+            var (manager, storage) = await CreateManager($"wedgedrecover_{disposeBeforeRecovery}", reservoir: true, stopCommitsTimeout: TimeSpan.FromSeconds(1));
             using var storageLifetime = storage;
+            using var managerLifetime = manager;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "wedgedrecover", 8);
             using var writeGate = new ManualResetEventSlim(false);
             session.ArmWriteGate(writeGate, keys.ToHashSet());
             await client.Commit().AsTask().WaitAsync(Timeout);
             await session.WriterBlocked.WaitAsync(Timeout);
             manager.RequestStopCommits();
+            if (disposeBeforeRecovery) manager.Dispose();
 
-            var failure = await Record.ExceptionAsync(() => manager.InitializeAsync().WaitAsync(TimeSpan.FromSeconds(5)));
-            Assert.IsType<InvalidOperationException>(failure);
-
-            writeGate.Set();
-            await Task.Delay(500);
-            manager.Dispose();
+            try
+            {
+                var failure = await Record.ExceptionAsync(() => manager.InitializeAsync().WaitAsync(TimeSpan.FromSeconds(5)));
+                Assert.IsType<InvalidOperationException>(failure);
+                writeGate.Set();
+                await manager.InitializeAsync().WaitAsync(Timeout);
+            }
+            finally
+            {
+                writeGate.Set();
+            }
         }
 
         /// <summary>

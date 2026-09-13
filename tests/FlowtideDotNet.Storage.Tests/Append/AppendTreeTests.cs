@@ -61,6 +61,79 @@ namespace FlowtideDotNet.Storage.Tests.Append
         }
 
         [Fact]
+        [Trait("Category", "ReviewRoundRegression")]
+        public async Task FailedAppendTreeSeekDoesNotReturnThePreviousLeafTwice()
+        {
+            var timeout = TimeSpan.FromSeconds(30);
+            var (manager, storage) = await BackgroundCommitTests.CreateManager("review_failed_seek");
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var tree = await BackgroundCommitTests.CreateAppendTree(manager);
+            for (long i = 0; i < 40; i++) await tree.Append(i, i);
+            var concrete = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            var leafId = concrete.m_stateClient.Metadata!.Left;
+            Assert.True(manager.TryPeekCacheEntry(leafId, out var entry));
+            var cacheRent = entry.Value.RentCount;
+            var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+            var session = storage.Sessions.Single();
+            session.FaultingKeys[concrete.m_stateClient.Metadata.Root] = 1;
+            using var gate = new BackgroundCommitTests.WalkGate(manager);
+            try
+            {
+                await tree.Commit().AsTask().WaitAsync(timeout);
+                await gate.Blocked.WaitAsync(timeout);
+                // Failed seeks must return each leaf only once.
+                await Assert.ThrowsAsync<IOException>(() => iterator.Seek(0).AsTask());
+                iterator.Dispose();
+                Assert.Equal(cacheRent, entry.Value.RentCount);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "FixReviewRegression")]
+        public async Task FailedAppendTreePageAdvanceDoesNotReturnThePreviousLeafTwice()
+        {
+            var timeout = TimeSpan.FromSeconds(30);
+            var (manager, storage) = await BackgroundCommitTests.CreateManager("review_failed_advance");
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var tree = await BackgroundCommitTests.CreateAppendTree(manager);
+            for (long i = 0; i < 40; i++) await tree.Append(i, i);
+            var concrete = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            Assert.True(manager.TryPeekCacheEntry(concrete.m_stateClient.Metadata!.Left, out var entry));
+            var leaf = (Tree.Internal.LeafNode<long, long, ListKeyContainer<long>, ListValueContainer<long>>)entry.Value;
+            var cacheRent = leaf.RentCount;
+            using var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+            var enumerator = iterator.GetAsyncEnumerator();
+            var enumeratorDisposed = false;
+            using var gate = new BackgroundCommitTests.WalkGate(manager);
+            try
+            {
+                for (var i = 0; i < leaf.keys.Count; i++) Assert.True(await enumerator.MoveNextAsync());
+                var session = storage.Sessions.Single();
+                session.FaultingKeys[leaf.next] = 1;
+                await tree.Commit().AsTask().WaitAsync(timeout);
+                await gate.Blocked.WaitAsync(timeout);
+                // Failed advances preserve the cache's existing leaf rent.
+                await Assert.ThrowsAsync<IOException>(() => enumerator.MoveNextAsync().AsTask());
+                await enumerator.DisposeAsync();
+                enumeratorDisposed = true;
+                Assert.Equal(cacheRent, leaf.RentCount);
+            }
+            finally
+            {
+                if (!enumeratorDisposed) await enumerator.DisposeAsync();
+                gate.Release();
+            }
+        }
+
+        [Fact]
         public async Task TestNewRootFromLeaf()
         {
             var tree = await CreateTree(1);

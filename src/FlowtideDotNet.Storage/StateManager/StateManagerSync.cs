@@ -23,6 +23,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
+using System.Runtime.ExceptionServices;
 
 namespace FlowtideDotNet.Storage.StateManager
 {
@@ -82,6 +83,7 @@ namespace FlowtideDotNet.Storage.StateManager
         //private ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> m_adminSession;
         readonly Dictionary<string, IStateManagerClient> _clients = new Dictionary<string, IStateManagerClient>();
         private readonly Dictionary<string, StateClient> _stateClients = new Dictionary<string, StateClient>();
+        private Task? m_pendingDisposals;
         private IPersistentStorage? m_persistentStorage;
 
         /// <summary>
@@ -555,6 +557,20 @@ namespace FlowtideDotNet.Storage.StateManager
         {
             bool newMetadata = false;
 
+            // Recovery waits for abandoned writers and their resources.
+            if (m_pendingDisposals != null)
+            {
+                try
+                {
+                    await m_pendingDisposals.WaitAsync(options.StopCommitsTimeout).ConfigureAwait(false);
+                }
+                catch (TimeoutException e)
+                {
+                    throw new InvalidOperationException("State clients are still disposing abandoned commits, storage may be wedged.", e);
+                }
+                m_pendingDisposals = null;
+            }
+
             // Pause eviction for the whole reset. An in-flight eviction could otherwise write a
             // stale page after the reset and route later reads to it.
             // The instance is captured, the finally must resume the table it paused.
@@ -646,6 +662,7 @@ namespace FlowtideDotNet.Storage.StateManager
         {
             if (!disposedValue)
             {
+                Exception? disposalException = null;
                 if (disposing)
                 {
                     // The walks first, they read the cache table. Every walk is told before any is
@@ -681,10 +698,25 @@ namespace FlowtideDotNet.Storage.StateManager
                     }
 
                     // Before the storage, the clients return their sessions to it.
+                    List<Task>? pendingDisposals = null;
                     foreach (var stateClient in stateClients)
                     {
-                        stateClient.Dispose();
+                        try
+                        {
+                            stateClient.Dispose();
+                        }
+                        catch (Exception e)
+                        {
+                            // Finish client cleanup before reporting the first failure.
+                            disposalException ??= e;
+                        }
+                        var disposal = stateClient.DisposalTask;
+                        if (!disposal.IsCompleted)
+                        {
+                            (pendingDisposals ??= new List<Task>()).Add(disposal);
+                        }
                     }
+                    m_pendingDisposals = pendingDisposals == null ? null : Task.WhenAll(pendingDisposals);
                     lock (m_lock)
                     {
                         _stateClients.Clear();
@@ -704,6 +736,10 @@ namespace FlowtideDotNet.Storage.StateManager
                 }
 
                 disposedValue = true;
+                if (disposalException != null)
+                {
+                    ExceptionDispatchInfo.Throw(disposalException);
+                }
             }
         }
 
