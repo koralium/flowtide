@@ -979,6 +979,57 @@ namespace FlowtideDotNet.Storage.Tests
             }
         }
 
+        [Fact]
+        [Trait("Category", "FullReviewRegression")]
+        public async Task BackgroundCommitCleanupDoesNotOverlapEvictionSerialization()
+        {
+            var (manager, storage) = await CreateManager("review_cleanup_overlap", backgroundCommit: true);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            using var finishCleanup = new ManualResetEventSlim(false);
+            var cleanupEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var cleanupActive = 0;
+            var serializationOverlapped = false;
+            var serializer = new TestPageSerializer
+            {
+                ClearTemporaryAllocationsHook = () =>
+                {
+                    Interlocked.Exchange(ref cleanupActive, 1);
+                    cleanupEntered.TrySetResult();
+                    if (!finishCleanup.Wait(Timeout)) throw new TimeoutException("Cleanup was not released");
+                    Interlocked.Exchange(ref cleanupActive, 0);
+                },
+                SerializeHook = _ =>
+                {
+                    if (Volatile.Read(ref cleanupActive) != 0) serializationOverlapped = true;
+                }
+            };
+            var (client, _, _) = await CreateClientWithPages(manager, storage, "pages", 2, serializer);
+            var sync = (SyncStateClient<TestPage, TestMetadata>)client;
+            Task? worker = null;
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                worker = sync.WaitForCommitAsync();
+                await cleanupEntered.Task.WaitAsync(Timeout);
+                var key = client.GetNewPageId();
+                client.AddOrUpdate(key, new TestPage(3));
+                Assert.True(manager.TryPeekCacheEntry(key, out var entry));
+
+                await sync.Evict(new List<(S3FifoCacheEntry, long)> { (entry, entry.Version) }, false).WaitAsync(Timeout);
+
+                finishCleanup.Set();
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+                // Cleanup must not overlap with page serialization.
+                Assert.False(serializationOverlapped);
+            }
+            finally
+            {
+                finishCleanup.Set();
+                if (worker != null) await worker.WaitAsync(Timeout);
+            }
+        }
+
         /// <summary>
         /// A pending page has no holder, so a delete leaves it cached until the walk has written it.
         /// </summary>

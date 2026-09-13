@@ -134,6 +134,25 @@ namespace FlowtideDotNet.Storage.Tests.Append
         }
 
         [Fact]
+        [Trait("Category", "FullReviewRegression")]
+        public async Task PruningToTheRightmostLeafReturnsTheFetchedLeafRent()
+        {
+            var tree = await CreateTree(bucketSize: 16);
+            for (long i = 0; i < 40; i++) await tree.Append(i, i);
+            var concrete = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            var rightId = concrete.m_stateClient.Metadata!.Right;
+            Assert.NotEqual(rightId, concrete.m_stateClient.Metadata.Root);
+            Assert.True(stateManager!.TryPeekCacheEntry(rightId, out var entry));
+            var rentsBeforePrune = entry.Value.RentCount;
+
+            await tree.Prune(40);
+
+            Assert.Equal(rightId, concrete.m_stateClient.Metadata.Root);
+            // Root collapse must return its fetched leaf rent.
+            Assert.Equal(rentsBeforePrune, entry.Value.RentCount);
+        }
+
+        [Fact]
         public async Task TestNewRootFromLeaf()
         {
             var tree = await CreateTree(1);

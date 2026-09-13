@@ -811,6 +811,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         m_generation = null;
                     }
+
+                    // Worker cleanup shares the existing serialization gate.
+                    m_fileCache.ClearTemporaryAllocations();
+                    options.ValueSerializer.ClearTemporaryAllocations();
                 }
                 finally
                 {
@@ -819,9 +823,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         m_commitEvictLock.Release();
                     }
                 }
-
-                m_fileCache.ClearTemporaryAllocations();
-                options.ValueSerializer.ClearTemporaryAllocations();
             }
             catch (Exception e)
             {
