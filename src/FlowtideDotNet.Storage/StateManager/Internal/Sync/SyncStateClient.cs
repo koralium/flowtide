@@ -1354,6 +1354,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         canEvictAll = false;
                     }
                 }
+
+                // Eviction cleanup shares the existing serialization gate.
+                if (isCleanup)
+                {
+                    m_fileCache.ClearTemporaryAllocations();
+                    if (options.ValueSerializer != null)
+                    {
+                        options.ValueSerializer.ClearTemporaryAllocations();
+                    }
+                }
             }
             finally
             {
@@ -1363,15 +1373,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             if (wroteAny)
             {
                 m_fileCache.Flush();
-            }
-
-            if (isCleanup)
-            {
-                m_fileCache.ClearTemporaryAllocations();
-                if (options.ValueSerializer != null)
-                {
-                    options.ValueSerializer.ClearTemporaryAllocations();
-                }
             }
             return canEvictAll;
         }

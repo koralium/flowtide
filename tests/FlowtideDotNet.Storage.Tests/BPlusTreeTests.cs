@@ -52,6 +52,23 @@ namespace FlowtideDotNet.Storage.Tests
             return tree;
         }
 
+        [Theory]
+        [InlineData(1)]
+        [InlineData(40)]
+        [Trait("Category", "PrintingRootRentRegression")]
+        public async Task PrintingTheTreeReturnsTheFetchedRootRent(int itemCount)
+        {
+            for (long i = 0; i < itemCount; i++) await _tree.Upsert(i, i.ToString());
+            var concrete = (Tree.Internal.BPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>)_tree;
+            Assert.True(stateManager!.TryPeekCacheEntry(concrete.m_stateClient.Metadata!.Root, out var entry));
+            var rentsBeforePrinting = entry.Value.RentCount;
+
+            await _tree.Print();
+
+            // Printing must return the fetched root rent.
+            Assert.Equal(rentsBeforePrinting, entry.Value.RentCount);
+        }
+
         [Fact]
         public async Task TestInsert()
         {

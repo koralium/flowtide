@@ -1030,6 +1030,70 @@ namespace FlowtideDotNet.Storage.Tests
             }
         }
 
+        [Fact]
+        [Trait("Category", "FollowupReviewRegression")]
+        public async Task EvictionCleanupDoesNotOverlapOnFetchSerialization()
+        {
+            var (manager, storage) = await CreateManager("review_eviction_cleanup_overlap");
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            using var finishCleanup = new ManualResetEventSlim(false);
+            var cleanupEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var cleanupArmed = 1;
+            var cleanupActive = 0;
+            var serializationOverlapped = false;
+            var serializer = new TestPageSerializer
+            {
+                ClearTemporaryAllocationsHook = () =>
+                {
+                    if (Interlocked.Exchange(ref cleanupArmed, 0) == 0) return;
+                    Volatile.Write(ref cleanupActive, 1);
+                    cleanupEntered.TrySetResult();
+                    if (!finishCleanup.Wait(Timeout)) throw new TimeoutException("Cleanup was not released");
+                    Volatile.Write(ref cleanupActive, 0);
+                },
+                SerializeHook = _ =>
+                {
+                    if (Volatile.Read(ref cleanupActive) != 0) serializationOverlapped = true;
+                }
+            };
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "pages", 2, serializer);
+            var sync = (SyncStateClient<TestPage, TestMetadata>)client;
+            using var walkGate = new WalkGate(manager);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await walkGate.Blocked.WaitAsync(Timeout);
+            var newKey = client.GetNewPageId();
+            client.AddOrUpdate(newKey, new TestPage(99));
+            Assert.True(manager.TryPeekCacheEntry(newKey, out var entry));
+            var eviction = Task.Run(() => sync.Evict(new List<(S3FifoCacheEntry, long)> { (entry, entry.Version) }, true));
+            Task<TestPage?>? fetch = null;
+            try
+            {
+                await cleanupEntered.Task.WaitAsync(Timeout);
+                fetch = client.GetValue(keys[0]).AsTask();
+                finishCleanup.Set();
+                await eviction.WaitAsync(Timeout);
+                var page = await fetch.WaitAsync(Timeout);
+                Assert.NotNull(page);
+                Assert.Equal(0, page.Value);
+                page.Return();
+                fetch = null;
+                walkGate.Release();
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+                Assert.Equal(1, session.WriteCount(keys[0]));
+                // Eviction cleanup must not overlap pending page serialization.
+                Assert.False(serializationOverlapped);
+            }
+            finally
+            {
+                finishCleanup.Set();
+                walkGate.Release();
+                await eviction.WaitAsync(Timeout);
+                if (fetch != null) (await fetch.WaitAsync(Timeout))?.Return();
+                await sync.WaitForCommitAsync().WaitAsync(Timeout);
+            }
+        }
+
         /// <summary>
         /// A pending page has no holder, so a delete leaves it cached until the walk has written it.
         /// </summary>

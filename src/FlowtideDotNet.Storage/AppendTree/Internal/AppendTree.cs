@@ -120,14 +120,20 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
             var root = (BaseNode<K, TKeyContainer>)(await GetChildNode(m_stateClient.Metadata.Root))!;
-
-            var builder = new StringBuilder();
-            builder.AppendLine("digraph g {");
-            builder.AppendLine("splines=line");
-            builder.AppendLine("node [shape = none,height=.1];");
-            await root.Print(builder, async (id) => (BaseNode<K, TKeyContainer>)(await GetChildNode(id))!);
-            builder.AppendLine("}");
-            return builder.ToString();
+            try
+            {
+                var builder = new StringBuilder();
+                builder.AppendLine("digraph g {");
+                builder.AppendLine("splines=line");
+                builder.AppendLine("node [shape = none,height=.1];");
+                await root.Print(builder, async (id) => (BaseNode<K, TKeyContainer>)(await GetChildNode(id))!);
+                builder.AppendLine("}");
+                return builder.ToString();
+            }
+            finally
+            {
+                ReturnNode(root);
+            }
         }
 
         public IAppendTreeIterator<K, V, TKeyContainer> CreateIterator()
