@@ -320,7 +320,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             while(reader.TryGetNextPageId(out var pageId))
             {
                 if ((!_temporaryPageLocations.ContainsKey(pageId)) &&
-                    _checkpointHandler.TryGetPageFileLocation(pageId, out var location) &&
+                    _checkpointHandler.TryGetReadablePageFileLocation(pageId, out var location) &&
                     location.FileId == fileId)
                 {
                     pageFileLocations.Add(new PageDataInfo(pageId, location.Offset, location.Size, location.Crc32));

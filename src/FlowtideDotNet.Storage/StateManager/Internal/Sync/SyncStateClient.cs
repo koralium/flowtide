@@ -836,6 +836,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                     lock (m_lock)
                     {
+                        // Completed dictionaries must forget removed slots before reuse.
+                        generation.Pending.Clear();
                         m_generation = null;
                     }
 
@@ -967,15 +969,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             lock (m_lock)
             {
                 generation.WritingKey = -1;
-                if (entry != null)
-                {
-                    // Handed out again only once the key is no longer owed, AddOrUpdate checks that under this lock.
-                    Volatile.Write(ref entry.OwesCheckpointWrite, false);
-                }
                 if (m_modified.TryGetValue(key, out var current) && current.Sequence == -1)
                 {
                     // The delete waited for this write, see Delete.
                     Delete_NoLock(key);
+                }
+                else if (entry != null)
+                {
+                    // Deleted entries remain unavailable to racing cache probes.
+                    Volatile.Write(ref entry.OwesCheckpointWrite, false);
                 }
             }
             return true;

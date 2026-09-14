@@ -61,6 +61,39 @@ namespace FlowtideDotNet.Storage.Tests.Append
         }
 
         [Fact]
+        [Trait("Category", "FullBranchReviewRegression")]
+        public async Task DisposingAnAppendTreeEnumeratorTwicePreservesTheTreeAndCacheRents()
+        {
+            var (manager, storage) = await BackgroundCommitTests.CreateManager("repeated_enumerator_disposal");
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var tree = await BackgroundCommitTests.CreateAppendTree(manager);
+            await tree.Append(1, 42);
+            var concrete = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            Assert.True(manager.TryPeekCacheEntry(concrete.m_stateClient.Metadata!.Root, out var entry));
+            var originalRents = entry.Value.RentCount;
+            using var iterator = tree.CreateIterator();
+            await iterator.Seek(1);
+            await using (var enumerator = iterator.GetAsyncEnumerator())
+            {
+                Assert.True(await enumerator.MoveNextAsync());
+                Assert.Equal(new KeyValuePair<long, long>(1, 42), enumerator.Current);
+                await enumerator.DisposeAsync();
+            }
+
+            // Repeated disposal must preserve tree and cache ownership.
+            Assert.Equal(originalRents, entry.Value.RentCount);
+            await tree.Append(2, 43);
+            await iterator.Seek(1);
+            await using var remaining = iterator.GetAsyncEnumerator();
+            Assert.True(await remaining.MoveNextAsync());
+            Assert.Equal(new KeyValuePair<long, long>(1, 42), remaining.Current);
+            Assert.True(await remaining.MoveNextAsync());
+            Assert.Equal(new KeyValuePair<long, long>(2, 43), remaining.Current);
+            Assert.False(await remaining.MoveNextAsync());
+        }
+
+        [Fact]
         [Trait("Category", "ReviewRoundRegression")]
         public async Task FailedAppendTreeSeekDoesNotReturnThePreviousLeafTwice()
         {

@@ -51,6 +51,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private HashSet<long> _deletedPages = new HashSet<long>();
         private object _deletedPagesLock = new object();
         private bool _hasDeletedPages;
+        private readonly HashSet<long> _bundlePageIds = new HashSet<long>();
 
         private HashSet<ulong> _modifiedFileIds = new HashSet<ulong>();
         private HashSet<ulong> _deletedFileIds = new HashSet<ulong>();
@@ -800,8 +801,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                             }
                         }
                     }
-                    _deletedPages.Clear();
-                    Volatile.Write(ref _hasDeletedPages, false);
+                    if (mergedFile == null)
+                    {
+                        _deletedPages.Clear();
+                        Volatile.Write(ref _hasDeletedPages, false);
+                    }
                 }
             }
 
@@ -917,10 +921,19 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         /// <exception cref="InvalidOperationException"></exception>
         private async Task HandleBundleCheckpoint(MergedBlobFileWriter mergedFile)
         {
-            // Go through all pages and update file information as the first pass
-            // we will go through it again after write to update the actual page locations
-            for (int i = 0; i < mergedFile.PageIds.Count; i++)
+            _bundlePageIds.Clear();
+            int nonActivePageCount = 0;
+            int deletedSize = 0;
+            // Only the latest bundled copy replaces its persisted location.
+            for (int i = mergedFile.PageIds.Count - 1; i >= 0; i--)
             {
+                if (!_bundlePageIds.Add(mergedFile.PageIds[i]))
+                {
+                    // Superseded physical copies remain inactive within their bundle.
+                    nonActivePageCount++;
+                    deletedSize += mergedFile.PageOffsets[i + 1] - mergedFile.PageOffsets[i];
+                    continue;
+                }
                 // Check if the page already exists in another file, if it does, we need to update the file information of the existing file and add it to modified file ids
                 if (_pageFileLocations.TryGetValue(mergedFile.PageIds[i], out var existingLocation))
                 {
@@ -998,8 +1011,23 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             // add the pages info to the checkpoint file
             _newCheckpoint.AddUpsertPages(mergedFile.PageIds, fileIds, mergedFile.PageOffsets, pageSizes, mergedFile.Crc32s);
 
-            // Add a temporary file info, the crc64 will be incorrect but is updated later
-            var temporaryFileInfo = new FileInformation(fileId, mergedFile.PageIds.Count, 0, mergedFile.FileSize, 0, CheckpointVersion, mergedFile.Crc64);
+            if (Volatile.Read(ref _hasDeletedPages))
+            {
+                lock (_deletedPagesLock)
+                {
+                    // Deleted pages include only their remaining latest copy.
+                    for (int i = mergedFile.PageIds.Count - 1; i >= 0; i--)
+                    {
+                        if (_deletedPages.Contains(mergedFile.PageIds[i]) && _bundlePageIds.Remove(mergedFile.PageIds[i]))
+                        {
+                            nonActivePageCount++;
+                            deletedSize += pageSizes[i];
+                        }
+                    }
+                }
+            }
+            // Temporary file statistics precede the final bundle checksum.
+            var temporaryFileInfo = new FileInformation(fileId, mergedFile.PageIds.Count, nonActivePageCount, mergedFile.FileSize, deletedSize, CheckpointVersion, mergedFile.Crc64);
             _newCheckpoint.AddFileInformation(temporaryFileInfo);
             _newCheckpoint.FinishForWriting();
             // No compression in bundle files, since crc64 is recalculated and updated
@@ -1015,16 +1043,20 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             var bundle = new DataCheckpointBundleFile(mergedFile, _newCheckpoint, _checkpointRegistryFile);
 
             // when the bundle is created we got a new crc64 for the merged file, so we create a new file info to insert the correct info
-            var realFileInfo = new FileInformation(fileId, mergedFile.PageIds.Count, 0, mergedFile.FileSize, 0, CheckpointVersion, mergedFile.Crc64);
+            var realFileInfo = new FileInformation(fileId, mergedFile.PageIds.Count, nonActivePageCount, mergedFile.FileSize, deletedSize, CheckpointVersion, mergedFile.Crc64);
             _fileInformations.AddOrUpdate(fileId, realFileInfo, static (key, old) => old);
 
             await _fileProvider.WriteDataFileAsync(fileId, bundle.Crc64, bundle.FileSize, true, bundle);
             // Add the active version, we also fetch the crc64 again since it will be different after writing the bundle file
             _activeVersions.Add(new Reservoir.CheckpointVersion(_checkpointVersion, false, _newCheckpoint.Crc64, true));
 
-            // Update local page file location for pages so they can be found
-            for (int i = 0; i < mergedFile.PageIds.Count; i++)
+            // Publish each surviving page's latest copy only once.
+            for (int i = mergedFile.PageIds.Count - 1; i >= 0; i--)
             {
+                if (!_bundlePageIds.Remove(mergedFile.PageIds[i]))
+                {
+                    continue;
+                }
                 var pageInfo = new PageFileLocation()
                 {
                     FileId = fileId,
@@ -1039,6 +1071,20 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 }
 
                 _pageFileLocations[mergedFile.PageIds[i]] = pageInfo;
+            }
+
+            if (Volatile.Read(ref _hasDeletedPages))
+            {
+                lock (_deletedPagesLock)
+                {
+                    // Retained tombstones hide pages until publication finishes.
+                    foreach (var page in _deletedPages)
+                    {
+                        _pageFileLocations.TryRemove(page, out _);
+                    }
+                    _deletedPages.Clear();
+                    Volatile.Write(ref _hasDeletedPages, false);
+                }
             }
 
             // tell done writing to in flight buffers can be cleared

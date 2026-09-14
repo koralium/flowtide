@@ -51,6 +51,163 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () => await session.Read(100));
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        [Trait("Category", "FullBranchReviewRegression")]
+        public async Task CompactedPagesRemainDeletedAfterCheckpointAndRecovery(bool recoverSnapshot)
+        {
+            var provider = new TestDataProvider();
+            using var storage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions
+            {
+                FileProvider = provider,
+                MaxFileSize = 1024,
+                CompactionFileSizeRatioThreshold = 0.9f,
+                SnapshotCheckpointInterval = 1
+            });
+            await storage.InitializeAsync(new StorageInitializationMetadata("compacted_deletion", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+            using var session = storage.CreateSession();
+            await storage.CheckpointAsync(new byte[] { 1 }, false);
+            var payload = new byte[500];
+            payload[0] = 42;
+            await session.Write(100, new SerializableObject(payload));
+            await session.Commit();
+            await storage.CheckpointAsync(new byte[] { 2 }, false);
+            Assert.Equal(payload, (await session.Read(100)).ToArray());
+            await session.Delete(100);
+            await session.Commit();
+            await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () => await session.Read(100));
+
+            await storage.CheckpointAsync(new byte[] { 3 }, false);
+            if (recoverSnapshot)
+            {
+                await session.Commit();
+                await storage.CheckpointAsync(new byte[] { 4 }, false);
+                await storage.RecoverAsync(4);
+            }
+
+            // Compaction must not publish locations for deleted pages.
+            await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () => await session.Read(100));
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        [Trait("Category", "BundleDeletionRegression")]
+        public async Task QueuedPagesRemainDeletedAfterCheckpointAndSnapshotRecovery(bool commitBeforeDelete, bool recoverSnapshot)
+        {
+            var provider = new TestDataProvider();
+            using var storage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions
+            {
+                FileProvider = provider,
+                MaxFileSize = 1024,
+                CompactionFileSizeRatioThreshold = 0,
+                SnapshotCheckpointInterval = 1
+            });
+            var metadata = new StorageInitializationMetadata("queued_deletion", NullLoggerFactory.Instance, GlobalMemoryManager.Instance);
+            await storage.InitializeAsync(metadata);
+            using var session = storage.CreateSession();
+            await storage.CheckpointAsync(new byte[] { 1 }, false);
+            await session.Write(100, new SerializableObject(BitConverter.GetBytes(42)));
+            await session.Write(101, new SerializableObject(BitConverter.GetBytes(43)));
+            await session.Commit();
+            await storage.CheckpointAsync(new byte[] { 2 }, false);
+            await session.Write(100, new SerializableObject(BitConverter.GetBytes(84)));
+            if (commitBeforeDelete)
+            {
+                await session.Commit();
+            }
+            await session.Delete(100);
+            await session.Commit();
+            await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () => await session.Read(100));
+
+            await storage.CheckpointAsync(new byte[] { 3 }, false);
+            if (recoverSnapshot)
+            {
+                await session.Commit();
+                await storage.CheckpointAsync(new byte[] { 4 }, false);
+                // Fresh storage must replay the persisted snapshot.
+                using var recoveredStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions
+                {
+                    FileProvider = provider
+                });
+                await recoveredStorage.InitializeAsync(metadata);
+                using var recoveredSession = recoveredStorage.CreateSession();
+                Assert.Equal(storage.CurrentVersion, recoveredStorage.CurrentVersion);
+                Assert.Equal(new byte[] { 4 }, (await recoveredSession.Read(1)).ToArray());
+                Assert.Equal(BitConverter.GetBytes(43), (await recoveredSession.Read(101)).ToArray());
+                await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () => await recoveredSession.Read(100));
+            }
+            else
+            {
+                // Queued page writes cannot override later committed deletions.
+                Assert.Equal(BitConverter.GetBytes(43), (await session.Read(101)).ToArray());
+                await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () => await session.Read(100));
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        [Trait("Category", "BundleRecreationRegression")]
+        public async Task RecreatingAnUpdatedPagePreservesUntouchedPagesAfterCleanupAndRecovery(bool recoverSnapshot)
+        {
+            var provider = new TestDataProvider();
+            using var storage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions
+            {
+                FileProvider = provider,
+                MaxFileSize = 1024,
+                CompactionFileSizeRatioThreshold = 0,
+                SnapshotCheckpointInterval = 1
+            });
+            var metadata = new StorageInitializationMetadata("recreated_page_cleanup", NullLoggerFactory.Instance, GlobalMemoryManager.Instance);
+            await storage.InitializeAsync(metadata);
+            using var session = storage.CreateSession();
+            await storage.CheckpointAsync(new byte[] { 1 }, false);
+            await session.Write(100, new SerializableObject(BitConverter.GetBytes(42)));
+            await session.Write(101, new SerializableObject(BitConverter.GetBytes(43)));
+            await session.Commit();
+            await storage.CheckpointAsync(new byte[] { 2 }, false);
+            await session.Write(100, new SerializableObject(BitConverter.GetBytes(84)));
+            await session.Delete(100);
+            await session.Write(100, new SerializableObject(BitConverter.GetBytes(126)));
+            await session.Commit();
+            await storage.CheckpointAsync(new byte[] { 3 }, false);
+            Assert.Equal(BitConverter.GetBytes(126), (await session.Read(100)).ToArray());
+            Assert.Equal(BitConverter.GetBytes(43), (await session.Read(101)).ToArray());
+
+            // Advance checkpoints until obsolete files can be deleted.
+            for (byte version = 4; version <= 6; version++)
+            {
+                await session.Commit();
+                await storage.CheckpointAsync(new byte[] { version }, false);
+            }
+            await storage.CompactAsync(0, 0);
+
+            if (recoverSnapshot)
+            {
+                // Fresh storage must replay the surviving checkpoint.
+                using var recoveredStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions
+                {
+                    FileProvider = provider
+                });
+                await recoveredStorage.InitializeAsync(metadata);
+                using var recoveredSession = recoveredStorage.CreateSession();
+                Assert.Equal(storage.CurrentVersion, recoveredStorage.CurrentVersion);
+                Assert.Equal(new byte[] { 6 }, (await recoveredSession.Read(1)).ToArray());
+                Assert.Equal(BitConverter.GetBytes(126), (await recoveredSession.Read(100)).ToArray());
+                Assert.Equal(BitConverter.GetBytes(43), (await recoveredSession.Read(101)).ToArray());
+            }
+            else
+            {
+                // Cleanup must preserve files containing untouched live pages.
+                Assert.Equal(BitConverter.GetBytes(126), (await session.Read(100)).ToArray());
+                Assert.Equal(BitConverter.GetBytes(43), (await session.Read(101)).ToArray());
+            }
+        }
+
         [Fact]
         public async Task TestReadYourDeletes()
         {

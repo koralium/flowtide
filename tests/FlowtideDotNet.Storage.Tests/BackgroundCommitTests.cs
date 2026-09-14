@@ -204,14 +204,16 @@ namespace FlowtideDotNet.Storage.Tests
 
             private readonly TaskCompletionSource _freeEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             private ManualResetEventSlim? _freeGate;
+            private TaskCompletionSource? _freeGateEntered;
             private long _gatedFreeKey;
 
             /// <summary>
             /// Blocks the first Free of the key inside the call, the caller keeps whatever it holds.
             /// </summary>
-            public void ArmFreeGate(ManualResetEventSlim gate, long key)
+            public void ArmFreeGate(ManualResetEventSlim gate, long key, TaskCompletionSource? entered = null)
             {
                 _gatedFreeKey = key;
+                _freeGateEntered = entered;
                 Volatile.Write(ref _freeGate, gate);
             }
 
@@ -231,7 +233,9 @@ namespace FlowtideDotNet.Storage.Tests
                     var gate = Interlocked.Exchange(ref _freeGate, null);
                     if (gate != null)
                     {
+                        var entered = _freeGateEntered;
                         _freeEntered.TrySetResult();
+                        entered?.TrySetResult();
                         gate.Wait();
                     }
                 }
@@ -453,6 +457,107 @@ namespace FlowtideDotNet.Storage.Tests
         {
             Assert.True(storage.TryGetValue(key, out var bytes), $"page {key} is not in persistent storage");
             return BinaryPrimitives.ReadInt32LittleEndian(bytes.Value.Span);
+        }
+
+        [Fact]
+        [Trait("Category", "FullBranchReviewRegression")]
+        public async Task CachedPageProbesRejectPagesDeletedDuringBackgroundWriteCompletion()
+        {
+            var factory = new RecordingFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions
+            {
+                DirectoryPath = "./data/bgcommit_deleted_cache_probe/temp"
+            }));
+            var (manager, storage) = await CreateManager("deleted_cache_probe", fileCacheFactory: factory);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "pages", 1);
+            var key = keys[0];
+            Assert.True(manager.TryPeekCacheEntry(key, out var entry));
+            var cache = factory.Created.Single();
+            using var beforeWrite = new ManualResetEventSlim(false);
+            using var afterWrite = new ManualResetEventSlim(false);
+            using var beforeRemoval = new ManualResetEventSlim(false);
+            var removalEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            session.ArmWriteGate(beforeWrite, new HashSet<long> { key });
+            cache.ArmFreeGate(afterWrite, key);
+            Task<bool>? probe = null;
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await session.WriterBlocked.WaitAsync(Timeout);
+                client.Delete(key);
+                beforeWrite.Set();
+                await cache.FreeEntered.WaitAsync(Timeout);
+                cache.ArmFreeGate(beforeRemoval, key, removalEntered);
+                afterWrite.Set();
+                await removalEntered.Task.WaitAsync(Timeout);
+                var originalRents = entry.Value.RentCount;
+                probe = Task.Run(() =>
+                {
+                    var found = client.TryGetCachedValue(key, out var page);
+                    page?.Return();
+                    return found;
+                });
+                await WaitUntil(() => probe.IsCompleted || entry.Value.RentCount > originalRents, "the cache probe to rent or reject the deleted page");
+            }
+            finally
+            {
+                beforeWrite.Set();
+                afterWrite.Set();
+                beforeRemoval.Set();
+                if (probe != null) await probe.WaitAsync(Timeout);
+                await ((StateClient)client).WaitForCommitAsync().WaitAsync(Timeout);
+            }
+
+            // Completed deletions must remain invisible to cache probes.
+            Assert.NotNull(probe);
+            Assert.False(await probe);
+        }
+
+        [Fact]
+        [Trait("Category", "FullBranchReviewRegression")]
+        public async Task SmallCommitsDoNotScanSlotsFromEarlierLargeCommits()
+        {
+            var (manager, storage) = await CreateManager("reused_dictionary_scan", cachePageCount: 4096);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "pages", 4096);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            var page = (await client.GetValue(keys[0]))!;
+            page.Value = 42;
+            client.AddOrUpdate(keys[0], page);
+            page.Return();
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            page = (await client.GetValue(keys[0]))!;
+            page.Value = 43;
+            client.AddOrUpdate(keys[0], page);
+            page.Return();
+
+            using var gate = new WalkGate(manager);
+            int pendingPages;
+            int scannedSlots;
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await gate.Blocked.WaitAsync(Timeout);
+                var generation = client.GetType().GetField("m_commit", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(client)!;
+                var pending = generation.GetType().GetField("Pending")!.GetValue(generation)!;
+                pendingPages = ((System.Collections.IDictionary)pending).Count;
+                // Dictionary enumeration scans removed slots below this count.
+                scannedSlots = (int)pending.GetType().GetField("_count", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(pending)!;
+            }
+            finally
+            {
+                gate.Release();
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            }
+
+            Assert.Equal(43, ReadPersisted(storage, keys[0]));
+            Assert.Equal(1, pendingPages);
+            // Reused dictionaries must forget earlier generations' removed slots.
+            Assert.Equal(pendingPages, scannedSlots);
         }
 
         [Theory]

@@ -25,6 +25,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             private LeafNode<K, V, TKeyContainer, TValueContainer> _node;
             private int _index;
             private bool _started;
+            private bool _disposed;
 
             public Enumerator(AppendTree<K, V, TKeyContainer, TValueContainer> tree, LeafNode<K, V, TKeyContainer, TValueContainer> node, int index)
             {
@@ -45,8 +46,12 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
             public ValueTask DisposeAsync()
             {
-                // Return rented leaf node reference on enumerator disposal.
-                _node.Return();
+                // Each enumerator returns its leaf rent only once.
+                if (!_disposed)
+                {
+                    _disposed = true;
+                    _node.Return();
+                }
                 return ValueTask.CompletedTask;
             }
 
