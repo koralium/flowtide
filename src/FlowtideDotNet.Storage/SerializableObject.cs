@@ -79,13 +79,6 @@ namespace FlowtideDotNet.Storage
         {
             if (serialized.HasValue)
             {
-                var span = writer.GetSpan(serialized.Value.Length);
-                if (span.Length >= serialized.Value.Length)
-                {
-                    serialized.Value.Span.CopyTo(span);
-                    writer.Advance(serialized.Value.Length);
-                    return;
-                }
                 writer.Write(serialized.Value.Span);
             }
             else

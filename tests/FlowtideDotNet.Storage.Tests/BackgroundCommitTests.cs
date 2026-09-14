@@ -3176,6 +3176,310 @@ namespace FlowtideDotNet.Storage.Tests
             manager.Dispose();
         }
 
+        [Theory]
+        [InlineData(8192, 16)]
+        [InlineData(10000, 20)]
+        [InlineData(10240, 20)]
+        [InlineData(16384, 32)]
+        [InlineData(17408, 34)]
+        [InlineData(20480, 40)]
+        public void SerializedPagesFillExistingBuffersBeforeRentingMoreMemory(int pageSize, int expectedSegmentCount)
+        {
+            var fileWriter = new BlobFileWriter(_ => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            try
+            {
+                var pages = new byte[32][];
+                var locations = new ReadOnlySequence<byte>[pages.Length];
+                for (int i = 0; i < pages.Length; i++)
+                {
+                    pages[i] = new byte[pageSize];
+                    Array.Fill(pages[i], (byte)(i + 1));
+                    locations[i] = fileWriter.Write(i + 1, new SerializableObject(pages[i]));
+                    Assert.Equal(pageSize, locations[i].Length);
+                    Assert.Equal(pages[i], locations[i].ToArray());
+                }
+
+                fileWriter.Finish();
+                for (int i = 0; i < pages.Length; i++)
+                {
+                    Assert.Equal(pageSize, locations[i].Length);
+                    Assert.Equal(pages[i], locations[i].ToArray());
+                }
+
+                var segmentCount = 0;
+                long reservedBytes = 0;
+                for (var segment = fileWriter.DataStartSegment; segment != null; segment = segment._next)
+                {
+                    segmentCount++;
+                    reservedBytes += segment.MemoryOwner!.Memory.Length;
+                }
+                Assert.Equal(expectedSegmentCount, segmentCount);
+                Assert.Equal(expectedSegmentCount * 16384L, reservedBytes);
+                Assert.Equal(pageSize * pages.Length + 64 + pages.Length * 12 + 4, fileWriter.WrittenData.Length);
+            }
+            finally
+            {
+                fileWriter.Return();
+            }
+        }
+
+        [Fact]
+        public void DefaultBufferRequestsProvideSpaceAfterAnExactFit()
+        {
+            var fileWriter = new BlobFileWriter(_ => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            try
+            {
+                fileWriter.Write(1, new SerializableObject(new byte[16384]));
+                Assert.False(fileWriter.GetSpan().IsEmpty);
+                Assert.False(fileWriter.GetMemory().IsEmpty);
+            }
+            finally
+            {
+                fileWriter.Return();
+            }
+        }
+
+        [Theory]
+        [InlineData(32768, 33)]
+        [InlineData(49152, 64)]
+        [InlineData(65536, 34)]
+        [InlineData(98304, 65)]
+        [InlineData(131072, 35)]
+        [InlineData(262144, 36)]
+        public void LargeSerializedPagesUseLargerSegmentsWithoutReservingExtraMemory(int pageSize, int expectedSegmentCount)
+        {
+            var fileWriter = new BlobFileWriter(_ => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            try
+            {
+                var pages = new byte[32][];
+                var locations = new ReadOnlySequence<byte>[pages.Length];
+                for (int i = 0; i < pages.Length; i++)
+                {
+                    pages[i] = new byte[pageSize];
+                    Array.Fill(pages[i], (byte)(i + 1));
+                    locations[i] = fileWriter.Write(i + 1, new SerializableObject(pages[i]));
+                    Assert.Equal(pageSize, locations[i].Length);
+                    Assert.Equal(pages[i], locations[i].ToArray());
+                }
+
+                fileWriter.Finish();
+                for (int i = 0; i < pages.Length; i++)
+                {
+                    Assert.Equal(pageSize, locations[i].Length);
+                    Assert.Equal(pages[i], locations[i].ToArray());
+                    Assert.Equal(System.IO.Hashing.Crc32.HashToUInt32(pages[i]), fileWriter.Crc32s[i]);
+                }
+
+                var segmentCount = 0;
+                long reservedBytes = 0;
+                for (var segment = fileWriter.DataStartSegment; segment != null; segment = segment._next)
+                {
+                    segmentCount++;
+                    reservedBytes += segment.MemoryOwner!.Memory.Length;
+                }
+                Assert.Equal(expectedSegmentCount, segmentCount);
+                Assert.Equal((long)pageSize * pages.Length, reservedBytes);
+                Assert.Equal(pageSize * pages.Length + 64 + pages.Length * 12 + 4, fileWriter.WrittenData.Length);
+            }
+            finally
+            {
+                fileWriter.Return();
+            }
+        }
+
+        [Theory]
+        [InlineData(false, 0)]
+        [InlineData(true, 0)]
+        [InlineData(false, 10000)]
+        [InlineData(true, 10000)]
+        public void ExactFitBufferRequestsReuseTheCurrentSegment(bool requestMemory, int writtenLength)
+        {
+            var fileWriter = new BlobFileWriter(_ => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            try
+            {
+                fileWriter.GetSpan(writtenLength).Slice(0, writtenLength).Clear();
+                fileWriter.Advance(writtenLength);
+                var segment = fileWriter.CurrentSegment;
+                var remainingLength = 16384 - writtenLength;
+
+                if (requestMemory)
+                {
+                    Assert.Equal(remainingLength, fileWriter.GetMemory(remainingLength).Length);
+                }
+                else
+                {
+                    Assert.Equal(remainingLength, fileWriter.GetSpan(remainingLength).Length);
+                }
+
+                Assert.Same(segment, fileWriter.CurrentSegment);
+                Assert.Equal(writtenLength, fileWriter.CurrentIndex);
+            }
+            finally
+            {
+                fileWriter.Return();
+            }
+        }
+
+        [Fact]
+        public void SerializedPagesWithDifferentSizesPreserveDataAndChecksums()
+        {
+            var fileWriter = new BlobFileWriter(_ => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            try
+            {
+                var sizes = new[] { 0, 1, 16383, 65536, 17408, 262145, 7, 98304, 0 };
+                var pages = new byte[sizes.Length][];
+                var locations = new ReadOnlySequence<byte>[sizes.Length];
+                long totalLength = 0;
+                for (int i = 0; i < sizes.Length; i++)
+                {
+                    pages[i] = new byte[sizes[i]];
+                    Array.Fill(pages[i], (byte)(i + 1));
+                    locations[i] = fileWriter.Write(i + 1, new SerializableObject(pages[i]));
+                    Assert.Equal(pages[i], locations[i].ToArray());
+                    totalLength += sizes[i];
+                }
+
+                fileWriter.Finish();
+                for (int i = 0; i < sizes.Length; i++)
+                {
+                    Assert.Equal(sizes[i], locations[i].Length);
+                    Assert.Equal(pages[i], locations[i].ToArray());
+                    Assert.Equal(System.IO.Hashing.Crc32.HashToUInt32(pages[i]), fileWriter.Crc32s[i]);
+                }
+
+                long reservedBytes = 0;
+                for (var segment = fileWriter.DataStartSegment; segment != null; segment = segment._next)
+                {
+                    reservedBytes += segment.MemoryOwner!.Memory.Length;
+                }
+                Assert.Equal((totalLength + 16383) / 16384 * 16384, reservedBytes);
+                Assert.Equal(totalLength + 64 + sizes.Length * 12 + 4, fileWriter.WrittenData.Length);
+            }
+            finally
+            {
+                fileWriter.Return();
+            }
+        }
+
+        [Theory]
+        [InlineData(16384)]
+        [InlineData(262144)]
+        public void EmptySerializedPagesReuseFullSegmentsWithoutRentingMoreMemory(int pageSize)
+        {
+            var fileWriter = new BlobFileWriter(_ => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            try
+            {
+                var payload = new byte[pageSize];
+                Array.Fill(payload, (byte)42);
+                var page = fileWriter.Write(1, new SerializableObject(payload));
+                var segment = fileWriter.CurrentSegment;
+                var index = fileWriter.CurrentIndex;
+
+                var empty = fileWriter.Write(2, new SerializableObject(ReadOnlyMemory<byte>.Empty));
+
+                Assert.Same(segment, fileWriter.CurrentSegment);
+                Assert.Equal(index, fileWriter.CurrentIndex);
+                Assert.Null(segment._next);
+                Assert.Equal(0, empty.Length);
+                Assert.Equal(pageSize, fileWriter.WrittenLength);
+                Assert.Equal(2, fileWriter.PageIds.Count);
+                Assert.Equal(pageSize, fileWriter.PageOffsets[1]);
+                Assert.Equal(System.IO.Hashing.Crc32.HashToUInt32(ReadOnlySpan<byte>.Empty), fileWriter.Crc32s[1]);
+
+                fileWriter.Finish();
+
+                Assert.Equal(payload, page.ToArray());
+                Assert.Equal(0, empty.Length);
+                Assert.Equal(pageSize + 64 + 2 * 12 + 4, fileWriter.WrittenData.Length);
+                long reservedBytes = 0;
+                for (var current = fileWriter.DataStartSegment; current != null; current = current._next)
+                {
+                    reservedBytes += current.MemoryOwner!.Memory.Length;
+                }
+                Assert.Equal(pageSize, reservedBytes);
+            }
+            finally
+            {
+                fileWriter.Return();
+            }
+        }
+
+        [Fact]
+        public void FinishedBlobFileWritersRejectEmptySerializedPages()
+        {
+            var fileWriter = new BlobFileWriter(_ => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            try
+            {
+                fileWriter.Finish();
+                Assert.Throws<InvalidOperationException>(() => fileWriter.Write(1, new SerializableObject(ReadOnlyMemory<byte>.Empty)));
+            }
+            finally
+            {
+                fileWriter.Return();
+            }
+        }
+
+        [Fact]
+        public void SerializedPageCopyDoesNotAllocateWhenTheBufferHasCapacity()
+        {
+            var page = new SerializableObject(new byte[8192]);
+            var writer = new ArrayBufferWriter<byte>(8192);
+            page.Serialize(writer);
+            writer.Clear();
+
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            page.Serialize(writer);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.Equal(0, allocated);
+            Assert.Equal(8192, writer.WrittenCount);
+        }
+
+        [Theory]
+        [InlineData(16374)]
+        [InlineData(16380)]
+        [InlineData(16384)]
+        public void CompressedPageReadsDoNotAllocateAnAdditionalReassemblyBuffer(int paddingLength)
+        {
+            using var serializer = new CompressedStateSerializer<TestPage>(new TestPageSerializer(), 3, GlobalMemoryManager.Instance);
+            var buffer = new ArrayBufferWriter<byte>();
+            serializer.Serialize(buffer, new TestPage(42));
+            var contiguous = new ReadOnlySequence<byte>(buffer.WrittenMemory);
+            var fileWriter = new BlobFileWriter(_ => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            try
+            {
+                fileWriter.Write(1, new SerializableObject(new byte[paddingLength]));
+                var location = fileWriter.Write(2, new SerializableObject(buffer.WrittenMemory));
+                for (int i = 0; i < 16; i++)
+                {
+                    serializer.Deserialize(contiguous, buffer.WrittenCount).Return();
+                    serializer.Deserialize(location, buffer.WrittenCount).Return();
+                }
+
+                var before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 100; i++)
+                {
+                    serializer.Deserialize(contiguous, buffer.WrittenCount).Return();
+                }
+                var contiguousAllocations = GC.GetAllocatedBytesForCurrentThread() - before;
+                before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 100; i++)
+                {
+                    serializer.Deserialize(location, buffer.WrittenCount).Return();
+                }
+                var locationAllocations = GC.GetAllocatedBytesForCurrentThread() - before;
+
+                Assert.Equal(contiguousAllocations, locationAllocations);
+                var page = serializer.Deserialize(location, buffer.WrittenCount);
+                Assert.Equal(42, page.Value);
+                page.Return();
+            }
+            finally
+            {
+                fileWriter.Return();
+            }
+        }
+
         /// <summary>
         /// Intermediate write sequence length must match byte count.
         /// </summary>
@@ -3183,17 +3487,22 @@ namespace FlowtideDotNet.Storage.Tests
         public void BlobFileWriterEnsureCapacityDoesNotInflateRunningIndex()
         {
             var fileWriter = new BlobFileWriter(_ => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            try
+            {
+                fileWriter.GetSpan(10000).Slice(0, 10000).Clear();
+                fileWriter.Advance(10000);
+                fileWriter.GetSpan(7000).Slice(0, 7000).Clear();
+                fileWriter.Advance(7000);
 
-            var firstChunk = new byte[10000];
-            fileWriter.Write(1, new SerializableObject(firstChunk));
+                var endSeg = fileWriter.CurrentSegment;
 
-            var secondChunk = new byte[7000];
-            var location = fileWriter.Write(2, new SerializableObject(secondChunk));
-
-            var endSeg = (ReadOnlySequenceSegment<byte>)location.End.GetObject()!;
-
-            // Intermediate write sequence length must match byte count.
-            Assert.Equal(10064, endSeg.RunningIndex);
+                // Intermediate write sequence length must match byte count.
+                Assert.Equal(10064, endSeg.RunningIndex);
+            }
+            finally
+            {
+                fileWriter.Return();
+            }
         }
 
         /// <summary>

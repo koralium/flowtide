@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.IO.Pipelines;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
@@ -100,7 +101,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 var startSegment = CurrentSegment;
                 var segmentPosition = CurrentIndex;
                 crc.Reset();
-                value.Serialize(this);
+                if (value.PreSerializedData is { } data)
+                {
+                    WriteSerialized(data.Span);
+                }
+                else
+                {
+                    value.Serialize(this);
+                }
                 var endSegment = CurrentSegment;
                 var endSegmentPosition = CurrentIndex;
                 var crcNumber = crc.GetCurrentHashAsUInt32();
@@ -110,7 +118,32 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 return new ReadOnlySequence<byte>(startSegment, segmentPosition, endSegment, endSegmentPosition);
             }
         }
-        
+
+        private void WriteSerialized(ReadOnlySpan<byte> data)
+        {
+            if (data.IsEmpty && !_finished)
+            {
+                return;
+            }
+
+            do
+            {
+                var available = _end.AvailableMemory.Length - endIndex;
+                var sizeHint = Math.Min(data.Length, available);
+                if (available == 0 && data.Length > InitialSegmentSize)
+                {
+                    // Large chunks must fit without unused pooled capacity.
+                    sizeHint = 1 << BitOperations.Log2((uint)data.Length);
+                }
+
+                var destination = GetSpan(sizeHint);
+                var count = Math.Min(data.Length, destination.Length);
+                data.Slice(0, count).CopyTo(destination);
+                Advance(count);
+                data = data.Slice(count);
+            } while (!data.IsEmpty);
+        }
+
         public void Advance(int count)
         {
             crc.Append(_end.AvailableMemory.Slice(endIndex, count).Span);
@@ -125,7 +158,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             { 
                 throw new InvalidOperationException("Cannot write to BlobFileWriter after it has been finished.");
             }
-            if (endIndex + sizeHint >= _end.AvailableMemory.Length)
+            var available = _end.AvailableMemory.Length - endIndex;
+            if (available == 0 || sizeHint > available)
             {
                 var segmentSize = Math.Max(sizeHint, InitialSegmentSize);
                 var newSegment = new BufferSegment(_memoryPool.Rent(segmentSize), segmentSize);

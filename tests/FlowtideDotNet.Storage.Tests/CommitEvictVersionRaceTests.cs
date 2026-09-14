@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
+using FlowtideDotNet.Storage.StateManager.Internal.Sync;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Buffers;
 using System.Buffers.Binary;
@@ -435,8 +436,11 @@ namespace FlowtideDotNet.Storage.Tests
                 _inner = inner;
             }
 
-            public void ArmGate(ManualResetEventSlim gate)
+            private long? _targetKey;
+
+            public void ArmGate(ManualResetEventSlim gate, long? targetKey = null)
             {
+                _targetKey = targetKey;
                 Volatile.Write(ref _gate, gate);
             }
 
@@ -447,11 +451,14 @@ namespace FlowtideDotNet.Storage.Tests
 
             public Task Write(long key, SerializableObject value)
             {
-                var gate = Interlocked.Exchange(ref _gate, null);
-                if (gate != null)
+                if (_targetKey == null || _targetKey == key)
                 {
-                    _writerBlocked.Release();
-                    gate.Wait();
+                    var gate = Interlocked.Exchange(ref _gate, null);
+                    if (gate != null)
+                    {
+                        _writerBlocked.Release();
+                        gate.Wait();
+                    }
                 }
                 return _inner.Write(key, value);
             }
@@ -556,6 +563,90 @@ namespace FlowtideDotNet.Storage.Tests
             await commit;
             await recovery;
             manager.Dispose();
+        }
+
+        [Fact]
+        [Trait("Category", "EvictionDeadlockRegression")]
+        public async Task EvictionDoesNotDeadlockWhenNodeWriteLockIsHeldDuringReplacement()
+        {
+            var persist = new GatedPersistentStorage(new FileCachePersistentStorage(new FileCacheOptions()
+            {
+                DirectoryPath = "./deadlockTest"
+            }));
+            var options = new StateManagerOptions()
+            {
+                PersistentStorage = persist,
+                CachePageCount = 1000,
+                MinCachePageCount = 1000
+            };
+            var manager = new StateManagerSync<StateManagerMetadata>(options, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmpDeadlock"), "test", GlobalMemoryManager.Instance);
+            await manager.InitializeAsync();
+            await manager.CacheTable.StopCleanupTask();
+
+            var client = (SyncStateClient<TestPage, TestMetadata>)await manager.CreateClientAsync<TestPage, TestMetadata>(
+                "client",
+                new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
+                GlobalMemoryManager.Instance);
+
+            var gateKey = client.GetNewPageId();
+            client.AddOrUpdate(gateKey, new TestPage(100));
+
+            var key = client.GetNewPageId();
+            var page = new TestPage(1);
+            client.AddOrUpdate(key, page);
+
+            using var gate = new ManualResetEventSlim(false);
+            var session = persist.Sessions.Single();
+            session.ArmGate(gate, gateKey);
+
+            var commit = Task.Run(() => client.Commit().AsTask());
+            await session.WaitForBlockedWriterAsync();
+
+            client.Delete(key);
+            Assert.True(manager.TryPeekCacheEntry(key, out var entry));
+
+            using var lockHeld = new ManualResetEventSlim(false);
+            using var releaseLock = new ManualResetEventSlim(false);
+            var lockHolder = Task.Run(() =>
+            {
+                page.EnterWriteLock();
+                try
+                {
+                    lockHeld.Set();
+                    releaseLock.Wait();
+                }
+                finally
+                {
+                    page.ExitWriteLock();
+                }
+            });
+            lockHeld.Wait();
+
+            Task? evictTask = null;
+            Task? addTask = null;
+            try
+            {
+                evictTask = Task.Run(() => client.Evict(new List<(S3FifoCacheEntry, long)> { (entry, key) }, false));
+                await Task.Delay(100);
+
+                addTask = Task.Run(() => client.AddOrUpdate(key, new TestPage(2)));
+                var delayTask = Task.Delay(TimeSpan.FromSeconds(1.5));
+                var completedTask = await Task.WhenAny(Task.WhenAll(evictTask, addTask), delayTask);
+                var completed = completedTask != delayTask;
+
+                // Eviction must not deadlock with held write lock.
+                Assert.True(completed);
+            }
+            finally
+            {
+                releaseLock.Set();
+                await lockHolder;
+                gate.Set();
+                if (evictTask != null) await evictTask;
+                if (addTask != null) await addTask;
+                await commit;
+                manager.Dispose();
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -75,6 +75,51 @@ namespace FlowtideDotNet.Storage.Tests
             objectState = await stateClient.GetOrCreateObjectStateAsync<bool>("state");
 
             Assert.False(objectState.Value);
+        }
+
+        [Fact]
+        [Trait("Category", "ObjectStateFaultRegression")]
+        public async Task ObjectStateCommitRetryAfterFailurePersistsState()
+        {
+            var provider = new Persistence.Reservoir.MemoryDisk.MemoryFileProvider();
+            var inner = new Persistence.Reservoir.Internal.ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider
+            });
+            var storage = new BackgroundCommitTests.RecordingStorage(inner);
+            var stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
+            {
+                CachePageCount = 1000000,
+                PersistentStorage = storage
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
+            await stateManager.InitializeAsync();
+
+            var stateClient = stateManager.GetOrCreateClient("stateClient");
+            var objectState = await stateClient.GetOrCreateObjectStateAsync<bool>("state");
+
+            objectState.Value = false;
+            await objectState.Commit();
+            await stateManager.CheckpointAsync();
+
+            objectState.Value = true;
+            var concrete = (FlowtideDotNet.Storage.StateManager.Internal.ObjectState.ObjectStateClient<bool>)objectState;
+            var session = storage.Sessions.First(s => s.TotalWriteCount(concrete.MetadataId) > 0);
+            session.FaultCommit = true;
+
+            await Assert.ThrowsAsync<IOException>(async () => await objectState.Commit());
+
+            session.FaultCommit = false;
+
+            // Retrying commit must persist the updated state.
+            await objectState.Commit();
+            await stateManager.CheckpointAsync();
+
+            await stateManager.InitializeAsync();
+            stateClient = stateManager.GetOrCreateClient("stateClient");
+            objectState = await stateClient.GetOrCreateObjectStateAsync<bool>("state");
+
+            // Committed state must be preserved across restart.
+            Assert.True(objectState.Value);
         }
     }
 }
