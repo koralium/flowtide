@@ -459,31 +459,52 @@ namespace FlowtideDotNet.Storage.Tests.Append
             Assert.Equal(10, count);
         }
 
-        /// <summary>
-        /// An iterator holds its node across tree appends.
-        /// </summary>
         [Fact]
-        public async Task IteratorHeldRightNodeDoesNotGetEvictedWhenRightNodeSplits()
+        public async Task IteratorRetainsTheSplitLeafUntilItsEnumeratorIsDisposed()
         {
-            var tree = await CreateTree(bucketSize: 2, cachePageCount: 1);
-            for (int i = 0; i < 2; i++)
+            var timeout = TimeSpan.FromSeconds(30);
+            var (manager, storage) = await BackgroundCommitTests.CreateManager("iterator_split_ownership", cachePageCount: 0);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var tree = await BackgroundCommitTests.CreateAppendTree(manager);
+            for (long i = 0; i < 16; i++)
             {
                 await tree.Append(i, i);
             }
-            var iterator = tree.CreateIterator();
+
+            var concrete = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            var leafId = concrete.m_stateClient.Metadata!.Right;
+            Assert.True(manager.TryPeekCacheEntry(leafId, out var entry));
+            var heldNode = entry.Value;
+            Assert.Equal(2, heldNode.RentCount);
+            using var iterator = tree.CreateIterator();
             await iterator.Seek(0);
+            Assert.Equal(3, heldNode.RentCount);
 
-            var appendTree = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
-            var heldNode = await appendTree.FindLeafNode(0, new BPlusTreeListComparer<long>(new LongComparer()));
-
-            // Appending more items splits right leaf node.
-            for (int i = 2; i < 6; i++)
+            await using (var enumerator = iterator.GetAsyncEnumerator())
             {
-                await tree.Append(i, i);
+                Assert.Equal(3, heldNode.RentCount);
+                for (long i = 16; i < 48; i++)
+                {
+                    await tree.Append(i, i);
+                }
+
+                Assert.NotEqual(leafId, concrete.m_stateClient.Metadata.Right);
+                await manager.CacheTable.ForceCleanup().WaitAsync(timeout);
+                Assert.True(manager.TryPeekCacheEntry(leafId, out var retainedEntry));
+                Assert.Same(heldNode, retainedEntry.Value);
+                Assert.Equal(2, heldNode.RentCount);
+                for (long i = 0; i < 16; i++)
+                {
+                    Assert.True(await enumerator.MoveNextAsync());
+                    Assert.Equal(new KeyValuePair<long, long>(i, i), enumerator.Current);
+                }
             }
 
-            // Iterator holds node so rent count must be positive.
-            Assert.True(heldNode.RentCount >= 1);
+            Assert.Equal(1, heldNode.RentCount);
+            await manager.CacheTable.ForceCleanup().WaitAsync(timeout);
+            Assert.False(manager.TryPeekCacheEntry(leafId, out _));
+            Assert.Equal(0, heldNode.RentCount);
         }
 
         /// <summary>

@@ -984,29 +984,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// Writes the page's checkpoint copy before a fetch hands it out for modification.
-        /// </summary>
-        private async ValueTask CommitPendingPage(long key)
-        {
-            await m_commitEvictLock.WaitAsync();
-            try
-            {
-                var generation = m_generation;
-                if (generation == null)
-                {
-                    // The walk finished first.
-                    return;
-                }
-                ThrowIfFailed(generation);
-                await WritePendingPage(key, generation);
-            }
-            finally
-            {
-                m_commitEvictLock.Release();
-            }
-        }
-
-        /// <summary>
         /// Sets CommitedOnce before the write, Commit takes it back on any failure.
         /// </summary>
         private async Task WriteMetadata()
@@ -1155,7 +1132,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private async ValueTask<V?> GetValue_CommitFirst(long key)
         {
-            await CommitPendingPage(key);
+            await m_commitEvictLock.WaitAsync();
+            try
+            {
+                var generation = m_generation;
+                if (generation != null)
+                {
+                    ThrowIfFailed(generation);
+                    await WritePendingPage(key, generation);
+                }
+            }
+            finally
+            {
+                m_commitEvictLock.Release();
+            }
             return await GetValue(key);
         }
 
