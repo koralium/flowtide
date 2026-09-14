@@ -318,13 +318,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         if (m_commit.Pending.TryGetValue(key, out var pending) && pending.Sequence > 0 &&
                             !(m_generation.ReplacedKeys?.Contains(key) ?? false))
                         {
-                            if (stateManager.TryPeekCacheEntry(key, out var oldEntry))
+                            if (stateManager.TryRentCacheEntryForCommit(key, out var oldEntry))
                             {
                                 Debug.Assert(options.ValueSerializer != null);
-                                // Spill old version before replacing cache entry.
-                                m_fileCacheVersion[key] = pending.Sequence;
                                 try
                                 {
+                                    // Keep the original rented throughout replacement serialization.
+                                    m_fileCacheVersion[key] = pending.Sequence;
                                     m_fileCache.Write(key, new SerializableObject(oldEntry.Value, options.ValueSerializer));
                                 }
                                 catch
@@ -332,6 +332,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                                     // Failed spills must not advance the stored version.
                                     m_fileCacheVersion.TryRemove(new KeyValuePair<long, long>(key, pending.Sequence));
                                     throw;
+                                }
+                                finally
+                                {
+                                    oldEntry.Value.Return();
                                 }
                             }
                             // Replacements preserve the original page's existing spill.
@@ -363,14 +367,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             var lookupEntry = _lookupTable[modLookup];
             if (lookupEntry != null && lookupEntry.Key == key)
             {
-                lock (lookupEntry)
+                if (!ReferenceEquals(lookupEntry.Value, value))
                 {
-                    if (!ReferenceEquals(lookupEntry.Value, value))
-                    {
-                        stateManager.DeleteFromCache(key);
-                        Volatile.Write(ref _lookupTable[modLookup], null);
-                    }
-                    else
+                    stateManager.DeleteFromCache(key);
+                    Volatile.Write(ref _lookupTable[modLookup], null);
+                }
+                else
+                {
+                    lock (lookupEntry)
                     {
                         lookupEntry.Version = lookupEntry.Version + 1;
                         // Live entries already belong to the cache.
@@ -383,12 +387,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             else if (stateManager.TryPeekCacheEntry(key, out var existingEntry))
             {
-                lock (existingEntry)
+                if (!ReferenceEquals(existingEntry.Value, value))
                 {
-                    if (!ReferenceEquals(existingEntry.Value, value))
-                    {
-                        stateManager.DeleteFromCache(key);
-                    }
+                    stateManager.DeleteFromCache(key);
                 }
             }
 
@@ -471,7 +472,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_sessionLock?.Release();
         }
 
-        private async Task SessionWrite(long key, SerializableObject value)
+        private Task SessionWrite(long key, SerializableObject value)
+        {
+            return m_sessionLock == null ? session.Write(key, value) : SessionWrite_Slow(key, value);
+        }
+
+        private async Task SessionWrite_Slow(long key, SerializableObject value)
         {
             await EnterSessionAsync();
             try
@@ -484,7 +490,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        private async Task SessionDelete(long key)
+        private Task SessionDelete(long key)
+        {
+            return m_sessionLock == null ? session.Delete(key) : SessionDelete_Slow(key);
+        }
+
+        private async Task SessionDelete_Slow(long key)
         {
             await EnterSessionAsync();
             try
@@ -497,7 +508,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        private async ValueTask<ReadOnlyMemory<byte>> SessionRead(long key)
+        private ValueTask<ReadOnlyMemory<byte>> SessionRead(long key)
+        {
+            return m_sessionLock == null ? session.Read(key) : SessionRead_Slow(key);
+        }
+
+        private async ValueTask<ReadOnlyMemory<byte>> SessionRead_Slow(long key)
         {
             await EnterSessionAsync();
             try
@@ -510,7 +526,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        private async ValueTask<T> SessionRead<T>(long key, IStateSerializer<T> serializer)
+        private ValueTask<T> SessionRead<T>(long key, IStateSerializer<T> serializer)
+            where T : ICacheObject
+        {
+            return m_sessionLock == null ? session.Read(key, serializer) : SessionRead_Slow(key, serializer);
+        }
+
+        private async ValueTask<T> SessionRead_Slow<T>(long key, IStateSerializer<T> serializer)
             where T : ICacheObject
         {
             await EnterSessionAsync();
@@ -524,7 +546,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        private async Task SessionCommit()
+        private Task SessionCommit()
+        {
+            return m_sessionLock == null ? session.Commit() : SessionCommit_Slow();
+        }
+
+        private async Task SessionCommit_Slow()
         {
             await EnterSessionAsync();
             try

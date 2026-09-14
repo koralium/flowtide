@@ -11,9 +11,17 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Entities;
+using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Persistence;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit.Abstractions;
@@ -31,6 +39,103 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public CheckpointFailureTeardownTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper, true)
         {
+        }
+
+        private sealed class FailingPageStorage : ReservoirPersistentStorage, IPersistentStorage
+        {
+            public int Armed;
+            public readonly TaskCompletionSource<long> Failed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            public FailingPageStorage() : base(new ReservoirStorageOptions { FileProvider = new MemoryFileProvider() })
+            {
+            }
+
+            public new IPersistentStorageSession CreateSession() => new FailingPageSession(base.CreateSession(), this);
+
+            private sealed class FailingPageSession(IPersistentStorageSession inner, FailingPageStorage storage) : IPersistentStorageSession
+            {
+                public bool SupportsConcurrentReads => inner.SupportsConcurrentReads;
+                public Task Commit() => inner.Commit();
+                public Task Delete(long key) => inner.Delete(key);
+                public void Dispose() => inner.Dispose();
+                public ValueTask<ReadOnlyMemory<byte>> Read(long key) => inner.Read(key);
+                public ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer) where T : ICacheObject => inner.Read(key, serializer);
+
+                public Task Write(long key, SerializableObject value)
+                {
+                    // Fail actual page writes inside the background worker.
+                    if (!value.HasPreSerializedData && Volatile.Read(ref storage.Armed) != 0 &&
+                        new StackTrace().GetFrames().Any(frame =>
+                            frame.GetMethod()?.DeclaringType?.Name.StartsWith("<CommitGenerationAsync>", StringComparison.Ordinal) == true) &&
+                        Interlocked.Exchange(ref storage.Armed, 0) != 0)
+                    {
+                        storage.Failed.TrySetResult(storage.CurrentVersion - 1);
+                        throw new CrashException("Injected background page write failure", new IOException("Page write failed"));
+                    }
+                    return inner.Write(key, value);
+                }
+            }
+        }
+
+        private sealed class FailingPageTestStream(string name) : FlowtideTestStream(name)
+        {
+            public FailingPageStorage Storage { get; } = new();
+
+            protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck) => Storage;
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        [Trait("Category", "AdversarialReviewRegression")]
+        public async Task BackgroundPageWriteFailureRollsBackTheStreamAndAllowsFurtherCheckpoints(bool hasCompletedCheckpoint)
+        {
+            var name = $"{Token}_{nameof(BackgroundPageWriteFailureRollsBackTheStreamAndAllowsFurtherCheckpoints)}_{hasCompletedCheckpoint}";
+            await using var stream = new FailingPageTestStream(name) { CachePageCount = 10000 };
+            var restored = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+            try
+            {
+                StreamContext.RestoreVersionForTests = (streamName, version) =>
+                {
+                    if (streamName == name) restored.TrySetResult(version);
+                };
+                stream.Generate(1000);
+                if (!hasCompletedCheckpoint) Volatile.Write(ref stream.Storage.Armed, 1);
+                await stream.StartStream("INSERT INTO output SELECT userkey, firstName FROM users", pageSize: 16);
+                if (hasCompletedCheckpoint)
+                {
+                    await stream.WaitForUpdate().WaitAsync(TimeSpan.FromSeconds(30));
+                    Volatile.Write(ref stream.Storage.Armed, 1);
+                    stream.AddOrUpdateUser(new User { UserKey = 999999, FirstName = "failedcheckpoint" });
+                }
+
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (!restored.Task.IsCompleted && DateTime.UtcNow < deadline)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(10);
+                }
+                Assert.True(stream.Storage.Failed.Task.IsCompletedSuccessfully, "No background page write failed.");
+                Assert.True(restored.Task.IsCompletedSuccessfully, "The stream did not initiate rollback.");
+                var lastCompletedVersion = await stream.Storage.Failed.Task;
+                Assert.Equal(lastCompletedVersion, await restored.Task);
+                Assert.Equal(hasCompletedCheckpoint, lastCompletedVersion > 0);
+
+                // Engine recovery discards failed session writes before replay.
+                await stream.WaitForUpdate().WaitAsync(TimeSpan.FromSeconds(30));
+                stream.AssertCurrentDataEqual(stream.Users.Select(user => new { user.UserKey, user.FirstName }));
+                var recoveredVersion = stream.Storage.CurrentVersion;
+                stream.AddOrUpdateUser(new User { UserKey = 999998, FirstName = "afterrecovery" });
+                await stream.WaitForUpdate().WaitAsync(TimeSpan.FromSeconds(30));
+                stream.AssertCurrentDataEqual(stream.Users.Select(user => new { user.UserKey, user.FirstName }));
+                Assert.True(stream.Storage.CurrentVersion > recoveredVersion);
+                Assert.Equal(1, stream.FailureNotificationCount);
+            }
+            finally
+            {
+                Volatile.Write(ref stream.Storage.Armed, 0);
+                StreamContext.RestoreVersionForTests = null;
+            }
         }
 
         /// <summary>

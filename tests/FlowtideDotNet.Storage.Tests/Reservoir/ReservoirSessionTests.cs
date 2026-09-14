@@ -15,6 +15,42 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         {
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        [Trait("Category", "AdversarialReviewRegression")]
+        public async Task CommittedDeletionRemainsUnreadableBeforeTheStorageCheckpoint(bool deserializePage)
+        {
+            var provider = new TestDataProvider();
+            using var storage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions
+            {
+                FileProvider = provider
+            });
+            await storage.InitializeAsync(new StorageInitializationMetadata("committed_deletion", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+            using var session = storage.CreateSession();
+            await session.Write(100, new SerializableObject(BitConverter.GetBytes(42)));
+            await session.Commit();
+            await storage.CheckpointAsync(new byte[] { 1 }, false);
+            await session.Delete(100);
+            await session.Commit();
+
+            // Committed tombstones must hide previous persisted values.
+            await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () =>
+            {
+                if (deserializePage)
+                {
+                    var page = await session.Read(100, new TestPageSerializer());
+                    page.Return();
+                }
+                else
+                {
+                    await session.Read(100);
+                }
+            });
+            await storage.CheckpointAsync(new byte[] { 2 }, false);
+            await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () => await session.Read(100));
+        }
+
         [Fact]
         public async Task TestReadYourDeletes()
         {
@@ -247,6 +283,65 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             // Session commit must succeed after clearing injected fault.
             var ex = await Record.ExceptionAsync(async () => await session2.Commit());
             Assert.Null(ex);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task RecreatedPageRemainsReadableAfterItsFileRolls(bool deserializePage)
+        {
+            var provider = new TestDataProvider();
+            using var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider,
+                MaxFileSize = 1024
+            });
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata(
+                "recreated_page_roll", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+            using var session = persistentStorage.CreateSession();
+            await session.Write(100, new SerializableObject(BitConverter.GetBytes(1)));
+            await session.Commit();
+            await persistentStorage.CheckpointAsync(new byte[] { 1 }, false);
+            await session.Delete(100);
+            await session.Commit();
+
+            provider.BlockWrites();
+            try
+            {
+                var replacement = new byte[2048];
+                BitConverter.GetBytes(2).CopyTo(replacement, 0);
+                await session.Write(100, new SerializableObject(replacement));
+                await session.Commit();
+                Assert.Equal(2, BitConverter.ToInt32((await session.Read(100)).Span));
+            }
+            finally
+            {
+                provider.UnblockWrites();
+            }
+
+            // File completion must preserve the latest readable value.
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (persistentStorage.TemporaryLocationExists(100) && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(1);
+            }
+            Assert.False(persistentStorage.TemporaryLocationExists(100));
+            if (deserializePage)
+            {
+                var page = await session.Read(100, new TestPageSerializer());
+                try
+                {
+                    Assert.Equal(2, page.Value);
+                }
+                finally
+                {
+                    page.Return();
+                }
+            }
+            else
+            {
+                Assert.Equal(2, BitConverter.ToInt32((await session.Read(100)).Span));
+            }
         }
 
         /// <summary>

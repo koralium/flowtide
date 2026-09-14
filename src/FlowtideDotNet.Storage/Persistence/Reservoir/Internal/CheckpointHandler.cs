@@ -50,6 +50,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         private HashSet<long> _deletedPages = new HashSet<long>();
         private object _deletedPagesLock = new object();
+        private bool _hasDeletedPages;
 
         private HashSet<ulong> _modifiedFileIds = new HashSet<ulong>();
         private HashSet<ulong> _deletedFileIds = new HashSet<ulong>();
@@ -252,7 +253,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _pageFileLocations.Clear();
             _fileInformations.Clear();
             deletedFilesList.Clear();
-            lock (_deletedPagesLock) { _deletedPages.Clear(); }
+            lock (_deletedPagesLock)
+            {
+                _deletedPages.Clear();
+                Volatile.Write(ref _hasDeletedPages, false);
+            }
             lock (_modifiedFileIdsLock) { _modifiedFileIds.Clear(); _deletedFileIds.Clear(); }
 
             await ReadCheckpointFiles(checkpointVersions);
@@ -300,7 +305,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _pageFileLocations.Clear();
             _fileInformations.Clear();
             deletedFilesList.Clear();
-            lock (_deletedPagesLock) { _deletedPages.Clear(); }
+            lock (_deletedPagesLock)
+            {
+                _deletedPages.Clear();
+                Volatile.Write(ref _hasDeletedPages, false);
+            }
             lock (_modifiedFileIdsLock) { _modifiedFileIds.Clear(); _deletedFileIds.Clear(); }
 
             await ReadCheckpointFiles(checkpointVersions);
@@ -527,6 +536,40 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             return _pageFileLocations.TryGetValue(pageId, out pageFileLocation);
         }
 
+        public bool TryGetReadablePageFileLocation(long pageId, out PageFileLocation pageFileLocation)
+        {
+            if (Volatile.Read(ref _hasDeletedPages))
+            {
+                lock (_deletedPagesLock)
+                {
+                    // Pending deletions hide persisted pages before checkpoint completion.
+                    if (_deletedPages.Contains(pageId))
+                    {
+                        pageFileLocation = default;
+                        return false;
+                    }
+                }
+            }
+            return _pageFileLocations.TryGetValue(pageId, out pageFileLocation);
+        }
+
+        public void RemoveDeletedPage(long pageId)
+        {
+            if (!Volatile.Read(ref _hasDeletedPages))
+            {
+                return;
+            }
+
+            lock (_deletedPagesLock)
+            {
+                // New page writes supersede previously committed deletions.
+                if (_deletedPages.Remove(pageId) && _deletedPages.Count == 0)
+                {
+                    Volatile.Write(ref _hasDeletedPages, false);
+                }
+            }
+        }
+
         public void AddDeletedPages(IReadOnlySet<long> pageIds)
         {
             Volatile.Write(ref _modifiedSinceLastCheckpoint, true);
@@ -537,6 +580,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             lock (_deletedPagesLock)
             {
                 _deletedPages.UnionWith(pageIds);
+                Volatile.Write(ref _hasDeletedPages, _deletedPages.Count > 0);
             }
         }
 
@@ -586,6 +630,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         }
                     }
                     _deletedPages.Clear();
+                    Volatile.Write(ref _hasDeletedPages, false);
                 }
             }
 
@@ -756,6 +801,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         }
                     }
                     _deletedPages.Clear();
+                    Volatile.Write(ref _hasDeletedPages, false);
                 }
             }
 

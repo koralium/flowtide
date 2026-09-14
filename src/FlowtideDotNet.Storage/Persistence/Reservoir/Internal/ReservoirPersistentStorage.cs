@@ -117,7 +117,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         internal void AddTemporaryLocation(long pageId, PageWriteLocation pageWriteLocation)
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before adding temporary locations");
             _temporaryPageLocations[pageId] = pageWriteLocation;
+            _checkpointHandler.RemoveDeletedPage(pageId);
         }
 
         internal async Task AddNonCompletedBlobFile(BlobFileWriter blobFileWriter)
@@ -447,7 +449,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before reading data");
 
-            if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
+            if (_checkpointHandler.TryGetReadablePageFileLocation(key, out var location))
             {
                 var memory = await _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size, location.Crc32);
                 return new ReadOnlySequence<byte>(memory);
@@ -459,7 +461,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before reading data");
 
-            if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
+            if (_checkpointHandler.TryGetReadablePageFileLocation(key, out var location))
             {
                 return _fileProvider.ReadAsync<T>(location.FileId, location.Offset, location.Size, location.Crc32, stateSerializer);
             }
@@ -719,7 +721,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before fetching values");
 
-            if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
+            if (_checkpointHandler.TryGetReadablePageFileLocation(key, out var location))
             {
                 value = _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size, location.Crc32).GetAwaiter().GetResult();
                 return true;

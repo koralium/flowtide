@@ -32,6 +32,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
+using System.Reflection;
 using Xunit;
 
 namespace FlowtideDotNet.Storage.Tests
@@ -252,6 +253,16 @@ namespace FlowtideDotNet.Storage.Tests
 
             public Task FlushEntered => _flushEntered.Task;
 
+            private readonly TaskCompletionSource _flushCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            private ManualResetEventSlim? _afterFlushGate;
+
+            public void ArmAfterFlushGate(ManualResetEventSlim gate)
+            {
+                Volatile.Write(ref _afterFlushGate, gate);
+            }
+
+            public Task FlushCompleted => _flushCompleted.Task;
+
             public void Flush()
             {
                 var gate = Interlocked.Exchange(ref _flushGate, null);
@@ -261,6 +272,15 @@ namespace FlowtideDotNet.Storage.Tests
                     gate.Wait();
                 }
                 _inner.Flush();
+                var afterFlushGate = Interlocked.Exchange(ref _afterFlushGate, null);
+                if (afterFlushGate != null)
+                {
+                    _flushCompleted.TrySetResult();
+                    if (!afterFlushGate.Wait(Timeout))
+                    {
+                        throw new TimeoutException("Eviction reclamation was not released.");
+                    }
+                }
             }
 
             public void ClearTemporaryAllocations() => _inner.ClearTemporaryAllocations();
@@ -376,10 +396,10 @@ namespace FlowtideDotNet.Storage.Tests
 
         private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
-        internal static async Task<(StateManagerSync<StateManagerMetadata> manager, RecordingStorage storage)> CreateManager(string name, int cachePageCount = 1000, bool useReadCache = false, bool backgroundCommit = true, bool? threadSafeSession = null, bool reservoir = true, TimeSpan? stopCommitsTimeout = null, IFileCacheFactory? fileCacheFactory = null)
+        internal static async Task<(StateManagerSync<StateManagerMetadata> manager, RecordingStorage storage)> CreateManager(string name, int cachePageCount = 1000, bool useReadCache = false, bool backgroundCommit = true, bool? threadSafeSession = null, bool reservoir = true, TimeSpan? stopCommitsTimeout = null, IFileCacheFactory? fileCacheFactory = null, IReservoirStorageProvider? fileProvider = null)
         {
             IPersistentStorage inner = reservoir
-                ? new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() })
+                ? new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = fileProvider ?? new MemoryFileProvider() })
                 : new FileCachePersistentStorage(new FileCacheOptions() { DirectoryPath = $"./data/bgcommit_{name}/persist" });
             var storage = new RecordingStorage(inner)
             {
@@ -433,6 +453,194 @@ namespace FlowtideDotNet.Storage.Tests
         {
             Assert.True(storage.TryGetValue(key, out var bytes), $"page {key} is not in persistent storage");
             return BinaryPrimitives.ReadInt32LittleEndian(bytes.Value.Span);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        [Trait("Category", "AdversarialReviewRegression")]
+        public async Task ReplacingCachedPagesDoesNotHoldEntriesWhileWaitingForTheQueue(bool collideLookup)
+        {
+            var (manager, storage) = await CreateManager($"replacement_lock_{collideLookup}", cachePageCount: 1);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "pages", 2);
+            var key = keys[0];
+            Assert.True(manager.TryPeekCacheEntry(key, out var entry));
+            if (collideLookup)
+            {
+                client.AddOrUpdate(key + 1009, new TestPage(3));
+            }
+
+            var queueField = typeof(S3FifoTableSync).GetField("m_queueLock", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.NotNull(queueField);
+            var queueLock = queueField.GetValue(manager.CacheTable)!;
+            using var started = new ManualResetEventSlim(false);
+            Exception? replacementFailure = null;
+            var replacement = new Thread(() =>
+            {
+                started.Set();
+                replacementFailure = Record.Exception(() => client.AddOrUpdate(key, new TestPage(42)));
+            }) { IsBackground = true };
+
+            Monitor.Enter(queueLock);
+            try
+            {
+                replacement.Start();
+                Assert.True(started.Wait(Timeout));
+                Assert.True(SpinWait.SpinUntil(
+                    () => (replacement.ThreadState & ThreadState.WaitSleepJoin) != 0 || !replacement.IsAlive, Timeout));
+                Assert.True(replacement.IsAlive, "Replacement must wait for the queue lock.");
+                // Queue waiters must release their entry monitors.
+                var entered = Monitor.TryEnter(entry);
+                if (entered)
+                {
+                    Monitor.Exit(entry);
+                }
+                Assert.True(entered, "Replacement holds the entry while waiting for the queue.");
+            }
+            finally
+            {
+                Monitor.Exit(queueLock);
+                Assert.True(replacement.Join(Timeout));
+            }
+            Assert.Null(replacementFailure);
+            var result = await client.GetValue(key);
+            Assert.NotNull(result);
+            try
+            {
+                Assert.Equal(42, result.Value);
+            }
+            finally
+            {
+                result.Return();
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "AdversarialReviewRegression")]
+        public async Task PendingReplacementKeepsTheOriginalPageAliveUntilItsSpillCompletes()
+        {
+            var factory = new RecordingFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions
+            {
+                DirectoryPath = "./data/bgcommit_replacement_reclamation/temp"
+            }));
+            var (manager, storage) = await CreateManager("replacement_reclamation", cachePageCount: 0, fileCacheFactory: factory);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var serializer = new TestPageSerializer();
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "pages", 1, serializer);
+            var sync = (SyncStateClient<TestPage, TestMetadata>)client;
+            var key = keys[0];
+            Assert.True(manager.TryPeekCacheEntry(key, out var entry));
+            var original = Assert.IsType<TestPage>(entry.Value);
+            using var walk = new WalkGate(manager);
+            using var allowReclamation = new ManualResetEventSlim(false);
+            using var finishSerialization = new ManualResetEventSlim(false);
+            var serializationEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var fileCache = Assert.Single(factory.Created);
+            Task? cleanup = null;
+            Task? replacement = null;
+            try
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await walk.Blocked.WaitAsync(Timeout);
+                fileCache.ArmAfterFlushGate(allowReclamation);
+                cleanup = Task.Run(() => manager.CacheTable.ForceCleanup());
+                await fileCache.FlushCompleted.WaitAsync(Timeout);
+                client.Delete(key);
+                serializer.SerializeHook = page =>
+                {
+                    if (ReferenceEquals(page, original))
+                    {
+                        serializationEntered.TrySetResult();
+                        if (!finishSerialization.Wait(Timeout))
+                        {
+                            throw new TimeoutException("Replacement serialization was not released.");
+                        }
+                    }
+                };
+                replacement = Task.Run(() => client.AddOrUpdate(key, new TestPage(42)));
+                await serializationEntered.Task.WaitAsync(Timeout);
+                // Completed spill handlers may now reclaim victims.
+                allowReclamation.Set();
+                await cleanup.WaitAsync(Timeout);
+                var rentsDuringSerialization = original.RentCount;
+                finishSerialization.Set();
+                await replacement.WaitAsync(Timeout);
+                serializer.SerializeHook = null;
+                walk.Release();
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+                Assert.Equal(0, ReadPersisted(storage, key));
+                Assert.Equal(1, session.WriteCount(key));
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+                Assert.Equal(42, ReadPersisted(storage, key));
+                Assert.True(rentsDuringSerialization > 0, "Eviction reclaimed the original during replacement serialization.");
+            }
+            finally
+            {
+                allowReclamation.Set();
+                finishSerialization.Set();
+                walk.Release();
+                if (cleanup != null) await cleanup.WaitAsync(Timeout);
+                if (replacement != null) await replacement.WaitAsync(Timeout);
+                serializer.SerializeHook = null;
+                await sync.WaitForCommitAsync().WaitAsync(Timeout);
+            }
+        }
+
+        [Fact]
+        [Trait("Category", "AdversarialReviewRegression")]
+        public async Task ConcurrentSessionPageReadsDoNotAllocateAdditionalAwaiters()
+        {
+            var provider = new Reservoir.TestDataProvider();
+            var (manager, storage) = await CreateManager("session_read_allocations", fileProvider: provider);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "pages", 1);
+            var sync = (SyncStateClient<TestPage, TestMetadata>)client;
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            Assert.True(session.SupportsConcurrentReads);
+            var key = keys[0];
+            Func<Task<ReadOnlyMemory<byte>>> directRead = () => session.Read(key).AsTask();
+            Func<Task<ReadOnlyMemory<byte>>> clientRead = () => sync.ReadPage(key);
+
+            async Task<long> MeasureReads(Func<Task<ReadOnlyMemory<byte>>> read, int count)
+            {
+                long allocated = 0;
+                for (int i = 0; i < count; i++)
+                {
+                    provider.BlockMemoryReads();
+                    Task<ReadOnlyMemory<byte>>? pending = null;
+                    try
+                    {
+                        // Count allocations before any continuation can resume.
+                        var before = GC.GetAllocatedBytesForCurrentThread();
+                        pending = read();
+                        allocated += GC.GetAllocatedBytesForCurrentThread() - before;
+                        Assert.False(pending.IsCompleted);
+                    }
+                    finally
+                    {
+                        provider.UnblockMemoryReads();
+                        if (pending != null)
+                        {
+                            var bytes = await pending.WaitAsync(Timeout);
+                            Assert.Equal(0, BinaryPrimitives.ReadInt32LittleEndian(bytes.Span));
+                        }
+                    }
+                }
+                return allocated;
+            }
+
+            await MeasureReads(directRead, 32);
+            await MeasureReads(clientRead, 32);
+            var directAllocated = await MeasureReads(directRead, 64);
+            var clientAllocated = await MeasureReads(clientRead, 64);
+            Assert.True(clientAllocated <= directAllocated,
+                $"Concurrent session forwarding allocated {clientAllocated - directAllocated} additional bytes for 64 pending reads.");
         }
 
         [Fact]
