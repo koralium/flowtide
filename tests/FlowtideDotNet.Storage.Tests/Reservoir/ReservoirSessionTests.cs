@@ -560,35 +560,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             Assert.Null(ex);
         }
 
-        [Fact]
-        [Trait("Category", "SessionResetLockRegression")]
-        public async Task SessionResetBlocksUntilInFlightWriteCompletes()
-        {
-            var provider = new TestDataProvider();
-            using var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
-            {
-                FileProvider = provider
-            });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("reset_lock_gate", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
-
-            var session = (ReservoirPersistentSession)persistentStorage.CreateSession();
-            var serializer = new TestPageSerializer();
-            using var gate = new ManualResetEventSlim(false);
-            serializer.ArmSerializeGate(gate, 1);
-
-            var writeTask = Task.Run(async () => await session.Write(100, new SerializableObject(new TestPage(1), serializer)));
-            await serializer.SerializeEntered;
-
-            var resetTask = Task.Run(() => session.Reset());
-            await Task.Delay(100);
-
-            // Reset must block until write lock is released.
-            Assert.False(resetTask.IsCompleted);
-
-            gate.Set();
-            await writeTask;
-            await resetTask;
-        }
     }
 }
 

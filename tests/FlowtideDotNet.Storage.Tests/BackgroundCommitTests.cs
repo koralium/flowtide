@@ -219,6 +219,8 @@ namespace FlowtideDotNet.Storage.Tests
 
             public Task FreeEntered => _freeEntered.Task;
 
+            public Action<long>? AfterFree { get; set; }
+
             public void Write(long id, SerializableObject serializableObject) => _inner.Write(id, serializableObject);
 
             public ValueTask<ReadOnlyMemory<byte>> Read(long pageKey) => _inner.Read(pageKey);
@@ -240,6 +242,7 @@ namespace FlowtideDotNet.Storage.Tests
                     }
                 }
                 _inner.Free(pageKey);
+                AfterFree?.Invoke(pageKey);
             }
 
             public void FreeAll(IEnumerable<long> keys) => _inner.FreeAll(keys);
@@ -457,6 +460,161 @@ namespace FlowtideDotNet.Storage.Tests
         {
             Assert.True(storage.TryGetValue(key, out var bytes), $"page {key} is not in persistent storage");
             return BinaryPrimitives.ReadInt32LittleEndian(bytes.Value.Span);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task ReplacingSpilledPagesDuringBackgroundWritesPreservesBothGenerations(bool useReadCache)
+        {
+            var (manager, storage) = await CreateManager($"spilled_replacement_{useReadCache}", cachePageCount: 0, useReadCache: useReadCache);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "pages", 1);
+            var key = keys[0];
+            await manager.CacheTable.ForceCleanup().WaitAsync(Timeout);
+            Assert.False(manager.TryPeekCacheEntry(key, out _));
+
+            using var releaseWrite = new ManualResetEventSlim(false);
+            session.ArmWriteGate(releaseWrite, keys.ToHashSet());
+            Task? commit = null;
+            try
+            {
+                commit = Task.Run(() => client.Commit().AsTask());
+                await commit.WaitAsync(Timeout);
+                await session.WriterBlocked.WaitAsync(Timeout);
+                Assert.False(manager.TryPeekCacheEntry(key, out _));
+
+                client.Delete(key);
+                client.AddOrUpdate(key, new TestPage(42));
+
+                releaseWrite.Set();
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+                Assert.Equal(0, ReadPersisted(storage, key));
+                Assert.Equal(1, session.TotalWriteCount(key));
+
+                Assert.True(manager.TryPeekCacheEntry(key, out var beforeEviction));
+                Assert.Equal(1, beforeEviction.Value.RentCount);
+                await manager.CacheTable.ForceCleanup().WaitAsync(Timeout);
+                Assert.False(manager.TryPeekCacheEntry(key, out _));
+                var fetched = await client.GetValue(key).AsTask().WaitAsync(Timeout);
+                Assert.NotNull(fetched);
+                try
+                {
+                    Assert.Equal(42, fetched.Value);
+                }
+                finally
+                {
+                    fetched.Return();
+                }
+
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+                Assert.Equal(42, ReadPersisted(storage, key));
+                Assert.Equal(2, session.TotalWriteCount(key));
+            }
+            finally
+            {
+                releaseWrite.Set();
+                if (commit != null) await commit.WaitAsync(Timeout);
+                await ((StateClient)client).WaitForCommitAsync().WaitAsync(Timeout);
+            }
+        }
+
+        [Fact]
+        public async Task ConcurrentReadsRemainValidDuringObsoleteSpillInvalidation()
+        {
+            var factory = new RecordingFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions
+            {
+                DirectoryPath = "./data/bgcommit_concurrent_spill_invalidation/temp"
+            }));
+            var (manager, storage) = await CreateManager("concurrent_spill_invalidation", cachePageCount: 0, useReadCache: true, fileCacheFactory: factory);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "pages", 1);
+            var key = keys[0];
+            await manager.CacheTable.ForceCleanup().WaitAsync(Timeout);
+            Assert.False(manager.TryPeekCacheEntry(key, out _));
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            Assert.False(manager.TryPeekCacheEntry(key, out _));
+            var cache = Assert.Single(factory.Created);
+            Assert.Equal(0, BinaryPrimitives.ReadInt32LittleEndian((await cache.Read(key)).Span));
+
+            using var releaseFree = new ManualResetEventSlim(false);
+            var freed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            cache.AfterFree = pageKey =>
+            {
+                if (pageKey == key)
+                {
+                    freed.TrySetResult();
+                    if (!releaseFree.Wait(Timeout))
+                    {
+                        throw new TimeoutException("Spill invalidation was not released.");
+                    }
+                }
+            };
+            Exception? readFailure = null;
+            int? readValue = null;
+            var reader = new Thread(() =>
+            {
+                try
+                {
+                    var page = client.GetValue(key).AsTask().GetAwaiter().GetResult();
+                    if (page != null)
+                    {
+                        try
+                        {
+                            readValue = page.Value;
+                        }
+                        finally
+                        {
+                            page.Return();
+                        }
+                    }
+                }
+                catch (Exception exception)
+                {
+                    readFailure = exception;
+                }
+            }) { IsBackground = true };
+            Task? update = null;
+            var readerStarted = false;
+            try
+            {
+                update = Task.Run(() => client.AddOrUpdate(key, new TestPage(42)));
+                await freed.Task.WaitAsync(Timeout);
+                reader.Start();
+                readerStarted = true;
+                Assert.True(SpinWait.SpinUntil(
+                    () => (reader.ThreadState & ThreadState.WaitSleepJoin) != 0 || !reader.IsAlive, Timeout));
+            }
+            finally
+            {
+                releaseFree.Set();
+                try
+                {
+                    if (update != null) await update.WaitAsync(Timeout);
+                }
+                finally
+                {
+                    if (readerStarted) Assert.True(reader.Join(Timeout));
+                    cache.AfterFree = null;
+                }
+            }
+
+            Assert.Null(readFailure);
+            Assert.True(readValue is 0 or 42);
+            var current = await client.GetValue(key).AsTask().WaitAsync(Timeout);
+            Assert.NotNull(current);
+            try
+            {
+                Assert.Equal(42, current.Value);
+            }
+            finally
+            {
+                current.Return();
+            }
         }
 
         [Fact]
