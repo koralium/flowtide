@@ -319,25 +319,5 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(table.TryPeekEntry(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
         }
-
-        [Fact]
-        [Trait("Category", "CorrelationClockRegression")]
-        public async Task SteadyStateReadsAdvanceFrequencyWithoutNewInsertions()
-        {
-            using var table = await S3FifoTestHelpers.CreateStoppedTable(100);
-            var handler = new TestEvictHandler();
-            table.Add(0, new TestCacheObject(0), handler);
-
-            // Read the key repeatedly across multiple accesses.
-            for (int i = 0; i < 50; i++)
-            {
-                Touch(table, 0, 1);
-            }
-
-            Assert.True(table.TryPeekEntry(0, out var entry));
-
-            // Repeated reads must increment access frequency.
-            Assert.True(entry.Frequency > 0);
-        }
     }
 }

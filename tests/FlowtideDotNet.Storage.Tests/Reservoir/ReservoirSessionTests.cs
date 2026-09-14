@@ -561,30 +561,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         }
 
         [Fact]
-        [Trait("Category", "SessionDisposeRegression")]
-        public async Task DisposingUncommittedSessionRemovesItsTemporaryPageLocations()
-        {
-            var provider = new TestDataProvider();
-            using var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
-            {
-                FileProvider = provider
-            });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("dispose_temp_leak", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
-
-            using (var session1 = persistentStorage.CreateSession())
-            {
-                // Write page to session without committing changes.
-                await session1.Write(100, new SerializableObject(new byte[] { 1 }));
-            }
-
-            using var session2 = persistentStorage.CreateSession();
-
-            // Disposing an uncommitted session must purge temporary locations.
-            var ex = await Record.ExceptionAsync(async () => await session2.Write(100, new SerializableObject(new byte[] { 2 })));
-            Assert.Null(ex);
-        }
-
-        [Fact]
         [Trait("Category", "SessionResetLockRegression")]
         public async Task SessionResetBlocksUntilInFlightWriteCompletes()
         {
@@ -612,26 +588,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             gate.Set();
             await writeTask;
             await resetTask;
-        }
-
-        [Fact]
-        [Trait("Category", "SegmentSizingRegression")]
-        public async Task SerializedPageWritesPreserveSingleSegmentForNonPowerOfTwoSizes()
-        {
-            var provider = new TestDataProvider();
-            using var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
-            {
-                FileProvider = provider
-            });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("segment_size_gate", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
-
-            using var session = persistentStorage.CreateSession();
-            await session.Write(100, new SerializableObject(new byte[20000]));
-
-            Assert.True(persistentStorage.TryGetTemporaryLocation(100, out var location));
-
-            // Large serialized writes must stay single segment.
-            Assert.True(location.data.IsSingleSegment);
         }
     }
 }

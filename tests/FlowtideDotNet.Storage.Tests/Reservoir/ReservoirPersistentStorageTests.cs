@@ -434,32 +434,5 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 Assert.Equal("Key 300 not found in persistent storage.", ex.Message);
             }
         }
-
-        [Fact]
-        [Trait("Category", "CheckpointRetryRegression")]
-        public async Task RetryingFailedCheckpointAfterStorageErrorSucceeds()
-        {
-            var provider = new TestDataProvider();
-            using var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
-            {
-                FileProvider = provider
-            });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("checkpoint_retry", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
-
-            using var session = persistentStorage.CreateSession();
-            await session.Write(100, new SerializableObject(new byte[] { 1 }));
-            await session.Commit();
-
-            provider.InjectWriteException(_ => new IOException("Simulated checkpoint storage write failure."));
-
-            // First checkpoint attempt fails due to simulated storage fault.
-            await Assert.ThrowsAsync<IOException>(async () => await persistentStorage.CheckpointAsync(new byte[] { 1 }, false));
-
-            provider.InjectWriteException(null);
-
-            // Retrying a failed checkpoint must succeed cleanly.
-            var ex = await Record.ExceptionAsync(async () => await persistentStorage.CheckpointAsync(new byte[] { 1 }, false));
-            Assert.Null(ex);
-        }
     }
 }

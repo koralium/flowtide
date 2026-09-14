@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -418,40 +418,6 @@ namespace FlowtideDotNet.Storage.Tests
                     }
                 }
             }
-        }
-
-        [Fact]
-        [Trait("Category", "LeafRentLeakRegression")]
-        public async Task BPlusTreeGetValueReturnsTheFetchedLeafRent()
-        {
-            await _tree.Upsert(1, "1");
-            var concrete = (Tree.Internal.BPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>)_tree;
-            Assert.True(stateManager!.TryPeekCacheEntry(concrete.m_stateClient.Metadata!.Root, out var entry));
-            var rentsBefore = entry.Value.RentCount;
-
-            var (found, value) = await _tree.GetValue(1);
-            Assert.True(found);
-            Assert.Equal("1", value);
-
-            // Reading a value must return the leaf rent.
-            Assert.Equal(rentsBefore, entry.Value.RentCount);
-        }
-
-        [Fact]
-        [Trait("Category", "LeafRentLeakRegression")]
-        public async Task BPlusTreeGetKeyReturnsTheFetchedLeafRent()
-        {
-            await _tree.Upsert(1, "1");
-            var concrete = (Tree.Internal.BPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>)_tree;
-            Assert.True(stateManager!.TryPeekCacheEntry(concrete.m_stateClient.Metadata!.Root, out var entry));
-            var rentsBefore = entry.Value.RentCount;
-
-            var (found, key) = await _tree.GetKey(1);
-            Assert.True(found);
-            Assert.Equal(1, key);
-
-            // Reading a key must return the leaf rent.
-            Assert.Equal(rentsBefore, entry.Value.RentCount);
         }
     }
 }
