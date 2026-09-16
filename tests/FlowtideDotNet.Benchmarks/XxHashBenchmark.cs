@@ -36,43 +36,47 @@ namespace FlowtideDotNet.Benchmarks
         [Params(1000)]
         public int Count { get; set; }
 
-        int[] indices = null!;
-        int[] raw_data = null!;
+        [Params(1, 2)]
+        public int ColumnCount { get; set; }
+
         private IColumn[] columns = null!;
         private EventBatchData data = null!;
 
         private XxHash32 _xxhash = new XxHash32();
-        private Xxh32RowState[]? _states;
-        private int[]? _hashIndices;
-        private int[]? _scratch;
-        private uint[]? _destination;
 
+        private BatchHasher? _batchHasher;
         private Func<EventBatchData, int, uint>? _hashFunction;
 
         [GlobalSetup]
         public void GlobalSetup()
         {
-            indices = new int[Count];
-            raw_data = new int[Count];
-            Column column = new Column(GlobalMemoryManager.Instance);
+            Column[] columnArray = new Column[ColumnCount];
             Random r = new Random(123);
+            for (int c = 0; c < ColumnCount; c++)
+            {
+                columnArray[c] = new Column(GlobalMemoryManager.Instance);
+            }
             for (int i = 0; i < Count; i++)
             {
                 var next = r.Next();
-                raw_data[i] = next;
-                column.Add(new Int64Value(next));
+                for (int c = 0; c < ColumnCount; c++)
+                {
+                    columnArray[c].Add(new Int64Value(next));
+                }
             }
-            columns = new IColumn[1] { column };
-            data = new EventBatchData(columns);
-            _states = new Xxh32RowState[Count];
-            _hashIndices = new int[Count];
-            for (int i = 0; i < _hashIndices.Length; i++)
+            columns = new IColumn[ColumnCount];
+            for (int c = 0; c < ColumnCount; c++)
             {
-                _hashIndices[i] = i;
+                columns[c] = columnArray[c];
             }
-            _scratch = new int[Count];
-            _destination = new uint[Count];
-            _hashFunction = ColumnHashCompiler.CompileGetHashCode(new List<Substrait.Expressions.Expression>() { new DirectFieldReference() { ReferenceSegment = new StructReferenceSegment() { Field = 0 } } }, new FunctionsRegister());
+            data = new EventBatchData(columns);
+            var fields = new List<Substrait.Expressions.Expression>();
+            for (int i = 0; i < ColumnCount; i++)
+            {
+                fields.Add(new DirectFieldReference() { ReferenceSegment = new StructReferenceSegment() { Field = i } });
+            } 
+            _hashFunction = ColumnHashCompiler.CompileGetHashCode(fields, new FunctionsRegister());
+            _batchHasher = new BatchHasher(Enumerable.Range(0, ColumnCount).ToArray());
         }
 
         [Benchmark]
@@ -81,7 +85,10 @@ namespace FlowtideDotNet.Benchmarks
             for (int i = 0; i < Count; i++)
             {
                 _xxhash.Reset();
-                columns[0].AddToHash(i, default, _xxhash);
+                for (int c = 0; c < ColumnCount; c++)
+                {
+                    columns[c].AddToHash(i, default, _xxhash);
+                }
                 _xxhash.GetCurrentHashAsUInt32();
             }
         }
@@ -98,22 +105,13 @@ namespace FlowtideDotNet.Benchmarks
         [Benchmark]
         public void PerColumn()
         {
-            for (int i = 0; i < _states!.Length; i++)
-            {
-                _states[i].Init();
-            }
-            columns[0].AppendToXxHash32(_hashIndices!, default, _states!, _scratch!);
-
-            for (int i = 0; i < _states.Length; i++)
-            {
-                XxHash32Implementation.GetCurrentHashAsUInt32(ref _states![i]);
-            }
+            _batchHasher!.HashBatch(data);
         }
 
-        [Benchmark]
-        public void ToXxHash32()
-        {
-            columns[0].ToXxHash32(_hashIndices!, default, _destination!, _scratch!);
-        }
+        //[Benchmark]
+        //public void ToXxHash32()
+        //{
+        //    columns[0].ToXxHash32(_hashIndices!, default, _destination!, _scratch!);
+        //}
     }
 }

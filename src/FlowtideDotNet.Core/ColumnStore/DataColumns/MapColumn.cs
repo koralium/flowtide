@@ -28,6 +28,7 @@ using System.Collections;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -687,8 +688,63 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
         {
-            // TODO: Should do something clever here, stackalloc a buffer and do it in batches for instance then slicing the state span.
-            throw new NotImplementedException();
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                ref var state = ref states[i];
+                AppendXxHash32Single(index, child, ref state);
+            }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            var (startOffset, endOffset) = GetOffsets(in index);
+            if (child != null)
+            {
+                if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+                {
+
+                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset - 1, default);
+                    if (keyLocationStart < 0)
+                    {
+                        XxHash32Implementation.AppendByte(0, ref state);
+                        return;
+                    }
+                    _valueColumn.AppendXxHash32Single(keyLocationStart, mapKeyReferenceSegment.Child, ref state);
+                    return;
+                }
+                throw new NotImplementedException();
+            }
+
+            var count = endOffset - startOffset;
+            XxHash32Implementation.AppendLong(count, ref state);
+
+            for (int i = startOffset; i < endOffset; i++)
+            {
+                _keyColumn.AppendXxHash32Single(i, default, ref state);
+                _valueColumn.AppendXxHash32Single(i, default, ref state);
+            }
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            Xxh32RowState state = new Xxh32RowState();
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+
+                state.Init();
+                AppendXxHash32Single(index, child, ref state);
+                destination[i] = XxHash32Implementation.GetCurrentHashAsUInt32(ref state);
+            }
         }
 
 
@@ -794,11 +850,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         public CompareColumnState GetColumnState()
         {
             return CompareColumnStateBuilder.Create(ArrowTypeId.Map);
-        }
-
-        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
-        {
-            throw new NotImplementedException();
         }
     }
 }

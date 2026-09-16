@@ -596,17 +596,85 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
         {
-            if (child != null && child is StructReferenceSegment structReferenceSegment)
+            if (child is StructReferenceSegment structReferenceSegment)
             {
-                // TODO: Uncomment, this route is for a specific child in the struct
-                //_columns[structReferenceSegment.Field].AddToXxHash32(indices, child.Child, states);
+                var col = _columns[structReferenceSegment.Field];
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    var index = indices[i];
+                    if (index == -1)
+                    {
+                        continue;
+                    }
+                    col.AppendXxHash32Single(index, structReferenceSegment.Child, ref states[i]);
+                }
             }
             else
             {
                 for (int c = 0; c < _columns.Length; c++)
                 {
-                    // TODO: When AddToXxHash32 is implemented for all column types, uncomment the following line to add the struct column's data to the hash.
-                    //_columns[c].AddToXxHash32(indices, default, states);
+                    var col = _columns[c];
+                    for (int i = 0; i < indices.Length; i++)
+                    {
+                        var index = indices[i];
+                        if (index == -1)
+                        {
+                            continue;
+                        }
+                        col.AppendXxHash32Single(index, default, ref states[i]);
+                    }
+                }
+            }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            if (child is StructReferenceSegment structReferenceSegment)
+            {
+                _columns[structReferenceSegment.Field].AppendXxHash32Single(index, structReferenceSegment.Child, ref state);
+            }
+            else
+            {
+                for (int i = 0; i < _columns.Length; i++)
+                {
+                    _columns[i].AppendXxHash32Single(index, default, ref state);
+                }
+            }
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            Xxh32RowState state = new Xxh32RowState();
+            if (child is StructReferenceSegment structReferenceSegment)
+            {
+                var col = _columns[structReferenceSegment.Field];
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    var index = indices[i];
+                    if (index == -1)
+                    {
+                        continue;
+                    }
+                    state.Init();
+                    col.AppendXxHash32Single(index, structReferenceSegment.Child, ref state);
+                    destination[i] = XxHash32Implementation.GetCurrentHashAsUInt32(ref state);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    var index = indices[i];
+                    if (index == -1)
+                    {
+                        continue;
+                    }
+                    state.Init();
+                    for (int c = 0; c < _columns.Length; c++)
+                    {
+                        _columns[c].AppendXxHash32Single(index, default, ref state);
+                    }
+                    destination[i] = XxHash32Implementation.GetCurrentHashAsUInt32(ref state);
                 }
             }
         }
@@ -656,11 +724,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public CompareColumnState GetColumnState()
         {
             return CompareColumnStateBuilder.Create(ArrowTypeId.Struct);
-        }
-
-        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
-        {
-            throw new NotImplementedException();
         }
     }
 }

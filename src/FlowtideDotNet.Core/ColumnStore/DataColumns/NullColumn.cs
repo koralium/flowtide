@@ -168,7 +168,25 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     continue;
                 }
                 ref var state = ref states[i];
-                XxHash32Implementation.Append(ByteArrayUtils.nullBytes, ref state);
+                XxHash32Implementation.AppendByte(0, ref state);
+            }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            XxHash32Implementation.AppendByte(0, ref state);
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                destination[i] = XxHash32Implementation.HashFalse;
             }
         }
 
@@ -223,11 +241,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
         {
             // Null column has no data, so all sizes are 0
-        }
-
-        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
-        {
-            throw new NotImplementedException();
         }
     }
 }

@@ -24,6 +24,7 @@ using System.Diagnostics;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -268,6 +269,17 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
             }
             innerColumn.AppendToXxHash32(scratch, child, states, scratch);
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            var offset = offsets[index];
+            if (offset == NullValueIndex)
+            {
+                XxHash32Implementation.AppendByte(0, ref state);
+                return;
+            }
+            innerColumn.AppendXxHash32Single(offset, child, ref state);
         }
 
         int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)

@@ -392,7 +392,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
         {
-            //Span<byte> buffer = stackalloc byte[8];
             for (int i = 0; i < indices.Length; i++)
             {
                 var index = indices[i];
@@ -401,9 +400,23 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     continue;
                 }
                 ref var state = ref states[i];
-                //BinaryPrimitives.WriteInt64LittleEndian(buffer, _list.Get(index));
-                XxHash32Implementation.AppendLong(_list.Get(index), ref state);
+                var val = _list.Get(index);
+                if (!BitConverter.IsLittleEndian)
+                {
+                    val = BinaryPrimitives.ReverseEndianness(val);
+                }
+                XxHash32Implementation.AppendLong(val, ref state);
             }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            var val = _list.Get(index);
+            if (!BitConverter.IsLittleEndian)
+            {
+                val = BinaryPrimitives.ReverseEndianness(val);
+            }
+            XxHash32Implementation.AppendLong(val, ref state);
         }
 
         public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
@@ -415,7 +428,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 {
                     continue;
                 }
-                destination[i] = XxHash32Implementation.HashSingleLong(_list.Get(index));
+                var val = _list.Get(index);
+                if (!BitConverter.IsLittleEndian)
+                {
+                    val = BinaryPrimitives.ReverseEndianness(val);
+                }
+                destination[i] = XxHash32Implementation.HashSingleLong(val);
             }
         }
 

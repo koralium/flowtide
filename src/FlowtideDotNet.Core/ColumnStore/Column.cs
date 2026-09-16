@@ -30,6 +30,7 @@ using System.IO.Hashing;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -1353,6 +1354,19 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 _dataColumn!.AppendToXxHash32(indices, child, states);
             }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            if (_nullCounter > 0)
+            {
+                if (_type == ArrowTypeId.Null || !_validityList.Get(index))
+                {
+                    XxHash32Implementation.AppendByte(0, ref state);
+                    return;
+                }
+            }
+            _dataColumn!.AppendXxHash32Single(index, child, ref state);
         }
 
         public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination, Span<int> scratch)

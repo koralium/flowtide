@@ -163,6 +163,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            XxHash32Implementation.AppendByte(0, ref state);
+        }
+
         int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             throw new NotSupportedException();

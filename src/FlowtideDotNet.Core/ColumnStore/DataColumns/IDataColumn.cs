@@ -155,5 +155,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <param name="child"></param>
         /// <param name="destination"></param>
         void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination);
+
+        void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state);
     }
 }

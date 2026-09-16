@@ -1092,6 +1092,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             throw new NotImplementedException();
         }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
 

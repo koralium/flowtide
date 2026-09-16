@@ -25,7 +25,7 @@ using System.Threading.Tasks;
 namespace FlowtideDotNet.Core.ColumnStore.Hash
 {
     /// <summary>
-    /// Xxhash32 state for a single row. Total bytes = 16 + 8 + 16 + 4 = 44 bytes. The struct is padded to 48 bytes for alignment.
+    /// Xxhash32 state for a single row. Total bytes = 16 + 4 + 16 = 36 bytes.
     /// </summary>
     public unsafe struct Xxh32RowState
     {
@@ -73,17 +73,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
             acc *= Prime32_1;
 
             return acc;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void ProcessStripeVector(ReadOnlySpan<byte> source)
-        {
-            Vector128<uint> lanes = Vector128.LoadUnsafe(ref MemoryMarshal.GetReference(source)).AsUInt32();
-            Vector128<uint> vPrime2 = Vector128.Create(Prime32_2);
-            Vector128<uint> vAcc = Accumulators + (lanes * vPrime2);
-            vAcc = (vAcc << 13) | (vAcc >>> 19);
-            Vector128<uint> vPrime1 = Vector128.Create(Prime32_1);
-            Accumulators = vAcc * vPrime1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

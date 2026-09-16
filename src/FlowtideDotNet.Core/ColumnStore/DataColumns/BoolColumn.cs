@@ -279,12 +279,40 @@ namespace FlowtideDotNet.Core.ColumnStore
                 ref var state = ref states[i];
                 if (_data.Get(index))
                 {
-                    XxHash32Implementation.Append(ByteArrayUtils.trueBytes, ref state);
+                    XxHash32Implementation.AppendByte(1, ref state);
                 }
                 else
                 {
-                    XxHash32Implementation.Append(ByteArrayUtils.nullBytes, ref state);
+                    XxHash32Implementation.AppendByte(0, ref state);
                 }
+            }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            if (_data.Get(index))
+            {
+                XxHash32Implementation.AppendByte(1, ref state);
+            }
+            else
+            {
+                XxHash32Implementation.AppendByte(0, ref state);
+            }
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+
+                destination[i] = _data.Get(index)
+                    ? XxHash32Implementation.HashTrue
+                    : XxHash32Implementation.HashFalse;
             }
         }
 
@@ -353,11 +381,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
         {
             return NativeSortHelpers.CallCompareBools(selfComparePointerExpression, xExpression, yExpression);
-        }
-
-        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
-        {
-            throw new NotImplementedException();
         }
 
         bool IDataColumn.SupportSelfCompareExpression => true;

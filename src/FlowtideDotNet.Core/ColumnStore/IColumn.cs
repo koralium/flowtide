@@ -144,6 +144,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <param name="destination">Destination for the hash values</param>
         /// <param name="scratch">Scratch that should be at least the same size as indices</param>
         void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination, Span<int> scratch);
+
+        void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state);
     }
 }
 

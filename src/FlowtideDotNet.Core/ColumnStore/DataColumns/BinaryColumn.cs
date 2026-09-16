@@ -275,6 +275,24 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                destination[i] = XxHash32Implementation.Hash(_data.Get(index));
+            }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            XxHash32Implementation.Append(_data.Get(index), ref state);
+        }
+
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             var binaryTypeOffset = arrowSerializer.AddBinaryType();
@@ -348,11 +366,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
         {
             return NativeSortHelpers.CallCompareBinary(selfComparePointerExpression, xExpression, yExpression);
-        }
-
-        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
-        {
-            throw new NotImplementedException();
         }
 
         bool IDataColumn.SupportSelfCompareExpression => true;
