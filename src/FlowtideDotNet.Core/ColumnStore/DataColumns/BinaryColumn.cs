@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -260,6 +261,20 @@ namespace FlowtideDotNet.Core.ColumnStore
             hashAlgorithm.Append(_data.Get(in index));
         }
 
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                ref var state = ref states[i];
+                XxHash32Implementation.Append(_data.Get(index), ref state);
+            }
+        }
+
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             var binaryTypeOffset = arrowSerializer.AddBinaryType();
@@ -333,6 +348,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
         {
             return NativeSortHelpers.CallCompareBinary(selfComparePointerExpression, xExpression, yExpression);
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            throw new NotImplementedException();
         }
 
         bool IDataColumn.SupportSelfCompareExpression => true;

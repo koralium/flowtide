@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -350,6 +351,16 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
         {
             throw new NotSupportedException("Int64Column is no longer in use");
+        }
+
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            throw new NotImplementedException();
         }
     }
 }

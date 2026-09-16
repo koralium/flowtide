@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -943,6 +944,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             valueColumn.AddToHash(_offsets.Get(index), child, hashAlgorithm);
         }
 
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            // TODO: Must do more advanced here to try and push as much as possible into vectorized code
+            throw new NotImplementedException();
+        }
+
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             int count = 0;
@@ -1079,6 +1086,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public CompareColumnState GetColumnState()
         {
             return CompareColumnStateBuilder.Create(ArrowTypeId.Union);
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            throw new NotImplementedException();
         }
     }
 }

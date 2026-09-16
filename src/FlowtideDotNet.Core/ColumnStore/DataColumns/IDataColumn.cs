@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -143,5 +144,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new InvalidOperationException(
                 "This column does not support Radix packing. The Query Planner should have halted extraction.");
         }
+
+        void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states);
+
+        /// <summary>
+        /// Fast compute of xxhash32, this can be used if hash is only required for a single column.
+        /// This can be quicker for simple columns such as integers.
+        /// </summary>
+        /// <param name="indices"></param>
+        /// <param name="child"></param>
+        /// <param name="destination"></param>
+        void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination);
     }
 }

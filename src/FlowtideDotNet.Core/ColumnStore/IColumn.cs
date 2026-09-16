@@ -13,13 +13,14 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System.Text.Json;
 using System.IO.Hashing;
-using FlowtideDotNet.Core.ColumnStore.Sort;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -123,6 +124,26 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <param name="selectionVector"></param>
         /// <returns></returns>
         int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, int nullBytePosition, Span<int> selectionVector);
+
+        /// <summary>
+        /// Highly specialized hash method that allows bulk hashing.
+        /// The scratch is used to create new indices that will be sent down dependent on dictionary encoding or null values.
+        /// </summary>
+        /// <param name="indices">Indices to add to hash</param>
+        /// <param name="child">Optional child such as map or struct field</param>
+        /// <param name="states">XxHash32 states for each row</param>
+        /// <param name="scratch">Scratch that should be at least the same size as indices</param>
+        void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states, Span<int> scratch);
+
+        /// <summary>
+        /// Highly specialized hash method that allows bulk hashing.
+        /// The scratch is used to create new indices that will be sent down dependent on dictionary encoding or null values.
+        /// </summary>
+        /// <param name="indices">Indices to add to hash</param>
+        /// <param name="child">Optional child such as map or struct field</param>
+        /// <param name="destination">Destination for the hash values</param>
+        /// <param name="scratch">Scratch that should be at least the same size as indices</param>
+        void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination, Span<int> scratch);
     }
 }
 

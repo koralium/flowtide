@@ -15,6 +15,15 @@ using DifferntialCompute.Benchmarks;
 using FlowtideDotNet.Benchmarks;
 using FlowtideDotNet.Benchmarks.Stream;
 
+//XxHashBenchmark xxHashBenchmark = new XxHashBenchmark();
+//xxHashBenchmark.Count = 1000;
+//xxHashBenchmark.GlobalSetup();
+
+//for (int i = 0; i < 1000000; i++)
+//{
+//    xxHashBenchmark.PerColumn();
+//}
+
 //BatchSortBenchmark batchSortBenchmark = new BatchSortBenchmark();
 //batchSortBenchmark.GlobalSetup();
 

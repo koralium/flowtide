@@ -15,6 +15,7 @@ using Apache.Arrow.Arrays;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
@@ -242,6 +243,23 @@ namespace FlowtideDotNet.Core.ColumnStore
             hashAlgorithm.Append(buffer);
         }
 
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            Span<byte> buffer = stackalloc byte[16];
+            var decimalSpan = MemoryMarshal.Cast<byte, decimal>(buffer);
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                ref var state = ref states[i];
+                decimalSpan[0] = _values[index];
+                XxHash32Implementation.Append(buffer, ref state);
+            }
+        }
+
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             var extensionKeyPointer = arrowSerializer.CreateStringUtf8("ARROW:extension:name"u8);
@@ -311,6 +329,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
         {
             return NativeSortHelpers.CallCompareDecimal128(selfComparePointerExpression, xExpression, yExpression);
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            throw new NotImplementedException();
         }
 
         bool IDataColumn.SupportSelfCompareExpression => true;

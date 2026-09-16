@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -154,6 +155,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             hashAlgorithm.Append(ByteArrayUtils.nullBytes);
         }
 
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states, Span<int> scratch)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                XxHash32Implementation.Append(ByteArrayUtils.nullBytes, ref states[i]);
+            }
+        }
+
         int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             throw new NotSupportedException();
@@ -227,6 +236,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, int nullBytePosition, Span<int> selectionVector)
         {
             return 0;
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination, Span<int> scratch)
+        {
+            throw new NotImplementedException();
         }
     }
 }

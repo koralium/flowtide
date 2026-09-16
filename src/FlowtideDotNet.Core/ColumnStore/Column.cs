@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -1315,6 +1316,79 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
             }
             _dataColumn!.AddToHash(index, child, hashAlgorithm);
+        }
+
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states, Span<int> scratch)
+        {
+            if (_nullCounter > 0)
+            {
+                // Scratch can be = to indices, so we have to be careful iterating here
+                bool valueExist = false;
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    var idx = indices[i];
+                    if (idx == -1)
+                    {
+                        scratch[i] = -1;
+                        continue;
+                    }
+                    if (_type == ArrowTypeId.Null || !_validityList.Get(idx))
+                    {
+                        XxHash32Implementation.Append(ByteArrayUtils.nullBytes, ref states[i]);
+                        // we need to use -1 as a null value indicator to not reshuffle states, -1 is handled in the data columns
+                        scratch[i] = -1;
+                    }
+                    else
+                    {
+                        scratch[i] = idx;
+                        valueExist = true;
+                    }
+                }
+                if (valueExist)
+                {
+                    _dataColumn!.AppendToXxHash32(scratch.Slice(0, indices.Length), child, states);
+                }
+            }
+            else
+            {
+                _dataColumn!.AppendToXxHash32(indices, child, states);
+            }
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination, Span<int> scratch)
+        {
+            if (_nullCounter > 0)
+            {
+                // Scratch can be = to indices, so we have to be careful iterating here
+                bool valueExist = false;
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    var idx = indices[i];
+                    if (idx == -1)
+                    {
+                        scratch[i] = -1;
+                        continue;
+                    }
+                    if (_type == ArrowTypeId.Null || !_validityList.Get(idx))
+                    {
+                        destination[i] = XxHash32Implementation.HashNullByte();
+                        scratch[i] = -1;
+                    }
+                    else
+                    {
+                        scratch[i] = idx;
+                        valueExist = true;
+                    }
+                }
+                if (valueExist)
+                {
+                    _dataColumn!.ToXxHash32(scratch.Slice(0, indices.Length), child, destination);
+                }
+            }
+            else
+            {
+                _dataColumn!.ToXxHash32(indices, child, destination);
+            }
         }
 
         internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)

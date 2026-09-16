@@ -15,6 +15,7 @@ using Apache.Arrow.Arrays;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
@@ -248,6 +249,22 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             hashAlgorithm.Append(buffer);
         }
 
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            Span<byte> buffer = stackalloc byte[8];
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                ref var state = ref states[i];
+                BinaryPrimitives.WriteInt64LittleEndian(buffer, _values.Get(index).ticks);
+                XxHash32Implementation.Append(buffer, ref state);
+            }
+        }
+
         public SerializationEstimation GetSerializationEstimate()
         {
             return new SerializationEstimation(1, 1, GetByteSize());
@@ -317,6 +334,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
         {
             return NativeSortHelpers.CallCompareTimestampTzValues(selfComparePointerExpression, xExpression, yExpression);
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            throw new NotImplementedException();
         }
 
         bool IDataColumn.SupportSelfCompareExpression => true;

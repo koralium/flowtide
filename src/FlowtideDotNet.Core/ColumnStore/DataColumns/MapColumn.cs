@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -684,6 +685,13 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            // TODO: Should do something clever here, stackalloc a buffer and do it in batches for instance then slicing the state span.
+            throw new NotImplementedException();
+        }
+
+
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             var typePointer = arrowSerializer.AddMapType(true);
@@ -786,6 +794,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public CompareColumnState GetColumnState()
         {
             return CompareColumnStateBuilder.Create(ArrowTypeId.Map);
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            throw new NotImplementedException();
         }
     }
 }

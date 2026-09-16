@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -247,6 +248,26 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return;
             }
             innerColumn.AddToHash(offset, child, hashAlgorithm);
+        }
+
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states, Span<int> scratch)
+        {
+            Debug.Assert(innerColumn is not ColumnWithOffset, "ColumnWithOffset should not be nested, use CreateFlattened to flatten the offsets into a single layer.");
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                var offset = offsets[index];
+                if (offset == NullValueIndex)
+                {
+                    XxHash32Implementation.Append(ByteArrayUtils.nullBytes, ref states[i]);
+                    scratch[i] = -1;
+                }
+                else
+                {
+                    scratch[i] = offset;
+                }
+            }
+            innerColumn.AppendToXxHash32(scratch, child, states, scratch);
         }
 
         int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
@@ -485,6 +506,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             // you should probably create a new column with offset on top of this column with the new selection vector,
             // instead of trying to apply multiple selection vectors on top of each other.
             throw new NotSupportedException("ColumnWithOffset does not support SetRadixPrefix with selection vector since it already has a selection vector.");
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination, Span<int> scratch)
+        {
+            throw new NotImplementedException();
         }
     }
 }

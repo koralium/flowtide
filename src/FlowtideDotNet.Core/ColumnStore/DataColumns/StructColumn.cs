@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -593,6 +594,23 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            if (child != null && child is StructReferenceSegment structReferenceSegment)
+            {
+                // TODO: Uncomment, this route is for a specific child in the struct
+                //_columns[structReferenceSegment.Field].AddToXxHash32(indices, child.Child, states);
+            }
+            else
+            {
+                for (int c = 0; c < _columns.Length; c++)
+                {
+                    // TODO: When AddToXxHash32 is implemented for all column types, uncomment the following line to add the struct column's data to the hash.
+                    //_columns[c].AddToXxHash32(indices, default, states);
+                }
+            }
+        }
+
         public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             if (other is StructColumn otherStruct)
@@ -638,6 +656,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public CompareColumnState GetColumnState()
         {
             return CompareColumnStateBuilder.Create(ArrowTypeId.Struct);
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            throw new NotImplementedException();
         }
     }
 }
