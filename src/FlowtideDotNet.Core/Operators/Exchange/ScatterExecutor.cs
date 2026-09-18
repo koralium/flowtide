@@ -11,30 +11,30 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Diagnostics;
 using System.Collections.Concurrent;
-using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.Compute.Columnar;
-using FlowtideDotNet.Core.ColumnStore;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal class ScatterExecutor : IExchangeKindExecutor
     {
         private readonly Func<EventBatchData, int, uint>? _hashFunction;
+        private readonly BatchHasher? _batchHasher;
         private readonly int _partitionCount;
         private readonly int[][] _partitionsToTargets;
+        private readonly bool _singleTargetPerPartition;
+        private readonly bool _partitionsPowerOfTwo;
         private readonly IExchangeTarget[] _targets;
+        private readonly IExchangeTarget[]? _partitionToSingleTarget;
         private readonly ConcurrentDictionary<int, PullBucketTarget> _exchangeTargetIdToPullBucket;
 
         /// <summary>
@@ -113,6 +113,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             // Generate a lookup from partition id to a list of target ids
             _partitionsToTargets = CreatePartitionToTargets(exchangeRelation);
+            _singleTargetPerPartition = EachPartitionHasSingleTarget(_partitionsToTargets);
+            _partitionsPowerOfTwo = (_partitionsToTargets.Length & (_partitionsToTargets.Length - 1)) == 0;
+
+            if (_singleTargetPerPartition)
+            {
+                // Create a simple lookup when there is a single partition per target which is the most normal case
+                // This allows quicker lookup
+                _partitionToSingleTarget = new IExchangeTarget[_partitionsToTargets.Length];
+                for (int i = 0; i < _partitionsToTargets.Length; i++)
+                {
+                    _partitionToSingleTarget[i] = _targets[_partitionsToTargets[i][0]];
+                }
+            }
 
             // Create the hash function based on the fields. With a single partition every
             // row lands in partition zero, no hash is compiled or evaluated: a gather
@@ -122,8 +135,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _hashFunction = ColumnHashCompiler.CompileGetHashCode(new List<Substrait.Expressions.Expression>(scatterExchangeKind.Fields), functionsRegister);
             }
+            if (_partitionCount > 1)
+            {
+                _batchHasher = new BatchHasher(scatterExchangeKind.Fields);
+            }
             this._communicationPointFactory = communicationPointFactory;
         }
+
+        private bool EachPartitionHasSingleTarget(int[][] partitionsAndTargets)
+            => partitionsAndTargets.All(x => x.Length == 1);
 
         private int[][] CreatePartitionToTargets(ExchangeRelation exchangeRelation)
         {
@@ -206,28 +226,54 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        public async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
+        private void PartitionDataInternal(StreamEventBatch data)
         {
             Debug.Assert(_hashFunction != null || _partitionCount == 1);
-            foreach(var target in _targets)
+            foreach (var target in _targets)
             {
                 target.NewBatch(data.Data);
             }
-            for (int i = 0; i < data.Data.Count; i++)
+            ReadOnlySpan<uint> result = ReadOnlySpan<uint>.Empty;
+            if (_batchHasher != null)
             {
-                int partitionId = 0;
-                if (_hashFunction != null)
+                result = _batchHasher.HashBatch(data.Data.EventBatchData);
+            }
+            int count = data.Data.Count;
+            ref uint resultRef = ref MemoryMarshal.GetReference(result);
+            ref var targetRef = ref MemoryMarshal.GetReference(_partitionToSingleTarget.AsSpan());
+            if (_singleTargetPerPartition &&
+                _partitionsPowerOfTwo)
+            {
+                Debug.Assert(_partitionToSingleTarget != null);
+                uint mask = ((uint)_partitionsToTargets.Length) - 1;
+                for (int i = 0; i < count; i++)
                 {
-                    var hash = _hashFunction(data.Data.EventBatchData, i);
-                    partitionId = (int)(hash % _partitionCount);
-                }
-
-                foreach (var target in _partitionsToTargets[partitionId])
-                {
-                    _targets[target].AddEvent(data.Data, i);
+                    uint hash = Unsafe.Add(ref resultRef, i);
+                    int partitionId = (int)(hash & mask);
+                    Unsafe.Add(ref targetRef, partitionId).AddEvent(data.Data, i);
                 }
             }
-            foreach(var target in _targets)
+            else
+            {
+                for (int i = 0; i < data.Data.Count; i++)
+                {
+                    int partitionId = 0;
+                    if (result.Length > 0)
+                    {
+                        partitionId = (int)(result[i] % _partitionCount);
+                    }
+                    foreach (var target in _partitionsToTargets[partitionId])
+                    {
+                        _targets[target].AddEvent(data.Data, i);
+                    }
+                }
+            }   
+        }
+
+        public async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
+        {
+            PartitionDataInternal(data);
+            foreach (var target in _targets)
             {
                 await target.BatchComplete(time);
             }

@@ -282,6 +282,26 @@ namespace FlowtideDotNet.Core.ColumnStore
             innerColumn.AppendXxHash32Single(offset, child, ref state);
         }
 
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination, Span<int> scratch)
+        {
+            Debug.Assert(innerColumn is not ColumnWithOffset, "ColumnWithOffset should not be nested, use CreateFlattened to flatten the offsets into a single layer.");
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                var offset = offsets[index];
+                if (offset == NullValueIndex)
+                {
+                    destination[i] = XxHash32Implementation.HashFalse;
+                    scratch[i] = -1;
+                }
+                else
+                {
+                    scratch[i] = offset;
+                }
+            }
+            innerColumn.ToXxHash32(scratch, child, destination, scratch);
+        }
+
         int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             throw new NotImplementedException();
@@ -518,11 +538,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             // you should probably create a new column with offset on top of this column with the new selection vector,
             // instead of trying to apply multiple selection vectors on top of each other.
             throw new NotSupportedException("ColumnWithOffset does not support SetRadixPrefix with selection vector since it already has a selection vector.");
-        }
-
-        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination, Span<int> scratch)
-        {
-            throw new NotImplementedException();
         }
     }
 }

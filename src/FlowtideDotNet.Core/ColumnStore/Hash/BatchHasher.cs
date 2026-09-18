@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,6 +27,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
     public class BatchHasher
     {
         private readonly int[] _fieldIndices;
+        private ReferenceSegment?[] _referenceSegments;
         private int[] _indices = Array.Empty<int>();
         private int[] _scratch = Array.Empty<int>();
         private uint[] _destination = Array.Empty<uint>();
@@ -34,6 +36,27 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
         public BatchHasher(int[] fieldIndices)
         {
             _fieldIndices = fieldIndices;
+            _referenceSegments = new ReferenceSegment[fieldIndices.Length];
+        }
+
+        public BatchHasher(IReadOnlyList<FieldReference> fieldReferences)
+        {
+            _fieldIndices = new int[fieldReferences.Count];
+            _referenceSegments = new ReferenceSegment[fieldReferences.Count];
+            for (int i = 0; i < fieldReferences.Count; i++)
+            {
+                var fieldReference = fieldReferences[i];
+                if (fieldReference is DirectFieldReference directFieldReference && 
+                    directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
+                {
+                    _fieldIndices[i] = structReferenceSegment.Field;
+                    _referenceSegments[i] = structReferenceSegment.Child;
+                }
+                else
+                {
+                    throw new NotSupportedException($"Unsupported field reference type: {fieldReference.GetType().Name}");
+                }
+            }
         }
 
         public void ResetTemporaryAllocations()
@@ -83,7 +106,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
             if (_fieldIndices.Length == 1)
             {
                 var column = eventBatch.Columns[_fieldIndices[0]];
-                column.ToXxHash32(indicesSpan, default, destSpan, scratchSpan);
+                column.ToXxHash32(indicesSpan, _referenceSegments[0], destSpan, scratchSpan);
                 return destSpan;
             }
 
@@ -97,7 +120,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
             for (int c = 0; c < _fieldIndices.Length; c++)
             {
                 var col = eventBatch.Columns[_fieldIndices[c]];
-                col.AppendToXxHash32(indicesSpan, default, statesSpan, scratchSpan);
+                col.AppendToXxHash32(indicesSpan, _referenceSegments[c], statesSpan, scratchSpan);
             }
 
             for (int i = 0; i < batchCount; i++)
