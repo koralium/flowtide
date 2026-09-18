@@ -121,7 +121,7 @@ $$\mathcal{S} \equiv \sum_{i=1}^{v_{\text{cp}}} \Delta_i \quad \wedge \quad \for
 
 ## Implementation examples
 
-In this section, different destinations are given as examples and how they can fullfil this protocol.
+In this section, different destinations are given as examples and how they can fulfill this protocol.
 
 ### Delta Lake
 
