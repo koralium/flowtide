@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Storage.Tests
     /// Commit hands its pages to a background walk. A page fetched before the walk reaches it
     /// is written by the fetch, never twice, and the checkpoint joins the walk.
     /// </summary>
-    public partial class BackgroundCommitTests
+    public class BackgroundCommitTests
     {
         /// <summary>
         /// Records every page write with the value it carried, and can fault the writes of chosen pages.
@@ -488,7 +488,6 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         [Fact]
-        [Trait("Category", "FullBranchReviewRegression")]
         public async Task CachedPageProbesRejectPagesDeletedDuringBackgroundWriteCompletion()
         {
             var factory = new RecordingFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions
@@ -543,7 +542,6 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         [Fact]
-        [Trait("Category", "FullBranchReviewRegression")]
         public async Task SmallCommitsDoNotScanSlotsFromEarlierLargeCommits()
         {
             var (manager, storage) = await CreateManager("reused_dictionary_scan", cachePageCount: 4096);
@@ -589,7 +587,6 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         [Fact]
-        [Trait("Category", "AdversarialReviewRegression")]
         public async Task ConcurrentSessionPageReadsDoNotAllocateAdditionalAwaiters()
         {
             var provider = new Reservoir.TestDataProvider();
@@ -642,7 +639,6 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         [Fact]
-        [Trait("Category", "ReviewRoundRegression")]
         public async Task RestartDoesNotExposeWritesFromAnAbandonedSession()
         {
             var factory = new RecordingFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions
@@ -744,7 +740,6 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         [Fact]
-        [Trait("Category", "FixReviewRegression")]
         public async Task AbandonedSessionIsDisposedWhenSerializerDisposalFails()
         {
             var (manager, storage) = await CreateManager("review_failed_disposal");
@@ -1066,7 +1061,6 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         [Fact]
-        [Trait("Category", "FullReviewRegression")]
         public async Task BackgroundCommitCleanupDoesNotOverlapEvictionSerialization()
         {
             var (manager, storage) = await CreateManager("review_cleanup_overlap", backgroundCommit: true);
@@ -1117,7 +1111,6 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         [Fact]
-        [Trait("Category", "FollowupReviewRegression")]
         public async Task EvictionCleanupDoesNotOverlapOnFetchSerialization()
         {
             var (manager, storage) = await CreateManager("review_eviction_cleanup_overlap");

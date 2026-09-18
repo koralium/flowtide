@@ -55,7 +55,6 @@ namespace FlowtideDotNet.Storage.Tests
         [Theory]
         [InlineData(1)]
         [InlineData(40)]
-        [Trait("Category", "PrintingRootRentRegression")]
         public async Task PrintingTheTreeReturnsTheFetchedRootRent(int itemCount)
         {
             for (long i = 0; i < itemCount; i++) await _tree.Upsert(i, i.ToString());

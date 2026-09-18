@@ -61,7 +61,6 @@ namespace FlowtideDotNet.Storage.Tests.Append
         }
 
         [Fact]
-        [Trait("Category", "FullBranchReviewRegression")]
         public async Task DisposingAnAppendTreeEnumeratorTwicePreservesTheTreeAndCacheRents()
         {
             var (manager, storage) = await BackgroundCommitTests.CreateManager("repeated_enumerator_disposal");
@@ -94,7 +93,6 @@ namespace FlowtideDotNet.Storage.Tests.Append
         }
 
         [Fact]
-        [Trait("Category", "ReviewRoundRegression")]
         public async Task FailedAppendTreeSeekDoesNotReturnThePreviousLeafTwice()
         {
             var timeout = TimeSpan.FromSeconds(30);
@@ -128,7 +126,6 @@ namespace FlowtideDotNet.Storage.Tests.Append
         }
 
         [Fact]
-        [Trait("Category", "FixReviewRegression")]
         public async Task FailedAppendTreePageAdvanceDoesNotReturnThePreviousLeafTwice()
         {
             var timeout = TimeSpan.FromSeconds(30);
@@ -167,7 +164,6 @@ namespace FlowtideDotNet.Storage.Tests.Append
         }
 
         [Fact]
-        [Trait("Category", "FullReviewRegression")]
         public async Task PruningToTheRightmostLeafReturnsTheFetchedLeafRent()
         {
             var tree = await CreateTree(bucketSize: 16);
@@ -186,7 +182,6 @@ namespace FlowtideDotNet.Storage.Tests.Append
         }
 
         [Fact]
-        [Trait("Category", "FollowupReviewRegression")]
         public async Task PrintingTheTreeReturnsTheFetchedRootRent()
         {
             var tree = await CreateTree();

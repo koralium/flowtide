@@ -87,7 +87,6 @@ namespace FlowtideDotNet.AcceptanceTests
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
-        [Trait("Category", "AdversarialReviewRegression")]
         public async Task BackgroundPageWriteFailureRollsBackTheStreamAndAllowsFurtherCheckpoints(bool hasCompletedCheckpoint)
         {
             var name = $"{Token}_{nameof(BackgroundPageWriteFailureRollsBackTheStreamAndAllowsFurtherCheckpoints)}_{hasCompletedCheckpoint}";

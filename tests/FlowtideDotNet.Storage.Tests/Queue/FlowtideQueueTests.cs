@@ -284,6 +284,74 @@ namespace FlowtideDotNet.Storage.Tests.Queue
             // Discarded node must release its rent count.
             Assert.Equal(0, uncommittedNode.RentCount);
         }
+
+        private static StateManager.StateManagerSync<object> CreateReservoirManager(bool backgroundCommit)
+        {
+            return new StateManager.StateManagerSync<object>(new StateManagerOptions()
+            {
+                CachePageCount = 1000000,
+                MinCachePageCount = 0,
+                BackgroundCommit = backgroundCommit,
+                PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
+                {
+                    FileProvider = new MemoryFileProvider()
+                })
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
+        }
+
+        private static ValueTask<IFlowtideQueue<long, PrimitiveListValueContainer<long>>> GetQueue(StateManager.StateManagerSync<object> stateManager)
+        {
+            return stateManager.GetOrCreateClient("test").GetOrCreateQueue("queue", new Storage.Queue.FlowtideQueueOptions<long, PrimitiveListValueContainer<long>>()
+            {
+                MemoryAllocator = GlobalMemoryManager.Instance,
+                ValueSerializer = new PrimitiveListValueContainerSerializer<long>(GlobalMemoryManager.Instance)
+            });
+        }
+
+        /// <summary>
+        /// A queue that was only created must still persist its empty root.
+        /// </summary>
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task NewEmptyQueueCanRecoverAfterCommit(bool backgroundCommit)
+        {
+            using var stateManager = CreateReservoirManager(backgroundCommit);
+            await stateManager.InitializeAsync();
+            var queue = await GetQueue(stateManager);
+            await queue.Commit();
+            await stateManager.CheckpointAsync();
+
+            await stateManager.InitializeAsync();
+            var recovered = await GetQueue(stateManager);
+            Assert.Equal(0, recovered.Count);
+            await recovered.Enqueue(2);
+            Assert.Equal(2, await recovered.Dequeue());
+        }
+
+        /// <summary>
+        /// No enqueue follows Clear, so the empty replacement root itself must be dirty.
+        /// </summary>
+        [Fact]
+        public async Task EmptyQueueCanRecoverAfterClearAndCommit()
+        {
+            using var stateManager = CreateReservoirManager(backgroundCommit: true);
+            await stateManager.InitializeAsync();
+            var queue = await GetQueue(stateManager);
+            await queue.Enqueue(1);
+            await queue.Commit();
+            await stateManager.CheckpointAsync();
+
+            await queue.Clear();
+            await queue.Commit();
+            await stateManager.CheckpointAsync();
+
+            await stateManager.InitializeAsync();
+            var recovered = await GetQueue(stateManager);
+            Assert.Equal(0, recovered.Count);
+            await recovered.Enqueue(2);
+            Assert.Equal(2, await recovered.Dequeue());
+        }
     }
 }
 

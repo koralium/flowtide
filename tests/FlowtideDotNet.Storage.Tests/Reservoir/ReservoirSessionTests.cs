@@ -18,7 +18,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
-        [Trait("Category", "AdversarialReviewRegression")]
         public async Task CommittedDeletionRemainsUnreadableBeforeTheStorageCheckpoint(bool deserializePage)
         {
             var provider = new TestDataProvider();
@@ -54,7 +53,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
-        [Trait("Category", "FullBranchReviewRegression")]
         public async Task CompactedPagesRemainDeletedAfterCheckpointAndRecovery(bool recoverSnapshot)
         {
             var provider = new TestDataProvider();
@@ -95,7 +93,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         [InlineData(true, false)]
         [InlineData(false, true)]
         [InlineData(true, true)]
-        [Trait("Category", "BundleDeletionRegression")]
         public async Task QueuedPagesRemainDeletedAfterCheckpointAndSnapshotRecovery(bool commitBeforeDelete, bool recoverSnapshot)
         {
             var provider = new TestDataProvider();
