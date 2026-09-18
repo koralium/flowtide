@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -18,37 +18,15 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
     public class FileCachePersistentStorage : IPersistentStorage
     {
         private readonly bool _ignoreDispose;
-        private readonly FileCacheOptions _fileCacheOptions;
-        private readonly HashSet<long> _uncheckpointedPages = new HashSet<long>();
-        private readonly HashSet<long> _checkpointedPages = new HashSet<long>();
-        private readonly object _lock = new object();
         private long _version;
         internal FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
 
         public FileCachePersistentStorage(FileCacheOptions fileCacheOptions, bool ignoreDispose = false)
         {
-            _fileCacheOptions = fileCacheOptions;
             // Start at version 1, since version 0 is reserved for empty state
             _version = 1;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, "persitent", GlobalMemoryManager.Instance);
             this._ignoreDispose = ignoreDispose;
-        }
-
-        internal void OnKeyWritten(long key)
-        {
-            lock (_lock)
-            {
-                _uncheckpointedPages.Add(key);
-            }
-        }
-
-        internal void OnKeyDeleted(long key)
-        {
-            lock (_lock)
-            {
-                _uncheckpointedPages.Remove(key);
-                _checkpointedPages.Remove(key);
-            }
         }
 
         public long CurrentVersion => _version;
@@ -56,15 +34,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
         public virtual async ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
         {
             await Write(1, metadata);
-            lock (_lock)
-            {
-                foreach (var page in _uncheckpointedPages)
-                {
-                    _checkpointedPages.Add(page);
-                }
-                _uncheckpointedPages.Clear();
-                _version++;
-            }
+            _version++;
         }
 
         public virtual ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
@@ -74,19 +44,14 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public virtual IPersistentStorageSession CreateSession()
         {
-            return new FileCachePersistentSession(this, m_fileCache);
+            return new FileCachePersistentSession(m_fileCache);
         }
 
         public void Dispose()
         {
             if (!_ignoreDispose)
             {
-                lock (_lock)
-                {
-                    _uncheckpointedPages.Clear();
-                    _checkpointedPages.Clear();
-                    m_fileCache.Dispose();
-                }
+                m_fileCache.Dispose();
             }
         }
 
@@ -95,12 +60,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
         /// </summary>
         public void ForceDispose()
         {
-            lock (_lock)
-            {
-                _uncheckpointedPages.Clear();
-                _checkpointedPages.Clear();
-                m_fileCache.Dispose();
-            }
+            m_fileCache.Dispose();
         }
 
         public virtual Task InitializeAsync(StorageInitializationMetadata metadata)
@@ -115,15 +75,6 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public virtual ValueTask ResetAsync()
         {
-            lock (_lock)
-            {
-                _uncheckpointedPages.Clear();
-                _checkpointedPages.Clear();
-                // Reset file cache to an empty state.
-                m_fileCache.Dispose();
-                m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(_fileCacheOptions, "persitent", GlobalMemoryManager.Instance);
-                _version = 1;
-            }
             return ValueTask.CompletedTask;
         }
 
@@ -140,7 +91,6 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public virtual ValueTask Write(long key, byte[] value)
         {
-            OnKeyWritten(key);
             m_fileCache.Write(key, new SerializableObject(value));
             m_fileCache.Flush();
             return ValueTask.CompletedTask;
@@ -148,18 +98,10 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public void ClearForRestore()
         {
-            lock (_lock)
+            if (!_ignoreDispose)
             {
-                // Retain previously checkpointed pages across clear for restore.
-                foreach (var page in _uncheckpointedPages)
-                {
-                    if (!_checkpointedPages.Contains(page))
-                    {
-                        m_fileCache.Free(page);
-                    }
-                }
-                _uncheckpointedPages.Clear();
-                m_fileCache.ClearTemporaryAllocations();
+                // Pages are overwritten in place, a restore can only start from empty.
+                m_fileCache.FreeAll(Array.Empty<long>());
             }
         }
     }

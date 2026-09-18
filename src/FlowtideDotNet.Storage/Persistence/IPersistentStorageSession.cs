@@ -21,13 +21,7 @@ namespace FlowtideDotNet.Storage.Persistence
         /// still serializes writes, deletes and commits with each other. When false, the
         /// state client serializes all session calls, including reads.
         /// </summary>
-        bool SupportsConcurrentReads => IsThreadSafe;
-
-        /// <summary>
-        /// Compatibility capability for existing session implementations. New implementations
-        /// should implement <see cref="SupportsConcurrentReads"/> to state the narrower contract.
-        /// </summary>
-        bool IsThreadSafe => false;
+        bool SupportsConcurrentReads => false;
 
         ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer)
             where T : ICacheObject;

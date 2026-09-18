@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -22,7 +22,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly TestStorage testStorage;
         public bool HasCommitted { get; private set; } = true;
 
-        public TestStorageSession(FileCache fileCache, TestStorage testStorage) : base(testStorage, fileCache)
+        public TestStorageSession(FileCache fileCache, TestStorage testStorage) : base(fileCache)
         {
             this.testStorage = testStorage;
         }

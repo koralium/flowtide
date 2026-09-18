@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -45,6 +45,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private readonly object _lock = new object();
         private readonly System.IO.Hashing.Crc32 crc = new System.IO.Hashing.Crc32();
         private ulong _crc64;
+        private bool _layoutFinished;
 
         private int _rentCounter;
 
@@ -92,6 +93,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         public override int FileSize => _writtenBytes + HeaderSize;
 
         public override ulong Crc64 => _crc64;
+
+        /// <summary>
+        /// Runs right before the file is summed, so a test can hold the checksum open.
+        /// </summary>
+        internal Action? ChecksumHookForTests { get; set; }
 
         public ReadOnlySequence<byte> Write(long key, SerializableObject value)
         {
@@ -179,6 +185,15 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public void Finish()
         {
+            FinishLayout();
+            ComputeChecksum();
+        }
+
+        /// <summary>
+        /// Builds the header and settles the segment indices, readers of the pages must be held out.
+        /// </summary>
+        internal void FinishLayout()
+        {
             lock (_lock)
             {
                 if (_finished)
@@ -233,14 +248,27 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
                 // Write offset to page data start
                 BinaryPrimitives.WriteInt32LittleEndian(headerData, idsAndOffsetsOffset);
-
-                System.IO.Hashing.Crc64 crc64 = new System.IO.Hashing.Crc64();
-                foreach(var segment in WrittenData)
-                {
-                    crc64.Append(segment.Span);
-                }
-                _crc64 = crc64.GetCurrentHashAsUInt64();
+                _layoutFinished = true;
             }
+        }
+
+        /// <summary>
+        /// Sums the finished file, its bytes no longer change so page reads go on meanwhile.
+        /// </summary>
+        internal void ComputeChecksum()
+        {
+            // FinishDataOnly marks a file finished without a layout, that file is never summed here.
+            if (!_layoutFinished)
+            {
+                throw new FlowtidePersistentStorageException("Tried to sum a file before its layout was finished");
+            }
+            ChecksumHookForTests?.Invoke();
+            System.IO.Hashing.Crc64 crc64 = new System.IO.Hashing.Crc64();
+            foreach (var segment in WrittenData)
+            {
+                crc64.Append(segment.Span);
+            }
+            _crc64 = crc64.GetCurrentHashAsUInt64();
         }
 
         public Memory<byte> GetMemory(int sizeHint = 0)

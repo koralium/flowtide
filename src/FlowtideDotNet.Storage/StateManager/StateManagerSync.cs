@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
@@ -102,11 +101,6 @@ namespace FlowtideDotNet.Storage.StateManager
         internal Func<string, long, Task>? PageWriteHookForTests { get; set; }
 
         /// <summary>
-        /// Set once the caller drained the walks itself, Dispose then does not wait again.
-        /// </summary>
-        private bool m_commitsAbandoned;
-
-        /// <summary>
         /// True while a client's background commit is still writing. A walk starts at the
         /// operator's Commit and is only joined by the checkpoint, a teardown drains it here.
         /// </summary>
@@ -129,34 +123,12 @@ namespace FlowtideDotNet.Storage.StateManager
         }
 
         /// <summary>
-        /// True if any state client has a commit fault.
-        /// </summary>
-        public bool HasCommitFaults
-        {
-            get
-            {
-                lock (m_lock)
-                {
-                    foreach (var stateClient in _stateClients.Values)
-                    {
-                        if (stateClient.HasCommitFault)
-                        {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-            }
-        }
-
-        /// <summary>
         /// Tells every walk to give up at its next page, for a caller whose own drain wait ran out.
         /// </summary>
         public void RequestStopCommits()
         {
             lock (m_lock)
             {
-                m_commitsAbandoned = true;
                 foreach (var stateClient in _stateClients.Values)
                 {
                     stateClient.RequestStopCommits();
@@ -210,9 +182,6 @@ namespace FlowtideDotNet.Storage.StateManager
                 meter = new Meter(m_meterName);
                 disposedValue = false;
             }
-            // An abandoned drain belongs to the teardown that gave up, the next one waits again.
-            m_commitsAbandoned = false;
-
             if (m_cacheTable == null)
             {
                 m_cacheTable = new S3FifoTableSync(new CacheTableOptions(streamName, logger, meter, new MemoryStatsWithGC(_streamMemoryManager))
@@ -227,6 +196,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
             if (m_persistentStorage != null)
             {
+                // Kept, the clients' sessions belong to this instance.
                 m_persistentStorage.ClearForRestore();
             }
             else if (options.PersistentStorage == null)
@@ -283,8 +253,6 @@ namespace FlowtideDotNet.Storage.StateManager
             return TableForClients.Wait();
         }
 
-        internal bool IsOverCapacity => TableForClients.IsOverCapacity;
-
         internal void DeleteFromCache(in long key)
         {
             TableForClients.Delete(key);
@@ -327,7 +295,7 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
-            if (disposedValue || m_commitsAbandoned)
+            if (disposedValue)
             {
                 throw new ObjectDisposedException(nameof(StateManagerSync));
             }
@@ -354,7 +322,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     throw new Exception("Commit failed on state client.", stateClient.CommitFault);
                 }
             }
-            if (disposedValue || m_commitsAbandoned)
+            if (disposedValue)
             {
                 throw new ObjectDisposedException(nameof(StateManagerSync));
             }
@@ -562,7 +530,7 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 try
                 {
-                    await m_pendingDisposals.WaitAsync(options.StopCommitsTimeout).ConfigureAwait(false);
+                    await m_pendingDisposals.WaitAsync(options.RecoveryCommitWaitTimeout).ConfigureAwait(false);
                 }
                 catch (TimeoutException e)
                 {
@@ -595,7 +563,7 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 foreach (var stateClient in stateClients)
                 {
-                    await stateClient.PauseCommitsAsync(options.StopCommitsTimeout);
+                    await stateClient.PauseCommitsAsync(options.RecoveryCommitWaitTimeout);
                     pausedClients.Add(stateClient);
                 }
 
@@ -665,9 +633,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 Exception? disposalException = null;
                 if (disposing)
                 {
-                    // The walks first, they read the cache table. Every walk is told before any is
-                    // waited for, so the waits overlap, and the wait is bounded, a walk wedged on
-                    // storage must not hang the teardown. A caller that drained already skips it.
+                    // Walks give up at their next page, the last one out disposes its client's resources.
                     List<StateClient> stateClients;
                     lock (m_lock)
                     {
@@ -676,15 +642,6 @@ namespace FlowtideDotNet.Storage.StateManager
                     foreach (var stateClient in stateClients)
                     {
                         stateClient.RequestStopCommits();
-                    }
-                    if (!m_commitsAbandoned)
-                    {
-                        var stopDeadline = Stopwatch.GetTimestamp();
-                        foreach (var stateClient in stateClients)
-                        {
-                            var remaining = options.StopCommitsTimeout - Stopwatch.GetElapsedTime(stopDeadline);
-                            stateClient.StopCommits(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero);
-                        }
                     }
 
                     // Dispose the cache table first so it stops the cleanup task.

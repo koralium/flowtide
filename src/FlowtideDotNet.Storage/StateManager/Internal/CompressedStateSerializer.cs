@@ -262,10 +262,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             _compressor = new FlowtideZstdCompressor(memoryAllocator, compressionLevel);
         }
 
-        public async Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
+        public Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
         {
-            await _serializer.CheckpointAsync(checkpointWriter, metadata);
-            ClearTemporaryAllocations();
+            // Runs before the pages are written, the state client clears once they are.
+            return _serializer.CheckpointAsync(checkpointWriter, metadata);
         }
 
         public void ClearTemporaryAllocations()

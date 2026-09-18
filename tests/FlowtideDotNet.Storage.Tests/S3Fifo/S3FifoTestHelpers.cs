@@ -132,14 +132,14 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
         public List<long> EvictedKeys => Evictions.Select(e => e.Key).ToList();
 
-        public Task<bool> Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+        public Task<int> Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
         {
             OnEvict?.Invoke(valuesToEvict, isCleanup);
             foreach (var value in valuesToEvict)
             {
                 Evictions.Enqueue((value.Item1.Key, isCleanup));
             }
-            return Task.FromResult(true);
+            return Task.FromResult(valuesToEvict.Count);
         }
     }
 

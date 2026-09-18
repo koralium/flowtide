@@ -56,10 +56,10 @@ namespace FlowtideDotNet.DependencyInjection
         bool? BackgroundCommit { get; set; }
 
         /// <summary>
-        /// How long a stop waits for a commit still writing before it gives the walk up.
+        /// How long a recovery waits for a commit still writing before it fails.
         /// Default: 10 seconds
         /// </summary>
-        TimeSpan? StopCommitsTimeout { get; set; }
+        TimeSpan? RecoveryCommitWaitTimeout { get; set; }
 
         IFlowtideStorageBuilder SetPersistentStorage(IPersistentStorage persistentStorage);
 

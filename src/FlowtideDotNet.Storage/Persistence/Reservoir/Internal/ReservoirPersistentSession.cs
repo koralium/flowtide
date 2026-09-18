@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -47,12 +47,15 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         /// </summary>
         public bool SupportsConcurrentReads => true;
 
-        public bool IsThreadSafe => SupportsConcurrentReads;
-
         /// <summary>
         /// Runs right before the file writer is finished, so a test can hold the roll open.
         /// </summary>
         internal Action? FileRollHookForTests { get; set; }
+
+        /// <summary>
+        /// Runs right before a rolled file is summed, so a test can hold the checksum open.
+        /// </summary>
+        internal Action? FileChecksumHookForTests { get; set; }
 
         [MemberNotNull(nameof(_fileWriter))]
         private void SetupFileWriter()
@@ -118,7 +121,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _disposed = true;
             // Deregister first, the storage keeps sessions alive for restore otherwise.
             _persistentStorage.RemoveSession(this);
-            _fileWriter.Return(); // Return the file which will dispose it if the counter is 0
+            // A write in flight, its roll checksum included, still reads the writer's buffers.
+            lock (_writeLock)
+            {
+                lock (_lock)
+                {
+                    _fileWriter.Return(); // Return the file which will dispose it if the counter is 0
+                }
+            }
         }
 
         public ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer) where T : ICacheObject
@@ -199,6 +209,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             {
                 var fileWriter = _fileWriter;
                 var sequence = fileWriter.Write(key, value);
+                var roll = false;
                 lock (_lock)
                 {
                     // If the page is in deleted pages, remove it from the set
@@ -217,8 +228,19 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     if (fileWriter.WrittenLength >= _maxFileSize)
                     {
                         FileRollHookForTests?.Invoke();
-                        // Finish shifts the segment indices a concurrent read measures its bytes with, so it stays under the lock.
-                        fileWriter.Finish();
+                        fileWriter.ChecksumHookForTests = FileChecksumHookForTests;
+                        // The layout shifts the segment indices a concurrent read measures its bytes with, so it stays under the lock.
+                        fileWriter.FinishLayout();
+                        roll = true;
+                    }
+                }
+                if (roll)
+                {
+                    // The bytes are final, reads go on while the file is summed.
+                    fileWriter.ComputeChecksum();
+                    lock (_lock)
+                    {
+                        // Swapped once summed, a failure before this leaves the writer to Reset.
                         finished = fileWriter;
                         SetupFileWriter();
                     }
@@ -238,28 +260,35 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         internal async Task SendBlobFile_Testing()
         {
             BlobFileWriter finished;
-            lock (_lock)
+            lock (_writeLock)
             {
-                _fileWriter.Finish();
-                finished = _fileWriter;
-                SetupFileWriter();
+                lock (_lock)
+                {
+                    _fileWriter.Finish();
+                    finished = _fileWriter;
+                    SetupFileWriter();
+                }
             }
             await _persistentStorage.AddCompleteBlobFile(finished);
         }
 
         public void Reset()
         {
-            lock (_lock)
+            // The write lock first, a roll may be summing the writer outside the inner lock.
+            lock (_writeLock)
             {
-                // Purge uncommitted temporary locations before returning file writer.
-                var pageIds = _fileWriter.PageIds;
-                for (int i = 0; i < pageIds.Count; i++)
+                lock (_lock)
                 {
-                    _persistentStorage.RemoveTemporaryLocation(pageIds[i]);
+                    // Purge uncommitted temporary locations before returning file writer.
+                    var pageIds = _fileWriter.PageIds;
+                    for (int i = 0; i < pageIds.Count; i++)
+                    {
+                        _persistentStorage.RemoveTemporaryLocation(pageIds[i]);
+                    }
+                    _deletedPages.Clear();
+                    _fileWriter.Return();
+                    SetupFileWriter();
                 }
-                _deletedPages.Clear();
-                _fileWriter.Return();
-                SetupFileWriter();
             }
         }
     }

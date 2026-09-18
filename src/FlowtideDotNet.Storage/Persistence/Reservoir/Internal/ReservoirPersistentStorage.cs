@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -117,9 +117,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         internal void AddTemporaryLocation(long pageId, PageWriteLocation pageWriteLocation)
         {
-            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before adding temporary locations");
             _temporaryPageLocations[pageId] = pageWriteLocation;
-            _checkpointHandler.RemoveDeletedPage(pageId);
         }
 
         internal async Task AddNonCompletedBlobFile(BlobFileWriter blobFileWriter)

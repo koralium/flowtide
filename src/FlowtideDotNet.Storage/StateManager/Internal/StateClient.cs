@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -15,7 +15,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
     {
         public abstract void Dispose();
         internal virtual Task DisposalTask => Task.CompletedTask;
-        public abstract ValueTask Reset(bool clearMetadata, bool discardErrors = false);
+        public abstract ValueTask Reset(bool clearMetadata);
         public abstract long MetadataId { get; }
         internal virtual bool HasCommitInFlight => false;
         internal virtual bool HasCommitFault => false;
@@ -47,14 +47,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         /// Tells a walk in flight to give up at its next page, without waiting.
         /// </summary>
         internal virtual void RequestStopCommits()
-        {
-        }
-
-        /// <summary>
-        /// Waits within the manager's remaining drain budget. A timeout ends the wait, not the
-        /// worker: the client retains its session and serializer until that worker exits.
-        /// </summary>
-        internal virtual void StopCommits(TimeSpan timeout)
         {
         }
     }

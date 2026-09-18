@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -78,9 +78,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return baseClient.GetValue(key);
         }
 
-        public override ValueTask Reset(bool clearMetadata, bool discardErrors = false)
+        public override ValueTask Reset(bool clearMetadata)
         {
-            return baseClient.Reset(clearMetadata, discardErrors);
+            return baseClient.Reset(clearMetadata);
         }
 
         public Task WaitForNotFullAsync()
@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return baseClient.TryGetCachedValue(key, out value);
         }
 
-        public Task<bool> Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+        public Task<int> Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
         {
             return baseClient.Evict(valuesToEvict, isCleanup);
         }

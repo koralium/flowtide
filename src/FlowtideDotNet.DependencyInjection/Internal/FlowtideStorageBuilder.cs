@@ -79,7 +79,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
 
         public bool? BackgroundCommit { get; set; }
 
-        public TimeSpan? StopCommitsTimeout { get; set; }
+        public TimeSpan? RecoveryCommitWaitTimeout { get; set; }
 
         internal StateManagerOptions Build(IServiceProvider serviceProvider)
         {
@@ -117,9 +117,9 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             {
                 options.BackgroundCommit = BackgroundCommit.Value;
             }
-            if (StopCommitsTimeout.HasValue)
+            if (RecoveryCommitWaitTimeout.HasValue)
             {
-                options.StopCommitsTimeout = StopCommitsTimeout.Value;
+                options.RecoveryCommitWaitTimeout = RecoveryCommitWaitTimeout.Value;
             }
             return options;
         }

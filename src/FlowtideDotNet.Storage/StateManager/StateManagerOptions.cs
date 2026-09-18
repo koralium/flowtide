@@ -71,10 +71,9 @@ namespace FlowtideDotNet.Storage.StateManager
         public bool BackgroundCommit { get; set; } = Internal.Sync.BackgroundCommit.Enabled;
 
         /// <summary>
-        /// How long Dispose, unless the caller drained first, and a recovery wait for a commit
-        /// still writing before they give the walk up.
+        /// How long a recovery waits for a commit still writing before it fails.
         /// </summary>
-        public TimeSpan StopCommitsTimeout { get; set; } = TimeSpan.FromSeconds(10);
+        public TimeSpan RecoveryCommitWaitTimeout { get; set; } = TimeSpan.FromSeconds(10);
 
         public int DefaultBPlusTreePageSize { get; set; } = 1024;
 

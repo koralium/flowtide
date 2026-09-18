@@ -280,7 +280,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             public readonly List<EvictionCandidate> Victims = new List<EvictionCandidate>();
             public readonly Dictionary<ICacheEvictHandler, List<(S3FifoCacheEntry, long)>> VictimsByHandler = new Dictionary<ICacheEvictHandler, List<(S3FifoCacheEntry, long)>>();
-            public readonly List<Task<bool>> EvictTasks = new List<Task<bool>>();
+            public readonly List<Task<int>> EvictTasks = new List<Task<int>>();
             public readonly List<List<(S3FifoCacheEntry, long)>> EvictTaskGroups = new List<List<(S3FifoCacheEntry, long)>>();
             public readonly List<S3FifoCacheEntry> RequeueToSmall = new List<S3FifoCacheEntry>();
             public readonly List<S3FifoCacheEntry> RequeueToMain = new List<S3FifoCacheEntry>();
@@ -488,17 +488,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 evictException = e;
             }
 
-            // Failed and declined victims were never serialized, so keep them cached.
+            // Victims past what the handler got to were never serialized, so keep them cached.
             HashSet<S3FifoCacheEntry>? failedVictims = null;
             for (int i = 0; i < evictTasks.Count; i++)
             {
-                if (!evictTasks[i].IsCompletedSuccessfully || !evictTasks[i].Result)
+                var group = evictTaskGroups[i];
+                // A faulted handler vouches for nothing.
+                var handled = evictTasks[i].IsCompletedSuccessfully ? evictTasks[i].Result : 0;
+                for (int j = handled; j < group.Count; j++)
                 {
                     failedVictims ??= new HashSet<S3FifoCacheEntry>();
-                    foreach (var value in evictTaskGroups[i])
-                    {
-                        failedVictims.Add(value.Item1);
-                    }
+                    failedVictims.Add(group[j].Item1);
                 }
             }
             return (failedVictims, evictException);
