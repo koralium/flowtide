@@ -30,6 +30,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
@@ -944,10 +945,45 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             valueColumn.AddToHash(_offsets.Get(index), child, hashAlgorithm);
         }
 
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            var valueColumnIndex = _typeList[index];
+            if (valueColumnIndex == 0)
+            {
+                XxHash32Implementation.AppendByte(0, ref state);
+                return;
+            }
+            var valueColumn = _valueColumns[valueColumnIndex];
+            valueColumn.AppendXxHash32Single(_offsets.Get(index), child, ref state);
+        }
+
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
         {
-            // TODO: Must do more advanced here to try and push as much as possible into vectorized code
-            throw new NotImplementedException();
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                AppendXxHash32Single(index, child, ref states[i]);
+            }
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            Xxh32RowState state = new Xxh32RowState();
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                state.Init();
+                AppendXxHash32Single(index, child, ref state);
+                destination[i] = XxHash32Implementation.GetCurrentHashAsUInt32(ref state);
+            }
         }
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
@@ -1086,16 +1122,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public CompareColumnState GetColumnState()
         {
             return CompareColumnStateBuilder.Create(ArrowTypeId.Union);
-        }
-
-        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
-        {
-            throw new NotImplementedException();
         }
     }
 }
