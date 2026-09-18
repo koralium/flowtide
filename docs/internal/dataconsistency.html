@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Requirements for Fault-Tolerant Data Consistency | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Requirements for Fault-Tolerant Data Consistency | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../../images/favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/blob/main/docs/docs/internal/dataconsistency.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="requirements-for-fault-tolerant-data-consistency">Requirements for Fault-Tolerant Data Consistency</h1>
+
+<p>This document outlines how to guarantee data consistency in a data stream, how the flow works, and what rules must be met.</p>
+<p>These guarantees are not required for every use case. For example, low latency might be a higher priority than strong consistency, such as when streaming updates to a search engine like Elasticsearch, where eventual consistency is acceptable. However, this document defines what is required when strict consistency across crashes is necessary.</p>
+<h2 id="required-functions">Required functions</h2>
+<ul>
+<li><strong>OnInitialize</strong> - called when a stream is started, from a crash or a restart.</li>
+<li><strong>OnCheckpointComplete</strong> - Called when a checkpoint has been completed and state data is persisted on a storage device.</li>
+<li><strong>UploadDelta</strong> - A function that uploads delta changes to a staging destination.</li>
+<li><strong>CommitProcedure</strong> (<span class="math">\(P\)</span>) — Merges staged delta records into the final destination store.</li>
+</ul>
+<h2 id="system-model--core-contract">System Model &amp; Core Contract</h2>
+<p><strong>State Variables:</strong></p>
+<ul>
+<li><span class="math">\(v_{\text{cp}} \in \mathbb{N}\)</span> : Last durable checkpoint version committed to disk.</li>
+<li><span class="math">\(\mathcal{D}\)</span> : Staging delta relation holding records <span class="math">\((k, \text{op}, d, v)\)</span> where <span class="math">\(v \in \mathbb{N}\)</span>. <span class="math">\(k\)</span> is the key (row identity), <span class="math">\(d\)</span> is the data.</li>
+<li><span class="math">\(\mathcal{S}\)</span> : Authoritative destination relation representing the sum of all committed deltas:</li>
+</ul>
+<p><span class="math">\(\mathcal{S} = \sum_{i=1}^{v_{\text{cp}}} \Delta_i = \Delta_1 \oplus \Delta_2 \oplus \dots \oplus \Delta_{v_{\text{cp}}}\)</span></p>
+<h3 id="when-is-idempotency-required">When is Idempotency Required?</h3>
+<p>In this architecture, idempotency in the commit procedure is necessary when all of these conditions are met:</p>
+<ol>
+<li><strong>Mutate-in-Place Destination:</strong> Unlike immutable systems (such as Delta Lake or append-only logs that advance an atomic metadata pointer), this sink updates existing records directly in the target store.</li>
+<li><strong>Decoupled Commit Barriers:</strong> The engine's checkpoint state and the database commit are distinct operations without two-phase commit (2PC).</li>
+<li><strong>Replay Ambiguity:</strong> If a failure occurs immediately after a checkpoint is persisted to disk, and the destination system cannot determine whether P completed successfully or was interrupted, OnInitialize must re-invoke <span class="math">\(P\)</span> safely without introducing duplicate rows or corrupting aggregated state.</li>
+</ol>
+<p><strong>Contract: Idempotence Requirement</strong></p>
+<p>If the destination has issues with the points above, the commit procedure <span class="math">\(P\)</span> must be strictly idempotent across identical version boundaries:</p>
+<p><span class="math">\(\forall \mathcal{D}, \mathcal{S}, v: \quad P(\mathcal{D}, P(\mathcal{D}, \mathcal{S}, v), v) = P(\mathcal{D}, \mathcal{S}, v)\)</span></p>
+<p>Executing <span class="math">\(P\)</span> multiple times with the same latest version parameter <span class="math">\(v\)</span> over staging data <span class="math">\(\mathcal{D}\)</span> must yield the exact same destination state <span class="math">\(\mathcal{S}\)</span> without side effects, phantom records, or duplicate modifications.</p>
+<p>The procedure does not need to be idempotent across historical versions, only for re-executions against the current <span class="math">\(v_{\text{cp}}\)</span>.</p>
+<h2 id="algorithm">Algorithm</h2>
+<pre><code>procedure OnInitialize()
+    v ← ReadCheckpointFromDisk()
+    
+    // 1. Rollback uncommitted speculative writes
+    D ← { r ∈ D | r.version ≤ v }
+    
+    // 2. Resynchronize destination state
+    S ← CommitProcedure(D, S, v)
+end procedure
+
+
+procedure UploadDelta(batch)
+    v_next ← v_cp + 1
+    
+    // Upload uncommitted changes to staging
+    for each (key, op, data) in batch do
+        D ← D ∪ { (key, op, data, v_next) }
+    end for
+end procedure
+
+
+procedure OnCheckpointComplete(v_new)
+    // 1. Atomic write barrier to disk
+    SaveCheckpointToDisk(v_new)
+    v_cp ← v_new
+    
+    // 2. Materialize confirmed deltas into destination
+    S ← CommitProcedure(D, S, v_cp)
+end procedure
+
+
+function CommitProcedure(D, S, v)
+    // Ingest confirmed staging deltas
+    Δ_valid ← { r ∈ D | r.version ≤ v }
+    
+    // Deterministic state fold
+    S_next ← S ⊕ Δ_valid
+    return S_next
+end function
+</code></pre>
+<h2 id="correctness-analysis--zero-data-loss-guarantee">Correctness Analysis &amp; Zero Data Loss Guarantee</h2>
+<p>The destination state represents the sum of all confirmed changes up to the durable checkpoint:</p>
+<p><span class="math">\(\mathcal{S}^* = \sum_{i=1}^{v_{\text{cp}}} \Delta_i\)</span></p>
+<p>Data loss occurs if any committed delta <span class="math">\(\Delta_i\)</span> (<span class="math">\(i \le v_{\text{cp}}\)</span>) is missing from <span class="math">\(\mathcal{S}^*\)</span>. Duplicate corruption occurs if applying a delta multiple times shifts the state beyond <span class="math">\(\mathcal{S}^*\)</span>.</p>
+<p><strong>1. Crash During Inflight Upload (<span class="math">\(r.v &gt; v_{\text{cp}}\)</span>)</strong></p>
+<ul>
+<li><strong>Failure State:</strong> Incomplete delta fragments exist in staging (<span class="math">\(\exists r \in \mathcal{D} : r.v = v_{\text{cp}} + 1\)</span>). Destination <span class="math">\(\mathcal{S}\)</span> is unaffected at <span class="math">\(\mathcal{S}(v_{\text{cp}})\)</span>.</li>
+<li><strong>Recovery:</strong> OnInitialize purges incomplete rows:<span class="math">\(\mathcal{D}_0 = \{ r \in \mathcal{D} \mid r.v \le v_{\text{cp}} \}\)</span></li>
+<li><strong>Outcome:</strong> Uncommitted writes are cleanly removed. The stream replays the batch starting from checkpoint <span class="math">\(v_{\text{cp}}\)</span>, regenerating <span class="math">\(\Delta_{v_{\text{cp}} + 1}\)</span> deterministically. No uncommitted data enters <span class="math">\(\mathcal{S}\)</span>, and no committed data is dropped.</li>
+</ul>
+<p><strong>2. Crash During or After Checkpoint (<span class="math">\(r.v \le v_{\text{cp}}\)</span>)</strong></p>
+<ul>
+<li><p><strong>Failure State:</strong> <span class="math">\(v_{\text{cp}}\)</span> is updated on disk, but the node crashes during or immediately following CommitProcedure.</p>
+</li>
+<li><p><strong>Recovery:</strong> On restart, OnInitialize reads durable <span class="math">\(v_{\text{cp}}\)</span> and re-invokes the procedure:<span class="math">\(\mathcal{S} \leftarrow P(\mathcal{D}_0, \mathcal{S}, v_{\text{cp}})\)</span></p>
+</li>
+<li><p><strong>Outcome:</strong> Because <span class="math">\(P\)</span> satisfies the idempotency contract:$$P(\mathcal{D}, P(\mathcal{D}, \mathcal{S}, v_{\text{cp}}), v_{\text{cp}}) = P(\mathcal{D}, \mathcal{S}, v_{\text{cp}})$$Re-running the procedure produces the exact same destination state. No records are double-counted or duplicated.</p>
+</li>
+</ul>
+<h3 id="core-guarantees">Core Guarantees</h3>
+<p>Following any recovery or completed checkpoint, the protocol deterministically enforces:</p>
+<p><span class="math">\(\mathcal{S} \equiv \sum_{i=1}^{v_{\text{cp}}} \Delta_i \quad \wedge \quad \forall r \in \mathcal{D}, \; r.v \le v_{\text{cp}}\)</span></p>
+<h2 id="implementation-examples">Implementation examples</h2>
+<p>In this section, different destinations are given as examples and how they can fulfill this protocol.</p>
+<h3 id="delta-lake">Delta Lake</h3>
+<p>In delta lake the staging area for new updates are new parquet files and a temporary delta log file that is not yet renamed to a version number.</p>
+<p>The commit procedure checks if the latest version is referenced in the delta log if so it can stop. Otherwise it checks if any uncommited delta log file exist for the current version. If so, it renames the file to a real commit log version file to commit the data.</p>
+<p>A rollback can be handled in two ways, either delete any data files that exist in the folder structure that are not referenced delta log, or ignore those files since they are not referenced and will not affect the data outcome.</p>
+<h3 id="sql-server-without-transactions">SQL Server without transactions</h3>
+<p>In this SQL Server example, transactions are not used to reduce locking on the destination table.</p>
+<p>In SQL Server, the destination is a mutable relational table, and the staging area is a dedicated staging table holding the delta rows along with their stream version.</p>
+<p>The commit procedure can do a merge from the staging area into the final destination table.
+If the destination table uses primary keys, this becomes idempotent, upserting a row with an identical key will not change the outcome of the row. Same when deleting a key, if it is already deleted, the merge delete will be a no-op.</p>
+<p>A rollback is handled in OnInitialize by running:</p>
+<pre><code>DELETE FROM StagingTable WHERE version &gt; @v_cp
+</code></pre>
+<p>This purges any partial or speculative rows left behind by a crash before the stream resumes.</p>
+<h3 id="sql-server-with-two-phase-commit">SQL Server with Two-Phase Commit</h3>
+<p>With 2PC (via MSDTC), no staging table or idempotent merge is needed. The database transaction log becomes the staging area, and changes are written directly to the destination table inside a distributed transaction.</p>
+<p>In UploadDelta, rows are written directly to the destination within the open transaction.</p>
+<p>During checkpoint, the engine asks SQL Server to prepare the transaction. Once the engine has safely saved its checkpoint to disk, OnCheckpointComplete commits the transaction.</p>
+<p>In OnInitialize, the engine checks for any hanging prepared transactions:</p>
+<ul>
+<li>If a transaction matches a version <span class="math">\(\le v_{\text{cp}}\)</span>, it commits it.</li>
+<li>If it is for a newer version <span class="math">\(&gt; v_{\text{cp}}\)</span>, or was never prepared, it rolls it back.</li>
+</ul>
+<p>This avoids staging tables and merge logic, but keeps locks on the destination table during the checkpoint.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/docs/docs/internal/dataconsistency.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
