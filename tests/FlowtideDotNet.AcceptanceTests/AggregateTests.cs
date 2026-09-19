@@ -3537,5 +3537,64 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertExpected();
         }
+
+        [Fact]
+        public async Task AggregateGroupCreatedAndEmptiedInOneDeferredBatch()
+        {
+            // Wide group keys spread the groups over many leaves.
+            const int groupCount = 3000;
+            static string GroupName(int group) => group.ToString("D5") + new string('x', 1000);
+            for (int i = 0; i < groupCount; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, FirstName = GroupName(i) });
+            }
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT firstName, count(*), sum(userkey)
+                FROM users
+                GROUP BY firstName");
+
+            void AssertExpected()
+            {
+                AssertCurrentDataEqual(Users.GroupBy(x => x.FirstName).Select(x => new { x.Key, Count = x.Count(), Sum = x.Sum(y => (long)y.UserKey) }));
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            EnterDataWriteLock();
+            // A first source batch scattered over the leaves turns deferred inserts on.
+            for (int i = 0; i < 150; i++)
+            {
+                AddUser(new Entities.User { UserKey = groupCount + i, FirstName = GroupName(i * (groupCount / 150)) });
+            }
+            // Added and moved away in one fetch, the merged batch nets this group to zero.
+            AddOrUpdateUser(new Entities.User { UserKey = groupCount + 1000, FirstName = "only here for a moment" });
+            AddOrUpdateUser(new Entities.User { UserKey = groupCount + 1000, FirstName = GroupName(7) });
+            ExitDataWriteLock();
+
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        [Fact]
+        public async Task AggregateGlobalFirstBatchNetsToZero()
+        {
+            // No normalization, the add and the delete reach the aggregate in one batch.
+            SourceImmutable();
+            var user = new Entities.User { UserKey = 1 };
+            AddUser(user);
+            DeleteUser(user);
+
+            await StartStream("INSERT INTO output SELECT count(*), sum(userkey) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Cnt = 0L, Sum = (long?)null } });
+
+            // The single row must still pick up later data.
+            AddUser(new Entities.User { UserKey = 5 });
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Cnt = 1L, Sum = (long?)5L } });
+        }
     }
 }
