@@ -330,6 +330,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await Bounded(_stream.StartAsync(), "The first start");
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
+            // A stop inside one substreams checkpoint is one sided and ends by drain timeout.
+            await WaitForCheckpointsToSettle(logBuffers);
             await Bounded(_stream.StopAsync(), "The first stop");
 
             // Start the same instance again and add new data, the sources must pick it up
@@ -349,9 +351,43 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 throw;
             }
 
+            await WaitForCheckpointsToSettle(logBuffers);
             await Bounded(_stream.StopAsync(), "The final stop");
 
             Assert.Empty(failures);
+        }
+
+        /// <summary>
+        /// Waits until no substream has a checkpoint in flight.
+        /// </summary>
+        private static async Task WaitForCheckpointsToSettle(ConcurrentDictionary<string, RingBufferLoggerProvider> logBuffers)
+        {
+            var deadline = Stopwatch.StartNew();
+            int lastTotal = -1;
+            var stableSince = Stopwatch.StartNew();
+            while (deadline.Elapsed < TimeSpan.FromSeconds(30))
+            {
+                bool inFlight = false;
+                int total = 0;
+                foreach (var buffer in logBuffers)
+                {
+                    int started = buffer.Value.LinesContaining("Starting checkpoint for stream").Count;
+                    int done = buffer.Value.LinesContaining("Checkpoint done in stream").Count;
+                    inFlight |= started != done;
+                    total += started;
+                }
+                if (inFlight || total != lastTotal)
+                {
+                    lastTotal = total;
+                    stableSince.Restart();
+                }
+                else if (stableSince.Elapsed > TimeSpan.FromMilliseconds(500))
+                {
+                    return;
+                }
+                await Task.Delay(20);
+            }
+            Assert.Fail("The checkpoint wave did not settle within 30 seconds.");
         }
 
         /// <summary>
