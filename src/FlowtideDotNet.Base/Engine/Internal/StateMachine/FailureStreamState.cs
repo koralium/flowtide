@@ -368,11 +368,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             if (isScheduled)
             {
-                // Reschedule checkpoint
-                _context._scheduleCheckpointTask = null;
-                _context._triggerCheckpointTime = null;
-                _context._scheduleCheckpointCancelSource = null;
-                _context.TryScheduleCheckpointIn(TimeSpan.FromSeconds(10), default);
+                lock (_context._checkpointLock)
+                {
+                    // Reschedule checkpoint, a superseded timer has nothing to reschedule.
+                    if (_context.TryConsumeFiringSchedule())
+                    {
+                        _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromSeconds(10), default);
+                    }
+                }
                 return Task.CompletedTask;
             }
             return Task.FromException(new InvalidOperationException("Cant trigger a checkpoint when the stream is failing"));

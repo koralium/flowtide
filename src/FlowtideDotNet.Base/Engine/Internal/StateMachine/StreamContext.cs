@@ -78,6 +78,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal Task? _scheduleCheckpointTask;
         internal DateTime? _triggerCheckpointTime;
         internal CancellationTokenSource? _scheduleCheckpointCancelSource;
+        // Timer whose trigger is in flight, guarded by _contextLock.
+        private CancellationTokenSource? _firingSchedule;
 
         // Volatile, written and read under different locks.
         internal volatile StreamStateValue currentState;
@@ -147,6 +149,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal static Func<string, Task>? StartupBeforeGateRegistrationHookForTests;
         // Test hook: park after a delete gives up.
         internal static Func<string, Task>? DeleteGaveUpHookForTests;
+        // Test hook: blocks a fired schedule timer before it triggers.
+        internal static Action<string>? ScheduledCheckpointFiredHookForTests;
 
         private StreamStatus _streamStatus;
 
@@ -625,13 +629,44 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _scheduleCheckpointCancelSource = null;
             }
             _triggerCheckpointTime = triggerTime;
-            _scheduleCheckpointCancelSource = new CancellationTokenSource();
-            _scheduleCheckpointTask = Task.Delay(timeSpan, _scheduleCheckpointCancelSource.Token)
-                .ContinueWith((t, state) =>
+            var cancelSource = new CancellationTokenSource();
+            _scheduleCheckpointCancelSource = cancelSource;
+            _scheduleCheckpointTask = Task.Delay(timeSpan, cancelSource.Token)
+                .ContinueWith(t => TriggerScheduledCheckpoint(cancelSource), cancelSource.Token);
+            return true;
+        }
+
+        private void TriggerScheduledCheckpoint(CancellationTokenSource schedule)
+        {
+            ScheduledCheckpointFiredHookForTests?.Invoke(streamName);
+            lock (_contextLock)
+            {
+                _firingSchedule = schedule;
+                try
                 {
-                    var @this = (StreamContext)state!;
-                    @this.TriggerCheckpoint(true);
-                }, this, _scheduleCheckpointCancelSource.Token);
+                    _state!.TriggerCheckpoint(true);
+                }
+                finally
+                {
+                    _firingSchedule = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Consumes the firing schedule timer, false when it was superseded.
+        /// </summary>
+        internal bool TryConsumeFiringSchedule()
+        {
+            Debug.Assert(Monitor.IsEntered(_checkpointLock));
+
+            if (_firingSchedule == null || !ReferenceEquals(_scheduleCheckpointCancelSource, _firingSchedule))
+            {
+                return false;Fi 
+            }
+            _scheduleCheckpointTask = null;
+            _triggerCheckpointTime = null;
+            _scheduleCheckpointCancelSource = null;
             return true;
         }
 
