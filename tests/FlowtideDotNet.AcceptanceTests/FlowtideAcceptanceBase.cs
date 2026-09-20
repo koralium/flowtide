@@ -368,6 +368,16 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.TryScheduleCheckpoint(t);
         }
 
+        protected Task TriggerCheckpoint()
+        {
+            return flowtideTestStream.TriggerCheckpoint();
+        }
+
+        protected Task WaitForCheckpointsToSettle()
+        {
+            return flowtideTestStream.WaitForCheckpointsToSettle();
+        }
+
         public Task DeleteStream()
         {
             return flowtideTestStream.DeleteStream();
