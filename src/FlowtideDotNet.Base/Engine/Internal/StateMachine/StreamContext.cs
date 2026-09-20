@@ -662,7 +662,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             if (_firingSchedule == null || !ReferenceEquals(_scheduleCheckpointCancelSource, _firingSchedule))
             {
-                return false;Fi 
+                return false;
             }
             _scheduleCheckpointTask = null;
             _triggerCheckpointTime = null;
