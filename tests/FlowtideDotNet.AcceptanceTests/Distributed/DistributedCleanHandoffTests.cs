@@ -1385,12 +1385,16 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
             var hub = new LocalSubstreamCommunicationHub();
 
-            var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            // The returning substreams handoff request must land inside the drain.
+            var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false,
+                configure: builder => builder.SetStopDrainTimeout(TimeSpan.FromSeconds(15)));
             var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
             await substream0.StartAsync();
             await substream1.StartAsync();
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
+            // Idle before the handoff, a cycle started after it parks.
+            await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
             // Clean handoff, peer consumes the stop barrier, nothing pending.
             await AwaitBounded(substream1.StopAsync(), "handoff stop");
             await substream1.DisposeAsync();
@@ -1475,6 +1479,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await substream1.StartAsync();
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
+            // Idle before the handoff, a cycle started after it parks.
+            await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
             // substream_1 hands off cleanly, the peer consumes its stop barrier.
             await AwaitBounded(substream1.StopAsync(), "handoff stop");
             await substream1.DisposeAsync();
@@ -1559,6 +1565,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream1.StartAsync();
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
+                // Idle before the handoff, a cycle started after it parks.
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
                 await AwaitBounded(substream1.StopAsync(), "handoff stop");
                 await substream1.DisposeAsync();
                 lock (_streams)
