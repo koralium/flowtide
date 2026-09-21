@@ -251,7 +251,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
         {
-            Span<byte> buffer = stackalloc byte[8];
             for (int i = 0; i < indices.Length; i++)
             {
                 var index = indices[i];
@@ -260,8 +259,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     continue;
                 }
                 ref var state = ref states[i];
-                BinaryPrimitives.WriteInt64LittleEndian(buffer, _values.Get(index).ticks);
-                XxHash32Implementation.Append(buffer, ref state);
+                XxHash32Implementation.AppendLong(_values.Get(index).ticks, ref state);
             }
         }
 
