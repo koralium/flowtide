@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using SqlParser;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
@@ -87,50 +86,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
             }
         }
 
-        public static unsafe void AppendLong(ReadOnlySpan<byte> source, ref Xxh32RowState state)
-        {
-            int held = state.Length & 0x0F;
-
-            if (held != 0)
-            {
-                int remain = StripeSize - held;
-
-                if (source.Length >= remain)
-                {
-                    fixed (byte* pSource = source)
-                    fixed (byte* pHoldback = state.Holdback)
-                    {
-                        NativeMemory.Copy(pSource, pHoldback + held, (nuint)remain);
-                    }
-                    fixed (byte* pHoldback = state.Holdback)
-                    {
-                        state.ProcessStripe(new ReadOnlySpan<byte>(pHoldback, StripeSize));
-                    }
-
-                    source = source.Slice(remain);
-                    state.Length += remain;
-                }
-                else
-                {
-                    fixed (byte* pSource = source)
-                    fixed (byte* pHoldback = state.Holdback)
-                    {
-                        NativeMemory.Copy(pSource, pHoldback + held, (nuint)source.Length);
-                    }
-                    state.Length += source.Length;
-                    return;
-                }
-            }
-
-            if (source.Length > 0)
-            {
-                fixed (byte* pHoldback = state.Holdback)
-                {
-                    Unsafe.WriteUnaligned(pHoldback, Unsafe.ReadUnaligned<long>(ref MemoryMarshal.GetReference(source)));
-                }
-                state.Length += source.Length;
-            }
-        }
 
         public static unsafe uint GetCurrentHashAsUInt32(ref Xxh32RowState state)
         {

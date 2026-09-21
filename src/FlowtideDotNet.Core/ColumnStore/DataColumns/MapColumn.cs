@@ -29,9 +29,7 @@ using System.Collections;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text.Json;
-using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {

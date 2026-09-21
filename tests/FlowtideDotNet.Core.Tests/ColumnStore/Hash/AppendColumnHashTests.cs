@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Hash;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
@@ -64,7 +65,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Hash
             CheckAppendToSingle(col, values.Length);
         }
 
-        private void CheckAppendHash(Column column, int length)
+        private void CheckAppendHash(IColumn column, int length)
         {
             var indices = CreateIndices(length);
             var states = CreateHashStates(length);
@@ -88,7 +89,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Hash
             }
         }
 
-        private void CheckToHash(Column column, int length)
+        private void CheckToHash(IColumn column, int length)
         {
             var indices = CreateIndices(length);
             var scratch = new int[length];
@@ -106,7 +107,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Hash
             }
         }
 
-        private void CheckAppendToSingle(Column column, int length)
+        private void CheckAppendToSingle(IColumn column, int length)
         {
             XxHash32 expectedHasher = new XxHash32();
             Xxh32RowState state = new Xxh32RowState();
@@ -251,6 +252,36 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Hash
                 new Int64Value(3),
                 new StringValue("world")
             );
+        }
+
+        [Fact]
+        public void AlwaysNullColumnHashes()
+        {
+            var col = new AlwaysNullColumn();
+            CheckAppendHash(col, 5);
+            CheckToHash(col, 5);
+            CheckAppendToSingle(col, 5);
+        }
+
+        [Fact]
+        public void ColumnWithOffsetHashes()
+        {
+            var inner = new Column(GlobalMemoryManager.Instance);
+            inner.Add(new Int64Value(10));
+            inner.Add(new Int64Value(20));
+            inner.Add(new Int64Value(30));
+
+            var offsets = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+            offsets.Add(1);
+            offsets.Add(ColumnWithOffset.NullValueIndex);
+            offsets.Add(0);
+            offsets.Add(ColumnWithOffset.NullValueIndex);
+            offsets.Add(2);
+
+            var col = new ColumnWithOffset(inner, offsets);
+            CheckAppendHash(col, offsets.Count);
+            CheckToHash(col, offsets.Count);
+            CheckAppendToSingle(col, offsets.Count);
         }
     }
 }

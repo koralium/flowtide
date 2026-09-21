@@ -24,7 +24,6 @@ using System.Diagnostics;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -291,7 +290,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 var offset = offsets[index];
                 if (offset == NullValueIndex)
                 {
-                    destination[i] = XxHash32Implementation.HashFalse;
+                    destination[i] = XxHash32Implementation.HashNullByte();
                     scratch[i] = -1;
                 }
                 else

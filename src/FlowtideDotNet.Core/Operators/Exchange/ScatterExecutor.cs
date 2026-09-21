@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -27,7 +27,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal class ScatterExecutor : IExchangeKindExecutor
     {
-        private readonly Func<EventBatchData, int, uint>? _hashFunction;
         private readonly BatchHasher? _batchHasher;
         private readonly int _partitionCount;
         private readonly int[][] _partitionsToTargets;
@@ -127,14 +126,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
             }
 
-            // Create the hash function based on the fields. With a single partition every
-            // row lands in partition zero, no hash is compiled or evaluated: a gather
+            // Create the batch hasher based on the fields. With a single partition every
+            // row lands in partition zero, no hash is evaluated: a gather
             // exchange carries no hash fields (a global aggregate can prune every column
             // from the input, a compiled field reference would then read a missing column).
-            if (_partitionCount > 1)
-            {
-                _hashFunction = ColumnHashCompiler.CompileGetHashCode(new List<Substrait.Expressions.Expression>(scatterExchangeKind.Fields), functionsRegister);
-            }
             if (_partitionCount > 1)
             {
                 _batchHasher = new BatchHasher(scatterExchangeKind.Fields);
@@ -228,23 +223,43 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private void PartitionDataInternal(StreamEventBatch data)
         {
-            Debug.Assert(_hashFunction != null || _partitionCount == 1);
+            Debug.Assert(_batchHasher != null || _partitionCount == 1);
             foreach (var target in _targets)
             {
                 target.NewBatch(data.Data);
             }
+            int count = data.Data.Count;
+            if (count == 0)
+            {
+                return;
+            }
+
+            if (_partitionCount == 1)
+            {
+                var targetIndices = _partitionsToTargets[0];
+                for (int t = 0; t < targetIndices.Length; t++)
+                {
+                    var target = _targets[targetIndices[t]];
+                    for (int i = 0; i < count; i++)
+                    {
+                        target.AddEvent(data.Data, i);
+                    }
+                }
+                return;
+            }
+
             ReadOnlySpan<uint> result = ReadOnlySpan<uint>.Empty;
             if (_batchHasher != null)
             {
                 result = _batchHasher.HashBatch(data.Data.EventBatchData);
             }
-            int count = data.Data.Count;
-            ref uint resultRef = ref MemoryMarshal.GetReference(result);
-            ref var targetRef = ref MemoryMarshal.GetReference(_partitionToSingleTarget.AsSpan());
+
             if (_singleTargetPerPartition &&
                 _partitionsPowerOfTwo)
             {
                 Debug.Assert(_partitionToSingleTarget != null);
+                ref uint resultRef = ref MemoryMarshal.GetReference(result);
+                ref var targetRef = ref MemoryMarshal.GetReference(_partitionToSingleTarget.AsSpan());
                 uint mask = ((uint)_partitionsToTargets.Length) - 1;
                 for (int i = 0; i < count; i++)
                 {
@@ -255,7 +270,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             else
             {
-                for (int i = 0; i < data.Data.Count; i++)
+                for (int i = 0; i < count; i++)
                 {
                     int partitionId = 0;
                     if (result.Length > 0)

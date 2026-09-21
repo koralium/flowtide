@@ -186,7 +186,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 {
                     continue;
                 }
-                destination[i] = XxHash32Implementation.HashFalse;
+                destination[i] = XxHash32Implementation.HashNullByte();
             }
         }
 

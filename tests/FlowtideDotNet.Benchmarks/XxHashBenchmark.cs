@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -27,7 +27,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static FlowtideDotNet.Core.ColumnStore.Sort.BatchSortCompiler;
-using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Benchmarks
 {
@@ -107,11 +106,5 @@ namespace FlowtideDotNet.Benchmarks
         {
             _batchHasher!.HashBatch(data);
         }
-
-        //[Benchmark]
-        //public void ToXxHash32()
-        //{
-        //    columns[0].ToXxHash32(_hashIndices!, default, _destination!, _scratch!);
-        //}
     }
 }

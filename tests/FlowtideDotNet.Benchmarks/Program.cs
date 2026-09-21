@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -14,15 +14,6 @@ using BenchmarkDotNet.Running;
 using DifferntialCompute.Benchmarks;
 using FlowtideDotNet.Benchmarks;
 using FlowtideDotNet.Benchmarks.Stream;
-
-//XxHashBenchmark xxHashBenchmark = new XxHashBenchmark();
-//xxHashBenchmark.Count = 1000;
-//xxHashBenchmark.GlobalSetup();
-
-//for (int i = 0; i < 1000000; i++)
-//{
-//    xxHashBenchmark.PerColumn();
-//}
 
 //BatchSortBenchmark batchSortBenchmark = new BatchSortBenchmark();
 //batchSortBenchmark.GlobalSetup();

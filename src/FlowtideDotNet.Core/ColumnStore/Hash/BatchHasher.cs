@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
     public class BatchHasher
     {
         private readonly int[] _fieldIndices;
-        private ReferenceSegment?[] _referenceSegments;
+        private readonly ReferenceSegment?[] _referenceSegments;
         private int[] _indices = Array.Empty<int>();
         private int[] _scratch = Array.Empty<int>();
         private uint[] _destination = Array.Empty<uint>();
@@ -35,12 +35,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
 
         public BatchHasher(int[] fieldIndices)
         {
+            if (fieldIndices.Length == 0)
+            {
+                throw new ArgumentException("fieldIndices cannot be empty.", nameof(fieldIndices));
+            }
             _fieldIndices = fieldIndices;
             _referenceSegments = new ReferenceSegment[fieldIndices.Length];
         }
 
         public BatchHasher(IReadOnlyList<FieldReference> fieldReferences)
         {
+            if (fieldReferences.Count == 0)
+            {
+                throw new ArgumentException("fieldReferences cannot be empty.", nameof(fieldReferences));
+            }
             _fieldIndices = new int[fieldReferences.Count];
             _referenceSegments = new ReferenceSegment[fieldReferences.Count];
             for (int i = 0; i < fieldReferences.Count; i++)

@@ -245,7 +245,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination, Span<int> scratch)
         {
-            throw new NotImplementedException();
+            destination.Slice(0, indices.Length).Fill(XxHash32Implementation.HashNullByte());
         }
     }
 }
