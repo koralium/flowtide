@@ -24,12 +24,14 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
+using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -678,6 +680,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
                 throw new NotImplementedException();
             }
+
+            var count = endOffset - startOffset;
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, count);
+            hashAlgorithm.Append(buffer);
 
             for (int i = startOffset; i < endOffset; i++)
             {

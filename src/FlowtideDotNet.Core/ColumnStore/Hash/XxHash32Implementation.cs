@@ -169,7 +169,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint HashNullByte()
         {
-            return 0x2A993D71U;
+            return 3479547966;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

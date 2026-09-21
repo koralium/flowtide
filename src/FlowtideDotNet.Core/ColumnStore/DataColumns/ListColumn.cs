@@ -546,6 +546,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var listStart = _offsets.Get(index);
             var listEnd = _offsets.Get(index + 1);
+            var count = listEnd - listStart;
+
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, count);
+            // Add list length to differentiate between flat lists and nested lists.
+            hashAlgorithm.Append(buffer);
 
             for (int i = listStart; i < listEnd; i++)
             {

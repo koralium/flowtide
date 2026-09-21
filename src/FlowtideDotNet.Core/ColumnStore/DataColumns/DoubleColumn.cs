@@ -237,7 +237,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
         {
             Span<byte> buffer = stackalloc byte[8];
-            BinaryPrimitives.WriteDoubleLittleEndian(buffer, _data[index]);
+            var val = _data[index];
+            if (val == 0.0)
+            {
+                val = 0.0; // Normalize -0.0 to +0.0 (zero out the sign bit), this is done so all 0.0 goes to the same partition
+            }
+            BinaryPrimitives.WriteDoubleLittleEndian(buffer, val);
             hashAlgorithm.Append(buffer);
         }
 
