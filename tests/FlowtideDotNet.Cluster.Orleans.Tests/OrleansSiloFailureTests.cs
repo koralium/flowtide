@@ -19,11 +19,11 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
     /// Stops a silo while a distributed stream runs across the cluster. Uses its own cluster
     /// fixture since the cluster loses a silo permanently.
     /// </summary>
-    public class OrleansSiloFailureTests : IClassFixture<OrleansTwoSiloClusterFixture>
+    public class OrleansSiloFailureTests : IClassFixture<OrleansTwoSiloDurableStorageClusterFixture>
     {
-        private readonly OrleansTwoSiloClusterFixture _fixture;
+        private readonly OrleansTwoSiloDurableStorageClusterFixture _fixture;
 
-        public OrleansSiloFailureTests(OrleansTwoSiloClusterFixture fixture)
+        public OrleansSiloFailureTests(OrleansTwoSiloDurableStorageClusterFixture fixture)
         {
             _fixture = fixture;
         }

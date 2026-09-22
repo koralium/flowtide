@@ -32,7 +32,8 @@ builder.Services.AddOrleans(b =>
         connectors.AddSink(...);
     }, (streamName, substreamName, storage) =>
     {
-        // Called once per substream, every substream needs its own storage
+        // Called once per substream, every substream needs its own storage. Use storage
+        // that every silo can reach in production, see "State storage must survive"
         storage.AddTemporaryDevelopmentStorage(o =>
         {
             o.DirectoryPath = $"./temp/{streamName}/{substreamName}";
@@ -129,7 +130,7 @@ var substreamGrain = grainFactory.GetGrain<ISubStreamGrain>(
 await substreamGrain.MigrateAsync();
 ```
 
-The grain drains the data exchanged with the other substreams, stops at a final checkpoint and migrates. The new activation restores that checkpoint and reconnects, the other substreams keep running and nothing is replayed. This requires state storage that is reachable from every silo. With silo-local storage the reconnect is refused and the stream falls back to normal recovery instead.
+The grain drains the data exchanged with the other substreams, stops at a final checkpoint and migrates. The new activation restores that checkpoint and reconnects, the other substreams keep running and nothing is replayed. This requires state storage that is reachable from every silo. With silo-local storage the new activation comes back without its state, which the other substreams refuse, see [State storage must survive](index.md#state-storage-must-survive).
 
 A migration that can not complete cleanly, for example when a peer is unreachable, falls back to the same recovery as a silo failure. Orleans can also decide to skip a requested migration, the keep alive reminder then restarts the stream in place.
 

@@ -50,6 +50,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             public Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request) => throw new NotImplementedException();
             public Task FailAndRecoverAsync(FailAndRecoverRequest request) => Task.CompletedTask;
             public Task CheckpointDone(CheckpointDoneRequest request) => Task.CompletedTask;
+            public Task DurabilityClaim(DurabilityClaimRequest request) => Task.CompletedTask;
             public Task StopStreamAsync() => Task.CompletedTask;
             public Task DeleteStreamAsync() => Task.CompletedTask;
             public Task MigrateAsync() => Task.CompletedTask;

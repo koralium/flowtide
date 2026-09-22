@@ -231,6 +231,11 @@ namespace FlowtideDotNet.AcceptanceTests
             return flowtideTestStream.MockIngressFailAndRollback(restoreVersion);
         }
 
+        /// <summary>
+        /// The name the engine knows the stream by, what the static test hooks report.
+        /// </summary>
+        protected string StreamName => flowtideTestStream.TestName.Replace("/", "_");
+
         protected Task MockIngressSetDependenciesDone()
         {
             return flowtideTestStream.MockIngressSetDependenciesDone();

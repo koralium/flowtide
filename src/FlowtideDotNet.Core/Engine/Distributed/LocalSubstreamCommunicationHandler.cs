@@ -31,6 +31,7 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
         private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
+        private Func<long, int, long, long, bool, Task>? _callReceiveDurabilityClaim;
 
         public LocalSubstreamCommunicationHandler(LocalSubstreamCommunicationHub hub, string selfSubstreamName, string targetSubstreamName)
         {
@@ -84,6 +85,22 @@ namespace FlowtideDotNet.Core.Engine.Distributed
                 return peer._callFailAndRecover(restoreVersion);
             }
             // The other substream has not started yet, there is nothing to recover.
+            return Task.CompletedTask;
+        }
+
+        public void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim)
+        {
+            _callReceiveDurabilityClaim = callReceiveDurabilityClaim;
+        }
+
+        public Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
+        {
+            if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
+                peer._callReceiveDurabilityClaim != null)
+            {
+                return peer._callReceiveDurabilityClaim(version, radius, senderCheckpointEpoch, targetCheckpointEpoch, requestReply);
+            }
+            // The other substream has not been built yet, the claim is sent again later.
             return Task.CompletedTask;
         }
 

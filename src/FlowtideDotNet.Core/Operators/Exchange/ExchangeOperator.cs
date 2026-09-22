@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public Dictionary<int, long> TargetsEventCounter { get; set; } = new Dictionary<int, long>();
     }
 
-    internal class ExchangeOperator : PartitionVertex<StreamEventBatch>, IStreamEgressVertex
+    internal class ExchangeOperator : PartitionVertex<StreamEventBatch>, IStreamEgressVertex, IStreamVersionAgreement
     {
         private const string PullBucketRequestTriggerPrefix = "exchange_";
 
@@ -293,7 +293,42 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public Task CheckpointDone(long checkpointVersion)
         {
+            // Not through the targets, an exchange with local targets only has none that send.
+            _communicationPointFactory.Durability?.LocalDurable(checkpointVersion);
             return _executor.CheckpointDone(checkpointVersion);
         }
+
+        public Task CommitVersion(long version)
+        {
+            // Nothing external, the peer acknowledgement stays in CheckpointDone.
+            return Task.CompletedTask;
+        }
+
+        void IStreamVersionAgreement.InvalidateAgreement()
+        {
+            _communicationPointFactory.Durability?.Invalidate();
+        }
+
+        void IStreamVersionAgreement.ResetAgreement()
+        {
+            _communicationPointFactory.Durability?.Reset();
+        }
+
+        void IStreamVersionAgreement.AnnounceInitialized(long restoreVersion)
+        {
+            _communicationPointFactory.Durability?.LocalDurable(restoreVersion);
+        }
+
+        Task IStreamVersionAgreement.WhenVersionAgreed(long version, CancellationToken cancellationToken)
+        {
+            return _communicationPointFactory.Durability?.WhenAgreed(version, cancellationToken) ?? Task.CompletedTask;
+        }
+
+        bool IStreamVersionAgreement.IsVersionAgreed(long version)
+        {
+            return _communicationPointFactory.Durability?.IsAgreed(version) ?? true;
+        }
+
+        long IStreamVersionAgreement.HighestKnownDurableVersion => _communicationPointFactory.Durability?.HighestKnownDurable ?? -1;
     }
 }

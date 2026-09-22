@@ -537,5 +537,11 @@ namespace FlowtideDotNet.Base.Vertices
         {
             return Task.CompletedTask;
         }
+
+        /// <inheritdoc cref="IStreamEgressVertex.CommitVersion"/>
+        public virtual Task CommitVersion(long version)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

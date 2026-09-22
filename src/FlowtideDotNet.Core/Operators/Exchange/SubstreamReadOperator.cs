@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     /// through the communication point and buffered in a transient channel; after a failure both
     /// substreams roll back to a common checkpoint and the other substream replays the events.
     /// </summary>
-    internal class SubstreamReadOperator : IngressVertex<StreamEventBatch>
+    internal class SubstreamReadOperator : IngressVertex<StreamEventBatch>, IStreamVersionAgreement
     {
         /// <summary>
         /// Placed in the channel when this stream takes its stop checkpoint, so the fetch loop
@@ -595,8 +595,36 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public override Task CheckpointDone(long checkpointVersion)
         {
             // Send checkpoint done to the communication point so the other substream can set dependencies done.
+            _communicationPoint.Durability?.LocalDurable(checkpointVersion);
             return _communicationPoint.SendCheckpointDone(checkpointVersion);
         }
+
+        void IStreamVersionAgreement.InvalidateAgreement()
+        {
+            _communicationPoint.Durability?.Invalidate();
+        }
+
+        void IStreamVersionAgreement.ResetAgreement()
+        {
+            _communicationPoint.Durability?.Reset();
+        }
+
+        void IStreamVersionAgreement.AnnounceInitialized(long restoreVersion)
+        {
+            _communicationPoint.Durability?.LocalDurable(restoreVersion);
+        }
+
+        Task IStreamVersionAgreement.WhenVersionAgreed(long version, CancellationToken cancellationToken)
+        {
+            return _communicationPoint.Durability?.WhenAgreed(version, cancellationToken) ?? Task.CompletedTask;
+        }
+
+        bool IStreamVersionAgreement.IsVersionAgreed(long version)
+        {
+            return _communicationPoint.Durability?.IsAgreed(version) ?? true;
+        }
+
+        long IStreamVersionAgreement.HighestKnownDurableVersion => _communicationPoint.Durability?.HighestKnownDurable ?? -1;
 
         /// <summary>
         /// Consumed the peer's stop barrier, uncommitted, else the handoff deadlocks.

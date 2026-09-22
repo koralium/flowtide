@@ -86,6 +86,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             public Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request) => _inner.GetEventsAsync(request);
             public Task FailAndRecoverAsync(FailAndRecoverRequest request) => _inner.FailAndRecoverAsync(request);
             public Task CheckpointDone(CheckpointDoneRequest request) => _inner.CheckpointDone(request);
+            public Task DurabilityClaim(DurabilityClaimRequest request) => _inner.DurabilityClaim(request);
             public Task StopStreamAsync() => _inner.StopStreamAsync();
             public Task DeleteStreamAsync() => _inner.DeleteStreamAsync();
             public Task MigrateAsync() => _inner.MigrateAsync();

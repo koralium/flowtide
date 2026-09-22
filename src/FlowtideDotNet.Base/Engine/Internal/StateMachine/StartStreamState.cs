@@ -29,6 +29,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // and every following restart then dies on the running tasks it left behind.
         private readonly CancellationTokenSource _startAbort = new CancellationTokenSource();
 
+        // The version the blocks of this start initialize at, committed once it is agreed.
+        private long _restoreVersion;
+        private bool _initEventsDone;
+
         // The block generation this start created; the abandon may only claim the created
         // flag while the context still holds this generation, later it describes a
         // successor start's blocks.
@@ -130,8 +134,81 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         private void InitEventsDone()
         {
-            // Start-up completed, go to running state
-            TransitionTo(StreamStateValue.Running);
+            // Called under the checkpoint lock, more than once if a late signal arrives.
+            if (_initEventsDone)
+            {
+                return;
+            }
+            _initEventsDone = true;
+            // Claimed at the decision like a compaction, a teardown waits for the commit below.
+            System.Threading.Interlocked.Increment(ref _context!._stateManagerWriteCount);
+            _ = Task.Run(FinishStart);
+        }
+
+        /// <summary>
+        /// Commits the restore version once every connected stream initialized at it, then runs.
+        /// </summary>
+        private async Task FinishStart()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            bool committed = false;
+            try
+            {
+                try
+                {
+                    // A connected stream can still come up lower and roll this one back.
+                    _context._waitingForVersionAgreementAtStart = true;
+                    try
+                    {
+                        await _context.WaitForVersionAgreement(_restoreVersion, _startAbort.Token);
+                    }
+                    finally
+                    {
+                        _context._waitingForVersionAgreementAtStart = false;
+                    }
+                    if (StartAborted() || RollbackPending())
+                    {
+                        return;
+                    }
+                    await _context.CommitVersionOnEgresses(_restoreVersion);
+                    committed = true;
+                }
+                finally
+                {
+                    System.Threading.Interlocked.Decrement(ref _context._stateManagerWriteCount);
+                }
+                if (StartAborted() || RollbackPending())
+                {
+                    // Superseded while the sinks committed, the failure on its way decides.
+                    return;
+                }
+                // A stale transition is ignored, the context checks the calling state.
+                await TransitionTo(StreamStateValue.Running);
+            }
+            catch (OperationCanceledException) when (_startAbort.IsCancellationRequested || _context.IsDisposed)
+            {
+                // A failure, stop, delete or dispose superseded this start.
+            }
+            catch (Exception e)
+            {
+                if (_startAbort.IsCancellationRequested || _context.IsDisposed)
+                {
+                    // An error of a start that is already over must not fail its successor.
+                    _context._logger.LogWarning(e, "The superseded start of stream {stream} failed while it finished, committed: {committed}.", _context.streamName, committed);
+                    return;
+                }
+                await _context.OnFailure(e);
+            }
+        }
+
+        private bool RollbackPending()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            lock (_context._checkpointLock)
+            {
+                // Lowered by a peer after this start restored, the failure is on its way.
+                return _context._restoreCheckpointVersion.HasValue && _context._restoreCheckpointVersion.Value < _restoreVersion;
+            }
         }
 
         public override async Task Initialize(StreamStateValue previousState)
@@ -248,10 +325,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context.EnableTriggerRegistration();
 
 
+                // Before the version is chosen: nothing is learned or claimed between the choice and the restore.
+                _context.ForEachVersionAgreement(agreement => agreement.InvalidateAgreement());
+
                 long? restoreVersion;
                 lock (_context._checkpointLock)
                 {
-                    restoreVersion = _context._restoreCheckpointVersion;
+                    restoreVersion = _context.ValidRequestedRestoreVersion_NoLock();
                 }
 
                 // This start creates the blocks below; a failure before that must not run the
@@ -264,6 +344,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (StartAborted())
                 {
                     return;
+                }
+
+                var beforeRestoreHook = StreamContext.StartupBeforeRestoreHookForTests;
+                if (beforeRestoreHook != null)
+                {
+                    await beforeRestoreHook(_context.streamName, restoreVersion);
                 }
 
                 // Initialize state
@@ -341,6 +427,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     await AbandonStartedBlocks();
                     return;
                 }
+
+                _restoreVersion = _context._stateManager.LastCompletedCheckpointVersion;
+                // Claims from an earlier run must not count, version numbers are reused.
+                _context.ForEachVersionAgreement(agreement => agreement.ResetAgreement());
 
                 try
                 {
@@ -427,6 +517,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     await AbandonStartedBlocks();
                     return;
                 }
+
+                // Initialized, not merely restored. Announced inside the gate: a successor start
+                // resets the agreement only after this, a superseded start cannot announce into it.
+                _context.ForEachVersionAgreement(agreement => agreement.AnnounceInitialized(_restoreVersion));
             }
             finally
             {

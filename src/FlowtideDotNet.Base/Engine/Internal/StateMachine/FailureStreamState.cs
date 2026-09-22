@@ -146,7 +146,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             lock (_context._checkpointLock)
             {
                 var completed = _context._stateManager.LastCompletedCheckpointVersion;
-                if (!_context._restoreCheckpointVersion.HasValue || _context._restoreCheckpointVersion.Value > completed)
+                var requested = _context.ValidRequestedRestoreVersion_NoLock();
+                if (!requested.HasValue || requested.Value > completed)
                 {
                     _context._restoreCheckpointVersion = completed;
                 }

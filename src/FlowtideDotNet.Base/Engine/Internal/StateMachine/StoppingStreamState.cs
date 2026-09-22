@@ -354,6 +354,41 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         }
 
         /// <summary>
+        /// Commits the stop version only if every connected stream is already durable at it,
+        /// drain readiness says nothing about that. Otherwise the next start commits it.
+        /// </summary>
+        private async Task CommitStopVersionIfAgreed()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+
+            var version = _context._stateManager.LastCompletedCheckpointVersion;
+            // Claimed before the decision, a dispose either waits for it or is seen here.
+            Interlocked.Increment(ref _context._stateManagerWriteCount);
+            try
+            {
+                if (_context.IsDisposed)
+                {
+                    return;
+                }
+                if (!_context.IsVersionAgreed(version))
+                {
+                    _context._logger.LogInformation("Stream {stream} stops before version {version} is agreed, the next start commits it.", _context.streamName, version);
+                    return;
+                }
+                await _context.CommitVersionOnEgresses(version);
+            }
+            catch (Exception e)
+            {
+                // A failed commit must not wedge the stop, the next start commits it.
+                _context._logger.LogError(e, "Committing version {version} on stream {stream} failed during the stop.", version, _context.streamName);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _context._stateManagerWriteCount);
+            }
+        }
+
+        /// <summary>
         /// Runs the sinks' Compact for the durable stop checkpoint.
         /// </summary>
         private async Task CompactEgressBlocks()
@@ -461,6 +496,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             else
             {
                 // Clean stop, sinks commit from Compact, peers confirmed.
+                await CommitStopVersionIfAgreed();
                 await CompactEgressBlocks();
                 _context.ForEachBlock((key, block) =>
                 {
@@ -476,7 +512,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 lock (_context._checkpointLock)
                 {
                     var completed = _context._stateManager.LastCompletedCheckpointVersion;
-                    if (!_context._restoreCheckpointVersion.HasValue || _context._restoreCheckpointVersion.Value > completed)
+                    var requested = _context.ValidRequestedRestoreVersion_NoLock();
+                    if (!requested.HasValue || requested.Value > completed)
                     {
                         _context._restoreCheckpointVersion = completed;
                     }

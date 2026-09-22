@@ -53,6 +53,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly IStreamMemoryManager _streamMemoryManager;
         private readonly Meter _contextMeter;
         internal long? _restoreCheckpointVersion;
+        // Cancelled by the dispose, ends waits for the other streams.
+        private readonly CancellationTokenSource _disposeCancellation = new CancellationTokenSource();
 
         internal StreamState? _lastState;
         internal long producingTime = 0;
@@ -147,6 +149,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal static Func<string, Task>? StartupDuringBlockInitHookForTests;
         // Test hook: park before gate registration.
         internal static Func<string, Task>? StartupBeforeGateRegistrationHookForTests;
+        // Test hook: park between choosing the restore version and restoring it.
+        internal static Func<string, long?, Task>? StartupBeforeRestoreHookForTests;
         // Test hook: park after a delete gives up.
         internal static Func<string, Task>? DeleteGaveUpHookForTests;
         // Test hook: blocks a fired schedule timer before it triggers.
@@ -533,6 +537,89 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 await action(block.Key, block.Value);
             }
+        }
+
+        /// <summary>
+        /// Completes once every stream connected to this one is durable at the version.
+        /// A stream with no connections agrees with itself at once.
+        /// </summary>
+        internal async Task WaitForVersionAgreement(long version, CancellationToken cancellationToken)
+        {
+            // A dispose must not leave the wait, and what re-sends for it, running forever.
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCancellation.Token);
+            List<Task>? waits = null;
+            foreach (var block in _blockLookup)
+            {
+                if (block.Value is IStreamVersionAgreement agreement)
+                {
+                    waits ??= new List<Task>();
+                    waits.Add(agreement.WhenVersionAgreed(version, linked.Token));
+                }
+            }
+            if (waits != null)
+            {
+                await Task.WhenAll(waits);
+            }
+        }
+
+        internal bool HasVersionAgreements
+        {
+            get
+            {
+                foreach (var block in _blockLookup)
+                {
+                    if (block.Value is IStreamVersionAgreement)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// True while a start has initialized everything and only waits for the other streams.
+        /// </summary>
+        internal volatile bool _waitingForVersionAgreementAtStart;
+
+        internal bool IsVersionAgreed(long version)
+        {
+            foreach (var block in _blockLookup)
+            {
+                if (block.Value is IStreamVersionAgreement agreement && !agreement.IsVersionAgreed(version))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        internal void ForEachVersionAgreement(Action<IStreamVersionAgreement> action)
+        {
+            foreach (var block in _blockLookup)
+            {
+                if (block.Value is IStreamVersionAgreement agreement)
+                {
+                    action(agreement);
+                }
+            }
+        }
+
+        // The highest version handed to the sinks, kept for the lifetime of the stream object.
+        private long _highestCommittedVersion = -1;
+
+        internal Task CommitVersionOnEgresses(long version)
+        {
+            lock (_checkpointLock)
+            {
+                // Before the sinks hear it, from here on nothing may go below it.
+                if (version > _highestCommittedVersion)
+                {
+                    _highestCommittedVersion = version;
+                }
+            }
+            _logger.LogDebug("Committing version {version} on the egresses of stream {stream}", version, streamName);
+            return ForEachEgressBlockAsync((key, block) => block.CommitVersion(version));
         }
 
         internal List<Task> GetCompletionTasks()
@@ -928,6 +1015,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
             // Marked first, a failing stream would otherwise restart forever
             _disposed = true;
+            _disposeCancellation.Cancel();
             _wantedState = StreamStateValue.NotStarted;
 
             CancelTriggerRegistration();
@@ -1216,12 +1304,52 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             stopTask?.TrySetException(exception);
         }
 
+        /// <summary>
+        /// The lowest version a request may ask this stream to restore. Call under the checkpoint lock.
+        /// </summary>
+        internal long LowestRestorableVersion_NoLock()
+        {
+            var lowest = Math.Max(_stateManager.LastCompletedCheckpointVersion - 1, _highestCommittedVersion);
+            foreach (var block in _blockLookup)
+            {
+                if (block.Value is IStreamVersionAgreement agreement)
+                {
+                    lowest = Math.Max(lowest, agreement.HighestKnownDurableVersion);
+                }
+            }
+            return lowest;
+        }
+
+        /// <summary>
+        /// The requested restore version if it may still be used. Call under the checkpoint lock.
+        /// </summary>
+        internal long? ValidRequestedRestoreVersion_NoLock()
+        {
+            if (_restoreCheckpointVersion.HasValue)
+            {
+                var lowest = LowestRestorableVersion_NoLock();
+                if (_restoreCheckpointVersion.Value < lowest)
+                {
+                    _logger.LogError("Ignoring the requested rollback of stream {stream} to version {version}, nothing may restore below version {lowest} any more.", streamName, _restoreCheckpointVersion.Value, lowest);
+                    _restoreCheckpointVersion = default;
+                }
+            }
+            return _restoreCheckpointVersion;
+        }
+
         internal Task FailAndRollback(Exception? exception, long? restoreVersion = default)
         {
             lock (_checkpointLock)
             {
                 if (restoreVersion.HasValue)
                 {
+                    var lowest = LowestRestorableVersion_NoLock();
+                    if (restoreVersion.Value < lowest)
+                    {
+                        // Old, or from a stream that lost its state: nothing happens, not even a failure.
+                        _logger.LogError("Refusing to roll stream {stream} back to version {version}, nothing may restore below version {lowest}.", streamName, restoreVersion.Value, lowest);
+                        return Task.CompletedTask;
+                    }
                     // A peer requested rollback version, it caps how far the teardown can
                     // roll forward. The local last completed version is decided later, after
                     // any in-flight commit settled, see FailureStreamState.StopAndDispose.

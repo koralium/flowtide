@@ -250,6 +250,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await comFactory.ComHandler.CallRecieveCheckpointDone(lastVersion, Volatile.Read(ref capturedSelfEpoch));
             }
 
+            // The stream must have got as far as a checkpoint, a start that never finished proves nothing.
+            Assert.True(seen >= 1, "No checkpoint was reached, the stale-epoch fence was never exercised.");
             Assert.True(
                 seen <= 2,
                 $"Checkpoints kept completing on stale-epoch acks ({seen}); the checkpoint-done ack was not fenced by epoch.");

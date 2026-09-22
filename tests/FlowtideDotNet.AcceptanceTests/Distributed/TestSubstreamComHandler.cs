@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Operators.Exchange;
+using System.Collections.Concurrent;
 
 namespace FlowtideDotNet.AcceptanceTests.Distributed
 {
@@ -23,6 +24,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
         private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
+        private Func<long, int, long, long, bool, Task>? _callReceiveDurabilityClaim;
 
         public TestSubstreamComHandler(
             Func<long, long, Task> sendCheckpointDone,
@@ -70,6 +72,45 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         public Task SendFailAndRecover(long restoreVersion)
         {
             return _sendFailAndRecover(restoreVersion);
+        }
+
+        public void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim)
+        {
+            _callReceiveDurabilityClaim = callReceiveDurabilityClaim;
+        }
+
+        /// <summary>
+        /// The claims this stream sent to the simulated substream.
+        /// </summary>
+        public ConcurrentQueue<(long Version, int Radius, long SenderEpoch, long TargetEpoch)> SentDurabilityClaims { get; } = new ConcurrentQueue<(long, int, long, long)>();
+
+        /// <summary>
+        /// The simulated substream is durable wherever this stream is, it claims the same back.
+        /// </summary>
+        public bool EchoDurabilityClaims { get; set; } = true;
+
+        public Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
+        {
+            SentDurabilityClaims.Enqueue((version, radius, senderCheckpointEpoch, targetCheckpointEpoch));
+            if (EchoDurabilityClaims && _callReceiveDurabilityClaim != null)
+            {
+                // Its own epoch is the one this stream addressed, this stream's the one it announced.
+                return _callReceiveDurabilityClaim(version, radius, targetCheckpointEpoch, senderCheckpointEpoch, false);
+            }
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Simulates the other substream claiming a version, tagged with its own epoch and the
+        /// epoch it believes this stream is on.
+        /// </summary>
+        public Task CallReceiveDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch)
+        {
+            if (_callReceiveDurabilityClaim == null)
+            {
+                throw new InvalidOperationException("Not initialized");
+            }
+            return _callReceiveDurabilityClaim(version, radius, senderCheckpointEpoch, targetCheckpointEpoch, false);
         }
 
         public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)

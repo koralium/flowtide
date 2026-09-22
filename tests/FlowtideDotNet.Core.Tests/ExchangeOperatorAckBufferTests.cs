@@ -49,6 +49,12 @@ namespace FlowtideDotNet.Core.Tests
                 return Task.CompletedTask;
             }
 
+            public void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim)
+            {
+            }
+
+            public Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
+
             public Task SendFailAndRecover(long restoreVersion)
             {
                 return Task.CompletedTask;
@@ -94,6 +100,12 @@ namespace FlowtideDotNet.Core.Tests
             }
 
             public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier) => Task.CompletedTask;
+
+            public void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim)
+            {
+            }
+
+            public Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
 
             public Task SendFailAndRecover(long restoreVersion) => Task.CompletedTask;
 

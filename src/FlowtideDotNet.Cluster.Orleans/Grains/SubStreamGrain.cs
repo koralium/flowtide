@@ -85,6 +85,17 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             await handler.TargetCheckpointDone(request.CheckpointVersion, request.CheckpointEpoch, request.CoversPeerStopBarrier);
         }
 
+        public async Task DurabilityClaim(DurabilityClaimRequest request)
+        {
+            if (_orleansCommunicationFactory == null ||
+                !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
+            {
+                // The stream has not started yet, the claim is sent again later
+                return;
+            }
+            await handler.TargetDurabilityClaim(request.Version, request.Radius, request.SenderCheckpointEpoch, request.TargetCheckpointEpoch, request.RequestReply);
+        }
+
         public Task FailAndRecoverAsync(FailAndRecoverRequest request)
         {
             if (_orleansCommunicationFactory == null ||
@@ -345,6 +356,13 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 return Task.CompletedTask;
             }
             var state = stream.State;
+            if (stream.IsWaitingForConnectedStreams)
+            {
+                // Initialized and waiting for another substream to come up, recreating this one
+                // would only restart the wait with new epochs.
+                _reminderObservedState = null;
+                return Task.CompletedTask;
+            }
             if (state != Base.Engine.StreamStateValue.Running &&
                 _reminderObservedState == state)
             {

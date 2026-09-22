@@ -28,6 +28,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private readonly HashSet<string> _preCompletedDependencies = new HashSet<string>();
         private Checkpoint? _currentCheckpoint;
         private bool _doingCheckpoint = false;
+        // Cancelled on failure, the streams waited for may never get there.
+        private readonly CancellationTokenSource _agreementAbort = new CancellationTokenSource();
+        // Dependency of every cycle when other streams are connected: the version is agreed.
+        private const string VersionAgreementDependency = "$version_agreement";
         private bool _initialCheckpointTaken = false;
         private bool _compactionStarted = false;
 
@@ -83,6 +87,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (waitingForDependencies == null || !waitingForDependencies.Contains(name))
                 {
+                    if (name == VersionAgreementDependency)
+                    {
+                        // Belongs to one version only, it must never complete another cycle early.
+                        return;
+                    }
                     // This stream has not yet started checkpointing, but a dependency is already done
                     // Add it to pre completed
                     _context._logger.LogDebug("Operator {Operator} has completed dependencies before checkpoint started on stream {Stream}, marking as precompleted.", name, _context.streamName);
@@ -96,7 +105,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // compaction once a teardown has moved the stream out of the running state,
                 // it would write the state manager the teardown is about to dispose.
                 // A dispose leaves the state, so check it here
-                if (waitingForDependencies.Count > 0 || !_initialCheckpointTaken || _compactionStarted || _context.currentState != StreamStateValue.Running || _context.IsDisposed)
+                if (waitingForDependencies.Count > 0 || !_initialCheckpointTaken || _compactionStarted || _context.currentState != StreamStateValue.Running || _context.IsDisposed || _agreementAbort.IsCancellationRequested)
                 {
                     return;
                 }
@@ -203,6 +212,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     {
                         return block.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
                     });
+                    run.WaitForVersionAgreementDependency(run._context._stateManager.LastCompletedCheckpointVersion);
                 }
                 catch
                 {
@@ -267,6 +277,38 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                  .Unwrap();
         }
 
+        /// <summary>
+        /// Waits outside the compaction claim, a stop deferred behind the cycle can still time
+        /// out on it. Completes the agreement dependency like a peer acknowledgement would.
+        /// </summary>
+        private void WaitForVersionAgreementDependency(long version)
+        {
+            Debug.Assert(_context != null);
+            if (!_context.HasVersionAgreements)
+            {
+                return;
+            }
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _context.WaitForVersionAgreement(version, _agreementAbort.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // A failure or a dispose ended the cycle.
+                    return;
+                }
+                catch (Exception e)
+                {
+                    await _context.OnFailure(e);
+                    return;
+                }
+                // This instance, a successor state has its own cycle and its own dependencies.
+                EgressDependenciesDone(VersionAgreementDependency, null);
+            });
+        }
+
         private async Task DoCompaction()
         {
             Debug.Assert(_context != null);
@@ -277,6 +319,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // queued compaction is about to write. This method releases the count.
             try
             {
+                // Every connected stream is durable at it, the agreement was a dependency of the
+                // cycle. Committed here so it lands before the next checkpoint prepares.
+                await _context.CommitVersionOnEgresses(_context._stateManager.LastCompletedCheckpointVersion);
+
                 // Holds the task in the window between being scheduled and starting its work,
                 // the window a failure teardown races.
                 var scheduledHook = StreamContext.CompactionScheduledHookForTests;
@@ -518,6 +564,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task OnFailure()
         {
+            // A cycle waiting for the other streams would hold up the teardown.
+            _agreementAbort.Cancel();
             return TransitionTo(StreamStateValue.Failure);
         }
 
@@ -619,6 +667,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     foreach(var key in _context.ingressBlocks.Keys)
                     {
                         waitingForDependencies.Add(key);
+                    }
+                    if (_context.HasVersionAgreements)
+                    {
+                        // Direct peers acknowledge, streams further away may not be durable yet.
+                        waitingForDependencies.Add(VersionAgreementDependency);
                     }
                     foreach(var precompleted in _preCompletedDependencies)
                     {

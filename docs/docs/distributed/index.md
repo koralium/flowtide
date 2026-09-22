@@ -25,7 +25,21 @@ Substreams checkpoint together. A checkpoint only completes when the substreams 
 
 If a substream fails, all substreams it exchanges data with roll back to a common checkpoint, and the data in between is replayed from the sources. This is the same recovery model as a single stream, sources must be able to resend data from their last committed position.
 
-When substreams start they compare their restored checkpoint versions. If they differ, for example because one substream lost its state, all of them recover to the lowest common version and catch up by replay.
+No substream starts a new checkpoint before all substreams it exchanges data with have committed the previous one, so connected substreams are never more than one checkpoint apart. When substreams start they compare their restored checkpoint versions, if they differ all of them recover to the lower one and catch up by replay.
+
+### Committing to external systems
+
+A checkpoint that is durable in one substream can still be rolled back by one version, when a connected substream fails before the checkpoint became durable there as well. A sink that writes to a system that can not be rolled back must therefore not treat a completed checkpoint as final in distributed mode.
+
+Sinks get a separate call for this, *CommitVersion*. It is called with a version once every connected substream, direct or through other substreams, is known to be durable at it. From that point none of them restores below that version. Substreams that exchange no data with each other, not even through others, do not wait for each other. It is also called when a stream starts, with the version it restored. In a stream that is not distributed it is called directly after each checkpoint.
+
+It can be called again with a version it was already called with, for instance at the start after a restart, so committing a version must be idempotent. A substream that stops cleanly before the others are known to be durable at its last version does not commit it, the next start does.
+
+### State storage must survive
+
+A substream never rolls back below a version that was handed to *CommitVersion* in a substream it is connected to, directly or through other substreams. A substream that comes back without its state storage asks the others to start over from the beginning, which they refuse: they log an error and the stream stops making progress until all substreams are restarted from empty state.
+
+State storage that survives the process, and in a cluster is reachable from every machine a substream can run on, is a requirement in distributed mode.
 
 ## Hosting options
 

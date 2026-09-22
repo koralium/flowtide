@@ -196,6 +196,100 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// A crash right after a clean handoff does not roll back below committed versions.
+        /// </summary>
+        [Fact]
+        public async Task CrashRightAfterACleanHandoffDoesNotRollBackBelowCommittedVersions()
+        {
+            var testName = "e2e_handoff_then_crash";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var restores = new ConcurrentQueue<(string Stream, long Version)>();
+            var completed = new ConcurrentDictionary<string, long>();
+
+            Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = (streamName, version) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    restores.Enqueue((streamName, version));
+                }
+            };
+            Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    completed.AddOrUpdate(streamName, lastVersion, (_, current) => Math.Max(current, lastVersion));
+                }
+                return Task.CompletedTask;
+            };
+            try
+            {
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                // Both commit well past the version they started at.
+                for (int i = 0; i < 3; i++)
+                {
+                    _generator.Generate(100);
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+                }
+                await WaitUntil(
+                    () => completed.Count == 2 && completed.Values.All(v => v >= 2),
+                    () => "both substreams to commit past their startup version");
+
+                await AwaitBounded(substream1.StopAsync(), "handoff stop");
+                await substream1.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream1);
+                }
+                substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+                await substream1.StartAsync();
+                await WaitUntil(
+                    () => substream1.State == Base.Engine.StreamStateValue.Running,
+                    () => "the handed off substream to reach running");
+                var floor = completed.Values.Min();
+
+                // Hard death: no stop, no failure notice, no data exchanged since the reconnect.
+                await substream1.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream1);
+                }
+                substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await substream1.StartAsync();
+
+                _generator.Generate(100);
+                var sw = Stopwatch.StartNew();
+                while (true)
+                {
+                    var below = restores.Where(r => r.Version < floor).ToList();
+                    Assert.True(
+                        below.Count == 0,
+                        $"rolled back below version {floor}, which both substreams committed: {string.Join(", ", below.Select(r => $"{r.Stream} to {r.Version}"))}");
+                    if (latestData.TryGetValue("substream_0", out var data) && data.Count == GetExpectedJoinResult().Count)
+                    {
+                        break;
+                    }
+                    Assert.True(sw.Elapsed < TimeSpan.FromSeconds(60), "the stream did not recover after the crash");
+                    await Task.Delay(25);
+                }
+            }
+            finally
+            {
+                Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = null;
+                Base.Engine.Internal.StateMachine.StreamContext.CheckpointCommitHookForTests = null;
+            }
+        }
+
+        /// <summary>
         /// Handoff with checkpoints in flight neither wedges nor rolls back.
         /// </summary>
         [Fact]
@@ -250,12 +344,10 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// The safety fence: a reconnect that announces the handoff but restored older (here:
-        /// no) state must be refused and fall back to coordinated recovery, so the result
-        /// stays complete. Only reachable with state loss, not with the durable Orleans tests.
+        /// A substream that lost its state asks its peer to go below what it committed: refused, the peer keeps its state.
         /// </summary>
         [Fact]
-        public async Task CleanHandoffAnnouncedWithLostStateFallsBackToRecovery()
+        public async Task CleanHandoffAnnouncedWithLostStateIsRefused()
         {
             var testName = "e2e_handoff_lost_state";
             _generator.Generate(500);
@@ -270,7 +362,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await substream0.StartAsync();
             await substream1.StartAsync();
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            var expected = GetExpectedJoinResult();
+            await WaitForSinkData(latestData, failures, "substream_0", expected);
 
             await AwaitBounded(substream1.StopAsync(), "handoff stop");
             await substream1.DisposeAsync();
@@ -279,28 +372,24 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 _streams.Remove(substream1);
             }
 
-            // The restarted instance lost its state: an empty provider replaces the one the
-            // handoff persisted into, so it restores nothing and announces the clean handoff
-            // at a restore point below the commits the peer already acknowledged.
+            // An empty provider replaces the one the handoff persisted into.
             fileProviders["substream_1"] = new KeepAliveMemoryFileProvider();
             substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
             await substream1.StartAsync();
 
             try
             {
-                _generator.Generate(250);
-                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                await WaitUntil(
+                    () => _logBuffers["substream_0"].LinesContaining("Refusing to roll stream").Count > 0,
+                    () => "substream_0 to refuse the version of the lost state");
 
-                // The peer must have refused the clean claim and gone through the coordinated
-                // recovery instead of resuming over data the returned substream cannot know.
-                Assert.NotEmpty(failures);
-
-                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+                // Neither resumed over the lost state nor dragged down to it.
+                Assert.Empty(_logBuffers["substream_0"].LinesContaining("reconnected from a clean handoff"));
+                Assert.DoesNotContain(failures, failure => failure.Substream == "substream_0");
+                await WaitForSinkData(latestData, failures, "substream_0", expected, allowFailures: true);
             }
             catch
             {
-                // This has flaked under full-suite load (net10, recovery cascade missing the
-                // wait deadline); the buffers hold both generations of substream_1.
                 DumpLogBuffers("lost_state");
                 throw;
             }
@@ -2093,6 +2182,16 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     await _ackGate.WaitAsync(default);
                 }
                 await _inner.SendCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
+            }
+
+            public void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim)
+            {
+                _inner.InitializeDurabilityClaims(callReceiveDurabilityClaim);
+            }
+
+            public Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
+            {
+                return _inner.SendDurabilityClaim(version, radius, senderCheckpointEpoch, targetCheckpointEpoch, requestReply, cancellationToken);
             }
         }
 

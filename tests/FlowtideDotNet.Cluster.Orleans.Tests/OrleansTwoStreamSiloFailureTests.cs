@@ -22,11 +22,11 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
     /// or results of the other stream. Uses its own cluster fixture since the cluster loses
     /// a silo permanently.
     /// </summary>
-    public class OrleansTwoStreamSiloFailureTests : IClassFixture<OrleansTwoSiloClusterFixture>
+    public class OrleansTwoStreamSiloFailureTests : IClassFixture<OrleansTwoSiloDurableStorageClusterFixture>
     {
-        private readonly OrleansTwoSiloClusterFixture _fixture;
+        private readonly OrleansTwoSiloDurableStorageClusterFixture _fixture;
 
-        public OrleansTwoStreamSiloFailureTests(OrleansTwoSiloClusterFixture fixture)
+        public OrleansTwoStreamSiloFailureTests(OrleansTwoSiloDurableStorageClusterFixture fixture)
         {
             _fixture = fixture;
         }

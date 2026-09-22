@@ -110,6 +110,13 @@ namespace FlowtideDotNet.Base.Engine
         public StreamStateValue State => streamContext.currentState;
 
         /// <summary>
+        /// True while the stream has initialized and only waits for the streams it exchanges data
+        /// with to initialize at the same version. It stays in the starting state meanwhile, a
+        /// host must not take that for a start that is stuck.
+        /// </summary>
+        public bool IsWaitingForConnectedStreams => streamContext._waitingForVersionAgreementAtStart;
+
+        /// <summary>
         /// Gets the desired target state that the stream is transitioning towards.
         /// </summary>
         /// <remarks>

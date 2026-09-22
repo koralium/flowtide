@@ -14,6 +14,7 @@ using FlowtideDotNet.Base;
 using FlowtideDotNet.Storage.Memory;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
@@ -103,7 +104,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         internal bool CleanReconnect => _cleanReconnect;
 
-        public SubstreamCommunicationPoint(ILogger logger, string selfSubstreamName, string substreamName, ISubstreamCommunicationHandler substreamCommunicationHandler, bool announceCleanHandoff = false)
+        // Shared by every communication point of this substream, null outside a substream group.
+        private readonly SubstreamDurabilityCoordinator? _durability;
+
+        internal SubstreamDurabilityCoordinator? Durability => _durability;
+
+        public SubstreamCommunicationPoint(ILogger logger, string selfSubstreamName, string substreamName, ISubstreamCommunicationHandler substreamCommunicationHandler, bool announceCleanHandoff = false, SubstreamDurabilityCoordinator? durability = null)
         {
             _targetInfos = new ConcurrentDictionary<int, TargetInfo>();
             this._logger = logger;
@@ -111,7 +117,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             this.substreamName = substreamName;
             this._substreamCommunicationHandler = substreamCommunicationHandler;
             _announceCleanHandoff = announceCleanHandoff;
+            _durability = durability;
+            _durability?.Register(substreamName, this);
             substreamCommunicationHandler.Initialize(GetData, DoFailAndRecover, OnTargetSubstreamInitialize, RecieveCheckpointDone);
+            substreamCommunicationHandler.InitializeDurabilityClaims(ReceiveDurabilityClaim);
             substreamCommunicationHandler.SetReceiveAllocatorResolver(GetReceiveAllocator);
         }
 
@@ -336,7 +345,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // Highest wins: a response delayed across the peer's failure must not regress
                 // what a newer handshake already recorded. Peer generations draw from a clock
                 // seed, so the current generation's epoch is always the highest.
-                _peerCheckpointEpoch = Math.Max(_peerCheckpointEpoch, response.CheckpointEpoch);
+                RecordPeerEpoch_NoLock(Math.Max(_peerCheckpointEpoch, response.CheckpointEpoch));
+            }
+            if (response.Success)
+            {
+                // The peer listens now, it may have missed what was claimed before.
+                _durability?.ResendTo(this);
             }
 
             if (!response.Success)
@@ -387,6 +401,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // New generation: acks tagged with the old epoch are now stale and get dropped.
                 // Drawn from the shared seed so it never collides with any other generation.
                 _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
+                // Same lock as the claim fence: nothing fenced or snapshotted before this is used after it.
+                _durability?.Invalidate();
                 // The peer rolls back with this stream, its committed versions restart;
                 // re-baselined at the next handshake. Reset with the epoch bump so an ack
                 // that passed the fence in the old epoch cannot advance it afterwards.
@@ -417,10 +433,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // over onto a process whose clock is far behind legitimately announces a lower
                 // epoch and is refused here; the response carries the recorded epoch so it can
                 // re-seed above it and re-announce, see SendInitializeRequest.
-                _peerCheckpointEpoch = Math.Max(_peerCheckpointEpoch, peerCheckpointEpoch);
+                RecordPeerEpoch_NoLock(Math.Max(_peerCheckpointEpoch, peerCheckpointEpoch));
                 recordedPeerEpoch = _peerCheckpointEpoch;
                 selfEpoch = _selfCheckpointEpoch;
             }
+            // Sent on every request, the requester re-sends its own once the response arrives.
+            _durability?.ResendTo(this);
             if (cleanHandoff)
             {
                 var handoffResult = TryAcceptCleanHandoff(restorePoint);
@@ -753,6 +771,77 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     _logger.LogWarning(ex, "Error handling checkpoint done from substream {substreamName}", substreamName);
                 }
             });
+        }
+
+        /// <summary>
+        /// A peer on a new epoch restarted, what it claimed before may no longer hold.
+        /// </summary>
+        private void RecordPeerEpoch_NoLock(long epoch)
+        {
+            Debug.Assert(Monitor.IsEntered(_initializeLock));
+            if (epoch != _peerCheckpointEpoch)
+            {
+                _peerCheckpointEpoch = epoch;
+                _durability?.PeerEpochChanged(substreamName);
+            }
+        }
+
+        /// <param name="generation">The coordinator generation the claim was read under.</param>
+        internal Task SendDurabilityClaim(SubstreamDurabilityClaim claim, long generation, bool requestReply, CancellationToken cancellationToken = default)
+        {
+            long selfEpoch;
+            long targetEpoch;
+            lock (_initializeLock)
+            {
+                // A claim read before a failure must not leave stamped with the epochs of the run after it.
+                if (_durability == null || _durability.Generation != generation)
+                {
+                    return Task.CompletedTask;
+                }
+                selfEpoch = _selfCheckpointEpoch;
+                targetEpoch = _peerCheckpointEpoch;
+            }
+            return SendDurabilityClaimCore(claim, selfEpoch, targetEpoch, requestReply, cancellationToken);
+        }
+
+        private async Task SendDurabilityClaimCore(SubstreamDurabilityClaim claim, long selfEpoch, long targetEpoch, bool requestReply, CancellationToken cancellationToken)
+        {
+            try
+            {
+                // Ends here when it is given up on, whatever the transport does with the token.
+                await _substreamCommunicationHandler.SendDurabilityClaim(claim.Version, claim.Radius, selfEpoch, targetEpoch, requestReply, cancellationToken).WaitAsync(cancellationToken);
+            }
+            catch (Exception e)
+            {
+                // Sent again on a timer while anything waits for the agreement.
+                _logger.LogDebug(e, "Sending a durability claim to substream {substreamName} failed.", substreamName);
+            }
+        }
+
+        private Task ReceiveDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply)
+        {
+            if (_durability == null)
+            {
+                return Task.CompletedTask;
+            }
+            long fencedGeneration;
+            lock (_initializeLock)
+            {
+                // Both ends: a claim from before a restart of either side must not count, the
+                // version number is reused after a rollback.
+                if (targetCheckpointEpoch != _selfCheckpointEpoch || senderCheckpointEpoch < _peerCheckpointEpoch)
+                {
+                    _logger.LogDebug("Dropping a durability claim from substream {substreamName}, its epochs {senderEpoch}/{targetEpoch} do not match {peerEpoch}/{selfEpoch}.", substreamName, senderCheckpointEpoch, targetCheckpointEpoch, _peerCheckpointEpoch, _selfCheckpointEpoch);
+                    return Task.CompletedTask;
+                }
+                // It knows this generation, so it was sent after a handshake with it. A higher
+                // sender epoch is that handshake's answer still on its way, forgets the old claims.
+                RecordPeerEpoch_NoLock(senderCheckpointEpoch);
+                // The write checks it again, a failure or a start after this point drops the claim.
+                fencedGeneration = _durability.Generation;
+            }
+            _durability.PeerClaim(substreamName, new SubstreamDurabilityClaim(radius, version), fencedGeneration, requestReply);
+            return Task.CompletedTask;
         }
 
         public Task SendCheckpointDone(long checkpointVersion)

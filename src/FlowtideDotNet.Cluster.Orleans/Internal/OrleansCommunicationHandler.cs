@@ -32,6 +32,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
         private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
+        private Func<long, int, long, long, bool, Task>? _callReceiveDurabilityClaim;
         private Func<int, IMemoryAllocator>? _receiveAllocatorResolver;
         private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
         // Every handler instance gets a unique epoch, the seed starts at the clock so
@@ -197,6 +198,27 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
         public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
         {
             return _streamGrain.CheckpointDone(new Messages.CheckpointDoneRequest(selfName, checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier));
+        }
+
+        public void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim)
+        {
+            _callReceiveDurabilityClaim = callReceiveDurabilityClaim;
+        }
+
+        public Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
+        {
+            // A grain call cannot be cancelled, the wait for it can.
+            return _streamGrain.DurabilityClaim(new Messages.DurabilityClaimRequest(selfName, version, radius, senderCheckpointEpoch, targetCheckpointEpoch, requestReply)).WaitAsync(cancellationToken);
+        }
+
+        public Task TargetDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply)
+        {
+            if (_callReceiveDurabilityClaim == null)
+            {
+                // Registered with the communication point, sent again if it was too early.
+                return Task.CompletedTask;
+            }
+            return _callReceiveDurabilityClaim(version, radius, senderCheckpointEpoch, targetCheckpointEpoch, requestReply);
         }
 
         public Task TargetCheckpointDone(long checkpointVersion, long checkpointEpoch, bool coversPeerStopBarrier)
