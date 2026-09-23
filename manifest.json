@@ -5066,6 +5066,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.yml\" sourcestartlinenumber=\"1\">Thrown when duplicate primary keys are detected in a sink that requires unique primary keys.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Core.Exceptions.FlowtideException.yml",
       "output": {
         ".html": {

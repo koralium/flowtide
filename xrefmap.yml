@@ -30881,6 +30881,49 @@ references:
   fullName.vb: FlowtideDotNet.Core.Exceptions.FlowtideDuplicateConnectorsException.New
   nameWithType: FlowtideDuplicateConnectorsException.FlowtideDuplicateConnectorsException
   nameWithType.vb: FlowtideDuplicateConnectorsException.New
+- uid: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException
+  name: FlowtideDuplicatePrimaryKeyException
+  href: api/FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.html
+  commentId: T:FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException
+  fullName: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException
+  nameWithType: FlowtideDuplicatePrimaryKeyException
+- uid: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.#ctor
+  name: FlowtideDuplicatePrimaryKeyException()
+  href: api/FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.html#FlowtideDotNet_Core_Exceptions_FlowtideDuplicatePrimaryKeyException__ctor
+  commentId: M:FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.#ctor
+  name.vb: New()
+  fullName: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.FlowtideDuplicatePrimaryKeyException()
+  fullName.vb: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.New()
+  nameWithType: FlowtideDuplicatePrimaryKeyException.FlowtideDuplicatePrimaryKeyException()
+  nameWithType.vb: FlowtideDuplicatePrimaryKeyException.New()
+- uid: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.#ctor(System.String)
+  name: FlowtideDuplicatePrimaryKeyException(string?)
+  href: api/FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.html#FlowtideDotNet_Core_Exceptions_FlowtideDuplicatePrimaryKeyException__ctor_System_String_
+  commentId: M:FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.#ctor(System.String)
+  name.vb: New(String)
+  fullName: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.FlowtideDuplicatePrimaryKeyException(string?)
+  fullName.vb: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.New(String)
+  nameWithType: FlowtideDuplicatePrimaryKeyException.FlowtideDuplicatePrimaryKeyException(string?)
+  nameWithType.vb: FlowtideDuplicatePrimaryKeyException.New(String)
+- uid: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.#ctor(System.String,System.Exception)
+  name: FlowtideDuplicatePrimaryKeyException(string?, Exception?)
+  href: api/FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.html#FlowtideDotNet_Core_Exceptions_FlowtideDuplicatePrimaryKeyException__ctor_System_String_System_Exception_
+  commentId: M:FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.#ctor(System.String,System.Exception)
+  name.vb: New(String, Exception)
+  fullName: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.FlowtideDuplicatePrimaryKeyException(string?, System.Exception?)
+  fullName.vb: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.New(String, System.Exception)
+  nameWithType: FlowtideDuplicatePrimaryKeyException.FlowtideDuplicatePrimaryKeyException(string?, Exception?)
+  nameWithType.vb: FlowtideDuplicatePrimaryKeyException.New(String, Exception)
+- uid: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.#ctor*
+  name: FlowtideDuplicatePrimaryKeyException
+  href: api/FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.html#FlowtideDotNet_Core_Exceptions_FlowtideDuplicatePrimaryKeyException__ctor_
+  commentId: Overload:FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.FlowtideDuplicatePrimaryKeyException
+  fullName.vb: FlowtideDotNet.Core.Exceptions.FlowtideDuplicatePrimaryKeyException.New
+  nameWithType: FlowtideDuplicatePrimaryKeyException.FlowtideDuplicatePrimaryKeyException
+  nameWithType.vb: FlowtideDuplicatePrimaryKeyException.New
 - uid: FlowtideDotNet.Core.Exceptions.FlowtideException
   name: FlowtideException
   href: api/FlowtideDotNet.Core.Exceptions.FlowtideException.html
@@ -69098,12 +69141,25 @@ references:
   fullName.vb: FlowtideDotNet.TestFramework.TestDataSink.IsCurrentDataEqual(Of T)(System.Collections.Generic.IEnumerable(Of T))
   nameWithType: TestDataSink.IsCurrentDataEqual<T>(IEnumerable<T>)
   nameWithType.vb: TestDataSink.IsCurrentDataEqual(Of T)(IEnumerable(Of T))
-- uid: FlowtideDotNet.TestFramework.TestDataSink.WaitForUpdate
-  name: WaitForUpdate()
-  href: api/FlowtideDotNet.TestFramework.TestDataSink.html#FlowtideDotNet_TestFramework_TestDataSink_WaitForUpdate
-  commentId: M:FlowtideDotNet.TestFramework.TestDataSink.WaitForUpdate
-  fullName: FlowtideDotNet.TestFramework.TestDataSink.WaitForUpdate()
-  nameWithType: TestDataSink.WaitForUpdate()
+- uid: FlowtideDotNet.TestFramework.TestDataSink.PrimaryKeyNames
+  name: PrimaryKeyNames
+  href: api/FlowtideDotNet.TestFramework.TestDataSink.html#FlowtideDotNet_TestFramework_TestDataSink_PrimaryKeyNames
+  commentId: P:FlowtideDotNet.TestFramework.TestDataSink.PrimaryKeyNames
+  fullName: FlowtideDotNet.TestFramework.TestDataSink.PrimaryKeyNames
+  nameWithType: TestDataSink.PrimaryKeyNames
+- uid: FlowtideDotNet.TestFramework.TestDataSink.PrimaryKeyNames*
+  name: PrimaryKeyNames
+  href: api/FlowtideDotNet.TestFramework.TestDataSink.html#FlowtideDotNet_TestFramework_TestDataSink_PrimaryKeyNames_
+  commentId: Overload:FlowtideDotNet.TestFramework.TestDataSink.PrimaryKeyNames
+  isSpec: "True"
+  fullName: FlowtideDotNet.TestFramework.TestDataSink.PrimaryKeyNames
+  nameWithType: TestDataSink.PrimaryKeyNames
+- uid: FlowtideDotNet.TestFramework.TestDataSink.WaitForUpdate(System.Threading.CancellationToken)
+  name: WaitForUpdate(CancellationToken)
+  href: api/FlowtideDotNet.TestFramework.TestDataSink.html#FlowtideDotNet_TestFramework_TestDataSink_WaitForUpdate_System_Threading_CancellationToken_
+  commentId: M:FlowtideDotNet.TestFramework.TestDataSink.WaitForUpdate(System.Threading.CancellationToken)
+  fullName: FlowtideDotNet.TestFramework.TestDataSink.WaitForUpdate(System.Threading.CancellationToken)
+  nameWithType: TestDataSink.WaitForUpdate(CancellationToken)
 - uid: FlowtideDotNet.TestFramework.TestDataSink.WaitForUpdate*
   name: WaitForUpdate
   href: api/FlowtideDotNet.TestFramework.TestDataSink.html#FlowtideDotNet_TestFramework_TestDataSink_WaitForUpdate_

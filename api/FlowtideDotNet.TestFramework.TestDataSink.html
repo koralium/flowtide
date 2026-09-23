@@ -156,7 +156,7 @@ Class TestDataSink  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_TestFramework_TestDataSink__ctor" data-uid="FlowtideDotNet.TestFramework.TestDataSink.#ctor">
   TestDataSink()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/TestDataSink.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/TestDataSink.cs/#L32"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -186,7 +186,7 @@ Class TestDataSink  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_TestFramework_TestDataSink_CurrentData" data-uid="FlowtideDotNet.TestFramework.TestDataSink.CurrentData">
   CurrentData
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/TestDataSink.cs/#L36"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/TestDataSink.cs/#L37"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -213,6 +213,37 @@ Class TestDataSink  <a class="header-action link-secondary" title="View source" 
 
 
 
+  <a id="FlowtideDotNet_TestFramework_TestDataSink_PrimaryKeyNames_" data-uid="FlowtideDotNet.TestFramework.TestDataSink.PrimaryKeyNames*"></a>
+
+  <h3 id="FlowtideDotNet_TestFramework_TestDataSink_PrimaryKeyNames" data-uid="FlowtideDotNet.TestFramework.TestDataSink.PrimaryKeyNames">
+  PrimaryKeyNames
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/TestDataSink.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IReadOnlyList&lt;string&gt;? PrimaryKeyNames { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <h2 class="section" id="methods">Methods
 </h2>
 
@@ -221,7 +252,7 @@ Class TestDataSink  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_TestFramework_TestDataSink_IsCurrentDataEqual__1_System_Collections_Generic_IEnumerable___0__" data-uid="FlowtideDotNet.TestFramework.TestDataSink.IsCurrentDataEqual``1(System.Collections.Generic.IEnumerable{``0})">
   IsCurrentDataEqual&lt;T&gt;(IEnumerable&lt;T&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/TestDataSink.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/TestDataSink.cs/#L94"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -260,18 +291,23 @@ Class TestDataSink  <a class="header-action link-secondary" title="View source" 
 
   <a id="FlowtideDotNet_TestFramework_TestDataSink_WaitForUpdate_" data-uid="FlowtideDotNet.TestFramework.TestDataSink.WaitForUpdate*"></a>
 
-  <h3 id="FlowtideDotNet_TestFramework_TestDataSink_WaitForUpdate" data-uid="FlowtideDotNet.TestFramework.TestDataSink.WaitForUpdate">
-  WaitForUpdate()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/TestDataSink.cs/#L47"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_TestFramework_TestDataSink_WaitForUpdate_System_Threading_CancellationToken_" data-uid="FlowtideDotNet.TestFramework.TestDataSink.WaitForUpdate(System.Threading.CancellationToken)">
+  WaitForUpdate(CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/TestDataSink.cs/#L58"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public Task&lt;EventBatchData&gt; WaitForUpdate()</code></pre>
+    <pre><code class="lang-csharp hljs">public Task&lt;EventBatchData&gt; WaitForUpdate(CancellationToken cancellationToken = default)</code></pre>
   </div>
 
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd></dd>
+  </dl>
 
   <h4 class="section">Returns</h4>
   <dl class="parameters">
