@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -27,6 +27,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static SqlParser.Ast.Statement;
+using FlowtideDotNet.Core.Exceptions;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.TestFramework.Internal
@@ -35,6 +36,8 @@ namespace FlowtideDotNet.TestFramework.Internal
     {
         private readonly WriteRelation writeRelation;
         private readonly Action<EventBatchData> onDataChange;
+        private readonly Action<Exception> onError;
+        private readonly int[]? _primaryKeyIndices;
         private bool watermarkRecieved = false;
         private EventBatchData? _lastSentBatch;
 
@@ -43,10 +46,27 @@ namespace FlowtideDotNet.TestFramework.Internal
         public TestDataSinkImpl(
             WriteRelation writeRelation,
             ExecutionDataflowBlockOptions executionDataflowBlockOptions,
-            Action<EventBatchData> onDataChange) : base(executionDataflowBlockOptions)
+            Action<EventBatchData> onDataChange,
+            Action<Exception>? onError = null) : base(executionDataflowBlockOptions)
         {
             this.writeRelation = writeRelation;
             this.onDataChange = onDataChange;
+            this.onError = onError ?? (_ => { });
+
+            if (writeRelation.PrimaryKeyNames != null && writeRelation.PrimaryKeyNames.Count > 0)
+            {
+                _primaryKeyIndices = new int[writeRelation.PrimaryKeyNames.Count];
+                for (int i = 0; i < writeRelation.PrimaryKeyNames.Count; i++)
+                {
+                    var name = writeRelation.PrimaryKeyNames[i];
+                    var index = writeRelation.TableSchema.Names.FindIndex(x => x.Equals(name, StringComparison.OrdinalIgnoreCase));
+                    if (index == -1)
+                    {
+                        throw new InvalidOperationException($"Primary key column '{name}' not found in table schema.");
+                    }
+                    _primaryKeyIndices[i] = index;
+                }
+            }
         }
 
         public override string DisplayName => "Mock Data Sink";
@@ -63,9 +83,14 @@ namespace FlowtideDotNet.TestFramework.Internal
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
+            IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer> comparer =
+                _primaryKeyIndices != null && _primaryKeyIndices.Length > 0
+                    ? new PrimaryKeyColumnComparer(_primaryKeyIndices)
+                    : new ColumnComparer(writeRelation.OutputLength);
+
             _tree = await stateManagerClient.GetOrCreateTree("sink", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
             {
-                Comparer = new ColumnComparer(writeRelation.OutputLength),
+                Comparer = comparer,
                 KeySerializer = new ColumnStoreSerializer(writeRelation.OutputLength, MemoryAllocator),
                 ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
                 MemoryAllocator = MemoryAllocator,
@@ -81,75 +106,118 @@ namespace FlowtideDotNet.TestFramework.Internal
 
         protected override async Task OnCheckpoint(long checkpointTime)
         {
-            Debug.Assert(_tree != null);
-
-            Column[] columns = new Column[writeRelation.OutputLength];
-
-            for (int i = 0; i < writeRelation.OutputLength; i++)
+            try
             {
-                columns[i] = new Column(MemoryAllocator);
-            }
+                Debug.Assert(_tree != null);
 
-            using var iterator = _tree.CreateIterator();
-            await iterator.SeekFirst();
+                Column[] columns = new Column[writeRelation.OutputLength];
 
-            await foreach (var page in iterator)
-            {
-                foreach (var kv in page)
+                for (int i = 0; i < writeRelation.OutputLength; i++)
                 {
-                    if (kv.Value < 0)
+                    columns[i] = new Column(MemoryAllocator);
+                }
+
+                using var iterator = _tree.CreateIterator();
+                await iterator.SeekFirst();
+
+                await foreach (var page in iterator)
+                {
+                    foreach (var kv in page)
                     {
-                        throw new Exception("Row exist in sink with negaive weight: " + kv.Key.ToString());
-                    }
-                    for (int i = 0; i < kv.Key.referenceBatch.Columns.Count; i++)
-                    {
-                        var val = kv.Key.referenceBatch.Columns[i].GetValueAt(kv.Key.RowIndex, default);
-                        for (int x = 0; x < kv.Value; x++)
+                        if (kv.Value < 0)
                         {
-                            columns[i].Add(val);
+                            throw new Exception("Row exist in sink with negaive weight: " + kv.Key.ToString());
+                        }
+                        if (_primaryKeyIndices != null && kv.Value > 1)
+                        {
+                            throw new FlowtideDuplicatePrimaryKeyException(FormatDuplicateKeyMessage(kv.Key));
+                        }
+                        for (int i = 0; i < kv.Key.referenceBatch.Columns.Count; i++)
+                        {
+                            var val = kv.Key.referenceBatch.Columns[i].GetValueAt(kv.Key.RowIndex, default);
+                            for (int x = 0; x < kv.Value; x++)
+                            {
+                                columns[i].Add(val);
+                            }
                         }
                     }
                 }
+
+                var newData = new EventBatchData(columns);
+
+                if (_lastSentBatch != null && watermarkRecieved)
+                {
+                    _lastSentBatch.Dispose();
+                }
+
+                _lastSentBatch = newData;
+
+                await _tree.Commit();
+
+                if (watermarkRecieved)
+                {
+                    onDataChange(newData);
+                    watermarkRecieved = false;
+                }
             }
-
-            var newData = new EventBatchData(columns);
-
-            if (_lastSentBatch != null && watermarkRecieved)
+            catch (Exception ex)
             {
-                _lastSentBatch.Dispose();
+                onError(ex);
+                throw;
             }
+        }
 
-            _lastSentBatch = newData;
-
-            await _tree.Commit();
-
-            if (watermarkRecieved)
+        private string FormatDuplicateKeyMessage(in ColumnRowReference rowRef)
+        {
+            Debug.Assert(_primaryKeyIndices != null);
+            var pkStrings = new List<string>();
+            for (int k = 0; k < _primaryKeyIndices.Length; k++)
             {
-                onDataChange(newData);
-                watermarkRecieved = false;
+                var colIdx = _primaryKeyIndices[k];
+                var colName = writeRelation.PrimaryKeyNames![k];
+                var val = rowRef.referenceBatch.Columns[colIdx].GetValueAt(rowRef.RowIndex, default);
+                pkStrings.Add($"{colName}='{val}'");
             }
+            var keyStr = string.Join(", ", pkStrings);
+            return $"Duplicate primary key ({keyStr}) found in test sink for table '{writeRelation.NamedObject.DotSeperated}'.";
         }
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
-            Debug.Assert(_tree != null);
-            for (int i = 0; i < msg.Data.Weights.Count; i++)
+            try
             {
-                var rowRef = new ColumnRowReference() { referenceBatch = msg.Data.EventBatchData, RowIndex = i };
-                var weight = msg.Data.Weights[i];
-                await _tree.RMWNoResult(in rowRef, in weight, (input, current, exist) =>
+                Debug.Assert(_tree != null);
+                for (int i = 0; i < msg.Data.Weights.Count; i++)
                 {
-                    if (exist)
+                    var rowRef = new ColumnRowReference() { referenceBatch = msg.Data.EventBatchData, RowIndex = i };
+                    var weight = msg.Data.Weights[i];
+                    await _tree.RMWNoResult(in rowRef, in weight, (input, current, exist) =>
                     {
-                        var newWeight = current + input;
-                        if (newWeight == 0)
+                        if (exist)
                         {
-                            return (newWeight, GenericWriteOperation.Delete);
+                            var newWeight = current + input;
+                            if (_primaryKeyIndices != null && newWeight > 1)
+                            {
+                                throw new FlowtideDuplicatePrimaryKeyException(FormatDuplicateKeyMessage(in rowRef));
+                            }
+                            if (newWeight == 0)
+                            {
+                                return (newWeight, GenericWriteOperation.Delete);
+                            }
+                            return (newWeight, GenericWriteOperation.Upsert);
                         }
-                        return (newWeight, GenericWriteOperation.Upsert);
-                    }
-                    return (input, GenericWriteOperation.Upsert);
-                });
+                        if (_primaryKeyIndices != null && input > 1)
+                        {
+                            throw new FlowtideDuplicatePrimaryKeyException(FormatDuplicateKeyMessage(in rowRef));
+                        }
+                        return (input, GenericWriteOperation.Upsert);
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                onError(ex);
+                throw;
             }
         }
     }
