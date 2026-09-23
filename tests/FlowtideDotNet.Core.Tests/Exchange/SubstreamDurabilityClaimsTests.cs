@@ -111,13 +111,6 @@ namespace FlowtideDotNet.Core.Tests.Exchange
                 foreach (var node in _nodes)
                 {
                     Assert.True(node.Value.Agreed <= lowest, $"{node.Key} agreed on {node.Value.Agreed} while the lowest durable version is {lowest}.");
-                    Assert.True(node.Value.KnownDurable <= lowest, $"{node.Key} knows {node.Value.KnownDurable} while the lowest durable version is {lowest}.");
-                }
-                // The second pass: whoever agreed on a version, everyone already knows the group is durable at it.
-                var highestAgreed = _nodes.Values.Max(n => n.Agreed);
-                foreach (var node in _nodes)
-                {
-                    Assert.True(node.Value.HighestKnownDurable >= highestAgreed, $"someone agreed on {highestAgreed} while {node.Key} only ever knew {node.Value.HighestKnownDurable}.");
                 }
             }
 
@@ -266,7 +259,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             var grown = claims.SetLocalDurable(7);
 
             Assert.Equal(7, claims.Agreed);
-            Assert.Equal(new[] { new SubstreamDurabilityClaim(0, 7) }, grown);
+            Assert.Equal(new[] { new SubstreamDurabilityClaim(0, 7, 7) }, grown);
         }
 
         [Fact]
@@ -309,9 +302,9 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         [Fact]
         public void ATooShortDistanceIsCaughtByTheSafetyCheck()
         {
-            // Keeps the per delivery check honest: two passes of radius 2 do not span a chain of 7.
-            var network = new Network(1, Chain(7), distance: 2);
-            foreach (var node in new[] { "s1", "s2", "s3", "s4", "s5", "s6" })
+            // Keeps the per delivery check honest: radius 2 does not span a chain of 5.
+            var network = new Network(1, Chain(5), distance: 2);
+            foreach (var node in new[] { "s1", "s2", "s3", "s4" })
             {
                 network.Durable(node, 1);
             }
@@ -324,12 +317,12 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         {
             var claims = new SubstreamDurabilityClaims(new[] { "peer" }, 1);
             claims.SetLocalDurable(5);
-            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 5));
-            Assert.Equal(5, claims.KnownDurable);
+            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 5, 5));
+            Assert.Equal(5, claims.Agreed);
 
-            Assert.Empty(claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 3)));
+            Assert.Empty(claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 3, 3)));
             Assert.Empty(claims.SetLocalDurable(4));
-            Assert.Equal(5, claims.KnownDurable);
+            Assert.Equal(5, claims.Agreed);
         }
 
         [Fact]
@@ -339,7 +332,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             claims.SetLocalDurable(5);
 
             // Radius 0 from the peer never arrived.
-            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(1, 5));
+            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(1, 5, 5));
 
             Assert.Equal(5, claims.Agreed);
         }
@@ -349,11 +342,11 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         {
             var claims = new SubstreamDurabilityClaims(new[] { "peer" }, 1);
             claims.SetLocalDurable(4);
-            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 4));
+            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 4, 4));
             claims.SetLocalDurable(5);
 
             Assert.Equal(
-                new[] { new SubstreamDurabilityClaim(1, 4), new SubstreamDurabilityClaim(0, 5) },
+                new[] { new SubstreamDurabilityClaim(1, 4, 4), new SubstreamDurabilityClaim(0, 5, 4) },
                 claims.CurrentClaims());
         }
 
@@ -362,10 +355,10 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         {
             var claims = new SubstreamDurabilityClaims(new[] { "peer" }, 1);
             claims.SetLocalDurable(5);
-            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 5));
+            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 5, 5));
             var waiter = claims.WhenAgreed(6);
 
-            claims.Reset();
+            claims.EnterWave(default);
 
             Assert.True(waiter.IsCanceled);
             Assert.Equal(SubstreamDurabilityClaims.Unknown, claims.Agreed);
@@ -381,19 +374,16 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         {
             var claims = new SubstreamDurabilityClaims(new[] { "peer" }, 1);
             claims.SetLocalDurable(5);
-            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(1, 5));
+            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 5, 5));
             Assert.Equal(5, claims.Agreed);
 
             claims.ResetPeer("peer");
 
             // Only what this substream knows about itself is left to claim.
             Assert.Equal(SubstreamDurabilityClaims.Unknown, claims.Agreed);
-            Assert.Equal(SubstreamDurabilityClaims.Unknown, claims.KnownDurable);
-            Assert.Equal(new[] { new SubstreamDurabilityClaim(0, 5) }, claims.CurrentClaims());
-            // What it once knew is kept, someone may have acted on it.
-            Assert.Equal(5, claims.HighestKnownDurable);
+            Assert.Equal(new[] { new SubstreamDurabilityClaim(0, 5, 5) }, claims.CurrentClaims());
 
-            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(1, 5));
+            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 5, 5));
             Assert.Equal(5, claims.Agreed);
         }
 
@@ -403,17 +393,16 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             // s2 in the middle of s1 - s2 - s3, everyone durable at 5.
             var claims = new SubstreamDurabilityClaims(new[] { "s1", "s3" }, 2);
             claims.SetLocalDurable(5);
-            claims.ApplyPeerClaim("s1", new SubstreamDurabilityClaim(1, 5));
-            claims.ApplyPeerClaim("s3", new SubstreamDurabilityClaim(1, 5));
-            Assert.Equal(5, claims.KnownDurable);
+            claims.ApplyPeerClaim("s1", new SubstreamDurabilityClaim(1, 5, 5));
+            claims.ApplyPeerClaim("s3", new SubstreamDurabilityClaim(1, 5, 5));
+            Assert.Equal(5, claims.Agreed);
 
             // s3 restarted on its own and came back at 4, version 5 will be written again.
             claims.ResetPeer("s3");
-            var grown = claims.ApplyPeerClaim("s3", new SubstreamDurabilityClaim(0, 4));
+            var grown = claims.ApplyPeerClaim("s3", new SubstreamDurabilityClaim(0, 4, 4));
 
-            Assert.Equal(new[] { new SubstreamDurabilityClaim(1, 4) }, grown);
+            Assert.Equal(new[] { new SubstreamDurabilityClaim(1, 4, 5) }, grown);
             Assert.DoesNotContain(claims.CurrentClaims(), c => c.Radius > 0 && c.Version > 4);
-            Assert.True(claims.KnownDurable <= 4, $"knows {claims.KnownDurable} although s3 is only durable at 4.");
             Assert.True(claims.Agreed <= 4, $"agreed on {claims.Agreed} although s3 is only durable at 4.");
         }
 
@@ -425,10 +414,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             var waiter = claims.WhenAgreed(3);
             Assert.False(waiter.IsCompleted);
 
-            // The peer being durable is the first pass, the wait is for the second.
-            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 3));
-            Assert.False(waiter.IsCompleted);
-            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(1, 3));
+            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 3, 3));
 
             await waiter.WaitAsync(TimeSpan.FromSeconds(10));
             Assert.True(claims.WhenAgreed(2).IsCompletedSuccessfully);
@@ -438,7 +424,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         public void AClaimFromSomeoneWhoIsNotAPeerIsRejected()
         {
             var claims = new SubstreamDurabilityClaims(new[] { "peer" }, 1);
-            Assert.Throws<ArgumentException>(() => claims.ApplyPeerClaim("stranger", new SubstreamDurabilityClaim(0, 1)));
+            Assert.Throws<ArgumentException>(() => claims.ApplyPeerClaim("stranger", new SubstreamDurabilityClaim(0, 1, 1)));
             Assert.Throws<ArgumentException>(() => claims.ResetPeer("stranger"));
         }
 
@@ -449,10 +435,10 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         }
 
         /// <summary>
-        /// Everyone exchanges data with everyone, the common shape: two rounds whatever the size.
+        /// Everyone exchanges data with everyone: one round whatever the size.
         /// </summary>
         [Fact]
-        public void AFullyConnectedGroupAgreesInTwoRounds()
+        public void AFullyConnectedGroupAgreesInOneRound()
         {
             var names = Enumerable.Range(1, 10).Select(i => $"s{i}").ToArray();
             var edges = (from a in names from b in names where string.CompareOrdinal(a, b) < 0 select (a, b)).ToArray();
@@ -464,8 +450,8 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             network.RunToQuiescence();
 
             Assert.All(names, name => Assert.Equal(1, network[name].Agreed));
-            // Radius 1 is everyone durable, radius 2 everyone knows, nothing beyond is claimed.
-            Assert.All(names, name => Assert.Equal(2, network[name].CurrentClaims().Max(c => c.Radius)));
+            // Radius 1 is everyone durable, nothing beyond is claimed.
+            Assert.All(names, name => Assert.Equal(1, network[name].CurrentClaims().Max(c => c.Radius)));
         }
     }
 }

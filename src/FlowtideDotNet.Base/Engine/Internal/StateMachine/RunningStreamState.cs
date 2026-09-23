@@ -34,6 +34,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private const string VersionAgreementDependency = "$version_agreement";
         private bool _initialCheckpointTaken = false;
         private bool _compactionStarted = false;
+        // The transition swaps the state before Initialize runs, a cycle must not start before its setup.
+        private bool _initialized;
 
         public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
         {
@@ -514,12 +516,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _preCompletedDependencies.Add(earlyDependency);
                     }
                     _context._earlyDependenciesDone.Clear();
-                }
 
-                if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
-                {
-                    // Set the checkpoint task to stop any other checkpoint from happening
-                    _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
+                    {
+                        // Set the checkpoint task to stop any other checkpoint from happening
+                        _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    }
+                    _initialized = true;
                 }
 
                 _initialBatchTask = Task.Factory.StartNew(async () =>
@@ -638,6 +641,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 else
                 {
+                    if (!_initialized)
+                    {
+                        // A peer's barrier can schedule a cycle between the transition and Initialize: started now it
+                        // would be overwritten by the initial data placeholder and run beside the next cycle.
+                        _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1), _context._scheduledProvidedCheckpointToken);
+                        return Task.CompletedTask;
+                    }
                     // The wish check and the checkpoint start must share one lock scope. If
                     // the lock is released in between, a completing cycle can clear
                     // _doingCheckpoint and the new cycle would run without the flag that

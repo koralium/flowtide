@@ -46,15 +46,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 Volatile.Write(ref currentVersion, v);
                 Interlocked.Increment(ref numberOfcheckpoints);
                 return Task.CompletedTask;
-            }, (v) =>
+            }, (wave) =>
             {
-                // Runs on an unawaited Task.Run (SubstreamCommunicationPoint.NotifyFailAndRecover),
-                // concurrently with the restarting stream's initialize request reading the version.
-                Volatile.Write(ref currentVersion, v);
+                // The notification carries no version, the other substream is told it at the handshake.
                 return Task.CompletedTask;
             }, (v, epoch) =>
             {
-                return Task.FromResult(new SubstreamInitializeResponse(false, true, Volatile.Read(ref currentVersion)));
+                Volatile.Write(ref currentVersion, v);
+                return Task.FromResult(new SubstreamInitializeResponse(false, true, v));
             });
             // The version mismatch triggers an intentional fail and recover without an exception
             AllowFailureAndRecover();

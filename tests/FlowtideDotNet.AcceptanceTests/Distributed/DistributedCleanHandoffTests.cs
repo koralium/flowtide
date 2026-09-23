@@ -344,10 +344,12 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// A substream that lost its state asks its peer to go below what it committed: refused, the peer keeps its state.
+        /// The safety fence: a reconnect that announces the handoff but restored older (here:
+        /// no) state must be refused and fall back to coordinated recovery, so the result
+        /// stays complete. Only reachable with state loss, not with the durable Orleans tests.
         /// </summary>
         [Fact]
-        public async Task CleanHandoffAnnouncedWithLostStateIsRefused()
+        public async Task CleanHandoffAnnouncedWithLostStateFallsBackToRecovery()
         {
             var testName = "e2e_handoff_lost_state";
             _generator.Generate(500);
@@ -362,8 +364,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await substream0.StartAsync();
             await substream1.StartAsync();
 
-            var expected = GetExpectedJoinResult();
-            await WaitForSinkData(latestData, failures, "substream_0", expected);
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
             await AwaitBounded(substream1.StopAsync(), "handoff stop");
             await substream1.DisposeAsync();
@@ -372,24 +373,28 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 _streams.Remove(substream1);
             }
 
-            // An empty provider replaces the one the handoff persisted into.
+            // The restarted instance lost its state: an empty provider replaces the one the
+            // handoff persisted into, so it restores nothing and announces the clean handoff
+            // at a restore point below the commits the peer already acknowledged.
             fileProviders["substream_1"] = new KeepAliveMemoryFileProvider();
             substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
             await substream1.StartAsync();
 
             try
             {
-                await WaitUntil(
-                    () => _logBuffers["substream_0"].LinesContaining("Refusing to roll stream").Count > 0,
-                    () => "substream_0 to refuse the version of the lost state");
+                _generator.Generate(250);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
 
-                // Neither resumed over the lost state nor dragged down to it.
-                Assert.Empty(_logBuffers["substream_0"].LinesContaining("reconnected from a clean handoff"));
-                Assert.DoesNotContain(failures, failure => failure.Substream == "substream_0");
-                await WaitForSinkData(latestData, failures, "substream_0", expected, allowFailures: true);
+                // The peer must have refused the clean claim and gone through the coordinated
+                // recovery instead of resuming over data the returned substream cannot know.
+                Assert.NotEmpty(failures);
+
+                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
             }
             catch
             {
+                // This has flaked under full-suite load (net10, recovery cascade missing the
+                // wait deadline); the buffers hold both generations of substream_1.
                 DumpLogBuffers("lost_state");
                 throw;
             }
@@ -422,8 +427,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             peerHandler.Initialize(
                 (targets, count, ct) => Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>()),
                 _ => Task.CompletedTask,
-                (restoreVersion, checkpointEpoch, cleanHandoff) => Task.FromResult(
-                    new SubstreamInitializeResponse(notStarted: false, success: true, restoreVersion: restoreVersion, checkpointEpoch: 1, recordedCheckpointEpoch: 0, cleanReconnect: true)),
+                (restoreVersion, checkpointEpoch, cleanHandoff, wave) => Task.FromResult(
+                    new SubstreamInitializeResponse(notStarted: false, success: true, restoreVersion: restoreVersion, checkpointEpoch: 1, recordedCheckpointEpoch: 0, cleanReconnect: true, wave: wave)),
                 (_, _, _) => Task.CompletedTask);
 
             // A fresh substream: nothing restored, so its read operators hold no watermark
@@ -1322,7 +1327,15 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
                 await substream1.StartAsync();
                 _generator.Generate(250);
-                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                try
+                {
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                }
+                catch
+                {
+                    DumpLogBuffers("unanswered_stop");
+                    throw;
+                }
 
                 var rollbackVersions = restores.Select(r => r.Version).Distinct().ToList();
                 Assert.True(
@@ -2152,8 +2165,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
                 _inner.Initialize(getDataFunction, callFailAndRecover, initializeFromTarget, callRecieveCheckpointDone);
@@ -2165,14 +2178,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 return await _inner.FetchData(targetIds, numberOfEvents, cancellationToken);
             }
 
-            public Task SendFailAndRecover(long restoreVersion)
+            public Task SendFailAndRecover(RecoveryWave wave)
             {
-                return _inner.SendFailAndRecover(restoreVersion);
+                return _inner.SendFailAndRecover(wave);
             }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
             {
-                return _inner.SendInitializeRequest(restoreVersion, checkpointEpoch, cleanHandoff, cancellationToken);
+                return _inner.SendInitializeRequest(restoreVersion, checkpointEpoch, cleanHandoff, wave, cancellationToken);
             }
 
             public async Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
@@ -2184,14 +2197,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await _inner.SendCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
             }
 
-            public void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim)
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
             {
                 _inner.InitializeDurabilityClaims(callReceiveDurabilityClaim);
             }
 
-            public Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
             {
-                return _inner.SendDurabilityClaim(version, radius, senderCheckpointEpoch, targetCheckpointEpoch, requestReply, cancellationToken);
+                return _inner.SendDurabilityClaim(version, radius, initVersion, wave, senderCheckpointEpoch, targetCheckpointEpoch, requestReply, cancellationToken);
             }
         }
 

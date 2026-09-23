@@ -130,7 +130,7 @@ var substreamGrain = grainFactory.GetGrain<ISubStreamGrain>(
 await substreamGrain.MigrateAsync();
 ```
 
-The grain drains the data exchanged with the other substreams, stops at a final checkpoint and migrates. The new activation restores that checkpoint and reconnects, the other substreams keep running and nothing is replayed. This requires state storage that is reachable from every silo. With silo-local storage the new activation comes back without its state, which the other substreams refuse, see [State storage must survive](index.md#state-storage-must-survive).
+The grain drains the data exchanged with the other substreams, stops at a final checkpoint and migrates. The new activation restores that checkpoint and reconnects, the other substreams keep running and nothing is replayed. This requires state storage that is reachable from every silo. With silo-local storage the new activation comes back without its state and the whole stream starts over from the beginning, see [State storage must survive](index.md#state-storage-must-survive).
 
 A migration that can not complete cleanly, for example when a peer is unreachable, falls back to the same recovery as a silo failure. Orleans can also decide to skip a requested migration, the keep alive reminder then restarts the stream in place.
 

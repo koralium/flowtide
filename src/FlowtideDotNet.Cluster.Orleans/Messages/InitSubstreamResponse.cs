@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Messages
     [Immutable]
     public class InitSubstreamResponse
     {
-        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedFetchEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false, bool peerDraining = false)
+        public InitSubstreamResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedFetchEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false, bool peerDraining = false, long waveCounter = 0, Guid waveId = default, bool peerInInit = false)
         {
             NotStarted = notStarted;
             Success = success;
@@ -32,6 +32,9 @@ namespace FlowtideDotNet.Cluster.Orleans.Messages
             RecordedCheckpointEpoch = recordedCheckpointEpoch;
             CleanReconnect = cleanReconnect;
             PeerDraining = peerDraining;
+            WaveCounter = waveCounter;
+            WaveId = waveId;
+            PeerInInit = peerInInit;
         }
 
         /// <summary>
@@ -39,6 +42,18 @@ namespace FlowtideDotNet.Cluster.Orleans.Messages
         /// </summary>
         [Id(7)]
         public bool PeerDraining { get; }
+
+        /// <summary>
+        /// The recovery the answering substream is in.
+        /// </summary>
+        [Id(8)]
+        public long WaveCounter { get; }
+
+        [Id(9)]
+        public Guid WaveId { get; }
+
+        [Id(10)]
+        public bool PeerInInit { get; }
 
         [Id(2)]
         public bool NotStarted { get; }

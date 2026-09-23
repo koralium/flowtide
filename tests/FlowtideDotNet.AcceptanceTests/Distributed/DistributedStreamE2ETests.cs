@@ -3167,7 +3167,18 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
             await _stream.StartAsync();
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+            catch
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_stoprec_restart_initial_{buffer.Key}.log");
+                }
+                throw;
+            }
 
             // Crash the lane substream and stop while the recovery runs
             await _stream.Substreams["substream_1"].CallTrigger("crash", null);

@@ -48,8 +48,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// consuming this substreams stop barriers.</param>
         void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-            Func<long, Task> callFailAndRecover,
-            Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<RecoveryWave, Task> callFailAndRecover,
+            Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
             Func<long, long, bool, Task> callRecieveCheckpointDone);
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             int numberOfEvents,
             CancellationToken cancellationToken);
 
-        Task SendFailAndRecover(long restoreVersion);
+        Task SendFailAndRecover(RecoveryWave wave);
 
         /// <summary>
         /// Runs the initialize handshake against the other substream.
@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <param name="cleanHandoff">This substream resumes from a clean handoff stop (a planned
         /// migration), so the other substream can accept the reconnect without rolling back.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken);
+        Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken);
 
         /// <summary>
         /// Notifies the other substream that a checkpoint has completed in this substream.
@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// Registers the callback for durability claims the other substream sends: the version,
         /// the radius, the senders checkpoint epoch and the epoch it believes this substream is on.
         /// </summary>
-        void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim);
+        void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim);
 
         /// <summary>
         /// Tells the other substream that every substream within <paramref name="radius"/> hops of
@@ -100,6 +100,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <param name="targetCheckpointEpoch">The receiving substream's checkpoint epoch as last learned through the handshake.</param>
         /// <param name="requestReply">The sender still waits for an agreement, the receiver answers with everything it claims. A reply never asks for one.</param>
         /// <param name="cancellationToken">Cancelled when the sender gives up on this send, it is sent again. A send that cannot end must not be kept.</param>
-        Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken);
+        Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken);
     }
 }

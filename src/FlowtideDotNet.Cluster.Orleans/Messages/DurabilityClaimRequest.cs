@@ -16,12 +16,15 @@ namespace FlowtideDotNet.Cluster.Orleans.Messages
     [Immutable]
     public class DurabilityClaimRequest
     {
-        public DurabilityClaimRequest(string requestor, long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply = false)
+        public DurabilityClaimRequest(string requestor, long version, int radius, long initVersion, long waveCounter, Guid waveId, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply = false)
         {
             RequestReply = requestReply;
             Requestor = requestor;
             Version = version;
             Radius = radius;
+            InitVersion = initVersion;
+            WaveCounter = waveCounter;
+            WaveId = waveId;
             SenderCheckpointEpoch = senderCheckpointEpoch;
             TargetCheckpointEpoch = targetCheckpointEpoch;
         }
@@ -55,5 +58,20 @@ namespace FlowtideDotNet.Cluster.Orleans.Messages
         /// </summary>
         [Id(5)]
         public bool RequestReply { get; }
+
+        /// <summary>
+        /// The recovery of the group the claim belongs to.
+        /// </summary>
+        [Id(6)]
+        public long WaveCounter { get; }
+
+        [Id(7)]
+        public Guid WaveId { get; }
+
+        /// <summary>
+        /// The version the requestor started its run at.
+        /// </summary>
+        [Id(8)]
+        public long InitVersion { get; }
     }
 }

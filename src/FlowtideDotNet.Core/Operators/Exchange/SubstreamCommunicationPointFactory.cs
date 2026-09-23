@@ -29,12 +29,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly ISubstreamCommunicationHandlerFactory? _communicationHandlerFactory;
         private readonly bool _announceCleanHandoff;
         private readonly SubstreamDurabilityCoordinator? _durability;
+        private readonly SubstreamRecoveryWaves _waves = new SubstreamRecoveryWaves();
         private readonly HashSet<string>? _groupPeers;
 
         /// <summary>
         /// Null when this stream is not a substream, it then agrees with itself.
         /// </summary>
         internal SubstreamDurabilityCoordinator? Durability => _durability;
+
+        /// <summary>
+        /// The recovery this stream is in, shared by all its communication points.
+        /// </summary>
+        internal SubstreamRecoveryWaves Waves => _waves;
 
         public SubstreamCommunicationPointFactory(ILoggerFactory? loggerFactory = null, string? selfSubstreamName = null, ISubstreamCommunicationHandlerFactory? communicationHandlerFactory = null, bool announceCleanHandoff = false, SubstreamGroup? group = null)
         {
@@ -62,6 +68,22 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
+        /// <summary>
+        /// The stream's run ended, every point handshakes again at the next start.
+        /// </summary>
+        internal void OnStreamStopped()
+        {
+            List<SubstreamCommunicationPoint> points;
+            lock (_lock)
+            {
+                points = new List<SubstreamCommunicationPoint>(_existing.Values);
+            }
+            foreach (var point in points)
+            {
+                point.OnStreamStopped();
+            }
+        }
+
         public SubstreamCommunicationPoint GetCommunicationPoint(string targetSubstreamName)
         {
             if (_communicationHandlerFactory == null)
@@ -83,7 +105,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     return existing;
                 }
-                existing = new SubstreamCommunicationPoint(loggerFactory.CreateLogger($"FlowtideDotNet.substream_com_{selfSubstreamName}_{targetSubstreamName}"), selfSubstreamName, targetSubstreamName, _communicationHandlerFactory.GetCommunicationHandler(targetSubstreamName, selfSubstreamName), _announceCleanHandoff, _durability);
+                existing = new SubstreamCommunicationPoint(loggerFactory.CreateLogger($"FlowtideDotNet.substream_com_{selfSubstreamName}_{targetSubstreamName}"), selfSubstreamName, targetSubstreamName, _communicationHandlerFactory.GetCommunicationHandler(targetSubstreamName, selfSubstreamName), _announceCleanHandoff, _durability, _waves);
                 _existing.Add(targetSubstreamName, existing);
                 return existing;
             }

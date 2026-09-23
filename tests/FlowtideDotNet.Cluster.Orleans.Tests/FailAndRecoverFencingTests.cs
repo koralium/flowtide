@@ -119,28 +119,28 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         /// Wires a grain whose communication handler records dispatched recoveries, so a
         /// test can tell whether a fail and recover request was applied or refused.
         /// </summary>
-        private static (SubStreamGrain grain, List<long> recoveredPoints, TaskCompletionSource recovered) CreateGrainWithRecordingHandler()
+        private static (SubStreamGrain grain, List<long> recoveredWaves, TaskCompletionSource recovered) CreateGrainWithRecordingHandler()
         {
             var grain = CreateGrain();
             var factory = new OrleansCommunicationFactory("stream", new SingleGrainFactory());
             var handler = factory.GetCommunicationHandler("peer", "self");
-            var recoveredPoints = new List<long>();
+            var recoveredWaves = new List<long>();
             var recovered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             handler.Initialize(
                 (targets, count, ct) => Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>()),
-                point =>
+                wave =>
                 {
-                    lock (recoveredPoints)
+                    lock (recoveredWaves)
                     {
-                        recoveredPoints.Add(point);
+                        recoveredWaves.Add(wave.Counter);
                     }
                     recovered.TrySetResult();
                     return Task.CompletedTask;
                 },
-                (restoreVersion, checkpointEpoch, cleanHandoff) => Task.FromResult(new SubstreamInitializeResponse(notStarted: false, success: true, restoreVersion: restoreVersion)),
+                (restoreVersion, checkpointEpoch, cleanHandoff, wave) => Task.FromResult(new SubstreamInitializeResponse(notStarted: false, success: true, restoreVersion: restoreVersion)),
                 (_, _, _) => Task.CompletedTask);
             grain.SetCommunicationFactoryForTests(factory);
-            return (grain, recoveredPoints, recovered);
+            return (grain, recoveredWaves, recovered);
         }
 
         private static async Task<bool> RecoveryDispatched(TaskCompletionSource recovered)
@@ -154,58 +154,58 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         [Fact]
         public async Task RollbackFromAStaleInstanceIsRefused()
         {
-            var (grain, recoveredPoints, recovered) = CreateGrainWithRecordingHandler();
+            var (grain, recoveredWaves, recovered) = CreateGrainWithRecordingHandler();
             await grain.InitializeSubstreamRequest(new InitSubstreamRequest("peer", 0, fetchEpoch: 5000));
 
             // A zombie instance of the peer, fenced out of fetching, asks for a rollback to
             // its own old restore point. Applying it would discard committed progress.
-            await grain.FailAndRecoverAsync(new FailAndRecoverRequest("peer", recoveryPoint: 3, fetchEpoch: 4000));
+            await grain.FailAndRecoverAsync(new FailAndRecoverRequest("peer", waveCounter: 3, waveId: Guid.NewGuid(), fetchEpoch: 4000));
 
             Assert.False(await RecoveryDispatched(recovered),
                 "A fail and recover from a stale fetch epoch was applied; a zombie instance can roll the live stream back below its committed version.");
-            Assert.Empty(recoveredPoints);
+            Assert.Empty(recoveredWaves);
         }
 
         [Fact]
         public async Task RollbackWithoutAnAnnouncementIsRefused()
         {
-            var (grain, recoveredPoints, recovered) = CreateGrainWithRecordingHandler();
+            var (grain, recoveredWaves, recovered) = CreateGrainWithRecordingHandler();
 
             // No handshake has announced an epoch to this activation, the requestor cannot
             // be told apart from a zombie. Its restart handshake reconciles the versions.
-            await grain.FailAndRecoverAsync(new FailAndRecoverRequest("peer", recoveryPoint: 3, fetchEpoch: 4000));
+            await grain.FailAndRecoverAsync(new FailAndRecoverRequest("peer", waveCounter: 3, waveId: Guid.NewGuid(), fetchEpoch: 4000));
 
             Assert.False(await RecoveryDispatched(recovered),
                 "A fail and recover with no announced fetch epoch was applied instead of being left to the handshake reconciliation.");
-            Assert.Empty(recoveredPoints);
+            Assert.Empty(recoveredWaves);
         }
 
         [Fact]
         public async Task RollbackFromTheAnnouncedInstanceIsApplied()
         {
-            var (grain, recoveredPoints, recovered) = CreateGrainWithRecordingHandler();
+            var (grain, recoveredWaves, recovered) = CreateGrainWithRecordingHandler();
             await grain.InitializeSubstreamRequest(new InitSubstreamRequest("peer", 0, fetchEpoch: 5000));
 
-            await grain.FailAndRecoverAsync(new FailAndRecoverRequest("peer", recoveryPoint: 3, fetchEpoch: 5000));
+            await grain.FailAndRecoverAsync(new FailAndRecoverRequest("peer", waveCounter: 3, waveId: Guid.NewGuid(), fetchEpoch: 5000));
 
             Assert.True(await RecoveryDispatched(recovered), "A fail and recover carrying the announced epoch must be applied.");
-            Assert.Equal(new[] { 3L }, recoveredPoints);
+            Assert.Equal(new[] { 3L }, recoveredWaves);
         }
 
         [Fact]
         public async Task RollbackWithTheBumpedPostFailureEpochIsApplied()
         {
-            var (grain, recoveredPoints, recovered) = CreateGrainWithRecordingHandler();
+            var (grain, recoveredWaves, recovered) = CreateGrainWithRecordingHandler();
             await grain.InitializeSubstreamRequest(new InitSubstreamRequest("peer", 0, fetchEpoch: 5000));
 
             // The real shape of a legitimate request: the peer bumps its epoch on failure
             // before it notifies, so the request arrives above the announcement (the new
             // epoch is announced only at the restart handshake). It must not be refused.
-            await grain.FailAndRecoverAsync(new FailAndRecoverRequest("peer", recoveryPoint: 3, fetchEpoch: 5001));
+            await grain.FailAndRecoverAsync(new FailAndRecoverRequest("peer", waveCounter: 3, waveId: Guid.NewGuid(), fetchEpoch: 5001));
 
             Assert.True(await RecoveryDispatched(recovered),
                 "A fail and recover carrying the peer's post-failure bumped epoch was refused; every legitimate recovery notification would be dropped.");
-            Assert.Equal(new[] { 3L }, recoveredPoints);
+            Assert.Equal(new[] { 3L }, recoveredWaves);
         }
 
         [Fact]
@@ -214,8 +214,8 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             var grain = new RecordingSubStreamGrain();
             var handler = new OrleansCommunicationHandler("stream", "peer", "self", new SingleGrainFactory(grain));
 
-            await handler.SendInitializeRequest(0, 0, false, default);
-            await handler.SendFailAndRecover(7);
+            await handler.SendInitializeRequest(0, 0, false, default, default);
+            await handler.SendFailAndRecover(new RecoveryWave(7, Guid.NewGuid()));
 
             Assert.Single(grain.FailAndRecoverEpochs);
             Assert.Equal(grain.AnnouncedEpochs[0], grain.FailAndRecoverEpochs[0]);
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             // The failure bump runs before the notification, so the stamped epoch is above
             // the announcement - the serving grain must accept it, only lower is stale.
             handler.OnStreamFailure();
-            await handler.SendFailAndRecover(7);
+            await handler.SendFailAndRecover(new RecoveryWave(7, Guid.NewGuid()));
             Assert.Equal(2, grain.FailAndRecoverEpochs.Count);
             Assert.True(grain.FailAndRecoverEpochs[1] > grain.AnnouncedEpochs[0]);
         }

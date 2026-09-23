@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private IFlowtideQueue<IStreamEvent, StreamEventValueContainer>? _queue;
         private IMemoryAllocator? _memoryAllocator;
         private readonly SemaphoreSlim _lockSemaphore;
-        private Func<long, Task>? _failAndRecoverFunc;
+        private Func<long?, Task>? _failAndRecoverFunc;
 
         // False between a failure and the next initialize: the queue still holds aborted-epoch events
         // until the rollback and regeneration, serving them would deliver stale events.
@@ -213,7 +213,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             IStateManagerClient stateManagerClient,
             ExchangeOperatorState state,
             IMemoryAllocator memoryAllocator,
-            Func<long, Task> failAndRecoverFunc,
+            Func<long?, Task> failAndRecoverFunc,
             TimeSpan stopDrainTimeout)
         {
             _failAndRecoverFunc = failAndRecoverFunc;
@@ -423,7 +423,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         public bool CanFailAndRecover => _failAndRecoverFunc != null;
 
-        public Task FailAndRecover(long recoveryPoint)
+        public Task FailAndRecover(long? recoveryPoint)
         {
             if (_failAndRecoverFunc == null)
             {

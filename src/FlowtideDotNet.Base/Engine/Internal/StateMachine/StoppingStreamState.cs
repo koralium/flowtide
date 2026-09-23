@@ -512,8 +512,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 lock (_context._checkpointLock)
                 {
                     var completed = _context._stateManager.LastCompletedCheckpointVersion;
-                    var requested = _context.ValidRequestedRestoreVersion_NoLock();
-                    if (!requested.HasValue || requested.Value > completed)
+                    if (!_context._restoreCheckpointVersion.HasValue || _context._restoreCheckpointVersion.Value > completed)
                     {
                         _context._restoreCheckpointVersion = completed;
                     }
@@ -529,6 +528,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 await block.DisposeAsync();
             });
+            // The run is over for the connected streams too, a failing stop told them already.
+            _context.ForEachVersionAgreement(agreement => agreement.StreamStopped());
 
             _context._stateManager.Dispose();
 

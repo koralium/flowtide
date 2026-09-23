@@ -19,12 +19,7 @@ namespace FlowtideDotNet.Base.Vertices
     internal interface IStreamVersionAgreement
     {
         /// <summary>
-        /// Called before a start chooses its restore version, nothing is learned or claimed until the reset.
-        /// </summary>
-        void InvalidateAgreement();
-
-        /// <summary>
-        /// Called at every start once the state is restored, before any vertex initializes.
+        /// Called at every start once the state is restored, before any vertex initializes: joins the recovery the start is in.
         /// </summary>
         void ResetAgreement();
 
@@ -44,8 +39,28 @@ namespace FlowtideDotNet.Base.Vertices
         bool IsVersionAgreed(long version);
 
         /// <summary>
-        /// The highest version this stream ever knew every connected stream to be durable at, -1 if none.
+        /// Completes with the version every connected stream has once all of them announced theirs, null without connected streams.
         /// </summary>
-        long HighestKnownDurableVersion { get; }
+        Task<long?> WhenGroupVersionKnown(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Completes once every directly connected stream started its run at the group's version, nobody next to this stream still comes down.
+        /// </summary>
+        Task WhenGroupSettled(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// This stream restarts at the group's version, which is below its own: the group re-initializes with it.
+        /// </summary>
+        void ComingDownTo(long groupVersion);
+
+        /// <summary>
+        /// The start reached running, the next failure is a new recovery.
+        /// </summary>
+        void StartCompleted();
+
+        /// <summary>
+        /// The run ended in a stop, the next start handshakes again.
+        /// </summary>
+        void StreamStopped();
     }
 }

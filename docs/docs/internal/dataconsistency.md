@@ -132,7 +132,7 @@ What changes in the algorithm:
 * **CommitVersion(v)** runs $P(\mathcal{D}, \mathcal{S}, v)$. It can be called again with the same version, the idempotency contract above applies to it.
 * **OnInitialize** only purges $r.v > v_{\text{local}}$. It does not run the commit procedure: the restored version can still be rolled back one step while the substreams reconcile at start, the *CommitVersion* call at start runs it. In the two-phase commit example a prepared transaction for a version $\le v_{\text{local}}$ likewise stays prepared until *CommitVersion* names it.
 
-No substream restores below a version that *CommitVersion* was called with in a substream it is connected to, so staged rows $\le v_{\text{cp}}$ are never purged.
+No substream restores below a version that *CommitVersion* was called with in a substream it is connected to, as long as every substream keeps its state storage, so staged rows $\le v_{\text{cp}}$ are never purged.
 
 In a stream that is not distributed *CommitVersion* is called directly after each checkpoint, the two versions are the same and the algorithm above is unchanged.
 

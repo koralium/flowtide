@@ -25,7 +25,9 @@ Substreams checkpoint together. A checkpoint only completes when the substreams 
 
 If a substream fails, all substreams it exchanges data with roll back to a common checkpoint, and the data in between is replayed from the sources. This is the same recovery model as a single stream, sources must be able to resend data from their last committed position.
 
-No substream starts a new checkpoint before all substreams it exchanges data with have committed the previous one, so connected substreams are never more than one checkpoint apart. When substreams start they compare their restored checkpoint versions, if they differ all of them recover to the lower one and catch up by replay.
+No substream starts a new checkpoint before all substreams it exchanges data with have committed the previous one, so connected substreams are never more than one checkpoint apart.
+
+A failure puts every connected substream into init together, once. In init each substream restores its latest checkpoint and announces it; nobody runs before every substream has answered. The group then starts at the highest version all of them have: a substream that restored a later one restores the group's version instead, and the whole group re-initializes with it. Messages about a recovery carry an id, so a message from a recovery that is over does nothing, and a substream that receives one from a recovery it has not seen restarts into it.
 
 ### Committing to external systems
 
@@ -37,9 +39,9 @@ It can be called again with a version it was already called with, for instance a
 
 ### State storage must survive
 
-A substream never rolls back below a version that was handed to *CommitVersion* in a substream it is connected to, directly or through other substreams. A substream that comes back without its state storage asks the others to start over from the beginning, which they refuse: they log an error and the stream stops making progress until all substreams are restarted from empty state.
+A substream never rolls back below a version that was handed to *CommitVersion* in a substream it is connected to, directly or through other substreams, as long as every substream keeps its state storage. A substream that comes back without it has version 0, the highest version all have is then 0, and the whole group starts over from the beginning.
 
-State storage that survives the process, and in a cluster is reachable from every machine a substream can run on, is a requirement in distributed mode.
+State storage that survives the process, and in a cluster is reachable from every machine a substream can run on, is therefore a requirement in distributed mode.
 
 ## Hosting options
 

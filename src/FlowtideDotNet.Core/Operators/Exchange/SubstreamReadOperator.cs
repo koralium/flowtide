@@ -599,19 +599,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _communicationPoint.SendCheckpointDone(checkpointVersion);
         }
 
-        void IStreamVersionAgreement.InvalidateAgreement()
-        {
-            _communicationPoint.Durability?.Invalidate();
-        }
-
         void IStreamVersionAgreement.ResetAgreement()
         {
-            _communicationPoint.Durability?.Reset();
+            _communicationPoint.Durability?.EnterWave(_communicationPoint.Waves.ForStart());
         }
 
         void IStreamVersionAgreement.AnnounceInitialized(long restoreVersion)
         {
-            _communicationPoint.Durability?.LocalDurable(restoreVersion);
+            _communicationPoint.Durability?.LocalInit(restoreVersion);
         }
 
         Task IStreamVersionAgreement.WhenVersionAgreed(long version, CancellationToken cancellationToken)
@@ -624,7 +619,45 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _communicationPoint.Durability?.IsAgreed(version) ?? true;
         }
 
-        long IStreamVersionAgreement.HighestKnownDurableVersion => _communicationPoint.Durability?.HighestKnownDurable ?? -1;
+        Task<long?> IStreamVersionAgreement.WhenGroupVersionKnown(CancellationToken cancellationToken)
+        {
+            return WhenGroupVersionKnown(_communicationPoint.Durability, cancellationToken);
+        }
+
+        Task IStreamVersionAgreement.WhenGroupSettled(CancellationToken cancellationToken)
+        {
+            return WhenGroupSettled(_communicationPoint.Durability, cancellationToken);
+        }
+
+        void IStreamVersionAgreement.ComingDownTo(long groupVersion)
+        {
+            _communicationPoint.Waves.MintForLowering(groupVersion);
+        }
+
+        void IStreamVersionAgreement.StartCompleted()
+        {
+            _communicationPoint.Waves.StartCompleted();
+        }
+
+        void IStreamVersionAgreement.StreamStopped()
+        {
+            _communicationPoint.OnStreamStopped();
+        }
+
+        internal static async Task<long?> WhenGroupVersionKnown(SubstreamDurabilityCoordinator? durability, CancellationToken cancellationToken)
+        {
+            if (durability == null)
+            {
+                return null;
+            }
+            await durability.WhenAgreedKnown(cancellationToken);
+            return durability.Agreed;
+        }
+
+        internal static Task WhenGroupSettled(SubstreamDurabilityCoordinator? durability, CancellationToken cancellationToken)
+        {
+            return durability?.WhenSettled(cancellationToken) ?? Task.CompletedTask;
+        }
 
         /// <summary>
         /// Consumed the peer's stop barrier, uncommitted, else the handoff deadlocks.
@@ -739,7 +772,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        public Task FailAndRecover(long recoveryPoint)
+        public Task FailAndRecover(long? recoveryPoint)
         {
             return FailAndRollback(restoreVersion: recoveryPoint);
         }

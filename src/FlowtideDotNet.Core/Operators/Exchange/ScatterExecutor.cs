@@ -165,7 +165,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             IStateManagerClient stateManagerClient,
             ExchangeOperatorState exchangeOperatorState,
             IMemoryAllocator memoryAllocator,
-            Func<long, Task> failAndRecoverFunc,
+            Func<long?, Task> failAndRecoverFunc,
             TimeSpan stopDrainTimeout)
         {
             for (int i = 0; i < _targets.Length; i++)

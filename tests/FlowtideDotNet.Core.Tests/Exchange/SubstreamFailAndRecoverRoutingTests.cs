@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             // initialize handshake that can itself request a rollback on a version mismatch.
             _ = new SubstreamTarget(1, 1, pointA, () => { });
 
-            var recovered = new List<long>();
+            var recovered = new List<long?>();
             var wired = new SubstreamTarget(2, 1, pointA, () => { });
             await wired.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, point =>
             {
@@ -68,9 +68,9 @@ namespace FlowtideDotNet.Core.Tests.Exchange
                 return Task.CompletedTask;
             }, TimeSpan.FromSeconds(30));
 
-            await pointB.SendFailAndRecover(5);
+            await pointB.SendFailAndRecover(new RecoveryWave(5, Guid.NewGuid()));
 
-            Assert.Equal(new[] { 5L }, recovered);
+            Assert.Equal(new long?[] { null }, recovered);
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             // Must complete without dispatching into the unwired operator, the initialize
             // handshake reconciles the versions once the operator initializes.
-            await pointB.SendFailAndRecover(5);
+            await pointB.SendFailAndRecover(new RecoveryWave(5, Guid.NewGuid()));
         }
 
         [Fact]
@@ -117,8 +117,8 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             // One rollback fails the whole stream over, a second dispatch for the same
             // request would race the failure handling it triggered.
-            var recovered = new List<long>();
-            Func<long, Task> record = point =>
+            var recovered = new List<long?>();
+            Func<long?, Task> record = point =>
             {
                 lock (recovered)
                 {
@@ -131,9 +131,9 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             var second = new SubstreamTarget(2, 1, pointA, () => { });
             await second.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, record, TimeSpan.FromSeconds(30));
 
-            await pointB.SendFailAndRecover(5);
+            await pointB.SendFailAndRecover(new RecoveryWave(5, Guid.NewGuid()));
 
-            Assert.Equal(new[] { 5L }, recovered);
+            Assert.Equal(new long?[] { null }, recovered);
         }
     }
 }

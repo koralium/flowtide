@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 // The stream has not started yet, the claim is sent again later
                 return;
             }
-            await handler.TargetDurabilityClaim(request.Version, request.Radius, request.SenderCheckpointEpoch, request.TargetCheckpointEpoch, request.RequestReply);
+            await handler.TargetDurabilityClaim(request.Version, request.Radius, request.InitVersion, new RecoveryWave(request.WaveCounter, request.WaveId), request.SenderCheckpointEpoch, request.TargetCheckpointEpoch, request.RequestReply);
         }
 
         public Task FailAndRecoverAsync(FailAndRecoverRequest request)
@@ -109,7 +109,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 // Without an announcement the requestor cannot be told apart from a zombie.
                 // Refused; a live requestor re-runs the handshake on its restart, which
                 // reconciles the versions.
-                _logger.LogDebug("Refusing fail and recover to {recoveryPoint} from {requestor}, no fetch epoch has been announced to this activation.", request.RecoveryPoint, request.Requestor);
+                _logger.LogDebug("Refusing fail and recover of wave {wave} from {requestor}, no fetch epoch has been announced to this activation.", request.WaveCounter, request.Requestor);
                 return Task.CompletedTask;
             }
             if (request.FetchEpoch < announcedEpoch)
@@ -118,7 +118,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 // live stream back to the zombie's restore point, discarding committed
                 // progress on both substreams. A live requestor bumps its epoch on failure
                 // before notifying, so a legitimate request is never below the announcement.
-                _logger.LogDebug("Refusing fail and recover to {recoveryPoint} from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.RecoveryPoint, request.Requestor, request.FetchEpoch, announcedEpoch);
+                _logger.LogDebug("Refusing fail and recover of wave {wave} from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.WaveCounter, request.Requestor, request.FetchEpoch, announcedEpoch);
                 return Task.CompletedTask;
             }
             // Acknowledge immediately, awaiting the recovery would time the caller out
@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             {
                 try
                 {
-                    await handler.FailAndRecover(request.RecoveryPoint);
+                    await handler.FailAndRecover(new RecoveryWave(request.WaveCounter, request.WaveId));
                 }
                 catch (Exception e)
                 {
@@ -526,11 +526,11 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             {
                 return new InitSubstreamResponse(true, false, request.RestorePoint, recordedFetchEpoch: request.FetchEpoch);
             }
-            var response = await handler.TargetInitializeRequest(request.RestorePoint, request.CheckpointEpoch, request.CleanHandoff);
+            var response = await handler.TargetInitializeRequest(request.RestorePoint, request.CheckpointEpoch, request.CleanHandoff, new RecoveryWave(request.WaveCounter, request.WaveId));
             // NotStarted must survive the wire: it signals a transient state where the
             // requestor retries with backoff; a plain failure would make it fail and recover
             // instead, needlessly rolling back both substreams on a clean handoff reconnect.
-            return new InitSubstreamResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, recordedFetchEpoch: request.FetchEpoch, recordedCheckpointEpoch: response.RecordedCheckpointEpoch, cleanReconnect: response.CleanReconnect, peerDraining: response.PeerDraining);
+            return new InitSubstreamResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, recordedFetchEpoch: request.FetchEpoch, recordedCheckpointEpoch: response.RecordedCheckpointEpoch, cleanReconnect: response.CleanReconnect, peerDraining: response.PeerDraining, waveCounter: response.Wave.Counter, waveId: response.Wave.Id, peerInInit: response.PeerInInit);
         }
 
         /// <summary>

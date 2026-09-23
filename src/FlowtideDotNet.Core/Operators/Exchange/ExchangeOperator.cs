@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         public bool ReadyToStop => _executor.ReadyToStop;
 
-        private Task FailAndRecoverMethod(long recoveryPoint)
+        private Task FailAndRecoverMethod(long? recoveryPoint)
         {
             return FailAndRollback(restoreVersion: recoveryPoint);
         }
@@ -304,19 +304,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return Task.CompletedTask;
         }
 
-        void IStreamVersionAgreement.InvalidateAgreement()
-        {
-            _communicationPointFactory.Durability?.Invalidate();
-        }
-
         void IStreamVersionAgreement.ResetAgreement()
         {
-            _communicationPointFactory.Durability?.Reset();
+            _communicationPointFactory.Durability?.EnterWave(_communicationPointFactory.Waves.ForStart());
         }
 
         void IStreamVersionAgreement.AnnounceInitialized(long restoreVersion)
         {
-            _communicationPointFactory.Durability?.LocalDurable(restoreVersion);
+            _communicationPointFactory.Durability?.LocalInit(restoreVersion);
         }
 
         Task IStreamVersionAgreement.WhenVersionAgreed(long version, CancellationToken cancellationToken)
@@ -329,6 +324,29 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _communicationPointFactory.Durability?.IsAgreed(version) ?? true;
         }
 
-        long IStreamVersionAgreement.HighestKnownDurableVersion => _communicationPointFactory.Durability?.HighestKnownDurable ?? -1;
+        Task<long?> IStreamVersionAgreement.WhenGroupVersionKnown(CancellationToken cancellationToken)
+        {
+            return SubstreamReadOperator.WhenGroupVersionKnown(_communicationPointFactory.Durability, cancellationToken);
+        }
+
+        Task IStreamVersionAgreement.WhenGroupSettled(CancellationToken cancellationToken)
+        {
+            return SubstreamReadOperator.WhenGroupSettled(_communicationPointFactory.Durability, cancellationToken);
+        }
+
+        void IStreamVersionAgreement.ComingDownTo(long groupVersion)
+        {
+            _communicationPointFactory.Waves.MintForLowering(groupVersion);
+        }
+
+        void IStreamVersionAgreement.StartCompleted()
+        {
+            _communicationPointFactory.Waves.StartCompleted();
+        }
+
+        void IStreamVersionAgreement.StreamStopped()
+        {
+            _communicationPointFactory.OnStreamStopped();
+        }
     }
 }

@@ -146,8 +146,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             lock (_context._checkpointLock)
             {
                 var completed = _context._stateManager.LastCompletedCheckpointVersion;
-                var requested = _context.ValidRequestedRestoreVersion_NoLock();
-                if (!requested.HasValue || requested.Value > completed)
+                if (!_context._restoreCheckpointVersion.HasValue || _context._restoreCheckpointVersion.Value > completed)
                 {
                     _context._restoreCheckpointVersion = completed;
                 }
@@ -266,7 +265,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            var consecutiveFailures = Interlocked.Increment(ref _context._consecutiveFailures);
+            var consecutiveFailures = Interlocked.Exchange(ref _context._realFailurePending, 0) == 1
+                ? Interlocked.Increment(ref _context._consecutiveFailures)
+                : Volatile.Read(ref _context._consecutiveFailures);
             var slices = RestartDelaySlices(consecutiveFailures);
             if (slices > 1 && consecutiveFailures == _context._dataflowStreamOptions.FailureRestartGraceCount + 1)
             {

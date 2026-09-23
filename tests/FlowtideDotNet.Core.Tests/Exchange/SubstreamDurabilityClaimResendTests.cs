@@ -33,8 +33,15 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             SubstreamDurabilityCoordinator.ResendAbandonAfter = _resendAbandonAfter;
         }
 
+        private static SubstreamRecoveryWaves Starting()
+        {
+            var waves = new SubstreamRecoveryWaves();
+            waves.ForStart();
+            return waves;
+        }
+
         /// <summary>
-        /// B agrees and goes quiet while what it sent to A after its first claim was lost, only A still waits.
+        /// B agrees and goes quiet while everything it sent to A was lost, only A still waits.
         /// </summary>
         [Fact]
         public async Task TheWaitingSideGetsTheClaimsItsAgreedPeerNoLongerSends()
@@ -45,8 +52,8 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             var durabilityA = new SubstreamDurabilityCoordinator(NullLogger.Instance, "subA", new[] { "subB" }, 1);
             var durabilityB = new SubstreamDurabilityCoordinator(NullLogger.Instance, "subB", new[] { "subA" }, 1);
-            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA, false, durabilityA);
-            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB, false, durabilityB);
+            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA, false, durabilityA, Starting());
+            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB, false, durabilityB, Starting());
 
             await pointA.InitializeOperator(0);
             await pointB.InitializeOperator(0);
@@ -55,7 +62,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             durabilityB.LocalDurable(5);
             durabilityA.LocalDurable(5);
 
-            // B heard A and agreed, of what it sent only that it is durable arrived.
+            // B heard A and agreed, nothing it sent arrived.
             await durabilityB.WhenAgreed(5, default).WaitAsync(TimeSpan.FromSeconds(10));
             Assert.True(handlerB.Dropped > 0);
             Assert.False(durabilityA.IsAgreed(5));
@@ -76,8 +83,8 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             var handlerB = hub.CreateFactory("subB").GetCommunicationHandler("subA", "subB");
 
             var durabilityA = new SubstreamDurabilityCoordinator(NullLogger.Instance, "subA", new[] { "subB" }, 1);
-            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA, false, durabilityA);
-            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB);
+            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA, false, durabilityA, Starting());
+            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB, waves: Starting());
 
             await pointA.InitializeOperator(0);
             await pointB.InitializeOperator(0);
@@ -146,8 +153,8 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
                 _inner.Initialize(getDataFunction, callFailAndRecover, initializeFromTarget, callRecieveCheckpointDone);
@@ -158,14 +165,14 @@ namespace FlowtideDotNet.Core.Tests.Exchange
                 return _inner.FetchData(targetIds, numberOfEvents, cancellationToken);
             }
 
-            public Task SendFailAndRecover(long restoreVersion)
+            public Task SendFailAndRecover(RecoveryWave wave)
             {
-                return _inner.SendFailAndRecover(restoreVersion);
+                return _inner.SendFailAndRecover(wave);
             }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
             {
-                return _inner.SendInitializeRequest(restoreVersion, checkpointEpoch, cleanHandoff, cancellationToken);
+                return _inner.SendInitializeRequest(restoreVersion, checkpointEpoch, cleanHandoff, wave, cancellationToken);
             }
 
             public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
@@ -173,14 +180,14 @@ namespace FlowtideDotNet.Core.Tests.Exchange
                 return _inner.SendCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
             }
 
-            public void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim)
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
             {
                 _inner.InitializeDurabilityClaims(callReceiveDurabilityClaim);
             }
 
-            public Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
             {
-                if (Drop && radius > 0)
+                if (Drop)
                 {
                     Interlocked.Increment(ref _dropped);
                     return Task.CompletedTask;
@@ -193,7 +200,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
                     }
                     return _never.Task;
                 }
-                return _inner.SendDurabilityClaim(version, radius, senderCheckpointEpoch, targetCheckpointEpoch, requestReply, cancellationToken);
+                return _inner.SendDurabilityClaim(version, radius, initVersion, wave, senderCheckpointEpoch, targetCheckpointEpoch, requestReply, cancellationToken);
             }
         }
     }

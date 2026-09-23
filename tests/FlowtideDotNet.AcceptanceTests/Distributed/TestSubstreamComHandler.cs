@@ -18,17 +18,17 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
     internal class TestSubstreamComHandler : ISubstreamCommunicationHandler
     {
         private readonly Func<long, long, Task> _sendCheckpointDone;
-        private readonly Func<long, Task> _sendFailAndRecover;
+        private readonly Func<RecoveryWave, Task> _sendFailAndRecover;
         private readonly Func<long, long, Task<SubstreamInitializeResponse>> _sendInitializeRequest;
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunc;
-        private Func<long, Task>? _callFailAndRecover;
-        private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
+        private Func<RecoveryWave, Task>? _callFailAndRecover;
+        private Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
         private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
-        private Func<long, int, long, long, bool, Task>? _callReceiveDurabilityClaim;
+        private Func<long, int, long, RecoveryWave, long, long, bool, Task>? _callReceiveDurabilityClaim;
 
         public TestSubstreamComHandler(
             Func<long, long, Task> sendCheckpointDone,
-            Func<long, Task> sendFailAndRecover,
+            Func<RecoveryWave, Task> sendFailAndRecover,
             Func<long, long, Task<SubstreamInitializeResponse>> sendInitializeRequest)
         {
             _sendCheckpointDone = sendCheckpointDone;
@@ -54,8 +54,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-            Func<long, Task> callFailAndRecover,
-            Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<RecoveryWave, Task> callFailAndRecover,
+            Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
             Func<long, long, bool, Task> callRecieveCheckpointDone)
         {
             _getDataFunc = getDataFunction;
@@ -69,12 +69,12 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             return _sendCheckpointDone(checkpointVersion, targetCheckpointEpoch);
         }
 
-        public Task SendFailAndRecover(long restoreVersion)
+        public Task SendFailAndRecover(RecoveryWave wave)
         {
-            return _sendFailAndRecover(restoreVersion);
+            return _sendFailAndRecover(wave);
         }
 
-        public void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim)
+        public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
         {
             _callReceiveDurabilityClaim = callReceiveDurabilityClaim;
         }
@@ -89,13 +89,13 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         /// </summary>
         public bool EchoDurabilityClaims { get; set; } = true;
 
-        public Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
+        public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
         {
             SentDurabilityClaims.Enqueue((version, radius, senderCheckpointEpoch, targetCheckpointEpoch));
             if (EchoDurabilityClaims && _callReceiveDurabilityClaim != null)
             {
                 // Its own epoch is the one this stream addressed, this stream's the one it announced.
-                return _callReceiveDurabilityClaim(version, radius, targetCheckpointEpoch, senderCheckpointEpoch, false);
+                return _callReceiveDurabilityClaim(version, radius, initVersion, wave, targetCheckpointEpoch, senderCheckpointEpoch, false);
             }
             return Task.CompletedTask;
         }
@@ -104,16 +104,16 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         /// Simulates the other substream claiming a version, tagged with its own epoch and the
         /// epoch it believes this stream is on.
         /// </summary>
-        public Task CallReceiveDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch)
+        public Task CallReceiveDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, RecoveryWave wave = default, long initVersion = -1)
         {
             if (_callReceiveDurabilityClaim == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _callReceiveDurabilityClaim(version, radius, senderCheckpointEpoch, targetCheckpointEpoch, false);
+            return _callReceiveDurabilityClaim(version, radius, initVersion, wave, senderCheckpointEpoch, targetCheckpointEpoch, false);
         }
 
-        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
         {
             return _sendInitializeRequest(restoreVersion, checkpointEpoch);
         }
@@ -134,13 +134,13 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         /// <summary>
         /// Simulates the other substream requesting a fail and recover.
         /// </summary>
-        public Task CallFailAndRecover(long restoreVersion)
+        public Task CallFailAndRecover(RecoveryWave wave)
         {
             if (_callFailAndRecover == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _callFailAndRecover(restoreVersion);
+            return _callFailAndRecover(wave);
         }
     }
 }

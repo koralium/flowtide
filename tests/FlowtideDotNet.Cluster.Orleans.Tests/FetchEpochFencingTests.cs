@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             var grain = new RecordingSubStreamGrain();
             var handler = new OrleansCommunicationHandler("stream", "peer", "self", new SingleGrainFactory(grain));
 
-            await handler.SendInitializeRequest(0, 0, false, default);
+            await handler.SendInitializeRequest(0, 0, false, default, default);
             await handler.FetchData(new HashSet<int>() { 1 }, 10, default);
 
             Assert.Single(grain.AnnouncedEpochs);
@@ -109,7 +109,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             Assert.NotEqual(grain.FetchEpochs[0], grain.FetchEpochs[1]);
 
             // The next handshake announces the new epoch, matching the fetches again.
-            await handler.SendInitializeRequest(0, 0, false, default);
+            await handler.SendInitializeRequest(0, 0, false, default, default);
             Assert.Equal(2, grain.AnnouncedEpochs.Count);
             Assert.Equal(grain.FetchEpochs[1], grain.AnnouncedEpochs[1]);
         }

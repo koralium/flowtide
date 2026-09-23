@@ -31,27 +31,27 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
             }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
             {
                 AnnouncedCheckpointEpochs.Add(checkpointEpoch);
-                return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
+                return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion, wave: wave, peerInInit: true));
             }
 
             public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier) => Task.CompletedTask;
 
-            public void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim)
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
             {
             }
 
-            public Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
 
-            public Task SendFailAndRecover(long restoreVersion) => Task.CompletedTask;
+            public Task SendFailAndRecover(RecoveryWave wave) => Task.CompletedTask;
 
             public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
                 => throw new NotSupportedException();
@@ -162,7 +162,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             // The aborted generation's handshake retry captured its self epoch (the initial 0)
             // before the failure and lands late, re-announcing it after the fresh handshake.
-            await handlerA.SendInitializeRequest(0, 0, false, default);
+            await handlerA.SendInitializeRequest(0, 0, false, default, default);
 
             // B completes a checkpoint. Its ack must carry A's current epoch and be credited; a
             // regressed record tags it with the aborted epoch and the fence drops it.
@@ -241,7 +241,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             // The dead generation of A ran on a process whose clock seeded its epochs a day
             // ahead; its announcement is what B has recorded when A fails over.
-            await handlerA.SendInitializeRequest(0, DateTime.UtcNow.Ticks + TimeSpan.FromDays(1).Ticks, false, default);
+            await handlerA.SendInitializeRequest(0, DateTime.UtcNow.Ticks + TimeSpan.FromDays(1).Ticks, false, default, default);
 
             // The failed-over live A: a fresh point whose clock-seeded epoch is far below
             // the dead generation's announcement.

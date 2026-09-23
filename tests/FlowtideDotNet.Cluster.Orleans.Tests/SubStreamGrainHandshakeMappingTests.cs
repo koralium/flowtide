@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             handler.Initialize(
                 (targets, count, ct) => Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>()),
                 _ => Task.CompletedTask,
-                (restoreVersion, checkpointEpoch, cleanHandoff) =>
+                (restoreVersion, checkpointEpoch, cleanHandoff, wave) =>
                 {
                     onTargetInitialize?.Invoke(restoreVersion, checkpointEpoch, cleanHandoff);
                     return Task.FromResult(pointResponse);

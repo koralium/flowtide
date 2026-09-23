@@ -28,13 +28,12 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             var fenced = coordinator.Generation;
             coordinator.PeerEpochChanged("subB");
-            coordinator.PeerClaim("subB", new SubstreamDurabilityClaim(1, 5), fenced, requestReply: false);
+            coordinator.PeerClaim("subB", new SubstreamDurabilityClaim(0, 5, 5), default, fenced, requestReply: false);
 
             Assert.False(coordinator.IsAgreed(5));
-            Assert.Equal(SubstreamDurabilityClaims.Unknown, coordinator.HighestKnownDurable);
 
             // The same claim fenced after the change counts.
-            coordinator.PeerClaim("subB", new SubstreamDurabilityClaim(1, 5), coordinator.Generation, requestReply: false);
+            coordinator.PeerClaim("subB", new SubstreamDurabilityClaim(0, 5, 5), default, coordinator.Generation, requestReply: false);
             Assert.True(coordinator.IsAgreed(5));
         }
 
@@ -46,32 +45,11 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             var fenced = coordinator.Generation;
             coordinator.Invalidate();
-            coordinator.Reset();
+            coordinator.EnterWave(default);
             coordinator.LocalDurable(4);
-            coordinator.PeerClaim("subB", new SubstreamDurabilityClaim(1, 5), fenced, requestReply: false);
+            coordinator.PeerClaim("subB", new SubstreamDurabilityClaim(0, 5, 5), default, fenced, requestReply: false);
 
             Assert.False(coordinator.IsAgreed(4));
-        }
-
-        /// <summary>
-        /// Between the choice of a restore version and the restore, a late callback of the run that is over must not count.
-        /// </summary>
-        [Fact]
-        public void NothingIsLearnedWhileInvalidated()
-        {
-            var coordinator = new SubstreamDurabilityCoordinator(NullLogger.Instance, "subA", new[] { "subB" }, 1);
-            coordinator.LocalDurable(4);
-            coordinator.Invalidate();
-
-            coordinator.LocalDurable(5);
-            coordinator.PeerClaim("subB", new SubstreamDurabilityClaim(0, 5), coordinator.Generation, requestReply: false);
-            Assert.Equal(SubstreamDurabilityClaims.Unknown, coordinator.HighestKnownDurable);
-
-            // Restored lower, only that counts.
-            coordinator.Reset();
-            coordinator.LocalDurable(3);
-            coordinator.PeerClaim("subB", new SubstreamDurabilityClaim(0, 5), coordinator.Generation, requestReply: false);
-            Assert.Equal(3, coordinator.HighestKnownDurable);
         }
     }
 }

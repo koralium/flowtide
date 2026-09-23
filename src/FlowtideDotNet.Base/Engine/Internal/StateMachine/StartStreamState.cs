@@ -146,21 +146,45 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         }
 
         /// <summary>
-        /// Commits the restore version once every connected stream initialized at it, then runs.
+        /// Waits for the version every connected stream has. Restores that one if it is lower, else commits this one and runs.
         /// </summary>
         private async Task FinishStart()
         {
             Debug.Assert(_context != null, nameof(_context));
             bool committed = false;
+            long? comeDownTo = null;
             try
             {
                 try
                 {
-                    // A connected stream can still come up lower and roll this one back.
+                    long? groupVersion;
                     _context._waitingForVersionAgreementAtStart = true;
                     try
                     {
-                        await _context.WaitForVersionAgreement(_restoreVersion, _startAbort.Token);
+                        groupVersion = await _context.WaitForGroupVersion(_startAbort.Token);
+                    }
+                    finally
+                    {
+                        _context._waitingForVersionAgreementAtStart = false;
+                    }
+                    if (StartAborted() || RollbackPending())
+                    {
+                        return;
+                    }
+                    if (groupVersion.HasValue && groupVersion.Value < _restoreVersion)
+                    {
+                        // Not every connected stream has this version, so it was never completed everywhere: the group
+                        // starts at the highest version all have.
+                        _context._logger.LogInformation("Stream {stream} restored version {version} but the connected streams only all have version {groupVersion}, restarting at that one.", _context.streamName, _restoreVersion, groupVersion.Value);
+                        // Restarted below, after the write claim is released: the teardown waits for it.
+                        comeDownTo = groupVersion.Value;
+                        return;
+                    }
+                    // The streams above the group's version come down first, nobody runs before the group is at one version.
+                    _context._waitingForVersionAgreementAtStart = true;
+                    try
+                    {
+                        await _context.WaitForGroupSettled(_startAbort.Token);
                     }
                     finally
                     {
@@ -176,6 +200,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 finally
                 {
                     System.Threading.Interlocked.Decrement(ref _context._stateManagerWriteCount);
+                    if (comeDownTo.HasValue && !StartAborted())
+                    {
+                        _context.ForEachVersionAgreement(agreement => agreement.ComingDownTo(comeDownTo.Value));
+                        await _context.FailAndRollback(null, comeDownTo.Value);
+                    }
                 }
                 if (StartAborted() || RollbackPending())
                 {
@@ -184,6 +213,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 // A stale transition is ignored, the context checks the calling state.
                 await TransitionTo(StreamStateValue.Running);
+                if (_context.currentState == StreamStateValue.Running)
+                {
+                    _context.ForEachVersionAgreement(agreement => agreement.StartCompleted());
+                }
             }
             catch (OperationCanceledException) when (_startAbort.IsCancellationRequested || _context.IsDisposed)
             {
@@ -325,13 +358,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context.EnableTriggerRegistration();
 
 
-                // Before the version is chosen: nothing is learned or claimed between the choice and the restore.
-                _context.ForEachVersionAgreement(agreement => agreement.InvalidateAgreement());
-
                 long? restoreVersion;
                 lock (_context._checkpointLock)
                 {
-                    restoreVersion = _context.ValidRequestedRestoreVersion_NoLock();
+                    restoreVersion = _context._restoreCheckpointVersion;
                 }
 
                 // This start creates the blocks below; a failure before that must not run the
@@ -344,12 +374,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (StartAborted())
                 {
                     return;
-                }
-
-                var beforeRestoreHook = StreamContext.StartupBeforeRestoreHookForTests;
-                if (beforeRestoreHook != null)
-                {
-                    await beforeRestoreHook(_context.streamName, restoreVersion);
                 }
 
                 // Initialize state
@@ -507,7 +531,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 catch (Exception e)
                 {
-
+                    if (StartAborted() || _context.IsDisposed)
+                    {
+                        // An error of a start that is already over must not fail its successor.
+                        _context._logger.LogDebug(e, "The superseded start of stream {stream} failed while initializing its blocks.", _context.streamName);
+                        await AbandonStartedBlocks();
+                        return;
+                    }
                     await _context.OnFailure(e);
                     return;
                 }

@@ -249,7 +249,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             var handler = new OrleansCommunicationHandler("stream", "target", requestor, new SingleGrainFactory(recorder));
 
             // The live instance handshakes once so the test learns its real, seed-drawn epoch.
-            await handler.SendInitializeRequest(0, 0, false, default);
+            await handler.SendInitializeRequest(0, 0, false, default, default);
             long liveEpoch = recorder.AnnouncedFetchEpochs[0];
 
             // The dead instance ran on a silo whose process started a day later, so its
@@ -261,7 +261,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             // stall limit fails and recovers it. The recovery bumps its epoch off the LOCAL
             // seed and the restart handshake re-announces it.
             handler.OnStreamFailure();
-            await handler.SendInitializeRequest(0, 0, false, default);
+            await handler.SendInitializeRequest(0, 0, false, default, default);
             long reAnnounced = recorder.AnnouncedFetchEpochs[^1];
 
             Assert.True(grain.TryGetAnnouncedFetchEpoch(requestor, out var recorded));

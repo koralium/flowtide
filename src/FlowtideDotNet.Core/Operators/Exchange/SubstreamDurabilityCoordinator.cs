@@ -54,11 +54,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public long Agreed => _claims.Agreed;
 
-        /// <summary>
-        /// The highest version this substream ever knew the whole group to be durable at.
-        /// </summary>
-        public long HighestKnownDurable => _claims.HighestKnownDurable;
-
         public long Generation
         {
             get
@@ -91,20 +86,43 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// A new start, claims from before it must not count.
+        /// A new start in the wave, claims from before it and of other waves do not count.
         /// </summary>
-        public void Reset()
+        public void EnterWave(RecoveryWave wave)
         {
             lock (_lock)
             {
                 _generation++;
                 _active = true;
-                _claims.Reset();
+                _claims.EnterWave(wave);
             }
         }
 
+        public RecoveryWave Wave => _claims.Wave;
+
+        public bool IsAgreedKnown => _claims.IsAgreedKnown;
+
         /// <summary>
-        /// This substream initialized at, or durably committed, the version.
+        /// This substream started its run at the version.
+        /// </summary>
+        public void LocalInit(long version)
+        {
+            IReadOnlyList<SubstreamDurabilityClaim> grown;
+            long generation;
+            lock (_lock)
+            {
+                if (!_active)
+                {
+                    return;
+                }
+                generation = _generation;
+                grown = _claims.SetLocalInit(version);
+            }
+            Send(grown, generation, requestReply: false);
+        }
+
+        /// <summary>
+        /// This substream durably committed the version.
         /// </summary>
         public void LocalDurable(long version)
         {
@@ -125,7 +143,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <summary>
         /// A claim that passed the epoch fence of its pair while the generation was current.
         /// </summary>
-        public void PeerClaim(string peer, SubstreamDurabilityClaim claim, long fencedGeneration, bool requestReply)
+        public void PeerClaim(string peer, SubstreamDurabilityClaim claim, RecoveryWave wave, long fencedGeneration, bool requestReply)
         {
             IReadOnlyList<SubstreamDurabilityClaim> grown;
             IReadOnlyList<SubstreamDurabilityClaim>? reply = null;
@@ -139,7 +157,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     return;
                 }
                 generation = _generation;
-                grown = _claims.ApplyPeerClaim(peer, claim);
+                grown = _claims.ApplyPeerClaim(peer, claim, wave);
                 if (requestReply && _peers.TryGetValue(peer, out replyTo))
                 {
                     // It waits and may have missed what was sent, this substream may no longer.
@@ -149,9 +167,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             Send(grown, generation, requestReply: false);
             if (reply != null && replyTo != null)
             {
+                var ownWave = _claims.Wave;
                 foreach (var current in reply)
                 {
-                    _ = replyTo.SendDurabilityClaim(current, generation, requestReply: false);
+                    _ = replyTo.SendDurabilityClaim(current, ownWave, generation, requestReply: false);
                 }
             }
         }
@@ -185,9 +204,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 generation = _generation;
                 current = _claims.CurrentClaims();
             }
+            var wave = _claims.Wave;
             foreach (var claim in current)
             {
-                _ = communicationPoint.SendDurabilityClaim(claim, generation, requestReply: false);
+                _ = communicationPoint.SendDurabilityClaim(claim, wave, generation, requestReply: false);
             }
         }
 
@@ -196,9 +216,32 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _claims.Agreed >= version;
         }
 
-        public async Task WhenAgreed(long version, CancellationToken cancellationToken)
+
+
+        public Task WhenAgreed(long version, CancellationToken cancellationToken)
         {
-            var agreed = _claims.WhenAgreed(version, cancellationToken);
+            return WithResends(_claims.WhenAgreed(version, cancellationToken));
+        }
+
+        /// <summary>
+        /// Completes once every substream of the group claimed in this wave, <see cref="Agreed"/> is then the group's version.
+        /// </summary>
+        public Task WhenAgreedKnown(CancellationToken cancellationToken)
+        {
+            return WithResends(_claims.WhenAgreedKnown(cancellationToken));
+        }
+
+        /// <summary>
+        /// Completes once every direct peer started its run at the group's version, see <see cref="SubstreamDurabilityClaims.IsSettled"/>.
+        /// </summary>
+        public Task WhenSettled(CancellationToken cancellationToken)
+        {
+            return WithResends(_claims.WhenSettled(cancellationToken));
+        }
+
+        // A wait on the table keeps the claims going out until it ends, a lost one is sent again.
+        private async Task WithResends(Task agreed)
+        {
             if (agreed.IsCompleted)
             {
                 await agreed;
@@ -257,6 +300,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     current = _claims.CurrentClaims();
                     peers = new List<KeyValuePair<string, SubstreamCommunicationPoint>>(_peers);
                 }
+                var wave = _claims.Wave;
                 foreach (var peer in peers)
                 {
                     if (inFlight.TryGetValue(peer.Key, out var pending))
@@ -275,7 +319,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     var sends = new List<Task>(current.Count);
                     foreach (var claim in current)
                     {
-                        sends.Add(peer.Value.SendDurabilityClaim(claim, generation, requestReply: true, cancel.Token));
+                        sends.Add(peer.Value.SendDurabilityClaim(claim, wave, generation, requestReply: true, cancel.Token));
                     }
                     inFlight[peer.Key] = (Task.WhenAll(sends), Stopwatch.GetTimestamp(), cancel);
                 }
@@ -293,12 +337,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 peers = new List<SubstreamCommunicationPoint>(_peers.Values);
             }
+            var wave = _claims.Wave;
             foreach (var peer in peers)
             {
                 foreach (var claim in claims)
                 {
                     _logger.LogTrace("Substream {self} claims radius {radius} for version {version}", _selfSubstreamName, claim.Radius, claim.Version);
-                    _ = peer.SendDurabilityClaim(claim, generation, requestReply);
+                    _ = peer.SendDurabilityClaim(claim, wave, generation, requestReply);
                 }
             }
         }

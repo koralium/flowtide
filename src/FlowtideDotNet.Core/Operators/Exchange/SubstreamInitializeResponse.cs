@@ -20,8 +20,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     public class SubstreamInitializeResponse
     {
-        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false, bool peerDraining = false)
+        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false, bool peerDraining = false, RecoveryWave wave = default, bool peerInInit = false)
         {
+            Wave = wave;
+            PeerInInit = peerInInit;
             NotStarted = notStarted;
             Success = success;
             RestoreVersion = restoreVersion;
@@ -32,6 +34,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         public bool NotStarted { get; }
+
+        /// <summary>
+        /// The recovery the answering substream is in.
+        /// </summary>
+        public RecoveryWave Wave { get; }
+
+        /// <summary>
+        /// The answering substream has not finished its own start in that recovery.
+        /// </summary>
+        public bool PeerInInit { get; }
 
         /// <summary>
         /// Peer draining, wait it out, start retry budget not spent.

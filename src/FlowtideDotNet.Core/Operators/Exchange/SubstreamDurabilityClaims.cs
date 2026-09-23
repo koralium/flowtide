@@ -15,15 +15,15 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
     /// <summary>
-    /// Radius k for a version: every substream within k hops of the sender is durable at it.
+    /// Radius k for a version: every substream within k hops of the sender is durable at it. InitVersion is the version the
+    /// sender started its run at, it tells a peer at the gate whether the sender is running ahead or still has to come down.
     /// </summary>
-    internal readonly record struct SubstreamDurabilityClaim(int Radius, long Version);
+    internal readonly record struct SubstreamDurabilityClaim(int Radius, long Version, long InitVersion);
 
     /// <summary>
     /// Works out the highest version every substream of a connected group is durable at, from
-    /// claims each substream only ever makes about itself to its direct peers. The claims travel
-    /// the group twice: after the first pass this substream knows the group is durable at a
-    /// version, after the second it knows that every substream knows that.
+    /// claims each substream only ever makes about itself to its direct peers. Every claim belongs
+    /// to a wave, one recovery of the group, and only claims of the wave this table is in count.
     /// </summary>
     internal sealed class SubstreamDurabilityClaims
     {
@@ -35,11 +35,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private static readonly IReadOnlyList<SubstreamDurabilityClaim> NoClaims = Array.Empty<SubstreamDurabilityClaim>();
 
         private readonly object _lock = new object();
-        // The radius at which this substream knows the whole group is durable.
-        private readonly int _firstPass;
-        private long _highestKnownDurable = Unknown;
+        private RecoveryWave _wave;
         private readonly long[] _mine;
+        private long _mineInit = Unknown;
         private readonly Dictionary<string, long[]> _peers;
+        private readonly Dictionary<string, long> _peersInit;
         private readonly List<(long Version, TaskCompletionSource Waiter)> _waiters = new List<(long, TaskCompletionSource)>();
 
         /// <param name="peers">The substreams this one exchanges data with directly.</param>
@@ -47,46 +47,44 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public SubstreamDurabilityClaims(IEnumerable<string> peers, int distance)
         {
             _peers = peers.Distinct().ToDictionary(peer => peer, _ => NewRow(distance));
+            _peersInit = _peers.Keys.ToDictionary(peer => peer, _ => Unknown);
             if (_peers.Count > 0 && distance < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(distance), "A direct peer is one hop away.");
             }
-            _firstPass = distance;
             _mine = NewRow(distance);
         }
 
         /// <summary>
-        /// The version this substream knows every substream of the group to be durable at.
+        /// The wave this table is in, the only one whose claims count.
         /// </summary>
-        public long KnownDurable
+        public RecoveryWave Wave
         {
             get
             {
                 lock (_lock)
                 {
-                    return _mine[_firstPass];
+                    return _wave;
                 }
             }
         }
 
         /// <summary>
-        /// The highest version it ever knew that of. Survives the resets: a version that anyone may
-        /// have acted on stays one this substream must not go below.
+        /// True once every substream of the group has claimed in this wave, then <see cref="Agreed"/> is the group's version.
         /// </summary>
-        public long HighestKnownDurable
+        public bool IsAgreedKnown
         {
             get
             {
                 lock (_lock)
                 {
-                    return _highestKnownDurable;
+                    return _mine[_mine.Length - 1] != Unknown;
                 }
             }
         }
 
         /// <summary>
-        /// The version every substream of the group knows the group to be durable at. Whoever
-        /// sees this, every other substream already has it as its <see cref="HighestKnownDurable"/>.
+        /// The version every substream of the group is known to be durable at, or later.
         /// </summary>
         public long Agreed
         {
@@ -96,6 +94,44 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     return _mine[_mine.Length - 1];
                 }
+            }
+        }
+
+        /// <summary>
+        /// True once the group's version is known and no direct peer started its run above it: nobody next to this
+        /// substream still has to come down, the group leaves init together.
+        /// </summary>
+        public bool IsSettled
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return IsSettled_NoLock();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Records the version this substream started its run at, returns the claims that grew.
+        /// </summary>
+        public IReadOnlyList<SubstreamDurabilityClaim> SetLocalInit(long version)
+        {
+            if (version < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(version));
+            }
+            lock (_lock)
+            {
+                _mineInit = version;
+                if (version <= _mine[0])
+                {
+                    return NoClaims;
+                }
+                _mine[0] = version;
+                var grown = new List<SubstreamDurabilityClaim>() { new SubstreamDurabilityClaim(0, version, _mineInit) };
+                Recompute(grown);
+                return grown;
             }
         }
 
@@ -110,21 +146,26 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             lock (_lock)
             {
+                if (_mineInit == Unknown)
+                {
+                    _mineInit = version;
+                }
                 if (version <= _mine[0])
                 {
                     return NoClaims;
                 }
                 _mine[0] = version;
-                var grown = new List<SubstreamDurabilityClaim>() { new SubstreamDurabilityClaim(0, version) };
+                var grown = new List<SubstreamDurabilityClaim>() { new SubstreamDurabilityClaim(0, version, _mineInit) };
                 Recompute(grown);
                 return grown;
             }
         }
 
         /// <summary>
-        /// Records a claim a direct peer made about itself, returns the own claims that grew.
+        /// Records a claim a direct peer made about itself, returns the own claims that grew. A claim of another wave is
+        /// from a recovery this table is not in, it decides nothing here.
         /// </summary>
-        public IReadOnlyList<SubstreamDurabilityClaim> ApplyPeerClaim(string peer, SubstreamDurabilityClaim claim)
+        public IReadOnlyList<SubstreamDurabilityClaim> ApplyPeerClaim(string peer, SubstreamDurabilityClaim claim, RecoveryWave wave = default)
         {
             if (claim.Radius < 0 || claim.Version < 0)
             {
@@ -132,6 +173,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             lock (_lock)
             {
+                if (wave != _wave)
+                {
+                    return NoClaims;
+                }
                 if (!_peers.TryGetValue(peer, out var row))
                 {
                     throw new ArgumentException($"'{peer}' is not a direct peer.", nameof(peer));
@@ -139,6 +184,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // A radius holds every smaller radius, a lost smaller claim is repaired here.
                 var highest = Math.Min(claim.Radius, row.Length - 1);
                 bool changed = false;
+                // The sender's own start version rides on every radius, a lost radius 0 must not hide it.
+                if (_peersInit[peer] != claim.InitVersion)
+                {
+                    _peersInit[peer] = claim.InitVersion;
+                    changed = true;
+                }
                 for (int k = 0; k <= highest; k++)
                 {
                     if (claim.Version > row[k])
@@ -170,7 +221,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     if (_mine[k] != Unknown && (k == _mine.Length - 1 || _mine[k] > _mine[k + 1]))
                     {
-                        claims.Add(new SubstreamDurabilityClaim(k, _mine[k]));
+                        claims.Add(new SubstreamDurabilityClaim(k, _mine[k], _mineInit));
                     }
                 }
                 return claims;
@@ -189,23 +240,30 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     throw new ArgumentException($"'{peer}' is not a direct peer.", nameof(peer));
                 }
                 Array.Fill(row, Unknown);
+                _peersInit[peer] = Unknown;
                 // The peer can come back lower, every radius above 0 leaned on its old claims.
                 Recompute(null);
             }
         }
 
         /// <summary>
-        /// Forgets everything, this substream re-initialized and version numbers may be reused.
+        /// Forgets everything and joins the wave, this substream re-initializes and version numbers may be reused.
         /// </summary>
-        public void Reset()
+        public void EnterWave(RecoveryWave wave)
         {
             List<TaskCompletionSource> cancelled;
             lock (_lock)
             {
+                _wave = wave;
                 Array.Fill(_mine, Unknown);
+                _mineInit = Unknown;
                 foreach (var row in _peers.Values)
                 {
                     Array.Fill(row, Unknown);
+                }
+                foreach (var peer in _peersInit.Keys.ToList())
+                {
+                    _peersInit[peer] = Unknown;
                 }
                 cancelled = _waiters.Select(w => w.Waiter).ToList();
                 _waiters.Clear();
@@ -221,10 +279,35 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         public Task WhenAgreed(long version, CancellationToken cancellationToken = default)
         {
+            return WhenAgreedAtLeast(version, cancellationToken);
+        }
+
+        /// <summary>
+        /// Completes as soon as the group's version is known, whatever it is, cancelled by a reset.
+        /// </summary>
+        public Task WhenAgreedKnown(CancellationToken cancellationToken = default)
+        {
+            // Every real version is at least 0.
+            return WhenAgreedAtLeast(0, cancellationToken);
+        }
+
+        /// <summary>
+        /// Completes once <see cref="IsSettled"/>, cancelled by a reset.
+        /// </summary>
+        public Task WhenSettled(CancellationToken cancellationToken = default)
+        {
+            return WhenAgreedAtLeast(Settled, cancellationToken);
+        }
+
+        // A waiter version that stands for the settled condition rather than a threshold.
+        private const long Settled = long.MaxValue;
+
+        private Task WhenAgreedAtLeast(long version, CancellationToken cancellationToken)
+        {
             TaskCompletionSource waiter;
             lock (_lock)
             {
-                if (_mine[_mine.Length - 1] >= version)
+                if (version == Settled ? IsSettled_NoLock() : _mine[_mine.Length - 1] >= version)
                 {
                     return Task.CompletedTask;
                 }
@@ -259,24 +342,40 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 if (candidate > _mine[k + 1])
                 {
-                    grown?.Add(new SubstreamDurabilityClaim(k + 1, candidate));
+                    grown?.Add(new SubstreamDurabilityClaim(k + 1, candidate, _mineInit));
                 }
                 // Assigned, not maxed: the inputs only grow between resets, a reset must lower it.
                 _mine[k + 1] = candidate;
             }
-            if (_mine[_firstPass] > _highestKnownDurable)
-            {
-                _highestKnownDurable = _mine[_firstPass];
-            }
             var agreed = _mine[_mine.Length - 1];
+            var settled = IsSettled_NoLock();
             for (int i = _waiters.Count - 1; i >= 0; i--)
             {
-                if (_waiters[i].Version <= agreed)
+                if (_waiters[i].Version == Settled ? settled : _waiters[i].Version <= agreed)
                 {
                     _waiters[i].Waiter.TrySetResult();
                     _waiters.RemoveAt(i);
                 }
             }
+        }
+
+        private bool IsSettled_NoLock()
+        {
+            // A peer that started at or below the group's version runs ahead of it at most, one that started above still
+            // has to come down to it.
+            var agreed = _mine[_mine.Length - 1];
+            if (agreed == Unknown || _mineInit == Unknown || _mineInit > agreed)
+            {
+                return false;
+            }
+            foreach (var init in _peersInit.Values)
+            {
+                if (init == Unknown || init > agreed)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private static long[] NewRow(int distance)
@@ -285,8 +384,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 throw new ArgumentOutOfRangeException(nameof(distance));
             }
-            // Twice the distance across the group, the second pass rides on the same recursion.
-            var row = new long[2 * distance + 1];
+            // Radius 0 up to the distance across the group.
+            var row = new long[distance + 1];
             Array.Fill(row, Unknown);
             return row;
         }

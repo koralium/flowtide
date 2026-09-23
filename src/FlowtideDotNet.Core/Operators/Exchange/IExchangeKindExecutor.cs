@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             IStateManagerClient stateManagerClient,
             ExchangeOperatorState exchangeOperatorState,
             IMemoryAllocator memoryAllocator,
-            Func<long, Task> failAndRecoverFunc,
+            Func<long?, Task> failAndRecoverFunc,
             TimeSpan stopDrainTimeout);
 
         IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time);

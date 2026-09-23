@@ -136,7 +136,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             StreamContext.CheckpointPostCommitGapHookForTests = null;
             StreamContext.CompactionHookForTests = null;
             StreamContext.RestoreVersionForTests = null;
-            StreamContext.StartupBeforeRestoreHookForTests = null;
             _tickCancellation.Cancel();
             if (_tickLoop != null)
             {
@@ -542,12 +541,50 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// A recover notification from long ago reaches a substream after the group committed further.
+        /// A recover notification of a recovery that is over reaches a substream: nothing happens.
         /// </summary>
         [Fact]
-        public async Task AnOldRecoverNotificationBelowACommittedVersionIsRefused()
+        public async Task AnOldRecoverNotificationDoesNothing()
         {
-            const string testName = "commit_safety_old_notification";
+            var (hub, sub1Factory, restores, failures, started, committed, latestData) = await RunTwoSubstreamsToACommit("commit_safety_old_notification");
+
+            // The wave every substream started in, long over once the group committed.
+            Assert.True(sub1Factory.Handlers.TryGetValue("sub2", out var toSub2));
+            await toSub2!.SendFailAndRecover(RecoveryWave.None);
+
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            Assert.Empty(restores);
+            Assert.Empty(failures);
+
+            var reached = started.Values.Max();
+            await WaitForCompletedCycles(new[] { "sub1", "sub2" }, started, reached + 1);
+            await WaitUntil(() => RowCount(latestData, "sub2") == _generator.Users.Count, "rows generated after the old notification");
+        }
+
+        /// <summary>
+        /// A recover notification of a new recovery reaches a substream: the group restarts, everyone at its own version, never below what was committed.
+        /// </summary>
+        [Fact]
+        public async Task ANewRecoverNotificationRestartsTheGroupAtItsOwnVersions()
+        {
+            var (hub, sub1Factory, restores, failures, started, committed, latestData) = await RunTwoSubstreamsToACommit("commit_safety_new_notification");
+
+            Assert.True(sub1Factory.Handlers.TryGetValue("sub2", out var toSub2));
+            await toSub2!.SendFailAndRecover(new RecoveryWave(1_000_000, Guid.NewGuid()));
+
+            // The version is not in the message, the substreams restart at what they have.
+            await WaitUntil(() => restores.Any(r => r.Substream == "sub2") && restores.Any(r => r.Substream == "sub1"), "both substreams to restart");
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            Assert.All(restores, r => Assert.True(r.Version >= committed, $"{r.Substream} restored version {r.Version} after version {committed} was committed"));
+
+            var reached = started.Values.Max();
+            await WaitForCompletedCycles(new[] { "sub1", "sub2" }, started, reached + 1);
+            await WaitUntil(() => RowCount(latestData, "sub2") == _generator.Users.Count, "rows generated after the notification");
+            Assert.All(restores, r => Assert.True(r.Version >= committed, $"{r.Substream} restored version {r.Version} after version {committed} was committed"));
+        }
+
+        private async Task<(LocalSubstreamCommunicationHub Hub, RecordingFactory Sub1Factory, ConcurrentQueue<(string Substream, long Version)> Restores, ConcurrentBag<string> Failures, ConcurrentDictionary<string, long> Started, long Committed, ConcurrentDictionary<string, EventBatchData> LatestData)> RunTwoSubstreamsToACommit(string testName)
+        {
             _generator.Generate(100);
 
             var latestData = new ConcurrentDictionary<string, EventBatchData>();
@@ -589,191 +626,23 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await WaitForCompletedCycles(names, started, 3);
             var committed = commits.Where(c => c.Substream == "sub2").Select(c => c.Version).DefaultIfEmpty(-1).Max();
             Assert.True(committed >= 2, $"sub2 only committed version {committed}");
-
-            // What a failure of sub1 long ago told sub2, delivered now.
-            Assert.True(sub1Factory.Handlers.TryGetValue("sub2", out var toSub2));
-            await toSub2!.SendFailAndRecover(committed - 1);
-
-            await Task.Delay(TimeSpan.FromSeconds(2));
-            Assert.Empty(restores);
-            Assert.Empty(failures);
-
-            // Both keep going.
-            var reached = started.Values.Max();
-            await WaitForCompletedCycles(names, started, reached + 1);
-            await WaitUntil(() => RowCount(latestData, "sub2") == _generator.Users.Count, "rows generated after the old notification");
-        }
-
-        /// <summary>
-        /// A stopped substream accepted an old request for the version before its last, then learns the group is durable at the last one while it starts.
-        /// </summary>
-        [Fact]
-        public async Task AStartDoesNotRestoreBelowAVersionItLetAPeerCommit()
-        {
-            const string testName = "commit_safety_start_window";
-            _generator.Generate(100);
-
-            var latestData = new ConcurrentDictionary<string, EventBatchData>();
-            var hub = new LocalSubstreamCommunicationHub();
-            var failures = new ConcurrentBag<string>();
-            var started = new ConcurrentDictionary<string, long>();
-            var commits = new ConcurrentQueue<(string Substream, long Version)>();
-            var names = new[] { "sub1", "sub2" };
-
-            StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
-            {
-                var substream = SubstreamOf(streamName, testName);
-                if (substream != null)
-                {
-                    started.AddOrUpdate(substream, lastVersion + 1, (_, current) => Math.Max(current, lastVersion + 1));
-                }
-                return Task.CompletedTask;
-            };
-            var durable = TrackDurable(testName, started);
-            // Compaction runs once the cycle's agreement is in.
-            var compacted = new ConcurrentDictionary<string, long>();
-            StreamContext.CompactionHookForTests = streamName =>
-            {
-                var substream = SubstreamOf(streamName, testName);
-                if (substream != null && started.TryGetValue(substream, out var version))
-                {
-                    compacted[substream] = version;
-                }
-                return Task.CompletedTask;
-            };
-
-            // Everything sub2 tells sub1 about durability goes through the gate.
-            var gate = new ClaimGate();
-            var sub2Factory = new RecordingFactory(hub.CreateFactory("sub2"), handler => new ClaimGatedHandler(handler, gate));
-            var sub1 = BuildSubstream(testName, TwoSubstreamSql, "sub1", hub, latestData, failures);
-            var sub2 = BuildSubstream(testName, TwoSubstreamSql, "sub2", hub, latestData, failures, onCommitVersion: version => commits.Enqueue(("sub2", version)), communicationFactory: sub2Factory);
-            await Task.WhenAll(sub1.StartAsync(), sub2.StartAsync());
-
-            await WaitUntil(() => RowCount(latestData, "sub2") == _generator.Users.Count, "initial data in the sink");
-            await WaitForCompletedCycles(names, started, 2);
-            // No more data: the last cycle completes on both and nothing follows it.
-            long last;
-            while (true)
-            {
-                await WaitUntil(() => names.All(name => compacted.GetValueOrDefault(name, -1) == started["sub2"] && started[name] == started["sub2"]), "the last cycle to complete on both");
-                last = started["sub2"];
-                await Task.Delay(500);
-                if (names.All(name => started[name] == last))
-                {
-                    break;
-                }
-            }
-            Assert.Contains(commits, c => c.Version == last);
-
-            // sub1 stops at the next version without hearing that sub2 is durable at it.
-            gate.Drop = true;
-            await WaitForTask(sub1.StopAsync(), "sub1 to stop");
-            var stopVersion = last + 1;
-            await WaitUntil(() => durable.GetValueOrDefault("sub2", -1) >= stopVersion, "sub2 to be durable at the stop version");
-            Assert.DoesNotContain(commits, c => c.Version >= stopVersion);
-
-            // What a failure of sub2 long ago told sub1, delivered while it is stopped.
-            Assert.True(sub2Factory.Handlers.TryGetValue("sub1", out var toSub1));
-            await toSub1!.SendFailAndRecover(last);
-
-            long? restored = null;
-            var parked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            StreamContext.StartupBeforeRestoreHookForTests = async (streamName, restoreVersion) =>
-            {
-                if (SubstreamOf(streamName, testName) != "sub1")
-                {
-                    return;
-                }
-                restored = restoreVersion;
-                // sub1 hears it now, between choosing the version and restoring it.
-                gate.Drop = false;
-                await WaitUntil(() => gate.DeliveredAtOrAbove(stopVersion) >= 2, "the held claims to reach sub1");
-                await Task.Delay(TimeSpan.FromSeconds(1));
-                parked.TrySetResult();
-            };
-            _ = sub1.StartAsync();
-            await WaitForTask(parked.Task, "sub1 to restore");
-
-            var committed = commits.Select(c => c.Version).DefaultIfEmpty(-1).Max();
-            Assert.True(!restored.HasValue || restored.Value >= committed, $"sub1 restores version {restored} after sub2 was told to commit version {committed}");
-        }
-
-        private sealed class ClaimGate
-        {
-            private readonly ConcurrentQueue<long> _delivered = new ConcurrentQueue<long>();
-
-            public volatile bool Drop;
-
-            public void Delivered(long version) => _delivered.Enqueue(version);
-
-            public int DeliveredAtOrAbove(long version) => _delivered.Count(v => v >= version);
-        }
-
-        private sealed class ClaimGatedHandler : ISubstreamCommunicationHandler
-        {
-            private readonly ISubstreamCommunicationHandler _inner;
-            private readonly ClaimGate _gate;
-
-            public ClaimGatedHandler(ISubstreamCommunicationHandler inner, ClaimGate gate)
-            {
-                _inner = inner;
-                _gate = gate;
-            }
-
-            public void SetReceiveAllocatorResolver(Func<int, Storage.Memory.IMemoryAllocator> allocatorResolver) => _inner.SetReceiveAllocatorResolver(allocatorResolver);
-
-            public void OnStreamFailure() => _inner.OnStreamFailure();
-
-            public void Initialize(
-                Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
-                Func<long, long, bool, Task> callRecieveCheckpointDone)
-            {
-                _inner.Initialize(getDataFunction, callFailAndRecover, initializeFromTarget, callRecieveCheckpointDone);
-            }
-
-            public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken) => _inner.FetchData(targetIds, numberOfEvents, cancellationToken);
-
-            public Task SendFailAndRecover(long restoreVersion) => _inner.SendFailAndRecover(restoreVersion);
-
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken) => _inner.SendInitializeRequest(restoreVersion, checkpointEpoch, cleanHandoff, cancellationToken);
-
-            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier) => _inner.SendCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
-
-            public void InitializeDurabilityClaims(Func<long, int, long, long, bool, Task> callReceiveDurabilityClaim) => _inner.InitializeDurabilityClaims(callReceiveDurabilityClaim);
-
-            public async Task SendDurabilityClaim(long version, int radius, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
-            {
-                if (_gate.Drop)
-                {
-                    return;
-                }
-                await _inner.SendDurabilityClaim(version, radius, senderCheckpointEpoch, targetCheckpointEpoch, requestReply, cancellationToken);
-                _gate.Delivered(version);
-            }
+            return (hub, sub1Factory, restores, failures, started, committed, latestData);
         }
 
         private sealed class RecordingFactory : ISubstreamCommunicationHandlerFactory
         {
             private readonly ISubstreamCommunicationHandlerFactory _inner;
-            private readonly Func<ISubstreamCommunicationHandler, ISubstreamCommunicationHandler>? _wrap;
 
-            public RecordingFactory(ISubstreamCommunicationHandlerFactory inner, Func<ISubstreamCommunicationHandler, ISubstreamCommunicationHandler>? wrap = null)
+            public RecordingFactory(ISubstreamCommunicationHandlerFactory inner)
             {
                 _inner = inner;
-                _wrap = wrap;
             }
 
             public ConcurrentDictionary<string, ISubstreamCommunicationHandler> Handlers { get; } = new ConcurrentDictionary<string, ISubstreamCommunicationHandler>();
 
             public ISubstreamCommunicationHandler GetCommunicationHandler(string targetSubstreamName, string selfSubstreamName)
             {
-                return Handlers.GetOrAdd(targetSubstreamName, _ =>
-                {
-                    var handler = _inner.GetCommunicationHandler(targetSubstreamName, selfSubstreamName);
-                    return _wrap != null ? _wrap(handler) : handler;
-                });
+                return Handlers.GetOrAdd(targetSubstreamName, _ => _inner.GetCommunicationHandler(targetSubstreamName, selfSubstreamName));
             }
         }
 
