@@ -274,8 +274,8 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
-        /// Releases all resources held by the stream asynchronously, completing all dataflow blocks
-        /// and disposing each vertex.
+        /// Releases all resources held by the stream asynchronously, faulting and awaiting active
+        /// dataflow blocks before disposing each vertex. Use StopAsync for a graceful stop.
         /// </summary>
         /// <returns>A <see cref="ValueTask"/> representing the asynchronous dispose operation.</returns>
         public ValueTask DisposeAsync()

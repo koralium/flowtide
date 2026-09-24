@@ -84,6 +84,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }
 
             public long CurrentVersion => _inner.CurrentVersion;
+            public bool SupportsDistributedCheckpoints => _inner.SupportsDistributedCheckpoints;
 
             // High-water mark of overlapping inits.
             public int MaxConcurrent => Volatile.Read(ref _maxConcurrent);

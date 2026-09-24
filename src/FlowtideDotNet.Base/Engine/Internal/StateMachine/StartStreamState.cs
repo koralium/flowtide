@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -194,7 +194,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     {
                         return;
                     }
-                    await _context.CommitVersionOnEgresses(_restoreVersion);
+                    await _context.CommitVersionOnEgresses(_restoreVersion, this);
                     committed = true;
                 }
                 finally
@@ -476,9 +476,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             blockStateClient,
                             _context.loggerFactory,
                             _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                            _context.FailAndRollback,
+                            (exception, version) => _context.RequestFailure(_myBlockGeneration, exception, version),
                             _context._dataflowStreamOptions.StopDrainTimeout);
                         await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
+                        if (StartAborted())
+                        {
+                            await AbandonStartedBlocks();
+                            return;
+                        }
                     }
 
                     _context._logger.InitializingEgressBlocks(_context.streamName);
@@ -499,9 +504,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             blockStateClient,
                             _context.loggerFactory,
                             _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                            _context.FailAndRollback,
+                            (exception, version) => _context.RequestFailure(_myBlockGeneration, exception, version),
                             _context._dataflowStreamOptions.StopDrainTimeout);
                         await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
+                        if (StartAborted())
+                        {
+                            await AbandonStartedBlocks();
+                            return;
+                        }
                         block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone, _context.EgressDependenciesDone);
                     }
 
@@ -523,9 +533,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             blockStateClient,
                             _context.loggerFactory,
                             _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                            _context.FailAndRollback,
+                            (exception, version) => _context.RequestFailure(_myBlockGeneration, exception, version),
                             _context._dataflowStreamOptions.StopDrainTimeout);
                         await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
+                        if (StartAborted())
+                        {
+                            await AbandonStartedBlocks();
+                            return;
+                        }
                         block.Value.SetDependenciesDoneFunction(_context.EgressDependenciesDone);
                     }
                 }
@@ -566,12 +581,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     if (comp.IsFaulted)
                     {
-                        return _context.OnFailure(comp.Exception);
+                        return _context.RequestFailure(_myBlockGeneration, comp.Exception, null);
                     }
                 }
                 if (task.IsFaulted)
                 {
-                    return _context.OnFailure(task.Exception);
+                    return _context.RequestFailure(_myBlockGeneration, task.Exception, null);
                 }
                 return Task.CompletedTask;
             }).Unwrap();
@@ -630,23 +645,29 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private async Task AbandonStartedBlocks()
         {
             Debug.Assert(_context != null, nameof(_context));
-            lock (_context._blockClaimLock)
+            await _context._blockTeardownGate.WaitAsync();
+            try
             {
-                if (_context._blockGeneration != _myBlockGeneration || _context._blocksCreated == 0)
+                lock (_context._blockClaimLock)
                 {
-                    return;
+                    if (_context._blockGeneration != _myBlockGeneration || _context._blocksCreated == 0)
+                    {
+                        return;
+                    }
+                    _context._blocksCreated = 0;
                 }
-                _context._blocksCreated = 0;
+                _context.ForEachBlock((key, block) =>
+                {
+                    block.Fault(new BlockStopException("The start was superseded by a failure."));
+                });
+                await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
+                await _context.ForEachBlockAsync(async (key, block) =>
+                {
+                    await block.DisposeAsync();
+                });
             }
-            _context.ForEachBlock((key, block) =>
-            {
-                block.Fault(new BlockStopException("The start was superseded by a failure."));
-            });
-            await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
-            await _context.ForEachBlockAsync(async (key, block) =>
-            {
-                await block.DisposeAsync();
-            });
+            finally { _context._blockTeardownGate.Release(); }
+
         }
 
         public override Task StopAsync()

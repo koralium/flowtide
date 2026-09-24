@@ -541,7 +541,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             if (clearMetadata || !metadata.CommitedOnce)
             {
-                Metadata = default;
+                metadata = new StateClientMetadata<TMetadata>();
             }
             else
             {

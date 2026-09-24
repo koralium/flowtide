@@ -138,8 +138,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
         private readonly Queue<TaskCompletionSource> _spaceWaiters = new();
         private readonly SemaphoreSlim _downloadSemaphore;
         
-        private readonly CancellationTokenSource _cts = new();
-        private readonly Task _evictionTask;
+        private CancellationTokenSource _cts = new();
+        private Task _evictionTask;
         /// <summary>
         /// Eviction signal, used for testing to trigger eviction loop immediately instead of waiting for the timer, should not be used in production code.
         /// </summary>
@@ -174,6 +174,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata, Meter meter, StorageProviderContext storageProviderContext, CancellationToken cancellationToken)
         {
+            // Foreground storage operations are already quiescent at this boundary.
+            // Background downloads/eviction must also finish before handles or file IDs
+            // are replaced, otherwise an old job can delete a new timeline's file.
+            await SuspendBackgroundWorkAsync().ConfigureAwait(false);
             _logger = metadata.LoggerFactory.CreateLogger<ConcurrentLocalCacheManager>();
             if (_meter == null)
             {
@@ -225,6 +229,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     await _localCache.DeleteDataFileAsync(dataFileId);
                 }
             }
+            _cts.Dispose();
+            _cts = new CancellationTokenSource();
+            _evictionTask = Task.Run(ProactiveEvictionLoopAsync);
         }
 
         public async ValueTask<ReadOnlyMemory<byte>> ReadMemoryAsync(ulong fileId, int offset, int length, uint crc32)
@@ -749,7 +756,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             _lruQueue.Enqueue(state);
         }
 
-        public async ValueTask DisposeAsync()
+        internal async Task SuspendBackgroundWorkAsync()
         {
             _cts.Cancel();
             try
@@ -775,6 +782,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     _logger.LogWarning(ex, "Background task failed during disposal.");
                 }
             }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await SuspendBackgroundWorkAsync().ConfigureAwait(false);
             _remoteStorage.Dispose();
             _localCache.Dispose();
             _cts.Dispose();

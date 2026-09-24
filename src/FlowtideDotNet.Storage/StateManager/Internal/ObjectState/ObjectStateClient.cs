@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.ObjectState
         {
             if (clearMetadata)
             {
-                _metadata.Metadata = default;
+                _metadata = new StateClientMetadata<T>();
                 _previousState = Array.Empty<byte>();
             }
             else

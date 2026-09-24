@@ -16,11 +16,12 @@ using System.IO.Pipelines;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
 {
-    internal class LocalDiskReadManager
+    internal class LocalDiskReadManager : IDisposable
     {
         private readonly Dictionary<string, ILocalDiskFile> _fileReaders = new Dictionary<string, ILocalDiskFile>();
         private readonly IMemoryAllocator memoryAllocator;
         private object _lock = new object();
+        private bool _disposed;
 
         public LocalDiskReadManager(IMemoryAllocator memoryAllocator)
         {
@@ -31,6 +32,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
         {
             lock (_lock)
             {
+                ObjectDisposedException.ThrowIf(_disposed, this);
                 if (!_fileReaders.TryGetValue(fileName, out var reader))
                 {
                     if (Environment.OSVersion.Platform == PlatformID.Unix)
@@ -83,6 +85,21 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
                     reader.Dispose();
                     _fileReaders.Remove(fileName);
                 }
+            }
+        }
+
+        // The storage owner must settle readers and writers before retiring the manager.
+        public void Dispose()
+        {
+            lock (_lock)
+            {
+                if (_disposed) return;
+                foreach (var reader in _fileReaders.Values)
+                {
+                    reader.Dispose();
+                }
+                _fileReaders.Clear();
+                _disposed = true;
             }
         }
 

@@ -207,8 +207,9 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
 
         public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
         {
-            // A grain call cannot be cancelled, the wait for it can.
-            return _streamGrain.DurabilityClaim(new Messages.DurabilityClaimRequest(selfName, version, radius, initVersion, wave.Counter, wave.Id, senderCheckpointEpoch, targetCheckpointEpoch, requestReply)).WaitAsync(cancellationToken);
+            // A dispatched grain call cannot be cancelled. Preserve its operation lifetime.
+            cancellationToken.ThrowIfCancellationRequested();
+            return _streamGrain.DurabilityClaim(new Messages.DurabilityClaimRequest(selfName, version, radius, initVersion, wave.Counter, wave.Id, senderCheckpointEpoch, targetCheckpointEpoch, requestReply));
         }
 
         public Task TargetDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply)

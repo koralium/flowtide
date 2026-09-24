@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -121,6 +121,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // transitions happen under _blockClaimLock; they are cold control-plane paths.
         internal int _blocksCreated;
         internal int _blockGeneration;
+        internal readonly SemaphoreSlim _blockTeardownGate = new(1, 1);
         internal readonly object _blockClaimLock = new object();
 
         // Serializes the state manager region across starts. Guarded by _blockClaimLock.
@@ -173,7 +174,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         // Armed by a committed checkpoint, gates the minimum interval.
         internal bool _minimumIntervalThrottleArmed = false;
-        
+
         // Test variable
         internal long _startCheckpointVersion = 0;
 
@@ -362,6 +363,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
+        internal bool IsCurrentState(StreamStateMachineState state) => !_disposed && ReferenceEquals(Volatile.Read(ref _state), state) && state.AllowsPublication;
+
         // True once disposed, the context is then terminal
         internal bool IsDisposed => _disposed;
 
@@ -403,7 +406,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     // All errors are catched so notification reciever cant break the stream
                 }
             }
-            return this._state.Initialize(previous);
+            return state.Initialize(previous);
         }
 
         public Task TransitionTo(StreamStateMachineState current, StreamStateValue newState)
@@ -656,10 +659,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        internal Task CommitVersionOnEgresses(long version)
+        internal async Task CommitVersionOnEgresses(long version, StreamStateMachineState run)
         {
             _logger.LogDebug("Committing version {version} on the egresses of stream {stream}", version, streamName);
-            return ForEachEgressBlockAsync((key, block) => block.CommitVersion(version));
+            foreach (var block in egressBlocks.Values)
+            {
+                if (!IsCurrentState(run)) return;
+                await block.CommitVersion(version);
+            }
         }
 
         internal List<Task> GetCompletionTasks()
@@ -1047,7 +1054,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         }
 
         /// <summary>
-        /// Disposes the stream, completes all blocks and then disposes them.
+        /// Disposes the stream, faults and joins active blocks, then releases their resources.
         /// The stream cannot be started again after this.
         /// </summary>
         /// <returns></returns>
@@ -1061,6 +1068,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Marked first, a failing stream would otherwise restart forever
             _disposed = true;
             _disposeCancellation.Cancel();
+            ForEachVersionAgreement(agreement => agreement.AbortPendingOperations());
             _wantedState = StreamStateValue.NotStarted;
 
             CancelTriggerRegistration();
@@ -1087,43 +1095,51 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             await WaitForStateManagerToSettle();
 
-            bool blocksClaimed;
-            lock (_blockClaimLock)
+            await _blockTeardownGate.WaitAsync();
+            try
             {
-                blocksClaimed = _blocksCreated == 1;
-                _blocksCreated = 0;
-            }
-            if (blocksClaimed)
-            {
-                // Completing or disposing never-created blocks throws; a stream whose start
-                // failed before creating them (or whose failure teardown already disposed
-                // them) has nothing left to complete.
-                ForEachBlock((key, block) =>
+                bool blocksClaimed;
+                lock (_blockClaimLock)
                 {
-                    block.Complete();
-                });
-
-                await ForEachBlockAsync(async (key, block) =>
+                    blocksClaimed = _blocksCreated == 1;
+                    _blocksCreated = 0;
+                }
+                if (blocksClaimed)
                 {
-                    await block.DisposeAsync();
-                });
+                    // Completing or disposing never-created blocks throws; a stream whose start
+                    // failed before creating them (or whose failure teardown already disposed
+                    // them) has nothing left to complete.
+                    ForEachBlock((key, block) =>
+                    {
+                        block.Fault(new BlockStopException("The stream was disposed."));
+                    });
+
+                    await Task.WhenAll(GetCompletionTasks()).ContinueWith(t => { });
+                    await ForEachBlockAsync(async (key, block) =>
+                    {
+                        await block.DisposeAsync();
+                    });
+                }
+
+                _stateManager.Dispose();
+
+                _streamMemoryManager.Dispose();
+
+                // Nothing is left to honor a pending stop or delete
+                FailTeardownWaiters(new ObjectDisposedException(nameof(DataflowStream), $"The stream `{streamName}` was disposed while a stop or delete was pending."));
             }
+            finally { _blockTeardownGate.Release(); }
 
-            _stateManager.Dispose();
-
-            _streamMemoryManager.Dispose();
-
-            // Nothing is left to honor a pending stop or delete
-            FailTeardownWaiters(new ObjectDisposedException(nameof(DataflowStream), $"The stream `{streamName}` was disposed while a stop or delete was pending."));
         }
 
         /// <summary>
-        /// Waits until nothing is inside the state manager, bounded.
+        /// Waits until nothing is inside the state manager. A timeout only logs; it cannot grant ownership to a successor.
         /// Disposing it while it is written or restored corrupts it.
         /// </summary>
-        private async Task WaitForStateManagerToSettle()
+        internal async Task WaitForStateManagerToSettle()
         {
             var waitStart = Stopwatch.GetTimestamp();
+            bool warned = false;
             while (true)
             {
                 Task? startInitGate;
@@ -1138,10 +1154,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     return;
                 }
-                if (Stopwatch.GetElapsedTime(waitStart) > _dataflowStreamOptions.StopDrainTimeout)
+                if (!warned && Stopwatch.GetElapsedTime(waitStart) > _dataflowStreamOptions.StopDrainTimeout)
                 {
-                    _logger.LogWarning("Dispose of stream {stream} proceeded while a start or a state manager write was still active after {timeout}, the state manager may be wedged on storage.", streamName, _dataflowStreamOptions.StopDrainTimeout);
-                    return;
+                    _logger.LogWarning("Teardown of stream {stream} is still waiting for initialization or a state manager write after {timeout}; storage ownership is retained until it settles.", streamName, _dataflowStreamOptions.StopDrainTimeout);
+                    warned = true;
                 }
                 await Task.Delay(10);
             }
@@ -1347,6 +1363,21 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
             deleteTask?.TrySetException(exception);
             stopTask?.TrySetException(exception);
+        }
+
+        internal Task RequestFailure(int blockGeneration, Exception? exception, long? restoreVersion)
+        {
+            lock (_contextLock)
+            {
+                lock (_blockClaimLock)
+                {
+                    if (_disposed || _blocksCreated == 0 || _blockGeneration != blockGeneration)
+                    {
+                        return Task.CompletedTask;
+                    }
+                }
+                return FailAndRollback(exception, restoreVersion);
+            }
         }
 
         internal Task FailAndRollback(Exception? exception, long? restoreVersion = default)

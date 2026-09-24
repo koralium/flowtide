@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,6 +24,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private Checkpoint? _currentCheckpoint;
         private long _stoppingStartedTimestamp;
         private int _stopAllStarted;
+        private int _failureRequested;
+        internal override bool AllowsPublication => Volatile.Read(ref _failureRequested) == 0;
         // Drain minted cycles never commit, the peer never matches them.
         private bool _stopCommitTaken;
         // Drain polls readiness, mints no cycles.
@@ -108,10 +110,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _context._logger.StartCheckpointDoneTask(_context.streamName);
             // The stop commit is claimed as an in-flight state manager write here, at the
             // decision (the caller holds the checkpoint lock), not when the thread pool runs
-            // the task: a failure during the stop tears down through StopAll, whose write
+            // the task: a failure during the stop tears down through StopAllClaimed, whose write
             // wait could otherwise read zero in the scheduling gap and dispose the state
-            // manager the queued commit is about to write. The task body releases the count
-            // in its finally.
+            // manager the queued commit is about to write. The claim also covers the engine's
+            // CheckpointDone callbacks, which are not joined by dataflow block completion.
             System.Threading.Interlocked.Increment(ref _context._stateManagerWriteCount);
             Task.Factory.StartNew(async (state) =>
             {
@@ -167,53 +169,46 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         run._stopCommitTaken = true;
                         committed = true;
                     }
+                    if (!committed || !run._context.IsCurrentState(run))
+                    {
+                        return;
+                    }
+
+                    var version = run._context._stateManager.LastCompletedCheckpointVersion;
+                    run._context._notificationReciever?.OnCheckpointComplete();
+
+                    await run._context.ForEachIngressBlockAsync((key, block) =>
+                    {
+                        return run._context.IsCurrentState(run) && block is IStreamIngressVertex ingress
+                            ? ingress.CheckpointDone(version) : Task.CompletedTask;
+                    });
+                    // Exchanges must notify their peers too, while this run still owns
+                    // the callbacks. A callback may itself request failure and fence the rest.
+                    await run._context.ForEachEgressBlockAsync((key, block) =>
+                    {
+                        return run._context.IsCurrentState(run)
+                            ? block.CheckpointDone(version) : Task.CompletedTask;
+                    });
                 }
                 finally
                 {
                     System.Threading.Interlocked.Decrement(ref run._context._stateManagerWriteCount);
                 }
-
-                if (!committed)
-                {
-                    // Checkpoint to nobody, nothing written, listeners already notified.
-                    return;
-                }
-
-                if (_context._notificationReciever != null)
-                {
-                    _context._notificationReciever.OnCheckpointComplete();
-                }
-
-                await _context.ForEachIngressBlockAsync((key, block) =>
-                {
-                    if (block is IStreamIngressVertex streamIngressVertex)
-                    {
-                        return streamIngressVertex.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
-                    }
-                    return Task.CompletedTask;
-                });
-                // The egress blocks must also be notified so exchanges send their final
-                // checkpoint done message to other substreams, a substream with a pending
-                // checkpoint would otherwise wait forever for it and never finish stopping.
-                await _context.ForEachEgressBlockAsync((key, block) =>
-                {
-                    return block.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
-                });
             }, this)
                 .Unwrap()
                  .ContinueWith(async (t, state) =>
                  {
                      StoppingStreamState @this = (StoppingStreamState)state!;
-                     if (t.IsFaulted)
+                     if (t.IsFaulted || t.IsCanceled)
                      {
-                         await _context.OnFailure(t.Exception);
-                         @this.CheckpointCompleted();
-                         _context._logger.ShutdownCheckpointDone(_context.streamName);
-                         await @this.StopAll(faultBlocks: true);
+                         if (@this._context!.IsCurrentState(@this))
+                         {
+                             await @this._context.OnFailure(t.Exception ?? (Exception)new TaskCanceledException(t));
+                         }
                          return;
                      }
                      // Finish the checkpoint
-                     @this.CheckpointCompleted();
+                     if (!@this.CheckpointCompleted()) return;
                      _context._logger.ShutdownCheckpointDone(_context.streamName);
                      if (!await @this.TryFinishStop())
                      {
@@ -272,12 +267,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             catch (Exception e)
             {
                 _context._logger.LogError(e, "The stop drain on stream {stream} failed.", _context.streamName);
-                await _context.OnFailure(e);
+                if (_context.IsCurrentState(this)) await _context.OnFailure(e);
             }
         }
 
         /// <summary>
-        /// Ends the drain on ready or timeout, StopAll runs once.
+        /// Ends the drain on ready or timeout, claiming teardown once.
         /// </summary>
         private async Task<bool> TryFinishStop()
         {
@@ -287,7 +282,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             lock (_finishLock)
             {
                 // Dispose tore the blocks down, nothing left to stop.
-                if (Volatile.Read(ref _stopAllStarted) == 1 || _context.IsDisposed)
+                if (Volatile.Read(ref _stopAllStarted) == 1 || !_context.IsCurrentState(this))
                 {
                     return true;
                 }
@@ -337,11 +332,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return ready;
         }
 
-        private void CheckpointCompleted()
+        private bool CheckpointCompleted()
         {
             Debug.Assert(_context != null, nameof(_context));
             lock (_context._checkpointLock)
             {
+                // The callback task released its ownership before this continuation ran.
+                // Teardown may already have completed and a successor may own checkpointTask.
+                if (!_context.IsCurrentState(this)) return false;
                 _context._minimumIntervalThrottleArmed = true;
                 if (_context.checkpointTask != null)
                 {
@@ -350,6 +348,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context.checkpointTask = null;
                     _currentCheckpoint = null;
                 }
+                return true;
             }
         }
 
@@ -375,7 +374,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context._logger.LogInformation("Stream {stream} stops before version {version} is agreed, the next start commits it.", _context.streamName, version);
                     return;
                 }
-                await _context.CommitVersionOnEgresses(version);
+                await _context.CommitVersionOnEgresses(version, this);
             }
             catch (Exception e)
             {
@@ -403,6 +402,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     try
                     {
+                        if (!_context.IsCurrentState(this)) return;
                         await block.Value.Compact();
                     }
                     catch (Exception e)
@@ -418,21 +418,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        private async Task StopAll(bool faultBlocks)
-        {
-            Debug.Assert(_context != null, nameof(_context));
-
-            // StopAll can be reached from multiple paths at once, for example the stop
-            // checkpoint continuation racing a block failure whose OnFailure also stops all.
-            // The blocks must only be completed and disposed once, dispose is not idempotent
-            // in every operator.
-            if (Interlocked.Exchange(ref _stopAllStarted, 1) == 1)
-            {
-                return;
-            }
-            await StopAllClaimed(faultBlocks);
-        }
-
         private async Task StopAllClaimed(bool faultBlocks)
         {
             Debug.Assert(_context != null, nameof(_context));
@@ -441,17 +426,17 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // tearing anything down, faulting or disposing blocks or the state manager while
             // it is being written corrupts it - the same wait the failure state's teardown
             // runs. On the graceful path the commit already completed and this is a no-op.
-            // Bounded, a write wedged on unresponsive storage cannot be made safe by waiting
-            // and must not hang the stop forever.
+            // A timeout reports a stalled write but cannot release its storage ownership.
             var writeWaitStart = Stopwatch.GetTimestamp();
+            bool warned = false;
             while (true)
             {
                 if (Volatile.Read(ref _context._stateManagerWriteCount) > 0)
                 {
-                    if (Stopwatch.GetElapsedTime(writeWaitStart) > _context._dataflowStreamOptions.StopDrainTimeout)
+                    if (!warned && Stopwatch.GetElapsedTime(writeWaitStart) > _context._dataflowStreamOptions.StopDrainTimeout)
                     {
-                        _context._logger.LogWarning("Stop teardown on stream {stream} proceeded while a state manager write was still active after {timeout}, the write may be wedged on storage.", _context.streamName, _context._dataflowStreamOptions.StopDrainTimeout);
-                        break;
+                        _context._logger.LogWarning("Stop teardown on stream {stream} is still waiting for a state manager write after {timeout}; storage ownership is retained until it settles.", _context.streamName, _context._dataflowStreamOptions.StopDrainTimeout);
+                        warned = true;
                     }
                     await Task.Delay(10);
                     continue;
@@ -471,97 +456,98 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
             }
 
-            if (faultBlocks)
+            await _context._blockTeardownGate.WaitAsync();
+            try
             {
-                StreamContext.BeforeFailureDisposeForTests?.Invoke(_context.streamName);
-                if (_drainTimedOut && AllVerticesReadyToStop())
+                if (_context.IsDisposed) return;
+                if (faultBlocks)
                 {
-                    // Confirmed during the teardown wait, stop cleanly after all.
-                    _context._logger.LogInformation("Stopping stream {stream} was confirmed by the other substreams before its teardown, stopping cleanly.", _context.streamName);
-                    faultBlocks = false;
-                }
-            }
-            if (faultBlocks)
-            {
-                // The stop did not finish its drain, the pipeline can hold in flight data
-                // that has nowhere to go. Graceful completion waits for every block to
-                // drain its queues, a blocked pipeline then never completes and the stop
-                // hangs forever. Faulting discards the queued data, it is regenerated by
-                // replay when the stream starts again.
-                _context.ForEachBlock((key, block) =>
-                {
-                    block.Fault(new BlockStopException("Faulting block due to stream failure during stop."));
-                });
-            }
-            else
-            {
-                // Clean stop, sinks commit from Compact, peers confirmed.
-                await CommitStopVersionIfAgreed();
-                await CompactEgressBlocks();
-                _context.ForEachBlock((key, block) =>
-                {
-                    block.Complete();
-                });
-            }
-            await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
-
-            if (faultBlocks)
-            {
-                // Failing stop, roll peers back like the failure state does.
-                long restoreVersion;
-                lock (_context._checkpointLock)
-                {
-                    var completed = _context._stateManager.LastCompletedCheckpointVersion;
-                    if (!_context._restoreCheckpointVersion.HasValue || _context._restoreCheckpointVersion.Value > completed)
+                    StreamContext.BeforeFailureDisposeForTests?.Invoke(_context.streamName);
+                    if (_drainTimedOut && AllVerticesReadyToStop())
                     {
-                        _context._restoreCheckpointVersion = completed;
+                        // Confirmed during the teardown wait, stop cleanly after all.
+                        _context._logger.LogInformation("Stopping stream {stream} was confirmed by the other substreams before its teardown, stopping cleanly.", _context.streamName);
+                        faultBlocks = false;
                     }
-                    restoreVersion = _context._restoreCheckpointVersion.Value;
                 }
+                if (!faultBlocks)
+                {
+                    await CommitStopVersionIfAgreed();
+                    if (AllowsPublication) await CompactEgressBlocks();
+                    faultBlocks = !AllowsPublication;
+                }
+                lock (_context._blockClaimLock) { _context._blocksCreated = 0; }
+                if (faultBlocks)
+                {
+                    _context.ForEachBlock((key, block) =>
+                        block.Fault(new BlockStopException("Faulting block due to stream failure during stop.")));
+                }
+                else
+                {
+                    _context.ForEachBlock((key, block) => block.Complete());
+                }
+                await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
+
+                if (faultBlocks)
+                {
+                    // Failing stop, roll peers back like the failure state does.
+                    long restoreVersion;
+                    lock (_context._checkpointLock)
+                    {
+                        var completed = _context._stateManager.LastCompletedCheckpointVersion;
+                        if (!_context._restoreCheckpointVersion.HasValue || _context._restoreCheckpointVersion.Value > completed)
+                        {
+                            _context._restoreCheckpointVersion = completed;
+                        }
+                        restoreVersion = _context._restoreCheckpointVersion.Value;
+                    }
+                    await _context.ForEachBlockAsync(async (key, block) =>
+                    {
+                        await block.OnFailure(restoreVersion);
+                    });
+                }
+
                 await _context.ForEachBlockAsync(async (key, block) =>
                 {
-                    await block.OnFailure(restoreVersion);
+                    await block.DisposeAsync();
                 });
-            }
+                // The run is over for the connected streams too, a failing stop told them already.
+                _context.ForEachVersionAgreement(agreement => agreement.StreamStopped());
 
-            await _context.ForEachBlockAsync(async (key, block) =>
-            {
-                await block.DisposeAsync();
-            });
-            // The run is over for the connected streams too, a failing stop told them already.
-            _context.ForEachVersionAgreement(agreement => agreement.StreamStopped());
+                _context._stateManager.Dispose();
 
-            _context._stateManager.Dispose();
-
-            // A teardown minted cycle reached nobody, drop its state.
-            lock (_context._checkpointLock)
-            {
-                _context.checkpointTask?.TrySetCanceled();
-                _context.checkpointTask = null;
-                _context.inQueueCheckpoint = null;
-                _context._currentProvidedCheckpointToken = default;
-                _context._scheduledProvidedCheckpointToken = default;
-                if (_context._scheduleCheckpointCancelSource != null)
+                // A teardown minted cycle reached nobody, drop its state.
+                lock (_context._checkpointLock)
                 {
-                    _context._scheduleCheckpointCancelSource.Cancel();
-                    _context._scheduleCheckpointCancelSource.Dispose();
-                    _context._scheduleCheckpointCancelSource = null;
+                    _context.checkpointTask?.TrySetCanceled();
+                    _context.checkpointTask = null;
+                    _context.inQueueCheckpoint = null;
+                    _context._currentProvidedCheckpointToken = default;
+                    _context._scheduledProvidedCheckpointToken = default;
+                    if (_context._scheduleCheckpointCancelSource != null)
+                    {
+                        _context._scheduleCheckpointCancelSource.Cancel();
+                        _context._scheduleCheckpointCancelSource.Dispose();
+                        _context._scheduleCheckpointCancelSource = null;
+                    }
+                    _context._scheduleCheckpointTask = null;
+                    _context._triggerCheckpointTime = null;
                 }
-                _context._scheduleCheckpointTask = null;
-                _context._triggerCheckpointTime = null;
-            }
 
-            await TransitionTo(StreamStateValue.NotStarted);
-            _context._logger.StoppedStream(_context.streamName);
+                await TransitionTo(StreamStateValue.NotStarted);
+                _context._logger.StoppedStream(_context.streamName);
 
-            lock (_context._checkpointLock)
-            {
-                if (_context._stopTask != null)
+                lock (_context._checkpointLock)
                 {
-                    _context._stopTask.SetResult();
-                    _context._stopTask = null;
+                    if (_context._stopTask != null)
+                    {
+                        _context._stopTask.SetResult();
+                        _context._stopTask = null;
+                    }
                 }
             }
+            finally { _context._blockTeardownGate.Release(); }
+
         }
 
         public override Task Initialize(StreamStateValue previousState)
@@ -579,10 +565,24 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return Task.CompletedTask;
         }
 
-        public override async Task OnFailure()
+        public override Task OnFailure()
         {
-            // On failure stop all
-            await StopAll(faultBlocks: true);
+            Interlocked.Exchange(ref _failureRequested, 1);
+            _context!.ForEachVersionAgreement(agreement => agreement.AbortPendingOperations());
+            // Fence stop-checkpoint admission before acknowledging a callback's request.
+            if (Interlocked.Exchange(ref _stopAllStarted, 1) == 0)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try { await StopAllClaimed(faultBlocks: true); }
+                    catch (Exception e)
+                    {
+                        _context!._logger.LogError(e, "Failure teardown during stop failed.");
+                        _context.FailTeardownWaiters(e);
+                    }
+                });
+            }
+            return Task.CompletedTask;
         }
 
         public override Task StartAsync()

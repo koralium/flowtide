@@ -43,6 +43,16 @@ A substream never rolls back below a version that was handed to *CommitVersion* 
 
 State storage that survives the process, and in a cluster is reachable from every machine a substream can run on, is therefore a requirement in distributed mode.
 
+Connected substreams currently require Reservoir with a file provider that supports file listing. Construction rejects legacy storage and non-listing Reservoir providers. Storage wrappers must forward `IPersistentStorage.SupportsDistributedCheckpoints` only when they preserve the underlying recovery and retention guarantees. A substream with no exchange links to other substreams does not require this capability.
+
+Each connected component has fixed membership. A deliberately stopped member prevents the component from completing startup or recovery until that member starts. This also applies to distinct substreams hosted in process. Multiple exchanges between the same pair share one neighbour control relationship.
+
+### Failure requests and custom transports
+
+`FailAndRollback` acknowledges that the current run has been fenced and recovery requested. It can be awaited from a vertex callback; it does not wait for recovery to finish. Calls through a handler saved from an earlier run are ignored. Teardown retains ownership while callbacks or storage operations remain active, even after the drain timeout. The timeout logs the stalled operation rather than permitting a replacement to reuse its storage.
+
+Custom `ISubstreamCommunicationHandler.SendDurabilityClaim` implementations must return a task that covers the actual transport operation until it settles or its resources are retired. Cancelling a wrapper around a still-live operation does not meet that contract. There is one unsettled durability send per neighbour across publications, handshake resends, replies and retries. A receiver queues its reply and returns without waiting for a reverse RPC or group agreement. No method signature or wire format changes are needed for this requirement.
+
 ## Hosting options
 
 * [In-process hosting](inprocess.md) runs all substreams in one process. Mainly useful for testing and to verify how a plan distributes.

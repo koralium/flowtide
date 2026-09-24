@@ -26,8 +26,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         internal static TimeSpan ResendInterval = TimeSpan.FromSeconds(2);
 
         /// <summary>
-        /// How long a re-send that does not complete keeps the next one to that peer back. It is
-        /// cancelled then and sent again.
+        /// When to request transport cancellation. The peer slot stays occupied until the
+        /// actual transport operation settles, even if it ignores cancellation.
         /// </summary>
         internal static TimeSpan ResendAbandonAfter = TimeSpan.FromSeconds(30);
 
@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly ILogger _logger;
         private readonly string _selfSubstreamName;
         private readonly SubstreamDurabilityClaims _claims;
-        private readonly Dictionary<string, SubstreamCommunicationPoint> _peers = new Dictionary<string, SubstreamCommunicationPoint>();
+        private readonly Dictionary<string, PeerSender> _peers = new Dictionary<string, PeerSender>();
         // Bumped by every failure, every start and every peer epoch change. Version numbers are
         // reused after a rollback, so nothing read or received under an older generation may be
         // written or sent.
@@ -44,6 +44,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private bool _active = true;
         private int _pendingWaits;
         private bool _resendLoopRunning;
+
+        private sealed class PeerSender(SubstreamCommunicationPoint point, string name)
+        {
+            public SubstreamCommunicationPoint Point = point;
+            public string Name = name;
+            public bool Pending;
+            public bool RequestReply;
+            public bool Running;
+            public long InFlightSince;
+            public bool ReportedStall;
+        }
 
         public SubstreamDurabilityCoordinator(ILogger logger, string selfSubstreamName, IReadOnlyCollection<string> peers, int distance)
         {
@@ -69,7 +80,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             lock (_lock)
             {
-                _peers[peer] = communicationPoint;
+                if (_peers.TryGetValue(peer, out var sender))
+                {
+                    sender.Point = communicationPoint;
+                }
+                else
+                {
+                    _peers.Add(peer, new PeerSender(communicationPoint, peer));
+                }
             }
         }
 
@@ -146,33 +164,23 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public void PeerClaim(string peer, SubstreamDurabilityClaim claim, RecoveryWave wave, long fencedGeneration, bool requestReply)
         {
             IReadOnlyList<SubstreamDurabilityClaim> grown;
-            IReadOnlyList<SubstreamDurabilityClaim>? reply = null;
-            SubstreamCommunicationPoint? replyTo = null;
             long generation;
             lock (_lock)
             {
-                // Checked together with the write, a failure or a start in between drops it.
                 if (!_active || fencedGeneration != _generation)
                 {
                     return;
                 }
                 generation = _generation;
                 grown = _claims.ApplyPeerClaim(peer, claim, wave);
-                if (requestReply && _peers.TryGetValue(peer, out replyTo))
+                if (requestReply && _peers.TryGetValue(peer, out var sender))
                 {
-                    // It waits and may have missed what was sent, this substream may no longer.
-                    reply = _claims.CurrentClaims();
+                    // Queue the response and return. Waiting for the outgoing slot here
+                    // would deadlock two peers replying to each other.
+                    Queue_NoLock(sender, requestReply: false);
                 }
             }
             Send(grown, generation, requestReply: false);
-            if (reply != null && replyTo != null)
-            {
-                var ownWave = _claims.Wave;
-                foreach (var current in reply)
-                {
-                    _ = replyTo.SendDurabilityClaim(current, ownWave, generation, requestReply: false);
-                }
-            }
         }
 
         /// <summary>
@@ -185,6 +193,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // A claim of the peer that already passed the fence must not land in the emptied row.
                 _generation++;
                 _claims.ResetPeer(peer);
+                if (_active)
+                {
+                    foreach (var sender in _peers.Values) Queue_NoLock(sender, requestReply: false);
+                }
             }
         }
 
@@ -193,21 +205,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         public void ResendTo(SubstreamCommunicationPoint communicationPoint)
         {
-            IReadOnlyList<SubstreamDurabilityClaim> current;
-            long generation;
             lock (_lock)
             {
-                if (!_active)
+                if (!_active) return;
+                foreach (var sender in _peers.Values)
                 {
-                    return;
+                    if (ReferenceEquals(sender.Point, communicationPoint))
+                    {
+                        Queue_NoLock(sender, requestReply: false);
+                        break;
+                    }
                 }
-                generation = _generation;
-                current = _claims.CurrentClaims();
-            }
-            var wave = _claims.Wave;
-            foreach (var claim in current)
-            {
-                _ = communicationPoint.SendDurabilityClaim(claim, wave, generation, requestReply: false);
             }
         }
 
@@ -271,79 +279,91 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private async Task ResendLoop()
         {
-            // A claim can be dropped in either direction. The one that still waits asks, a peer
-            // that already agreed has stopped sending on its own.
-            var inFlight = new Dictionary<string, (Task Batch, long StartedAt, CancellationTokenSource Cancel)>();
             while (true)
             {
-                await Task.Delay(ResendInterval);
-                IReadOnlyList<SubstreamDurabilityClaim> current;
-                List<KeyValuePair<string, SubstreamCommunicationPoint>> peers;
-                long generation;
+                await Task.Delay(ResendInterval).ConfigureAwait(false);
                 lock (_lock)
                 {
                     if (_pendingWaits == 0)
                     {
                         _resendLoopRunning = false;
-                        foreach (var batch in inFlight.Values)
-                        {
-                            batch.Cancel.Cancel();
-                            batch.Cancel.Dispose();
-                        }
                         return;
                     }
-                    if (!_active)
-                    {
-                        continue;
-                    }
-                    generation = _generation;
-                    current = _claims.CurrentClaims();
-                    peers = new List<KeyValuePair<string, SubstreamCommunicationPoint>>(_peers);
-                }
-                var wave = _claims.Wave;
-                foreach (var peer in peers)
-                {
-                    if (inFlight.TryGetValue(peer.Key, out var pending))
-                    {
-                        if (!pending.Batch.IsCompleted && Stopwatch.GetElapsedTime(pending.StartedAt) < ResendAbandonAfter)
-                        {
-                            // Unreachable, asking again now would only pile up sends.
-                            continue;
-                        }
-                        // Done, or given up on: cancelled so it ends, never more than one per peer.
-                        // A send that never completes must not silence the peer for good.
-                        pending.Cancel.Cancel();
-                        pending.Cancel.Dispose();
-                    }
-                    var cancel = new CancellationTokenSource();
-                    var sends = new List<Task>(current.Count);
-                    foreach (var claim in current)
-                    {
-                        sends.Add(peer.Value.SendDurabilityClaim(claim, wave, generation, requestReply: true, cancel.Token));
-                    }
-                    inFlight[peer.Key] = (Task.WhenAll(sends), Stopwatch.GetTimestamp(), cancel);
+                    if (!_active) continue;
+                    foreach (var sender in _peers.Values) Queue_NoLock(sender, requestReply: true);
                 }
             }
         }
 
         private void Send(IReadOnlyList<SubstreamDurabilityClaim> claims, long generation, bool requestReply)
         {
-            if (claims.Count == 0)
-            {
-                return;
-            }
-            List<SubstreamCommunicationPoint> peers;
+            if (claims.Count == 0) return;
             lock (_lock)
             {
-                peers = new List<SubstreamCommunicationPoint>(_peers.Values);
+                if (!_active || generation != _generation) return;
+                foreach (var sender in _peers.Values) Queue_NoLock(sender, requestReply);
             }
-            var wave = _claims.Wave;
-            foreach (var peer in peers)
+        }
+
+        // A single sender per neighbour covers publication, handshakes, replies and retries.
+        // Pending work is a request for the current frontier, not retained historical facts.
+        private void Queue_NoLock(PeerSender sender, bool requestReply)
+        {
+            if (sender.InFlightSince != 0 && !sender.ReportedStall &&
+                Stopwatch.GetElapsedTime(sender.InFlightSince) >= ResendAbandonAfter)
             {
-                foreach (var claim in claims)
+                sender.ReportedStall = true;
+                _logger.LogWarning("A durability send from substream {self} to {peer} is still unsettled after {timeout}. Keeping its neighbour slot occupied until the transport retires the operation.", _selfSubstreamName, sender.Name, ResendAbandonAfter);
+            }
+            sender.Pending = true;
+            sender.RequestReply |= requestReply;
+            if (!sender.Running)
+            {
+                sender.Running = true;
+                _ = Task.Run(() => Drain(sender));
+            }
+        }
+
+        private async Task Drain(PeerSender sender)
+        {
+            while (true)
+            {
+                IReadOnlyList<SubstreamDurabilityClaim> current;
+                RecoveryWave wave;
+                long generation;
+                bool requestReply;
+                SubstreamCommunicationPoint point;
+                lock (_lock)
                 {
+                    if (!_active || !sender.Pending)
+                    {
+                        sender.Pending = sender.RequestReply = sender.Running = false;
+                        return;
+                    }
+                    current = _claims.CurrentClaims();
+                    wave = _claims.Wave;
+                    generation = _generation;
+                    point = sender.Point;
+                    requestReply = sender.RequestReply;
+                    sender.Pending = sender.RequestReply = false;
+                }
+
+                // The entire compressed frontier matters: a newer local version cannot
+                // replace an older claim covering a larger radius.
+                foreach (var claim in current)
+                {
+                    lock (_lock)
+                    {
+                        if (!_active || generation != _generation) break;
+                        sender.InFlightSince = Stopwatch.GetTimestamp();
+                        sender.ReportedStall = false;
+                    }
+                    using var cancel = new CancellationTokenSource(ResendAbandonAfter);
                     _logger.LogTrace("Substream {self} claims radius {radius} for version {version}", _selfSubstreamName, claim.Radius, claim.Version);
-                    _ = peer.SendDurabilityClaim(claim, wave, generation, requestReply);
+                    // Cancellation is a request, never evidence of settlement. This task
+                    // must cover the real operation, including inside transport adapters.
+                    await point.SendDurabilityClaim(claim, wave, generation, requestReply, cancel.Token).ConfigureAwait(false);
+                    lock (_lock) sender.InFlightSince = 0;
                 }
             }
         }

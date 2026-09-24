@@ -153,6 +153,10 @@ namespace FlowtideDotNet.Core.Engine
             {
                 // From the full plan, the blocks built below only show this substream's part.
                 var group = SubstreamGroupResolver.Resolve(plan, distributedOptions.SubstreamName);
+                if (group.GroupSize > 1)
+                {
+                    dataflowStreamBuilder.RequireDistributedCheckpointRecovery();
+                }
                 _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory, distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory, distributedOptions.AnnounceCleanHandoff, group);
             }
             else

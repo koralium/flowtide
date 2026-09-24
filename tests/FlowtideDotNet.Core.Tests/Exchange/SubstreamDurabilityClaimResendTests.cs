@@ -106,13 +106,16 @@ namespace FlowtideDotNet.Core.Tests.Exchange
                     Assert.Equal(1, seen);
                 }
 
-                // A send that never completes is given up on: cancelled, and the peer is asked again.
-                await WaitFor(() => handlerA.HungReplyRequests >= 2, "the request after the first one was given up on");
-                Assert.True(handlerA.FirstHungRequestCancelled, "The send that was given up on was left running");
+                // Cancellation asks the transport to end, but cannot release a live call.
+                await WaitFor(() => handlerA.FirstHungRequestCancelled, "the cancellation request");
+                Assert.Equal(1, handlerA.HungReplyRequests);
+                handlerA.ReleaseHungRequests();
+                await WaitFor(() => handlerA.HungReplyRequests >= 2, "the retry after actual settlement");
             }
             finally
             {
                 cancel.Cancel();
+                handlerA.ReleaseHungRequests();
             }
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => wait);
         }
@@ -150,6 +153,8 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             private CancellationToken _firstHungRequest;
 
             public bool FirstHungRequestCancelled => _firstHungRequest.IsCancellationRequested;
+
+            public void ReleaseHungRequests() => _never.TrySetResult();
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,

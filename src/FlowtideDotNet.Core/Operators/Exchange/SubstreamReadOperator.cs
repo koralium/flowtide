@@ -599,6 +599,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _communicationPoint.SendCheckpointDone(checkpointVersion);
         }
 
+        void IStreamVersionAgreement.AbortPendingOperations() => _communicationPoint.AbortPendingOperations();
+
         void IStreamVersionAgreement.ResetAgreement()
         {
             _communicationPoint.Durability?.EnterWave(_communicationPoint.Waves.ForStart());

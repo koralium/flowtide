@@ -99,7 +99,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <param name="senderCheckpointEpoch">This substreams current checkpoint epoch, the receiver drops a claim sent before a restart of the sender.</param>
         /// <param name="targetCheckpointEpoch">The receiving substream's checkpoint epoch as last learned through the handshake.</param>
         /// <param name="requestReply">The sender still waits for an agreement, the receiver answers with everything it claims. A reply never asks for one.</param>
-        /// <param name="cancellationToken">Cancelled when the sender gives up on this send, it is sent again. A send that cannot end must not be kept.</param>
+        /// <remarks>
+        /// The returned task must represent the actual transport operation until it settles
+        /// or its resources are retired. Do not return a cancellable wrapper that abandons
+        /// an underlying live call. The receiver must enqueue replies and return without
+        /// waiting for reverse RPCs or group agreement.
+        /// </remarks>
+        /// <param name="cancellationToken">Requests cancellation; it does not release the sender's operation slot until the returned task settles.</param>
         Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken);
     }
 }

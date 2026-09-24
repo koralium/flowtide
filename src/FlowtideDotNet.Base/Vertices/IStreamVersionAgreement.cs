@@ -18,6 +18,10 @@ namespace FlowtideDotNet.Base.Vertices
     /// </summary>
     internal interface IStreamVersionAgreement
     {
+        // Release waits on transport notifications/handshakes when the engine fences a run.
+        // These waits own no storage I/O; durability sends retain their actual-call budget.
+        void AbortPendingOperations() { }
+
         /// <summary>
         /// Called at every start once the state is restored, before any vertex initializes: joins the recovery the start is in.
         /// </summary>

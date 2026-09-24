@@ -640,6 +640,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         /// </summary>
         private sealed class UninitializableStorage : Storage.Persistence.IPersistentStorage
         {
+            // Simulates a validated store becoming unavailable on initialization.
+            public bool SupportsDistributedCheckpoints => true;
             public long CurrentVersion => 0;
             public Task InitializeAsync(Storage.Persistence.StorageInitializationMetadata metadata) => throw new InvalidOperationException("Injected storage initialization failure");
             public Storage.Persistence.IPersistentStorageSession CreateSession() => throw new NotImplementedException();

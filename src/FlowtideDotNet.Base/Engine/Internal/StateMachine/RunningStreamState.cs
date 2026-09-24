@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -131,10 +131,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 catch(Exception e)
                 {
-                    await run._context.OnFailure(e);
+                    if (run._context.IsCurrentState(run)) await run._context.OnFailure(e);
                     return;
                 }
-                
+
                 // Finish the checkpoint
                 run.CheckpointCompleted();
                 run._context._logger.CheckpointDone(_context.streamName);
@@ -174,12 +174,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         await scheduledHook(run._context.streamName);
                     }
 
-                    var commitHook = StreamContext.CheckpointCommitHookForTests;
-                    if (commitHook != null)
-                    {
-                        await commitHook(run._context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
-                    }
-
                     // Write the latest state
                     run._context._lastState = new StreamState(
                         run._currentCheckpoint.CheckpointTime,
@@ -187,10 +181,19 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                     run._context._stateManager.Metadata = run._context._lastState;
 
-                    await _context.ForEachBlockAsync(static async (key, block) =>
+                    await _context.ForEachBlockAsync(async (key, block) =>
                     {
+                        if (!run._context.IsCurrentState(run)) return;
                         await block.BeforeSaveCheckpoint();
                     });
+
+                    if (!run._context.IsCurrentState(run)) return;
+
+                    var commitHook = StreamContext.CheckpointCommitHookForTests;
+                    if (commitHook != null)
+                    {
+                        await commitHook(run._context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
+                    }
 
                     // Take state checkpoint
                     _context._logger.StartingStateManagerCheckpoint(_context.streamName);
@@ -204,7 +207,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                     await _context.ForEachIngressBlockAsync((key, block) =>
                     {
-                        if (block is IStreamIngressVertex streamIngressVertex)
+                        if (run._context.IsCurrentState(run) && block is IStreamIngressVertex streamIngressVertex)
                         {
                             return streamIngressVertex.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
                         }
@@ -212,9 +215,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     });
                     await _context.ForEachEgressBlockAsync((key, block) =>
                     {
-                        return block.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
+                        return run._context.IsCurrentState(run) ? block.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion) : Task.CompletedTask;
                     });
-                    run.WaitForVersionAgreementDependency(run._context._stateManager.LastCompletedCheckpointVersion);
+                    if (run._context.IsCurrentState(run)) run.WaitForVersionAgreementDependency(run._context._stateManager.LastCompletedCheckpointVersion);
                 }
                 catch
                 {
@@ -231,7 +234,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      Debug.Assert(@this.waitingForDependencies != null);
                      if (t.IsFaulted)
                      {
-                         await _context.OnFailure(t.Exception);
+                         if (_context.IsCurrentState(this)) await _context.OnFailure(t.Exception);
                          return;
                      }
 
@@ -267,11 +270,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      }
                      catch (Exception e)
                      {
-                         await _context.OnFailure(e);
+                         if (_context.IsCurrentState(this)) await _context.OnFailure(e);
                          return;
                      }
 
-                     
+
                      // Finish the checkpoint
                      @this.CheckpointCompleted();
                      _context._logger.CheckpointDone(_context.streamName);
@@ -303,7 +306,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 catch (Exception e)
                 {
-                    await _context.OnFailure(e);
+                    if (_context.IsCurrentState(this)) await _context.OnFailure(e);
                     return;
                 }
                 // This instance, a successor state has its own cycle and its own dependencies.
@@ -323,7 +326,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 // Every connected stream is durable at it, the agreement was a dependency of the
                 // cycle. Committed here so it lands before the next checkpoint prepares.
-                await _context.CommitVersionOnEgresses(_context._stateManager.LastCompletedCheckpointVersion);
+                await _context.CommitVersionOnEgresses(_context._stateManager.LastCompletedCheckpointVersion, this);
+
+                if (!_context.IsCurrentState(this)) return;
 
                 // Holds the task in the window between being scheduled and starting its work,
                 // the window a failure teardown races.
@@ -338,6 +343,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     await compactionHook(_context.streamName);
                 }
+
+                if (!_context.IsCurrentState(this)) return;
 
                 // After writing do compaction
                 _context._logger.StartingCompactionOnVertices(_context.streamName);
@@ -357,6 +364,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                 await Task.WhenAll(tasks);
 
+                if (!_context.IsCurrentState(this)) return;
                 await _context._stateManager.Compact();
                 _context._logger.CompactionDoneOnVertices(_context.streamName);
             }

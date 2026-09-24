@@ -304,6 +304,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return Task.CompletedTask;
         }
 
+        void IStreamVersionAgreement.AbortPendingOperations() => _communicationPointFactory.AbortPendingOperations();
+
         void IStreamVersionAgreement.ResetAgreement()
         {
             _communicationPointFactory.Durability?.EnterWave(_communicationPointFactory.Waves.ForStart());

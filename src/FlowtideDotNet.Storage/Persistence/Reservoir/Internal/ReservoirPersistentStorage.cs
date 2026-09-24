@@ -58,6 +58,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         internal LocalCacheProvider? CacheProvider { get; }
 
+        public bool SupportsDistributedCheckpoints => _fileProvider.SupportsFileListing;
+
         public ReservoirPersistentStorage(ReservoirBuilder reservoirBuilder)
             : this(reservoirBuilder.Build())
         {
@@ -589,6 +591,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
 
             var checkpointHandlerLogger = _loggerFactory.CreateLogger("ReservoirCheckpointHandler");
+            if (CacheProvider != null)
+            {
+                await CacheProvider.SuspendBackgroundWorkAsync().ConfigureAwait(false);
+            }
             _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger, CacheProvider);
             // Reset taking checkpoint
             Volatile.Write(ref _takingCheckpoint, false);

@@ -84,6 +84,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
+        internal void AbortPendingOperations()
+        {
+            List<SubstreamCommunicationPoint> points;
+            lock (_lock) points = _existing.Values.ToList();
+            foreach (var point in points) point.AbortPendingOperations();
+        }
+
         public SubstreamCommunicationPoint GetCommunicationPoint(string targetSubstreamName)
         {
             if (_communicationHandlerFactory == null)

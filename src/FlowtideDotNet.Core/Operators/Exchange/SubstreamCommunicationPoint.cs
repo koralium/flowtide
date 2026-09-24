@@ -58,6 +58,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private long _peerCheckpointEpoch = 0;
 
         // Send checkpoint fields
+        private CancellationTokenSource _operationAbort = new();
         private long _lastSentCheckpointVersion;
         private readonly object _sendCheckpointLock = new object();
 
@@ -174,6 +175,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     return Task.CompletedTask;
                 }
+                if (_operationAbort.IsCancellationRequested)
+                {
+                    _operationAbort.Dispose();
+                    _operationAbort = new CancellationTokenSource();
+                }
                 _initializedSent = true;
                 _selfInitializeVersion = restorePoint;
                 // Each fresh handshake starts with no clean reconnect; the response re-sets it
@@ -197,9 +203,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             SubstreamInitializeResponse? response;
             long selfEpoch;
+            CancellationToken operationAbort;
             lock (_initializeLock)
             {
                 selfEpoch = _selfCheckpointEpoch;
+                operationAbort = _operationAbort.Token;
             }
 
             try
@@ -211,7 +219,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     lock (_initializeLock)
                     {
-                        if (_selfCheckpointEpoch != selfEpoch)
+                        if (_selfCheckpointEpoch != selfEpoch || operationAbort.IsCancellationRequested)
                         {
                             // The stream failed while this handshake was pending, the loop belongs
                             // to the aborted generation. It must stop announcing its stale epoch,
@@ -224,7 +232,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     }
                     var wave = _waves.Current;
                     _logger.LogInformation("Sending initialize request to substream {substreamName} with restore point {restorePoint} in wave {wave}, try {tryCount}", substreamName, restorePoint, wave, tryCount);
-                    response = await _substreamCommunicationHandler.SendInitializeRequest(restorePoint, selfEpoch, _announceCleanHandoff, wave, default);
+                    response = await _substreamCommunicationHandler.SendInitializeRequest(restorePoint, selfEpoch, _announceCleanHandoff, wave, operationAbort).WaitAsync(operationAbort);
                     if (!response.NotStarted)
                     {
                         if (_announceCleanHandoff && response.CleanReconnect)
@@ -273,7 +281,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             // Once at information, the wait can run minutes.
                             _logger.LogDebug("Substream {substreamName} is still stopping, waiting", substreamName);
                         }
-                        await Task.Delay(NotStartedRetrySliceMs * 4);
+                        await Task.Delay(NotStartedRetrySliceMs * 4, operationAbort);
                         continue;
                     }
                     drainingSinceTick = -1;
@@ -289,7 +297,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // Kept short, this backoff cannot observe a stop.
                         var delay = Math.Min(NotStartedRetrySliceMs * tryCount, NotStartedRetrySliceMs * 4);
                         _logger.LogInformation("Substream {substreamName} not started yet, retrying in {delay} ms", substreamName, delay);
-                        await Task.Delay(delay);
+                        await Task.Delay(delay, operationAbort);
                     }
                 } while (response.NotStarted);
                 // The peer has decided on the announcement, a later generation must not repeat it.
@@ -341,7 +349,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // converges through the next recovery's handshake.
                 lock (_initializeLock)
                 {
-                    if (_selfCheckpointEpoch != selfEpoch)
+                    if (_selfCheckpointEpoch != selfEpoch || operationAbort.IsCancellationRequested)
                     {
                         // The stream failed while the response was in flight, the restarted
                         // generation runs its own handshake.
@@ -364,7 +372,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             lock (_initializeLock)
             {
-                if (_selfCheckpointEpoch != selfEpoch)
+                if (_selfCheckpointEpoch != selfEpoch || operationAbort.IsCancellationRequested)
                 {
                     // The stream failed while the response was in flight, it belongs to the
                     // aborted generation. Applying it could overwrite the peer epoch that the
@@ -836,8 +844,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             try
             {
-                // Ends here when it is given up on, whatever the transport does with the token.
-                await _substreamCommunicationHandler.SendDurabilityClaim(claim.Version, claim.Radius, claim.InitVersion, wave, selfEpoch, targetEpoch, requestReply, cancellationToken).WaitAsync(cancellationToken);
+                // Await actual transport settlement; abandoning a wait does not retire a send.
+                await _substreamCommunicationHandler.SendDurabilityClaim(claim.Version, claim.Radius, claim.InitVersion, wave, selfEpoch, targetEpoch, requestReply, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -872,6 +880,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return Task.CompletedTask;
         }
 
+        // Called before the engine waits for callback ownership to drain. Only local
+        // waits on fenced control messages are aborted; no storage task is abandoned.
+        internal void AbortPendingOperations() => _operationAbort.Cancel();
+
         public Task SendCheckpointDone(long checkpointVersion)
         {
             lock (_sendCheckpointLock)
@@ -899,7 +911,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 coversPeerStopBarrier = _readOperators.All(r => r.PeerStopConsumedCommitted);
             }
             _logger.LogDebug("Sending checkpoint done to target: {substreamName} from {selfSubstreamName}", substreamName, _selfSubstreamName);
-            return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion, targetEpoch, coversPeerStopBarrier);
+            return WaitForNotification(_substreamCommunicationHandler.SendCheckpointDone(checkpointVersion, targetEpoch, coversPeerStopBarrier), _operationAbort.Token);
+        }
+
+        private static async Task WaitForNotification(Task operation, CancellationToken cancellationToken)
+        {
+            try { await operation.WaitAsync(cancellationToken).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Observe a later transport fault without holding the stopped run open.
+                _ = operation.ContinueWith(t => _ = t.Exception, CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
         }
 
         /// <summary>

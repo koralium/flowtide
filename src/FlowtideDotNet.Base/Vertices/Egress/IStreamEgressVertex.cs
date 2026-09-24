@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// Invoked when the stream can no longer roll back below the version, also once at start with the restored version.
         /// </summary>
         /// <param name="version">Same domain as <see cref="CheckpointDone(long)"/>.</param>
-        Task CommitVersion(long version);
+        Task CommitVersion(long version) => Task.CompletedTask;
 
         /// <summary>
         /// True when the vertex has everything it needs for the stream to finish stopping.
