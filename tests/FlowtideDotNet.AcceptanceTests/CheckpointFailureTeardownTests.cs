@@ -18,6 +18,7 @@ using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
@@ -1009,6 +1010,236 @@ namespace FlowtideDotNet.AcceptanceTests
                 release.TrySetResult();
                 stream.Storage.WalkWriteDelayMs = 0;
                 StreamContext.CheckpointCommitHookForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// A block Initialize that awaits a rollback, like the exchange handshake on a restore point mismatch, must not hold the first start on its own failure teardown.
+        /// </summary>
+        [Fact]
+        public async Task StartReturnsPromptlyWhenABlockInitializeAwaitsARollback()
+        {
+            var name = $"{Token}_{nameof(StartReturnsPromptlyWhenABlockInitializeAwaitsARollback)}";
+            var attempts = 0;
+            await using var stream = new FlowtideTestStream(name)
+            {
+                StopDrainTimeout = LongStopDrainTimeout,
+                RollbackSourceInitializeWhen = () =>
+                {
+                    Interlocked.Increment(ref attempts);
+                    return true;
+                }
+            };
+            stream.Generate(10);
+
+            await stream.CreateStream("INSERT INTO output SELECT userkey FROM users");
+            var start = stream.StartStream();
+            var finished = await Task.WhenAny(start, Task.Delay(TimeSpan.FromSeconds(10)));
+            if (finished == start)
+            {
+                // A setup fault surfaces as itself.
+                await start;
+            }
+            Assert.True(Volatile.Read(ref attempts) >= 1, "The source was never initialized.");
+            Assert.True(finished == start, "StartAsync did not return within 10 s of the source Initialize awaiting a rollback, the failure teardown waits on the start's own init gate.");
+            Assert.True(stream.FailureNotificationCount >= 1, "The rollback was not reported.");
+        }
+
+        /// <summary>
+        /// An automatic restart whose block Initialize awaits a rollback must retry after the restart delay, not the stop drain timeout.
+        /// </summary>
+        [Fact]
+        public async Task RestartAfterABlockInitializeRollbackIsNotHeldByItsFailureTeardown()
+        {
+            var name = $"{Token}_{nameof(RestartAfterABlockInitializeRollbackIsNotHeldByItsFailureTeardown)}";
+            var attempts = new List<long>();
+            int AttemptCount()
+            {
+                lock (attempts)
+                {
+                    return attempts.Count;
+                }
+            }
+            await using var stream = new FlowtideTestStream(name)
+            {
+                StopDrainTimeout = LongStopDrainTimeout,
+                RollbackSourceInitializeWhen = () =>
+                {
+                    lock (attempts)
+                    {
+                        attempts.Add(Stopwatch.GetTimestamp());
+                    }
+                    return true;
+                }
+            };
+            stream.Generate(10);
+
+            // The second attempt is the first automatic restart, the first start is covered above.
+            var start = stream.StartStream("INSERT INTO output SELECT userkey FROM users");
+            var deadline = DateTime.UtcNow.AddSeconds(60);
+            while (AttemptCount() < 2 && !start.IsFaulted && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(10);
+            }
+            if (start.IsFaulted)
+            {
+                // A setup fault surfaces as itself.
+                await start;
+            }
+            Assert.True(AttemptCount() >= 2, "The stream never restarted after the rollback from initialize.");
+            long secondAttempt;
+            lock (attempts)
+            {
+                secondAttempt = attempts[1];
+            }
+
+            while (AttemptCount() < 3 && Stopwatch.GetElapsedTime(secondAttempt) < TimeSpan.FromSeconds(10))
+            {
+                await Task.Delay(10);
+            }
+            Assert.True(AttemptCount() >= 3, $"The restart waited {Stopwatch.GetElapsedTime(secondAttempt)} on its own failure teardown.");
+            await start.WaitAsync(TimeSpan.FromSeconds(30));
+        }
+
+        /// <summary>
+        /// A stop landing while the start initializes its blocks must not tear them down under it, a still running Initialize would re-arm state on disposed blocks.
+        /// </summary>
+        [Fact]
+        public async Task StopDuringBlockInitializationWaitsForTheStart()
+        {
+            var name = $"{Token}_{nameof(StopDuringBlockInitializationWaitsForTheStart)}";
+            var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var teardownReachedDispose = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            await using var stream = new FlowtideTestStream(name) { StopDrainTimeout = LongStopDrainTimeout };
+            try
+            {
+                StreamContext.StartupDuringBlockInitHookForTests = async streamName =>
+                {
+                    if (streamName != name)
+                    {
+                        return;
+                    }
+                    held.TrySetResult();
+                    await release.Task;
+                };
+                StreamContext.BeforeFailureDisposeForTests = streamName =>
+                {
+                    if (streamName == name)
+                    {
+                        teardownReachedDispose.TrySetResult();
+                    }
+                };
+                stream.Generate(10);
+
+                var start = stream.StartStream("INSERT INTO output SELECT userkey FROM users");
+                await held.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                var stop = stream.StopStream();
+                var reached = await Task.WhenAny(teardownReachedDispose.Task, Task.Delay(1000));
+                Assert.True(reached != teardownReachedDispose.Task, "The stop's failure teardown began disposing the blocks while the start was still initializing them.");
+
+                release.TrySetResult();
+                await start.WaitAsync(TimeSpan.FromSeconds(30));
+                await stop.WaitAsync(TimeSpan.FromSeconds(30));
+                Assert.Equal(StreamStateValue.NotStarted, stream.State);
+            }
+            finally
+            {
+                release.TrySetResult();
+                StreamContext.StartupDuringBlockInitHookForTests = null;
+                StreamContext.BeforeFailureDisposeForTests = null;
+            }
+        }
+
+        private sealed class GatedRestoreStorage : ReservoirPersistentStorage, IPersistentStorage
+        {
+            private TaskCompletionSource? _initializeGate;
+            public readonly TaskCompletionSource InitializeHeld = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public volatile bool ResetCalled;
+
+            public GatedRestoreStorage(string directory) : base(new ReservoirStorageOptions { FileProvider = new LocalDiskProvider(directory) })
+            {
+            }
+
+            public void HoldNextInitialize(TaskCompletionSource gate) => Volatile.Write(ref _initializeGate, gate);
+
+            public new async Task InitializeAsync(StorageInitializationMetadata metadata)
+            {
+                var gate = Interlocked.Exchange(ref _initializeGate, null);
+                if (gate != null)
+                {
+                    InitializeHeld.TrySetResult();
+                    await gate.Task;
+                }
+                await base.InitializeAsync(metadata);
+            }
+
+            public new ValueTask ResetAsync()
+            {
+                ResetCalled = true;
+                return base.ResetAsync();
+            }
+        }
+
+        private sealed class GatedRestoreTestStream(string name, string directory) : FlowtideTestStream(name)
+        {
+            public GatedRestoreStorage Storage { get; } = new(directory);
+
+            protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck) => Storage;
+        }
+
+        /// <summary>
+        /// A stop that lands while a fresh stream restores its storage must not pick restore version 0, the next start would reset the stored state.
+        /// </summary>
+        [Fact]
+        public async Task StopDuringTheFirstRestoreKeepsTheStoredCheckpoint()
+        {
+            var name = $"{Token}_{nameof(StopDuringTheFirstRestoreKeepsTheStoredCheckpoint)}";
+            var directory = Path.Combine("./data/restoregate", Guid.NewGuid().ToString("N"));
+            try
+            {
+                await using (var first = new GatedRestoreTestStream(name, directory))
+                {
+                    first.Generate(100);
+                    await first.StartStream("INSERT INTO output SELECT userkey FROM users");
+                    await first.WaitForUpdate().WaitAsync(TimeSpan.FromSeconds(30));
+                    await first.StopStream().WaitAsync(TimeSpan.FromSeconds(30));
+                }
+
+                // A fresh stream over the same storage, its manager has not restored anything yet.
+                await using var second = new GatedRestoreTestStream(name, directory);
+                second.Generate(100);
+                var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                second.Storage.HoldNextInitialize(release);
+                var start = second.StartStream("INSERT INTO output SELECT userkey FROM users");
+                await second.Storage.InitializeHeld.Task.WaitAsync(TimeSpan.FromSeconds(30));
+
+                // The failure teardown of this stop decides the restore version while the restore is held.
+                var stop = second.StopStream();
+                await Task.Delay(1000);
+                release.TrySetResult();
+                await start.WaitAsync(TimeSpan.FromSeconds(30));
+                await stop.WaitAsync(TimeSpan.FromSeconds(30));
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (second.State != StreamStateValue.NotStarted && DateTime.UtcNow < deadline)
+                {
+                    await Task.Delay(10);
+                }
+                Assert.Equal(StreamStateValue.NotStarted, second.State);
+
+                await second.StartStream().WaitAsync(TimeSpan.FromSeconds(30));
+                Assert.False(second.Storage.ResetCalled, "The next start reset the stored checkpoint, the stop during the restore picked restore version 0.");
+            }
+            finally
+            {
+                try
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+                catch
+                {
+                    // Best effort, a handle still closing only leaves a temp folder.
+                }
             }
         }
     }

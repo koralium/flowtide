@@ -352,6 +352,77 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 "The clean reconnect had no restored watermark names to resume from and no failure was reported: the substream is hanging in startup waiting for an init watermarks event that never comes.");
         }
 
+        /// <summary>
+        /// A restore point mismatch found by the start handshake rolls back from inside the exchange Initialize, its failure teardown must not wait on that same start.
+        /// </summary>
+        [Fact]
+        public async Task StartHandshakeRestorePointMismatchDoesNotWaitOnItsOwnStart()
+        {
+            var testName = "e2e_start_mismatch_teardown";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+
+            // Both substreams commit a checkpoint and stop.
+            var hub1 = new LocalSubstreamCommunicationHub();
+            var substream0 = BuildSubstream(testName, "substream_0", hub1, fileProviders, latestData, failures, announceCleanHandoff: false);
+            var substream1 = BuildSubstream(testName, "substream_1", hub1, fileProviders, latestData, failures, announceCleanHandoff: false);
+            await AwaitBounded(substream0.StartAsync(), "first start substream_0");
+            await AwaitBounded(substream1.StartAsync(), "first start substream_1");
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+            foreach (var stream in new[] { substream0, substream1 })
+            {
+                await stream.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(stream);
+                }
+            }
+
+            // substream_1 lost its state, it restores 0 while substream_0 restores its checkpoint.
+            fileProviders["substream_1"] = new KeepAliveMemoryFileProvider();
+            var failuresBefore = failures.Count(f => f.Substream == "substream_1");
+            var wedgedBefore = _logBuffers["substream_1"].LinesContaining("may be wedged on storage").Count;
+            var hub2 = new LocalSubstreamCommunicationHub();
+            substream0 = BuildSubstream(testName, "substream_0", hub2, fileProviders, latestData, failures, announceCleanHandoff: false);
+            // Far above the bound below, a teardown that waits it out cannot pass it.
+            substream1 = BuildSubstream(testName, "substream_1", hub2, fileProviders, latestData, failures, announceCleanHandoff: false,
+                configure: b => b.SetStopDrainTimeout(TimeSpan.FromSeconds(20)));
+
+            // substream_0 handshakes first, so substream_1 meets the mismatch inside its own start.
+            await AwaitBounded(substream0.StartAsync(), "second start substream_0");
+            var stopwatch = Stopwatch.StartNew();
+            var start1 = substream1.StartAsync();
+            var finished = await Task.WhenAny(start1, Task.Delay(TimeSpan.FromSeconds(10)));
+            var elapsed = stopwatch.Elapsed;
+            if (finished != start1)
+            {
+                DumpLogBuffers("start_mismatch");
+                // Let the stall end, a start still stuck would spill into the next test.
+                await Task.WhenAny(start1, Task.Delay(TimeSpan.FromSeconds(30)));
+            }
+            Assert.True(failures.Count(f => f.Substream == "substream_1") > failuresBefore, "The start handshake found no restore point mismatch, substream_1 never rolled back.");
+            Assert.True(finished == start1,
+                $"substream_1's start did not return within 10 s ({elapsed.TotalSeconds:F1} s, it returned after {stopwatch.Elapsed.TotalSeconds:F1} s), the failure teardown of its handshake rollback waits on the start's own init gate.");
+            await start1;
+
+            try
+            {
+                _generator.Generate(100);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                Assert.Equal(wedgedBefore, _logBuffers["substream_1"].LinesContaining("may be wedged on storage").Count);
+                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "final stop");
+            }
+            catch
+            {
+                DumpLogBuffers("start_mismatch_data");
+                throw;
+            }
+        }
+
         private readonly ConcurrentDictionary<string, RingBufferLoggerProvider> _logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
 
         /// <summary>

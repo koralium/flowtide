@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Core.Operators.Exchange;
 
 namespace FlowtideDotNet.Core.Engine.Distributed
@@ -61,6 +62,10 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._getDataFunction != null)
             {
+                if (StreamContext.OwnStartInitGate.Value != null)
+                {
+                    return Detached((peer._getDataFunction, targetIds, numberOfEvents, cancellationToken), static s => s.Item1(s.targetIds, s.numberOfEvents, s.cancellationToken));
+                }
                 return peer._getDataFunction(targetIds, numberOfEvents, cancellationToken);
             }
             return Task.FromResult<IReadOnlyList<SubstreamEventData>>(new List<SubstreamEventData>());
@@ -71,6 +76,10 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._initializeFromTarget != null)
             {
+                if (StreamContext.OwnStartInitGate.Value != null)
+                {
+                    return Detached((peer._initializeFromTarget, restoreVersion, checkpointEpoch, cleanHandoff), static s => s.Item1(s.restoreVersion, s.checkpointEpoch, s.cleanHandoff));
+                }
                 return peer._initializeFromTarget(restoreVersion, checkpointEpoch, cleanHandoff);
             }
             return Task.FromResult(new SubstreamInitializeResponse(true, false, restoreVersion));
@@ -81,6 +90,10 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._callFailAndRecover != null)
             {
+                if (StreamContext.OwnStartInitGate.Value != null)
+                {
+                    return Detached((peer._callFailAndRecover, restoreVersion), static s => s.Item1(s.restoreVersion));
+                }
                 return peer._callFailAndRecover(restoreVersion);
             }
             // The other substream has not started yet, there is nothing to recover.
@@ -92,11 +105,30 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._callRecieveCheckpointDone != null)
             {
+                if (StreamContext.OwnStartInitGate.Value != null)
+                {
+                    return Detached((peer._callRecieveCheckpointDone, checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier), static s => s.Item1(s.checkpointVersion, s.targetCheckpointEpoch, s.coversPeerStopBarrier));
+                }
                 return peer._callRecieveCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
             }
             // The other substream has not started yet, there is no pending checkpoint
             // that waits for this notification.
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Calls the peer without this substream's start marker, work it spawns must not count as this start's own chain.
+        /// </summary>
+        private static async Task<TResult> Detached<TState, TResult>(TState state, Func<TState, Task<TResult>> call)
+        {
+            StreamContext.OwnStartInitGate.Value = null;
+            return await call(state);
+        }
+
+        private static async Task Detached<TState>(TState state, Func<TState, Task> call)
+        {
+            StreamContext.OwnStartInitGate.Value = null;
+            await call(state);
         }
     }
 }

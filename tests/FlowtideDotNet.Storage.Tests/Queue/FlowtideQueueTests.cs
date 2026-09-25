@@ -352,6 +352,30 @@ namespace FlowtideDotNet.Storage.Tests.Queue
             await recovered.Enqueue(2);
             Assert.Equal(2, await recovered.Dequeue());
         }
+
+        /// <summary>
+        /// A queue cleared after a checkpoint and recovered before its next commit comes back with the checkpointed items.
+        /// </summary>
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task ClearedQueueRecoversToItsCheckpoint(bool backgroundCommit)
+        {
+            using var stateManager = CreateReservoirManager(backgroundCommit);
+            await stateManager.InitializeAsync();
+            var queue = await GetQueue(stateManager);
+            await queue.Enqueue(1);
+            await queue.Enqueue(2);
+            await queue.Commit();
+            await stateManager.CheckpointAsync();
+
+            await queue.Clear();
+            await stateManager.InitializeAsync();
+            var recovered = await GetQueue(stateManager);
+            Assert.Equal(2, recovered.Count);
+            Assert.Equal(1, await recovered.Dequeue());
+            Assert.Equal(2, await recovered.Dequeue());
+        }
     }
 }
 

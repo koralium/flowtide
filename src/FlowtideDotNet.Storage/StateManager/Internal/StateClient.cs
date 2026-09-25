@@ -29,6 +29,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         }
 
         /// <summary>
+        /// The storage was wiped, no checkpoint holds this client's metadata any more.
+        /// </summary>
+        internal virtual void ForgetCheckpointedMetadata()
+        {
+        }
+
+        /// <summary>
         /// Blocks this client's commits until ResumeCommits, joining an in-flight one for at most
         /// the given time first. Recovery holds it across the whole reset.
         /// </summary>

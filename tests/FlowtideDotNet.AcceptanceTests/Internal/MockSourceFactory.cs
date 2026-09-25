@@ -27,6 +27,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly TimeSpan? initialDataDelay;
         private readonly bool failInitialize;
         private readonly Func<bool>? failInitializeWhen;
+        private readonly Func<bool>? rollbackInitializeWhen;
         private readonly int? batchSize;
 
         /// <param name="initialDataDelay">
@@ -40,13 +41,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// <param name="failInitializeWhen">
         /// Asked on every initialization attempt, true makes that attempt throw like failInitialize.
         /// </param>
-        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase, bool immutable, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null, Func<bool>? failInitializeWhen = null) : base(regexPattern)
+        /// <param name="rollbackInitializeWhen">
+        /// Asked on every initialization attempt, true makes that attempt await a rollback of its own stream.
+        /// </param>
+        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase, bool immutable, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null, Func<bool>? failInitializeWhen = null, Func<bool>? rollbackInitializeWhen = null) : base(regexPattern)
         {
             this.mockDatabase = mockDatabase;
             this.immutable = immutable;
             this.initialDataDelay = initialDataDelay;
             this.failInitialize = failInitialize;
             this.failInitializeWhen = failInitializeWhen;
+            this.rollbackInitializeWhen = rollbackInitializeWhen;
             this.batchSize = batchSize;
         }
 
@@ -100,7 +105,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new MockDataSourceOperator(readRelation, mockDatabase, dataflowBlockOptions, initialDataDelay, failInitialize, batchSize, failInitializeWhen);
+            return new MockDataSourceOperator(readRelation, mockDatabase, dataflowBlockOptions, initialDataDelay, failInitialize, batchSize, failInitializeWhen, rollbackInitializeWhen);
         }
 
         public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)

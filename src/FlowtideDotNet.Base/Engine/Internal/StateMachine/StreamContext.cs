@@ -122,6 +122,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // Serializes the state manager region across starts. Guarded by _blockClaimLock.
         internal Task? _inFlightStartInitGate;
 
+        // The init gate of the start whose block initialization this call chain runs in, a teardown there must not wait on it.
+        internal static readonly AsyncLocal<Task?> OwnStartInitGate = new AsyncLocal<Task?>();
+
         // Test hooks, null in production. Each gets the stream name so a test can filter to its own
         // stream: CheckpointCommitHookForTests awaits inside the commit (so a test can hold a write in
         // flight), CompactionScheduledHookForTests awaits at the entry of a scheduled compaction task
@@ -998,8 +1001,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     startInitGate = _inFlightStartInitGate;
                 }
-                // The gate spans the start's whole state manager region.
-                bool startSettled = startInitGate == null || startInitGate.IsCompleted;
+                // The gate spans the start's whole state manager region, a teardown inside that start's own chain cannot wait for it.
+                bool startSettled = startInitGate == null || startInitGate.IsCompleted || ReferenceEquals(startInitGate, OwnStartInitGate.Value);
                 // Claimed under the checkpoint lock before the task is scheduled, so a zero read
                 // under it cannot race a claim decided before this teardown.
                 bool writesSettled;

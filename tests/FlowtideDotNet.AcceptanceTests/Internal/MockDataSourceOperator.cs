@@ -48,15 +48,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly TimeSpan? _initialDataDelay;
         private readonly bool _failInitialize;
         private readonly Func<bool>? _failInitializeWhen;
+        private readonly Func<bool>? _rollbackInitializeWhen;
         private readonly int? _batchSize;
 
-        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null, Func<bool>? failInitializeWhen = null) : base(options)
+        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null, Func<bool>? failInitializeWhen = null, Func<bool>? rollbackInitializeWhen = null) : base(options)
         {
             this.readRelation = readRelation;
             this.mockDatabase = mockDatabase;
             _initialDataDelay = initialDataDelay;
             _failInitialize = failInitialize;
             _failInitializeWhen = failInitializeWhen;
+            _rollbackInitializeWhen = rollbackInitializeWhen;
             _batchSize = batchSize;
 
             _table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
@@ -276,6 +278,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (_failInitialize || (_failInitializeWhen?.Invoke() ?? false))
             {
                 throw new InvalidOperationException($"Mock source {readRelation.NamedTable.DotSeperated} is configured to fail initialization.");
+            }
+            if (_rollbackInitializeWhen?.Invoke() ?? false)
+            {
+                // Awaited like the exchange handshake awaits its rollback on a restore point mismatch.
+                await FailAndRollback(new CrashException("Rollback requested from initialize"), restoreVersion: restoreTime);
+                return;
             }
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))

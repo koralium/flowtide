@@ -69,6 +69,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
 
 
+            // May run inside a failing start's chain, the transition and its continuation must still wait for that start.
+            StreamContext.OwnStartInitGate.Value = null;
             lock (_lock)
             {
                 _context.SetStatus(StreamStatus.Failing);
@@ -279,6 +281,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // finished so the delete can run now without racing it. The failure
                 // handling disposed every block, they must be created before delete can
                 // be called, see NotStartedStreamState.DeleteAsync.
+                // A start that failed from inside may still be initializing the old blocks.
+                await _context.WaitForStateManagerToSettle("Delete after failure");
                 _context.ForEachBlock((key, block) =>
                 {
                     block.Setup(_context.streamName, key);
@@ -296,6 +300,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Check if the stream should be in not started
             if (_context._wantedState == StreamStateValue.NotStarted)
             {
+                // A start that failed from inside may still be finishing, the manager goes only after it.
+                await _context.WaitForStateManagerToSettle("Stop after failure");
                 // Dispose state
                 _context._stateManager.Dispose();
                 lock (_context._checkpointLock)

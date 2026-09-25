@@ -3520,6 +3520,53 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
+        /// A structure reset after a checkpoint does not erase that checkpoint, recovery reads its metadata again.
+        /// </summary>
+        [Fact]
+        public async Task RecoveryAfterAResetRestoresTheCheckpointedMetadata()
+        {
+            var (manager, storage) = await CreateManager("resetrecover");
+            using var storageLifetime = storage;
+            var (client, _, _) = await CreateClientWithPages(manager, storage, "resetrecover", 4);
+            client.Metadata = new TestMetadata() { Updated = true };
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            await client.Reset(true).AsTask().WaitAsync(Timeout);
+            await manager.InitializeAsync().WaitAsync(Timeout);
+            Assert.NotNull(client.Metadata);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// A commit that fails after a structure reset must not take the checkpointed metadata with it.
+        /// </summary>
+        [Fact]
+        public async Task RecoveryAfterAResetAndAFailedCommitRestoresTheCheckpointedMetadata()
+        {
+            var (manager, storage) = await CreateManager("resetfailrecover");
+            using var storageLifetime = storage;
+            var (client, session, _) = await CreateClientWithPages(manager, storage, "resetfailrecover", 4);
+            client.Metadata = new TestMetadata() { Updated = true };
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            // The structure recreates itself after the reset, then its commit fails.
+            await client.Reset(true).AsTask().WaitAsync(Timeout);
+            client.Metadata = new TestMetadata() { Updated = true };
+            var failKey = client.GetNewPageId();
+            client.AddOrUpdate(failKey, new TestPage(9));
+            session.FaultingKeys[failKey] = 1;
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await Assert.ThrowsAnyAsync<Exception>(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout));
+
+            session.FaultingKeys.Clear();
+            await manager.InitializeAsync().WaitAsync(Timeout);
+            Assert.NotNull(client.Metadata);
+            manager.Dispose();
+        }
+
+        /// <summary>
         /// A recovery that gives up before it resets the clients must keep the failed commit.
         /// </summary>
         [Fact]
@@ -3608,20 +3655,24 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
-        /// Wiped metadata reset must clear commited once flag.
+        /// A structure reset keeps the checkpointed metadata, only a recovery that wipes the storage forgets it.
         /// </summary>
         [Fact]
-        public async Task ResetWithClearMetadataClearsCommitedOnce()
+        public async Task ResetKeepsCommitedOnceAndAWipingRecoveryClearsIt()
         {
             var (manager, storage) = await CreateManager("commitedonce_reset", backgroundCommit: false);
             using var storageLifetime = storage;
             var (client, _, _) = await CreateClientWithPages(manager, storage, "commitedonce_reset", 1);
             await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
             var syncClient = (SyncStateClient<TestPage, TestMetadata>)client;
             Assert.True(syncClient.CommitedOnceForTests);
 
-            // Wiped metadata reset must clear commited once flag.
             await client.Reset(clearMetadata: true);
+            Assert.True(syncClient.CommitedOnceForTests);
+
+            // Version 0 resets the storage.
+            await manager.InitializeAsync(checkpointVersion: 0).WaitAsync(Timeout);
             Assert.False(syncClient.CommitedOnceForTests);
             manager.Dispose();
         }

@@ -55,6 +55,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             public bool PreviousCommitedOnce;
             public bool PreviousMetadataUpdated;
+            public bool PreviousMetadataReplaced;
 
             /// <summary>
             /// The first preparation, write or cleanup failure. Cleared only once recovery has reset the client.
@@ -133,6 +134,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// Set by a stop or an abandoned drain, the walk gives up at its next page. Cleared by the recovery pause.
         /// </summary>
         private bool m_stopRequested;
+
+        /// <summary>
+        /// Set by a structure reset, the next commit writes the metadata whatever its Updated flag says.
+        /// </summary>
+        private bool m_metadataReplaced;
 
         private readonly object m_lock = new object();
 
@@ -512,6 +518,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             Volatile.Write(ref m_commit.Failure, null);
         }
 
+        internal override void ForgetCheckpointedMetadata()
+        {
+            metadata.CommitedOnce = false;
+        }
+
         internal override Task WaitForCommitAsync()
         {
             return Volatile.Read(ref m_commitTask) ?? Task.CompletedTask;
@@ -544,6 +555,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             // operator changes the tree metadata again as soon as this returns.
             var previousCommitedOnce = metadata.CommitedOnce;
             var previousMetadataUpdated = metadata.Metadata?.Updated ?? false;
+            var previousMetadataReplaced = m_metadataReplaced;
             Task commitTask;
             await m_commitEvictLock.WaitAsync();
             try
@@ -560,6 +572,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var generation = m_commit;
                 generation.PreviousCommitedOnce = previousCommitedOnce;
                 generation.PreviousMetadataUpdated = previousMetadataUpdated;
+                generation.PreviousMetadataReplaced = previousMetadataReplaced;
                 try
                 {
                     await options.ValueSerializer.CheckpointAsync(this, metadata);
@@ -586,6 +599,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // The metadata went into the session with the flag set, a failure before
                     // the session commit must take the flag back or recovery reads a page that never landed.
                     metadata.CommitedOnce = previousCommitedOnce;
+                    m_metadataReplaced = previousMetadataReplaced;
                     if (metadata.Metadata != null)
                     {
                         metadata.Metadata.Updated = previousMetadataUpdated;
@@ -726,6 +740,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             catch (Exception e)
             {
                 metadata.CommitedOnce = generation.PreviousCommitedOnce;
+                m_metadataReplaced = generation.PreviousMetadataReplaced;
                 if (metadata.Metadata != null)
                 {
                     metadata.Metadata.Updated = generation.PreviousMetadataUpdated;
@@ -850,9 +865,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         private async Task WriteMetadata()
         {
-            if (!metadata.CommitedOnce || (metadata.Metadata != null && metadata.Metadata.Updated))
+            if (!metadata.CommitedOnce || m_metadataReplaced || (metadata.Metadata != null && metadata.Metadata.Updated))
             {
                 metadata.CommitedOnce = true;
+                m_metadataReplaced = false;
                 var bytes = StateClientMetadataSerializer.Serialize(metadata);
                 await SessionWrite(metadataId, new SerializableObject(bytes));
                 if (metadata.Metadata != null)
@@ -1137,17 +1153,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 if (clearMetadata)
                 {
+                    // The checkpointed metadata page stays until a commit replaces it, a recovery before that still reads it.
                     Metadata = default;
-                    metadata.CommitedOnce = false;
+                    m_metadataReplaced = true;
                 }
                 else if (!metadata.CommitedOnce)
                 {
                     Metadata = default;
+                    m_metadataReplaced = false;
                 }
                 else
                 {
                     var bytes = await SessionRead(metadataId);
                     metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes, bytes.Length);
+                    m_metadataReplaced = false;
                 }
                 m_fileCache.ClearTemporaryAllocations();
                 if (options.ValueSerializer != null)

@@ -113,6 +113,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public Func<bool>? FailSourceInitializeWhen { get; set; }
 
         /// <summary>
+        /// Asked on every source initialization attempt, true makes it await a rollback of its own stream. Set before starting the stream.
+        /// </summary>
+        public Func<bool>? RollbackSourceInitializeWhen { get; set; }
+
+        /// <summary>
         /// Sets the minimum time between checkpoint triggers. Set before starting the stream.
         /// </summary>
         public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
@@ -635,7 +640,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay, batchSize: SourceBatchSize, failInitializeWhen: FailSourceInitializeWhen));
+            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay, batchSize: SourceBatchSize, failInitializeWhen: FailSourceInitializeWhen, rollbackInitializeWhen: RollbackSourceInitializeWhen));
         }
 
         /// <summary>
