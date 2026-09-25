@@ -330,6 +330,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await Bounded(_stream.StartAsync(), "The first start");
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
+            // A stop inside one substreams checkpoint is one sided and ends by drain timeout.
+            await CheckpointSettle.WaitForCheckpointsToSettle(_stream.Substreams.Values);
             await Bounded(_stream.StopAsync(), "The first stop");
 
             // Start the same instance again and add new data, the sources must pick it up
@@ -349,6 +351,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 throw;
             }
 
+            await CheckpointSettle.WaitForCheckpointsToSettle(_stream.Substreams.Values);
             await Bounded(_stream.StopAsync(), "The final stop");
 
             if (!failures.IsEmpty)

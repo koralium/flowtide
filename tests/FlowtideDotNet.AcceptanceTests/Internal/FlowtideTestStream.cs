@@ -740,6 +740,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _stream!.TryScheduleCheckpoint(t);
         }
 
+        public Task TriggerCheckpoint()
+        {
+            return _stream!.TriggerCheckpoint();
+        }
+
+        public Task WaitForCheckpointsToSettle()
+        {
+            return CheckpointSettle.WaitForCheckpointsToSettle(_stream!);
+        }
+
         public Task StartStream()
         {
             return _stream!.StartAsync();
