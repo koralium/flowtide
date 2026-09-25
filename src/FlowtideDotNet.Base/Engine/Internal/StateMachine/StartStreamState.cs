@@ -414,7 +414,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 catch (Exception e)
                 {
-
+                    // Done with the state manager, the failure teardown below must not wait on this start.
+                    initGate.TrySetResult();
                     await _context.OnFailure(e);
                     return;
                 }

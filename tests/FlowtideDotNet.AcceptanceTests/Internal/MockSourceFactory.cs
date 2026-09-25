@@ -26,6 +26,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly bool immutable;
         private readonly TimeSpan? initialDataDelay;
         private readonly bool failInitialize;
+        private readonly Func<bool>? failInitializeWhen;
         private readonly int? batchSize;
 
         /// <param name="initialDataDelay">
@@ -36,12 +37,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// Makes every created source operator throw during initialization, used to test
         /// how a stream host handles a substream that cannot start.
         /// </param>
-        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase, bool immutable, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null) : base(regexPattern)
+        /// <param name="failInitializeWhen">
+        /// Asked on every initialization attempt, true makes that attempt throw like failInitialize.
+        /// </param>
+        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase, bool immutable, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null, Func<bool>? failInitializeWhen = null) : base(regexPattern)
         {
             this.mockDatabase = mockDatabase;
             this.immutable = immutable;
             this.initialDataDelay = initialDataDelay;
             this.failInitialize = failInitialize;
+            this.failInitializeWhen = failInitializeWhen;
             this.batchSize = batchSize;
         }
 
@@ -95,7 +100,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new MockDataSourceOperator(readRelation, mockDatabase, dataflowBlockOptions, initialDataDelay, failInitialize, batchSize);
+            return new MockDataSourceOperator(readRelation, mockDatabase, dataflowBlockOptions, initialDataDelay, failInitialize, batchSize, failInitializeWhen);
         }
 
         public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)

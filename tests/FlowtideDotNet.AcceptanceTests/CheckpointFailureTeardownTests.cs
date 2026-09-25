@@ -735,5 +735,96 @@ namespace FlowtideDotNet.AcceptanceTests
                 }
             }
         }
+
+        // Far above the bounds below, a teardown that waits it out cannot pass them.
+        private static readonly TimeSpan LongStopDrainTimeout = TimeSpan.FromSeconds(20);
+
+        /// <summary>
+        /// A block Initialize failure must not hold the first start on its own failure teardown.
+        /// </summary>
+        [Fact]
+        public async Task StartReturnsPromptlyWhenABlockInitializeThrows()
+        {
+            var name = $"{Token}_{nameof(StartReturnsPromptlyWhenABlockInitializeThrows)}";
+            var attempts = 0;
+            await using var stream = new FlowtideTestStream(name)
+            {
+                StopDrainTimeout = LongStopDrainTimeout,
+                FailSourceInitializeWhen = () =>
+                {
+                    Interlocked.Increment(ref attempts);
+                    return true;
+                }
+            };
+            stream.Generate(10);
+
+            await stream.CreateStream("INSERT INTO output SELECT userkey FROM users");
+            var start = stream.StartStream();
+            var finished = await Task.WhenAny(start, Task.Delay(TimeSpan.FromSeconds(10)));
+            if (finished == start)
+            {
+                // A setup fault surfaces as itself.
+                await start;
+            }
+            Assert.True(Volatile.Read(ref attempts) >= 1, "The source was never initialized.");
+            Assert.True(finished == start, "StartAsync did not return within 10 s of the source Initialize failure, the failure teardown waits on the start's own init gate.");
+            Assert.True(stream.FailureNotificationCount >= 1, "The initialize failure was not reported.");
+        }
+
+        /// <summary>
+        /// An automatic restart whose block Initialize throws must retry after the restart delay, not the stop drain timeout.
+        /// </summary>
+        [Fact]
+        public async Task RestartAfterABlockInitializeFailureIsNotHeldByItsFailureTeardown()
+        {
+            var name = $"{Token}_{nameof(RestartAfterABlockInitializeFailureIsNotHeldByItsFailureTeardown)}";
+            var attempts = new List<long>();
+            int AttemptCount()
+            {
+                lock (attempts)
+                {
+                    return attempts.Count;
+                }
+            }
+            await using var stream = new FlowtideTestStream(name)
+            {
+                StopDrainTimeout = LongStopDrainTimeout,
+                FailSourceInitializeWhen = () =>
+                {
+                    lock (attempts)
+                    {
+                        attempts.Add(Stopwatch.GetTimestamp());
+                    }
+                    return true;
+                }
+            };
+            stream.Generate(10);
+
+            // The second attempt is the first automatic restart, the first start is covered above.
+            var start = stream.StartStream("INSERT INTO output SELECT userkey FROM users");
+            var deadline = DateTime.UtcNow.AddSeconds(60);
+            while (AttemptCount() < 2 && !start.IsFaulted && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(10);
+            }
+            if (start.IsFaulted)
+            {
+                // A setup fault surfaces as itself.
+                await start;
+            }
+            Assert.True(AttemptCount() >= 2, "The stream never restarted after the failed initialize.");
+            long secondAttempt;
+            lock (attempts)
+            {
+                secondAttempt = attempts[1];
+            }
+
+            while (AttemptCount() < 3 && Stopwatch.GetElapsedTime(secondAttempt) < TimeSpan.FromSeconds(10))
+            {
+                await Task.Delay(10);
+            }
+            Assert.True(AttemptCount() >= 3, $"The restart waited {Stopwatch.GetElapsedTime(secondAttempt)} on its own failure teardown.");
+            await start.WaitAsync(TimeSpan.FromSeconds(30));
+        }
     }
 }
