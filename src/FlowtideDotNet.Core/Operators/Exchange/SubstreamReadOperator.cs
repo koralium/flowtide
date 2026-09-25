@@ -152,6 +152,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // Clear checkpoint state from a run that was interrupted by a failure,
                 // otherwise the first checkpoint after a restore could complete a stale wait.
                 _currentCheckpoint = null;
+                // The previous fetch operation has been joined by ingress teardown,
+                // but its cleanup continuation can still be queued. It must not
+                // prevent the replacement run from starting its own fetch loop.
+                _fetchTask = null;
                 staleWaitForCheckpoint = _waitForCheckpoint;
                 _waitForCheckpoint = null;
                 _initWatermarksHandled = false;

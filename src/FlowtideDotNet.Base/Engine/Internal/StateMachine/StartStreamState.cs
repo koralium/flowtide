@@ -309,10 +309,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 lock (_context._checkpointLock)
                 {
-                    // Reschedule checkpoint, a superseded timer has nothing to reschedule.
-                    if (_context.TryConsumeFiringSchedule())
+                    // Keep an elapsed request until startup completes. Retrying on a
+                    // ten-second timer can exceed a connected peer's stop deadline.
+                    if (_context.TryConsumeFiringSchedule() && !_context.inQueueCheckpoint.HasValue)
                     {
-                        _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromSeconds(10), default);
+                        _context.inQueueCheckpoint = DateTimeOffset.UtcNow;
+                        _context._scheduledProvidedCheckpointToken = _context._currentProvidedCheckpointToken;
                     }
                 }
             }
@@ -661,6 +663,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     block.Fault(new BlockStopException("The start was superseded by a failure."));
                 });
                 await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
+                await _context.WaitForVertexCancellation();
                 await _context.ForEachBlockAsync(async (key, block) =>
                 {
                     await block.DisposeAsync();

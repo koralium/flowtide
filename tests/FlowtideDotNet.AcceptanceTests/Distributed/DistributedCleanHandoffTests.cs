@@ -1636,6 +1636,16 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             Task? peerStop = null;
             int armed = 1;
             int fired = 0;
+            using var stopDispatched = new ManualResetEventSlim();
+
+            Base.Engine.Internal.StateMachine.StreamContext.ScheduledCheckpointFiredHookForTests = streamName =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal) &&
+                    streamName.Contains("substream_0", StringComparison.Ordinal) && Volatile.Read(ref armed) == 0)
+                {
+                    stopDispatched.Set();
+                }
+            };
 
             // First reader resumed, a stop lands before the next one.
             SubstreamReadOperator.ResumedHookForTests = (streamName, readOperator) =>
@@ -1650,13 +1660,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 }
                 peerStop = staying!.StopAsync();
                 Volatile.Write(ref fired, 1);
-                var deadline = DateTime.UtcNow.AddMilliseconds(500);
-                while (!readOperator.IsStopping && DateTime.UtcNow < deadline)
-                {
-                    Thread.Sleep(5);
-                }
-                // The sibling readers see the barrier right after this one.
-                Thread.Sleep(50);
+                // The stop timer dispatches while every reader lock is still held.
+                // Waiting for IsStopping here cannot succeed: it needs these locks.
+                Assert.True(stopDispatched.Wait(TimeSpan.FromSeconds(10)), "The stop checkpoint was not dispatched.");
             };
             try
             {
@@ -1675,8 +1681,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 {
                     _streams.Remove(substream1);
                 }
-                await Task.Delay(300);
                 // Two readers on the peer, else no half resume.
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0);
                 var readers = _logBuffers["substream_0"].LinesContaining("consumed the other substreams stop barrier").Distinct().Count();
                 Assert.True(readers >= 2, $"substream_0 has {readers} reader on substream_1, the scenario needs two.");
 
@@ -1688,9 +1694,15 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 Assert.Empty(_logBuffers["substream_0"].LinesContaining("failing the stop so both substreams recover"));
                 Assert.DoesNotContain(failures, f => f.Substream == "substream_0" && f.Exception != null);
             }
+            catch
+            {
+                DumpLogBuffers("half_resume");
+                throw;
+            }
             finally
             {
                 SubstreamReadOperator.ResumedHookForTests = null;
+                Base.Engine.Internal.StateMachine.StreamContext.ScheduledCheckpointFiredHookForTests = null;
             }
         }
 
@@ -1779,19 +1791,24 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
             var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
             var hub = new LocalSubstreamCommunicationHub();
+            var rollbackDelivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
-            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false,
+                communicationFactory: new GatedCommunicationFactory(hub.CreateFactory("substream_1"), new FetchGate(),
+                    rollbackDelivered: () => rollbackDelivered.TrySetResult()));
             await substream0.StartAsync();
             await substream1.StartAsync();
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
 
             // substream_0 stops first and stays stopped, nobody fetches substream_1's barrier.
             await AwaitBounded(substream0.StopAsync(), "first stop");
+            await CheckpointSettle.WaitForCheckpointsToSettle(substream1);
             await AwaitBounded(substream1.StopAsync(), "stop against a stopped peer");
-            Assert.NotEmpty(_logBuffers["substream_1"].LinesContaining("timed out waiting for other substreams to drain"));
-            // Lets the rollback notification land before the check.
-            await Task.Delay(1500);
+            // Either stop deadline can request recovery. Join the actual notification
+            // instead of depending on which deadline won or sleeping for its delivery.
+            await AwaitBounded(rollbackDelivered.Task, "rollback delivery to the stopped peer");
 
             Assert.Equal(Base.Engine.StreamStateValue.NotStarted, substream0.State);
             Assert.DoesNotContain(failures, f => f.Substream == "substream_0");
@@ -2125,17 +2142,19 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             private readonly ISubstreamCommunicationHandlerFactory _inner;
             private readonly FetchGate _gate;
             private readonly FetchGate? _ackGate;
+            private readonly Action? _rollbackDelivered;
 
-            public GatedCommunicationFactory(ISubstreamCommunicationHandlerFactory inner, FetchGate gate, FetchGate? ackGate = null)
+            public GatedCommunicationFactory(ISubstreamCommunicationHandlerFactory inner, FetchGate gate, FetchGate? ackGate = null, Action? rollbackDelivered = null)
             {
                 _inner = inner;
                 _gate = gate;
                 _ackGate = ackGate;
+                _rollbackDelivered = rollbackDelivered;
             }
 
             public ISubstreamCommunicationHandler GetCommunicationHandler(string targetSubstreamName, string selfSubstreamName)
             {
-                return new GatedHandler(_inner.GetCommunicationHandler(targetSubstreamName, selfSubstreamName), _gate, _ackGate);
+                return new GatedHandler(_inner.GetCommunicationHandler(targetSubstreamName, selfSubstreamName), _gate, _ackGate, _rollbackDelivered);
             }
         }
 
@@ -2145,12 +2164,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             private readonly FetchGate _gate;
             // Holds this substream's checkpoint done acks while closed.
             private readonly FetchGate? _ackGate;
+            private readonly Action? _rollbackDelivered;
 
-            public GatedHandler(ISubstreamCommunicationHandler inner, FetchGate gate, FetchGate? ackGate)
+            public GatedHandler(ISubstreamCommunicationHandler inner, FetchGate gate, FetchGate? ackGate, Action? rollbackDelivered)
             {
                 _inner = inner;
                 _gate = gate;
                 _ackGate = ackGate;
+                _rollbackDelivered = rollbackDelivered;
             }
 
             public void SetReceiveAllocatorResolver(Func<int, IMemoryAllocator> allocatorResolver)
@@ -2178,9 +2199,10 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 return await _inner.FetchData(targetIds, numberOfEvents, cancellationToken);
             }
 
-            public Task SendFailAndRecover(RecoveryWave wave)
+            public async Task SendFailAndRecover(RecoveryWave wave)
             {
-                return _inner.SendFailAndRecover(wave);
+                await _inner.SendFailAndRecover(wave);
+                _rollbackDelivered?.Invoke();
             }
 
             public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)

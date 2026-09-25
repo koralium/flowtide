@@ -476,6 +476,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     if (AllowsPublication) await CompactEgressBlocks();
                     faultBlocks = !AllowsPublication;
                 }
+                // A timed-out drain can still become a clean stop above. Cancel only
+                // once that decision is final; explicit failures already requested it.
+                if (faultBlocks) _context.RequestVertexCancellation();
+                await _context.WaitForVertexCancellation();
                 lock (_context._blockClaimLock) { _context._blocksCreated = 0; }
                 if (faultBlocks)
                 {
@@ -568,7 +572,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override Task OnFailure()
         {
             Interlocked.Exchange(ref _failureRequested, 1);
-            _context!.ForEachVersionAgreement(agreement => agreement.AbortPendingOperations());
+            _context!.RequestVertexCancellation();
+            _context.ForEachVersionAgreement(agreement => agreement.AbortPendingOperations());
             // Fence stop-checkpoint admission before acknowledging a callback's request.
             if (Interlocked.Exchange(ref _stopAllStarted, 1) == 0)
             {

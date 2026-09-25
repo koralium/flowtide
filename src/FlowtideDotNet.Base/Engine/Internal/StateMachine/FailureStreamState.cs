@@ -26,7 +26,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // TransitionTo already fenced the run synchronously. A callback may await
             // this acknowledgement while it still owns a write claim or a dataflow block.
             // Recovery must run independently so it can wait for that callback to exit.
-            _context!.ForEachVersionAgreement(agreement => agreement.AbortPendingOperations());
+            _context!.RequestVertexCancellation();
+            _context.ForEachVersionAgreement(agreement => agreement.AbortPendingOperations());
             lock (_lock)
             {
                 _currentTask ??= Task.Run(Recover);

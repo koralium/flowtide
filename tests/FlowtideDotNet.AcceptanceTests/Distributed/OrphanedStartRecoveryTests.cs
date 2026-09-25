@@ -23,6 +23,7 @@ using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Sql;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -43,6 +44,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         private readonly MockDatabase _db = new MockDatabase();
         private DistributedFlowtideStream? _stream;
+        private readonly RingBufferLoggerProvider _logs = new();
 
         public OrphanedStartRecoveryTests()
         {
@@ -162,6 +164,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    substreamBuilder.WithLoggerFactory(LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_logs)));
                     substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                 })
                 .DistributeAutomatically(2)
@@ -215,6 +218,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    substreamBuilder.WithLoggerFactory(LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_logs)));
                     substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                 })
                 .DistributeAutomatically(2)
@@ -288,6 +292,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                        substreamBuilder.WithLoggerFactory(LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_logs)));
                         substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                     })
                     .DistributeAutomatically(2)
@@ -361,6 +366,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                        substreamBuilder.WithLoggerFactory(LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_logs)));
                         substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                     })
                     .DistributeAutomatically(2)
@@ -455,6 +461,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                        substreamBuilder.WithLoggerFactory(LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_logs)));
                         substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                     })
                     .DistributeAutomatically(2)
@@ -538,7 +545,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }
         }
 
-        private static async Task WaitForCount(
+        private async Task WaitForCount(
             ConcurrentDictionary<string, int> latestData,
             string key,
             int expectedCount,
@@ -555,9 +562,12 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 {
                     var runningTasks = failures.Count(f => f.Exception?.ToString().Contains("Initialize while there are running tasks") == true);
                     latestData.TryGetValue(key, out var last);
+                    _logs.WriteToFile("./debugwrite/orphaned_start.log");
                     throw new TimeoutException(
                         $"The result did not reach {expectedCount} rows, last {last}. " +
-                        $"Failures containing 'Initialize while there are running tasks': {runningTasks} - the failure during the restart orphaned the running start.");
+                        $"Failures containing 'Initialize while there are running tasks': {runningTasks}. " +
+                        $"States: {string.Join(", ", _stream!.Substreams.Select(s => $"{s.Key}: {s.Value.State}"))}. " +
+                        $"Recent failures: {string.Join("; ", failures.Take(6).Select(f => $"{f.Substream}: {f.Exception}"))}");
                 }
                 await Task.Delay(20);
             }

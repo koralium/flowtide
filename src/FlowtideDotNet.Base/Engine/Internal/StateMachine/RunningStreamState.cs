@@ -221,8 +221,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 catch
                 {
-                    // Released here only on a fault, the continuation's IsFaulted branch must
-                    // not release again. On success the claim carries into the continuation.
+                    // Faults and cancellation release here. Neither may enter the
+                    // continuation's success path and release the same claim again.
                     System.Threading.Interlocked.Decrement(ref run._context._stateManagerWriteCount);
                     throw;
                 }
@@ -232,9 +232,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                  {
                      RunningStreamState @this = (RunningStreamState)state!;
                      Debug.Assert(@this.waitingForDependencies != null);
-                     if (t.IsFaulted)
+                     if (t.IsFaulted || t.IsCanceled)
                      {
-                         if (_context.IsCurrentState(this)) await _context.OnFailure(t.Exception);
+                         if (_context.IsCurrentState(@this))
+                             await _context.OnFailure(t.Exception ?? (Exception)new TaskCanceledException(t));
                          return;
                      }
 
@@ -250,7 +251,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                          // Check if all egresses has done their dependencies. Do not start
                          // compaction once a teardown has moved the stream out of the running
                          // state, it would write the state manager the teardown disposes.
-                         if (@this.waitingForDependencies.Count > 0 || _compactionStarted || _context.currentState != StreamStateValue.Running)
+                         if (@this.waitingForDependencies.Count > 0 || _compactionStarted || !_context.IsCurrentState(@this))
                          {
                              // Releases the commit claim carried from the task body, the cycle
                              // now waits for acknowledgements (or a teardown owns the stream)
@@ -380,6 +381,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             StreamStateValue? wishTransition = null;
             lock (_context._checkpointLock)
             {
+                // A callback can acknowledge failure and finish normally after its run
+                // has been fenced. It must not complete a successor's checkpoint.
+                // Initial-data completion also releases a placeholder during stop.
+                if (checkpointCommitted && !_context.IsCurrentState(this)) return;
                 if (_context.RawStatus == StreamStatus.Failing)
                 {
                     // If the stream was in the failure status, we can now set it to running to mark that it is operational
@@ -531,6 +536,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                     }
                     _initialized = true;
+                    // A timer may have elapsed while the stream was starting. With an
+                    // initial-data placeholder its completion promotes the request;
+                    // without one, this transition must do so itself.
+                    if (!_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
+                    {
+                        TryPromoteQueuedCheckpoint();
+                    }
                 }
 
                 _initialBatchTask = Task.Factory.StartNew(async () =>

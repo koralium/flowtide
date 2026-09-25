@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Base.Vertices
     /// managing backpressure, and handling locking/checkpoint sequences. Derived classes must implement 
     /// custom data processing logic using <see cref="OnRecieve(T, long)"/>
     /// </remarks>
-    public abstract class UnaryVertex<T> : IPropagatorBlock<IStreamEvent, IStreamEvent>, IStreamVertex
+    public abstract class UnaryVertex<T> : IPropagatorBlock<IStreamEvent, IStreamEvent>, IStreamVertex, IStreamVertexCancellation
     {
         private TransformManyBlock<IStreamEvent, IStreamEvent>? _transformBlock;
         private ParallelSource<IStreamEvent>? _parallelSource;
@@ -476,6 +476,8 @@ namespace FlowtideDotNet.Base.Vertices
             Debug.Assert(_transformBlock != null, nameof(_transformBlock));
             return (_transformBlock as ISourceBlock<IStreamEvent>).ConsumeMessage(messageHeader, target, out messageConsumed);
         }
+
+        Task IStreamVertexCancellation.CancelPendingOperations() => _cancelToken.CancelAsync();
 
         /// <summary>
         /// Puts the underlying block immediately into a faulted state due to a severe exception.

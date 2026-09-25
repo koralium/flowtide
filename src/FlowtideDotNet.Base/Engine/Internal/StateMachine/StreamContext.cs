@@ -123,6 +123,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal int _blockGeneration;
         internal readonly SemaphoreSlim _blockTeardownGate = new(1, 1);
         internal readonly object _blockClaimLock = new object();
+        private int _vertexCancellationGeneration = -1;
+        private Task _vertexCancellationTask = Task.CompletedTask;
 
         // Serializes the state manager region across starts. Guarded by _blockClaimLock.
         internal Task? _inFlightStartInitGate;
@@ -1068,6 +1070,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Marked first, a failing stream would otherwise restart forever
             _disposed = true;
             _disposeCancellation.Cancel();
+            RequestVertexCancellation();
             ForEachVersionAgreement(agreement => agreement.AbortPendingOperations());
             _wantedState = StreamStateValue.NotStarted;
 
@@ -1133,8 +1136,45 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         }
 
         /// <summary>
-        /// Waits until nothing is inside the state manager. A timeout only logs; it cannot grant ownership to a successor.
-        /// Disposing it while it is written or restored corrupts it.
+        /// Requests cancellation once per run, without releasing callback or storage ownership.
+        /// </summary>
+        internal void RequestVertexCancellation()
+        {
+            lock (_blockClaimLock)
+            {
+                if (_blocksCreated == 0 || _vertexCancellationGeneration == _blockGeneration) return;
+                _vertexCancellationGeneration = _blockGeneration;
+                // CancelAsync marks each token now and invokes its handlers outside engine
+                // locks. Handlers may themselves request failure. Retain their lifetime too.
+                var cancellations = new List<Task>();
+                ForEachBlock((_, block) =>
+                {
+                    if (block is IStreamVertexCancellation cancellation)
+                        cancellations.Add(cancellation.CancelPendingOperations());
+                });
+                _vertexCancellationTask = ObserveVertexCancellation(Task.WhenAll(cancellations));
+            }
+        }
+
+        private async Task ObserveVertexCancellation(Task cancellation)
+        {
+            try { await cancellation.ConfigureAwait(false); }
+            catch (Exception e)
+            {
+                // CancelAsync still invokes every handler when one throws. Once all have
+                // settled, failure teardown can continue and release the run's resources.
+                _logger.LogWarning(e, "A vertex cancellation handler failed on stream {stream}.", streamName);
+            }
+        }
+
+        internal Task WaitForVertexCancellation()
+        {
+            lock (_blockClaimLock) return _vertexCancellationTask;
+        }
+
+        /// <summary>
+        /// Waits for initialization, writes, callbacks and cancellation handlers to settle.
+        /// A timeout only logs; it cannot grant ownership to a successor.
         /// </summary>
         internal async Task WaitForStateManagerToSettle()
         {
@@ -1143,20 +1183,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             while (true)
             {
                 Task? startInitGate;
+                Task vertexCancellation;
                 lock (_blockClaimLock)
                 {
                     startInitGate = _inFlightStartInitGate;
+                    vertexCancellation = _vertexCancellationTask;
                 }
                 // The gate spans the start's whole state manager region
                 bool startSettled = startInitGate == null || startInitGate.IsCompleted;
                 bool writesSettled = Volatile.Read(ref _stateManagerWriteCount) == 0;
-                if (startSettled && writesSettled)
+                if (startSettled && writesSettled && vertexCancellation.IsCompleted)
                 {
                     return;
                 }
                 if (!warned && Stopwatch.GetElapsedTime(waitStart) > _dataflowStreamOptions.StopDrainTimeout)
                 {
-                    _logger.LogWarning("Teardown of stream {stream} is still waiting for initialization or a state manager write after {timeout}; storage ownership is retained until it settles.", streamName, _dataflowStreamOptions.StopDrainTimeout);
+                    _logger.LogWarning("Teardown of stream {stream} is still waiting for initialization, callbacks or a state manager write after {timeout}; storage ownership is retained until they settle.", streamName, _dataflowStreamOptions.StopDrainTimeout);
                     warned = true;
                 }
                 await Task.Delay(10);
