@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             public bool PreviousMetadataUpdated;
 
             /// <summary>
-            /// The first preparation, write or cleanup failure. Cleared only by reset.
+            /// The first preparation, write or cleanup failure. Cleared only once recovery has reset the client.
             /// </summary>
             public Exception? Failure;
 
@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private Dictionary<long, Modified> m_modified;
 
         /// <summary>
-        /// Reusable snapshot storage, including the last commit's failure until reset.
+        /// Reusable snapshot storage, including the last commit's failure until recovery.
         /// </summary>
         private readonly CommitGeneration m_commit = new CommitGeneration();
 
@@ -507,6 +507,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         internal override bool HasCommitFault => Volatile.Read(ref m_commit.Failure) != null;
         internal override Exception? CommitFault => Volatile.Read(ref m_commit.Failure);
 
+        internal override void ClearCommitFault()
+        {
+            Volatile.Write(ref m_commit.Failure, null);
+        }
+
         internal override Task WaitForCommitAsync()
         {
             return Volatile.Read(ref m_commitTask) ?? Task.CompletedTask;
@@ -528,10 +533,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             await WaitForCommitAsync();
             lock (m_lock)
             {
-                // Refused before anything is written, a failed generation only leaves with a reset.
+                // Refused before anything is written, a failed commit only leaves with a recovery.
                 if (m_generation != null || m_commit.Failure != null)
                 {
-                    throw new InvalidOperationException($"State client '{name}' must be reset after its last commit failed.");
+                    throw new InvalidOperationException($"State client '{name}' has a failed commit, it commits again after recovery.");
                 }
             }
 
@@ -548,7 +553,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (m_generation != null || m_commit.Failure != null || HasCommitInFlight)
                     {
                         throw new InvalidOperationException(m_commit.Failure != null
-                            ? $"State client '{name}' must be reset after its last commit failed."
+                            ? $"State client '{name}' has a failed commit, it commits again after recovery."
                             : $"State client '{name}' already has a commit in flight.");
                     }
                 }
@@ -1091,8 +1096,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             finally
             {
                 Volatile.Write(ref m_commitTask, null);
-                // Reset clears recorded commit fault.
-                m_commit.Failure = null;
+                // The fault stays for the checkpoint to see, only a completed recovery reset clears it.
                 lock (m_lock)
                 {
                     foreach (var key in m_modified.Keys)

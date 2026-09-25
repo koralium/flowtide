@@ -487,6 +487,19 @@ namespace FlowtideDotNet.Storage.Tests
             return BinaryPrimitives.ReadInt32LittleEndian(bytes.Value.Span);
         }
 
+        private static void AssertCausedBy<T>(Exception? error)
+            where T : Exception
+        {
+            for (var current = error; current != null; current = current.InnerException)
+            {
+                if (current is T)
+                {
+                    return;
+                }
+            }
+            Assert.Fail($"expected a {typeof(T).Name} in the exception chain, got {error?.ToString() ?? "no exception"}");
+        }
+
         [Fact]
         public async Task CachedPageProbesRejectPagesDeletedDuringBackgroundWriteCompletion()
         {
@@ -1547,15 +1560,61 @@ namespace FlowtideDotNet.Storage.Tests
             using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "resetfault", 8);
             session.FaultingKeys[keys[1]] = 1;
+            var versionBefore = manager.LastCompletedCheckpointVersion;
 
             await client.Commit().AsTask().WaitAsync(Timeout);
 
-            await Assert.ThrowsAnyAsync<Exception>(async () =>
-            {
-                await client.Reset(true).AsTask().WaitAsync(Timeout);
-                await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
-            });
+            await Assert.ThrowsAsync<IOException>(() => client.Reset(true).AsTask().WaitAsync(Timeout));
+            AssertCausedBy<IOException>(await Record.ExceptionAsync(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout)));
+            Assert.Equal(versionBefore, manager.LastCompletedCheckpointVersion);
             manager.Dispose();
+        }
+
+        /// <summary>
+        /// A reset while the checkpoint still joins an earlier client must not let it seal the failed walk.
+        /// </summary>
+        [Fact]
+        public async Task ResetDuringTheCheckpointJoinDoesNotLetTheCheckpointSealAFailedWalk()
+        {
+            var (manager, storage) = await CreateManager("resetrace");
+            using var storageLifetime = storage;
+            // Joined first, the dictionary keeps insertion order.
+            var (first, _, _) = await CreateClientWithPages(manager, storage, "resetrace_first", 2);
+            var (second, secondSession, secondKeys) = await CreateClientWithPages(manager, storage, "resetrace_second", 4);
+            secondSession.FaultingKeys[secondKeys[1]] = 1;
+            var versionBefore = manager.LastCompletedCheckpointVersion;
+
+            var firstBlocked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseFirst = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            manager.PageWriteHookForTests = (name, key) =>
+            {
+                if (name != "resetrace_first")
+                {
+                    return Task.CompletedTask;
+                }
+                firstBlocked.TrySetResult();
+                return releaseFirst.Task;
+            };
+            try
+            {
+                await first.Commit().AsTask().WaitAsync(Timeout);
+                await firstBlocked.Task.WaitAsync(Timeout);
+                await second.Commit().AsTask().WaitAsync(Timeout);
+
+                var checkpoint = manager.CheckpointAsync().AsTask();
+                await Assert.ThrowsAsync<IOException>(() => second.Reset(true).AsTask().WaitAsync(Timeout));
+                Assert.False(checkpoint.IsCompleted, "the checkpoint must still be joining the first client");
+
+                releaseFirst.TrySetResult();
+                AssertCausedBy<IOException>(await Record.ExceptionAsync(() => checkpoint.WaitAsync(Timeout)));
+                Assert.Equal(versionBefore, manager.LastCompletedCheckpointVersion);
+            }
+            finally
+            {
+                releaseFirst.TrySetResult();
+                manager.PageWriteHookForTests = null;
+                manager.Dispose();
+            }
         }
 
         /// <summary>
@@ -3422,10 +3481,10 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
-        /// Reset after failed commit must clear wedged generation.
+        /// A failed commit outlives a structure reset, only recovery lets the client commit again.
         /// </summary>
         [Fact]
-        public async Task ResetAfterFailedCommitClearsWedgedState()
+        public async Task RecoveryClearsAFailedCommitThatAResetSurfaced()
         {
             var (manager, storage) = await CreateManager("resetfailed");
             using var storageLifetime = storage;
@@ -3447,13 +3506,63 @@ namespace FlowtideDotNet.Storage.Tests
             {
             }
 
-            // Reset surfaces the failed walk once and still clears the wedged generation.
             await Assert.ThrowsAsync<IOException>(() => client.Reset(true).AsTask().WaitAsync(Timeout));
-
-            client.AddOrUpdate(client.GetNewPageId(), new TestPage(3));
             session.FaultingKeys.Clear();
-            await client.Commit();
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.Commit().AsTask().WaitAsync(Timeout));
+
+            await manager.InitializeAsync().WaitAsync(Timeout);
+            var key = client.GetNewPageId();
+            client.AddOrUpdate(key, new TestPage(3));
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            Assert.Equal(3, ReadPersisted(storage, key));
             manager.Dispose();
+        }
+
+        /// <summary>
+        /// A recovery that gives up before it resets the clients must keep the failed commit.
+        /// </summary>
+        [Fact]
+        public async Task AbortedRecoveryKeepsTheCommitFailure()
+        {
+            var (manager, storage) = await CreateManager("abortrecovery", recoveryCommitWaitTimeout: TimeSpan.FromMilliseconds(200));
+            using var storageLifetime = storage;
+            // Paused first, the dictionary keeps insertion order.
+            var (failed, failedSession, failedKeys) = await CreateClientWithPages(manager, storage, "abortrecovery_failed", 4);
+            var (wedged, _, _) = await CreateClientWithPages(manager, storage, "abortrecovery_wedged", 2);
+            failedSession.FaultingKeys[failedKeys[1]] = 1;
+
+            var wedgedBlocked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseWedged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            manager.PageWriteHookForTests = (name, key) =>
+            {
+                if (name != "abortrecovery_wedged")
+                {
+                    return Task.CompletedTask;
+                }
+                wedgedBlocked.TrySetResult();
+                return releaseWedged.Task;
+            };
+            try
+            {
+                await failed.Commit().AsTask().WaitAsync(Timeout);
+                await Assert.ThrowsAsync<IOException>(() => failed.Reset(true).AsTask().WaitAsync(Timeout));
+                await wedged.Commit().AsTask().WaitAsync(Timeout);
+                await wedgedBlocked.Task.WaitAsync(Timeout);
+
+                // Pauses the failed client, then gives up on the wedged walk before any reset.
+                await Assert.ThrowsAsync<InvalidOperationException>(() => manager.InitializeAsync().WaitAsync(Timeout));
+
+                releaseWedged.TrySetResult();
+                await ((StateClient)wedged).WaitForCommitAsync().WaitAsync(Timeout);
+                AssertCausedBy<IOException>(await Record.ExceptionAsync(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout)));
+            }
+            finally
+            {
+                releaseWedged.TrySetResult();
+                manager.PageWriteHookForTests = null;
+                manager.Dispose();
+            }
         }
 
         /// <summary>

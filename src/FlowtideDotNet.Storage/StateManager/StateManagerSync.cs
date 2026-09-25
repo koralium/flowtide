@@ -610,6 +610,8 @@ namespace FlowtideDotNet.Storage.StateManager
                 foreach (var stateClient in stateClients)
                 {
                     await stateClient.Reset(newMetadata);
+                    // Rolled back, the aborted epoch's failed commit no longer applies.
+                    stateClient.ClearCommitFault();
                 }
             }
             finally

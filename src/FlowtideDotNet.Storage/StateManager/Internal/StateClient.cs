@@ -22,6 +22,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         internal virtual Exception? CommitFault => null;
 
         /// <summary>
+        /// Forgets a failed commit, called by recovery once it has reset this client.
+        /// </summary>
+        internal virtual void ClearCommitFault()
+        {
+        }
+
+        /// <summary>
         /// Blocks this client's commits until ResumeCommits, joining an in-flight one for at most
         /// the given time first. Recovery holds it across the whole reset.
         /// </summary>
