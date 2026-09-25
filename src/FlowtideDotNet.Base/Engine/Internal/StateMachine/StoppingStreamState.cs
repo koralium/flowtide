@@ -531,6 +531,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             StopStreamCheckpoint? checkpoint = null;
             lock (_context._checkpointLock)
             {
+                // Same lock scope as the cycle start, a replacement cannot interleave.
+                if (isScheduled && !_context.TryConsumeFiringSchedule())
+                {
+                    return Task.CompletedTask;
+                }
                 // Only support a single concurrent checkpoint for now for simplicity
                 if (_context.checkpointTask != null)
                 {
@@ -539,12 +544,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (Volatile.Read(ref _stopAllStarted) == 1)
                 {
                     // Teardown began, a cycle now reaches nobody.
-                    if (isScheduled)
-                    {
-                        _context._scheduleCheckpointTask = null;
-                        _context._triggerCheckpointTime = null;
-                        _context._scheduleCheckpointCancelSource = null;
-                    }
                     return Task.CompletedTask;
                 }
                 _context._logger.StartingShutdownCheckpoint(_context.streamName);
@@ -559,12 +558,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context.producingTime = newTime;
                 _currentCheckpoint = checkpoint;
 
-                if (isScheduled)
-                {
-                    _context._scheduleCheckpointTask = null;
-                    _context._triggerCheckpointTime = null;
-                    _context._scheduleCheckpointCancelSource = null;
-                }
                 foreach (var ingress in _context.ingressBlocks)
                 {
                     ingress.Value.DoLockingEvent(checkpoint);

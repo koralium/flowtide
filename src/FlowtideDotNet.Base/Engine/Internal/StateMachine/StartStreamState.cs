@@ -197,11 +197,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Debug.Assert(_context != null, nameof(_context));
             if (isScheduled)
             {
-                // Reschedule checkpoint
-                _context._scheduleCheckpointTask = null;
-                _context._triggerCheckpointTime = null;
-                _context._scheduleCheckpointCancelSource = null;
-                _context.TryScheduleCheckpointIn(TimeSpan.FromSeconds(10), default);
+                lock (_context._checkpointLock)
+                {
+                    // Reschedule checkpoint, a superseded timer has nothing to reschedule.
+                    if (_context.TryConsumeFiringSchedule())
+                    {
+                        _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromSeconds(10), default);
+                    }
+                }
             }
             // Will do no checkpoints during startup
             return Task.CompletedTask;

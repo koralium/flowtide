@@ -535,11 +535,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     // A stop or delete has been requested, no new checkpoint should start.
                     // The wish must be honored here, between checkpoints nothing else picks
                     // it up and the caller would wait forever.
-                    if (isScheduled)
+                    if (isScheduled && !_context.TryConsumeFiringSchedule())
                     {
-                        _context._scheduleCheckpointTask = null;
-                        _context._triggerCheckpointTime = null;
-                        _context._scheduleCheckpointCancelSource = null;
+                        // Superseded timer, a newer schedule owns the request.
+                        return Task.CompletedTask;
                     }
                     if (_doingCheckpoint)
                     {
@@ -568,6 +567,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             StreamStateValue wishTransition;
             lock (_context._checkpointLock)
             {
+                // Same lock scope as the cycle start, a replacement cannot interleave.
+                if (isScheduled && !_context.TryConsumeFiringSchedule())
+                {
+                    return Task.CompletedTask;
+                }
                 // The wish is re-checked under the lock: a stop or delete can set it between
                 // the callers check and this point, starting a checkpoint here would then run
                 // it concurrently with the stopping or deleting state working on the same
@@ -628,12 +632,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context.producingTime = newTime;
                     _currentCheckpoint = checkpoint;
 
-                    if (isScheduled)
-                    {
-                        _context._scheduleCheckpointTask = null;
-                        _context._triggerCheckpointTime = null;
-                        _context._scheduleCheckpointCancelSource = null;
-                    }
                     foreach (var ingress in _context.ingressBlocks)
                     {
                         ingress.Value.DoLockingEvent(checkpoint);

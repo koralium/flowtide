@@ -178,6 +178,8 @@
       href: internal/projectstructure.md
     - name: Reservoir Storage System
       href: internal/reservoir/index.md
+    - name: Requirements for data consistency
+      href: internal/dataconsistency.md
     - name: Storage
       items:
         - name: Persistent Storage Rules
