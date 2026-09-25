@@ -826,5 +826,190 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.True(AttemptCount() >= 3, $"The restart waited {Stopwatch.GetElapsedTime(secondAttempt)} on its own failure teardown.");
             await start.WaitAsync(TimeSpan.FromSeconds(30));
         }
+
+        private sealed class CompactionRecordingStorage : ReservoirPersistentStorage, IPersistentStorage
+        {
+            private readonly List<LandingSession> _sessions = new();
+
+            /// <summary>
+            /// One entry per storage compaction while recording: a session still held writes its commit had not landed, and the stop checkpoint was already written.
+            /// </summary>
+            public readonly List<(bool Unlanded, bool AfterCheckpoint)> Compactions = new();
+            public volatile bool Recording;
+            private int _checkpointsWhileRecording;
+            public volatile int WalkWriteDelayMs;
+            public int DelayedWalkWrites;
+
+            public CompactionRecordingStorage() : base(new ReservoirStorageOptions { FileProvider = new MemoryFileProvider() })
+            {
+            }
+
+            public new IPersistentStorageSession CreateSession()
+            {
+                var session = new LandingSession(base.CreateSession(), this);
+                lock (_sessions)
+                {
+                    _sessions.Add(session);
+                }
+                return session;
+            }
+
+            public new ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
+            {
+                if (Recording)
+                {
+                    bool unlanded;
+                    lock (_sessions)
+                    {
+                        unlanded = _sessions.Any(s => Volatile.Read(ref s.UnlandedWrites) > 0);
+                    }
+                    lock (Compactions)
+                    {
+                        Compactions.Add((unlanded, Volatile.Read(ref _checkpointsWhileRecording) > 0));
+                    }
+                }
+                return base.CompactAsync(changesSinceLastCompact, pageCount);
+            }
+
+            public new ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
+            {
+                if (Recording)
+                {
+                    Interlocked.Increment(ref _checkpointsWhileRecording);
+                }
+                return base.CheckpointAsync(metadata, includeIndex);
+            }
+
+            private sealed class LandingSession(IPersistentStorageSession inner, CompactionRecordingStorage storage) : IPersistentStorageSession
+            {
+                public int UnlandedWrites;
+
+                public bool SupportsConcurrentReads => inner.SupportsConcurrentReads;
+                public void Dispose() => inner.Dispose();
+                public ValueTask<ReadOnlyMemory<byte>> Read(long key) => inner.Read(key);
+                public ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer) where T : ICacheObject => inner.Read(key, serializer);
+
+                public async Task Commit()
+                {
+                    await inner.Commit();
+                    Volatile.Write(ref UnlandedWrites, 0);
+                }
+
+                public Task Delete(long key)
+                {
+                    Interlocked.Increment(ref UnlandedWrites);
+                    return inner.Delete(key);
+                }
+
+                public async Task Write(long key, SerializableObject value)
+                {
+                    Interlocked.Increment(ref UnlandedWrites);
+                    // Slows only the background walk, the barrier and its acknowledgements stay fast.
+                    var delay = storage.WalkWriteDelayMs;
+                    if (delay > 0 && new StackTrace().GetFrames().Any(frame =>
+                            frame.GetMethod()?.DeclaringType?.Name.StartsWith("<CommitGenerationAsync>", StringComparison.Ordinal) == true))
+                    {
+                        Interlocked.Increment(ref storage.DelayedWalkWrites);
+                        await Task.Delay(delay);
+                    }
+                    await inner.Write(key, value);
+                }
+            }
+        }
+
+        private sealed class CompactionRecordingTestStream(string name) : FlowtideTestStream(name)
+        {
+            public CompactionRecordingStorage Storage { get; } = new();
+
+            protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck) => Storage;
+        }
+
+        /// <summary>
+        /// The stop compaction must decide on, and run after, the stop commits it compacts, but before the stop checkpoint is written.
+        /// </summary>
+        [Fact]
+        public async Task StopCompactionRunsAfterTheStopCommitsLanded()
+        {
+            var name = $"{Token}_{nameof(StopCompactionRunsAfterTheStopCommitsLanded)}";
+            await using var stream = new CompactionRecordingTestStream(name) { CachePageCount = 10000 };
+            var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var hookCalls = 0;
+            try
+            {
+                stream.Generate(1000);
+                await stream.StartStream("INSERT INTO output SELECT userkey, firstName FROM users", pageSize: 16);
+                await stream.WaitForUpdate();
+
+                // Armed after the initial checkpoint, the first call holds a running checkpoint, the next is the stop task.
+                StreamContext.CheckpointCommitHookForTests = async (streamName, lastVersion) =>
+                {
+                    if (streamName != name)
+                    {
+                        return;
+                    }
+                    if (Interlocked.Increment(ref hookCalls) == 1)
+                    {
+                        held.TrySetResult();
+                        await release.Task;
+                    }
+                    else
+                    {
+                        stream.Storage.Recording = true;
+                    }
+                };
+                stream.AddOrUpdateUser(new User { UserKey = 999999, FirstName = "hooktrigger" });
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (!held.Task.IsCompleted && DateTime.UtcNow < deadline)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(10);
+                }
+                Assert.True(held.Task.IsCompleted, "No running checkpoint was held by the hook.");
+
+                // Deferred behind the held checkpoint, the stop is the next cycle and carries every row changed meanwhile.
+                var stopTask = stream.StopStream();
+                foreach (var user in stream.Users.ToList())
+                {
+                    stream.AddOrUpdateUser(new User { UserKey = user.UserKey, FirstName = $"{user.FirstName}_stop" });
+                }
+                // The source fetches changes on a 50 ms trigger, driven by the ticks.
+                var fetchUntil = DateTime.UtcNow.AddSeconds(1);
+                while (DateTime.UtcNow < fetchUntil)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(10);
+                }
+
+                // Long enough that no stop walk has landed when the stop task reads the page counters.
+                stream.Storage.WalkWriteDelayMs = 200;
+                release.TrySetResult();
+                var stopDeadline = DateTime.UtcNow.AddSeconds(60);
+                while (!stopTask.IsCompleted && DateTime.UtcNow < stopDeadline)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(10);
+                }
+                await stopTask.WaitAsync(TimeSpan.FromSeconds(1));
+
+                stream.AssertCurrentDataEqual(stream.Users.Select(user => new { user.UserKey, user.FirstName }));
+                Assert.True(Volatile.Read(ref stream.Storage.DelayedWalkWrites) > 0, "No stop walk write was slowed, the stop commits may have landed before the counters were read.");
+                (bool Unlanded, bool AfterCheckpoint)[] compactions;
+                lock (stream.Storage.Compactions)
+                {
+                    compactions = stream.Storage.Compactions.ToArray();
+                }
+                Assert.True(compactions.Length > 0, "The stop did not compact although its checkpoint rewrote every row, it read the page counters before the stop commits landed.");
+                Assert.False(compactions.Any(c => c.Unlanded), "The stop compacted while a client's stop commit was still being written.");
+                // Retention is relative to the previous checkpoint, a peer rollback may still need it.
+                Assert.False(compactions.Any(c => c.AfterCheckpoint), "The stop compacted after writing its checkpoint, which prunes the version a peer rollback may still need.");
+            }
+            finally
+            {
+                release.TrySetResult();
+                stream.Storage.WalkWriteDelayMs = 0;
+                StreamContext.CheckpointCommitHookForTests = null;
+            }
+        }
     }
 }

@@ -150,6 +150,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                         run._context._stateManager.Metadata = run._context._lastState;
 
+                        // Compacted before the stop checkpoint like on main, but only once the stop commits have landed and are counted.
+                        await run._context._stateManager.WaitForCommitsAsync();
+
                         long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
                         var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
 

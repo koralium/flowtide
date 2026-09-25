@@ -295,12 +295,33 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
+
+            // Every client's background commit must have landed before the checkpoint seals them.
+            await WaitForCommitsAsync();
+
+            byte[] bytes;
+            lock (m_lock)
+            {
+                m_metadata.CheckpointVersion = m_persistentStorage.CurrentVersion;
+                var bufferWriter = new ArrayBufferWriter<byte>();
+                m_metadataSerializer.Serialize(bufferWriter, m_metadata);
+                bytes = bufferWriter.WrittenSpan.ToArray();
+            }
+
+            await m_persistentStorage.CheckpointAsync(bytes, includeIndex);
+            LastCompletedCheckpointVersion = m_metadata.CheckpointVersion;
+        }
+
+        /// <summary>
+        /// Waits until every client's background commit has landed and been counted, throws when one failed.
+        /// </summary>
+        public async Task WaitForCommitsAsync()
+        {
             if (disposedValue)
             {
                 throw new ObjectDisposedException(nameof(StateManagerSync));
             }
 
-            // Every client's background commit must have landed before the checkpoint seals them.
             List<StateClient> stateClients;
             lock (m_lock)
             {
@@ -314,7 +335,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 }
                 catch (OperationCanceledException)
                 {
-                    throw new ObjectDisposedException(nameof(StateManagerSync), "The checkpoint was abandoned on a stop request.");
+                    throw new ObjectDisposedException(nameof(StateManagerSync), "The commits were abandoned on a stop request.");
                 }
                 if (stateClient.HasCommitFault)
                 {
@@ -326,18 +347,6 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 throw new ObjectDisposedException(nameof(StateManagerSync));
             }
-
-            byte[] bytes;
-            lock (m_lock)
-            {
-                m_metadata.CheckpointVersion = m_persistentStorage.CurrentVersion;
-                var bufferWriter = new ArrayBufferWriter<byte>();
-                m_metadataSerializer.Serialize(bufferWriter, m_metadata);
-                bytes = bufferWriter.WrittenSpan.ToArray();
-            }
-
-            await m_persistentStorage.CheckpointAsync(bytes, includeIndex);
-            LastCompletedCheckpointVersion = m_metadata.CheckpointVersion;
         }
 
         public async Task Compact()
