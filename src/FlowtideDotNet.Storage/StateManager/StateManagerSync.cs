@@ -698,8 +698,27 @@ namespace FlowtideDotNet.Storage.StateManager
                     // the next start has nothing to recover from. Setup resets it for restore.
                     if (m_persistentStorage != null && m_ownsPersistentStorage)
                     {
-                        m_persistentStorage.Dispose();
+                        var ownedStorage = m_persistentStorage;
                         m_persistentStorage = null;
+                        if (m_pendingDisposals == null)
+                        {
+                            ownedStorage.Dispose();
+                        }
+                        else
+                        {
+                            // A walk the stop gave up on still writes through its session, the storage goes after it.
+                            m_pendingDisposals = m_pendingDisposals.ContinueWith(static (_, state) =>
+                            {
+                                try
+                                {
+                                    ((IPersistentStorage)state!).Dispose();
+                                }
+                                catch
+                                {
+                                    // A teardown fallback, there is nobody left to tell.
+                                }
+                            }, ownedStorage, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+                        }
                     }
 
                     // Released after the clients, they register instruments on it.

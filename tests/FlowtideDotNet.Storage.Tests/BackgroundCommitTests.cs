@@ -3990,6 +3990,45 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.Equal(0, await CommitAndCountMetadataWrites());
             manager.Dispose();
         }
+
+        /// <summary>
+        /// A storage the manager created itself outlives a walk the dispose gave up on, the walk still writes through it.
+        /// </summary>
+        [Fact]
+        public async Task OwnedStorageOutlivesTheWalkDisposeGaveUp()
+        {
+            // No storage supplied, the manager creates and owns one.
+            var manager = new StateManagerSync<StateManagerMetadata>(new StateManagerOptions()
+            {
+                CachePageCount = 1000,
+                MinCachePageCount = 1000,
+                TemporaryStorageOptions = new FileCacheOptions() { DirectoryPath = "./data/bgcommit_ownedstorage/temp" }
+            }, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("bgcommit_ownedstorage"), "bgcommit_ownedstorage", GlobalMemoryManager.Instance);
+            await manager.InitializeAsync();
+            await manager.CacheTable.StopCleanupTask();
+            var storage = (FileCachePersistentStorage)typeof(StateManagerSync).GetField("m_persistentStorage", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(manager)!;
+            var disposedField = storage.m_fileCache.GetType().GetField("disposedValue", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            bool StorageDisposed() => (bool)disposedField.GetValue(storage.m_fileCache)!;
+
+            var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
+                "bgcommit_ownedstorage",
+                new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
+                GlobalMemoryManager.Instance);
+            for (int i = 0; i < 4; i++)
+            {
+                client.AddOrUpdate(client.GetNewPageId(), new TestPage(i));
+            }
+            using var gate = new WalkGate(manager);
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await gate.Blocked.WaitAsync(Timeout);
+
+            manager.Dispose();
+            Assert.False(StorageDisposed(), "the owned storage was disposed while a walk could still write through it");
+
+            gate.Release();
+            await ((StateClient)client).DisposalTask.WaitAsync(Timeout);
+            await WaitUntil(StorageDisposed, "the owned storage to be disposed after the walk");
+        }
     }
 }
 
