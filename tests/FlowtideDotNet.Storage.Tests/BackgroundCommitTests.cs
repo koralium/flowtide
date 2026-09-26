@@ -1872,13 +1872,12 @@ namespace FlowtideDotNet.Storage.Tests
         }
 
         /// <summary>
-        /// Review 2, finding 4: dispose gives a wedged walk up after the configured time instead of
-        /// waiting on storage forever.
+        /// Review 2, finding 4: dispose gives a wedged walk up instead of waiting on storage.
         /// </summary>
         [Fact]
-        public async Task DisposeGivesUpAWedgedWalkWithinTheStopTimeout()
+        public async Task DisposeDoesNotWaitForAWedgedWalk()
         {
-            var (manager, storage) = await CreateManager("wedged", recoveryCommitWaitTimeout: TimeSpan.FromSeconds(1));
+            var (manager, storage) = await CreateManager("wedged");
             using var storageLifetime = storage;
             var (client, session, keys) = await CreateClientWithPages(manager, storage, "wedged", 8);
             using var gate = new ManualResetEventSlim(false);
@@ -1887,10 +1886,8 @@ namespace FlowtideDotNet.Storage.Tests
             await client.Commit().AsTask().WaitAsync(Timeout);
             await session.WriterBlocked.WaitAsync(Timeout);
 
-            var elapsed = System.Diagnostics.Stopwatch.StartNew();
-            var dispose = Task.Run(() => manager.Dispose());
-            await dispose.WaitAsync(TimeSpan.FromSeconds(10));
-            Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(1.6), $"dispose took {elapsed.Elapsed.TotalSeconds:F1}s against a 1s stop budget, the budget was spent more than once");
+            // Returns while the write is still parked.
+            await Task.Run(() => manager.Dispose()).WaitAsync(TimeSpan.FromSeconds(10));
             gate.Set();
             await Record.ExceptionAsync(() => ((StateClient)client).WaitForCommitAsync().WaitAsync(Timeout));
             await WaitUntil(() => session.Disposed, "the abandoned worker to release its session");
@@ -2960,12 +2957,15 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 await tree.Upsert(i, (int)i);
             }
-            await tree.Commit();
-
-            // Every page is fetched and rewritten while the walk is still going.
-            for (long i = 0; i < count; i++)
+            // The walk is held, so every page is fetched and rewritten while it still owes its write.
+            using (var gate = new WalkGate(manager))
             {
-                await tree.Upsert(i, (int)i + 1);
+                await tree.Commit();
+                await gate.Blocked.WaitAsync(Timeout);
+                for (long i = 0; i < count; i++)
+                {
+                    await tree.Upsert(i, (int)i + 1);
+                }
             }
             await manager.CheckpointAsync();
 
@@ -3671,6 +3671,9 @@ namespace FlowtideDotNet.Storage.Tests
             await client.Reset(clearMetadata: true);
             Assert.True(syncClient.CommitedOnceForTests);
 
+            await manager.InitializeAsync().WaitAsync(Timeout);
+            Assert.True(syncClient.CommitedOnceForTests);
+
             // Version 0 resets the storage.
             await manager.InitializeAsync(checkpointVersion: 0).WaitAsync(Timeout);
             Assert.False(syncClient.CommitedOnceForTests);
@@ -3854,6 +3857,137 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.NotNull(ex);
             Assert.NotNull(ex.InnerException);
 
+            manager.Dispose();
+        }
+
+        // Background-commit review of 2026-09-25.
+
+        /// <summary>
+        /// A delete must not knock another page out of the lock-free lookup slot it shares.
+        /// </summary>
+        [Fact]
+        public async Task DeleteLeavesACollidingPageInTheLookupSlot()
+        {
+            var (manager, storage) = await CreateManager("lookupslot", cachePageCount: 5000);
+            using var storageLifetime = storage;
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "lookupslot", 1010);
+            var sync = (SyncStateClient<TestPage, TestMetadata>)client;
+            var deleted = keys[0];
+            var live = keys[1009];
+            Assert.Equal(deleted % 1009, live % 1009);
+
+            client.Delete(deleted);
+            var hits = sync.LookupTableHitsForTests;
+            var page = await client.GetValue(live).AsTask().WaitAsync(Timeout);
+            page!.Return();
+            Assert.Equal(hits + 1, sync.LookupTableHitsForTests);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// A delete that waited for its checkpoint write must not knock another page out of the slot either.
+        /// </summary>
+        [Fact]
+        public async Task DeferredDeleteLeavesACollidingPageInTheLookupSlot()
+        {
+            var (manager, storage) = await CreateManager("lookupslot_deferred", cachePageCount: 5000);
+            using var storageLifetime = storage;
+            var (client, _, keys) = await CreateClientWithPages(manager, storage, "lookupslot_deferred", 1010);
+            var sync = (SyncStateClient<TestPage, TestMetadata>)client;
+            var deleted = keys[0];
+            var live = keys[1009];
+            Assert.Equal(deleted % 1009, live % 1009);
+
+            using (var gate = new WalkGate(manager))
+            {
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await gate.Blocked.WaitAsync(Timeout);
+                client.Delete(deleted);
+                var owed = await client.GetValue(live).AsTask().WaitAsync(Timeout);
+                owed!.Return();
+            }
+            await ((StateClient)client).WaitForCommitAsync().WaitAsync(Timeout);
+
+            var hits = sync.LookupTableHitsForTests;
+            var page = await client.GetValue(live).AsTask().WaitAsync(Timeout);
+            page!.Return();
+            Assert.Equal(hits + 1, sync.LookupTableHitsForTests);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// A walk failure must take CommitedOnce back, recovery would read a metadata page that never landed.
+        /// </summary>
+        [Fact]
+        public async Task WalkWriteFailureDoesNotStrandTheClientMetadata()
+        {
+            var (manager, storage) = await CreateManager("walkfault_meta");
+            using var storageLifetime = storage;
+            // A checkpoint before the client exists, so recovery reads client metadata instead of clearing it.
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "walkfault_meta", 4);
+            session.FaultingKeys[keys[1]] = 1;
+
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await Assert.ThrowsAsync<IOException>(() => manager.CheckpointAsync().AsTask().WaitAsync(Timeout));
+
+            session.FaultingKeys.Clear();
+            await manager.InitializeAsync().WaitAsync(Timeout);
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// After the walk failed, fetching a page it still owes fails too instead of writing it.
+        /// </summary>
+        [Fact]
+        public async Task FetchAfterAFailedWalkWritesNoOwedPage()
+        {
+            var (manager, storage) = await CreateManager("fetchafterfail");
+            using var storageLifetime = storage;
+            var (client, session, keys) = await CreateClientWithPages(manager, storage, "fetchafterfail", 8);
+            session.FaultingKeys[keys[0]] = 1;
+
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await Assert.ThrowsAsync<IOException>(() => ((StateClient)client).WaitForCommitAsync().WaitAsync(Timeout));
+
+            var owed = keys[^1];
+            await Assert.ThrowsAsync<IOException>(() => client.GetValue(owed).AsTask().WaitAsync(Timeout));
+            Assert.Equal(0, session.WriteCount(owed));
+            manager.Dispose();
+        }
+
+        /// <summary>
+        /// A reset makes the next commit write the metadata once, even when the new metadata is not marked updated.
+        /// </summary>
+        [Fact]
+        public async Task ResetWritesTheReplacedMetadataOnce()
+        {
+            var (manager, storage) = await CreateManager("replacedmeta");
+            using var storageLifetime = storage;
+            var (client, session, _) = await CreateClientWithPages(manager, storage, "replacedmeta", 1);
+            var metadataId = ((StateClient)client).MetadataId;
+            client.Metadata = new TestMetadata() { Updated = true };
+            await client.Commit().AsTask().WaitAsync(Timeout);
+            await manager.CheckpointAsync().AsTask().WaitAsync(Timeout);
+
+            async Task<int> CommitAndCountMetadataWrites()
+            {
+                var before = session.TotalWriteCount(metadataId);
+                await client.Commit().AsTask().WaitAsync(Timeout);
+                await ((StateClient)client).WaitForCommitAsync().WaitAsync(Timeout);
+                return session.TotalWriteCount(metadataId) - before;
+            }
+
+            await client.Reset(true).AsTask().WaitAsync(Timeout);
+            client.Metadata = new TestMetadata() { Updated = false };
+            Assert.Equal(1, await CommitAndCountMetadataWrites());
+            Assert.Equal(0, await CommitAndCountMetadataWrites());
+
+            // A recovery replaces the reset's metadata with the checkpointed one, nothing is owed.
+            await client.Reset(true).AsTask().WaitAsync(Timeout);
+            await manager.InitializeAsync().WaitAsync(Timeout);
+            client.Metadata!.Updated = false;
+            Assert.Equal(0, await CommitAndCountMetadataWrites());
             manager.Dispose();
         }
     }

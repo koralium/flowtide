@@ -332,10 +332,12 @@ namespace FlowtideDotNet.Storage.Tests.Queue
         /// <summary>
         /// No enqueue follows Clear, so the empty replacement root itself must be dirty.
         /// </summary>
-        [Fact]
-        public async Task EmptyQueueCanRecoverAfterClearAndCommit()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task EmptyQueueCanRecoverAfterClearAndCommit(bool backgroundCommit)
         {
-            using var stateManager = CreateReservoirManager(backgroundCommit: true);
+            using var stateManager = CreateReservoirManager(backgroundCommit);
             await stateManager.InitializeAsync();
             var queue = await GetQueue(stateManager);
             await queue.Enqueue(1);

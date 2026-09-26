@@ -883,7 +883,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             lock (m_lock)
             {
                 m_modified[key] = new Modified(-1);
-                Volatile.Write(ref _lookupTable[key % LookupTableSize], null);
+                ClearLookupSlot_NoLock(key);
                 if (m_generation != null && OwesCheckpointWrite_NoLock(key))
                 {
                     // Keep the cache entry and spill until the checkpoint write lands.
@@ -896,9 +896,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private void Delete_NoLock(long key)
         {
             Debug.Assert(Monitor.IsEntered(m_lock));
-            Volatile.Write(ref _lookupTable[key % LookupTableSize], null);
+            ClearLookupSlot_NoLock(key);
             FreeSpill(key);
             stateManager.DeleteFromCache(key);
+        }
+
+        /// <summary>
+        /// Empties the slot only while it holds this key, a colliding page keeps its fast path.
+        /// </summary>
+        private void ClearLookupSlot_NoLock(long key)
+        {
+            Debug.Assert(Monitor.IsEntered(m_lock));
+            var modLookup = key % LookupTableSize;
+            var slotEntry = _lookupTable[modLookup];
+            if (slotEntry != null && slotEntry.Key == key)
+            {
+                Volatile.Write(ref _lookupTable[modLookup], null);
+            }
         }
 
         /// <summary>
