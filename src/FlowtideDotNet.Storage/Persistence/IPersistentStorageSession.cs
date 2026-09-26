@@ -16,6 +16,13 @@ namespace FlowtideDotNet.Storage.Persistence
 {
     public interface IPersistentStorageSession : IDisposable
     {
+        /// <summary>
+        /// True when reads may overlap a write, delete or commit on this session. The caller
+        /// still serializes writes, deletes and commits with each other. When false, the
+        /// state client serializes all session calls, including reads.
+        /// </summary>
+        bool SupportsConcurrentReads => false;
+
         ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer)
             where T : ICacheObject;
 
@@ -25,6 +32,10 @@ namespace FlowtideDotNet.Storage.Persistence
 
         Task Delete(long key);
 
+        /// <summary>
+        /// Publishes this session's writes to the storage's next checkpoint. Durability is
+        /// established by <see cref="IPersistentStorage.CheckpointAsync"/>.
+        /// </summary>
         Task Commit();
     }
 }

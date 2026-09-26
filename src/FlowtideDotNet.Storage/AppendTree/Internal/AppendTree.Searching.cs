@@ -30,12 +30,15 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             Debug.Assert(m_rightNode != null);
             if (m_stateClient.Metadata!.Root == m_rightNode.Id && m_rightNode.keys.Count == 0)
             {
-                // If the tree is empty, return the right node which is the root
+                // Renting right leaf preserves reference during tree splits.
+                m_rightNode.TryRent();
                 return new ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>>(m_rightNode);
             }
             // Check if the most right node contains the data, if so no need to search the tree
             if (searchComparer.CompareTo(m_rightNode.keys.Get(0), key) <= 0)
             {
+                // Renting right leaf preserves reference during tree splits.
+                m_rightNode.TryRent();
                 return new ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>>(m_rightNode);
             }
             // Might be better here to start a search with the most right internal nodes, since they are more likely to be in the cache

@@ -11,9 +11,18 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Entities;
+using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Persistence;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit.Abstractions;
@@ -31,6 +40,102 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public CheckpointFailureTeardownTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper, true)
         {
+        }
+
+        private sealed class FailingPageStorage : ReservoirPersistentStorage, IPersistentStorage
+        {
+            public int Armed;
+            public readonly TaskCompletionSource<long> Failed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            public FailingPageStorage() : base(new ReservoirStorageOptions { FileProvider = new MemoryFileProvider() })
+            {
+            }
+
+            public new IPersistentStorageSession CreateSession() => new FailingPageSession(base.CreateSession(), this);
+
+            private sealed class FailingPageSession(IPersistentStorageSession inner, FailingPageStorage storage) : IPersistentStorageSession
+            {
+                public bool SupportsConcurrentReads => inner.SupportsConcurrentReads;
+                public Task Commit() => inner.Commit();
+                public Task Delete(long key) => inner.Delete(key);
+                public void Dispose() => inner.Dispose();
+                public ValueTask<ReadOnlyMemory<byte>> Read(long key) => inner.Read(key);
+                public ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer) where T : ICacheObject => inner.Read(key, serializer);
+
+                public Task Write(long key, SerializableObject value)
+                {
+                    // Fail actual page writes inside the background worker.
+                    if (!value.HasPreSerializedData && Volatile.Read(ref storage.Armed) != 0 &&
+                        new StackTrace().GetFrames().Any(frame =>
+                            frame.GetMethod()?.DeclaringType?.Name.StartsWith("<CommitGenerationAsync>", StringComparison.Ordinal) == true) &&
+                        Interlocked.Exchange(ref storage.Armed, 0) != 0)
+                    {
+                        storage.Failed.TrySetResult(storage.CurrentVersion - 1);
+                        throw new CrashException("Injected background page write failure", new IOException("Page write failed"));
+                    }
+                    return inner.Write(key, value);
+                }
+            }
+        }
+
+        private sealed class FailingPageTestStream(string name) : FlowtideTestStream(name)
+        {
+            public FailingPageStorage Storage { get; } = new();
+
+            protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck) => Storage;
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task BackgroundPageWriteFailureRollsBackTheStreamAndAllowsFurtherCheckpoints(bool hasCompletedCheckpoint)
+        {
+            var name = $"{Token}_{nameof(BackgroundPageWriteFailureRollsBackTheStreamAndAllowsFurtherCheckpoints)}_{hasCompletedCheckpoint}";
+            await using var stream = new FailingPageTestStream(name) { CachePageCount = 10000 };
+            var restored = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+            try
+            {
+                StreamContext.RestoreVersionForTests = (streamName, version) =>
+                {
+                    if (streamName == name) restored.TrySetResult(version);
+                };
+                stream.Generate(1000);
+                if (!hasCompletedCheckpoint) Volatile.Write(ref stream.Storage.Armed, 1);
+                await stream.StartStream("INSERT INTO output SELECT userkey, firstName FROM users", pageSize: 16);
+                if (hasCompletedCheckpoint)
+                {
+                    await stream.WaitForUpdate().WaitAsync(TimeSpan.FromSeconds(30));
+                    Volatile.Write(ref stream.Storage.Armed, 1);
+                    stream.AddOrUpdateUser(new User { UserKey = 999999, FirstName = "failedcheckpoint" });
+                }
+
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (!restored.Task.IsCompleted && DateTime.UtcNow < deadline)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(10);
+                }
+                Assert.True(stream.Storage.Failed.Task.IsCompletedSuccessfully, "No background page write failed.");
+                Assert.True(restored.Task.IsCompletedSuccessfully, "The stream did not initiate rollback.");
+                var lastCompletedVersion = await stream.Storage.Failed.Task;
+                Assert.Equal(lastCompletedVersion, await restored.Task);
+                Assert.Equal(hasCompletedCheckpoint, lastCompletedVersion > 0);
+
+                // Engine recovery discards failed session writes before replay.
+                await stream.WaitForUpdate().WaitAsync(TimeSpan.FromSeconds(30));
+                stream.AssertCurrentDataEqual(stream.Users.Select(user => new { user.UserKey, user.FirstName }));
+                var recoveredVersion = stream.Storage.CurrentVersion;
+                stream.AddOrUpdateUser(new User { UserKey = 999998, FirstName = "afterrecovery" });
+                await stream.WaitForUpdate().WaitAsync(TimeSpan.FromSeconds(30));
+                stream.AssertCurrentDataEqual(stream.Users.Select(user => new { user.UserKey, user.FirstName }));
+                Assert.True(stream.Storage.CurrentVersion > recoveredVersion);
+                Assert.Equal(1, stream.FailureNotificationCount);
+            }
+            finally
+            {
+                Volatile.Write(ref stream.Storage.Armed, 0);
+                StreamContext.RestoreVersionForTests = null;
+            }
         }
 
         /// <summary>
@@ -628,6 +733,512 @@ namespace FlowtideDotNet.AcceptanceTests
                 if (stopTask != null)
                 {
                     await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(30)));
+                }
+            }
+        }
+
+        // Far above the bounds below, a teardown that waits it out cannot pass them.
+        private static readonly TimeSpan LongStopDrainTimeout = TimeSpan.FromSeconds(20);
+
+        /// <summary>
+        /// A block Initialize failure must not hold the first start on its own failure teardown.
+        /// </summary>
+        [Fact]
+        public async Task StartReturnsPromptlyWhenABlockInitializeThrows()
+        {
+            var name = $"{Token}_{nameof(StartReturnsPromptlyWhenABlockInitializeThrows)}";
+            var attempts = 0;
+            await using var stream = new FlowtideTestStream(name)
+            {
+                StopDrainTimeout = LongStopDrainTimeout,
+                FailSourceInitializeWhen = () =>
+                {
+                    Interlocked.Increment(ref attempts);
+                    return true;
+                }
+            };
+            stream.Generate(10);
+
+            await stream.CreateStream("INSERT INTO output SELECT userkey FROM users");
+            var start = stream.StartStream();
+            var finished = await Task.WhenAny(start, Task.Delay(TimeSpan.FromSeconds(10)));
+            if (finished == start)
+            {
+                // A setup fault surfaces as itself.
+                await start;
+            }
+            Assert.True(Volatile.Read(ref attempts) >= 1, "The source was never initialized.");
+            Assert.True(finished == start, "StartAsync did not return within 10 s of the source Initialize failure, the failure teardown waits on the start's own init gate.");
+            Assert.True(stream.FailureNotificationCount >= 1, "The initialize failure was not reported.");
+        }
+
+        /// <summary>
+        /// An automatic restart whose block Initialize throws must retry after the restart delay, not the stop drain timeout.
+        /// </summary>
+        [Fact]
+        public async Task RestartAfterABlockInitializeFailureIsNotHeldByItsFailureTeardown()
+        {
+            var name = $"{Token}_{nameof(RestartAfterABlockInitializeFailureIsNotHeldByItsFailureTeardown)}";
+            var attempts = new List<long>();
+            int AttemptCount()
+            {
+                lock (attempts)
+                {
+                    return attempts.Count;
+                }
+            }
+            await using var stream = new FlowtideTestStream(name)
+            {
+                StopDrainTimeout = LongStopDrainTimeout,
+                FailSourceInitializeWhen = () =>
+                {
+                    lock (attempts)
+                    {
+                        attempts.Add(Stopwatch.GetTimestamp());
+                    }
+                    return true;
+                }
+            };
+            stream.Generate(10);
+
+            // The second attempt is the first automatic restart, the first start is covered above.
+            var start = stream.StartStream("INSERT INTO output SELECT userkey FROM users");
+            var deadline = DateTime.UtcNow.AddSeconds(60);
+            while (AttemptCount() < 2 && !start.IsFaulted && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(10);
+            }
+            if (start.IsFaulted)
+            {
+                // A setup fault surfaces as itself.
+                await start;
+            }
+            Assert.True(AttemptCount() >= 2, "The stream never restarted after the failed initialize.");
+            long secondAttempt;
+            lock (attempts)
+            {
+                secondAttempt = attempts[1];
+            }
+
+            while (AttemptCount() < 3 && Stopwatch.GetElapsedTime(secondAttempt) < TimeSpan.FromSeconds(10))
+            {
+                await Task.Delay(10);
+            }
+            Assert.True(AttemptCount() >= 3, $"The restart waited {Stopwatch.GetElapsedTime(secondAttempt)} on its own failure teardown.");
+            await start.WaitAsync(TimeSpan.FromSeconds(30));
+        }
+
+        private sealed class CompactionRecordingStorage : ReservoirPersistentStorage, IPersistentStorage
+        {
+            private readonly List<LandingSession> _sessions = new();
+
+            /// <summary>
+            /// One entry per storage compaction while recording: a session still held writes its commit had not landed, and the stop checkpoint was already written.
+            /// </summary>
+            public readonly List<(bool Unlanded, bool AfterCheckpoint)> Compactions = new();
+            public volatile bool Recording;
+            private int _checkpointsWhileRecording;
+            public volatile int WalkWriteDelayMs;
+            public int DelayedWalkWrites;
+
+            public CompactionRecordingStorage() : base(new ReservoirStorageOptions { FileProvider = new MemoryFileProvider() })
+            {
+            }
+
+            public new IPersistentStorageSession CreateSession()
+            {
+                var session = new LandingSession(base.CreateSession(), this);
+                lock (_sessions)
+                {
+                    _sessions.Add(session);
+                }
+                return session;
+            }
+
+            public new ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
+            {
+                if (Recording)
+                {
+                    bool unlanded;
+                    lock (_sessions)
+                    {
+                        unlanded = _sessions.Any(s => Volatile.Read(ref s.UnlandedWrites) > 0);
+                    }
+                    lock (Compactions)
+                    {
+                        Compactions.Add((unlanded, Volatile.Read(ref _checkpointsWhileRecording) > 0));
+                    }
+                }
+                return base.CompactAsync(changesSinceLastCompact, pageCount);
+            }
+
+            public new ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
+            {
+                if (Recording)
+                {
+                    Interlocked.Increment(ref _checkpointsWhileRecording);
+                }
+                return base.CheckpointAsync(metadata, includeIndex);
+            }
+
+            private sealed class LandingSession(IPersistentStorageSession inner, CompactionRecordingStorage storage) : IPersistentStorageSession
+            {
+                public int UnlandedWrites;
+
+                public bool SupportsConcurrentReads => inner.SupportsConcurrentReads;
+                public void Dispose() => inner.Dispose();
+                public ValueTask<ReadOnlyMemory<byte>> Read(long key) => inner.Read(key);
+                public ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer) where T : ICacheObject => inner.Read(key, serializer);
+
+                public async Task Commit()
+                {
+                    await inner.Commit();
+                    Volatile.Write(ref UnlandedWrites, 0);
+                }
+
+                public Task Delete(long key)
+                {
+                    Interlocked.Increment(ref UnlandedWrites);
+                    return inner.Delete(key);
+                }
+
+                public async Task Write(long key, SerializableObject value)
+                {
+                    Interlocked.Increment(ref UnlandedWrites);
+                    // Slows only the background walk, the barrier and its acknowledgements stay fast.
+                    var delay = storage.WalkWriteDelayMs;
+                    if (delay > 0 && new StackTrace().GetFrames().Any(frame =>
+                            frame.GetMethod()?.DeclaringType?.Name.StartsWith("<CommitGenerationAsync>", StringComparison.Ordinal) == true))
+                    {
+                        Interlocked.Increment(ref storage.DelayedWalkWrites);
+                        await Task.Delay(delay);
+                    }
+                    await inner.Write(key, value);
+                }
+            }
+        }
+
+        private sealed class CompactionRecordingTestStream(string name) : FlowtideTestStream(name)
+        {
+            public CompactionRecordingStorage Storage { get; } = new();
+
+            protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck) => Storage;
+        }
+
+        /// <summary>
+        /// The stop compaction must decide on, and run after, the stop commits it compacts, but before the stop checkpoint is written.
+        /// </summary>
+        [Fact]
+        public async Task StopCompactionRunsAfterTheStopCommitsLanded()
+        {
+            var name = $"{Token}_{nameof(StopCompactionRunsAfterTheStopCommitsLanded)}";
+            await using var stream = new CompactionRecordingTestStream(name) { CachePageCount = 10000 };
+            var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var hookCalls = 0;
+            try
+            {
+                stream.Generate(1000);
+                await stream.StartStream("INSERT INTO output SELECT userkey, firstName FROM users", pageSize: 16);
+                await stream.WaitForUpdate();
+
+                // Armed after the initial checkpoint, the first call holds a running checkpoint, the next is the stop task.
+                StreamContext.CheckpointCommitHookForTests = async (streamName, lastVersion) =>
+                {
+                    if (streamName != name)
+                    {
+                        return;
+                    }
+                    if (Interlocked.Increment(ref hookCalls) == 1)
+                    {
+                        held.TrySetResult();
+                        await release.Task;
+                    }
+                    else
+                    {
+                        stream.Storage.Recording = true;
+                    }
+                };
+                stream.AddOrUpdateUser(new User { UserKey = 999999, FirstName = "hooktrigger" });
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (!held.Task.IsCompleted && DateTime.UtcNow < deadline)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(10);
+                }
+                Assert.True(held.Task.IsCompleted, "No running checkpoint was held by the hook.");
+
+                // Deferred behind the held checkpoint, the stop is the next cycle and carries every row changed meanwhile.
+                var stopTask = stream.StopStream();
+                foreach (var user in stream.Users.ToList())
+                {
+                    stream.AddOrUpdateUser(new User { UserKey = user.UserKey, FirstName = $"{user.FirstName}_stop" });
+                }
+                // The source fetches changes on a 50 ms trigger, driven by the ticks.
+                var fetchUntil = DateTime.UtcNow.AddSeconds(1);
+                while (DateTime.UtcNow < fetchUntil)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(10);
+                }
+
+                // Long enough that no stop walk has landed when the stop task reads the page counters.
+                stream.Storage.WalkWriteDelayMs = 200;
+                release.TrySetResult();
+                var stopDeadline = DateTime.UtcNow.AddSeconds(60);
+                while (!stopTask.IsCompleted && DateTime.UtcNow < stopDeadline)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(10);
+                }
+                await stopTask.WaitAsync(TimeSpan.FromSeconds(1));
+
+                stream.AssertCurrentDataEqual(stream.Users.Select(user => new { user.UserKey, user.FirstName }));
+                Assert.True(Volatile.Read(ref stream.Storage.DelayedWalkWrites) > 0, "No stop walk write was slowed, the stop commits may have landed before the counters were read.");
+                (bool Unlanded, bool AfterCheckpoint)[] compactions;
+                lock (stream.Storage.Compactions)
+                {
+                    compactions = stream.Storage.Compactions.ToArray();
+                }
+                Assert.True(compactions.Length > 0, "The stop did not compact although its checkpoint rewrote every row, it read the page counters before the stop commits landed.");
+                Assert.False(compactions.Any(c => c.Unlanded), "The stop compacted while a client's stop commit was still being written.");
+                // Retention is relative to the previous checkpoint, a peer rollback may still need it.
+                Assert.False(compactions.Any(c => c.AfterCheckpoint), "The stop compacted after writing its checkpoint, which prunes the version a peer rollback may still need.");
+            }
+            finally
+            {
+                release.TrySetResult();
+                stream.Storage.WalkWriteDelayMs = 0;
+                StreamContext.CheckpointCommitHookForTests = null;
+            }
+        }
+
+        /// <summary>
+        /// A block Initialize that awaits a rollback, like the exchange handshake on a restore point mismatch, must not hold the first start on its own failure teardown.
+        /// </summary>
+        [Fact]
+        public async Task StartReturnsPromptlyWhenABlockInitializeAwaitsARollback()
+        {
+            var name = $"{Token}_{nameof(StartReturnsPromptlyWhenABlockInitializeAwaitsARollback)}";
+            var attempts = 0;
+            await using var stream = new FlowtideTestStream(name)
+            {
+                StopDrainTimeout = LongStopDrainTimeout,
+                RollbackSourceInitializeWhen = () =>
+                {
+                    Interlocked.Increment(ref attempts);
+                    return true;
+                }
+            };
+            stream.Generate(10);
+
+            await stream.CreateStream("INSERT INTO output SELECT userkey FROM users");
+            var start = stream.StartStream();
+            var finished = await Task.WhenAny(start, Task.Delay(TimeSpan.FromSeconds(10)));
+            if (finished == start)
+            {
+                // A setup fault surfaces as itself.
+                await start;
+            }
+            Assert.True(Volatile.Read(ref attempts) >= 1, "The source was never initialized.");
+            Assert.True(finished == start, "StartAsync did not return within 10 s of the source Initialize awaiting a rollback, the failure teardown waits on the start's own init gate.");
+            Assert.True(stream.FailureNotificationCount >= 1, "The rollback was not reported.");
+        }
+
+        /// <summary>
+        /// An automatic restart whose block Initialize awaits a rollback must retry after the restart delay, not the stop drain timeout.
+        /// </summary>
+        [Fact]
+        public async Task RestartAfterABlockInitializeRollbackIsNotHeldByItsFailureTeardown()
+        {
+            var name = $"{Token}_{nameof(RestartAfterABlockInitializeRollbackIsNotHeldByItsFailureTeardown)}";
+            var attempts = new List<long>();
+            int AttemptCount()
+            {
+                lock (attempts)
+                {
+                    return attempts.Count;
+                }
+            }
+            await using var stream = new FlowtideTestStream(name)
+            {
+                StopDrainTimeout = LongStopDrainTimeout,
+                RollbackSourceInitializeWhen = () =>
+                {
+                    lock (attempts)
+                    {
+                        attempts.Add(Stopwatch.GetTimestamp());
+                    }
+                    return true;
+                }
+            };
+            stream.Generate(10);
+
+            // The second attempt is the first automatic restart, the first start is covered above.
+            var start = stream.StartStream("INSERT INTO output SELECT userkey FROM users");
+            var deadline = DateTime.UtcNow.AddSeconds(60);
+            while (AttemptCount() < 2 && !start.IsFaulted && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(10);
+            }
+            if (start.IsFaulted)
+            {
+                // A setup fault surfaces as itself.
+                await start;
+            }
+            Assert.True(AttemptCount() >= 2, "The stream never restarted after the rollback from initialize.");
+            long secondAttempt;
+            lock (attempts)
+            {
+                secondAttempt = attempts[1];
+            }
+
+            while (AttemptCount() < 3 && Stopwatch.GetElapsedTime(secondAttempt) < TimeSpan.FromSeconds(10))
+            {
+                await Task.Delay(10);
+            }
+            Assert.True(AttemptCount() >= 3, $"The restart waited {Stopwatch.GetElapsedTime(secondAttempt)} on its own failure teardown.");
+            await start.WaitAsync(TimeSpan.FromSeconds(30));
+        }
+
+        /// <summary>
+        /// A stop landing while the start initializes its blocks must not tear them down under it, a still running Initialize would re-arm state on disposed blocks.
+        /// </summary>
+        [Fact]
+        public async Task StopDuringBlockInitializationWaitsForTheStart()
+        {
+            var name = $"{Token}_{nameof(StopDuringBlockInitializationWaitsForTheStart)}";
+            var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var teardownReachedDispose = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            await using var stream = new FlowtideTestStream(name) { StopDrainTimeout = LongStopDrainTimeout };
+            try
+            {
+                StreamContext.StartupDuringBlockInitHookForTests = async streamName =>
+                {
+                    if (streamName != name)
+                    {
+                        return;
+                    }
+                    held.TrySetResult();
+                    await release.Task;
+                };
+                StreamContext.BeforeFailureDisposeForTests = streamName =>
+                {
+                    if (streamName == name)
+                    {
+                        teardownReachedDispose.TrySetResult();
+                    }
+                };
+                stream.Generate(10);
+
+                var start = stream.StartStream("INSERT INTO output SELECT userkey FROM users");
+                await held.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                var stop = stream.StopStream();
+                var reached = await Task.WhenAny(teardownReachedDispose.Task, Task.Delay(1000));
+                Assert.True(reached != teardownReachedDispose.Task, "The stop's failure teardown began disposing the blocks while the start was still initializing them.");
+
+                release.TrySetResult();
+                await start.WaitAsync(TimeSpan.FromSeconds(30));
+                await stop.WaitAsync(TimeSpan.FromSeconds(30));
+                Assert.Equal(StreamStateValue.NotStarted, stream.State);
+            }
+            finally
+            {
+                release.TrySetResult();
+                StreamContext.StartupDuringBlockInitHookForTests = null;
+                StreamContext.BeforeFailureDisposeForTests = null;
+            }
+        }
+
+        private sealed class GatedRestoreStorage : ReservoirPersistentStorage, IPersistentStorage
+        {
+            private TaskCompletionSource? _initializeGate;
+            public readonly TaskCompletionSource InitializeHeld = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public volatile bool ResetCalled;
+
+            public GatedRestoreStorage(string directory) : base(new ReservoirStorageOptions { FileProvider = new LocalDiskProvider(directory) })
+            {
+            }
+
+            public void HoldNextInitialize(TaskCompletionSource gate) => Volatile.Write(ref _initializeGate, gate);
+
+            public new async Task InitializeAsync(StorageInitializationMetadata metadata)
+            {
+                var gate = Interlocked.Exchange(ref _initializeGate, null);
+                if (gate != null)
+                {
+                    InitializeHeld.TrySetResult();
+                    await gate.Task;
+                }
+                await base.InitializeAsync(metadata);
+            }
+
+            public new ValueTask ResetAsync()
+            {
+                ResetCalled = true;
+                return base.ResetAsync();
+            }
+        }
+
+        private sealed class GatedRestoreTestStream(string name, string directory) : FlowtideTestStream(name)
+        {
+            public GatedRestoreStorage Storage { get; } = new(directory);
+
+            protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck) => Storage;
+        }
+
+        /// <summary>
+        /// A stop that lands while a fresh stream restores its storage must not pick restore version 0, the next start would reset the stored state.
+        /// </summary>
+        [Fact]
+        public async Task StopDuringTheFirstRestoreKeepsTheStoredCheckpoint()
+        {
+            var name = $"{Token}_{nameof(StopDuringTheFirstRestoreKeepsTheStoredCheckpoint)}";
+            var directory = Path.Combine("./data/restoregate", Guid.NewGuid().ToString("N"));
+            try
+            {
+                await using (var first = new GatedRestoreTestStream(name, directory))
+                {
+                    first.Generate(100);
+                    await first.StartStream("INSERT INTO output SELECT userkey FROM users");
+                    await first.WaitForUpdate().WaitAsync(TimeSpan.FromSeconds(30));
+                    await first.StopStream().WaitAsync(TimeSpan.FromSeconds(30));
+                }
+
+                // A fresh stream over the same storage, its manager has not restored anything yet.
+                await using var second = new GatedRestoreTestStream(name, directory);
+                second.Generate(100);
+                var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                second.Storage.HoldNextInitialize(release);
+                var start = second.StartStream("INSERT INTO output SELECT userkey FROM users");
+                await second.Storage.InitializeHeld.Task.WaitAsync(TimeSpan.FromSeconds(30));
+
+                // The failure teardown of this stop decides the restore version while the restore is held.
+                var stop = second.StopStream();
+                await Task.Delay(1000);
+                release.TrySetResult();
+                await start.WaitAsync(TimeSpan.FromSeconds(30));
+                await stop.WaitAsync(TimeSpan.FromSeconds(30));
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (second.State != StreamStateValue.NotStarted && DateTime.UtcNow < deadline)
+                {
+                    await Task.Delay(10);
+                }
+                Assert.Equal(StreamStateValue.NotStarted, second.State);
+
+                await second.StartStream().WaitAsync(TimeSpan.FromSeconds(30));
+                Assert.False(second.Storage.ResetCalled, "The next start reset the stored checkpoint, the stop during the restore picked restore version 0.");
+            }
+            finally
+            {
+                try
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+                catch
+                {
+                    // Best effort, a handle still closing only leaves a temp folder.
                 }
             }
         }

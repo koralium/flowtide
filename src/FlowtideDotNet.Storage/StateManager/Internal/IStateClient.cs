@@ -19,6 +19,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         bool AddOrUpdate(in long key, V value);
         Task WaitForNotFullAsync();
         ValueTask<V?> GetValue(in long key);
+        /// <summary>
+        /// Captures this client's changes for the next checkpoint. With background commits,
+        /// returns after metadata and externally rented pages are captured; remaining pages
+        /// are written by the worker or by a fetch before the page is returned for editing.
+        /// Only one generation may be in flight. Durability requires the manager's checkpoint.
+        /// </summary>
         ValueTask Commit();
         void Delete(in long key);
         ValueTask Reset(bool clearMetadata);

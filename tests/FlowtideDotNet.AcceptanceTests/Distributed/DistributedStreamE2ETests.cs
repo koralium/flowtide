@@ -354,7 +354,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await CheckpointSettle.WaitForCheckpointsToSettle(_stream.Substreams.Values);
             await Bounded(_stream.StopAsync(), "The final stop");
 
-            Assert.Empty(failures);
+            if (!failures.IsEmpty)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_inplace_restart_failures_{buffer.Key}.log");
+                }
+            }
+            Assert.True(failures.IsEmpty, "Substream failures: " + string.Join(Environment.NewLine, failures.Select(f => $"{f.Substream}: {f.Exception}")));
         }
 
         /// <summary>

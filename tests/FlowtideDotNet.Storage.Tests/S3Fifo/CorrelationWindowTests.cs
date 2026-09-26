@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             await table.ForceCleanup();
 
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
             Assert.False(table.IsInGhostForTests(0));
         }
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             // Aged past the window, the first hit counts, the burst does not.
             Touch(table, 0, 3);
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
             Assert.Equal(1, entry.Frequency);
 
             // After the window passes the next burst counts once more.
@@ -193,7 +193,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             // queue holds exactly the 5 hot entries.
             for (var i = 0; i < 5; i++)
             {
-                Assert.True(table.TryPeekEntryForTests(i, out var entry));
+                Assert.True(table.TryPeekEntry(i, out var entry));
                 Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
             }
             var counts = table.GetQueueCountsForTests();
@@ -316,7 +316,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             await table.ForceCleanup();
 
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
         }
     }

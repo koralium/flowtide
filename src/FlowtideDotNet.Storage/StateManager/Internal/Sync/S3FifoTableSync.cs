@@ -426,15 +426,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// <summary>
         /// Commit path rent, counted separately and not recorded as an access.
         /// </summary>
-        public bool TryGetValue(long key, out ICacheObject? cacheObject)
+        public bool TryRentForCommit(long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
-            if (m_cache.TryGetValue(key, out var entry) && entry.TryRentValueWithoutAccess())
+            if (m_cache.TryGetValue(key, out entry) && entry.TryRentValueWithoutAccess())
             {
-                cacheObject = entry.Value;
                 Interlocked.Increment(ref m_commitCacheHits);
                 return true;
             }
-            cacheObject = default;
+            entry = null;
             Interlocked.Increment(ref m_commitCacheMisses);
             return false;
         }
@@ -508,6 +507,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public bool Add(long key, ICacheObject value, ICacheEvictHandler evictHandler)
         {
+            return Add(key, value, evictHandler, out _);
+        }
+
+        /// <summary>
+        /// Adds or bumps the version, and hands back the entry that represents the key now.
+        /// </summary>
+        public bool Add(long key, ICacheObject value, ICacheEvictHandler evictHandler, out S3FifoCacheEntry cacheEntry)
+        {
             bool full = Volatile.Read(ref m_count) > Volatile.Read(ref maxSize);
 
             while (true)
@@ -523,6 +530,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                                 throw new InvalidOperationException("Cannot add a new value to the cache with the same key.");
                             }
                             existing.Version = existing.Version + 1;
+                            cacheEntry = existing;
                             return full;
                         }
                     }
@@ -575,6 +583,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
 
                     Interlocked.Increment(ref m_count);
+                    cacheEntry = entry;
                     return full;
                 }
                 // Lost the insert race, retry as an update.
@@ -592,9 +601,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         #region Test helpers
 
         /// <summary>
-        /// Looks up an entry without renting, for test assertions only.
+        /// Looks up an entry without renting it.
         /// </summary>
-        internal bool TryPeekEntryForTests(long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
+        internal bool TryPeekEntry(long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
             return m_cache.TryGetValue(key, out entry);
         }

@@ -22,6 +22,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
+using System.Runtime.ExceptionServices;
 
 namespace FlowtideDotNet.Storage.StateManager
 {
@@ -81,12 +82,59 @@ namespace FlowtideDotNet.Storage.StateManager
         //private ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> m_adminSession;
         readonly Dictionary<string, IStateManagerClient> _clients = new Dictionary<string, IStateManagerClient>();
         private readonly Dictionary<string, StateClient> _stateClients = new Dictionary<string, StateClient>();
+        private Task? m_pendingDisposals;
         private IPersistentStorage? m_persistentStorage;
 
         /// <summary>
         /// Used for unit testing only
         /// </summary>
         internal S3FifoTableSync CacheTable => m_cacheTable ?? throw new InvalidOperationException("Manager must be initialized before getting cache table");
+
+        /// <summary>
+        /// The table for the client paths, gone once Dispose ran so a walk given up sees the stop, not a null.
+        /// </summary>
+        private S3FifoTableSync TableForClients => m_cacheTable ?? throw new ObjectDisposedException(nameof(StateManagerSync));
+
+        /// <summary>
+        /// Awaited by every client's background walk before it claims each page, with the client name and page id.
+        /// </summary>
+        internal Func<string, long, Task>? PageWriteHookForTests { get; set; }
+
+        /// <summary>
+        /// True while a client's background commit is still writing. A walk starts at the
+        /// operator's Commit and is only joined by the checkpoint, a teardown drains it here.
+        /// </summary>
+        public bool HasCommitsInFlight
+        {
+            get
+            {
+                lock (m_lock)
+                {
+                    foreach (var stateClient in _stateClients.Values)
+                    {
+                        if (stateClient.HasCommitInFlight)
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Tells every walk to give up at its next page, for a caller whose own drain wait ran out.
+        /// </summary>
+        public void RequestStopCommits()
+        {
+            lock (m_lock)
+            {
+                foreach (var stateClient in _stateClients.Values)
+                {
+                    stateClient.RequestStopCommits();
+                }
+            }
+        }
 
         public bool Initialized { get; private set; }
 
@@ -134,7 +182,6 @@ namespace FlowtideDotNet.Storage.StateManager
                 meter = new Meter(m_meterName);
                 disposedValue = false;
             }
-
             if (m_cacheTable == null)
             {
                 m_cacheTable = new S3FifoTableSync(new CacheTableOptions(streamName, logger, meter, new MemoryStatsWithGC(_streamMemoryManager))
@@ -149,10 +196,10 @@ namespace FlowtideDotNet.Storage.StateManager
 
             if (m_persistentStorage != null)
             {
+                // Kept, the clients' sessions belong to this instance.
                 m_persistentStorage.ClearForRestore();
-                m_persistentStorage = null;
             }
-            if (options.PersistentStorage == null)
+            else if (options.PersistentStorage == null)
             {
                 m_persistentStorage = new FileCachePersistentStorage(new FileCacheOptions()
                 {
@@ -192,59 +239,55 @@ namespace FlowtideDotNet.Storage.StateManager
         internal bool AddOrUpdate<V>(in long key, in V value, in ICacheEvictHandler evictHandler)
             where V : ICacheObject
         {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.Add(key, value, evictHandler);
+            return TableForClients.Add(key, value, evictHandler);
+        }
+
+        internal bool AddOrUpdate<V>(in long key, in V value, in ICacheEvictHandler evictHandler, out S3FifoCacheEntry entry)
+            where V : ICacheObject
+        {
+            return TableForClients.Add(key, value, evictHandler, out entry);
         }
 
         internal Task WaitForNotFullAsync()
         {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.Wait();
+            return TableForClients.Wait();
         }
 
         internal void DeleteFromCache(in long key)
         {
-            Debug.Assert(m_cacheTable != null);
-            m_cacheTable.Delete(key);
+            TableForClients.Delete(key);
         }
 
         internal void ClearCache()
         {
-            Debug.Assert(m_cacheTable != null);
-            m_cacheTable.Clear();
+            TableForClients.Clear();
         }
 
         internal int MaxHeldPages => m_cacheTable?.MaxHeldPages ?? 1;
 
         internal bool TryRentCachedValue(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.TryRentCached(key, out entry);
+            return TableForClients.TryRentCached(key, out entry);
         }
 
         internal void RegisterExternalHitCounter(Func<long> hitCounter)
         {
-            Debug.Assert(m_cacheTable != null);
-            m_cacheTable.RegisterExternalHitCounter(hitCounter);
+            TableForClients.RegisterExternalHitCounter(hitCounter);
+        }
+
+        internal bool TryPeekCacheEntry(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
+        {
+            return TableForClients.TryPeekEntry(key, out entry);
         }
 
         internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? value)
         {
-            Debug.Assert(m_cacheTable != null);
-            return m_cacheTable.TryGetCacheValue(key, out value);
+            return TableForClients.TryGetCacheValue(key, out value);
         }
 
-        internal bool TryGetValueFromCache<T>(in long key, [NotNullWhen(true)] out T? value)
-            where T : ICacheObject
+        internal bool TryRentCacheEntryForCommit(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
-            Debug.Assert(m_cacheTable != null);
-            if (m_cacheTable.TryGetValue(key, out var obj))
-            {
-                value = (T)obj!;
-                return true;
-            }
-            value = default;
-            return false;
+            return TableForClients.TryRentForCommit(key, out entry);
         }
 
         public async ValueTask CheckpointAsync(bool includeIndex = false)
@@ -252,6 +295,10 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
+
+            // Every client's background commit must have landed before the checkpoint seals them.
+            await WaitForCommitsAsync();
+
             byte[] bytes;
             lock (m_lock)
             {
@@ -263,6 +310,43 @@ namespace FlowtideDotNet.Storage.StateManager
 
             await m_persistentStorage.CheckpointAsync(bytes, includeIndex);
             LastCompletedCheckpointVersion = m_metadata.CheckpointVersion;
+        }
+
+        /// <summary>
+        /// Waits until every client's background commit has landed and been counted, throws when one failed.
+        /// </summary>
+        public async Task WaitForCommitsAsync()
+        {
+            if (disposedValue)
+            {
+                throw new ObjectDisposedException(nameof(StateManagerSync));
+            }
+
+            List<StateClient> stateClients;
+            lock (m_lock)
+            {
+                stateClients = _stateClients.Values.ToList();
+            }
+            foreach (var stateClient in stateClients)
+            {
+                try
+                {
+                    await stateClient.WaitForCommitAsync();
+                }
+                catch (OperationCanceledException)
+                {
+                    throw new ObjectDisposedException(nameof(StateManagerSync), "The commits were abandoned on a stop request.");
+                }
+                if (stateClient.HasCommitFault)
+                {
+                    // Faulted commit on state client aborts checkpoint.
+                    throw new Exception("Commit failed on state client.", stateClient.CommitFault);
+                }
+            }
+            if (disposedValue)
+            {
+                throw new ObjectDisposedException(nameof(StateManagerSync));
+            }
         }
 
         public async Task Compact()
@@ -388,7 +472,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes.Value, bytes.Value.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
 
                     lock (m_lock)
                     {
@@ -401,7 +485,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     // Temporary tree or similar, return an empty metadata with the same id
                     var clientMetadata = new StateClientMetadata<TMetadata>();
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
                     lock (m_lock)
                     {
                         _stateClients.Add(client, stateClient);
@@ -420,7 +504,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 lock (m_lock)
                 {
                     var session = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
                     _stateClients.Add(client, stateClient);
                     return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
                 }
@@ -449,20 +533,34 @@ namespace FlowtideDotNet.Storage.StateManager
         public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null, long? checkpointVersion = null)
         {
             bool newMetadata = false;
-            Setup();
-            Debug.Assert(m_cacheTable != null);
-            Debug.Assert(m_persistentStorage != null);
-            Debug.Assert(options != null);
+
+            // Recovery waits for abandoned writers and their resources.
+            if (m_pendingDisposals != null)
+            {
+                try
+                {
+                    await m_pendingDisposals.WaitAsync(options.RecoveryCommitWaitTimeout).ConfigureAwait(false);
+                }
+                catch (TimeoutException e)
+                {
+                    throw new InvalidOperationException("State clients are still disposing abandoned commits, storage may be wedged.", e);
+                }
+                m_pendingDisposals = null;
+            }
 
             // Pause eviction for the whole reset. An in-flight eviction could otherwise write a
             // stale page after the reset and route later reads to it.
             // The instance is captured, the finally must resume the table it paused.
             var cacheTable = m_cacheTable;
-            await cacheTable.PauseEvictionAsync();
+            if (cacheTable != null)
+            {
+                await cacheTable.PauseEvictionAsync();
+            }
+
             // Drain in-flight client commits and hold new ones out for the whole reset.
-            // A detached parallel-mode checkpoint commit is not joined by the engine's
-            // block-completion wait, and one overlapping the revert would persist
-            // aborted-epoch pages into the recovered store.
+            // A recovery that starts under a walk must join the walk before it resets the
+            // sessions, or a page the walk writes afterwards lands in the new epoch's writer
+            // and the next checkpoint seals it over the checkpointed one.
             var pausedClients = new List<StateClient>();
             // A snapshot, a teardown that gave up waiting can clear the dictionary meanwhile.
             List<StateClient> stateClients;
@@ -474,13 +572,18 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 foreach (var stateClient in stateClients)
                 {
-                    await stateClient.PauseCommitsAsync();
+                    await stateClient.PauseCommitsAsync(options.RecoveryCommitWaitTimeout);
                     pausedClients.Add(stateClient);
                 }
 
+                Setup();
+                Debug.Assert(m_cacheTable != null);
+                Debug.Assert(m_persistentStorage != null);
+                Debug.Assert(options != null);
+
                 // Returns the cache rents, the clients are reset below so no lookup handle
                 // keeps serving a cleared entry.
-                cacheTable.ClearAndReturnRents();
+                m_cacheTable.ClearAndReturnRents();
                 await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
 
                 // Check that metadata exist, also that the checkpoint version is larger than 0
@@ -516,6 +619,12 @@ namespace FlowtideDotNet.Storage.StateManager
                 foreach (var stateClient in stateClients)
                 {
                     await stateClient.Reset(newMetadata);
+                    if (newMetadata)
+                    {
+                        stateClient.ForgetCheckpointedMetadata();
+                    }
+                    // Rolled back, the aborted epoch's failed commit no longer applies.
+                    stateClient.ClearCommitFault();
                 }
             }
             finally
@@ -524,7 +633,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     pausedClient.ResumeCommits();
                 }
-                cacheTable.ResumeEviction();
+                cacheTable?.ResumeEviction();
             }
 
             logger.LogDebug("State manager initialized, requested version: {requestedVersion}, recovered version: {recoveredVersion}, new metadata: {newMetadata}, reset {stateClientCount} state clients", checkpointVersion, LastCompletedCheckpointVersion, newMetadata, _stateClients.Count);
@@ -536,8 +645,20 @@ namespace FlowtideDotNet.Storage.StateManager
         {
             if (!disposedValue)
             {
+                Exception? disposalException = null;
                 if (disposing)
                 {
+                    // Walks give up at their next page, the last one out disposes its client's resources.
+                    List<StateClient> stateClients;
+                    lock (m_lock)
+                    {
+                        stateClients = _stateClients.Values.ToList();
+                    }
+                    foreach (var stateClient in stateClients)
+                    {
+                        stateClient.RequestStopCommits();
+                    }
+
                     // Dispose the cache table first so it stops the cleanup task.
                     // Otherwise an in-flight eviction writes through an already disposed client.
                     // Cleared so a later initialize builds a fresh one, the disposed table's
@@ -549,11 +670,29 @@ namespace FlowtideDotNet.Storage.StateManager
                     }
 
                     // Before the storage, the clients return their sessions to it.
-                    foreach (var stateClient in _stateClients)
+                    List<Task>? pendingDisposals = null;
+                    foreach (var stateClient in stateClients)
                     {
-                        stateClient.Value.Dispose();
+                        try
+                        {
+                            stateClient.Dispose();
+                        }
+                        catch (Exception e)
+                        {
+                            // Finish client cleanup before reporting the first failure.
+                            disposalException ??= e;
+                        }
+                        var disposal = stateClient.DisposalTask;
+                        if (!disposal.IsCompleted)
+                        {
+                            (pendingDisposals ??= new List<Task>()).Add(disposal);
+                        }
                     }
-                    _stateClients.Clear();
+                    m_pendingDisposals = pendingDisposals == null ? null : Task.WhenAll(pendingDisposals);
+                    lock (m_lock)
+                    {
+                        _stateClients.Clear();
+                    }
 
                     // A supplied storage belongs to the caller and must outlive a stop, otherwise
                     // the next start has nothing to recover from. Setup resets it for restore.
@@ -569,6 +708,10 @@ namespace FlowtideDotNet.Storage.StateManager
                 }
 
                 disposedValue = true;
+                if (disposalException != null)
+                {
+                    ExceptionDispatchInfo.Throw(disposalException);
+                }
             }
         }
 

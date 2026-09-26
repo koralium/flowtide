@@ -486,14 +486,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                             }
                             catch (Exception ex)
                             {
-                                state.DownloadTcs.TrySetException(ex);
-
                                 if (state.TryDeallocateSize())
                                 {
                                     Interlocked.Add(ref _currentSize, -state.Size);
                                     WakeUpOneSpaceWaiter();
                                 }
                                 state.TryMarkEvicted();
+                                // Woken only now, the caller finds the size returned and a retry starts a fresh download.
+                                state.DownloadTcs.TrySetException(ex);
                                 if (state.RentCount == 0 && state.TrySetDeleted())
                                 {
                                     await HandlePhysicalDeletion(state);

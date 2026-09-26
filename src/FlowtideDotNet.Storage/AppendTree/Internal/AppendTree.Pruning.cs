@@ -78,17 +78,24 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
                     {
                         // Loop to clean up any single child internal nodes
                         var newRoot = await GetChildNode(newRootId);
-                        if (newRoot is InternalNode<K, V, TKeyContainer> newRootInternal &&
-                            newRootInternal.children.Count == 1)
+                        try
                         {
-                            newRootId = newRootInternal.children[0];
-                            m_stateClient.Metadata!.Root = newRootId;
-                            m_stateClient.Delete(newRootInternal.Id);
-                            m_rightInternalNodes.RemoveAt(0);
+                            if (newRoot is InternalNode<K, V, TKeyContainer> newRootInternal &&
+                                newRootInternal.children.Count == 1)
+                            {
+                                newRootId = newRootInternal.children[0];
+                                m_stateClient.Metadata!.Root = newRootId;
+                                m_stateClient.Delete(newRootInternal.Id);
+                                m_rightInternalNodes.RemoveAt(0);
+                            }
+                            else
+                            {
+                                break;
+                            }
                         }
-                        else
+                        finally
                         {
-                            break;
+                            ReturnNode(newRoot);
                         }
                     }
                 }

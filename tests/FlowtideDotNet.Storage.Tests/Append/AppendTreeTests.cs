@@ -17,6 +17,7 @@ using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Storage.AppendTree.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
 
@@ -57,6 +58,142 @@ namespace FlowtideDotNet.Storage.Tests.Append
                 MemoryAllocator = GlobalMemoryManager.Instance
             });
             return tree;
+        }
+
+        [Fact]
+        public async Task DisposingAnAppendTreeEnumeratorTwicePreservesTheTreeAndCacheRents()
+        {
+            var (manager, storage) = await BackgroundCommitTests.CreateManager("repeated_enumerator_disposal");
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var tree = await BackgroundCommitTests.CreateAppendTree(manager);
+            await tree.Append(1, 42);
+            var concrete = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            Assert.True(manager.TryPeekCacheEntry(concrete.m_stateClient.Metadata!.Root, out var entry));
+            var originalRents = entry.Value.RentCount;
+            using var iterator = tree.CreateIterator();
+            await iterator.Seek(1);
+            await using (var enumerator = iterator.GetAsyncEnumerator())
+            {
+                Assert.True(await enumerator.MoveNextAsync());
+                Assert.Equal(new KeyValuePair<long, long>(1, 42), enumerator.Current);
+                await enumerator.DisposeAsync();
+            }
+
+            // Repeated disposal must preserve tree and cache ownership.
+            Assert.Equal(originalRents, entry.Value.RentCount);
+            await tree.Append(2, 43);
+            await iterator.Seek(1);
+            await using var remaining = iterator.GetAsyncEnumerator();
+            Assert.True(await remaining.MoveNextAsync());
+            Assert.Equal(new KeyValuePair<long, long>(1, 42), remaining.Current);
+            Assert.True(await remaining.MoveNextAsync());
+            Assert.Equal(new KeyValuePair<long, long>(2, 43), remaining.Current);
+            Assert.False(await remaining.MoveNextAsync());
+        }
+
+        [Fact]
+        public async Task FailedAppendTreeSeekDoesNotReturnThePreviousLeafTwice()
+        {
+            var timeout = TimeSpan.FromSeconds(30);
+            var (manager, storage) = await BackgroundCommitTests.CreateManager("review_failed_seek");
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var tree = await BackgroundCommitTests.CreateAppendTree(manager);
+            for (long i = 0; i < 40; i++) await tree.Append(i, i);
+            var concrete = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            var leafId = concrete.m_stateClient.Metadata!.Left;
+            Assert.True(manager.TryPeekCacheEntry(leafId, out var entry));
+            var cacheRent = entry.Value.RentCount;
+            var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+            var session = storage.Sessions.Single();
+            session.FaultingKeys[concrete.m_stateClient.Metadata.Root] = 1;
+            using var gate = new BackgroundCommitTests.WalkGate(manager);
+            try
+            {
+                await tree.Commit().AsTask().WaitAsync(timeout);
+                await gate.Blocked.WaitAsync(timeout);
+                // Failed seeks must return each leaf only once.
+                await Assert.ThrowsAsync<IOException>(() => iterator.Seek(0).AsTask());
+                iterator.Dispose();
+                Assert.Equal(cacheRent, entry.Value.RentCount);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
+        [Fact]
+        public async Task FailedAppendTreePageAdvanceDoesNotReturnThePreviousLeafTwice()
+        {
+            var timeout = TimeSpan.FromSeconds(30);
+            var (manager, storage) = await BackgroundCommitTests.CreateManager("review_failed_advance");
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var tree = await BackgroundCommitTests.CreateAppendTree(manager);
+            for (long i = 0; i < 40; i++) await tree.Append(i, i);
+            var concrete = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            Assert.True(manager.TryPeekCacheEntry(concrete.m_stateClient.Metadata!.Left, out var entry));
+            var leaf = (Tree.Internal.LeafNode<long, long, ListKeyContainer<long>, ListValueContainer<long>>)entry.Value;
+            var cacheRent = leaf.RentCount;
+            using var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+            var enumerator = iterator.GetAsyncEnumerator();
+            var enumeratorDisposed = false;
+            using var gate = new BackgroundCommitTests.WalkGate(manager);
+            try
+            {
+                for (var i = 0; i < leaf.keys.Count; i++) Assert.True(await enumerator.MoveNextAsync());
+                var session = storage.Sessions.Single();
+                session.FaultingKeys[leaf.next] = 1;
+                await tree.Commit().AsTask().WaitAsync(timeout);
+                await gate.Blocked.WaitAsync(timeout);
+                // Failed advances preserve the cache's existing leaf rent.
+                await Assert.ThrowsAsync<IOException>(() => enumerator.MoveNextAsync().AsTask());
+                await enumerator.DisposeAsync();
+                enumeratorDisposed = true;
+                Assert.Equal(cacheRent, leaf.RentCount);
+            }
+            finally
+            {
+                if (!enumeratorDisposed) await enumerator.DisposeAsync();
+                gate.Release();
+            }
+        }
+
+        [Fact]
+        public async Task PruningToTheRightmostLeafReturnsTheFetchedLeafRent()
+        {
+            var tree = await CreateTree(bucketSize: 16);
+            for (long i = 0; i < 40; i++) await tree.Append(i, i);
+            var concrete = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            var rightId = concrete.m_stateClient.Metadata!.Right;
+            Assert.NotEqual(rightId, concrete.m_stateClient.Metadata.Root);
+            Assert.True(stateManager!.TryPeekCacheEntry(rightId, out var entry));
+            var rentsBeforePrune = entry.Value.RentCount;
+
+            await tree.Prune(40);
+
+            Assert.Equal(rightId, concrete.m_stateClient.Metadata.Root);
+            // Root collapse must return its fetched leaf rent.
+            Assert.Equal(rentsBeforePrune, entry.Value.RentCount);
+        }
+
+        [Fact]
+        public async Task PrintingTheTreeReturnsTheFetchedRootRent()
+        {
+            var tree = await CreateTree();
+            await tree.Append(1, 1);
+            var concrete = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            Assert.True(stateManager!.TryPeekCacheEntry(concrete.m_stateClient.Metadata!.Root, out var entry));
+            var rentsBeforePrinting = entry.Value.RentCount;
+
+            await tree.Print();
+
+            // Printing must return the fetched root rent.
+            Assert.Equal(rentsBeforePrinting, entry.Value.RentCount);
         }
 
         [Fact]
@@ -258,5 +395,148 @@ namespace FlowtideDotNet.Storage.Tests.Append
 
             Assert.Equal(0, counter);
         }
+
+        /// <summary>
+        /// Iterator dispose must return rented leaf node reference.
+        /// </summary>
+        [Fact]
+        public async Task IteratorDisposeReleasesRentedNodeWhenNotEnumerated()
+        {
+            var tree = await CreateTree(bucketSize: 2);
+            for (int i = 0; i < 10; i++)
+            {
+                await tree.Append(i, i);
+            }
+            var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+            iterator.Dispose();
+
+            // Iterator dispose must return rented leaf node reference.
+            var appendTree = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            var node = await appendTree.FindLeafNode(0, new BPlusTreeListComparer<long>(new LongComparer()));
+            try
+            {
+                Assert.Equal(2, node.RentCount);
+            }
+            finally
+            {
+                node.Return();
+            }
+        }
+
+        /// <summary>
+        /// Multiple enumerations must not dispose active leaf node.
+        /// </summary>
+        [Fact]
+        public async Task IteratorMultipleEnumerationDoesNotDisposeCachedNode()
+        {
+            var tree = await CreateTree(bucketSize: 2);
+            for (int i = 0; i < 10; i++)
+            {
+                await tree.Append(i, i);
+            }
+            var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+
+            var e1 = iterator.GetAsyncEnumerator();
+            var e2 = iterator.GetAsyncEnumerator();
+            await e1.DisposeAsync();
+            await e2.DisposeAsync();
+
+            // Multiple enumerations must not dispose active leaf node.
+            var it2 = tree.CreateIterator();
+            await it2.Seek(0);
+            var count = 0;
+            await foreach (var _ in it2)
+            {
+                count++;
+            }
+            Assert.Equal(10, count);
+        }
+
+        [Fact]
+        public async Task IteratorRetainsTheSplitLeafUntilItsEnumeratorIsDisposed()
+        {
+            var timeout = TimeSpan.FromSeconds(30);
+            var (manager, storage) = await BackgroundCommitTests.CreateManager("iterator_split_ownership", cachePageCount: 0);
+            using var storageLifetime = storage;
+            using var managerLifetime = manager;
+            var tree = await BackgroundCommitTests.CreateAppendTree(manager);
+            for (long i = 0; i < 16; i++)
+            {
+                await tree.Append(i, i);
+            }
+
+            var concrete = (AppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>)tree;
+            var leafId = concrete.m_stateClient.Metadata!.Right;
+            Assert.True(manager.TryPeekCacheEntry(leafId, out var entry));
+            var heldNode = entry.Value;
+            Assert.Equal(2, heldNode.RentCount);
+            using var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+            Assert.Equal(3, heldNode.RentCount);
+
+            await using (var enumerator = iterator.GetAsyncEnumerator())
+            {
+                Assert.Equal(3, heldNode.RentCount);
+                for (long i = 16; i < 48; i++)
+                {
+                    await tree.Append(i, i);
+                }
+
+                Assert.NotEqual(leafId, concrete.m_stateClient.Metadata.Right);
+                await manager.CacheTable.ForceCleanup().WaitAsync(timeout);
+                Assert.True(manager.TryPeekCacheEntry(leafId, out var retainedEntry));
+                Assert.Same(heldNode, retainedEntry.Value);
+                Assert.Equal(2, heldNode.RentCount);
+                for (long i = 0; i < 16; i++)
+                {
+                    Assert.True(await enumerator.MoveNextAsync());
+                    Assert.Equal(new KeyValuePair<long, long>(i, i), enumerator.Current);
+                }
+            }
+
+            Assert.Equal(1, heldNode.RentCount);
+            await manager.CacheTable.ForceCleanup().WaitAsync(timeout);
+            Assert.False(manager.TryPeekCacheEntry(leafId, out _));
+            Assert.Equal(0, heldNode.RentCount);
+        }
+
+        /// <summary>
+        /// Root split updates metadata across multiple checkpoints.
+        /// </summary>
+        [Fact]
+        public async Task AppendTreeRootSplitPersistsUpdatedMetadataOnSecondCommit()
+        {
+            var tree = await CreateTree(bucketSize: 2);
+            await tree.Append(1, 1);
+
+            // First commit persists initial single-leaf tree metadata.
+            await tree.Commit();
+            await stateManager!.CheckpointAsync();
+
+            // Insert enough elements to split leaf and create new root.
+            await tree.Append(2, 2);
+            await tree.Append(3, 3);
+            await tree.Append(4, 4);
+
+            // Second commit must persist updated root metadata.
+            await tree.Commit();
+            await stateManager.CheckpointAsync();
+
+            stateManager.Dispose();
+            stateManager = null;
+
+            // Reopen tree from storage to verify recovered root.
+            var recoveredTree = await CreateTree(bucketSize: 2);
+            var iterator = recoveredTree.CreateIterator();
+            await iterator.Seek(4);
+            var enumerator = iterator.GetAsyncEnumerator();
+            var hasValue = await enumerator.MoveNextAsync();
+            Assert.True(hasValue);
+            Assert.Equal(4, enumerator.Current.Key);
+        }
     }
 }
+
+

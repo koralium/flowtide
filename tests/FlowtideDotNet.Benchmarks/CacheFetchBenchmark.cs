@@ -72,9 +72,9 @@ namespace FlowtideDotNet.Benchmarks
 
         private sealed class NoopEvictHandler : ICacheEvictHandler
         {
-            public bool Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
+            public Task<int> Evict(List<(S3FifoCacheEntry, long)> valuesToEvict, bool isCleanup)
             {
-                return true;
+                return Task.FromResult(valuesToEvict.Count);
             }
         }
 
@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Benchmarks
             });
             _table.StopCleanupTask().GetAwaiter().GetResult();
             _table.Add(Key, new BenchCacheObject(), new NoopEvictHandler());
-            if (!_table.TryPeekEntryForTests(Key, out var entry))
+            if (!_table.TryPeekEntry(Key, out var entry))
             {
                 throw new InvalidOperationException("Setup failed");
             }
@@ -189,7 +189,7 @@ namespace FlowtideDotNet.Benchmarks
         {
             // Same dictionary lookup, but the removed-check + rent handoff and the
             // frequency bump run without the entry lock.
-            if (_table.TryPeekEntryForTests(Key, out var entry) &&
+            if (_table.TryPeekEntry(Key, out var entry) &&
                 !Volatile.Read(ref entry!.Removed) &&
                 entry.Value.TryRent())
             {

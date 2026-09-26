@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
+using FlowtideDotNet.Storage.StateManager.Internal.Sync;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Buffers;
 using System.Buffers.Binary;
@@ -31,94 +32,6 @@ namespace FlowtideDotNet.Storage.Tests
     /// </summary>
     public class CommitEvictVersionRaceTests
     {
-        private class TestPage : ICacheObject
-        {
-            private int _rentCount = 1;
-
-            public TestPage(int value)
-            {
-                Value = value;
-            }
-
-            public int Value { get; set; }
-
-            public bool RemovedFromCache { get; set; }
-
-            public int RentCount => Volatile.Read(ref _rentCount);
-
-            public bool TryRent()
-            {
-                var local = Volatile.Read(ref _rentCount);
-                while (true)
-                {
-                    if (local == 0)
-                    {
-                        return false;
-                    }
-                    var observed = Interlocked.CompareExchange(ref _rentCount, local + 1, local);
-                    if (observed == local)
-                    {
-                        return true;
-                    }
-                    local = observed;
-                }
-            }
-
-            public void Return()
-            {
-                Interlocked.Decrement(ref _rentCount);
-            }
-
-            public bool TryReclaimForEviction()
-            {
-                return Interlocked.CompareExchange(ref _rentCount, 0, 1) == 1;
-            }
-
-            public void EnterWriteLock() => Monitor.Enter(this);
-
-            public void ExitWriteLock() => Monitor.Exit(this);
-        }
-
-        private class TestPageSerializer : IStateSerializer<TestPage>
-        {
-            public void Serialize(in IBufferWriter<byte> bufferWriter, in TestPage value)
-            {
-                var span = bufferWriter.GetSpan(4);
-                BinaryPrimitives.WriteInt32LittleEndian(span, value.Value);
-                bufferWriter.Advance(4);
-            }
-
-            public TestPage Deserialize(ReadOnlySequence<byte> bytes, int length)
-            {
-                var reader = new SequenceReader<byte>(bytes);
-                if (!reader.TryReadLittleEndian(out int value))
-                {
-                    throw new InvalidOperationException("Corrupt test page");
-                }
-                return new TestPage(value);
-            }
-
-            public void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value)
-                => Serialize(bufferWriter, (TestPage)value);
-
-            public ICacheObject DeserializeCacheObject(ReadOnlySequence<byte> bytes, int length)
-                => Deserialize(bytes, length);
-
-            public Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)
-                where TMetadata : IStorageMetadata => Task.CompletedTask;
-
-            public Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata)
-                where TMetadata : IStorageMetadata => Task.CompletedTask;
-
-            public void ClearTemporaryAllocations()
-            {
-            }
-
-            public void Dispose()
-            {
-            }
-        }
-
         /// <summary>
         /// Flags whenever two threads are inside Serialize at once.
         /// A commit and a background eviction both use the single client serializer, which is
@@ -172,11 +85,6 @@ namespace FlowtideDotNet.Storage.Tests
             public void Dispose()
             {
             }
-        }
-
-        private class TestMetadata : IStorageMetadata
-        {
-            public bool Updated { get; set; }
         }
 
         /// <summary>
@@ -491,8 +399,11 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 foreach (var (k, page) in held)
                 {
-                    page.Value += 1;
-                    client.AddOrUpdate(k, page);
+                    // Fetched again each round, a page still owing its checkpoint write is written by the fetch.
+                    var fetched = await client.GetValue(k);
+                    fetched!.Value += 1;
+                    client.AddOrUpdate(k, fetched);
+                    fetched.Return();
                 }
                 for (int j = 0; j < 32; j++)
                 {
@@ -525,8 +436,11 @@ namespace FlowtideDotNet.Storage.Tests
                 _inner = inner;
             }
 
-            public void ArmGate(ManualResetEventSlim gate)
+            private long? _targetKey;
+
+            public void ArmGate(ManualResetEventSlim gate, long? targetKey = null)
             {
+                _targetKey = targetKey;
                 Volatile.Write(ref _gate, gate);
             }
 
@@ -537,11 +451,14 @@ namespace FlowtideDotNet.Storage.Tests
 
             public Task Write(long key, SerializableObject value)
             {
-                var gate = Interlocked.Exchange(ref _gate, null);
-                if (gate != null)
+                if (_targetKey == null || _targetKey == key)
                 {
-                    _writerBlocked.Release();
-                    gate.Wait();
+                    var gate = Interlocked.Exchange(ref _gate, null);
+                    if (gate != null)
+                    {
+                        _writerBlocked.Release();
+                        gate.Wait();
+                    }
                 }
                 return _inner.Write(key, value);
             }
@@ -648,52 +565,5 @@ namespace FlowtideDotNet.Storage.Tests
             manager.Dispose();
         }
 
-#if DEBUG
-        /// <summary>
-        /// The debug tripwire: a write during this client's commit is a contract violation.
-        /// </summary>
-        [Fact]
-        public async Task WriteDuringCommitTripsTheDebugGuard()
-        {
-            var persist = new GatedPersistentStorage(new FileCachePersistentStorage(new FileCacheOptions()
-            {
-                DirectoryPath = "./commitWriteTripwire"
-            }));
-            var options = new StateManagerOptions()
-            {
-                PersistentStorage = persist,
-                CachePageCount = 0,
-                MinCachePageCount = 0
-            };
-            using var manager = new StateManagerSync<StateManagerMetadata>(options, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmpTripwire"), "test", GlobalMemoryManager.Instance);
-            await manager.InitializeAsync();
-            await manager.CacheTable.StopCleanupTask();
-
-            var client = await manager.CreateClientAsync<TestPage, TestMetadata>(
-                "client",
-                new StateClientOptions<TestPage>() { ValueSerializer = new TestPageSerializer() },
-                GlobalMemoryManager.Instance);
-
-            var key = client.GetNewPageId();
-            client.AddOrUpdate(key, new TestPage(1));
-
-            // Freeze the commit inside its page write, then write from the test thread.
-            using var gate = new ManualResetEventSlim(false);
-            var session = persist.Sessions.Single();
-            session.ArmGate(gate);
-            var commit = Task.Run(() => client.Commit().AsTask());
-            await session.WaitForBlockedWriterAsync();
-
-            var other = client.GetNewPageId();
-            Assert.Throws<InvalidOperationException>(() => client.AddOrUpdate(other, new TestPage(2)));
-            Assert.Throws<InvalidOperationException>(() => client.Delete(key));
-
-            gate.Set();
-            await commit;
-
-            // Released with the commit, a later write is fine.
-            client.AddOrUpdate(other, new TestPage(2));
-        }
-#endif
     }
 }

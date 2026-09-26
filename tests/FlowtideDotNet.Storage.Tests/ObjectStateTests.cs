@@ -12,6 +12,9 @@
 
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
@@ -74,6 +77,33 @@ namespace FlowtideDotNet.Storage.Tests
             stateClient = stateManager.GetOrCreateClient("stateClient");
             objectState = await stateClient.GetOrCreateObjectStateAsync<bool>("state");
 
+            Assert.False(objectState.Value);
+        }
+
+        /// <summary>
+        /// A recovery that wipes the storage leaves no committed value, the next recovery must not read one.
+        /// </summary>
+        [Fact]
+        public async Task RecoveryAfterAWipingRecoveryDoesNotReadTheWipedValue()
+        {
+            using var stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
+            {
+                CachePageCount = 1000000,
+                PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() })
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
+            await stateManager.InitializeAsync();
+
+            var objectState = await stateManager.GetOrCreateClient("stateClient").GetOrCreateObjectStateAsync<bool>("state");
+            objectState.Value = true;
+            await objectState.Commit();
+            await stateManager.CheckpointAsync();
+
+            // Version 0 wipes the storage, the next checkpoint holds no value.
+            await stateManager.InitializeAsync(checkpointVersion: 0);
+            await stateManager.CheckpointAsync();
+
+            await stateManager.InitializeAsync();
+            objectState = await stateManager.GetOrCreateClient("stateClient").GetOrCreateObjectStateAsync<bool>("state");
             Assert.False(objectState.Value);
         }
     }

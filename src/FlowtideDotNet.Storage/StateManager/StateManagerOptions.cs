@@ -63,6 +63,18 @@ namespace FlowtideDotNet.Storage.StateManager
         /// </summary>
         public bool UseReadCache { get; set; } = false;
 
+        /// <summary>
+        /// Writes committed pages on a background task while the operator keeps running.
+        /// Off, a commit writes every page inline before it returns. Defaults to the
+        /// <c>FlowtideDotNet.DisableBackgroundCommit</c> AppContext switch.
+        /// </summary>
+        public bool BackgroundCommit { get; set; } = Internal.Sync.BackgroundCommit.Enabled;
+
+        /// <summary>
+        /// How long a recovery waits for a commit still writing before it fails.
+        /// </summary>
+        public TimeSpan RecoveryCommitWaitTimeout { get; set; } = TimeSpan.FromSeconds(10);
+
         public int DefaultBPlusTreePageSize { get; set; } = 1024;
 
         public int DefaultBPlusTreePageSizeBytes { get; set; } = 32 * 1024;
