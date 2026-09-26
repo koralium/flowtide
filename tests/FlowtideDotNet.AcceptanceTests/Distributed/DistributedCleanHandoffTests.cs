@@ -1715,7 +1715,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream0.StartAsync();
                 await substream1.StartAsync();
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-                await Task.Delay(300);
+                // Idle before the gate closes, a cycle in flight would wait on the held ack.
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
 
                 await ackGate.CloseAsync();
                 await AwaitBounded(substream1.StopAsync(), "stop confirmed during its teardown");
@@ -1798,7 +1799,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream0.StartAsync();
                 await substream1.StartAsync();
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-                await Task.Delay(300);
+                // Idle before the gate closes, a cycle in flight would wait on the held ack.
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
 
                 await ackGate.CloseAsync();
                 var stopwatch = Stopwatch.StartNew();
@@ -1853,7 +1855,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream0.StartAsync();
                 await substream1.StartAsync();
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-                await Task.Delay(300);
+                // Idle before the gate closes, a cycle in flight would wait on the held ack.
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
 
                 await ackGate.CloseAsync();
                 var stop = substream1.StopAsync();
@@ -1917,7 +1920,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream0.StartAsync();
                 await substream1.StartAsync();
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-                await Task.Delay(300);
+                // Idle before the gate closes, a cycle in flight would wait on the held ack.
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
 
                 // Peer never acks, drain times out, teardown runs the hook.
                 await ackGate.CloseAsync();
