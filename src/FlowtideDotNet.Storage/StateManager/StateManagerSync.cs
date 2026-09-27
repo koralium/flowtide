@@ -579,7 +579,6 @@ namespace FlowtideDotNet.Storage.StateManager
                 Setup();
                 Debug.Assert(m_cacheTable != null);
                 Debug.Assert(m_persistentStorage != null);
-                Debug.Assert(options != null);
 
                 // Returns the cache rents, the clients are reset below so no lookup handle
                 // keeps serving a cleared entry.
