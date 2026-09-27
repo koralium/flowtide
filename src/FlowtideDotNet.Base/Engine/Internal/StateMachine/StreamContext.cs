@@ -1096,7 +1096,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 inQueueCheckpoint = null;
             }
 
-            await WaitForStateManagerToSettle();
+            await WaitForStateManagerToSettle("Dispose");
 
             await _blockTeardownGate.WaitAsync();
             try
@@ -1174,9 +1174,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         /// <summary>
         /// Waits for initialization, writes, callbacks and cancellation handlers to settle.
-        /// A timeout only logs; it cannot grant ownership to a successor.
+        /// A timeout stops background walks but never grants ownership to a successor.
         /// </summary>
-        internal async Task WaitForStateManagerToSettle()
+        internal async Task WaitForStateManagerToSettle(string phase)
         {
             var waitStart = Stopwatch.GetTimestamp();
             bool warned = false;
@@ -1191,14 +1191,24 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 // The gate spans the start's whole state manager region
                 bool startSettled = startInitGate == null || startInitGate.IsCompleted;
-                bool writesSettled = Volatile.Read(ref _stateManagerWriteCount) == 0;
-                if (startSettled && writesSettled && vertexCancellation.IsCompleted)
+                // Claimed under the checkpoint lock before the task is scheduled, so a zero read
+                // under it cannot race a claim decided before this teardown.
+                bool writesSettled;
+                lock (_checkpointLock)
+                {
+                    writesSettled = Volatile.Read(ref _stateManagerWriteCount) == 0;
+                }
+                // Walks start at the barrier, after the stop request they are the manager's dispose to release.
+                bool walksSettled = warned || !_stateManager.HasCommitsInFlight;
+                if (startSettled && writesSettled && vertexCancellation.IsCompleted && walksSettled)
                 {
                     return;
                 }
                 if (!warned && Stopwatch.GetElapsedTime(waitStart) > _dataflowStreamOptions.StopDrainTimeout)
                 {
-                    _logger.LogWarning("Teardown of stream {stream} is still waiting for initialization, callbacks or a state manager write after {timeout}; storage ownership is retained until they settle.", streamName, _dataflowStreamOptions.StopDrainTimeout);
+                    _logger.LogWarning("{phase} of stream {stream} is still waiting for initialization, callbacks or a state manager write after {timeout}, the state manager may be wedged on storage; ownership is retained until they settle.", phase, streamName, _dataflowStreamOptions.StopDrainTimeout);
+                    // Walks give up at their next page, a checkpoint joined on them can then settle.
+                    _stateManager.RequestStopCommits();
                     warned = true;
                 }
                 await Task.Delay(10);

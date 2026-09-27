@@ -152,6 +152,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                         run._context._stateManager.Metadata = run._context._lastState;
 
+                        // Compacted before the stop checkpoint like on main, but only once the stop commits have landed and are counted.
+                        await run._context._stateManager.WaitForCommitsAsync();
+
                         long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
                         var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
 
@@ -422,39 +425,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            // Wait for an in-flight or scheduled stop checkpoint commit to finish before
-            // tearing anything down, faulting or disposing blocks or the state manager while
-            // it is being written corrupts it - the same wait the failure state's teardown
-            // runs. On the graceful path the commit already completed and this is a no-op.
-            // A timeout reports a stalled write but cannot release its storage ownership.
-            var writeWaitStart = Stopwatch.GetTimestamp();
-            bool warned = false;
-            while (true)
-            {
-                if (Volatile.Read(ref _context._stateManagerWriteCount) > 0)
-                {
-                    if (!warned && Stopwatch.GetElapsedTime(writeWaitStart) > _context._dataflowStreamOptions.StopDrainTimeout)
-                    {
-                        _context._logger.LogWarning("Stop teardown on stream {stream} is still waiting for a state manager write after {timeout}; storage ownership is retained until it settles.", _context.streamName, _context._dataflowStreamOptions.StopDrainTimeout);
-                        warned = true;
-                    }
-                    await Task.Delay(10);
-                    continue;
-                }
-                // The stop commit claims its write count at the decision point, under the
-                // checkpoint lock, before its task is scheduled. Re-reading under that lock
-                // means every claim decided before this teardown is visible, so a zero here
-                // cannot race a commit that was scheduled but not yet counted.
-                bool settled;
-                lock (_context._checkpointLock)
-                {
-                    settled = Volatile.Read(ref _context._stateManagerWriteCount) == 0;
-                }
-                if (settled)
-                {
-                    break;
-                }
-            }
+            // On the graceful path the stop commit already completed and this is a no-op.
+            await _context.WaitForStateManagerToSettle("Stop teardown");
 
             await _context._blockTeardownGate.WaitAsync();
             try

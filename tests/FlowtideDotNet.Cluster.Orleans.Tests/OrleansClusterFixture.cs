@@ -75,15 +75,13 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             {
                 ConfigureSilo(siloBuilder, (streamName, substreamName, storage) =>
                 {
-                    storage.AddTemporaryDevelopmentStorage(options =>
+                    // A fresh provider per stream instance, state never survives a restart. Distributed
+                    // substreams require checkpoint recovery, which the temporary development storage lacks.
+                    storage.SetPersistentStorage(new ReservoirPersistentStorage(new ReservoirStorageOptions
                     {
-                        // Unique per stream instance: the temporary development storage
-                        // deletes its files on dispose, so state never survives a restart
-                        // anyway, and after a silo failure a new activation can start while
-                        // the old activations files are not released yet, a shared directory
-                        // would collide on the files.
-                        options.DirectoryPath = $"./temp/orleans_tests/{streamName}/{substreamName}/{Guid.NewGuid():N}";
-                    });
+                        FileProvider = new MemoryFileProvider()
+                    }));
+                    storage.ZstdPageCompression();
                     // A substream stopping alone, for example when its silo shuts down, waits
                     // for peer stop barriers that never come since the peers keep running, a
                     // short drain timeout keeps deactivation fast in tests.

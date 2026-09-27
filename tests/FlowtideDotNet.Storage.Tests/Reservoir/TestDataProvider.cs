@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
     {
         private TaskCompletionSource? _writeBlock;
         private TaskCompletionSource? _readBlock;
+        private TaskCompletionSource? _memoryReadBlock;
         private Func<ulong, Exception?>? _readExceptionFactory;
         private Func<ulong, Exception?>? _writeExceptionFactory;
         private TaskCompletionSource? _deleteBlock;
@@ -55,6 +56,16 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             _readBlock?.SetResult();
             _readBlock = null;
         }
+
+        public void BlockMemoryReads()
+        {
+            _memoryReadBlock = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+
+        public void UnblockMemoryReads()
+        {
+            Interlocked.Exchange(ref _memoryReadBlock, null)?.SetResult();
+        }
         public void InjectReadException(Func<ulong, Exception?>? factory)
         {
             _readExceptionFactory = factory;
@@ -73,7 +84,17 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         public override ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _numberOfReadMemory);
+            if (_memoryReadBlock != null)
+            {
+                return ReadMemoryAfterGate(_memoryReadBlock.Task, fileId, offset, length, crc32, cancellationToken);
+            }
             return base.GetMemoryAsync(fileId, offset, length, crc32);
+        }
+
+        private async ValueTask<ReadOnlyMemory<byte>> ReadMemoryAfterGate(Task gate, ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken)
+        {
+            await gate;
+            return await base.GetMemoryAsync(fileId, offset, length, crc32, cancellationToken);
         }
 
         public override ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default)

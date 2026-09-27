@@ -35,20 +35,20 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, obj, handler);
                 if (i < 2)
                 {
-                    Assert.True(table.TryPeekEntryForTests(i, out var promoted));
+                    Assert.True(table.TryPeekEntry(i, out var promoted));
                     // Two counted reuses, what TryEvictOneFromSmall requires to promote.
                     Volatile.Write(ref promoted!.Frequency, 2);
                 }
             }
 
-            Assert.True(table.TryGetValue(0, out var warm));
-            warm!.Return();
+            Assert.True(table.TryRentForCommit(0, out var warm));
+            warm.Value.Return();
             await table.ForceCleanup();
 
             var afterPromotion = table.GetQueueCountsForTests();
             Assert.Equal(2, afterPromotion.MainCount);
-            Assert.True(table.TryPeekEntryForTests(0, out var head));
-            Assert.True(table.TryPeekEntryForTests(1, out var hot));
+            Assert.True(table.TryPeekEntry(0, out var head));
+            Assert.True(table.TryPeekEntry(1, out var hot));
             Assert.Equal(S3FifoQueueLocation.Main, hot!.Location);
 
             // Both main pages are now hot at max frequency.
@@ -66,13 +66,13 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             }
 
             var agingBefore = table.AgingStepsForTests;
-            Assert.True(table.TryGetValue(1, out var warm2));
-            warm2!.Return();
+            Assert.True(table.TryRentForCommit(1, out var warm2));
+            warm2.Value.Return();
             await table.ForceCleanup();
             Assert.Equal(agingBefore, table.AgingStepsForTests);
 
             // The hot main page survived, the drain paid from small.
-            Assert.True(table.TryPeekEntryForTests(1, out var survivor));
+            Assert.True(table.TryPeekEntry(1, out var survivor));
             Assert.Equal(S3FifoQueueLocation.Main, survivor!.Location);
             Assert.Equal(S3FifoCacheEntry.MaxFrequency, Volatile.Read(ref survivor.Frequency));
             Assert.DoesNotContain(1L, handler.EvictedKeys);
@@ -107,7 +107,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             objects[1].OnTryReclaimForEviction = () =>
             {
                 hookFired = true;
-                if (!table.TryPeekEntryForTests(0, out _))
+                if (!table.TryPeekEntry(0, out _))
                 {
                     keyZeroWasRemoved = true;
                     table.Add(0, readded, handler);
@@ -119,7 +119,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.True(hookFired, "key 1 was never reclaimed, so the race window never opened");
             Assert.True(keyZeroWasRemoved, "key 0 was still resident when the later victim was reclaimed");
             // Resident again, so not remembered as evicted.
-            Assert.True(table.TryPeekEntryForTests(0, out _));
+            Assert.True(table.TryPeekEntry(0, out _));
             Assert.False(table.IsInGhostForTests(0));
         }
 
@@ -160,7 +160,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 foreach (var key in await EvictPass())
                 {
-                    if (!table.TryPeekEntryForTests(key, out _))
+                    if (!table.TryPeekEntry(key, out _))
                     {
                         table.Add(key, new TestCacheObject(key), handler);
                     }
@@ -230,7 +230,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Throws<InvalidOperationException>(() => table.Add(0, dead, handler));
 
             // The key must be free, not left holding an unrentable, unevictable entry.
-            Assert.False(table.TryPeekEntryForTests(0, out _));
+            Assert.False(table.TryPeekEntry(0, out _));
             Assert.Equal(0, table.Count);
 
             var fresh = new TestCacheObject(0);
@@ -315,11 +315,11 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(i, new TestCacheObject(i), handler);
             }
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
             Assert.Equal(0, entry!.Frequency);
 
-            Assert.True(table.TryGetValue(0, out var committed));
-            committed!.Return();
+            Assert.True(table.TryRentForCommit(0, out var committed));
+            committed.Value.Return();
             Assert.Equal(0, entry.Frequency);
             Assert.Equal(1, table.CommitCacheHitsForTests);
 
@@ -350,7 +350,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             second!.Return();
             await table.ForceCleanup();
 
-            Assert.True(table.TryPeekEntryForTests(0, out var promoted));
+            Assert.True(table.TryPeekEntry(0, out var promoted));
             Assert.Equal(S3FifoQueueLocation.Main, promoted!.Location);
             var frequencyAfterPromotion = promoted.Frequency;
             Assert.Equal(70, table.Count);
@@ -435,7 +435,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             using var table = await S3FifoTestHelpers.CreateStoppedTable(10);
             var handler = new TestEvictHandler();
             table.Add(0, new TestCacheObject(0), handler);
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
 
             // Eviction flags the entry before it leaves the dictionary, readers can see this state.
             Volatile.Write(ref entry!.Removed, true);
@@ -445,7 +445,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(0, table.ReadCacheHitsForTests);
             Assert.Equal(1, table.ReadCacheMissesForTests);
 
-            Assert.False(table.TryGetValue(0, out var committed));
+            Assert.False(table.TryRentForCommit(0, out var committed));
             Assert.Null(committed);
             Assert.Equal(0, table.CommitCacheHitsForTests);
             Assert.Equal(1, table.CommitCacheMissesForTests);
@@ -486,7 +486,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             gateRelease.Set();
             await cleanup;
 
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
             Assert.Same(second, entry!.Value);
             Assert.Equal(1, table.Count);
         }

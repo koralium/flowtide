@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -28,12 +28,15 @@ namespace FlowtideDotNet.TestFramework
         private int waitedVersion = 0;
         EventBatchData? _currentData;
         private object _lock = new object();
+        private Exception? _error;
         public TestDataSink()
         {
 
         }
 
         public EventBatchData? CurrentData => _currentData;
+
+        public IReadOnlyList<string>? PrimaryKeyNames { get; internal set; }
 
         internal void OnDataUpdate(EventBatchData data)
         {
@@ -44,16 +47,33 @@ namespace FlowtideDotNet.TestFramework
             }
         }
 
-        public async Task<EventBatchData> WaitForUpdate()
+        internal void OnError(Exception error)
+        {
+            lock (_lock)
+            {
+                _error = error;
+            }
+        }
+
+        public async Task<EventBatchData> WaitForUpdate(CancellationToken cancellationToken = default)
         {
             Monitor.Enter(_lock);
             try
             {
                 while (updateVersion == waitedVersion)
                 {
+                    if (_error != null)
+                    {
+                        throw _error;
+                    }
+                    cancellationToken.ThrowIfCancellationRequested();
                     Monitor.Exit(_lock);
-                    await Task.Delay(100);
+                    await Task.Delay(100, cancellationToken);
                     Monitor.Enter(_lock);
+                }
+                if (_error != null)
+                {
+                    throw _error;
                 }
                 waitedVersion = updateVersion;
                 if (_currentData == null)

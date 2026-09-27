@@ -275,7 +275,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             {
                                 StartStreamState run = (StartStreamState)state!;
                                 Debug.Assert(run._context != null, nameof(_context));
-                                if (t.IsFaulted)
+                                // An aborted start was torn down already, its fault would fail a successor start.
+                                if (t.IsFaulted && !run._startAbort.IsCancellationRequested)
                                 {
                                     // Wait some time between starting up.
                                     await Task.Delay(100);
@@ -463,6 +464,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context._logger.InitializingPropagatorBLocks(_context.streamName);
                     foreach (var block in _context.propagatorBlocks)
                     {
+                        if (StartAborted())
+                        {
+                            // Superseded: a failure leaves the blocks to its teardown, a dispose has the abandon below take them.
+                            break;
+                        }
                         TagList tags = new TagList()
                         {
                             { "stream", _context.streamName },
@@ -491,6 +497,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context._logger.InitializingEgressBlocks(_context.streamName);
                     foreach (var block in _context.egressBlocks)
                     {
+                        if (StartAborted())
+                        {
+                            // Superseded: a failure leaves the blocks to its teardown, a dispose has the abandon below take them.
+                            break;
+                        }
                         TagList tags = new TagList()
                         {
                             { "stream", _context.streamName },
@@ -520,6 +531,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context._logger.InitializingIngressBlocks(_context.streamName);
                     foreach (var block in _context.ingressBlocks)
                     {
+                        if (StartAborted())
+                        {
+                            // Superseded: a failure leaves the blocks to its teardown, a dispose has the abandon below take them.
+                            break;
+                        }
                         TagList tags = new TagList()
                         {
                             { "stream", _context.streamName },
@@ -638,8 +654,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         }
 
         /// <summary>
-        /// Tears down the blocks this abandoned start created, unless the failure teardown
-        /// already claimed them; exactly one party cleans, a dispose must not run twice.
+        /// Tears down the blocks this start created when a dispose abandoned it; exactly one
+        /// party cleans, a dispose must not run twice.
         /// Only the blocks THIS start created may be claimed: when the abandon runs late the
         /// teardown has already cleaned them and a successor start's blocks own the flag -
         /// touching those faults the successor mid start and wedges the stream.
@@ -647,6 +663,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private async Task AbandonStartedBlocks()
         {
             Debug.Assert(_context != null, nameof(_context));
+            if (_startAbort.IsCancellationRequested && !_context.IsDisposed)
+            {
+                // The failure teardown claims them after this start's gate and calls OnFailure.
+                return;
+            }
             await _context._blockTeardownGate.WaitAsync();
             try
             {
@@ -660,7 +681,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 _context.ForEachBlock((key, block) =>
                 {
-                    block.Fault(new BlockStopException("The start was superseded by a failure."));
+                    block.Fault(new BlockStopException("The start was abandoned, the stream was disposed."));
                 });
                 await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
                 await _context.WaitForVertexCancellation();

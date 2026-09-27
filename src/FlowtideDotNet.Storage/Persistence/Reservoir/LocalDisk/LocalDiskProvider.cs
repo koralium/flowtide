@@ -242,6 +242,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public Task InitializeAsync(StorageProviderContext context, CancellationToken cancellationToken = default)
         {
+            // A recovery initializes again, the manager before it still holds every file it read open.
             localDiskReadManager?.Dispose();
             localDiskReadManager = new LocalDiskReadManager(context.MemoryAllocator);
             _streamVersion = context.StreamVersion;
@@ -318,7 +319,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
         public void Dispose()
         {
             localDiskReadManager?.Dispose();
-            localDiskReadManager = null;
         }
     }
 }

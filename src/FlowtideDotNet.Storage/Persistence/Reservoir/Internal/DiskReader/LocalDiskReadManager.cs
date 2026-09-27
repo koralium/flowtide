@@ -88,7 +88,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
             }
         }
 
-        // The storage owner must settle readers and writers before retiring the manager.
+        /// <summary>
+        /// Closes every file it has opened, an open handle keeps Windows from deleting the file.
+        /// </summary>
         public void Dispose()
         {
             lock (_lock)

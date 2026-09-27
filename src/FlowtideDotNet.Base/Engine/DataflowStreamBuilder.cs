@@ -248,7 +248,8 @@ namespace FlowtideDotNet.Base.Engine
         /// Sets how long a stopping stream waits for vertices that exchange data with other
         /// substreams to drain before it begins teardown. Protects the drain from waiting
         /// forever for an unavailable peer. Active callbacks and storage operations must
-        /// still settle before teardown can release their resources.
+        /// still settle before teardown can release their resources. Every teardown also waits
+        /// at most this long for background commits, then asks them to stop at their next page.
         /// </summary>
         /// <param name="timeSpan">The maximum time to wait for the drain.</param>
         /// <returns>This builder instance for method chaining.</returns>

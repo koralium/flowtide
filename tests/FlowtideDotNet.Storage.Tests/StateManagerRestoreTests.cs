@@ -1,7 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
@@ -12,9 +14,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowtideDotNet.Storage.Tests;
 
+// The default storage case shares the owned file cache path with other default storage tests.
+[Collection("NonParallel")]
 public class StateManagerRestoreTests
 {
-    private static StateManagerSync<string> CreateManager(ReservoirPersistentStorage storage) => new(new StateManagerOptions
+    private static StateManagerSync<string> CreateManager(IPersistentStorage storage) => new(new StateManagerOptions
     {
         CachePageCount = 1000,
         MinCachePageCount = 100,
@@ -130,5 +134,76 @@ public class StateManagerRestoreTests
         using var manager = CreateManager(storage);
         await Assert.ThrowsAnyAsync<Exception>(() => manager.InitializeAsync(checkpointVersion: 1));
         Assert.False(manager.Initialized);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FileCacheRecoveryStartsEmpty(bool suppliedStorage)
+    {
+        var name = $"restore-filecache-{suppliedStorage}";
+        using var storage = suppliedStorage ? new FileCachePersistentStorage(new FileCacheOptions { DirectoryPath = $"./data/{name}/persist" }) : null;
+        using var manager = new StateManagerSync<string>(new StateManagerOptions
+        {
+            CachePageCount = 1000,
+            MinCachePageCount = 100,
+            PersistentStorage = storage,
+            TemporaryStorageOptions = new FileCacheOptions { DirectoryPath = $"./data/{name}/temp" }
+        }, NullLoggerFactory.Instance, new Meter(name), name, GlobalMemoryManager.Instance);
+        await manager.InitializeAsync();
+        for (long key = 1; key <= 3; key++)
+        {
+            var tree = await CreateTree(manager.GetOrCreateClient("node"));
+            await tree.Upsert(key, key);
+            await tree.Commit();
+            await manager.CheckpointAsync();
+            // Failure recovery passes the completed version.
+            await manager.InitializeAsync(checkpointVersion: manager.LastCompletedCheckpointVersion);
+            Assert.Equal(0, manager.LastCompletedCheckpointVersion);
+            var (found, _) = await (await CreateTree(manager.GetOrCreateClient("node"))).GetValue(key);
+            Assert.False(found);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReservoirRecoveryWithoutMetadataIsAnError(bool explicitVersion)
+    {
+        using var storage = new MetadataHidingStorage(new ReservoirPersistentStorage(new ReservoirStorageOptions { FileProvider = new MemoryFileProvider() }));
+        using var manager = CreateManager(storage);
+        await manager.InitializeAsync();
+        var tree = await CreateTree(manager.GetOrCreateClient("node"));
+        await tree.Upsert(1, 1);
+        await tree.Commit();
+        await manager.CheckpointAsync();
+        var completed = manager.LastCompletedCheckpointVersion;
+        storage.HideMetadata = true;
+        var e = await Assert.ThrowsAsync<InvalidOperationException>(() => explicitVersion ? manager.InitializeAsync(checkpointVersion: completed) : manager.InitializeAsync());
+        Assert.Contains("missing its state manager metadata", e.Message);
+    }
+
+    private sealed class MetadataHidingStorage(IPersistentStorage inner) : IPersistentStorage
+    {
+        public bool HideMetadata { get; set; }
+        public long CurrentVersion => inner.CurrentVersion;
+        public Task InitializeAsync(StorageInitializationMetadata metadata) => inner.InitializeAsync(metadata);
+        public IPersistentStorageSession CreateSession() => inner.CreateSession();
+        public ValueTask CheckpointAsync(byte[] metadata, bool includeIndex) => inner.CheckpointAsync(metadata, includeIndex);
+        public ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount) => inner.CompactAsync(changesSinceLastCompact, pageCount);
+        public ValueTask ResetAsync() => inner.ResetAsync();
+        public ValueTask RecoverAsync(long checkpointVersion) => inner.RecoverAsync(checkpointVersion);
+        public bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value)
+        {
+            if (HideMetadata && key == 1)
+            {
+                value = null;
+                return false;
+            }
+            return inner.TryGetValue(key, out value);
+        }
+        public ValueTask Write(long key, byte[] value) => inner.Write(key, value);
+        public void ClearForRestore() => inner.ClearForRestore();
+        public void Dispose() => inner.Dispose();
     }
 }

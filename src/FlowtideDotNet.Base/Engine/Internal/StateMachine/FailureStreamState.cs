@@ -63,9 +63,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            // This includes vertex initialization and finality callbacks. A timeout
-            // cannot transfer storage ownership while any of them still uses it.
-            await _context.WaitForStateManagerToSettle();
+            // Includes vertex initialization and finality callbacks, a timeout never hands their storage to a successor.
+            await _context.WaitForStateManagerToSettle("Failure teardown");
             if (_context.IsDisposed) return;
 
             // Decide the restore version now that any in-flight commit has settled. A
@@ -134,8 +133,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     // The failure happened before the start created the blocks (for example at
                     // storage initialization), there is nothing to fault or dispose. Faulting,
                     // completing or disposing never-created blocks throws, which would retry
-                    // this teardown forever. A superseded start that created blocks after this
-                    // read cleans them up itself when it observes its abort.
+                    // this teardown forever.
                     _context._logger.LogDebug("Failure handling skipping block teardown on stream {stream}, the blocks were never created.", _context.streamName);
                     return;
                 }
@@ -249,6 +247,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // finished so the delete can run now without racing it. The failure
                 // handling disposed every block, they must be created before delete can
                 // be called, see NotStartedStreamState.DeleteAsync.
+                // A start that failed from inside may still be initializing the old blocks.
+                await _context.WaitForStateManagerToSettle("Delete after failure");
                 _context.ForEachBlock((key, block) =>
                 {
                     block.Setup(_context.streamName, key);
@@ -266,6 +266,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Check if the stream should be in not started
             if (_context._wantedState == StreamStateValue.NotStarted)
             {
+                // A start that failed from inside may still be finishing, the manager goes only after it.
+                await _context.WaitForStateManagerToSettle("Stop after failure");
                 // Dispose state
                 _context._stateManager.Dispose();
                 lock (_context._checkpointLock)

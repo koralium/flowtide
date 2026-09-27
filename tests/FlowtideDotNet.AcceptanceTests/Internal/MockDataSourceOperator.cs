@@ -47,14 +47,20 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private readonly TimeSpan? _initialDataDelay;
         private readonly bool _failInitialize;
+        private readonly Func<bool>? _failInitializeWhen;
+        private readonly Func<bool>? _rollbackInitializeWhen;
+        private readonly Action<long>? _onFailure;
         private readonly int? _batchSize;
 
-        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null) : base(options)
+        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null, Func<bool>? failInitializeWhen = null, Func<bool>? rollbackInitializeWhen = null, Action<long>? onFailure = null) : base(options)
         {
             this.readRelation = readRelation;
             this.mockDatabase = mockDatabase;
             _initialDataDelay = initialDataDelay;
             _failInitialize = failInitialize;
+            _failInitializeWhen = failInitializeWhen;
+            _rollbackInitializeWhen = rollbackInitializeWhen;
+            _onFailure = onFailure;
             _batchSize = batchSize;
 
             _table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
@@ -68,6 +74,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public override Task DeleteAsync()
         {
             return Task.CompletedTask;
+        }
+
+        public override Task OnFailure(long rollbackVersion)
+        {
+            _onFailure?.Invoke(rollbackVersion);
+            return base.OnFailure(rollbackVersion);
         }
 
         private async Task FetchChanges(IngressOutput<StreamEventBatch> output, object? state)
@@ -271,9 +283,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (_failInitialize)
+            if (_failInitialize || (_failInitializeWhen?.Invoke() ?? false))
             {
                 throw new InvalidOperationException($"Mock source {readRelation.NamedTable.DotSeperated} is configured to fail initialization.");
+            }
+            if (_rollbackInitializeWhen?.Invoke() ?? false)
+            {
+                // Awaited like the exchange handshake awaits its rollback when it joins a peer's recovery wave.
+                await FailAndRollback(new CrashException("Rollback requested from initialize"), restoreVersion: restoreTime);
+                return;
             }
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))

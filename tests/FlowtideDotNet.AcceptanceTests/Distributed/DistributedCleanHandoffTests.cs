@@ -446,6 +446,86 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 "The clean reconnect had no restored watermark names to resume from and no failure was reported: the substream is hanging in startup waiting for an init watermarks event that never comes.");
         }
 
+        /// <summary>
+        /// A substream that lost its state restores 0, its peer comes down to 0 and the group recovers the full result.
+        /// </summary>
+        [Fact]
+        public async Task PeerThatLostItsStateBringsTheGroupBackToZero()
+        {
+            var testName = "e2e_peer_lost_state";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var restores = new ConcurrentQueue<(string Stream, long Version)>();
+
+            // Both substreams commit a checkpoint and stop.
+            var hub1 = new LocalSubstreamCommunicationHub();
+            var substream0 = BuildSubstream(testName, "substream_0", hub1, fileProviders, latestData, failures, announceCleanHandoff: false);
+            var substream1 = BuildSubstream(testName, "substream_1", hub1, fileProviders, latestData, failures, announceCleanHandoff: false);
+            await AwaitBounded(substream0.StartAsync(), "first start substream_0");
+            await AwaitBounded(substream1.StartAsync(), "first start substream_1");
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+            foreach (var stream in new[] { substream0, substream1 })
+            {
+                await stream.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(stream);
+                }
+            }
+
+            Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = (streamName, version) =>
+            {
+                if (streamName.Contains(testName, StringComparison.Ordinal))
+                {
+                    restores.Enqueue((streamName, version));
+                }
+            };
+            try
+            {
+                // substream_1 lost its state, it restores 0 while substream_0 restores its checkpoint.
+                fileProviders["substream_1"] = new KeepAliveMemoryFileProvider();
+                var failuresBefore = failures.Count(f => f.Substream == "substream_1");
+                var wedgedBefore = WedgedWarnings();
+                var hub2 = new LocalSubstreamCommunicationHub();
+                substream0 = BuildSubstream(testName, "substream_0", hub2, fileProviders, latestData, failures, announceCleanHandoff: false);
+                substream1 = BuildSubstream(testName, "substream_1", hub2, fileProviders, latestData, failures, announceCleanHandoff: false);
+                await AwaitBounded(substream0.StartAsync(), "second start substream_0");
+                await AwaitBounded(substream1.StartAsync(), "second start substream_1");
+
+                // The versions are compared once both started, the peer's wave restarts substream_1.
+                await WaitUntil(
+                    () => restores.Any(r => r.Stream.Contains("substream_0", StringComparison.Ordinal) && r.Version == 0),
+                    () => $"substream_0 to come down to version 0, restores: {string.Join(", ", restores.Select(r => $"{r.Stream} to {r.Version}"))}");
+                await WaitUntil(
+                    () => failures.Count(f => f.Substream == "substream_1") > failuresBefore,
+                    () => "substream_1 to restart into the peer's recovery");
+
+                _generator.Generate(100);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                // Both roll back, substream_0 from its own FinishStart, neither teardown may stall.
+                Assert.Equal(wedgedBefore, WedgedWarnings());
+                // Idle first, a stop inside one substream's checkpoint waits out the drain timeout.
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
+                await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "final stop");
+            }
+            catch
+            {
+                DumpLogBuffers("peer_lost_state");
+                throw;
+            }
+            finally
+            {
+                Base.Engine.Internal.StateMachine.StreamContext.RestoreVersionForTests = null;
+            }
+
+            int WedgedWarnings() => _logBuffers["substream_0"].LinesContaining("may be wedged on storage").Count
+                + _logBuffers["substream_1"].LinesContaining("may be wedged on storage").Count;
+        }
+
         private readonly ConcurrentDictionary<string, RingBufferLoggerProvider> _logBuffers = new ConcurrentDictionary<string, RingBufferLoggerProvider>();
 
         /// <summary>
@@ -1292,7 +1372,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
                 // Peer's fetch held, it never sees the stop barrier.
                 await Task.Delay(500);
-                peerGate.Close();
+                await peerGate.CloseAsync();
 
                 var pairingsBefore = pairings.ToArray().Length;
                 var commitsBefore = commits.ToArray().Length;
@@ -1411,7 +1491,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await Task.Delay(500);
 
                 // Peer never fetches the stop barrier, drain polls to timeout.
-                peerGate.Close();
+                await peerGate.CloseAsync();
                 var commitsBefore = commits.ToArray().Length;
                 var notificationsBefore = Volatile.Read(ref notifications);
                 var stopwatch = Stopwatch.StartNew();
@@ -1758,9 +1838,10 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream0.StartAsync();
                 await substream1.StartAsync();
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-                await Task.Delay(300);
+                // Idle before the gate closes, a cycle in flight would wait on the held ack.
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
 
-                ackGate.Close();
+                await ackGate.CloseAsync();
                 await AwaitBounded(substream1.StopAsync(), "stop confirmed during its teardown");
                 // Lets a rollback notification land before the check.
                 await Task.Delay(1500);
@@ -1846,9 +1927,10 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream0.StartAsync();
                 await substream1.StartAsync();
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-                await Task.Delay(300);
+                // Idle before the gate closes, a cycle in flight would wait on the held ack.
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
 
-                ackGate.Close();
+                await ackGate.CloseAsync();
                 var stopwatch = Stopwatch.StartNew();
                 await AwaitBounded(substream1.StopAsync(), "stop against a peer that never acks");
                 stopwatch.Stop();
@@ -1901,9 +1983,10 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream0.StartAsync();
                 await substream1.StartAsync();
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-                await Task.Delay(300);
+                // Idle before the gate closes, a cycle in flight would wait on the held ack.
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
 
-                ackGate.Close();
+                await ackGate.CloseAsync();
                 var stop = substream1.StopAsync();
                 // Committing cycle done, drain polling for the held ack.
                 await WaitUntil(
@@ -1965,10 +2048,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await substream0.StartAsync();
                 await substream1.StartAsync();
                 await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
-                await Task.Delay(300);
+                // Idle before the gate closes, a cycle in flight would wait on the held ack.
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
 
                 // Peer never acks, drain times out, teardown runs the hook.
-                ackGate.Close();
+                await ackGate.CloseAsync();
                 await AwaitBounded(substream1.StopAsync(), "stop against a peer that never acks");
 
                 Assert.Equal(1, Volatile.Read(ref minted));
@@ -2108,11 +2192,12 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Holds a substream's fetches while closed.
+        /// Holds a substream's calls while closed, closing waits for the calls already past it.
         /// </summary>
         private sealed class FetchGate
         {
-            private volatile TaskCompletionSource _open = Completed();
+            private TaskCompletionSource _open = Completed();
+            private int _inFlight;
 
             private static TaskCompletionSource Completed()
             {
@@ -2121,19 +2206,45 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 return source;
             }
 
-            public void Close()
+            public async Task CloseAsync()
             {
-                _open = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                // A full fence, an entering call counts itself before it re-checks the gate.
+                Interlocked.Exchange(ref _open, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+                var started = Stopwatch.GetTimestamp();
+                while (Volatile.Read(ref _inFlight) > 0)
+                {
+                    if (Stopwatch.GetElapsedTime(started) > TimeSpan.FromSeconds(30))
+                    {
+                        throw new TimeoutException("A call that passed the gate before it closed never finished.");
+                    }
+                    await Task.Delay(1);
+                }
             }
 
             public void Open()
             {
-                _open.TrySetResult();
+                Volatile.Read(ref _open).TrySetResult();
             }
 
-            public Task WaitAsync(CancellationToken cancellationToken)
+            public async Task EnterAsync(CancellationToken cancellationToken)
             {
-                return _open.Task.WaitAsync(cancellationToken);
+                while (true)
+                {
+                    var open = Volatile.Read(ref _open);
+                    await open.Task.WaitAsync(cancellationToken);
+                    Interlocked.Increment(ref _inFlight);
+                    if (ReferenceEquals(open, Volatile.Read(ref _open)))
+                    {
+                        return;
+                    }
+                    // Closed meanwhile, wait for the next opening.
+                    Interlocked.Decrement(ref _inFlight);
+                }
+            }
+
+            public void Exit()
+            {
+                Interlocked.Decrement(ref _inFlight);
             }
         }
 
@@ -2195,8 +2306,15 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             public async Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
             {
-                await _gate.WaitAsync(cancellationToken);
-                return await _inner.FetchData(targetIds, numberOfEvents, cancellationToken);
+                await _gate.EnterAsync(cancellationToken);
+                try
+                {
+                    return await _inner.FetchData(targetIds, numberOfEvents, cancellationToken);
+                }
+                finally
+                {
+                    _gate.Exit();
+                }
             }
 
             public async Task SendFailAndRecover(RecoveryWave wave)
@@ -2212,11 +2330,20 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             public async Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
             {
-                if (_ackGate != null)
+                if (_ackGate == null)
                 {
-                    await _ackGate.WaitAsync(default);
+                    await _inner.SendCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
+                    return;
                 }
-                await _inner.SendCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
+                await _ackGate.EnterAsync(default);
+                try
+                {
+                    await _inner.SendCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
+                }
+                finally
+                {
+                    _ackGate.Exit();
+                }
             }
 
             public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)

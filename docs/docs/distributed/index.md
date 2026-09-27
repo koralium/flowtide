@@ -49,7 +49,7 @@ Each connected component has fixed membership. A deliberately stopped member pre
 
 ### Failure requests and custom transports
 
-`FailAndRollback` acknowledges that the current run has been fenced and recovery requested. It can be awaited from a vertex callback; it does not wait for recovery to finish. Calls through a handler saved from an earlier run are ignored. Teardown retains ownership while callbacks or storage operations remain active, even after the drain timeout. The timeout logs the stalled operation rather than permitting a replacement to reuse its storage.
+`FailAndRollback` acknowledges that the current run has been fenced and recovery requested. It can be awaited from a vertex callback; it does not wait for recovery to finish. Calls through a handler saved from an earlier run are ignored. Teardown retains ownership while callbacks or storage operations remain active, even after the drain timeout. The timeout logs the stalled operation rather than permitting a replacement to reuse its storage. Background commits are the exception: a teardown waits for them at most the drain timeout, then asks them to stop at their next page.
 
 Custom `ISubstreamCommunicationHandler.SendDurabilityClaim` implementations must return a task that covers the actual transport operation until it settles or its resources are retired. Cancelling a wrapper around a still-live operation does not meet that contract. There is one unsettled durability send per neighbour across publications, handshake resends, replies and retries. A receiver queues its reply and returns without waiting for a reverse RPC or group agreement. No method signature or wire format changes are needed for this requirement.
 

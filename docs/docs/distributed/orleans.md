@@ -32,12 +32,9 @@ builder.Services.AddOrleans(b =>
         connectors.AddSink(...);
     }, (streamName, substreamName, storage) =>
     {
-        // Called once per substream, every substream needs its own storage. Use storage
+        // Called on every substream start, every start needs its own storage. Use storage
         // that every silo can reach in production, see "State storage must survive"
-        storage.AddTemporaryDevelopmentStorage(o =>
-        {
-            o.DirectoryPath = $"./temp/{streamName}/{substreamName}";
-        });
+        storage.AddTemporaryStorage($"./temp/{streamName}/{substreamName}/{Guid.NewGuid():N}");
     });
 });
 ```

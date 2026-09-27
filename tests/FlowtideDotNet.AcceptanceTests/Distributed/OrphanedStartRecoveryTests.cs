@@ -485,16 +485,27 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
                 // The superseded start wakes with the successor's blocks owning the created
                 // flag; its abandon must leave them alone.
+                var abandonsBefore = SupersededAbandons();
+                var failuresBeforeRelease = failures.Select(f => f.Exception).ToHashSet();
                 releaseFirstRestart.TrySetResult();
+                var stopwatch = Stopwatch.StartNew();
+                while (SupersededAbandons() == abandonsBefore)
+                {
+                    Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(30), "The superseded start never observed its abort");
+                    await Task.Delay(20);
+                }
                 await Task.Delay(200);
+                // Still the successor's claim: the superseded start neither reset nor tore down its blocks.
+                Assert.Equal(1, substream0.BlocksCreatedForTests);
                 releaseSuccessor.TrySetResult();
 
                 generator.Generate(100);
                 await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
 
-                var supersededFault = failures.FirstOrDefault(f => f.Exception?.ToString().Contains("The start was superseded by a failure.") == true);
-                Assert.True(supersededFault.Exception == null,
-                    $"The abandoned start tore down its successor's blocks: a block fault from the abandon surfaced as a stream failure on {supersededFault.Substream}: {supersededFault.Exception}");
+                // A stop fault on the successor's blocks, whatever its text, would surface wrapped as a stream failure.
+                var stopFault = failures.FirstOrDefault(f => f.Substream == "substream_0" && !failuresBeforeRelease.Contains(f.Exception) && f.Exception?.ToString().Contains(nameof(Base.Exceptions.BlockStopException)) == true);
+                Assert.True(stopFault.Exception == null,
+                    $"The abandoned start tore down its successor's blocks: a block stop fault surfaced as a stream failure on {stopFault.Substream}: {stopFault.Exception}");
             }
             finally
             {
@@ -502,6 +513,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 releaseFirstRestart.TrySetResult();
                 releaseSuccessor.TrySetResult();
             }
+        }
+
+        private int SupersededAbandons()
+        {
+            return _logs.LinesContaining("was superseded by a failure, abandoning it").Count(l => l.Contains("substream_0"));
         }
 
         private int ExpectedCount(DatasetGenerator generator)

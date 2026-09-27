@@ -79,11 +79,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.ObjectState
             _session.Dispose();
         }
 
+        internal override void ForgetCheckpointedMetadata()
+        {
+            _metadata.CommitedOnce = false;
+        }
+
         public override async ValueTask Reset(bool clearMetadata)
         {
             if (clearMetadata)
             {
-                _metadata = new StateClientMetadata<T>();
+                _metadata.Metadata = default;
                 _previousState = Array.Empty<byte>();
             }
             else

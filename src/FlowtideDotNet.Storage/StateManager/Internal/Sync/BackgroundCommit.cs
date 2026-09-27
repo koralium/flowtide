@@ -3,27 +3,22 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage.StateManager
+namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     /// <summary>
-    /// Represent a state that stores an object.
+    /// Writes a client's committed pages on a background task, set <c>FlowtideDotNet.DisableBackgroundCommit</c> to write them inline.
     /// </summary>
-    public interface IObjectState<T>
+    internal static class BackgroundCommit
     {
-        T? Value { get; set; }
+        public const string DisableSwitchName = "FlowtideDotNet.DisableBackgroundCommit";
 
-        /// <summary>
-        /// Captures the value for the next checkpoint. Durability requires
-        /// <see cref="IStateManager.CheckpointAsync"/>.
-        /// </summary>
-        /// <returns></returns>
-        ValueTask Commit();
+        public static readonly bool Enabled = !(AppContext.TryGetSwitch(DisableSwitchName, out var disabled) && disabled);
     }
 }
