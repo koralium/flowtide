@@ -708,15 +708,24 @@ namespace FlowtideDotNet.Storage.StateManager
                             // A walk the stop gave up on still writes through its session, the storage goes after it.
                             m_pendingDisposals = m_pendingDisposals.ContinueWith(static (_, state) =>
                             {
+                                var (storage, disposalLogger) = ((IPersistentStorage, ILogger))state!;
                                 try
                                 {
-                                    ((IPersistentStorage)state!).Dispose();
+                                    storage.Dispose();
                                 }
-                                catch
+                                catch (Exception e)
                                 {
-                                    // A teardown fallback, there is nobody left to tell.
+                                    // A teardown fallback, a fault here would fail every later initialize.
+                                    try
+                                    {
+                                        disposalLogger.LogWarning(e, "Disposing the state manager's own persistent storage after an abandoned commit failed.");
+                                    }
+                                    catch
+                                    {
+                                        // A failing logger must not fault the task either.
+                                    }
                                 }
-                            }, ownedStorage, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+                            }, (ownedStorage, logger), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
                         }
                     }
 
