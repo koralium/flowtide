@@ -473,13 +473,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 throw new InvalidOperationException($"State client '{name}' is still writing its commit after {timeout}, storage may be wedged.");
             }
-            try
-            {
-                await commitTask.ConfigureAwait(false);
-            }
-            catch
-            {
-            }
+            // Completed here, its fault stays on the generation for the checkpoint.
+            _ = commitTask.Exception;
         }
 
         internal override async Task PauseCommitsAsync(TimeSpan walkTimeout)
