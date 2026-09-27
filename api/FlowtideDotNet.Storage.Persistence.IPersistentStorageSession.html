@@ -123,6 +123,44 @@ Interface IPersistentStorageSession  <a class="header-action link-secondary" tit
 
 
 
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_IPersistentStorageSession_SupportsConcurrentReads_" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.SupportsConcurrentReads*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorageSession_SupportsConcurrentReads" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.SupportsConcurrentReads">
+  SupportsConcurrentReads
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorageSession.cs/#L24"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>True when reads may overlap a write, delete or commit on this session. The caller
+still serializes writes, deletes and commits with each other. When false, the
+state client serializes all session calls, including reads.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool SupportsConcurrentReads { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <h2 class="section" id="methods">Methods
 </h2>
 
@@ -131,10 +169,12 @@ Interface IPersistentStorageSession  <a class="header-action link-secondary" tit
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorageSession_Commit" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.Commit">
   Commit()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorageSession.cs/#L28"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorageSession.cs/#L39"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 summary"><p>Publishes this session's writes to the storage's next checkpoint. Durability is
+established by <a class="xref" href="FlowtideDotNet.Storage.Persistence.IPersistentStorage.html#FlowtideDotNet_Storage_Persistence_IPersistentStorage_CheckpointAsync_System_Byte___System_Boolean_">CheckpointAsync(byte[], bool)</a>.</p>
+</div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
@@ -162,7 +202,7 @@ Interface IPersistentStorageSession  <a class="header-action link-secondary" tit
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorageSession_Delete_System_Int64_" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.Delete(System.Int64)">
   Delete(long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorageSession.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorageSession.cs/#L33"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -198,7 +238,7 @@ Interface IPersistentStorageSession  <a class="header-action link-secondary" tit
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorageSession_Read_System_Int64_" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.Read(System.Int64)">
   Read(long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorageSession.cs/#L22"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorageSession.cs/#L29"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -234,7 +274,7 @@ Interface IPersistentStorageSession  <a class="header-action link-secondary" tit
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorageSession_Read__1_System_Int64_FlowtideDotNet_Storage_StateManager_Internal_IStateSerializer___0__" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.Read``1(System.Int64,FlowtideDotNet.Storage.StateManager.Internal.IStateSerializer{``0})">
   Read&lt;T&gt;(long, IStateSerializer&lt;T&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorageSession.cs/#L19"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorageSession.cs/#L26"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -277,7 +317,7 @@ Interface IPersistentStorageSession  <a class="header-action link-secondary" tit
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorageSession_Write_System_Int64_FlowtideDotNet_Storage_SerializableObject_" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.Write(System.Int64,FlowtideDotNet.Storage.SerializableObject)">
   Write(long, SerializableObject)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorageSession.cs/#L24"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorageSession.cs/#L31"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>

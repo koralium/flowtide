@@ -206,7 +206,8 @@ Class PrimitiveListValueContainerSerializer&lt;T&gt;  <a class="header-action li
   </h3>
 
   <div class="markdown level1 summary"><p>Called on each checkpoint, its primary function is to allow a serializer to write any potential metadata
-such as schema information, global dictionaries and similar.</p>
+such as schema information, global dictionaries and similar.
+Runs before the checkpoint's pages are serialized, so the metadata must not depend on those calls.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 

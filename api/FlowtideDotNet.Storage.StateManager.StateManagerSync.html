@@ -89,7 +89,7 @@
 
 
   <h1 id="FlowtideDotNet_Storage_StateManager_StateManagerSync" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync" class="text-break">
-Class StateManagerSync  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L61"><i class="bi bi-code-slash"></i></a>
+Class StateManagerSync  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L62"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -169,7 +169,7 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_CurrentVersion" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.CurrentVersion">
   CurrentVersion
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L105"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L153"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -196,11 +196,44 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
 
 
+  <a id="FlowtideDotNet_Storage_StateManager_StateManagerSync_HasCommitsInFlight_" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.HasCommitsInFlight*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_HasCommitsInFlight" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.HasCommitsInFlight">
+  HasCommitsInFlight
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L107"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>True while a client's background commit is still writing. A walk starts at the
+operator's Commit and is only joined by the checkpoint, a teardown drains it here.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool HasCommitsInFlight { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Storage_StateManager_StateManagerSync_Initialized_" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.Initialized*"></a>
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_Initialized" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.Initialized">
   Initialized
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L91"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L139"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -231,7 +264,7 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_LastCompletedCheckpointVersion" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.LastCompletedCheckpointVersion">
   LastCompletedCheckpointVersion
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L107"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L155"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -262,7 +295,7 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_PageCommits" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.PageCommits">
   PageCommits
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L97"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L145"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -293,7 +326,7 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_PageCommitsAtLastCompaction" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.PageCommitsAtLastCompaction">
   PageCommitsAtLastCompaction
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L99"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L147"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -324,7 +357,7 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_PageCommitsSinceLastCompaction" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.PageCommitsSinceLastCompaction">
   PageCommitsSinceLastCompaction
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L101"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L149"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -355,7 +388,7 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_PageCount" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.PageCount">
   PageCount
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L103"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L151"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -390,10 +423,13 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_CheckpointAsync_System_Boolean_" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.CheckpointAsync(System.Boolean)">
   CheckpointAsync(bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L250"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L293"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 summary"><p>Waits for all client commits, then durably checkpoints the storage and manager metadata.
+A failed client commit fails the checkpoint. Call Commit on the state structures first;
+changes made after those commits belong to a later checkpoint.</p>
+</div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
@@ -426,7 +462,7 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_Compact" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.Compact">
   Compact()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L268"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L352"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -457,7 +493,7 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_Dispose" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.Dispose">
   Dispose()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L575"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L745"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
@@ -484,7 +520,7 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_Dispose_System_Boolean_" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.Dispose(System.Boolean)">
   Dispose(bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L535"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L643"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -515,7 +551,7 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_GetOrCreateClient_System_String_System_Diagnostics_TagList_" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.GetOrCreateClient(System.String,System.Diagnostics.TagList)">
   GetOrCreateClient(string, TagList)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L430"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L514"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -553,7 +589,7 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_InitializeAsync_FlowtideDotNet_Storage_StreamVersionInformation_System_Nullable_System_Int64__" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.InitializeAsync(FlowtideDotNet.Storage.StreamVersionInformation,System.Nullable{System.Int64})">
   InitializeAsync(StreamVersionInformation?, long?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L449"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L533"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -587,11 +623,70 @@ Class StateManagerSync  <a class="header-action link-secondary" title="View sour
 
 
 
+  <a id="FlowtideDotNet_Storage_StateManager_StateManagerSync_RequestStopCommits_" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.RequestStopCommits*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_RequestStopCommits" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.RequestStopCommits">
+  RequestStopCommits()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L128"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Tells every walk to give up at its next page, for a caller whose own drain wait ran out.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RequestStopCommits()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_StateManager_StateManagerSync_WaitForCommitsAsync_" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.WaitForCommitsAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_StateManager_StateManagerSync_WaitForCommitsAsync" data-uid="FlowtideDotNet.Storage.StateManager.StateManagerSync.WaitForCommitsAsync">
+  WaitForCommitsAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L318"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Waits until every client's background commit has landed and been counted, throws when one failed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task WaitForCommitsAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
 
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L61" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/StateManager/StateManagerSync.cs/#L62" class="edit-link">Edit this page</a>
         </div>
 
 

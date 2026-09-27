@@ -185,7 +185,7 @@ otherwise an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system
 
   <h3 id="FlowtideDotNet_Storage_IAppendTree_4_Clear" data-uid="FlowtideDotNet.Storage.IAppendTree`4.Clear">
   Clear()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/AppendTree/IAppendTree.cs/#L65"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/AppendTree/IAppendTree.cs/#L67"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Clears all data and resets the tree to an empty state. Useful for temporary storage that should be
@@ -218,10 +218,12 @@ discarded on demand.</p>
 
   <h3 id="FlowtideDotNet_Storage_IAppendTree_4_Commit" data-uid="FlowtideDotNet.Storage.IAppendTree`4.Commit">
   Commit()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/AppendTree/IAppendTree.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/AppendTree/IAppendTree.cs/#L44"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Persists pending changes through the underlying state client.</p>
+  <div class="markdown level1 summary"><p>Captures pending changes for the next checkpoint. With background commits enabled,
+page writes may continue after this returns. Durability requires
+<a class="xref" href="FlowtideDotNet.Storage.StateManager.IStateManager.html#FlowtideDotNet_Storage_StateManager_IStateManager_CheckpointAsync_System_Boolean_">CheckpointAsync(bool)</a>.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
@@ -250,7 +252,7 @@ discarded on demand.</p>
 
   <h3 id="FlowtideDotNet_Storage_IAppendTree_4_CreateIterator" data-uid="FlowtideDotNet.Storage.IAppendTree`4.CreateIterator">
   CreateIterator()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/AppendTree/IAppendTree.cs/#L59"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/AppendTree/IAppendTree.cs/#L61"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Creates an iterator that can seek to a key and enumerate entries in ascending key order.</p>
@@ -282,7 +284,7 @@ discarded on demand.</p>
 
   <h3 id="FlowtideDotNet_Storage_IAppendTree_4_Prune__0_" data-uid="FlowtideDotNet.Storage.IAppendTree`4.Prune(`0)">
   Prune(K)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/AppendTree/IAppendTree.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/AppendTree/IAppendTree.cs/#L51"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Removes data from the start of the tree up to <code class="paramref">key</code>. Whole leaf nodes are dropped without

@@ -37007,6 +37007,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.AdaptiveSmallQueueSize
   nameWithType: IFlowtideStorageBuilder.AdaptiveSmallQueueSize
+- uid: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.BackgroundCommit
+  name: BackgroundCommit
+  href: api/FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_BackgroundCommit
+  commentId: P:FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.BackgroundCommit
+  fullName: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.BackgroundCommit
+  nameWithType: IFlowtideStorageBuilder.BackgroundCommit
+- uid: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.BackgroundCommit*
+  name: BackgroundCommit
+  href: api/FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_BackgroundCommit_
+  commentId: Overload:FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.BackgroundCommit
+  isSpec: "True"
+  fullName: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.BackgroundCommit
+  nameWithType: IFlowtideStorageBuilder.BackgroundCommit
 - uid: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.DrainSmallQueueEarly
   name: DrainSmallQueueEarly
   href: api/FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_DrainSmallQueueEarly
@@ -37072,6 +37085,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.Name
   nameWithType: IFlowtideStorageBuilder.Name
+- uid: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.RecoveryCommitWaitTimeout
+  name: RecoveryCommitWaitTimeout
+  href: api/FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_RecoveryCommitWaitTimeout
+  commentId: P:FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.RecoveryCommitWaitTimeout
+  fullName: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.RecoveryCommitWaitTimeout
+  nameWithType: IFlowtideStorageBuilder.RecoveryCommitWaitTimeout
+- uid: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.RecoveryCommitWaitTimeout*
+  name: RecoveryCommitWaitTimeout
+  href: api/FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_RecoveryCommitWaitTimeout_
+  commentId: Overload:FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.RecoveryCommitWaitTimeout
+  isSpec: "True"
+  fullName: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.RecoveryCommitWaitTimeout
+  nameWithType: IFlowtideStorageBuilder.RecoveryCommitWaitTimeout
 - uid: FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.ServiceCollection
   name: ServiceCollection
   href: api/FlowtideDotNet.DependencyInjection.IFlowtideStorageBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_ServiceCollection
@@ -40463,13 +40489,13 @@ references:
   nameWithType: FlowtidePersistentStorageException.FlowtidePersistentStorageException(string)
   nameWithType.vb: FlowtidePersistentStorageException.New(String)
 - uid: FlowtideDotNet.Storage.Exceptions.FlowtidePersistentStorageException.#ctor(System.String,System.Exception)
-  name: FlowtidePersistentStorageException(string, Exception)
+  name: FlowtidePersistentStorageException(string, Exception?)
   href: api/FlowtideDotNet.Storage.Exceptions.FlowtidePersistentStorageException.html#FlowtideDotNet_Storage_Exceptions_FlowtidePersistentStorageException__ctor_System_String_System_Exception_
   commentId: M:FlowtideDotNet.Storage.Exceptions.FlowtidePersistentStorageException.#ctor(System.String,System.Exception)
   name.vb: New(String, Exception)
-  fullName: FlowtideDotNet.Storage.Exceptions.FlowtidePersistentStorageException.FlowtidePersistentStorageException(string, System.Exception)
+  fullName: FlowtideDotNet.Storage.Exceptions.FlowtidePersistentStorageException.FlowtidePersistentStorageException(string, System.Exception?)
   fullName.vb: FlowtideDotNet.Storage.Exceptions.FlowtidePersistentStorageException.New(String, System.Exception)
-  nameWithType: FlowtidePersistentStorageException.FlowtidePersistentStorageException(string, Exception)
+  nameWithType: FlowtidePersistentStorageException.FlowtidePersistentStorageException(string, Exception?)
   nameWithType.vb: FlowtidePersistentStorageException.New(String, Exception)
 - uid: FlowtideDotNet.Storage.Exceptions.FlowtidePersistentStorageException.#ctor*
   name: FlowtidePersistentStorageException
@@ -42404,6 +42430,19 @@ references:
   fullName.vb: FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.Read(Of T)(Long, FlowtideDotNet.Storage.StateManager.Internal.IStateSerializer(Of T))
   nameWithType: IPersistentStorageSession.Read<T>(long, IStateSerializer<T>)
   nameWithType.vb: IPersistentStorageSession.Read(Of T)(Long, IStateSerializer(Of T))
+- uid: FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.SupportsConcurrentReads
+  name: SupportsConcurrentReads
+  href: api/FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.html#FlowtideDotNet_Storage_Persistence_IPersistentStorageSession_SupportsConcurrentReads
+  commentId: P:FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.SupportsConcurrentReads
+  fullName: FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.SupportsConcurrentReads
+  nameWithType: IPersistentStorageSession.SupportsConcurrentReads
+- uid: FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.SupportsConcurrentReads*
+  name: SupportsConcurrentReads
+  href: api/FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.html#FlowtideDotNet_Storage_Persistence_IPersistentStorageSession_SupportsConcurrentReads_
+  commentId: Overload:FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.SupportsConcurrentReads
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.SupportsConcurrentReads
+  nameWithType: IPersistentStorageSession.SupportsConcurrentReads
 - uid: FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.Write(System.Int64,FlowtideDotNet.Storage.SerializableObject)
   name: Write(long, SerializableObject)
   href: api/FlowtideDotNet.Storage.Persistence.IPersistentStorageSession.html#FlowtideDotNet_Storage_Persistence_IPersistentStorageSession_Write_System_Int64_FlowtideDotNet_Storage_SerializableObject_
@@ -47280,6 +47319,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions.AdaptiveSmallQueueSize
   nameWithType: StateManagerOptions.AdaptiveSmallQueueSize
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.BackgroundCommit
+  name: BackgroundCommit
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_BackgroundCommit
+  commentId: P:FlowtideDotNet.Storage.StateManager.StateManagerOptions.BackgroundCommit
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions.BackgroundCommit
+  nameWithType: StateManagerOptions.BackgroundCommit
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.BackgroundCommit*
+  name: BackgroundCommit
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_BackgroundCommit_
+  commentId: Overload:FlowtideDotNet.Storage.StateManager.StateManagerOptions.BackgroundCommit
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions.BackgroundCommit
+  nameWithType: StateManagerOptions.BackgroundCommit
 - uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.CachePageCount
   name: CachePageCount
   href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_CachePageCount
@@ -47384,6 +47436,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions.PersistentStorage
   nameWithType: StateManagerOptions.PersistentStorage
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.RecoveryCommitWaitTimeout
+  name: RecoveryCommitWaitTimeout
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_RecoveryCommitWaitTimeout
+  commentId: P:FlowtideDotNet.Storage.StateManager.StateManagerOptions.RecoveryCommitWaitTimeout
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions.RecoveryCommitWaitTimeout
+  nameWithType: StateManagerOptions.RecoveryCommitWaitTimeout
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.RecoveryCommitWaitTimeout*
+  name: RecoveryCommitWaitTimeout
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_RecoveryCommitWaitTimeout_
+  commentId: Overload:FlowtideDotNet.Storage.StateManager.StateManagerOptions.RecoveryCommitWaitTimeout
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerOptions.RecoveryCommitWaitTimeout
+  nameWithType: StateManagerOptions.RecoveryCommitWaitTimeout
 - uid: FlowtideDotNet.Storage.StateManager.StateManagerOptions.SerializeOptions
   name: SerializeOptions
   href: api/FlowtideDotNet.Storage.StateManager.StateManagerOptions.html#FlowtideDotNet_Storage_StateManager_StateManagerOptions_SerializeOptions
@@ -47509,6 +47574,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.StateManager.StateManagerSync.GetOrCreateClient
   nameWithType: StateManagerSync.GetOrCreateClient
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerSync.HasCommitsInFlight
+  name: HasCommitsInFlight
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerSync.html#FlowtideDotNet_Storage_StateManager_StateManagerSync_HasCommitsInFlight
+  commentId: P:FlowtideDotNet.Storage.StateManager.StateManagerSync.HasCommitsInFlight
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerSync.HasCommitsInFlight
+  nameWithType: StateManagerSync.HasCommitsInFlight
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerSync.HasCommitsInFlight*
+  name: HasCommitsInFlight
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerSync.html#FlowtideDotNet_Storage_StateManager_StateManagerSync_HasCommitsInFlight_
+  commentId: Overload:FlowtideDotNet.Storage.StateManager.StateManagerSync.HasCommitsInFlight
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerSync.HasCommitsInFlight
+  nameWithType: StateManagerSync.HasCommitsInFlight
 - uid: FlowtideDotNet.Storage.StateManager.StateManagerSync.InitializeAsync(FlowtideDotNet.Storage.StreamVersionInformation,System.Nullable{System.Int64})
   name: InitializeAsync(StreamVersionInformation?, long?)
   href: api/FlowtideDotNet.Storage.StateManager.StateManagerSync.html#FlowtideDotNet_Storage_StateManager_StateManagerSync_InitializeAsync_FlowtideDotNet_Storage_StreamVersionInformation_System_Nullable_System_Int64__
@@ -47603,6 +47681,32 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.StateManager.StateManagerSync.PageCount
   nameWithType: StateManagerSync.PageCount
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerSync.RequestStopCommits
+  name: RequestStopCommits()
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerSync.html#FlowtideDotNet_Storage_StateManager_StateManagerSync_RequestStopCommits
+  commentId: M:FlowtideDotNet.Storage.StateManager.StateManagerSync.RequestStopCommits
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerSync.RequestStopCommits()
+  nameWithType: StateManagerSync.RequestStopCommits()
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerSync.RequestStopCommits*
+  name: RequestStopCommits
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerSync.html#FlowtideDotNet_Storage_StateManager_StateManagerSync_RequestStopCommits_
+  commentId: Overload:FlowtideDotNet.Storage.StateManager.StateManagerSync.RequestStopCommits
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerSync.RequestStopCommits
+  nameWithType: StateManagerSync.RequestStopCommits
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerSync.WaitForCommitsAsync
+  name: WaitForCommitsAsync()
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerSync.html#FlowtideDotNet_Storage_StateManager_StateManagerSync_WaitForCommitsAsync
+  commentId: M:FlowtideDotNet.Storage.StateManager.StateManagerSync.WaitForCommitsAsync
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerSync.WaitForCommitsAsync()
+  nameWithType: StateManagerSync.WaitForCommitsAsync()
+- uid: FlowtideDotNet.Storage.StateManager.StateManagerSync.WaitForCommitsAsync*
+  name: WaitForCommitsAsync
+  href: api/FlowtideDotNet.Storage.StateManager.StateManagerSync.html#FlowtideDotNet_Storage_StateManager_StateManagerSync_WaitForCommitsAsync_
+  commentId: Overload:FlowtideDotNet.Storage.StateManager.StateManagerSync.WaitForCommitsAsync
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.StateManager.StateManagerSync.WaitForCommitsAsync
+  nameWithType: StateManagerSync.WaitForCommitsAsync
 - uid: FlowtideDotNet.Storage.StateManager.StateManagerSync`1
   name: StateManagerSync<TMetadata>
   href: api/FlowtideDotNet.Storage.StateManager.StateManagerSync-1.html

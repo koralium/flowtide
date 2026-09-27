@@ -142,7 +142,7 @@ Reads and writes are asynchronous because a lookup may need to load pages from s
 
   <h3 id="FlowtideDotNet_Storage_Tree_IBPlusTree_4_CacheMisses" data-uid="FlowtideDotNet.Storage.Tree.IBPlusTree`4.CacheMisses">
   CacheMisses
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/IBPlusTree.cs/#L139"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/IBPlusTree.cs/#L141"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The number of reads that missed the in-memory cache and had to load a page from storage.</p>
@@ -178,7 +178,7 @@ Reads and writes are asynchronous because a lookup may need to load pages from s
 
   <h3 id="FlowtideDotNet_Storage_Tree_IBPlusTree_4_Clear" data-uid="FlowtideDotNet.Storage.Tree.IBPlusTree`4.Clear">
   Clear()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/IBPlusTree.cs/#L134"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/IBPlusTree.cs/#L136"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Clears the tree and returns a blank new tree.</p>
@@ -211,10 +211,12 @@ Reads and writes are asynchronous because a lookup may need to load pages from s
 
   <h3 id="FlowtideDotNet_Storage_Tree_IBPlusTree_4_Commit" data-uid="FlowtideDotNet.Storage.Tree.IBPlusTree`4.Commit">
   Commit()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/IBPlusTree.cs/#L126"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/IBPlusTree.cs/#L128"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Persists pending changes through the underlying state client.</p>
+  <div class="markdown level1 summary"><p>Captures pending changes for the next checkpoint. With background commits enabled,
+page writes may continue after this returns. Durability requires
+<a class="xref" href="FlowtideDotNet.Storage.StateManager.IStateManager.html#FlowtideDotNet_Storage_StateManager_IStateManager_CheckpointAsync_System_Boolean_">CheckpointAsync(bool)</a>.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
@@ -275,7 +277,7 @@ Reads and writes are asynchronous because a lookup may need to load pages from s
 
   <h3 id="FlowtideDotNet_Storage_Tree_IBPlusTree_4_CreateBulkInserter" data-uid="FlowtideDotNet.Storage.Tree.IBPlusTree`4.CreateBulkInserter">
   CreateBulkInserter()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/IBPlusTree.cs/#L153"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/IBPlusTree.cs/#L155"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Creates an inserter that applies a batch of rows in one pass, more efficiently than inserting each row on its own.</p>
@@ -307,7 +309,7 @@ Reads and writes are asynchronous because a lookup may need to load pages from s
 
   <h3 id="FlowtideDotNet_Storage_Tree_IBPlusTree_4_CreateBulkSearcher__1___0_" data-uid="FlowtideDotNet.Storage.Tree.IBPlusTree`4.CreateBulkSearcher``1(``0)">
   CreateBulkSearcher&lt;TComparer&gt;(TComparer)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/IBPlusTree.cs/#L147"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/IBPlusTree.cs/#L149"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Creates a searcher that looks up many keys in one pass across the leaves, using the given comparer.
