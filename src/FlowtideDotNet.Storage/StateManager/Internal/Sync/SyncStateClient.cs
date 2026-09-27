@@ -1280,7 +1280,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             if (!useReadCache)
             {
                 // Skip writing data if we dont use read cache and its not modified or deleted
-                if (isModified == false || val == -1)
+                if (!isModified || val == -1)
                 {
                     return false;
                 }
