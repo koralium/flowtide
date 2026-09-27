@@ -32,14 +32,14 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.False(table.Add(1, obj, handler));
             Assert.Equal(1, table.Count);
 
-            Assert.True(table.TryGetValue(1, out var cacheObject));
-            Assert.Same(obj, cacheObject);
+            Assert.True(table.TryRentForCommit(1, out var cacheObject));
+            Assert.Same(obj, cacheObject.Value);
             // One reference held by the cache, one by this test.
             Assert.Equal(2, obj.RentCount);
             obj.Return();
             Assert.Equal(1, obj.RentCount);
 
-            Assert.False(table.TryGetValue(2, out _));
+            Assert.False(table.TryRentForCommit(2, out _));
         }
 
         [Fact]
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 objects[i] = new TestCacheObject(i);
                 table.Add(i, objects[i], handler);
-                Assert.True(table.TryPeekEntryForTests(i, out var newEntry));
+                Assert.True(table.TryPeekEntry(i, out var newEntry));
                 Assert.Equal(S3FifoQueueLocation.Small, newEntry.Location);
             }
 
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(7, table.Count);
             for (var i = 0; i < 3; i++)
             {
-                Assert.False(table.TryGetValue(i, out _));
+                Assert.False(table.TryRentForCommit(i, out _));
                 // The cache held the only reference, so it is disposed.
                 Assert.Equal(0, objects[i].RentCount);
                 Assert.Equal(1, objects[i].DisposeCount);
@@ -90,13 +90,13 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             // One counted reuse plus the re-reference, straight to main.
             table.Add(0, new TestCacheObject(0), handler);
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
             Assert.False(table.IsInGhostForTests(0));
 
             // No counted reuse, so the re-reference is banked as frequency.
             table.Add(1, new TestCacheObject(1), handler);
-            Assert.True(table.TryPeekEntryForTests(1, out var coldEntry));
+            Assert.True(table.TryPeekEntry(1, out var coldEntry));
             Assert.Equal(S3FifoQueueLocation.Small, coldEntry.Location);
             Assert.Equal(1, coldEntry.Frequency);
             Assert.False(table.IsInGhostForTests(1));
@@ -108,7 +108,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             // A new key goes to small with nothing banked.
             table.Add(100, new TestCacheObject(100), handler);
-            Assert.True(table.TryPeekEntryForTests(100, out var freshEntry));
+            Assert.True(table.TryPeekEntry(100, out var freshEntry));
             Assert.Equal(S3FifoQueueLocation.Small, freshEntry.Location);
             Assert.Equal(0, freshEntry.Frequency);
         }
@@ -141,7 +141,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(new List<long> { 3, 4, 5 }, handler.EvictedKeys);
             for (var i = 0; i < 3; i++)
             {
-                Assert.True(table.TryPeekEntryForTests(i, out var entry));
+                Assert.True(table.TryPeekEntry(i, out var entry));
                 Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
             }
             Assert.Equal(7, table.Count);
@@ -195,14 +195,14 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(3, table.Count);
             for (var i = 1; i < 4; i++)
             {
-                Assert.True(table.TryPeekEntryForTests(i, out var entry));
+                Assert.True(table.TryPeekEntry(i, out var entry));
                 Assert.Equal(S3FifoQueueLocation.Main, entry.Location);
             }
 
             // Main evictions skip ghost, so a re-add starts over in small.
             Assert.False(table.IsInGhostForTests(0));
             table.Add(0, new TestCacheObject(0), handler);
-            Assert.True(table.TryPeekEntryForTests(0, out var readdedEntry));
+            Assert.True(table.TryPeekEntry(0, out var readdedEntry));
             Assert.Equal(S3FifoQueueLocation.Small, readdedEntry.Location);
         }
 
@@ -240,10 +240,10 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(4, table.Count);
             Assert.False(objects[0].Disposed);
             Assert.False(objects[0].RemovedFromCache);
-            Assert.True(table.TryGetValue(0, out var cacheObject));
-            cacheObject!.Return();
+            Assert.True(table.TryRentForCommit(0, out var cacheObject));
+            cacheObject.Value.Return();
             // Back where it came from, a write is not reuse.
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Small, entry.Location);
             Assert.False(table.IsInGhostForTests(0));
         }
@@ -275,8 +275,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(total - 8, handler.EvictedKeys.Last());
             for (var i = total - 7; i < total; i++)
             {
-                Assert.True(table.TryGetValue(i, out var cached));
-                cached!.Return();
+                Assert.True(table.TryRentForCommit(i, out var cached));
+                cached.Value.Return();
             }
             for (var i = 0; i < total - 7; i++)
             {
@@ -303,8 +303,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             await Assert.ThrowsAsync<IOException>(() => table.ForceCleanup());
 
             Assert.Equal(10, table.Count);
-            Assert.True(table.TryGetValue(0, out var stillCached));
-            stillCached!.Return();
+            Assert.True(table.TryRentForCommit(0, out var stillCached));
+            stillCached.Value.Return();
 
             // Handler recovers, everything must evict down to empty.
             handler.OnEvict = null;
@@ -349,7 +349,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             await table.ForceCleanup();
 
             Assert.Equal(3, table.Count);
-            Assert.False(table.TryGetValue(0, out _));
+            Assert.False(table.TryRentForCommit(0, out _));
             Assert.Equal(0, objects[0].RentCount);
             Assert.Equal(1, objects[0].DisposeCount);
             // The deleted victim must not occupy any queue slot.
@@ -365,7 +365,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var handler = new TestEvictHandler();
             var obj = new TestCacheObject(0);
             table.Add(0, obj, handler);
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
 
             table.Delete(0);
 
@@ -377,7 +377,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var held = new TestCacheObject(1);
             Assert.True(held.TryRent());
             table.Add(1, held, handler);
-            Assert.True(table.TryPeekEntryForTests(1, out var heldEntry));
+            Assert.True(table.TryPeekEntry(1, out var heldEntry));
             table.Delete(1);
             Assert.False(heldEntry!.TryRentValue());
             Assert.Equal(1, held.RentCount);
@@ -397,7 +397,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             Assert.Equal(0, obj0.RentCount);
             Assert.Equal(1, obj0.DisposeCount);
-            Assert.False(table.TryGetValue(0, out _));
+            Assert.False(table.TryRentForCommit(0, out _));
             Assert.Equal(1, table.Count);
             var counts = table.GetQueueCountsForTests();
             Assert.Equal(1, counts.SmallStale);
@@ -452,14 +452,14 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             // Selected and serialized but it must stay cached.
             // A later read returns the same object, not a copy.
             Assert.Contains(0, handler.EvictedKeys);
-            Assert.True(table.TryGetValue(0, out var again));
-            Assert.Same(objects[0], again);
-            again!.Return();
+            Assert.True(table.TryRentForCommit(0, out var again));
+            Assert.Same(objects[0], again.Value);
+            again.Value.Return();
             Assert.False(objects[0].RemovedFromCache);
             Assert.False(objects[0].Disposed);
             Assert.Equal(4, table.Count);
             // Requeued where it came from, being held is not proven reuse.
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Small, entry!.Location);
 
             // Accounting survives the skipped eviction, cache plus our rent.
@@ -485,7 +485,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             Assert.Equal(1, table.Count);
             Assert.Equal(1, obj.RentCount);
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
             Assert.Equal(2, entry.Version);
         }
 
@@ -586,7 +586,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             Assert.Equal(5, afterEviction.MainCount);
             for (var i = 0; i < 5; i++)
             {
-                Assert.True(table.TryPeekEntryForTests(i, out var promoted));
+                Assert.True(table.TryPeekEntry(i, out var promoted));
                 Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
             }
 
@@ -623,7 +623,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
 
             await table.ForceCleanup();
 
-            Assert.True(table.TryPeekEntryForTests(0, out var entry));
+            Assert.True(table.TryPeekEntry(0, out var entry));
             Assert.Equal(S3FifoQueueLocation.Small, entry.Location);
             Assert.False(table.IsInGhostForTests(0));
             objects[0].Return();
@@ -643,8 +643,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, new TestCacheObject(i), handler);
             }
             // A hit, the pass runs the same without one.
-            Assert.True(table.TryGetValue(0, out var hit));
-            hit!.Return();
+            Assert.True(table.TryRentForCommit(0, out var hit));
+            hit.Value.Return();
 
             await table.ForceCleanup();
 
@@ -676,7 +676,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             second!.Return();
 
             await table.ForceCleanup();
-            Assert.True(table.TryPeekEntryForTests(0, out var promoted));
+            Assert.True(table.TryPeekEntry(0, out var promoted));
             Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
 
             // Nothing reads key 0 again, so turnover ages it to zero.
@@ -716,7 +716,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             second!.Return();
             await table.ForceCleanup();
 
-            Assert.True(table.TryPeekEntryForTests(0, out var promoted));
+            Assert.True(table.TryPeekEntry(0, out var promoted));
             Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
             var frequencyAfterPromotion = promoted.Frequency;
 
@@ -743,8 +743,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 table.Add(i, new TestCacheObject(i), handler);
             }
             // A hit, the pass runs the same without one.
-            Assert.True(table.TryGetValue(0, out var hit));
-            hit!.Return();
+            Assert.True(table.TryRentForCommit(0, out var hit));
+            hit.Value.Return();
 
             await table.ForceCleanup();
 
@@ -774,7 +774,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             second!.Return();
 
             await table.ForceCleanup();
-            Assert.True(table.TryPeekEntryForTests(0, out var promoted));
+            Assert.True(table.TryPeekEntry(0, out var promoted));
             Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
 
             // Nothing reads key 0 again, so turnover ages it out.
@@ -802,7 +802,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
         /// </summary>
         private static bool ReAddIfEvicted(S3FifoTableSync table, long key, TestEvictHandler handler)
         {
-            if (table.TryPeekEntryForTests(key, out _))
+            if (table.TryPeekEntry(key, out _))
             {
                 return false;
             }
@@ -858,7 +858,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             second!.Return();
 
             await table.ForceCleanup();
-            Assert.True(table.TryPeekEntryForTests(0, out var promoted));
+            Assert.True(table.TryPeekEntry(0, out var promoted));
             Assert.Equal(S3FifoQueueLocation.Main, promoted.Location);
 
             var stepsBefore = table.AgingStepsForTests;
@@ -937,7 +937,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var inMain = 0;
             for (var i = 0; i < 200; i++)
             {
-                if (table.TryPeekEntryForTests(i, out var e) && e.Location == S3FifoQueueLocation.Main) { inMain++; }
+                if (table.TryPeekEntry(i, out var e) && e.Location == S3FifoQueueLocation.Main) { inMain++; }
             }
             var countsAfterPromote = table.GetQueueCountsForTests();
 
@@ -953,12 +953,12 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
                 await table.ForceCleanup();
             }
 
-            table.TryPeekEntryForTests(0, out var head);
+            table.TryPeekEntry(0, out var head);
             var survivors = 0;
             var zeroFreq = 0;
             for (var i = 1; i < 200; i++)
             {
-                if (table.TryPeekEntryForTests(i, out var e))
+                if (table.TryPeekEntry(i, out var e))
                 {
                     survivors++;
                     if (e.Frequency == 0) { zeroFreq++; }
@@ -1100,7 +1100,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             var banked = 0;
             for (var i = 0; i < 1000 && banked < 20; i++)
             {
-                if (!table.TryPeekEntryForTests(i, out _) && table.IsInGhostForTests(i))
+                if (!table.TryPeekEntry(i, out _) && table.IsInGhostForTests(i))
                 {
                     table.Add(i, new TestCacheObject(i), handler);
                     banked++;
@@ -1116,8 +1116,8 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             {
                 table.Add(5000 + i, new TestCacheObject(i), handler);
             }
-            Assert.True(table.TryGetValue(5000, out var hit));
-            hit!.Return();
+            Assert.True(table.TryRentForCommit(5000, out var hit));
+            hit.Value.Return();
             await table.ForceCleanup();
 
             Assert.Equal(before, table.SmallTargetPermilleForTests);
@@ -1410,7 +1410,7 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             table.Clear();
 
             Assert.Equal(0, table.Count);
-            Assert.False(table.TryGetValue(0, out _));
+            Assert.False(table.TryRentForCommit(0, out _));
             var counts = table.GetQueueCountsForTests();
             Assert.Equal(0, counts.SmallCount);
             Assert.Equal(0, counts.MainCount);
@@ -1566,11 +1566,11 @@ namespace FlowtideDotNet.Storage.Tests.S3Fifo
             entry!.Value.Return();
             Assert.False(table.TryGetCacheValue(2, out _));
 
-            Assert.True(table.TryGetValue(1, out var obj));
-            obj!.Return();
-            Assert.True(table.TryGetValue(1, out obj));
-            obj!.Return();
-            Assert.False(table.TryGetValue(3, out _));
+            Assert.True(table.TryRentForCommit(1, out var obj));
+            obj.Value.Return();
+            Assert.True(table.TryRentForCommit(1, out obj));
+            obj.Value.Return();
+            Assert.False(table.TryRentForCommit(3, out _));
 
             Assert.Equal(1, table.ReadCacheHitsForTests);
             Assert.Equal(1, table.ReadCacheMissesForTests);

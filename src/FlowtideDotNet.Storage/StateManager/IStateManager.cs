@@ -27,6 +27,11 @@ namespace FlowtideDotNet.Storage.StateManager
 
         Task Compact();
 
+        /// <summary>
+        /// Waits for all client commits, then durably checkpoints the storage and manager metadata.
+        /// A failed client commit fails the checkpoint. Call Commit on the state structures first;
+        /// changes made after those commits belong to a later checkpoint.
+        /// </summary>
         ValueTask CheckpointAsync(bool includeIndex = false);
     }
 

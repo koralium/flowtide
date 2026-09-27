@@ -16,7 +16,7 @@ using System.IO.Pipelines;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
 {
-    internal class LocalDiskReadManager
+    internal class LocalDiskReadManager : IDisposable
     {
         private readonly Dictionary<string, ILocalDiskFile> _fileReaders = new Dictionary<string, ILocalDiskFile>();
         private readonly IMemoryAllocator memoryAllocator;
@@ -83,6 +83,21 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
                     reader.Dispose();
                     _fileReaders.Remove(fileName);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Closes every file it has opened, an open handle keeps Windows from deleting the file.
+        /// </summary>
+        public void Dispose()
+        {
+            lock (_lock)
+            {
+                foreach (var reader in _fileReaders.Values)
+                {
+                    reader.Dispose();
+                }
+                _fileReaders.Clear();
             }
         }
 

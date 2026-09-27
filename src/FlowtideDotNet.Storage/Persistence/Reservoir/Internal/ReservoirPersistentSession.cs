@@ -24,6 +24,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private BlobFileWriter _fileWriter;
 
         private readonly object _lock = new object();
+        private readonly object _writeLock = new object();
         private readonly ReservoirPersistentStorage _persistentStorage;
         private readonly IMemoryAllocator _memoryAllocator;
         private readonly HashSet<long> _deletedPages;
@@ -40,6 +41,21 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _deletedPages = new HashSet<long>();
             SetupFileWriter();
         }
+
+        /// <summary>
+        /// Reads lock against the temporary locations, writers are serialized by the caller.
+        /// </summary>
+        public bool SupportsConcurrentReads => true;
+
+        /// <summary>
+        /// Runs right before the file writer is finished, so a test can hold the roll open.
+        /// </summary>
+        internal Action? FileRollHookForTests { get; set; }
+
+        /// <summary>
+        /// Runs right before a rolled file is summed, so a test can hold the checksum open.
+        /// </summary>
+        internal Action? FileChecksumHookForTests { get; set; }
 
         [MemberNotNull(nameof(_fileWriter))]
         private void SetupFileWriter()
@@ -74,6 +90,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 if (_deletedPages.Count > 0)
                 {
                     _persistentStorage.DeletePages(_deletedPages);
+                    // Cleared deleted set allows subsequent reads after recreation.
+                    _deletedPages.Clear();
                 }
             }
         }
@@ -89,7 +107,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 {
                     _persistentStorage.RemoveTemporaryLocation(key);
                 }
-                
                 _deletedPages.Add(key);
             }
             return Task.CompletedTask;
@@ -104,7 +121,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _disposed = true;
             // Deregister first, the storage keeps sessions alive for restore otherwise.
             _persistentStorage.RemoveSession(this);
-            _fileWriter.Return(); // Return the file which will dispose it if the counter is 0
+            // A write in flight, its roll checksum included, still reads the writer's buffers.
+            lock (_writeLock)
+            {
+                lock (_lock)
+                {
+                    _fileWriter.Return(); // Return the file which will dispose it if the counter is 0
+                }
+            }
         }
 
         public ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer) where T : ICacheObject
@@ -142,18 +166,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 }
                 if (_persistentStorage.TryGetTemporaryLocation(key, out var location) && location.file.TryRent())
                 {
-                    //location.data.
                     try
                     {
-                        if (location.data.FirstSpan.Length >= location.data.Length)
-                        {
-                            var start = location.data.Start;
-                            if (location.data.TryGet(ref start, out var value))
-                            {
-                                return ValueTask.FromResult(value);
-                            }
-                        }
-                        // If the data is not in the first span, we need to copy it to a new buffer
+                        // Copy temporary bytes to caller owned independent buffer.
                         var buffer = new byte[location.data.Length];
                         location.data.CopyTo(buffer);
                         return ValueTask.FromResult((ReadOnlyMemory<byte>)buffer);
@@ -189,32 +204,52 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public async Task Write(long key, SerializableObject value)
         {
-            lock (_lock)
+            BlobFileWriter? finished = null;
+            lock (_writeLock)
             {
-                var sequence = _fileWriter.Write(key, value);
-                // If the page is in deleted pages, remove it from the set
-                // Since it has been written again
-                if (_deletedPages.Contains(key))
+                var fileWriter = _fileWriter;
+                var sequence = fileWriter.Write(key, value);
+                var roll = false;
+                lock (_lock)
                 {
-                    _deletedPages.Remove(key);
+                    // If the page is in deleted pages, remove it from the set
+                    // Since it has been written again
+                    if (_deletedPages.Contains(key))
+                    {
+                        _deletedPages.Remove(key);
+                    }
+                    if (_persistentStorage.TemporaryLocationExists(key))
+                    {
+                        throw new FlowtidePersistentStorageException($"Key '{key}' has already been written.");
+                    }
+                    // Add info to lookup so reads can find the written data before its flushed to storage
+                    _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence, file = fileWriter });
+
+                    if (fileWriter.WrittenLength >= _maxFileSize)
+                    {
+                        FileRollHookForTests?.Invoke();
+                        fileWriter.ChecksumHookForTests = FileChecksumHookForTests;
+                        // The layout shifts the segment indices a concurrent read measures its bytes with, so it stays under the lock.
+                        fileWriter.FinishLayout();
+                        roll = true;
+                    }
                 }
-                if (_persistentStorage.TemporaryLocationExists(key))
+                if (roll)
                 {
-                    throw new FlowtidePersistentStorageException($"Key '{key}' has already been written.");
+                    // The bytes are final, reads go on while the file is summed.
+                    fileWriter.ComputeChecksum();
+                    lock (_lock)
+                    {
+                        // Swapped once summed, a failure before this leaves the writer to Reset.
+                        finished = fileWriter;
+                        SetupFileWriter();
+                    }
                 }
-                // Add info to lookup so reads can find the written data before its flushed to storage
-                _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence, file = _fileWriter });
             }
 
-            if (_fileWriter.WrittenLength >= _maxFileSize)
+            if (finished != null)
             {
-                // Finish the file writer, this adds the page ids and offsets
-                _fileWriter.Finish();
-
-                // TODO: Send the file to the blob writer
-                await _persistentStorage.AddCompleteBlobFile(_fileWriter);
-
-                SetupFileWriter();
+                await _persistentStorage.AddCompleteBlobFile(finished);
             }
         }
 
@@ -224,18 +259,36 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         /// <returns></returns>
         internal async Task SendBlobFile_Testing()
         {
-            _fileWriter.Finish();
-            await _persistentStorage.AddCompleteBlobFile(_fileWriter);
-            SetupFileWriter();
+            BlobFileWriter finished;
+            lock (_writeLock)
+            {
+                lock (_lock)
+                {
+                    _fileWriter.Finish();
+                    finished = _fileWriter;
+                    SetupFileWriter();
+                }
+            }
+            await _persistentStorage.AddCompleteBlobFile(finished);
         }
 
         public void Reset()
         {
-            lock (_lock)
+            // The write lock first, a roll may be summing the writer outside the inner lock.
+            lock (_writeLock)
             {
-                _deletedPages.Clear();
-                _fileWriter.Return();
-                SetupFileWriter();
+                lock (_lock)
+                {
+                    // Purge uncommitted temporary locations before returning file writer.
+                    var pageIds = _fileWriter.PageIds;
+                    for (int i = 0; i < pageIds.Count; i++)
+                    {
+                        _persistentStorage.RemoveTemporaryLocation(pageIds[i]);
+                    }
+                    _deletedPages.Clear();
+                    _fileWriter.Return();
+                    SetupFileWriter();
+                }
             }
         }
     }

@@ -165,7 +165,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             {
                                 StartStreamState run = (StartStreamState)state!;
                                 Debug.Assert(run._context != null, nameof(_context));
-                                if (t.IsFaulted)
+                                // An aborted start was torn down already, its fault would fail a successor start.
+                                if (t.IsFaulted && !run._startAbort.IsCancellationRequested)
                                 {
                                     // Wait some time between starting up.
                                     await Task.Delay(100);
@@ -342,11 +343,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return;
                 }
 
+                // A rollback a block awaits in its Initialize tears down inside this chain, it must not wait for this start.
+                StreamContext.OwnStartInitGate.Value = initGate.Task;
                 try
                 {
                     _context._logger.InitializingPropagatorBLocks(_context.streamName);
                     foreach (var block in _context.propagatorBlocks)
                     {
+                        if (StartAborted())
+                        {
+                            // A failure tore this start down meanwhile, the abandon below handles it.
+                            break;
+                        }
                         TagList tags = new TagList()
                         {
                             { "stream", _context.streamName },
@@ -370,6 +378,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context._logger.InitializingEgressBlocks(_context.streamName);
                     foreach (var block in _context.egressBlocks)
                     {
+                        if (StartAborted())
+                        {
+                            // A failure tore this start down meanwhile, the abandon below handles it.
+                            break;
+                        }
                         TagList tags = new TagList()
                         {
                             { "stream", _context.streamName },
@@ -394,6 +407,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context._logger.InitializingIngressBlocks(_context.streamName);
                     foreach (var block in _context.ingressBlocks)
                     {
+                        if (StartAborted())
+                        {
+                            // A failure tore this start down meanwhile, the abandon below handles it.
+                            break;
+                        }
                         TagList tags = new TagList()
                         {
                             { "stream", _context.streamName },
@@ -417,10 +435,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 catch (Exception e)
                 {
-
+                    if (StartAborted())
+                    {
+                        // Already torn down, reported now it would fail a successor start.
+                        await AbandonStartedBlocks();
+                        return;
+                    }
+                    // Done with the state manager, the failure teardown below must not wait on this start.
+                    initGate.TrySetResult();
                     await _context.OnFailure(e);
                     return;
                 }
+                StreamContext.OwnStartInitGate.Value = null;
 
                 if (StartAborted())
                 {

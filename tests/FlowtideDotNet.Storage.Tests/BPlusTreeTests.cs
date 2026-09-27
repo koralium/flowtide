@@ -13,6 +13,9 @@
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -50,6 +53,22 @@ namespace FlowtideDotNet.Storage.Tests
                     MemoryAllocator = GlobalMemoryManager.Instance
                 });
             return tree;
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(40)]
+        public async Task PrintingTheTreeReturnsTheFetchedRootRent(int itemCount)
+        {
+            for (long i = 0; i < itemCount; i++) await _tree.Upsert(i, i.ToString());
+            var concrete = (Tree.Internal.BPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>)_tree;
+            Assert.True(stateManager!.TryPeekCacheEntry(concrete.m_stateClient.Metadata!.Root, out var entry));
+            var rentsBeforePrinting = entry.Value.RentCount;
+
+            await _tree.Print();
+
+            // Printing must return the fetched root rent.
+            Assert.Equal(rentsBeforePrinting, entry.Value.RentCount);
         }
 
         [Fact]
@@ -400,6 +419,54 @@ namespace FlowtideDotNet.Storage.Tests
                         count++;
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// A tree cleared after a checkpoint and recovered before its next commit comes back with the checkpointed values.
+        /// </summary>
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task ClearedTreeRecoversToItsCheckpoint(bool backgroundCommit)
+        {
+            using var manager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
+            {
+                CachePageCount = 1000000,
+                BackgroundCommit = backgroundCommit,
+                PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() })
+            }, NullLoggerFactory.Instance, new Meter("storage"), "storage", GlobalMemoryManager.Instance);
+            await manager.InitializeAsync();
+
+            Task<IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>> CreateTree()
+            {
+                return manager.GetOrCreateClient("node1").GetOrCreateTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>("tree",
+                    new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
+                    {
+                        BucketSize = 8,
+                        Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                        KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                        ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                        MemoryAllocator = GlobalMemoryManager.Instance
+                    }).AsTask();
+            }
+
+            var tree = await CreateTree();
+            for (long i = 0; i < 40; i++)
+            {
+                await tree.Upsert(i, i.ToString());
+            }
+            await tree.Commit();
+            await manager.CheckpointAsync();
+
+            await tree.Clear();
+            await manager.InitializeAsync();
+            var recovered = await CreateTree();
+            for (long i = 0; i < 40; i++)
+            {
+                var (found, value) = await recovered.GetValue(i);
+                Assert.True(found, $"Key {i} was lost, the cleared tree did not recover to its checkpoint.");
+                Assert.Equal(i.ToString(), value);
             }
         }
     }
