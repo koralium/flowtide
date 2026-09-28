@@ -312,6 +312,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             // Before the wave: a peer's wave in between finds no dead-run target.
             _executor.SetRollbacks(null);
+            _communicationPointFactory.ResetPendingOperations();
             _communicationPointFactory.Durability?.EnterWave(_communicationPointFactory.Waves.ForStart());
         }
 

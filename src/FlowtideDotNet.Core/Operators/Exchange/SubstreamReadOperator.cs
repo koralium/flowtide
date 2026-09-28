@@ -607,6 +607,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         void IStreamVersionAgreement.ResetAgreement()
         {
+            _communicationPoint.ResetPendingOperations();
             _communicationPoint.Durability?.EnterWave(_communicationPoint.Waves.ForStart());
         }
 

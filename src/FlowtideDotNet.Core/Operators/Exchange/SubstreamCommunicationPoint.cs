@@ -176,11 +176,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     return Task.CompletedTask;
                 }
-                if (_operationAbort.IsCancellationRequested)
-                {
-                    _operationAbort.Dispose();
-                    _operationAbort = new CancellationTokenSource();
-                }
                 _initializedSent = true;
                 _selfInitializeVersion = restorePoint;
                 // Each fresh handshake starts with no clean reconnect; the response re-sets it
@@ -923,7 +918,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         // Called before the engine waits for callback ownership to drain. Only local
         // waits on fenced control messages are aborted; no storage task is abandoned.
-        internal void AbortPendingOperations() => _operationAbort.Cancel();
+        internal void AbortPendingOperations() => Volatile.Read(ref _operationAbort).Cancel();
+
+        // Once per start, before any handshake; never disposed, a racing abort may still hold it.
+        internal void ResetPendingOperations()
+        {
+            var abort = Volatile.Read(ref _operationAbort);
+            if (abort.IsCancellationRequested)
+            {
+                Interlocked.CompareExchange(ref _operationAbort, new CancellationTokenSource(), abort);
+            }
+        }
 
         public Task SendCheckpointDone(long checkpointVersion)
         {

@@ -257,5 +257,58 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             await pointB.SendCheckpointDone(5);
             Assert.Equal(1, Volatile.Read(ref credited));
         }
+
+        [Fact]
+        public async Task AbortRacingARestartedHandshakeDoesNotThrow()
+        {
+            var point = new SubstreamCommunicationPoint(NullLogger.Instance, "self", "target", new RecordingHandler());
+            using var stop = new CancellationTokenSource();
+            Exception? thrown = null;
+            long aborts = 0;
+            // A failure or dispose aborting while the next run's start replaces the aborted source.
+            var aborter = Task.Run(() =>
+            {
+                while (!stop.IsCancellationRequested && Volatile.Read(ref thrown) == null)
+                {
+                    try { point.AbortPendingOperations(); Interlocked.Increment(ref aborts); }
+                    catch (Exception e) { Volatile.Write(ref thrown, e); }
+                }
+            });
+            Assert.True(SpinWait.SpinUntil(() => Interlocked.Read(ref aborts) > 0, TimeSpan.FromSeconds(10)));
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+            int restarts = 0;
+            while (restarts < 50_000 && (restarts < 1_000 || elapsed.Elapsed < TimeSpan.FromSeconds(1)) && Volatile.Read(ref thrown) == null)
+            {
+                point.OnStreamFailure();
+                point.ResetPendingOperations();
+                try { await point.InitializeOperator(0); } catch (OperationCanceledException) { }
+                restarts++;
+            }
+            stop.Cancel();
+            await aborter;
+            Assert.True(thrown == null, $"AbortPendingOperations threw after {elapsed.ElapsedMilliseconds} ms, {restarts} restarts: {thrown}");
+        }
+
+        [Fact]
+        public async Task AbortLandingBeforeTheRunsHandshakeCancelsIt()
+        {
+            var handler = new RecordingHandler();
+            var point = new SubstreamCommunicationPoint(NullLogger.Instance, "self", "target", handler);
+            point.ResetPendingOperations();
+            await point.InitializeOperator(0);
+            point.AbortPendingOperations();
+            point.OnStreamFailure();
+
+            // The restarted run fails after its start reset, before its handshake on this point.
+            point.ResetPendingOperations();
+            point.AbortPendingOperations();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => point.InitializeOperator(0));
+            Assert.Single(handler.AnnouncedCheckpointEpochs);
+
+            // No OnStreamFailure since, the start reset alone revives the handshake.
+            point.ResetPendingOperations();
+            await point.InitializeOperator(0);
+            Assert.Equal(2, handler.AnnouncedCheckpointEpochs.Count);
+        }
     }
 }
