@@ -212,7 +212,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return;
                 }
                 // A stale transition is ignored, the context checks the calling state.
-                await TransitionTo(StreamStateValue.Running);
+                await _context.TransitionToRunning(this);
                 if (_context.currentState == StreamStateValue.Running)
                 {
                     _context.ForEachVersionAgreement(agreement => agreement.StartCompleted());

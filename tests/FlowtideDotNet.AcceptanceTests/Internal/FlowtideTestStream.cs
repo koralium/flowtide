@@ -131,6 +131,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         }
 
         /// <summary>
+        /// Also notifies this listener of state changes. Set before starting the stream.
+        /// </summary>
+        public void AddStateChangeListener(IStreamStateChangeListener listener)
+        {
+            flowtideBuilder.WithStateChangeListener(listener);
+        }
+
+        /// <summary>
         /// Sets the minimum time between checkpoint triggers. Set before starting the stream.
         /// </summary>
         public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }

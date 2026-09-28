@@ -411,6 +411,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return state.Initialize(previous);
         }
 
+        // Swap and Initialize in one lock scope, a stop must not see Running before its placeholder.
+        internal Task TransitionToRunning(StreamStateMachineState current)
+        {
+            lock (_contextLock)
+            {
+                return TransitionTo(current, StreamStateValue.Running);
+            }
+        }
+
         public Task TransitionTo(StreamStateMachineState current, StreamStateValue newState)
         {
             switch (newState)
