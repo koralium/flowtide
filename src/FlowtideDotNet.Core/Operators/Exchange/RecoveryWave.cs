@@ -57,6 +57,32 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private bool _startedInCurrent;
         // The wave the last start began in, what a come-down derives from.
         private RecoveryWave _startWave;
+        private readonly List<SubstreamCommunicationPoint> _points = new List<SubstreamCommunicationPoint>();
+
+        /// <summary>
+        /// Every communication point of this substream, a copy.
+        /// </summary>
+        public IReadOnlyList<SubstreamCommunicationPoint> Points
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _points.ToArray();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Adds a communication point of this substream.
+        /// </summary>
+        public void Register(SubstreamCommunicationPoint point)
+        {
+            lock (_lock)
+            {
+                _points.Add(point);
+            }
+        }
 
         public RecoveryWave Current
         {

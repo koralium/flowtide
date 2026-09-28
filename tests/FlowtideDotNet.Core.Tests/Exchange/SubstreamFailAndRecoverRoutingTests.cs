@@ -106,6 +106,35 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         }
 
         [Fact]
+        public async Task RollbackReachesAWiredOperatorOfAnotherPoint()
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var factoryA = hub.CreateFactory("subA");
+            var handlerB = hub.CreateFactory("subB").GetCommunicationHandler("subA", "subB");
+            var waves = new SubstreamRecoveryWaves();
+
+            // subA's point to subB has nothing wired, its point to subC has a wired target.
+            _ = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", factoryA.GetCommunicationHandler("subB", "subA"), waves: waves);
+            var pointC = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subC", factoryA.GetCommunicationHandler("subC", "subA"), waves: waves);
+            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB);
+            var recovered = new List<long?>();
+            new SubstreamTarget(1, 1, pointC, () => { }).SetRollback(point =>
+            {
+                lock (recovered)
+                {
+                    recovered.Add(point);
+                }
+                return Task.CompletedTask;
+            });
+
+            var wave = new RecoveryWave(5, Guid.NewGuid());
+            await pointB.SendFailAndRecover(wave);
+
+            Assert.Equal(new long?[] { null }, recovered);
+            Assert.Equal(wave, waves.Current);
+        }
+
+        [Fact]
         public async Task RollbackIsDispatchedOnce()
         {
             var hub = new LocalSubstreamCommunicationHub();

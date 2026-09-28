@@ -122,6 +122,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _durability = durability;
             _waves = waves ?? new SubstreamRecoveryWaves();
             _durability?.Register(substreamName, this);
+            _waves.Register(this);
             substreamCommunicationHandler.Initialize(GetData, OnPeerRecovering, OnTargetSubstreamInitialize, RecieveCheckpointDone);
             substreamCommunicationHandler.InitializeDurabilityClaims(ReceiveDurabilityClaim);
             substreamCommunicationHandler.SetReceiveAllocatorResolver(GetReceiveAllocator);
@@ -257,9 +258,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             // peer's makes it: announced again, the peer restarts into it. A refused clean handoff is one
                             // such restart, the announcement is not repeated.
                             var minted = _waves.MintAbove(response.Wave);
-                            _durability?.EnterWave(minted);
                             _logger.LogInformation("Substream {substreamName} is in wave {peerWave}, this stream restarts the group in wave {wave}.", substreamName, response.Wave, minted);
                             _announceCleanHandoff = false;
+                            if (_waves.Points.Any(p => !ReferenceEquals(p, this) && p.IsWired))
+                            {
+                                // Another point may have handshook in the old wave, the teardown tells every peer.
+                                await DoFailAndRecover(null);
+                                return;
+                            }
+                            _durability?.EnterWave(minted);
                             await SendInitializeRequest(restorePoint, allowEpochReseed);
                             return;
                         }
@@ -656,7 +663,46 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return DoFailAndRecover(null);
         }
 
-        private async Task DoFailAndRecover(long? recoveryPoint)
+        private async Task<bool> DoFailAndRecover(long? recoveryPoint)
+        {
+            if (await TryFailAndRecoverWired(recoveryPoint))
+            {
+                return true;
+            }
+            foreach (var point in _waves.Points)
+            {
+                // Any wired operator of the substream carries it.
+                if (!ReferenceEquals(point, this) && await point.TryFailAndRecoverWired(recoveryPoint))
+                {
+                    return true;
+                }
+            }
+            // Nothing wired yet: the start under way has fetched nothing, it continues in the wave. Its claims
+            // and a come-down belong to that wave, like after the reset a restart would do.
+            _durability?.EnterWave(_waves.ForStart());
+            _logger.LogInformation("Received fail and recover to {recoveryPoint} before any exchange operator is initialized, the start continues in wave {wave}.", recoveryPoint, _waves.Current);
+            return false;
+        }
+
+        /// <summary>
+        /// True when a target or read operator of this point is wired; a stale wiring is dropped by the stream's generation fence.
+        /// </summary>
+        internal bool IsWired
+        {
+            get
+            {
+                if (_targetInfos.Values.Any(t => t.Target.CanFailAndRecover))
+                {
+                    return true;
+                }
+                lock (_readOperators)
+                {
+                    return _readOperators.Any(r => r.CanFailAndRecover);
+                }
+            }
+        }
+
+        private async Task<bool> TryFailAndRecoverWired(long? recoveryPoint)
         {
             // One rollback fails the whole stream over, any single wired operator carries
             // it. Both targets and read operators register at construction but are wired per
@@ -669,7 +715,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 if (targetInfo.Target.CanFailAndRecover)
                 {
                     await targetInfo.Target.FailAndRecover(recoveryPoint);
-                    return;
+                    return true;
                 }
             }
             SubstreamReadOperator? readOperator;
@@ -677,17 +723,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 readOperator = _readOperators.FirstOrDefault(r => r.CanFailAndRecover);
             }
-            if (readOperator != null)
+            if (readOperator == null)
             {
-                await readOperator.FailAndRecover(recoveryPoint);
+                return false;
             }
-            else
-            {
-                // Nothing wired yet: the start under way has fetched nothing, it continues in the wave. Its claims
-                // and a come-down belong to that wave, like after the reset a restart would do.
-                _durability?.EnterWave(_waves.ForStart());
-                _logger.LogInformation("Received fail and recover to {recoveryPoint} before any exchange operator is initialized, the start continues in wave {wave}.", recoveryPoint, _waves.Current);
-            }
+            await readOperator.FailAndRecover(recoveryPoint);
+            return true;
         }
 
         public Task SendFailAndRecover(RecoveryWave wave)
