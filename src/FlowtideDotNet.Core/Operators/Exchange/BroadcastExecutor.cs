@@ -158,5 +158,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             return Task.CompletedTask;
         }
+
+        public void SetRollbacks(Func<long?, Task>? failAndRecoverFunc)
+        {
+        }
     }
 }

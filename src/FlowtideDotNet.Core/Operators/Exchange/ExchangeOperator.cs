@@ -100,6 +100,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         protected override async Task InitializeOrRestore(long restoreVersion, IStateManagerClient stateManagerClient)
         {
+            // This run's handler is set, every target restarts it from here.
+            _executor.SetRollbacks(FailAndRecoverMethod);
             lock (_dependenciesDoneLock)
             {
                 // Reset credits from a checkpoint that was aborted by a failure so an old
@@ -308,6 +310,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         void IStreamVersionAgreement.ResetAgreement()
         {
+            // Before the wave: a peer's wave in between finds no dead-run target.
+            _executor.SetRollbacks(null);
             _communicationPointFactory.Durability?.EnterWave(_communicationPointFactory.Waves.ForStart());
         }
 

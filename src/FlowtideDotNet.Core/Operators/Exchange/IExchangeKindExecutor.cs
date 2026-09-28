@@ -56,6 +56,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         Task CheckpointDone(long checkpointVersion);
 
+        void SetRollbacks(Func<long?, Task>? failAndRecoverFunc);
+
         /// <summary>
         /// True when all targets have everything they need for the stream to finish stopping.
         /// </summary>

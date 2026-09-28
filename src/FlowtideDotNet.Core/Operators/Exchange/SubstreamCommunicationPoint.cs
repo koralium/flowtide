@@ -659,8 +659,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private async Task DoFailAndRecover(long? recoveryPoint)
         {
             // One rollback fails the whole stream over, any single wired operator carries
-            // it. Both targets and read operators register at construction but wire the
-            // rollback first at their initialize, so unwired ones must be skipped - an
+            // it. Both targets and read operators register at construction but are wired per
+            // run (targets by their exchange's initialize), so unwired ones must be skipped - an
             // arbitrary pick could land on one, and for a read operator the dispatch throws
             // into a fire and forget caller and the rollback is silently lost, wedging the
             // stream against the peer.

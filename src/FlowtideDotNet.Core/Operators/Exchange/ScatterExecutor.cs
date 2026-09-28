@@ -285,6 +285,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return Task.WhenAll(tasks);
         }
 
+        public void SetRollbacks(Func<long?, Task>? failAndRecoverFunc)
+        {
+            foreach (var target in _targets)
+            {
+                (target as SubstreamTarget)?.SetRollback(failAndRecoverFunc);
+            }
+        }
+
         public bool ReadyToStop
         {
             get

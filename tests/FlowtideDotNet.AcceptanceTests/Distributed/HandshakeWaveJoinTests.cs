@@ -67,6 +67,47 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             INSERT INTO output SELECT userkey FROM v1 WITH (PARTITION_ID = 0);
             ";
 
+        // sub2 reads v2 first: the target of the exchange that initializes second has the lower id.
+        private const string TwoExchangeSql = @"
+            SUBSTREAM sub1;
+
+            CREATE VIEW v1 WITH (DISTRIBUTED = true, SCATTER_BY = userkey, PARTITION_COUNT = 1) AS
+            SELECT userkey FROM users;
+
+            CREATE VIEW v2 WITH (DISTRIBUTED = true, SCATTER_BY = userkey, PARTITION_COUNT = 1) AS
+            SELECT userkey FROM users;
+
+            INSERT INTO output1 SELECT userkey FROM users;
+
+            SUBSTREAM sub2;
+
+            INSERT INTO output
+            SELECT userkey FROM v2 WITH (PARTITION_ID = 0)
+            UNION ALL
+            SELECT userkey FROM v1 WITH (PARTITION_ID = 0);
+            ";
+
+        // One exchange, target 0 to sub2 and target 1 to sub3.
+        private const string TwoTargetSql = @"
+            SUBSTREAM sub1;
+
+            CREATE VIEW v1 WITH (DISTRIBUTED = true, SCATTER_BY = userkey, PARTITION_COUNT = 2) AS
+            SELECT userkey FROM users;
+
+            INSERT INTO output1 SELECT userkey FROM users;
+
+            SUBSTREAM sub2;
+
+            INSERT INTO output SELECT userkey FROM v1 WITH (PARTITION_ID = 0);
+
+            SUBSTREAM sub3;
+
+            INSERT INTO output SELECT userkey FROM v1 WITH (PARTITION_ID = 1);
+            ";
+
+        // Above every wave the runs mint themselves.
+        private static readonly RecoveryWave PeerWave = new RecoveryWave(1000, Guid.NewGuid());
+
         private readonly ITestOutputHelper _output;
         private readonly MockDatabase _db;
         private readonly DatasetGenerator _generator;
@@ -183,6 +224,137 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await RunWaveJoin("wave_join_pair", TwoSubstreamSql, new[] { "sub1", "sub2" }, announceJoinedWave: false, expectTeardownAnnouncesWave: false);
         }
 
+        /// <summary>
+        /// A peer's wave reaches a restarting substream after its agreement reset, before its exchange initialized again: the start joins it.
+        /// </summary>
+        [Fact]
+        public async Task PeerWaveBeforeTheExchangeReinitializesJoinsTheStart()
+        {
+            var sub1Log = _logBuffers.GetOrAdd("sub1", _ => new RingBufferLoggerProvider());
+            await RunPeerWave("restart_stale_target", TwoSubstreamSql, new[] { "sub1", "sub2" }, 1, async run =>
+            {
+                // sub1's restart is held after its agreement reset, before its exchange initializes.
+                var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var release = new ManualResetEventSlim();
+                sub1Log.OnLine = line =>
+                {
+                    if (line.Contains("Initializing egress blocks", StringComparison.Ordinal) && held.TrySetResult())
+                    {
+                        release.Wait(TimeSpan.FromSeconds(30));
+                    }
+                };
+                try
+                {
+                    await run.Streams["sub1"].InjectFailureForTests(new InvalidOperationException("restart sub1"));
+                    await held.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                    // What sub2's failure teardown tells sub1.
+                    await run.Factories["sub2"].Handlers["sub1"].SendFailAndRecover(PeerWave).WaitAsync(TimeSpan.FromSeconds(10));
+                }
+                finally
+                {
+                    sub1Log.OnLine = null;
+                    release.Set();
+                }
+            });
+            Assert.Single(sub1Log.LinesContaining($"recovers in wave {PeerWave}, restarting into it"));
+            // No operator of the dead run takes the wave, the start continues in it.
+            Assert.Single(sub1Log.LinesContaining($"before any exchange operator is initialized, the start continues in wave {PeerWave}"));
+        }
+
+        /// <summary>
+        /// sub1 joins a peer's wave in its handshake while its other exchange's target is still wired to the ended run.
+        /// </summary>
+        [Fact]
+        public async Task HandshakeWaveJoinRestartsPastAnotherExchangesEndedRunTarget()
+        {
+            var sub1Log = _logBuffers.GetOrAdd("sub1", _ => new RingBufferLoggerProvider());
+            await RunPeerWave("join_second_exchange", TwoExchangeSql, new[] { "sub1", "sub2" }, 2, run =>
+            {
+                // sub2's answer to sub1's next handshake: it starts in a wave above sub1's.
+                run.Factories["sub1"].OnNextResponse = response => Task.FromResult(
+                    new SubstreamInitializeResponse(false, response.Success, response.RestoreVersion, response.CheckpointEpoch, response.RecordedCheckpointEpoch, wave: PeerWave, peerInInit: true));
+                return run.Streams["sub1"].InjectFailureForTests(new InvalidOperationException("restart sub1"));
+            });
+            Assert.Single(sub1Log.LinesContaining($"starts in wave {PeerWave}, this stream restarts into it"));
+            // The point has a wired target, the fallback must not run.
+            Assert.Empty(sub1Log.LinesContaining("before any exchange operator is initialized"));
+        }
+
+        /// <summary>
+        /// A peer's wave reaches sub1 while its exchange wires its targets, after one target handshook the other peer: that peer must be told.
+        /// </summary>
+        [Fact]
+        public async Task PeerWaveWhileTheExchangeWiresItsTargetsReachesTheOtherPeer()
+        {
+            await RunPeerWave("wave_mid_wiring", TwoTargetSql, new[] { "sub1", "sub2", "sub3" }, 1, async run =>
+            {
+                var sub2Before = run.Factories["sub2"].Requests.Count;
+                var answered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                // sub2 has answered target 0 in the start wave, target 1 initializes once that answer is back.
+                run.Factories["sub1"].OnNextResponse = async response =>
+                {
+                    answered.TrySetResult();
+                    await release.Task;
+                    return response;
+                };
+                try
+                {
+                    await run.Streams["sub1"].InjectFailureForTests(new InvalidOperationException("restart sub1"));
+                    await answered.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                    await WaitUntil(() => run.Factories["sub2"].Requests.Skip(sub2Before).Any(r => r.Response?.Success == true), "sub2 to handshake sub1 in the start wave", TimeSpan.FromSeconds(30), run.Outcome);
+                    // What sub3's failure teardown tells sub1.
+                    await run.Factories["sub3"].Handlers["sub1"].SendFailAndRecover(PeerWave).WaitAsync(TimeSpan.FromSeconds(10));
+                }
+                finally
+                {
+                    release.TrySetResult();
+                }
+            });
+        }
+
+        private sealed record PeerWaveRun(Dictionary<string, Base.Engine.DataflowStream> Streams, Dictionary<string, ScriptedFactory> Factories, Func<string> Outcome);
+
+        /// <summary>
+        /// Runs the group, lets the test bring <see cref="PeerWave"/> to sub1's restart, then requires the group to run and commit in it.
+        /// </summary>
+        private async Task RunPeerWave(string testName, string sql, string[] names, int copies, Func<PeerWaveRun, Task> deliver)
+        {
+            _generator.Generate(100);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var failures = new ConcurrentBag<string>();
+            var commits = new ConcurrentQueue<(string Substream, long Version)>();
+            var factories = names.ToDictionary(n => n, n => new ScriptedFactory(hub.CreateFactory(n)));
+            // sub1 at trace: its egress initialize line is a hold point.
+            var streams = names.ToDictionary(n => n, n => BuildSubstream(testName, sql, n, factories[n], latestData, failures, commits, n == "sub1" ? LogLevel.Trace : LogLevel.Debug));
+            int commitsAtDelivery = 0;
+            string Outcome() =>
+                $"states {string.Join(" ", streams.Select(s => $"{s.Key}={s.Value.State}/waitingForGroup={s.Value.IsWaitingForConnectedStreams}"))}; wave {PeerWave}; " +
+                $"commits after delivery={string.Join(",", commits.Skip(commitsAtDelivery).Select(c => $"{c.Substream}:{c.Version}"))}; " +
+                $"handshakes {string.Join("; ", factories.Select(f => $"{f.Key}: {string.Join(",", f.Value.Requests.Select(Describe))}"))}; failures={string.Join(" | ", failures)}";
+            bool Running() => streams.Values.All(s => s.State == StreamStateValue.Running) && names.Skip(1).Sum(n => RowCount(latestData, n)) == copies * _generator.Users.Count;
+            try
+            {
+                foreach (var stream in streams.Values)
+                {
+                    await stream.StartAsync();
+                }
+                await WaitUntil(() => Running() && CommonCommittedVersion(commits, names).HasValue, "the first run", TimeSpan.FromSeconds(30), Outcome);
+                commitsAtDelivery = commits.Count;
+                await deliver(new PeerWaveRun(streams, factories, Outcome));
+                // Every substream handshakes in the wave: each one was told.
+                await WaitUntil(() => Running() && names.All(n => factories[n].Requests.Any(r => r.Wave >= PeerWave && r.Response?.Success == true)), "the group to run again in the wave", TimeSpan.FromSeconds(30), Outcome);
+                await WaitUntil(() => CommonCommittedVersion(commits, names, commitsAtDelivery).HasValue, "one CommitVersion on every sink after the delivery", TimeSpan.FromSeconds(60), Outcome);
+                _output.WriteLine(Outcome());
+            }
+            catch
+            {
+                DumpLogBuffers(testName, Outcome());
+                throw;
+            }
+        }
+
         private async Task RunWaveJoin(string testName, string sql, string[] names, bool announceJoinedWave, bool expectTeardownAnnouncesWave)
         {
             _generator.Generate(100);
@@ -297,9 +469,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }
         }
 
-        private static long? CommonCommittedVersion(ConcurrentQueue<(string Substream, long Version)> commits, string[] names)
+        private static long? CommonCommittedVersion(ConcurrentQueue<(string Substream, long Version)> commits, string[] names, int skip = 0)
         {
-            var snapshot = commits.ToList();
+            var snapshot = commits.Skip(skip).ToList();
             var common = names
                 .Select(n => snapshot.Where(c => c.Substream == n).Select(c => c.Version).ToHashSet())
                 .Aggregate((a, b) => { a.IntersectWith(b); return a; });
@@ -330,7 +502,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             ISubstreamCommunicationHandlerFactory communicationFactory,
             ConcurrentDictionary<string, EventBatchData> latestData,
             ConcurrentBag<string> failures,
-            ConcurrentQueue<(string Substream, long Version)> commits)
+            ConcurrentQueue<(string Substream, long Version)> commits,
+            LogLevel minimumLevel = LogLevel.Debug)
         {
             var connectorManager = new ConnectorManager();
             connectorManager.AddSource(new MockSourceFactory("*", _db, false));
@@ -356,7 +529,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .AddConnectorManager(connectorManager);
             builder.WithLoggerFactory(LoggerFactory.Create(b =>
             {
-                b.SetMinimumLevel(LogLevel.Debug);
+                b.SetMinimumLevel(minimumLevel);
                 b.AddProvider(logProvider);
             }));
             builder.SetDistributedOptions(new DistributedOptions(substreamName, default, communicationFactory));
@@ -445,6 +618,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             public volatile bool HoldHandshakes;
 
+            // Applied once, to the next handshake answer from a started peer.
+            public Func<SubstreamInitializeResponse, Task<SubstreamInitializeResponse>>? OnNextResponse;
+
             public ConcurrentDictionary<string, ISubstreamCommunicationHandler> Handlers { get; } = new ConcurrentDictionary<string, ISubstreamCommunicationHandler>();
 
             public ConcurrentQueue<HandshakeRecord> Requests { get; } = new ConcurrentQueue<HandshakeRecord>();
@@ -525,6 +701,10 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     return new SubstreamInitializeResponse(true, false, restoreVersion, peerDraining: true);
                 }
                 var response = await _inner.SendInitializeRequest(restoreVersion, checkpointEpoch, cleanHandoff, wave, cancellationToken);
+                if (!response.NotStarted && Interlocked.Exchange(ref _factory.OnNextResponse, null) is { } onResponse)
+                {
+                    response = await onResponse(response);
+                }
                 _factory.Requests.Enqueue(new HandshakeRecord(_target, wave, checkpointEpoch, response));
                 return response;
             }

@@ -25,6 +25,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private const int MaxLines = 50_000;
         private readonly ConcurrentQueue<string> _lines = new ConcurrentQueue<string>();
 
+        /// <summary>
+        /// Called with each line as it is logged, a test can hold the logging thread at a line.
+        /// </summary>
+        public Action<string>? OnLine { get; set; }
+
         public ILogger CreateLogger(string categoryName)
         {
             return new RingBufferLogger(this, categoryName);
@@ -94,6 +99,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     line += Environment.NewLine + exception;
                 }
                 _provider.Add(line);
+                _provider.OnLine?.Invoke(line);
             }
         }
     }
