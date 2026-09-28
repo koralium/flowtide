@@ -63,8 +63,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _claims = new SubstreamDurabilityClaims(peers, distance);
         }
 
-        public long Agreed => _claims.Agreed;
-
         public long Generation
         {
             get
@@ -232,11 +230,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// Completes once every substream of the group claimed in this wave, <see cref="Agreed"/> is then the group's version.
+        /// The group's version, once every substream of the group claimed in this wave.
         /// </summary>
-        public Task WhenAgreedKnown(CancellationToken cancellationToken)
+        public async Task<long> WhenAgreedKnown(CancellationToken cancellationToken)
         {
-            return WithResends(_claims.WhenAgreedKnown(cancellationToken));
+            while (true)
+            {
+                await WithResends(_claims.WhenAgreedKnown(cancellationToken));
+                // A peer reset after the wake withdrew it, wait for the new one.
+                var agreed = _claims.Agreed;
+                if (agreed != SubstreamDurabilityClaims.Unknown) return agreed;
+            }
         }
 
         /// <summary>

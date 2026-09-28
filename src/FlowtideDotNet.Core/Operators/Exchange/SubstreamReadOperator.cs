@@ -652,12 +652,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         internal static async Task<long?> WhenGroupVersionKnown(SubstreamDurabilityCoordinator? durability, CancellationToken cancellationToken)
         {
-            if (durability == null)
-            {
-                return null;
-            }
-            await durability.WhenAgreedKnown(cancellationToken);
-            return durability.Agreed;
+            return durability == null ? null : await durability.WhenAgreedKnown(cancellationToken);
         }
 
         internal static Task WhenGroupSettled(SubstreamDurabilityCoordinator? durability, CancellationToken cancellationToken)
