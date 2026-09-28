@@ -1071,6 +1071,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _disposed = true;
             _disposeCancellation.Cancel();
             RequestVertexCancellation();
+            // A message parked at a pause gate would hold block completion forever
+            Resume();
             ForEachVersionAgreement(agreement => agreement.AbortPendingOperations());
             _wantedState = StreamStateValue.NotStarted;
 
@@ -1288,9 +1290,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     return;
                 }
-                if (_stopTask != null || _deleteTask != null)
+                if (_stopTask != null || _deleteTask != null || _disposed)
                 {
-                    // A stop or delete supersedes the pause. Gating the sources here would
+                    // A stop, delete or dispose supersedes the pause. Gating the sources here would
                     // freeze the drain, a parked source can hold the ingress checkpoint
                     // lock that the stop cycle needs to inject its barrier.
                     return;
