@@ -100,6 +100,32 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         }
 
         /// <summary>
+        /// The start that restarted the group continues in the minted wave and may fetch the peer's replay, its failure is a new wave.
+        /// </summary>
+        [Fact]
+        public async Task AFailureOfTheStartThatRestartedTheGroupMintsANewWave()
+        {
+            var (wavesA, _, _, pointA, _) = StoppedAAndPeerB(peerRunning: true);
+            await pointA.InitializeOperator(0);
+            var minted = wavesA.Current;
+
+            Assert.True(wavesA.ForFailure() > minted);
+        }
+
+        /// <summary>
+        /// The peer restarted into the wave the start minted, both come down in the same wave.
+        /// </summary>
+        [Fact]
+        public async Task TheStartThatRestartedTheGroupComesDownWithThePeer()
+        {
+            var (wavesA, wavesB, durabilityB, pointA, _) = StoppedAAndPeerB(peerRunning: true);
+            await pointA.InitializeOperator(0);
+            Assert.True(SpinWait.SpinUntil(() => durabilityB.Wave == wavesA.Current, TimeSpan.FromSeconds(10)));
+
+            Assert.Equal(wavesB.MintForLowering(7), wavesA.MintForLowering(7));
+        }
+
+        /// <summary>
         /// A peer still in its own start restarts with this stream, nobody restarts again.
         /// </summary>
         [Fact]

@@ -262,7 +262,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                                 await DoFailAndRecover(null);
                                 return;
                             }
-                            _durability?.EnterWave(minted);
+                            // The start continues in the minted wave, it is a start in it.
+                            var started = _waves.ForStart();
+                            _durability?.EnterWave(started);
                             await SendInitializeRequest(restorePoint, allowEpochReseed);
                             return;
                         }
