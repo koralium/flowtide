@@ -85,8 +85,12 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             await handler.TargetCheckpointDone(request.CheckpointVersion, request.CheckpointEpoch, request.CoversPeerStopBarrier);
         }
 
+        // Test seam: drops durability claims arriving at an activation (grain key, activation id).
+        internal static Func<string, string, bool>? DropDurabilityClaimForTests;
+
         public async Task DurabilityClaim(DurabilityClaimRequest request)
         {
+            if (DropDurabilityClaimForTests?.Invoke(this.GetPrimaryKeyString(), ((IGrainBase)this).GrainContext.ActivationId.ToString()) == true) return;
             if (_orleansCommunicationFactory == null ||
                 !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
             {
@@ -327,6 +331,9 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
         // stream that is stuck in the same non running state for a whole reminder period.
         private Base.Engine.StreamStateValue? _reminderObservedState;
 
+        // Consecutive keep alive ticks that saw the current stream in the start agreement wait.
+        private int _agreementWaitTicks;
+
         // Fetch epoch per requestor substream, announced through the initialize handshake.
         // Fetches from any other epoch are refused, see FetchDataRequest.FetchEpoch. Only
         // accessed from grain turns.
@@ -358,11 +365,19 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             var state = stream.State;
             if (stream.IsWaitingForConnectedStreams)
             {
-                // Initialized and waiting for another substream to come up, recreating this one
-                // would only restart the wait with new epochs.
+                // Waiting for another substream is tolerated for a bounded number of ticks, a wait that never ends needs a new activation.
                 _reminderObservedState = null;
+                if (++_agreementWaitTicks > Math.Max(1, _options.AgreementWaitReminderTicks))
+                {
+                    _logger.LogWarning(
+                        "Substream {substream} has been waiting for the start agreement for {ticks} reminder ticks, recreating it.",
+                        this.GetPrimaryKeyString(), _agreementWaitTicks);
+                    _agreementWaitTicks = 0;
+                    DeactivateOnIdle();
+                }
                 return Task.CompletedTask;
             }
+            _agreementWaitTicks = 0;
             if (state != Base.Engine.StreamStateValue.Running &&
                 _reminderObservedState == state)
             {
@@ -681,6 +696,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             _options.ConfigureBuilder?.Invoke(_state.State.StreamName, _state.State.SubstreamName!, flowtideBuilder);
 
             _stream = flowtideBuilder.Build();
+            _agreementWaitTicks = 0;
             var stream = _stream;
             _tickCancellation = new CancellationTokenSource();
             var tickToken = _tickCancellation.Token;
