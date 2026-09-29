@@ -223,7 +223,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// Joins a peer's wave without a restart, for a clean handoff back into a running group.
+        /// Joins a peer's wave without a restart, for a clean handoff back into a running group; the start continues in it.
         /// </summary>
         public void Adopt(RecoveryWave wave)
         {
@@ -232,7 +232,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 if (wave > _current)
                 {
                     _current = wave;
-                    _startedInCurrent = false;
+                    // The start continues in the adopted wave, it is a start in it.
+                    _startedInCurrent = true;
+                    _startWave = wave;
                 }
             }
         }

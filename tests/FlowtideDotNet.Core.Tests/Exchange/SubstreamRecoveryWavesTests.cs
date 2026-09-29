@@ -126,6 +126,49 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         }
 
         /// <summary>
+        /// The start that adopted the running peer's wave at a clean handoff continues and may fetch the peer's events, its failure is a new wave.
+        /// </summary>
+        [Fact]
+        public async Task AFailureOfTheStartThatAdoptedAWaveMintsANewWave()
+        {
+            var peers = new RecoveryWave(3, Guid.NewGuid());
+            var wavesA = await StartAdoptingPeersWave(peers);
+
+            Assert.Equal(peers, wavesA.Current);
+            Assert.True(wavesA.ForFailure() > peers);
+        }
+
+        /// <summary>
+        /// Consistency check: a come-down of the start that adopted a wave is in a wave above it.
+        /// </summary>
+        [Fact]
+        public async Task TheStartThatAdoptedAWaveComesDownAboveIt()
+        {
+            var peers = new RecoveryWave(3, Guid.NewGuid());
+            var wavesA = await StartAdoptingPeersWave(peers);
+
+            Assert.True(wavesA.MintForLowering(7) > peers);
+        }
+
+        private static async Task<SubstreamRecoveryWaves> StartAdoptingPeersWave(RecoveryWave peers)
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var handlerA = hub.CreateFactory("subA").GetCommunicationHandler("subB", "subA");
+            // The running peer accepts the clean handoff in its wave.
+            hub.CreateFactory("subB").GetCommunicationHandler("subA", "subB").Initialize(
+                (_, _, _) => Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>()),
+                _ => Task.CompletedTask,
+                (restorePoint, _, _, _) => Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, cleanReconnect: true, wave: peers)),
+                (_, _, _) => Task.CompletedTask);
+            var wavesA = new SubstreamRecoveryWaves();
+            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA, announceCleanHandoff: true, waves: wavesA);
+            wavesA.ForStart();
+            await pointA.InitializeOperator(0);
+            Assert.True(pointA.CleanReconnect);
+            return wavesA;
+        }
+
+        /// <summary>
         /// A peer still in its own start restarts with this stream, nobody restarts again.
         /// </summary>
         [Fact]
