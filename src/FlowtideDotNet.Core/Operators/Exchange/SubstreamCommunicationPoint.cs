@@ -246,12 +246,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             await DoFailAndRecover(null);
                             return;
                         }
-                        else if (response.Wave > _waves.Current || (wave == RecoveryWave.None && !response.PeerInInit))
+                        else if (response.Wave > _waves.Current || ((wave == RecoveryWave.None || _waves.RestartUnseen) && !response.PeerInInit))
                         {
                             // The peer runs in a recovery this stream never saw, or this is a fresh stream object whose earlier
                             // runs the peers cannot tell from its wave: its restart is not noticed there. A wave above the
                             // peer's makes it: announced again, the peer restarts into it. A refused clean handoff is one
                             // such restart, the announcement is not repeated.
+                            // A stream object started again after a stop in the peer's wave is the same case, its peers stopped reading from it.
                             var minted = _waves.MintAbove(response.Wave);
                             _logger.LogInformation("Substream {substreamName} is in wave {peerWave}, this stream restarts the group in wave {wave}.", substreamName, response.Wave, minted);
                             _announceCleanHandoff = false;

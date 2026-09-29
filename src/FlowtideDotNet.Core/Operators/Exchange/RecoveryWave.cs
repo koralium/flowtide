@@ -57,6 +57,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private bool _startedInCurrent;
         // The wave the last start began in, what a come-down derives from.
         private RecoveryWave _startWave;
+        // A run in the current wave ended in a stop, a running peer cannot tell the next start from it.
+        private bool _stoppedAfterRun;
         private readonly List<SubstreamCommunicationPoint> _points = new List<SubstreamCommunicationPoint>();
 
         /// <summary>
@@ -110,6 +112,20 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
+        /// True from a stop of a run in the current wave until the wave moves or a start completed.
+        /// </summary>
+        public bool RestartUnseen
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _stoppedAfterRun;
+                }
+            }
+        }
+
+        /// <summary>
         /// True when the wave outranks the current one: the substream is in it now and has to restart into it.
         /// </summary>
         public bool TryEnter(RecoveryWave wave)
@@ -123,6 +139,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _current = wave;
                 _entered = true;
                 _startedInCurrent = false;
+                _stoppedAfterRun = false;
                 return true;
             }
         }
@@ -140,6 +157,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     _current = Mint_NoLock(_current);
                     _entered = true;
                     _startedInCurrent = false;
+                    _stoppedAfterRun = false;
                 }
                 return _current;
             }
@@ -171,6 +189,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _current = Mint_NoLock(seen > _current ? seen : _current);
                 _entered = true;
                 _startedInCurrent = false;
+                _stoppedAfterRun = false;
                 return _current;
             }
         }
@@ -196,6 +215,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     _current = lowering;
                     _startedInCurrent = false;
+                    _stoppedAfterRun = false;
                 }
                 _entered = true;
                 return _current;
@@ -225,6 +245,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             lock (_lock)
             {
                 _entered = false;
+                _stoppedAfterRun = false;
             }
         }
 
@@ -235,6 +256,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             lock (_lock)
             {
+                _stoppedAfterRun = true;
                 _entered = true;
             }
         }

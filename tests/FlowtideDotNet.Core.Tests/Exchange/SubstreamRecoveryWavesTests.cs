@@ -62,6 +62,83 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             Assert.Equal(peers, durabilityB.Wave);
         }
 
+        /// <summary>
+        /// A stop right after its handshake minted, before the start completed, still leaves the next start unseen.
+        /// </summary>
+        [Fact]
+        public void AStopAfterAMintedHandshakeMarksTheRestartUnseen()
+        {
+            var waves = new SubstreamRecoveryWaves();
+            waves.ForStart();
+            waves.MintAbove(waves.Current);
+            waves.Stopped();
+            Assert.True(waves.RestartUnseen);
+        }
+
+        /// <summary>
+        /// Started again after a stop in the running peer's wave, every time, the stream restarts the group in a wave above it.
+        /// </summary>
+        [Fact]
+        public async Task ARestartAfterAStopInTheRunningPeersWaveRestartsTheGroup()
+        {
+            var (wavesA, wavesB, durabilityB, pointA, wave) = StoppedAAndPeerB(peerRunning: true);
+            await pointA.InitializeOperator(0);
+            var first = wavesA.Current;
+            Assert.True(first > wave);
+            Assert.Equal(first, wavesB.Current);
+
+            // B's restart into the wave runs in the background, it must be done before B runs again.
+            Assert.True(SpinWait.SpinUntil(() => durabilityB.Wave == first, TimeSpan.FromSeconds(10)));
+            wavesA.StartCompleted();
+            wavesB.StartCompleted();
+            pointA.OnStreamStopped();
+            wavesA.ForStart();
+            await pointA.InitializeOperator(0);
+
+            Assert.True(wavesA.Current > first);
+            Assert.Equal(wavesA.Current, wavesB.Current);
+        }
+
+        /// <summary>
+        /// A peer still in its own start restarts with this stream, nobody restarts again.
+        /// </summary>
+        [Fact]
+        public async Task ARestartAfterAStopWithThePeerInInitKeepsTheWave()
+        {
+            var (wavesA, wavesB, _, pointA, wave) = StoppedAAndPeerB(peerRunning: false);
+
+            await pointA.InitializeOperator(0);
+
+            Assert.Equal(wave, wavesA.Current);
+            Assert.Equal(wave, wavesB.Current);
+        }
+
+        private static (SubstreamRecoveryWaves WavesA, SubstreamRecoveryWaves WavesB, SubstreamDurabilityCoordinator DurabilityB, SubstreamCommunicationPoint PointA, RecoveryWave Wave) StoppedAAndPeerB(bool peerRunning)
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var handlerA = hub.CreateFactory("subA").GetCommunicationHandler("subB", "subA");
+            var handlerB = hub.CreateFactory("subB").GetCommunicationHandler("subA", "subB");
+            var wavesA = new SubstreamRecoveryWaves();
+            var wavesB = new SubstreamRecoveryWaves();
+            var durabilityB = new SubstreamDurabilityCoordinator(NullLogger.Instance, "subB", new[] { "subA" }, 1);
+            var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA, waves: wavesA);
+            _ = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB, false, durabilityB, wavesB);
+
+            var wave = new RecoveryWave(3, Guid.NewGuid());
+            Assert.True(wavesB.TryEnter(wave));
+            wavesB.ForStart();
+            if (peerRunning)
+            {
+                wavesB.StartCompleted();
+            }
+            Assert.True(wavesA.TryEnter(wave));
+            wavesA.ForStart();
+            wavesA.StartCompleted();
+            wavesA.Stopped();
+            wavesA.ForStart();
+            return (wavesA, wavesB, durabilityB, pointA, wave);
+        }
+
         [Fact]
         public void AFailureWhileRunningMintsANewWave()
         {
