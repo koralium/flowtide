@@ -16,6 +16,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowtideDotNet.Core.Tests.Exchange
 {
+    // Serialized with SubstreamDurabilitySenderTests, both set the durability resend statics.
+    [Collection("SubstreamDurabilityResendStatics")]
     public class SubstreamDurabilityClaimResendTests : IDisposable
     {
         private readonly TimeSpan _resendInterval = SubstreamDurabilityCoordinator.ResendInterval;

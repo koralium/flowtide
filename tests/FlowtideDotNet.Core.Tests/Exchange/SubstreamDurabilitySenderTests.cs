@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowtideDotNet.Core.Tests.Exchange;
 
+// Serialized with SubstreamDurabilityClaimResendTests, both set the durability resend statics.
+[Collection("SubstreamDurabilityResendStatics")]
 public class SubstreamDurabilitySenderTests
 {
     [Fact]
