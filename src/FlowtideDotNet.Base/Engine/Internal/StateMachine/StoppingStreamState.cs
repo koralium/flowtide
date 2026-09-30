@@ -446,7 +446,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (!faultBlocks)
                 {
                     await CommitStopVersionIfAgreed();
-                    if (AllowsPublication) await CompactEgressBlocks();
+                    // A sink's compaction publishes, an unagreed version waits for the next start.
+                    if (AllowsPublication && _context.IsVersionAgreed(_context._stateManager.LastCompletedCheckpointVersion)) await CompactEgressBlocks();
                     faultBlocks = !AllowsPublication;
                 }
                 // A timed-out drain can still become a clean stop above. Cancel only

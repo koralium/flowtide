@@ -610,6 +610,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var failures = new ConcurrentBag<string>();
             var started = new ConcurrentDictionary<string, long>();
             var commits = new ConcurrentQueue<(string Substream, long Version)>();
+            var compactions = new ConcurrentQueue<(string Substream, long Version)>();
             var names = new[] { "suba", "subb", "subc" };
             var logs = names.ToDictionary(name => name, _ => new RingBufferLoggerProvider());
             var slowed = new ConcurrentDictionary<string, long>();
@@ -631,7 +632,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             try
             {
                 var streams = names.ToDictionary(name => name, name => BuildSubstream(testName, FanOutSql, name, hub, latestData, failures,
-                    onCommitVersion: version => commits.Enqueue((name, version)), communicationFactory: name == "subc" ? subcFactory : null, logProvider: logs[name]));
+                    onCommitVersion: version => commits.Enqueue((name, version)), communicationFactory: name == "subc" ? subcFactory : null, logProvider: logs[name],
+                    onCompact: version => compactions.Enqueue((name, version))));
                 await Task.WhenAll(streams.Values.Select(stream => stream.StartAsync()));
                 await WaitUntil(() => RowCount(latestData, "suba") + RowCount(latestData, "subc") == _generator.Users.Count, "initial data in both sinks");
                 await WaitForCompletedCycles(names, started, started.Values.DefaultIfEmpty(0).Max());
@@ -641,6 +643,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 Interlocked.Exchange(ref holdAbove, settled);
 
                 var commitsBeforeStop = commits.Count;
+                var compactionsBeforeStop = compactions.Count;
                 Task? stopB = null;
                 if (holdClaims)
                 {
@@ -665,6 +668,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 var stopCommits = commits.Skip(commitsBeforeStop).ToList();
                 Assert.True(holdClaims ? stopCommits.All(c => c.Version <= settled) : slowed.All(s => stopCommits.Contains((s.Key, s.Value))),
                     $"commits during the stop [{string.Join(", ", stopCommits)}], settled {settled}, slowed [{string.Join(", ", slowed)}]");
+                // A sink publishes in its compaction too, an unagreed version must not reach it.
+                var stopCompactions = compactions.Skip(compactionsBeforeStop).ToList();
+                Assert.True(!holdClaims || stopCompactions.All(c => c.Version <= settled), $"compactions during the stop [{string.Join(", ", stopCompactions)}], settled {settled}");
 
                 // The restart commits the version the stop left and loses nothing.
                 var commitsBeforeRestart = commits.Count;
@@ -805,11 +811,12 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             ConcurrentBag<string> failures,
             Action<long>? onCommitVersion = null,
             ISubstreamCommunicationHandlerFactory? communicationFactory = null,
-            ILoggerProvider? logProvider = null)
+            ILoggerProvider? logProvider = null,
+            Action<long>? onCompact = null)
         {
             var connectorManager = new ConnectorManager();
             connectorManager.AddSource(new MockSourceFactory("*", _db, false));
-            connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }, onCommitVersion: onCommitVersion));
+            connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }, onCompact: onCompact, onCommitVersion: onCommitVersion));
 
             var builder = new FlowtideBuilder($"{testName.Length}_{testName}_{substreamName}")
                 .AddPlan(CreatePlan(sql), false)
