@@ -148,13 +148,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
 
                 // Call failure for all blocks
-                StreamContext.RestoreVersionForTests?.Invoke(_context.streamName, _context._restoreCheckpointVersion ?? -1);
-                if (_context._restoreCheckpointVersion.HasValue)
+                // Read once, every block of this teardown rolls back to the same version.
+                var restoreVersion = _context._restoreCheckpointVersion;
+                StreamContext.RestoreVersionForTests?.Invoke(_context.streamName, restoreVersion ?? -1);
+                if (restoreVersion.HasValue)
                 {
+                    var version = restoreVersion.Value;
                     await _context.ForEachBlockAsync(async (key, block) =>
                     {
                         _context._logger.LogDebug("Failure handling calling on failure on block {block} on stream {stream}", key, _context.streamName);
-                        await block.OnFailure(_context._restoreCheckpointVersion.Value);
+                        await block.OnFailure(version);
                     });
                 }
 

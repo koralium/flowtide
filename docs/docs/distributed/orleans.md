@@ -32,9 +32,10 @@ builder.Services.AddOrleans(b =>
         connectors.AddSink(...);
     }, (streamName, substreamName, storage) =>
     {
-        // Called on every substream start, every start needs its own storage. Use storage
-        // that every silo can reach in production, see "State storage must survive"
-        storage.AddTemporaryStorage($"./temp/{streamName}/{substreamName}/{Guid.NewGuid():N}");
+        // Called on every substream start. A stable location per substream lets a restarted
+        // activation restore its checkpoints, in production use storage every silo can reach,
+        // see "State storage must survive"
+        storage.AddFileStorage($"./state/{streamName}/{substreamName}");
     });
 });
 ```

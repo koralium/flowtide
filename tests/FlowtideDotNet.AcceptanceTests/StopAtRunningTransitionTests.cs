@@ -68,13 +68,21 @@ namespace FlowtideDotNet.AcceptanceTests
                 // The lock held the stop out of the gap, it did not merely arrive late.
                 Assert.False(listener.StopReturnedInGap);
 
+                // A failure also completes the stop without a stop cycle, name it first.
+                Assert.Empty(logs.LinesContaining("timed out waiting"));
+                var errors = logs.LinesContaining("Stream error");
+                Assert.True(errors.Count == 0, string.Join(Environment.NewLine, errors));
                 var shutdown = Assert.Single(logs.LinesContaining("Starting shutdown checkpoint"));
                 var initialDone = Assert.Single(logs.LinesContaining("All ingress blocks completed their initial data"));
                 var all = logs.LinesContaining(string.Empty).ToList();
                 Assert.True(all.IndexOf(initialDone) < all.IndexOf(shutdown), "The stop cycle ran before the initial data completed.");
-                Assert.Empty(logs.LinesContaining("timed out waiting"));
-                Assert.Empty(logs.LinesContaining("Stream error"));
                 Assert.Single(logs.LinesContaining($"Stopped stream: `{name}`"));
+            }
+            catch
+            {
+                // Uploaded by CI with the debugwrites artifact, named apart from the DEBUG_WRITE stream log.
+                logs.WriteToFile($"./debugwrite/{name}.ringbuffer.log");
+                throw;
             }
             finally
             {
@@ -107,7 +115,8 @@ namespace FlowtideDotNet.AcceptanceTests
                 {
                     Fired = true;
                     // From another thread like any caller, bounded since a lock held here may block it.
-                    var dispatch = Task.Factory.StartNew(() => stream.StopStream());
+                    // A dedicated thread, a starved pool must not let the gap check pass vacuously.
+                    var dispatch = Task.Factory.StartNew(() => stream.StopStream(), TaskCreationOptions.LongRunning);
                     StopReturnedInGap = dispatch.Wait(TimeSpan.FromSeconds(2));
                     StopRequested.TrySetResult(dispatch.Unwrap());
                 }

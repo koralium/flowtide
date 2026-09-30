@@ -108,12 +108,13 @@ internal static class CheckpointFinalityProbe
             }
             var elapsed = Stopwatch.GetElapsedTime(start).TotalSeconds;
             var bytes = GC.GetTotalAllocatedBytes(true) - allocated;
+            var inputRows = (long)cycles * rowsPerCycle;
             return new
             {
                 scenario.Shape, scenario.Exchanges, scenario.LinkDelayMs, scenario.SlowCommitMs,
-                repetition, warmup = repetition == 0, inputRows = cycles * rowsPerCycle,
-                rowsPerSecond = cycles * rowsPerCycle / elapsed,
-                bytesPerInputRow = bytes / (double)(cycles * rowsPerCycle),
+                repetition, warmup = repetition == 0, inputRows,
+                rowsPerSecond = inputRows / elapsed,
+                bytesPerInputRow = bytes / (double)inputRows,
                 checkpointMeanMs = checkpointMs.Average(), checkpointMaxMs = checkpointMs.Max(),
                 checkpointCadenceMs = checkpoints.CadenceMs(), controlRequests = control.OrderBy(p => p.Key).ToDictionary(p => p.Key, p => p.Value),
                 failures = failures.ToArray()

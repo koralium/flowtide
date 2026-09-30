@@ -332,8 +332,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             });
         }
 
-        // Internal so tests can shorten it.
-        internal static TimeSpan StopAgreementReleaseGrace = TimeSpan.FromSeconds(1);
+        // How long a deferred stop waits for the agreement before its cycle skips it.
+        internal static readonly TimeSpan StopAgreementReleaseGrace = TimeSpan.FromSeconds(1);
 
         // Agreement first; after a stop, a grace from the later of the stop and this wait's start.
         private async Task<bool> AgreedWithinStopGrace(Task agreed)

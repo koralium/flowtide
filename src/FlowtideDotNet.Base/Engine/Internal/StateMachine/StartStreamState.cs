@@ -213,8 +213,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     System.Threading.Interlocked.Decrement(ref _context._stateManagerWriteCount);
                     if (comeDownTo.HasValue && !StartAborted())
                     {
-                        _context.ForEachVersionAgreement(agreement => agreement.ComingDownTo(comeDownTo.Value));
-                        await _context.FailAndRollback(null, comeDownTo.Value);
+                        var comeDownVersion = comeDownTo.Value;
+                        _context.ForEachVersionAgreement(agreement => agreement.ComingDownTo(comeDownVersion));
+                        await _context.FailAndRollback(null, comeDownVersion);
                     }
                 }
                 if (StartAborted() || RollbackPending())

@@ -20,6 +20,7 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -42,8 +43,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private IObjectState<MockDataSourceState>? _state;
         private BatchConverter _batchConverter;
 
-        public static Dictionary<string, System.Threading.Tasks.TaskCompletionSource> TableInitialSignals { get; } = new Dictionary<string, System.Threading.Tasks.TaskCompletionSource>();
-        public static Dictionary<string, string> TableWaitSignals { get; } = new Dictionary<string, string>();
+        public static ConcurrentDictionary<string, System.Threading.Tasks.TaskCompletionSource> TableInitialSignals { get; } = new ConcurrentDictionary<string, System.Threading.Tasks.TaskCompletionSource>();
+        public static ConcurrentDictionary<string, string> TableWaitSignals { get; } = new ConcurrentDictionary<string, string>();
 
         private readonly TimeSpan? _initialDataDelay;
         private readonly bool _failInitialize;
