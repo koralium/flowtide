@@ -18,10 +18,12 @@ using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Engine.Distributed;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Sql;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
@@ -67,6 +69,16 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             SUBSTREAM sub2;
 
+            INSERT INTO output SELECT userkey FROM read_users WITH (PARTITION_ID = 1);
+            ";
+
+        private const string FanOutSql = @"
+            SUBSTREAM subb;
+            CREATE VIEW read_users WITH (DISTRIBUTED = true, SCATTER_BY = userkey, PARTITION_COUNT = 2) AS
+            SELECT userkey FROM users;
+            SUBSTREAM suba;
+            INSERT INTO output SELECT userkey FROM read_users WITH (PARTITION_ID = 0);
+            SUBSTREAM subc;
             INSERT INTO output SELECT userkey FROM read_users WITH (PARTITION_ID = 1);
             ";
 
@@ -583,6 +595,116 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             Assert.All(restores, r => Assert.True(r.Version >= committed, $"{r.Substream} restored version {r.Version} after version {committed} was committed"));
         }
 
+        /// <summary>
+        /// A deferred stop must not hang on a claim a stopped middle never relays, nor skip an agreement that follows a slow cycle.
+        /// </summary>
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task DeferredStopEndsCleanlyWhenTheMiddleStopsBeforeRelayingTheClaim(bool holdClaims)
+        {
+            var testName = holdClaims ? "stop_relay_held" : "stop_relay_slow";
+            _generator.Generate(200);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var failures = new ConcurrentBag<string>();
+            var started = new ConcurrentDictionary<string, long>();
+            var commits = new ConcurrentQueue<(string Substream, long Version)>();
+            var names = new[] { "suba", "subb", "subc" };
+            var logs = names.ToDictionary(name => name, _ => new RingBufferLoggerProvider());
+            var slowed = new ConcurrentDictionary<string, long>();
+            long holdAbove = long.MaxValue;
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
+            {
+                var substream = SubstreamOf(streamName, testName);
+                if (substream == null) return Task.CompletedTask;
+                started.AddOrUpdate(substream, lastVersion + 1, (_, current) => Math.Max(current, lastVersion + 1));
+                // Slow cycle: suba and subc hold their first commit above holdAbove until the release, suba longer so subc waits for the agreement.
+                return !holdClaims && lastVersion + 1 > Interlocked.Read(ref holdAbove) && substream != "subb" && slowed.TryAdd(substream, lastVersion + 1)
+                    ? release.Task.ContinueWith(_ => Task.Delay(substream == "suba" ? 300 : 0), TaskScheduler.Default).Unwrap() : Task.CompletedTask;
+            };
+            // Held claims: subc's claims to subb above holdAbove wait for the release.
+            var subcFactory = new HoldClaimsFactory(hub.CreateFactory("subc"), version => holdClaims && version > Interlocked.Read(ref holdAbove) ? release.Task : Task.CompletedTask);
+
+            try
+            {
+                var streams = names.ToDictionary(name => name, name => BuildSubstream(testName, FanOutSql, name, hub, latestData, failures,
+                    onCommitVersion: version => commits.Enqueue((name, version)), communicationFactory: name == "subc" ? subcFactory : null, logProvider: logs[name]));
+                await Task.WhenAll(streams.Values.Select(stream => stream.StartAsync()));
+                await WaitUntil(() => RowCount(latestData, "suba") + RowCount(latestData, "subc") == _generator.Users.Count, "initial data in both sinks");
+                await WaitForCompletedCycles(names, started, started.Values.DefaultIfEmpty(0).Max());
+                await CheckpointSettle.WaitForCheckpointsToSettle(streams.Values);
+                var settled = started.Values.Max();
+                var durable = TrackDurable(testName, started);
+                Interlocked.Exchange(ref holdAbove, settled);
+
+                var commitsBeforeStop = commits.Count;
+                Task? stopB = null;
+                if (holdClaims)
+                {
+                    // subb stops first, suba and subc stop in the cycle its stop barrier starts.
+                    stopB = streams["subb"].StopAsync();
+                    await WaitUntil(() => durable.GetValueOrDefault("suba", -1) > settled && durable.GetValueOrDefault("subc", -1) > settled, "suba and subc to commit subb's stop cycle");
+                }
+                else
+                {
+                    await WaitUntil(() => { _generator.Generate(1); return slowed.Count == 2; }, "suba and subc to start a commit");
+                }
+                var sw = Stopwatch.StartNew();
+                var stopEnds = Task.WhenAll(streams["suba"].StopAsync(), streams["subc"].StopAsync());
+                // Slow: the cycles reach the agreement wait only after a grace from the stop has passed.
+                await WaitForTask(stopB ?? Task.Delay(RunningStreamState.StopAgreementReleaseGrace + TimeSpan.FromMilliseconds(500)), "subb to stop");
+                release.TrySetResult();
+                await WaitForTask(Task.WhenAll(stopEnds, stopB ?? streams["subb"].StopAsync()), "the stop");
+
+                Assert.True(failures.IsEmpty && sw.Elapsed < FastEngineTimings.StopDrainTimeout, $"stop took {sw.ElapsedMilliseconds} ms, failures [{string.Join("; ", failures)}]");
+                Assert.All(new[] { "suba", "subc" }, name => Assert.Equal(holdClaims, logs[name].LinesContaining("stops without waiting for version").Count > 0));
+                // Held: nothing unagreed is committed. Slow: the agreement that followed is.
+                var stopCommits = commits.Skip(commitsBeforeStop).ToList();
+                Assert.True(holdClaims ? stopCommits.All(c => c.Version <= settled) : slowed.All(s => stopCommits.Contains((s.Key, s.Value))),
+                    $"commits during the stop [{string.Join(", ", stopCommits)}], settled {settled}, slowed [{string.Join(", ", slowed)}]");
+
+                // The restart commits the version the stop left and loses nothing.
+                var commitsBeforeRestart = commits.Count;
+                await Task.WhenAll(streams.Values.Select(stream => stream.StartAsync()));
+                _generator.Generate(50);
+                await WaitUntil(() => RowCount(latestData, "suba") + RowCount(latestData, "subc") == _generator.Users.Count, "every user in both sinks after the restart");
+                await WaitUntil(() => commits.Skip(commitsBeforeRestart).Any(c => c.Version > settled), "the restart to commit the stop version");
+            }
+            finally
+            {
+                release.TrySetResult();
+            }
+        }
+
+        // Runs the gate before every claim the substream sends.
+        private sealed class HoldClaimsFactory(ISubstreamCommunicationHandlerFactory inner, Func<long, Task> gate) : ISubstreamCommunicationHandlerFactory
+        {
+            public ISubstreamCommunicationHandler GetCommunicationHandler(string targetSubstreamName, string selfSubstreamName) => new HoldClaimsHandler(inner.GetCommunicationHandler(targetSubstreamName, selfSubstreamName), gate);
+        }
+
+        private sealed class HoldClaimsHandler(ISubstreamCommunicationHandler inner, Func<long, Task> gate) : ISubstreamCommunicationHandler
+        {
+            public void SetReceiveAllocatorResolver(Func<int, IMemoryAllocator> allocatorResolver) => inner.SetReceiveAllocatorResolver(allocatorResolver);
+            public void OnStreamFailure() => inner.OnStreamFailure();
+            public void Initialize(Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction, Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget, Func<long, long, bool, Task> callRecieveCheckpointDone)
+                => inner.Initialize(getDataFunction, callFailAndRecover, initializeFromTarget, callRecieveCheckpointDone);
+            public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken) => inner.FetchData(targetIds, numberOfEvents, cancellationToken);
+            public Task SendFailAndRecover(RecoveryWave wave) => inner.SendFailAndRecover(wave);
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
+                => inner.SendInitializeRequest(restoreVersion, checkpointEpoch, cleanHandoff, wave, cancellationToken);
+            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier) => inner.SendCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim) => inner.InitializeDurabilityClaims(callReceiveDurabilityClaim);
+            public async Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
+            {
+                await gate(version);
+                await inner.SendDurabilityClaim(version, radius, initVersion, wave, senderCheckpointEpoch, targetCheckpointEpoch, requestReply, cancellationToken);
+            }
+        }
+
         private async Task<(LocalSubstreamCommunicationHub Hub, RecordingFactory Sub1Factory, ConcurrentQueue<(string Substream, long Version)> Restores, ConcurrentBag<string> Failures, ConcurrentDictionary<string, long> Started, long Committed, ConcurrentDictionary<string, EventBatchData> LatestData)> RunTwoSubstreamsToACommit(string testName)
         {
             _generator.Generate(100);
@@ -682,7 +804,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             ConcurrentDictionary<string, EventBatchData> latestData,
             ConcurrentBag<string> failures,
             Action<long>? onCommitVersion = null,
-            ISubstreamCommunicationHandlerFactory? communicationFactory = null)
+            ISubstreamCommunicationHandlerFactory? communicationFactory = null,
+            ILoggerProvider? logProvider = null)
         {
             var connectorManager = new ConnectorManager();
             connectorManager.AddSource(new MockSourceFactory("*", _db, false));
@@ -708,6 +831,10 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             builder.SetDistributedOptions(new DistributedOptions(substreamName, default, communicationFactory ?? hub.CreateFactory(substreamName)));
             builder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
             builder.WithFailureListener(e => failures.Add($"{substreamName}: {e?.Message}"));
+            if (logProvider != null)
+            {
+                builder.WithLoggerFactory(LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(logProvider)));
+            }
 
             var stream = builder.Build();
             lock (_streams)

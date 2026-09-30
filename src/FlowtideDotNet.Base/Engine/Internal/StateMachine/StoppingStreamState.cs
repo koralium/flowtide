@@ -159,7 +159,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
 
                         // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
-                        if (changesSinceLastCompaction > compactionThreshold)
+                        // An unagreed version can still be rolled back below.
+                        if (changesSinceLastCompaction > compactionThreshold && run._context.IsVersionAgreed(run._context._stateManager.LastCompletedCheckpointVersion))
                         {
                             await run._context._stateManager.Compact();
                         }

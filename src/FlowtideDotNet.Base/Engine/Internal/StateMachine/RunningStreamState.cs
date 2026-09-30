@@ -32,6 +32,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private readonly CancellationTokenSource _agreementAbort = new CancellationTokenSource();
         // Dependency of every cycle when other streams are connected: the version is agreed.
         private const string VersionAgreementDependency = "$version_agreement";
+        // Set by a deferred stop, a stopped peer may never relay the agreement.
+        private readonly TaskCompletionSource _stopRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        // The cycle stopped waiting for agreement, its version must not be committed or compacted.
+        private volatile bool _agreementSkippedForStop;
         private bool _initialCheckpointTaken = false;
         private bool _compactionStarted = false;
         // The transition swaps the state before Initialize runs, a cycle must not start before its setup.
@@ -298,7 +302,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 try
                 {
-                    await _context.WaitForVersionAgreement(version, _agreementAbort.Token);
+                    using var released = CancellationTokenSource.CreateLinkedTokenSource(_agreementAbort.Token);
+                    var agreed = _context.WaitForVersionAgreement(version, released.Token);
+                    if (!await AgreedWithinStopGrace(agreed))
+                    {
+                        _agreementSkippedForStop = true;
+                        released.Cancel();
+                        // Abandoned, a late fault must not go unobserved.
+                        _ = agreed.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
+                        _context._logger.LogDebug("Stream {stream} stops without waiting for version {version} to be agreed, the next start commits it.", _context.streamName, version);
+                    }
+                    else
+                    {
+                        await agreed;
+                    }
                 }
                 catch (OperationCanceledException)
                 {
@@ -315,6 +332,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             });
         }
 
+        // Internal so tests can shorten it.
+        internal static TimeSpan StopAgreementReleaseGrace = TimeSpan.FromSeconds(1);
+
+        // Agreement first; after a stop, a grace from the later of the stop and this wait's start.
+        private async Task<bool> AgreedWithinStopGrace(Task agreed)
+        {
+            if (await Task.WhenAny(agreed, _stopRequested.Task) == agreed)
+            {
+                return true;
+            }
+            using var grace = new CancellationTokenSource();
+            var first = await Task.WhenAny(agreed, Task.Delay(StopAgreementReleaseGrace, grace.Token));
+            grace.Cancel();
+            return first == agreed;
+        }
+
         private async Task DoCompaction()
         {
             Debug.Assert(_context != null);
@@ -325,6 +358,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // queued compaction is about to write. This method releases the count.
             try
             {
+                // A stop skipped the agreement, the version may still be rolled back.
+                if (_agreementSkippedForStop) return;
+
                 // Every connected stream is durable at it, the agreement was a dependency of the
                 // cycle. Committed here so it lands before the next checkpoint prepares.
                 await _context.CommitVersionOnEgresses(_context._stateManager.LastCompletedCheckpointVersion, this);
@@ -863,6 +899,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     _context._logger.LogDebug("Stop requested while a checkpoint is in progress, the stop runs when the checkpoint completes");
                     ArmDeferredWishWatchdog(_context, this, ObservedTask(_context, forDelete: false), forDelete: false);
+                    // Lets the agreement wait start its grace, a peer that stopped first may never relay it.
+                    _stopRequested.TrySetResult();
                     return Task.CompletedTask;
                 }
             }
