@@ -167,6 +167,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     {
                         _context._waitingForVersionAgreementAtStart = false;
                     }
+                    StreamContext.GroupVersionReadHookForTests?.Invoke(_context.streamName, groupVersion);
                     if (StartAborted() || RollbackPending())
                     {
                         return;
@@ -181,10 +182,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         return;
                     }
                     // The streams above the group's version come down first, nobody runs before the group is at one version.
+                    long? loweredTo;
                     _context._waitingForVersionAgreementAtStart = true;
                     try
                     {
-                        await _context.WaitForGroupSettled(_startAbort.Token);
+                        loweredTo = await _context.WaitForGroupSettled(_startAbort.Token);
                     }
                     finally
                     {
@@ -194,6 +196,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     {
                         return;
                     }
+                    if (loweredTo.HasValue && loweredTo.Value < _restoreVersion)
+                    {
+                        // A connected stream came back below the version read, the group starts at the lower one.
+                        _context._logger.LogInformation("Stream {stream} read the group's version {version} but a connected stream came back below it, restarting at {groupVersion}.", _context.streamName, _restoreVersion, loweredTo.Value);
+                        comeDownTo = loweredTo.Value;
+                        return;
+                    }
+                    // The claims report a drop only below this start's own version.
+                    Debug.Assert(!loweredTo.HasValue, "A lowered group version at or above the restore version.");
                     await _context.CommitVersionOnEgresses(_restoreVersion, this);
                     committed = true;
                 }

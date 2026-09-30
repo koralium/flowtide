@@ -421,6 +421,64 @@ namespace FlowtideDotNet.Core.Tests.Exchange
         }
 
         [Fact]
+        public void APeerRejoiningBelowTheOwnStartEndsTheSettledWait()
+        {
+            var claims = WaitingForAPeerAbove(out var settled);
+
+            claims.ResetPeer("peer");
+            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 0, 0));
+
+            Assert.True(settled.IsCompletedSuccessfully);
+            Assert.Equal(0, claims.Agreed);
+            Assert.False(claims.IsSettled);
+        }
+
+        [Fact]
+        public void APeerRejoiningAtItsOldStartKeepsTheSettledWait()
+        {
+            var claims = WaitingForAPeerAbove(out var settled);
+
+            claims.ResetPeer("peer");
+            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 7, 7));
+
+            Assert.False(settled.IsCompleted);
+        }
+
+        [Fact]
+        public void AResetPeerAloneKeepsTheSettledWait()
+        {
+            var claims = WaitingForAPeerAbove(out var settled);
+
+            claims.ResetPeer("peer");
+
+            Assert.False(settled.IsCompleted);
+        }
+
+        [Fact]
+        public void ASettledWaitStartedAfterThePeerRejoinedBelowEndsAtOnce()
+        {
+            var claims = WaitingForAPeerAbove(out _);
+            claims.ResetPeer("peer");
+            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 0, 0));
+
+            Assert.True(claims.WhenSettled().IsCompletedSuccessfully);
+            // A version threshold is not met by the drop.
+            Assert.False(claims.WhenAgreed(5).IsCompleted);
+        }
+
+        // Started at 5, the peer started at 7 and still has to come down.
+        private static SubstreamDurabilityClaims WaitingForAPeerAbove(out Task settled)
+        {
+            var claims = new SubstreamDurabilityClaims(new[] { "peer" }, 1);
+            claims.SetLocalInit(5);
+            claims.ApplyPeerClaim("peer", new SubstreamDurabilityClaim(0, 7, 7));
+            Assert.Equal(5, claims.Agreed);
+            settled = claims.WhenSettled();
+            Assert.False(settled.IsCompleted);
+            return claims;
+        }
+
+        [Fact]
         public void AClaimFromSomeoneWhoIsNotAPeerIsRejected()
         {
             var claims = new SubstreamDurabilityClaims(new[] { "peer" }, 1);

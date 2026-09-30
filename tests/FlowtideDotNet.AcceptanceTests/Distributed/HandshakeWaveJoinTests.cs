@@ -21,11 +21,14 @@ using FlowtideDotNet.Core.Operators.Exchange;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests.Distributed
@@ -298,6 +301,107 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 DumpLogBuffers(testName, Outcome());
                 throw;
             }
+        }
+
+        /// <summary>
+        /// The peer read the group's version, the dying substream dies before its come-down and returns without its storage: the group starts over.
+        /// </summary>
+        [Fact]
+        public async Task APeerReturningWithoutItsStorageAfterTheAgreementReadStartsTheGroupOver()
+        {
+            const string testName = "storage_lost_rejoin";
+            // sub1 does not read from sub2, nothing else notices the rejoin.
+            const string dying = "sub2";
+            _generator.Generate(100);
+            var names = new[] { "sub1", "sub2" };
+            var hub = new LocalSubstreamCommunicationHub();
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<string>();
+            var commits = new ConcurrentQueue<(string Substream, long Version)>();
+            var factories = names.ToDictionary(n => n, n => new ScriptedFactory(hub.CreateFactory(n)));
+            // The dying substream restores above its peer and has to come down.
+            var seeded = names.ToDictionary(n => n, n => n == dying ? 2 : 1);
+            var streams = new Dictionary<string, Base.Engine.DataflowStream>();
+            foreach (var name in names)
+            {
+                streams[name] = BuildSubstream(testName, TwoSubstreamSql, name, factories[name], latestData, failures, commits, fileProvider: await Seeded($"{testName.Length}_{testName}_{name}", seeded[name]));
+            }
+            string Outcome() =>
+                $"states {string.Join(" ", streams.Select(s => $"{s.Key}={s.Value.State}"))}; rows {string.Join(" ", names.Select(n => $"{n}={RowCount(latestData, n)}"))}; " +
+                string.Join("; ", factories.Select(f => $"{f.Key} handshakes={string.Join(",", f.Value.Requests.Select(Describe))} claims={string.Join(",", f.Value.Claims.Keys)}")) +
+                $"; commits={string.Join(",", commits.Select(c => $"{c.Substream}:{c.Version}"))}; failures={string.Join(" | ", failures)}";
+            var comingDown = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var peer = names.Single(n => n != dying);
+            var peerRead = new TaskCompletionSource<long?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            StreamContext.GroupVersionReadHookForTests = (streamName, version) =>
+            {
+                if (streamName == $"{testName.Length}_{testName}_{peer}") peerRead.TrySetResult(version);
+            };
+            using var dead = new ManualResetEventSlim();
+            StreamContext.BeforeFailureDisposeForTests = streamName =>
+            {
+                // Its come-down teardown, before its operators tell the peer: the process dies here.
+                if (streamName == $"{testName.Length}_{testName}_{dying}" && comingDown.TrySetResult())
+                {
+                    factories[dying].Dead = true;
+                    dead.Wait(TimeSpan.FromMinutes(5));
+                }
+            };
+            try
+            {
+                foreach (var stream in streams.Values)
+                {
+                    await stream.StartAsync();
+                }
+                await comingDown.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                // The peer read the group's version before the rejoin and parks in its settle wait.
+                Assert.Equal(1, await peerRead.Task.WaitAsync(TimeSpan.FromSeconds(30)));
+                await WaitUntil(() => streams[peer].IsWaitingForConnectedStreams, "the peer's settle wait", TimeSpan.FromSeconds(30), Outcome);
+                Assert.Empty(_logBuffers[peer].LinesContaining("restarting at that one"));
+                Assert.Equal(StreamStateValue.Starting, streams[peer].State);
+
+                // A fresh object without its storage, under its own temp directory beside the dead one; both outputs come from the new run.
+                latestData.Clear();
+                factories[dying] = new ScriptedFactory(hub.CreateFactory(dying));
+                streams[dying] = BuildSubstream(testName + "_fresh", TwoSubstreamSql, dying, factories[dying], latestData, failures, commits);
+                await streams[dying].StartAsync();
+
+                await WaitUntil(() => streams.Values.All(s => s.State == StreamStateValue.Running) && names.All(n => RowCount(latestData, n) == _generator.Users.Count),
+                    "the group to start over", TimeSpan.FromSeconds(60), Outcome);
+                await WaitUntil(() => names.All(n => commits.Any(c => c.Substream == n && c.Version == 1)), "the first checkpoint", TimeSpan.FromSeconds(60), Outcome);
+                _output.WriteLine(Outcome());
+
+                // sub1 came down from its settled wait, not through a failure, and nobody committed above the group.
+                Assert.Single(_logBuffers[peer].LinesContaining("came back below it, restarting at 0"));
+                Assert.All(failures.Where(f => f.StartsWith($"{peer}:")), f => Assert.Equal($"{peer}: ", f));
+                Assert.All(names, n => Assert.Equal(new long[] { 0, 1 }, commits.Where(c => c.Substream == n).Select(c => c.Version).Take(2)));
+            }
+            catch
+            {
+                DumpLogBuffers(testName, Outcome());
+                throw;
+            }
+            finally
+            {
+                StreamContext.BeforeFailureDisposeForTests = null;
+                StreamContext.GroupVersionReadHookForTests = null;
+                dead.Set();
+            }
+        }
+
+        private static async Task<MemoryFileProvider> Seeded(string streamName, int checkpoints)
+        {
+            var provider = new MemoryFileProvider();
+            // Not disposed, that would clear the provider.
+            var storage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions { FileProvider = provider });
+            var manager = new StateManagerSync<StreamState>(new StateManagerOptions { PersistentStorage = storage },
+                NullLoggerFactory.Instance, new Meter(streamName), streamName, GlobalMemoryManager.Instance);
+            await manager.InitializeAsync();
+            for (int i = 0; i < checkpoints; i++)
+            {
+                await manager.CheckpointAsync();
+            }
+            return provider;
         }
 
         /// <summary>
@@ -623,7 +727,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             ConcurrentDictionary<string, EventBatchData> latestData,
             ConcurrentBag<string> failures,
             ConcurrentQueue<(string Substream, long Version)> commits,
-            LogLevel minimumLevel = LogLevel.Debug)
+            LogLevel minimumLevel = LogLevel.Debug,
+            MemoryFileProvider? fileProvider = null)
         {
             var connectorManager = new ConnectorManager();
             connectorManager.AddSource(new MockSourceFactory("*", _db, false));
@@ -637,7 +742,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     CachePageCount = 100_000,
                     PersistentStorage = new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
                     {
-                        FileProvider = new MemoryFileProvider()
+                        FileProvider = fileProvider ?? new MemoryFileProvider()
                     }),
                     DefaultBPlusTreePageSize = 1024,
                     DefaultBPlusTreePageSizeBytes = 32 * 1024,
@@ -740,8 +845,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             public volatile string? HeldTarget;
 
+            // The process is gone: nothing it sends or fetches reaches the peers.
+            public volatile bool Dead;
+
             // Target and wave of every durability claim sent.
             public ConcurrentDictionary<string, byte> ClaimWaves { get; } = new ConcurrentDictionary<string, byte>();
+
+            // Every distinct durability claim sent.
+            public ConcurrentDictionary<string, byte> Claims { get; } = new ConcurrentDictionary<string, byte>();
 
             // Applied once, to the next handshake answer from a started peer.
             public Func<SubstreamInitializeResponse, Task<SubstreamInitializeResponse>>? OnNextResponse;
@@ -786,7 +897,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             public void OnStreamFailure()
             {
                 _factory.StreamFailures.Enqueue(_target);
-                _inner.OnStreamFailure();
+                if (!_factory.Dead) _inner.OnStreamFailure();
             }
 
             public void Initialize(
@@ -804,16 +915,19 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
             {
+                if (_factory.Dead) return Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>());
                 return _inner.FetchData(targetIds, numberOfEvents, cancellationToken);
             }
 
             public Task SendFailAndRecover(RecoveryWave wave)
             {
+                if (_factory.Dead) return Task.CompletedTask;
                 return _inner.SendFailAndRecover(wave);
             }
 
             public async Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
             {
+                if (_factory.Dead) throw new OperationCanceledException("the process is gone");
                 if (_factory.ShouldThrow())
                 {
                     _factory.Requests.Enqueue(new HandshakeRecord(_target, wave, checkpointEpoch, null));
@@ -836,6 +950,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
             {
+                if (_factory.Dead) return Task.CompletedTask;
                 return _inner.SendCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
             }
 
@@ -846,7 +961,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
             {
+                if (_factory.Dead) return Task.CompletedTask;
                 _factory.ClaimWaves.TryAdd($"{_target}@{wave}", 0);
+                _factory.Claims.TryAdd($"{_target}@{wave} r{radius} v{version} init {initVersion}", 0);
                 return _inner.SendDurabilityClaim(version, radius, initVersion, wave, senderCheckpointEpoch, targetCheckpointEpoch, requestReply, cancellationToken);
             }
         }

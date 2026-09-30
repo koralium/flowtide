@@ -292,11 +292,23 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// Completes once <see cref="IsSettled"/>, cancelled by a reset.
+        /// Completes once <see cref="IsSettled"/> or the group's version fell below this substream's start, cancelled by a reset.
         /// </summary>
         public Task WhenSettled(CancellationToken cancellationToken = default)
         {
             return WhenAgreedAtLeast(Settled, cancellationToken);
+        }
+
+        /// <summary>
+        /// True once settled or lowered, with the group's version if it fell below this substream's start.
+        /// </summary>
+        public bool TryGetSettleOutcome(out long? loweredTo)
+        {
+            lock (_lock)
+            {
+                loweredTo = LoweredBelowInit_NoLock();
+                return loweredTo.HasValue || IsSettled_NoLock();
+            }
         }
 
         // A waiter version that stands for the settled condition rather than a threshold.
@@ -307,7 +319,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             TaskCompletionSource waiter;
             lock (_lock)
             {
-                if (version == Settled ? IsSettled_NoLock() : _mine[_mine.Length - 1] >= version)
+                if (version == Settled ? IsSettled_NoLock() || LoweredBelowInit_NoLock().HasValue : _mine[_mine.Length - 1] >= version)
                 {
                     return Task.CompletedTask;
                 }
@@ -348,7 +360,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _mine[k + 1] = candidate;
             }
             var agreed = _mine[_mine.Length - 1];
-            var settled = IsSettled_NoLock();
+            var settled = IsSettled_NoLock() || LoweredBelowInit_NoLock().HasValue;
             for (int i = _waiters.Count - 1; i >= 0; i--)
             {
                 if (_waiters[i].Version == Settled ? settled : _waiters[i].Version <= agreed)
@@ -376,6 +388,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
             }
             return true;
+        }
+
+        private long? LoweredBelowInit_NoLock()
+        {
+            // A peer's new run came back below this start, which then has to come down and never settles.
+            var agreed = _mine[_mine.Length - 1];
+            return agreed != Unknown && _mineInit != Unknown && agreed < _mineInit ? agreed : null;
         }
 
         private static long[] NewRow(int distance)

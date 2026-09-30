@@ -158,6 +158,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal static Func<string, Task>? DeleteGaveUpHookForTests;
         // Test hook: blocks a fired schedule timer before it triggers.
         internal static Action<string>? ScheduledCheckpointFiredHookForTests;
+        // Test hook: the start read the group's version.
+        internal static Action<string, long?>? GroupVersionReadHookForTests;
 
         private StreamStatus _streamStatus;
 
@@ -650,24 +652,33 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         }
 
         /// <summary>
-        /// Completes once every directly connected stream started its run at the group's version.
+        /// Null once every directly connected stream started its run at the group's version, else the lowest version that fell below this start.
         /// </summary>
-        internal async Task WaitForGroupSettled(CancellationToken cancellationToken)
+        internal async Task<long?> WaitForGroupSettled(CancellationToken cancellationToken)
         {
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCancellation.Token);
-            List<Task>? waits = null;
+            List<Task<long?>>? waits = null;
             foreach (var block in _blockLookup)
             {
                 if (block.Value is IStreamVersionAgreement agreement)
                 {
-                    waits ??= new List<Task>();
+                    waits ??= new List<Task<long?>>();
                     waits.Add(agreement.WhenGroupSettled(linked.Token));
                 }
             }
-            if (waits != null)
+            if (waits == null)
             {
-                await Task.WhenAll(waits);
+                return null;
             }
+            long? lowest = null;
+            foreach (var lowered in await Task.WhenAll(waits))
+            {
+                if (lowered.HasValue && (!lowest.HasValue || lowered.Value < lowest.Value))
+                {
+                    lowest = lowered;
+                }
+            }
+            return lowest;
         }
 
         internal async Task CommitVersionOnEgresses(long version, StreamStateMachineState run)

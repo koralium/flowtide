@@ -48,9 +48,9 @@ namespace FlowtideDotNet.Base.Vertices
         Task<long?> WhenGroupVersionKnown(CancellationToken cancellationToken);
 
         /// <summary>
-        /// Completes once every directly connected stream started its run at the group's version, nobody next to this stream still comes down.
+        /// Null once every directly connected stream started its run at the group's version, else the version that fell below this stream's start.
         /// </summary>
-        Task WhenGroupSettled(CancellationToken cancellationToken);
+        Task<long?> WhenGroupSettled(CancellationToken cancellationToken);
 
         /// <summary>
         /// This stream restarts at the group's version, which is below its own: the group re-initializes with it.

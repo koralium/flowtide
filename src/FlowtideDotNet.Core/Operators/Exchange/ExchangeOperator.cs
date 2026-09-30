@@ -336,7 +336,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return SubstreamReadOperator.WhenGroupVersionKnown(_communicationPointFactory.Durability, cancellationToken);
         }
 
-        Task IStreamVersionAgreement.WhenGroupSettled(CancellationToken cancellationToken)
+        Task<long?> IStreamVersionAgreement.WhenGroupSettled(CancellationToken cancellationToken)
         {
             return SubstreamReadOperator.WhenGroupSettled(_communicationPointFactory.Durability, cancellationToken);
         }

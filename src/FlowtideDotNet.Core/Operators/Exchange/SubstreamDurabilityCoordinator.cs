@@ -244,11 +244,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
-        /// Completes once every direct peer started its run at the group's version, see <see cref="SubstreamDurabilityClaims.IsSettled"/>.
+        /// Null once settled, see <see cref="SubstreamDurabilityClaims.IsSettled"/>, else the group's version that fell below this start.
         /// </summary>
-        public Task WhenSettled(CancellationToken cancellationToken)
+        public async Task<long?> WhenSettled(CancellationToken cancellationToken)
         {
-            return WithResends(_claims.WhenSettled(cancellationToken));
+            while (true)
+            {
+                await WithResends(_claims.WhenSettled(cancellationToken));
+                // A peer reset after the wake withdrew it, wait for the new outcome.
+                if (_claims.TryGetSettleOutcome(out var lowered)) return lowered;
+            }
         }
 
         // A wait on the table keeps the claims going out until it ends, a lost one is sent again.

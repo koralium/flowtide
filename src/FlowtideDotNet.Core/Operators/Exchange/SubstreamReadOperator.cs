@@ -631,7 +631,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return WhenGroupVersionKnown(_communicationPoint.Durability, cancellationToken);
         }
 
-        Task IStreamVersionAgreement.WhenGroupSettled(CancellationToken cancellationToken)
+        Task<long?> IStreamVersionAgreement.WhenGroupSettled(CancellationToken cancellationToken)
         {
             return WhenGroupSettled(_communicationPoint.Durability, cancellationToken);
         }
@@ -656,9 +656,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return durability == null ? null : await durability.WhenAgreedKnown(cancellationToken);
         }
 
-        internal static Task WhenGroupSettled(SubstreamDurabilityCoordinator? durability, CancellationToken cancellationToken)
+        internal static async Task<long?> WhenGroupSettled(SubstreamDurabilityCoordinator? durability, CancellationToken cancellationToken)
         {
-            return durability?.WhenSettled(cancellationToken) ?? Task.CompletedTask;
+            return durability == null ? null : await durability.WhenSettled(cancellationToken);
         }
 
         /// <summary>
