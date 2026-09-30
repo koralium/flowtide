@@ -414,7 +414,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _substreamCommunication.OnStreamFailure();
             // Best effort notification that must not delay the failure handling here, see
             // NotifyFailAndRecover.
-            _substreamCommunication.NotifyFailAndRecover(recoveryPoint);
+            _substreamCommunication.NotifyFailAndRecover();
         }
 
         /// <summary>

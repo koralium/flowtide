@@ -584,7 +584,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             // Best effort, the other substream may be unreachable and waiting for its response
             // timeout would stall the recovery. The initialize handshake at restart reconciles
             // the versions when it is reachable again.
-            _communicationPoint.NotifyFailAndRecover(rollbackVersion);
+            _communicationPoint.NotifyFailAndRecover();
             return Task.CompletedTask;
         }
 

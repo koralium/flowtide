@@ -742,7 +742,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// result: it may be unreachable and waiting out its response timeout would stall the recovery here. The version
         /// is not sent, the versions are compared when the group starts. Concurrent notifications of one wave are one.
         /// </summary>
-        public void NotifyFailAndRecover(long recoveryPoint)
+        public void NotifyFailAndRecover()
         {
             var wave = _waves.ForFailure();
             lock (_notifyFailLock)

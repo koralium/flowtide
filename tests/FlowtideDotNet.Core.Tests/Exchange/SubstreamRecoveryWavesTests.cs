@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             var wavesB = new SubstreamRecoveryWaves();
             var durabilityB = new SubstreamDurabilityCoordinator(NullLogger.Instance, "subB", new[] { "subA" }, 1);
             var pointA = new SubstreamCommunicationPoint(NullLogger.Instance, "subA", "subB", handlerA, waves: wavesA);
-            var pointB = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB, false, durabilityB, wavesB);
+            _ = new SubstreamCommunicationPoint(NullLogger.Instance, "subB", "subA", handlerB, false, durabilityB, wavesB);
 
             // B's start reset its table in wave None, its operators are not initialized yet.
             durabilityB.EnterWave(wavesB.ForStart());

@@ -593,28 +593,32 @@ namespace FlowtideDotNet.Storage.StateManager
                 // The file cache keeps no pages across a restore, it starts from empty instead of failing.
                 var startsEmptyWithoutMetadata = m_persistentStorage is FileCachePersistentStorage;
                 long restoreVersion = checkpointVersion ?? 0;
+                bool restore = restoreVersion > 0;
                 if (!checkpointVersion.HasValue)
                 {
                     if (m_persistentStorage.TryGetValue(1, out var latestBytes))
                     {
                         var latest = latestBytes ?? throw new InvalidOperationException("Metadata page was found but empty.");
                         restoreVersion = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(latest), latest.Length).CheckpointVersion;
-                        if (restoreVersion <= 0)
+                        if (restoreVersion < 0)
                         {
                             throw new InvalidOperationException("Persisted metadata must identify a completed checkpoint.");
                         }
+                        // A persisted page restores even at 0, SQL Server numbers its first checkpoint 0.
+                        restore = true;
                     }
                     else if (m_persistentStorage.CurrentVersion > 1 && !startsEmptyWithoutMetadata)
                     {
                         throw new InvalidOperationException("Completed checkpoint is missing its state manager metadata.");
                     }
                 }
-                if (restoreVersion > 0 && startsEmptyWithoutMetadata && !m_persistentStorage.TryGetValue(1, out _))
+                if (restore && startsEmptyWithoutMetadata && !m_persistentStorage.TryGetValue(1, out _))
                 {
                     restoreVersion = 0;
+                    restore = false;
                 }
 
-                if (restoreVersion > 0)
+                if (restore)
                 {
                     await m_persistentStorage.RecoverAsync(restoreVersion).ConfigureAwait(false);
                     // Recover can select an older timeline. Only its metadata may describe the

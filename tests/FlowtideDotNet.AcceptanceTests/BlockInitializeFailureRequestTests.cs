@@ -139,7 +139,7 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.True(failedRun.IndexOf(claims[0]) < failedRun.IndexOf(onFailures[0]), $"OnFailure ran before the teardown claimed the blocks, events: {described}");
 
             // The restarted run neither fails nor sees a late OnFailure of the failed run.
-            Assert.True(!sequence.Skip(restartIndex).Any(e => e.StartsWith("onfailure") || e == "teardown"), $"OnFailure or a teardown ran after the restart, events: {described}");
+            Assert.False(sequence.Skip(restartIndex).Any(e => e.StartsWith("onfailure") || e == "teardown"), $"OnFailure or a teardown ran after the restart, events: {described}");
         }
     }
 }

@@ -183,6 +183,41 @@ public class StateManagerRestoreTests
         Assert.Contains("missing its state manager metadata", e.Message);
     }
 
+    [Fact]
+    public async Task ColdRestartRestoresFirstCheckpointStampedZero()
+    {
+        using var storage = new ZeroBasedStorage(new ReservoirPersistentStorage(new ReservoirStorageOptions { FileProvider = new MemoryFileProvider() }));
+        var manager = CreateManager(storage);
+        await manager.InitializeAsync();
+        var state = await manager.GetOrCreateClient("node").GetOrCreateObjectStateAsync<string>("state");
+        state.Value = "kept";
+        await state.Commit();
+        await manager.CheckpointAsync();
+        Assert.Equal(0, manager.LastCompletedCheckpointVersion);
+        manager.Dispose();
+
+        using var reconstructed = CreateManager(storage);
+        await reconstructed.InitializeAsync();
+        Assert.Equal(0, reconstructed.LastCompletedCheckpointVersion);
+        Assert.Equal("kept", (await reconstructed.GetOrCreateClient("node").GetOrCreateObjectStateAsync<string>("state")).Value);
+    }
+
+    // Numbers the first checkpoint after a reset 0, like the SQL Server storage.
+    private sealed class ZeroBasedStorage(IPersistentStorage inner) : IPersistentStorage
+    {
+        public long CurrentVersion => inner.CurrentVersion - 1;
+        public Task InitializeAsync(StorageInitializationMetadata metadata) => inner.InitializeAsync(metadata);
+        public IPersistentStorageSession CreateSession() => inner.CreateSession();
+        public ValueTask CheckpointAsync(byte[] metadata, bool includeIndex) => inner.CheckpointAsync(metadata, includeIndex);
+        public ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount) => inner.CompactAsync(changesSinceLastCompact, pageCount);
+        public ValueTask ResetAsync() => inner.ResetAsync();
+        public ValueTask RecoverAsync(long checkpointVersion) => inner.RecoverAsync(checkpointVersion + 1);
+        public bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value) => inner.TryGetValue(key, out value);
+        public ValueTask Write(long key, byte[] value) => inner.Write(key, value);
+        public void ClearForRestore() => inner.ClearForRestore();
+        public void Dispose() => inner.Dispose();
+    }
+
     private sealed class MetadataHidingStorage(IPersistentStorage inner) : IPersistentStorage
     {
         public bool HideMetadata { get; set; }

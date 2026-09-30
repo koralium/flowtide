@@ -118,7 +118,7 @@ namespace FlowtideDotNet.Core.Tests
 
             for (int i = 0; i < 10; i++)
             {
-                communicationPoint.NotifyFailAndRecover(7);
+                communicationPoint.NotifyFailAndRecover();
             }
 
             // The notifications run fire-and-forget on the thread pool. Wait until the send
