@@ -47,6 +47,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private Base.Engine.DataflowStream? _stream;
         private readonly object _lock = new object();
         private readonly string testName;
+        private readonly List<ILoggerProvider> _addedLoggerProviders = new List<ILoggerProvider>();
         private EventBatchData? _actualData;
         int updateCounter = 0;
         int waitCounter = 0;
@@ -127,7 +128,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// </summary>
         public void AddLoggerProvider(ILoggerProvider provider)
         {
-            flowtideBuilder.WithLoggerFactory(new LoggerFactory(new List<ILoggerProvider>() { new DebugLoggerProvider(), provider }));
+            _addedLoggerProviders.Add(provider);
+            flowtideBuilder.WithLoggerFactory(new LoggerFactory(_addedLoggerProviders.Prepend(new DebugLoggerProvider())));
         }
 
         /// <summary>
@@ -367,6 +369,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     .CreateLogger();
                 b.AddSerilog(logger);
                 b.AddDebug();
+                // This factory replaces the one AddLoggerProvider set, keep its providers at every level.
+                foreach (var provider in _addedLoggerProviders)
+                {
+                    b.AddProvider(provider);
+                }
+                b.SetMinimumLevel(LogLevel.Trace);
             });
 #endif
 
