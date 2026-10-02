@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -294,6 +294,78 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await WaitUntil(() => factories["sub3"].Requests.Any(r => r.Wave >= minted && r.Response?.Success == true), $"sub3 to handshake in wave {minted}", TimeSpan.FromSeconds(30), Outcome);
                 await WaitUntil(Running, "the group to run again", TimeSpan.FromSeconds(30), Outcome);
                 await WaitUntil(() => CommonCommittedVersion(commits, names, commitsAtEvent).HasValue, "one CommitVersion on every sink after the event", TimeSpan.FromSeconds(60), Outcome);
+                _output.WriteLine(Outcome());
+            }
+            catch
+            {
+                DumpLogBuffers(testName, Outcome());
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// The middle substream moves cleanly while its other peer restarts, the group runs again.
+        /// </summary>
+        [Fact]
+        public async Task CleanHandoffWhileTheOtherPeerRestartsRunsAgain()
+        {
+            const string testName = "handoff_beside_restart";
+            _generator.Generate(100);
+            var names = new[] { "sub1", "sub2", "sub3" };
+            var hub = new LocalSubstreamCommunicationHub();
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<string>();
+            var commits = new ConcurrentQueue<(string Substream, long Version)>();
+            var factories = names.ToDictionary(n => n, n => new ScriptedFactory(hub.CreateFactory(n)));
+            // sub2's storage survives its move.
+            var movedStorage = new KeepAliveMemoryFileProvider();
+            var streams = names.ToDictionary(n => n, n => BuildSubstream(testName, ChainSql, n, factories[n], latestData, failures, commits, fileProvider: n == "sub2" ? movedStorage : null));
+            int commitsAtEvent = 0;
+            string Outcome() =>
+                $"states {string.Join(" ", streams.Select(s => $"{s.Key}={s.Value.State}"))}; " +
+                string.Join("; ", factories.Select(f => $"{f.Key} handshakes={string.Join(",", f.Value.Requests.Select(Describe))} claims sent={string.Join(",", f.Value.ClaimWaves.Keys)} fail-and-recover received=[{string.Join(",", f.Value.ReceivedFailAndRecover)}]")) +
+                $"; commits after the event={string.Join(",", commits.Skip(commitsAtEvent).Select(c => $"{c.Substream}:{c.Version}"))}; failures={string.Join(" | ", failures)}";
+            bool Running() => streams.Values.All(s => s.State == StreamStateValue.Running) && RowCount(latestData, "sub2") + RowCount(latestData, "sub3") == 2 * _generator.Users.Count;
+            try
+            {
+                foreach (var stream in streams.Values)
+                {
+                    await stream.StartAsync();
+                }
+                await WaitUntil(Running, "the group's first run", TimeSpan.FromSeconds(30), Outcome);
+
+                // The move: sub2 stops at a peer-acked checkpoint, its new activation is built but not started.
+                // Idle sub1 sends sub2 no barrier on its own, its checkpoints let the stop drain.
+                var stop = streams["sub2"].StopAsync();
+                while (!stop.IsCompleted)
+                {
+                    _ = streams["sub1"].TriggerCheckpoint();
+                    await Task.WhenAny(stop, Task.Delay(100));
+                }
+                await stop;
+                Assert.True(failures.IsEmpty, $"The move did not stop cleanly. {Outcome()}");
+                await streams["sub2"].DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(streams["sub2"]);
+                }
+                factories["sub2"] = new ScriptedFactory(hub.CreateFactory("sub2"));
+                streams["sub2"] = BuildSubstream(testName, ChainSql, "sub2", factories["sub2"], latestData, failures, commits, fileProvider: movedStorage, announceCleanHandoff: true);
+                // The stop's own commits must not count as the group agreeing again.
+                long committedBeforeEvent = commits.Max(c => c.Version);
+                commitsAtEvent = commits.Count;
+
+                // sub3 fails meanwhile, its wave reaches the new activation before anything is wired.
+                await streams["sub3"].InjectFailureForTests(new InvalidOperationException("sub3 fails during the move"));
+                await WaitUntil(() => factories["sub2"].ReceivedFailAndRecover.Any(r => r.StartsWith("sub3:", StringComparison.Ordinal)), "sub3's wave to reach the new sub2", TimeSpan.FromSeconds(30), Outcome);
+                await streams["sub2"].StartAsync();
+
+                // The precondition: sub2 announced its handoff to sub1 in sub3's wave.
+                await WaitUntil(() => factories["sub2"].Requests.Any(r => r.Target == "sub1" && r.Wave > RecoveryWave.None && r.Response != null),
+                    "sub2 to announce its handoff to sub1 in sub3's wave", TimeSpan.FromSeconds(30), Outcome);
+                _generator.Generate(20);
+                await WaitUntil(Running, "the group to run again", TimeSpan.FromSeconds(60), Outcome);
+                await WaitUntil(() => CommonCommittedVersion(commits, names, commitsAtEvent) > committedBeforeEvent, "a CommitVersion above the move on every sink", TimeSpan.FromSeconds(60), Outcome);
                 _output.WriteLine(Outcome());
             }
             catch
@@ -728,7 +800,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             ConcurrentBag<string> failures,
             ConcurrentQueue<(string Substream, long Version)> commits,
             LogLevel minimumLevel = LogLevel.Debug,
-            MemoryFileProvider? fileProvider = null)
+            MemoryFileProvider? fileProvider = null,
+            bool announceCleanHandoff = false)
         {
             var connectorManager = new ConnectorManager();
             connectorManager.AddSource(new MockSourceFactory("*", _db, false));
@@ -757,7 +830,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 b.SetMinimumLevel(minimumLevel);
                 b.AddProvider(logProvider);
             }));
-            builder.SetDistributedOptions(new DistributedOptions(substreamName, default, communicationFactory));
+            builder.SetDistributedOptions(new DistributedOptions(substreamName, default, communicationFactory) { AnnounceCleanHandoff = announceCleanHandoff });
             builder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
             builder.WithFailureListener(e => failures.Add($"{substreamName}: {e?.Message}"));
 
@@ -828,6 +901,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         private sealed record HandshakeRecord(string Target, RecoveryWave Wave, long Epoch, SubstreamInitializeResponse? Response);
+
+        // Contents survive the owning storage being disposed, like durable storage across a move.
+        private sealed class KeepAliveMemoryFileProvider : MemoryFileProvider, Storage.Persistence.Reservoir.IReservoirStorageProvider
+        {
+            public new void Dispose()
+            {
+            }
+        }
 
         private sealed class ScriptedFactory : ISubstreamCommunicationHandlerFactory
         {

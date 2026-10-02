@@ -454,7 +454,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             // Sent on every request, the requester re-sends its own once the response arrives.
             _durability?.ResendTo(this);
-            if (cleanHandoff)
+            // A mover in a recovery this stream has not joined brings it in, a clean resume would split the waves.
+            if (cleanHandoff && wave <= _waves.Current)
             {
                 var handoffResult = TryAcceptCleanHandoff(restorePoint);
                 if (handoffResult == CleanHandoffResult.Accepted)
