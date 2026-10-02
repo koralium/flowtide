@@ -22,10 +22,10 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         }
 
         [JsonPropertyName("_producer")]
-        public string Producer => "https://github.com/koralium/flowtide";
+        public string Producer => OpenLineageConstants.Producer;
 
         [JsonPropertyName("_schemaURL")]
-        public string SchemaURL => "https://openlineage.io/spec/facets/1-1-1/SchemaDatasetFacet.json";
+        public string SchemaURL => OpenLineageConstants.SchemaDatasetFacetSchemaUrl;
 
         [JsonPropertyName("fields")]
         public IReadOnlyList<LineageSchemaField> Fields { get; }

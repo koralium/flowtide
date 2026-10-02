@@ -15,11 +15,16 @@ builder.Services.AddFlowtideStream("stream")
     .AddStorage(storage =>
     {
         storage.AddTemporaryStorage();
-    });
+    })
+    .AddDbtManifest();
+
+// Test connectors report the excluded namespace "test".
+builder.Services.AddFlowtideDbtManifest(o => o.ExcludedNamespaces.Remove("test"));
 
 var app = builder.Build();
 
 app.MapFlowtideTestInformation();
+app.MapFlowtideDbtManifest();
 
 app.Run();
 

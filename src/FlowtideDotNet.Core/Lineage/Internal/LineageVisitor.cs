@@ -13,19 +13,32 @@
 using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
+using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
     internal class LineageVisitor : RelationVisitor<LineageVisitorResult, LineageVisitorState>
     {
-        private readonly IReadOnlyList<Relation> _relations;
-        private readonly IDictionary<string, LineageInputTable> inputTables;
+        private readonly LineagePlanIndex _index;
+        private readonly IReadOnlyDictionary<string, LineageInputTable> inputTables;
 
-        public LineageVisitor(IReadOnlyList<Relation> relations, IDictionary<string, LineageInputTable> inputTables)
+        // Relations being expanded, a repeat means a cycle.
+        private readonly HashSet<Relation> _expanding = new HashSet<Relation>(ReferenceEqualityComparer.Instance);
+        private readonly Dictionary<ExchangeMemoKey, LineageVisitorResult> _exchangeMemo = new Dictionary<ExchangeMemoKey, LineageVisitorResult>();
+        private int _cycleCuts;
+
+        public LineageVisitor(IReadOnlyList<Relation> relations, IReadOnlyDictionary<string, LineageInputTable> inputTables)
+            : this(new LineagePlanIndex(relations), inputTables)
         {
-            this._relations = relations;
+        }
+
+        public LineageVisitor(LineagePlanIndex index, IReadOnlyDictionary<string, LineageInputTable> inputTables)
+        {
+            this._index = index;
             this.inputTables = inputTables;
         }
+
+        internal LineagePlanIndex PlanIndex => _index;
 
         public ColumnLineage HandleWriteRelation(WriteRelation writeRelation)
         {
@@ -40,7 +53,16 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                         Field = i
                     }
                 }, [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)]));
-                fields.Add(outputFieldName, new ColumnLineageField(result.InputFields));
+
+                if (fields.TryGetValue(outputFieldName, out var existing))
+                {
+                    // Duplicate output name, merge instead of throwing.
+                    fields[outputFieldName] = new ColumnLineageField(LineageMerge.MergeInputFields(existing.InputFields, result.InputFields));
+                }
+                else
+                {
+                    fields.Add(outputFieldName, new ColumnLineageField(result.InputFields));
+                }
             }
 
             var datasetFields = LineageDatasetFieldVisitor.GetDatasetFields(this, writeRelation);
@@ -344,15 +366,25 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
         public override LineageVisitorResult VisitReferenceRelation(ReferenceRelation referenceRelation, LineageVisitorState state)
         {
-            if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
+            if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment &&
+                _index.TryGetRelation(referenceRelation.RelationId, out var rel))
             {
                 var emitIndex = referenceRelation.EmitSet ? referenceRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+                return VisitGuarded(rel, emitIndex, state.Transformations);
+            }
+            return new LineageVisitorResult([]);
+        }
 
-                var rel = _relations[referenceRelation.RelationId];
-                return Visit(rel, new LineageVisitorState(new DirectFieldReference()
-                {
-                    ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
-                }, state.Transformations));
+        public override LineageVisitorResult VisitRootRelation(RootRelation rootRelation, LineageVisitorState state)
+        {
+            return Visit(rootRelation.Input, state);
+        }
+
+        public override LineageVisitorResult VisitSubstreamExchangeReferenceRelation(SubstreamExchangeReferenceRelation substreamExchangeReferenceRelation, LineageVisitorState state)
+        {
+            if (_index.TryResolve(substreamExchangeReferenceRelation, out var exchange))
+            {
+                return VisitExchangeReference(substreamExchangeReferenceRelation, exchange, state);
             }
             return new LineageVisitorResult([]);
         }
@@ -499,6 +531,10 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
         public override LineageVisitorResult VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, LineageVisitorState state)
         {
+            if (_index.TryResolve(pullExchangeReferenceRelation, out var exchange))
+            {
+                return VisitExchangeReference(pullExchangeReferenceRelation, exchange, state);
+            }
             return new LineageVisitorResult([]);
         }
 
@@ -518,6 +554,10 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
         public override LineageVisitorResult VisitStandardOutputExchangeReferenceRelation(StandardOutputExchangeReferenceRelation standardOutputExchangeReferenceRelation, LineageVisitorState state)
         {
+            if (_index.TryResolve(standardOutputExchangeReferenceRelation, out var exchange))
+            {
+                return VisitExchangeReference(standardOutputExchangeReferenceRelation, exchange, state);
+            }
             return new LineageVisitorResult([]);
         }
 
@@ -549,6 +589,90 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 }, state.Transformations));
             }
             return new LineageVisitorResult([]);
+        }
+
+        private LineageVisitorResult VisitExchangeReference(Relation reference, ExchangeRelation exchange, LineageVisitorState state)
+        {
+            if (state.DirectFieldReference.ReferenceSegment is not StructReferenceSegment structReferenceSegment)
+            {
+                return new LineageVisitorResult([]);
+            }
+
+            // Reference emit here, the exchange visit applies its own.
+            var field = reference.EmitSet ? reference.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+            var key = new ExchangeMemoKey(exchange, field, state.Transformations);
+            if (_exchangeMemo.TryGetValue(key, out var cached))
+            {
+                return cached;
+            }
+
+            var cutsBefore = _cycleCuts;
+            var result = VisitGuarded(exchange, field, state.Transformations);
+            // Cycle cut results are partial, never cache them.
+            if (_cycleCuts == cutsBefore)
+            {
+                _exchangeMemo[key] = result;
+            }
+            return result;
+        }
+
+        private LineageVisitorResult VisitGuarded(Relation target, int field, IReadOnlyList<LineageTransformation> transformations)
+        {
+            if (!_expanding.Add(target))
+            {
+                _cycleCuts++;
+                return new LineageVisitorResult([]);
+            }
+            try
+            {
+                return Visit(target, new LineageVisitorState(new DirectFieldReference()
+                {
+                    ReferenceSegment = new StructReferenceSegment() { Field = field }
+                }, transformations));
+            }
+            finally
+            {
+                _expanding.Remove(target);
+            }
+        }
+
+        // Relations hash structurally, so key by reference.
+        private readonly struct ExchangeMemoKey : IEquatable<ExchangeMemoKey>
+        {
+            private readonly Relation _relation;
+            private readonly int _field;
+            private readonly IReadOnlyList<LineageTransformation> _transformations;
+
+            public ExchangeMemoKey(Relation relation, int field, IReadOnlyList<LineageTransformation> transformations)
+            {
+                _relation = relation;
+                _field = field;
+                _transformations = transformations;
+            }
+
+            public bool Equals(ExchangeMemoKey other)
+            {
+                return ReferenceEquals(_relation, other._relation) &&
+                    _field == other._field &&
+                    _transformations.SequenceEqual(other._transformations);
+            }
+
+            public override bool Equals(object? obj)
+            {
+                return obj is ExchangeMemoKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                var code = new HashCode();
+                code.Add(RuntimeHelpers.GetHashCode(_relation));
+                code.Add(_field);
+                foreach (var transformation in _transformations)
+                {
+                    code.Add(transformation);
+                }
+                return code.ToHashCode();
+            }
         }
     }
 }

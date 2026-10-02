@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using FlowtideDotNet.DependencyInjection;
 using Microsoft.AspNetCore.TestHost;
 using FlowtideDotNet.Core;
+using System.Net;
+using System.Text.Json;
 
 namespace FlowtideDotNet.TestFramework.Tests
 {
@@ -107,6 +109,40 @@ namespace FlowtideDotNet.TestFramework.Tests
                 new { val = 4 },
                 new { val = 5 }
             }));
+        }
+
+        [Fact]
+        public async Task DbtManifestServesStreamLineage()
+        {
+            // Own directory, the shared default path stays locked.
+            using var factory = _factory.WithWebHostBuilder(b =>
+            {
+                b.ConfigureTestServices(services =>
+                {
+                    services.AddFlowtideStream("stream")
+                    .AddStorage(storage =>
+                    {
+                        storage.AddTemporaryDevelopmentStorage(o => o.DirectoryPath = $"./data/tempFiles/dbt{Guid.NewGuid():N}");
+                    });
+                });
+            });
+            var client = factory.CreateClient();
+            await _inProcessMonitor.WaitForCheckpoint();
+
+            var response = await client.GetAsync("/dbt/manifest.json");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var manifest = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+            var root = manifest.RootElement;
+            var model = Assert.Single(root.GetProperty("nodes").EnumerateObject(), x => x.Value.GetProperty("alias").GetString() == "output").Value;
+            var source = Assert.Single(root.GetProperty("sources").EnumerateObject(), x => x.Value.GetProperty("identifier").GetString() == "testtable").Value;
+            Assert.Equal("model", model.GetProperty("resource_type").GetString());
+            Assert.Contains($"FROM {source.GetProperty("relation_name").GetString()}", model.GetProperty("compiled_code").GetString());
+            Assert.Contains(source.GetProperty("unique_id").GetString(), model.GetProperty("depends_on").GetProperty("nodes").EnumerateArray().Select(x => x.GetString()));
+
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/dbt/stream/manifest.json")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/dbt/catalog.json")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/dbt/missing/manifest.json")).StatusCode);
+            Assert.Equal(HttpStatusCode.MethodNotAllowed, (await client.PostAsync("/dbt/manifest.json", null)).StatusCode);
         }
     }
 }

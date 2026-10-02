@@ -17,7 +17,9 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Lineage;
+using FlowtideDotNet.Core.Lineage.Dbt;
 using FlowtideDotNet.Core.Lineage.Internal;
+using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
@@ -50,6 +52,7 @@ namespace FlowtideDotNet.Core.Engine
         private bool _isCheckFailureRegistered = false;
         private readonly string _streamName;
         private OpenLineageHttpOptions? _openLineageHttpOptions;
+        private DbtManifestStore? _dbtManifestStore;
         private DistributedOptions? _distributedOptions;
 
         public FlowtideBuilder(string streamName)
@@ -272,6 +275,17 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        /// <summary>
+        /// Registers the stream lineage in a dbt manifest store.
+        /// </summary>
+        /// <param name="store">Store that serves the mock manifest.</param>
+        public FlowtideBuilder WithDbtManifestStore(DbtManifestStore store)
+        {
+            ArgumentNullException.ThrowIfNull(store);
+            _dbtManifestStore = store;
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
@@ -372,9 +386,44 @@ namespace FlowtideDotNet.Core.Engine
                 _taskScheduler,
                 _distributedOptions);
 
-            if (_connectorManager != null && _openLineageHttpOptions != null)
+            StreamLineage? lineage = null;
+            ILogger lineageLogger = NullLogger.Instance;
+            if (_openLineageHttpOptions != null || _dbtManifestStore != null)
             {
-                WithStateChangeListener(OpenLineageHttpReporter.Create(dataflowStreamBuilder.LoggerFactory, _streamName, _plan, _connectorManager, _openLineageHttpOptions));
+                lineageLogger = dataflowStreamBuilder.LoggerFactory?.CreateLogger("FlowtideDotNet.Core.Lineage") ?? NullLogger.Instance;
+                if (_connectorManager == null)
+                {
+                    lineageLogger.LogWarning("Lineage requires a connector manager, lineage is disabled for stream '{StreamName}'.", _streamName);
+                }
+                else
+                {
+                    // A missing Url still fails the build.
+                    if (_openLineageHttpOptions != null)
+                    {
+                        OpenLineageHttpReporter.ValidateOptions(_openLineageHttpOptions);
+                    }
+                    try
+                    {
+                        lineage = StreamLineageExtractor.Extract(new StreamLineageExtractionContext()
+                        {
+                            Plan = _plan,
+                            ConnectorManager = _connectorManager,
+                            BuilderStreamName = _streamName,
+                            SubstreamScope = _distributedOptions?.SubstreamName,
+                            IncludeConnectorSchema = (_openLineageHttpOptions?.IncludeSchema ?? false) || (_dbtManifestStore?.IncludeConnectorSchema ?? false)
+                        });
+                        if (_openLineageHttpOptions != null)
+                        {
+                            WithStateChangeListener(OpenLineageHttpReporter.Create(dataflowStreamBuilder.LoggerFactory, lineage, _openLineageHttpOptions));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Lineage never stops the stream from building.
+                        lineage = null;
+                        lineageLogger.LogError(ex, "Failed to extract lineage for stream '{StreamName}', lineage is disabled for this build.", _streamName);
+                    }
+                }
             }
 
             // Set the notification receiver to the function register to allow check functions get access to it.
@@ -393,7 +442,22 @@ namespace FlowtideDotNet.Core.Engine
 
             visitor.BuildPlan();
 
-            return dataflowStreamBuilder.Build();
+            var stream = dataflowStreamBuilder.Build();
+
+            // Only a successful build replaces the registration.
+            if (lineage != null && _dbtManifestStore != null)
+            {
+                try
+                {
+                    _dbtManifestStore.Register(lineage, LineageStreamNames.GetLogicalStreamName(_streamName, _distributedOptions?.SubstreamName));
+                }
+                catch (Exception ex)
+                {
+                    lineageLogger.LogError(ex, "Failed to register lineage for stream '{StreamName}' in the dbt manifest store.", _streamName);
+                }
+            }
+
+            return stream;
         }
     }
 }
