@@ -376,6 +376,252 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// Two adjacent substreams of a recovered group move cleanly together, the group runs again.
+        /// </summary>
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task TwoAdjacentMoversInARecoveredGroupRunAgain(bool notificationsLost)
+        {
+            var testName = notificationsLost ? "adjacent_movers_lost" : "adjacent_movers";
+            _generator.Generate(100);
+            var names = new[] { "sub1", "sub2", "sub3" };
+            var movers = new[] { "sub2", "sub3" };
+            var hub = new LocalSubstreamCommunicationHub();
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<string>();
+            var commits = new ConcurrentQueue<(string Substream, long Version)>();
+            var factories = names.ToDictionary(n => n, n => new ScriptedFactory(hub.CreateFactory(n)));
+            // The movers' storage survives the move.
+            var storages = movers.ToDictionary(n => n, n => new KeepAliveMemoryFileProvider());
+            var streams = names.ToDictionary(n => n, n => BuildSubstream(testName, ChainSql, n, factories[n], latestData, failures, commits, fileProvider: storages.GetValueOrDefault(n)));
+            int commitsAtEvent = 0;
+            string Outcome() =>
+                $"states {string.Join(" ", streams.Select(s => $"{s.Key}={s.Value.State}"))}; " +
+                string.Join("; ", factories.Select(f => $"{f.Key} handshakes={string.Join(",", f.Value.Requests.Select(Describe))} claims sent={string.Join(",", f.Value.ClaimWaves.Keys)} fail-and-recover received=[{string.Join(",", f.Value.ReceivedFailAndRecover)}]")) +
+                $"; commits after the event={string.Join(",", commits.Skip(commitsAtEvent).Select(c => $"{c.Substream}:{c.Version}"))}; failures={string.Join(" | ", failures)}";
+            bool Running() => streams.Values.All(s => s.State == StreamStateValue.Running) && RowCount(latestData, "sub2") + RowCount(latestData, "sub3") == 2 * _generator.Users.Count;
+            try
+            {
+                foreach (var stream in streams.Values)
+                {
+                    await stream.StartAsync();
+                }
+                await WaitUntil(Running, "the group's first run", TimeSpan.FromSeconds(30), Outcome);
+
+                // One recovery, the group runs in a wave above None.
+                await streams["sub1"].InjectFailureForTests(new InvalidOperationException("an earlier recovery"));
+                await WaitUntil(() => factories["sub2"].Requests.Any(r => r.Wave > RecoveryWave.None && r.Response is { Success: true }), "the group's recovery wave", TimeSpan.FromSeconds(30), Outcome);
+                await WaitUntil(Running, "the group to run after its recovery", TimeSpan.FromSeconds(30), Outcome);
+                var failuresBeforeMove = failures.Count;
+
+                // The move: sub2 and sub3 stop together at a peer-acked checkpoint, idle sub1 checkpoints so the drain completes.
+                var stop = Task.WhenAll(movers.Select(n => streams[n].StopAsync()));
+                while (!stop.IsCompleted)
+                {
+                    _ = streams["sub1"].TriggerCheckpoint();
+                    await Task.WhenAny(stop, Task.Delay(100));
+                }
+                await stop;
+                Assert.True(failures.Count == failuresBeforeMove, $"The move did not stop cleanly. {Outcome()}");
+                foreach (var name in movers)
+                {
+                    await streams[name].DisposeAsync();
+                    lock (_streams)
+                    {
+                        _streams.Remove(streams[name]);
+                    }
+                    factories[name] = new ScriptedFactory(hub.CreateFactory(name));
+                }
+                long committedBeforeEvent = commits.Max(c => c.Version);
+                commitsAtEvent = commits.Count;
+
+                // The new sub2 starts first, sub3 is not up yet and answers as draining.
+                factories["sub2"].HeldTarget = "sub3";
+                factories["sub2"].DropFailAndRecover = notificationsLost;
+                streams["sub2"] = BuildSubstream(testName, ChainSql, "sub2", factories["sub2"], latestData, failures, commits, fileProvider: storages["sub2"], announceCleanHandoff: true);
+                streams["sub3"] = BuildSubstream(testName, ChainSql, "sub3", factories["sub3"], latestData, failures, commits, fileProvider: storages["sub3"], announceCleanHandoff: true);
+                var sub2Start = streams["sub2"].StartAsync();
+                await WaitUntil(() => factories["sub2"].Requests.Any(r => r.Target == "sub3" && r.Response == null), "the new sub2 to wait for sub3", TimeSpan.FromSeconds(30), Outcome);
+
+                // The new sub3 handshakes sub2 while sub2 has not reached sub1 yet, then sub2 continues.
+                var sub3Start = streams["sub3"].StartAsync();
+                await WaitUntil(() => factories["sub3"].Requests.Any(r => r.Target == "sub2" && r.Response is { Success: true }), "the new sub3 to handshake sub2", TimeSpan.FromSeconds(30), Outcome);
+                factories["sub2"].HeldTarget = null;
+                await Task.WhenAll(sub2Start, sub3Start).WaitAsync(TimeSpan.FromSeconds(30));
+
+                _generator.Generate(20);
+                await WaitUntil(Running, "the group to run again", TimeSpan.FromSeconds(60), Outcome);
+                await WaitUntil(() => CommonCommittedVersion(commits, names, commitsAtEvent) > committedBeforeEvent, "a CommitVersion above the move on every sink", TimeSpan.FromSeconds(60), Outcome);
+                _output.WriteLine(Outcome());
+            }
+            catch
+            {
+                DumpLogBuffers(testName, Outcome());
+                throw;
+            }
+            finally
+            {
+                factories["sub2"].HeldTarget = null;
+            }
+        }
+
+        /// <summary>
+        /// Of two adjacent movers, the one reaching the other after it adopted the group's wave joins alone.
+        /// </summary>
+        [Fact]
+        public async Task AdjacentMoverReachingTheOtherAfterItsAdoptJoinsAlone()
+        {
+            const string testName = "adjacent_mover_late";
+            _generator.Generate(100);
+            var names = new[] { "sub1", "sub2", "sub3" };
+            var movers = new[] { "sub2", "sub3" };
+            var hub = new LocalSubstreamCommunicationHub();
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<string>();
+            var commits = new ConcurrentQueue<(string Substream, long Version)>();
+            var factories = names.ToDictionary(n => n, n => new ScriptedFactory(hub.CreateFactory(n)));
+            var storages = movers.ToDictionary(n => n, n => new KeepAliveMemoryFileProvider());
+            var streams = names.ToDictionary(n => n, n => BuildSubstream(testName, ChainSql, n, factories[n], latestData, failures, commits, fileProvider: storages.GetValueOrDefault(n)));
+            int commitsAtEvent = 0;
+            string Outcome() =>
+                $"states {string.Join(" ", streams.Select(s => $"{s.Key}={s.Value.State}"))}; " +
+                string.Join("; ", factories.Select(f => $"{f.Key} handshakes={string.Join(",", f.Value.Requests.Select(Describe))} claims sent={string.Join(",", f.Value.ClaimWaves.Keys)} fail-and-recover received=[{string.Join(",", f.Value.ReceivedFailAndRecover)}]")) +
+                $"; commits after the event={string.Join(",", commits.Skip(commitsAtEvent).Select(c => $"{c.Substream}:{c.Version}"))}; failures={string.Join(" | ", failures)}";
+            bool Running() => streams.Values.All(s => s.State == StreamStateValue.Running) && RowCount(latestData, "sub2") + RowCount(latestData, "sub3") == 2 * _generator.Users.Count;
+            int Sub1Failures() => failures.Count(f => f.StartsWith("sub1:", StringComparison.Ordinal));
+            try
+            {
+                foreach (var stream in streams.Values)
+                {
+                    await stream.StartAsync();
+                }
+                await WaitUntil(Running, "the group's first run", TimeSpan.FromSeconds(30), Outcome);
+
+                // One recovery, the group runs in a wave above None.
+                await streams["sub1"].InjectFailureForTests(new InvalidOperationException("an earlier recovery"));
+                await WaitUntil(() => factories["sub2"].Requests.Any(r => r.Wave > RecoveryWave.None && r.Response is { Success: true }), "the group's recovery wave", TimeSpan.FromSeconds(30), Outcome);
+                await WaitUntil(Running, "the group to run after its recovery", TimeSpan.FromSeconds(30), Outcome);
+                var failuresBeforeMove = failures.Count;
+
+                var stop = Task.WhenAll(movers.Select(n => streams[n].StopAsync()));
+                while (!stop.IsCompleted)
+                {
+                    _ = streams["sub1"].TriggerCheckpoint();
+                    await Task.WhenAny(stop, Task.Delay(100));
+                }
+                await stop;
+                Assert.True(failures.Count == failuresBeforeMove, $"The move did not stop cleanly. {Outcome()}");
+                foreach (var name in movers)
+                {
+                    await streams[name].DisposeAsync();
+                    lock (_streams)
+                    {
+                        _streams.Remove(streams[name]);
+                    }
+                    factories[name] = new ScriptedFactory(hub.CreateFactory(name));
+                }
+                long committedBeforeEvent = commits.Max(c => c.Version);
+                commitsAtEvent = commits.Count;
+                var sub1FailuresBeforeMove = Sub1Failures();
+
+                // The new sub3 starts first and waits for sub2, sub2 meets it in None and then adopts sub1's wave.
+                factories["sub3"].HeldTarget = "sub2";
+                streams["sub2"] = BuildSubstream(testName, ChainSql, "sub2", factories["sub2"], latestData, failures, commits, fileProvider: storages["sub2"], announceCleanHandoff: true);
+                streams["sub3"] = BuildSubstream(testName, ChainSql, "sub3", factories["sub3"], latestData, failures, commits, fileProvider: storages["sub3"], announceCleanHandoff: true);
+                var sub3Start = streams["sub3"].StartAsync();
+                await WaitUntil(() => factories["sub3"].Requests.Any(r => r.Target == "sub2" && r.Response == null), "the new sub3 to wait for sub2", TimeSpan.FromSeconds(30), Outcome);
+                var sub2Start = streams["sub2"].StartAsync();
+                await WaitUntil(() => factories["sub2"].Requests.Any(r => r.Target == "sub1" && r.Response is { CleanReconnect: true }), "sub1 to accept sub2's handoff", TimeSpan.FromSeconds(30), Outcome);
+                factories["sub3"].HeldTarget = null;
+                await Task.WhenAll(sub2Start, sub3Start).WaitAsync(TimeSpan.FromSeconds(30));
+
+                _generator.Generate(20);
+                await WaitUntil(Running, "the group to run again", TimeSpan.FromSeconds(60), Outcome);
+                await WaitUntil(() => CommonCommittedVersion(commits, names, commitsAtEvent) > committedBeforeEvent, "a CommitVersion above the move on every sink", TimeSpan.FromSeconds(60), Outcome);
+
+                // sub1 accepted the handoff and kept running, only the late mover restarted.
+                Assert.True(Sub1Failures() == sub1FailuresBeforeMove, Outcome());
+                _output.WriteLine(Outcome());
+            }
+            catch
+            {
+                DumpLogBuffers(testName, Outcome());
+                throw;
+            }
+            finally
+            {
+                factories["sub3"].HeldTarget = null;
+            }
+        }
+
+        /// <summary>
+        /// A single mover whose exchange targets both peers resumes a recovered group without a restart.
+        /// </summary>
+        [Fact]
+        public async Task SingleMoverOfARecoveredGroupResumesWithoutARestart()
+        {
+            const string testName = "single_mover_recovered";
+            _generator.Generate(100);
+            var names = new[] { "sub1", "sub2", "sub3" };
+            var hub = new LocalSubstreamCommunicationHub();
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<string>();
+            var commits = new ConcurrentQueue<(string Substream, long Version)>();
+            var factories = names.ToDictionary(n => n, n => new ScriptedFactory(hub.CreateFactory(n)));
+            var movedStorage = new KeepAliveMemoryFileProvider();
+            var streams = names.ToDictionary(n => n, n => BuildSubstream(testName, TwoTargetSql, n, factories[n], latestData, failures, commits, fileProvider: n == "sub1" ? movedStorage : null));
+            int commitsAtEvent = 0;
+            string Outcome() =>
+                $"states {string.Join(" ", streams.Select(s => $"{s.Key}={s.Value.State}"))}; " +
+                string.Join("; ", factories.Select(f => $"{f.Key} handshakes={string.Join(",", f.Value.Requests.Select(Describe))} claims sent={string.Join(",", f.Value.ClaimWaves.Keys)} fail-and-recover received=[{string.Join(",", f.Value.ReceivedFailAndRecover)}]")) +
+                $"; commits after the event={string.Join(",", commits.Skip(commitsAtEvent).Select(c => $"{c.Substream}:{c.Version}"))}; failures={string.Join(" | ", failures)}";
+            bool Running() => streams.Values.All(s => s.State == StreamStateValue.Running) && RowCount(latestData, "sub2") + RowCount(latestData, "sub3") == _generator.Users.Count;
+            try
+            {
+                foreach (var stream in streams.Values)
+                {
+                    await stream.StartAsync();
+                }
+                await WaitUntil(Running, "the group's first run", TimeSpan.FromSeconds(30), Outcome);
+
+                // One recovery, the group runs in a wave above None.
+                await streams["sub1"].InjectFailureForTests(new InvalidOperationException("an earlier recovery"));
+                await WaitUntil(() => factories["sub1"].Requests.Any(r => r.Wave > RecoveryWave.None && r.Response is { Success: true }), "the group's recovery wave", TimeSpan.FromSeconds(30), Outcome);
+                await WaitUntil(Running, "the group to run after its recovery", TimeSpan.FromSeconds(30), Outcome);
+                var failuresBeforeMove = failures.Count;
+
+                // The move: sub1 stops at a peer-acked checkpoint and comes back announcing the handoff.
+                await streams["sub1"].StopAsync().WaitAsync(TimeSpan.FromSeconds(30));
+                Assert.True(failures.Count == failuresBeforeMove, $"The move did not stop cleanly. {Outcome()}");
+                await streams["sub1"].DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(streams["sub1"]);
+                }
+                long committedBeforeEvent = commits.Max(c => c.Version);
+                commitsAtEvent = commits.Count;
+                factories["sub1"] = new ScriptedFactory(hub.CreateFactory("sub1"));
+                streams["sub1"] = BuildSubstream(testName, TwoTargetSql, "sub1", factories["sub1"], latestData, failures, commits, fileProvider: movedStorage, announceCleanHandoff: true);
+                await streams["sub1"].StartAsync();
+
+                _generator.Generate(20);
+                await WaitUntil(Running, "the group to run again", TimeSpan.FromSeconds(60), Outcome);
+                await WaitUntil(() => CommonCommittedVersion(commits, names, commitsAtEvent) > committedBeforeEvent, "a CommitVersion above the move on every sink", TimeSpan.FromSeconds(60), Outcome);
+
+                // Both peers resumed the move cleanly, nothing restarted.
+                Assert.All(new[] { "sub2", "sub3" }, peer => Assert.Contains(factories["sub1"].Requests, r => r.Target == peer && r.Response is { CleanReconnect: true }));
+                Assert.True(failures.Count == failuresBeforeMove, Outcome());
+                _output.WriteLine(Outcome());
+            }
+            catch
+            {
+                DumpLogBuffers(testName, Outcome());
+                throw;
+            }
+        }
+
+        /// <summary>
         /// The peer read the group's version, the dying substream dies before its come-down and returns without its storage: the group starts over.
         /// </summary>
         [Fact]
@@ -929,6 +1175,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             // The process is gone: nothing it sends or fetches reaches the peers.
             public volatile bool Dead;
 
+            // Its fail-and-recover notifications are lost, only its handshakes carry its wave.
+            public volatile bool DropFailAndRecover;
+
             // Target and wave of every durability claim sent.
             public ConcurrentDictionary<string, byte> ClaimWaves { get; } = new ConcurrentDictionary<string, byte>();
 
@@ -1002,7 +1251,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             public Task SendFailAndRecover(RecoveryWave wave)
             {
-                if (_factory.Dead) return Task.CompletedTask;
+                if (_factory.Dead || _factory.DropFailAndRecover) return Task.CompletedTask;
                 return _inner.SendFailAndRecover(wave);
             }
 

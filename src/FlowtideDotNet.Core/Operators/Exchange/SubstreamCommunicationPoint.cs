@@ -228,8 +228,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         if (_announceCleanHandoff && response.CleanReconnect)
                         {
                             // Back into a running group, its recovery is this stream's now.
-                            _waves.Adopt(response.Wave);
+                            var answeredBelow = _waves.Adopt(response.Wave, this);
                             _durability?.EnterWave(response.Wave);
+                            if (answeredBelow)
+                            {
+                                // A peer finished its handshake below the adopted wave and may hold what was sent there, the group restarts.
+                                _logger.LogInformation("Substream {substreamName} runs in wave {peerWave} above a peer's handshake, this stream restarts the group.", substreamName, response.Wave);
+                                _announceCleanHandoff = false;
+                                await DoFailAndRecover(null);
+                                return;
+                            }
                         }
                         else if (response.Wave > wave && response.PeerInInit && _waves.TryEnter(response.Wave))
                         {
@@ -399,6 +407,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public void OnStreamStopped()
         {
             _waves.Stopped();
+            _waves.ForgetAnswer(this);
             lock (_initializeLock)
             {
                 if (!_initializedSent)
@@ -435,6 +444,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _dataHandled = false;
             }
+            _waves.ForgetAnswer(this);
             // Lets the handler change its fetch epoch so in flight fetches from before the
             // failure are refused by the other substream instead of consuming events that the
             // restarted stream needs.
@@ -462,7 +472,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     // The peer resumes from this version, its acked commits continue from here.
                     Interlocked.Exchange(ref _peerLastCommittedVersion, restorePoint);
-                    return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch, cleanReconnect: true, wave: _waves.Current, peerInInit: _waves.InInit));
+                    var accepted = _waves.Answer(this);
+                    return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch, cleanReconnect: true, wave: accepted.Wave, peerInInit: accepted.InInit));
                 }
                 if (handoffResult == CleanHandoffResult.RetryLater)
                 {
@@ -491,7 +502,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             // The peer (re)starts here, its committed versions count up from this point.
             Interlocked.Exchange(ref _peerLastCommittedVersion, restorePoint);
-            return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch, wave: _waves.Current, peerInInit: _waves.InInit));
+            var answer = _waves.Answer(this);
+            return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch, wave: answer.Wave, peerInInit: answer.InInit));
         }
 
         private enum CleanHandoffResult

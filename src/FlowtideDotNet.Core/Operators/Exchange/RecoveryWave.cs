@@ -60,6 +60,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // A run in the current wave ended in a stop, a running peer cannot tell the next start from it.
         private bool _stoppedAfterRun;
         private readonly List<SubstreamCommunicationPoint> _points = new List<SubstreamCommunicationPoint>();
+        // The wave each point answered its peer's handshake in during the current run.
+        private readonly Dictionary<SubstreamCommunicationPoint, RecoveryWave> _answered = new Dictionary<SubstreamCommunicationPoint, RecoveryWave>();
 
         /// <summary>
         /// Every communication point of this substream, a copy.
@@ -224,18 +226,44 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         /// <summary>
         /// Joins a peer's wave without a restart, for a clean handoff back into a running group; the start continues in it.
+        /// True when it raised the substream above a peer another point answered, that peer may hold what was sent below.
         /// </summary>
-        public void Adopt(RecoveryWave wave)
+        public bool Adopt(RecoveryWave wave, SubstreamCommunicationPoint adopter)
         {
             lock (_lock)
             {
-                if (wave > _current)
+                if (wave <= _current)
                 {
-                    _current = wave;
-                    // The start continues in the adopted wave, it is a start in it.
-                    _startedInCurrent = true;
-                    _startWave = wave;
+                    return false;
                 }
+                _current = wave;
+                // The start continues in the adopted wave, it is a start in it.
+                _startedInCurrent = true;
+                _startWave = wave;
+                return _answered.Any(answered => !ReferenceEquals(answered.Key, adopter) && answered.Value < wave);
+            }
+        }
+
+        /// <summary>
+        /// The wave and init state a peer's handshake is answered with, recorded in the same step so an adopt sees it.
+        /// </summary>
+        public (RecoveryWave Wave, bool InInit) Answer(SubstreamCommunicationPoint point)
+        {
+            lock (_lock)
+            {
+                _answered[point] = _current;
+                return (_current, _entered);
+            }
+        }
+
+        /// <summary>
+        /// The point's run ended, what it answered belongs to that run.
+        /// </summary>
+        public void ForgetAnswer(SubstreamCommunicationPoint point)
+        {
+            lock (_lock)
+            {
+                _answered.Remove(point);
             }
         }
 

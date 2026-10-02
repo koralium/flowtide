@@ -19,6 +19,27 @@ namespace FlowtideDotNet.Core.Tests.Exchange
     public class SubstreamRecoveryWavesTests
     {
         /// <summary>
+        /// An answer racing an adopt either carries the adopted wave or is seen by the adopt.
+        /// </summary>
+        [Fact]
+        public async Task AnAnswerRacingAnAdoptCarriesTheWaveOrIsSeen()
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var adopted = new RecoveryWave(1, Guid.NewGuid());
+            for (int i = 0; i < 2_000; i++)
+            {
+                var waves = new SubstreamRecoveryWaves();
+                var answering = new SubstreamCommunicationPoint(NullLogger.Instance, "self", "a", hub.CreateFactory("self").GetCommunicationHandler("a", "self"), waves: waves);
+                var adopting = new SubstreamCommunicationPoint(NullLogger.Instance, "self", "b", hub.CreateFactory("self").GetCommunicationHandler("b", "self"), waves: waves);
+                using var go = new Barrier(2);
+                var answer = Task.Run(() => { go.SignalAndWait(); return waves.Answer(answering).Wave; });
+                var adopt = Task.Run(() => { go.SignalAndWait(); return waves.Adopt(adopted, adopting); });
+                await Task.WhenAll(answer, adopt);
+                Assert.True(adopt.Result || answer.Result == adopted, $"iteration {i}: answered {answer.Result} and the adopt did not see it");
+            }
+        }
+
+        /// <summary>
         /// A peer's handshake can land before the start marked the substream, it must not read as running.
         /// </summary>
         [Fact]
