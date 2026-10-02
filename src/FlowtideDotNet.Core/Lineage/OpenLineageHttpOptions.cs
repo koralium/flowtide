@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.Lineage
     /// The options can be configured through <c>FlowtideBuilder.WithOpenLineageHttp</c> or
     /// the <c>IFlowtideDIBuilder.AddOpenLineageHttp</c> extension method.
     /// </remarks>
-    public class OpenLineageHttpOptions
+    public class OpenLineageHttpOptions : OpenLineageOptions
     {
         /// <summary>
         /// Gets or sets the URL of the OpenLineage HTTP endpoint to send lineage events to.
@@ -42,19 +42,5 @@ namespace FlowtideDotNet.Core.Lineage
         /// authorization tokens or API keys.
         /// </remarks>
         public Action<HttpRequestMessage>? OnRequest { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether schema information should be included in the lineage events.
-        /// </summary>
-        public bool IncludeSchema { get; set; }
-
-        /// <summary>
-        /// Gets or sets an optional run identifier for the lineage events.
-        /// </summary>
-        /// <remarks>
-        /// When set, this <see cref="Guid"/> is used as the run ID for all lineage events emitted by the reporter.
-        /// If <see langword="null"/>, a new <see cref="Guid"/> is generated automatically.
-        /// </remarks>
-        public Guid? RunId { get; set; }
     }
 }

@@ -49,7 +49,8 @@ namespace FlowtideDotNet.Core.Engine
         private List<(string? stringVersion, bool? addHashVersion)>? _versionParts;
         private bool _isCheckFailureRegistered = false;
         private readonly string _streamName;
-        private OpenLineageHttpOptions? _openLineageHttpOptions;
+        private OpenLineageOptions? _openLineageOptions;
+        private Func<IOpenLineageTransport>? _openLineageTransportFactory;
         private DistributedOptions? _distributedOptions;
 
         public FlowtideBuilder(string streamName)
@@ -268,7 +269,19 @@ namespace FlowtideDotNet.Core.Engine
 
         public FlowtideBuilder WithOpenLineageHttp(OpenLineageHttpOptions options)
         {
-            _openLineageHttpOptions = options;
+            return WithOpenLineage(options, () => new OpenLineageHttpTransport(options));
+        }
+
+        /// <summary>
+        /// Reports OpenLineage events through a custom transport, replaces any earlier OpenLineage setup
+        /// </summary>
+        /// <param name="options"></param>
+        /// <param name="transportFactory">Called once when the stream is built</param>
+        /// <returns></returns>
+        public FlowtideBuilder WithOpenLineage(OpenLineageOptions options, Func<IOpenLineageTransport> transportFactory)
+        {
+            _openLineageOptions = options;
+            _openLineageTransportFactory = transportFactory;
             return this;
         }
 
@@ -372,9 +385,9 @@ namespace FlowtideDotNet.Core.Engine
                 _taskScheduler,
                 _distributedOptions);
 
-            if (_connectorManager != null && _openLineageHttpOptions != null)
+            if (_connectorManager != null && _openLineageOptions != null && _openLineageTransportFactory != null)
             {
-                WithStateChangeListener(OpenLineageHttpReporter.Create(dataflowStreamBuilder.LoggerFactory, _streamName, _plan, _connectorManager, _openLineageHttpOptions));
+                WithStateChangeListener(OpenLineageReporter.Create(dataflowStreamBuilder.LoggerFactory, _streamName, _plan, _connectorManager, _openLineageOptions, _openLineageTransportFactory));
             }
 
             // Set the notification receiver to the function register to allow check functions get access to it.

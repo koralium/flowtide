@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             return JsonSerializer.Serialize(e, new JsonSerializerOptions()
             {
-                WriteIndented = true,
+                WriteIndented = false,
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 Converters =
                 {

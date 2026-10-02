@@ -57,6 +57,8 @@ jobs:
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.MongoDB/FlowtideDotNet.Connector.MongoDB.csproj
     - name: Package kafka
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.Kafka/FlowtideDotNet.Connector.Kafka.csproj
+    - name: Package OpenLineage Kafka
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.OpenLineage.Kafka/FlowtideDotNet.OpenLineage.Kafka.csproj
     - name: Package Sharepoint
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.Sharepoint/FlowtideDotNet.Connector.Sharepoint.csproj
     - name: Package Zanzibar

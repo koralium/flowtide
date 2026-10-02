@@ -5,6 +5,7 @@ sidebar_position: 4
 # OpenLineage
 
 Flowtide has built-in support for reporting data lineage events to an [OpenLineage](https://openlineage.io/)-compatible endpoint over HTTP.
+Events can also be sent to a Kafka topic with the `FlowtideDotNet.OpenLineage.Kafka` package, see [Kafka](#kafka).
 When enabled, the reporter automatically sends lineage events as the stream transitions between states (starting, running, completed, or failed).
 
 ## Setup with Dependency Injection
@@ -78,6 +79,70 @@ builder.Services.AddFlowtideStream("mystream")
         opt.IncludeSchema = true;
     });
 ```
+
+## Kafka
+
+The `FlowtideDotNet.OpenLineage.Kafka` package sends the events to a Kafka topic, following the format of the OpenLineage Kafka transport:
+
+* Each event is written as one JSON message to the configured topic.
+* The message key is `run:{job namespace}/{job name}`, for a stream named `mystream` this is `run:flowtide/mystream`. Set `MessageKey` to use another key.
+
+Install the following NuGet package:
+
+* FlowtideDotNet.OpenLineage.Kafka
+
+### Setup with Dependency Injection
+
+```csharp
+builder.Services.AddFlowtideStream("mystream")
+    .AddOpenLineageKafka(opt =>
+    {
+        opt.ProducerConfig = new ProducerConfig
+        {
+            BootstrapServers = "localhost:9092"
+        };
+        opt.TopicName = "openlineage.events";
+    });
+```
+
+### Setup with FlowtideBuilder
+
+```csharp
+var builder = new FlowtideBuilder("mystream")
+    .AddPlan(plan)
+    .WithOpenLineageKafka(new OpenLineageKafkaOptions
+    {
+        ProducerConfig = new ProducerConfig
+        {
+            BootstrapServers = "localhost:9092"
+        },
+        TopicName = "openlineage.events"
+    });
+```
+
+### Kafka Configuration Options
+
+The following options are available on `OpenLineageKafkaOptions`:
+
+| Option          | Type              | Required | Description                                                                                   |
+| --------------- | ----------------- | -------- | --------------------------------------------------------------------------------------------- |
+| ProducerConfig  | `ProducerConfig?` | Yes      | The Kafka producer configuration, such as bootstrap servers and authentication settings.      |
+| TopicName       | `string?`         | Yes      | The topic the lineage events are written to.                                                  |
+| MessageKey      | `string?`         | No       | The key for every message. Defaults to `run:{job namespace}/{job name}`.                      |
+| IncludeSchema   | `bool`            | No       | Whether to include schema information in the lineage events. Defaults to `false`.             |
+| RunId           | `Guid?`           | No       | A custom run identifier. If not set, a new `Guid` is generated automatically for each stream. |
+
+## Custom Transports
+
+To send the events somewhere else, implement `IOpenLineageTransport` and register it with `WithOpenLineage`:
+
+```csharp
+var builder = new FlowtideBuilder("mystream")
+    .AddPlan(plan)
+    .WithOpenLineage(new OpenLineageOptions(), () => new MyTransport());
+```
+
+A transport receives each event as JSON together with the job namespace and name. If `EmitAsync` throws, the event is retried.
 
 ## Reported Events
 

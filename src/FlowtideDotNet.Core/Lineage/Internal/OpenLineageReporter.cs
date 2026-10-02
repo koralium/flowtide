@@ -16,11 +16,10 @@ using FlowtideDotNet.Substrait;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    internal class OpenLineageHttpReporter : IStreamStateChangeListener
+    internal class OpenLineageReporter : IStreamStateChangeListener
     {
         private readonly CancellationTokenSource _cancellationTokenSource;
         private Task _task;
@@ -28,37 +27,30 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         private readonly object _lock = new object();
         private readonly ILogger _logger;
         private readonly OpenLineageEvent _ev;
-        private readonly OpenLineageHttpOptions _openLineageOptions;
-        private readonly HttpClient _httpClient;
-        private readonly string _url;
+        private readonly IOpenLineageTransport _transport;
         private StreamStateValue _previousState;
         private int _errorCount;
 
-        internal static OpenLineageHttpReporter Create(
+        internal static OpenLineageReporter Create(
             ILoggerFactory? loggerFactory, 
             string streamName,
             Plan plan,
             IConnectorManager connectorManager,
-            OpenLineageHttpOptions openLineageOptions)
+            OpenLineageOptions openLineageOptions,
+            Func<IOpenLineageTransport> transportFactory)
         {
-            ILogger logger = loggerFactory != null ? loggerFactory.CreateLogger<OpenLineageHttpReporter>() : NullLogger.Instance;
+            ILogger logger = loggerFactory != null ? loggerFactory.CreateLogger<OpenLineageReporter>() : NullLogger.Instance;
             var ev = LineageEventCreator.CreateFromPlan(openLineageOptions.RunId ?? Guid.NewGuid(), streamName, plan, connectorManager, openLineageOptions.IncludeSchema);
-            return new OpenLineageHttpReporter(logger, ev, openLineageOptions);
+            return new OpenLineageReporter(logger, ev, transportFactory());
         }
 
-        private OpenLineageHttpReporter(ILogger logger, OpenLineageEvent ev, OpenLineageHttpOptions openLineageOptions)
+        private OpenLineageReporter(ILogger logger, OpenLineageEvent ev, IOpenLineageTransport transport)
         {
-            if (openLineageOptions.Url == null)
-            {
-                throw new ArgumentException("OpenLineageOptions.Url must be set");
-            }
-            _url = openLineageOptions.Url;
-            _httpClient = new HttpClient();
+            _transport = transport;
             _queue = new LinkedList<OpenLineageEvent>();
             _cancellationTokenSource = new CancellationTokenSource();
             this._logger = logger;
             this._ev = ev;
-            this._openLineageOptions = openLineageOptions;
 
             // Start background task
             StartTask();
@@ -73,7 +65,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 {
                     if (!(t.IsCanceled || t.IsCompletedSuccessfully))
                     {
-                        _logger.LogError(t.Exception, "OpenLineageHttpReporter task failed");
+                        _logger.LogError(t.Exception, "OpenLineageReporter task failed");
                         StartTask();
                     }
                 });
@@ -98,18 +90,10 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                     continue;
                 }
 
-                var json = OpenLineageSerializer.Serialize(ev);
-                using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                using var message = new HttpRequestMessage(HttpMethod.Post, _url) { Content = content };
-                HttpResponseMessage? response = default;
-                if (_openLineageOptions.OnRequest != null)
-                {
-                    _openLineageOptions.OnRequest(message);
-                }
+                var transportEvent = new OpenLineageTransportEvent(ev.Job.Namespace, ev.Job.Name, OpenLineageSerializer.Serialize(ev));
                 try
                 {
-                    response = await _httpClient.SendAsync(message);
-                    response.EnsureSuccessStatusCode();
+                    await _transport.EmitAsync(transportEvent, _cancellationTokenSource.Token);
                     _errorCount = 0;
                 }
                 catch (OperationCanceledException)
@@ -117,7 +101,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                     // Respect cancellation requests and do not treat them as transient errors.
                     throw;
                 }
-                catch (HttpRequestException ex)
+                catch (Exception ex)
                 {
                     _errorCount++;
                     lock (_lock)
@@ -127,26 +111,12 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
                     TimeSpan waitTime = TimeSpan.FromSeconds(Math.Min(15, _errorCount));
                     await Task.Delay(waitTime);
-                    var statusCode = response != null ? response.StatusCode.ToString() : "no response";
-                    _logger.LogError(ex, $"Error writing to OpenLineage destination, status code: '{statusCode}', waiting: {waitTime.TotalSeconds} seconds before retrying");
-                }
-                catch (Exception ex)
-                {
-                    // Unexpected error, do not treat as transient; rethrow after logging.
-                    _logger.LogError(ex, "Unexpected error while writing to OpenLineage destination.");
-                    throw;
-                }
-                finally
-                {
-                    if (response != null)
-                    {
-                        response.Dispose();
-                    }
+                    _logger.LogError(ex, "Error writing to OpenLineage destination, waiting: {waitSeconds} seconds before retrying", waitTime.TotalSeconds);
                 }
 
                 if (ev.EventType == LineageEventType.Complete)
                 {
-                    _httpClient.Dispose();
+                    _transport.Dispose();
                     _cancellationTokenSource.Cancel();
                     _cancellationTokenSource.Dispose();
                     return;
