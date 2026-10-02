@@ -47,14 +47,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private long _selfInitializeVersion = 0;
         private readonly object _initializeLock = new object();
 
-        // Checkpoint epoch, guarded by _initializeLock. Identifies this generation of the point:
-        // the seed starts at the clock so a rebuilt point (hard restart, grain reactivation) never
-        // reuses an epoch a previous generation announced, and every failure draws a fresh value.
-        // The self epoch is announced through the handshake and recorded by the peer as its peer
-        // epoch. Checkpoint done acks are tagged with the peer epoch, so an ack from before a
-        // restart - soft or hard - carries an old epoch and is dropped by RecieveCheckpointDone.
-        private static long _checkpointEpochSeed = DateTime.UtcNow.Ticks;
-        private long _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
+        // Clock based generation epoch, guarded by _initializeLock, acks carry it.
+        private long _selfCheckpointEpoch = SubstreamEpoch.Next(0);
         private long _peerCheckpointEpoch = 0;
 
         // Send checkpoint fields
@@ -342,16 +336,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             if (allowEpochReseed && response.RecordedCheckpointEpoch > selfEpoch)
             {
-                // The peer holds a higher checkpoint epoch for this substream than this
-                // generation announced, recorded from a generation that no longer exists:
-                // epochs are clock-seeded per process, so a hard fail over onto a process
-                // whose clock seed is behind announces lower than the dead generation did.
-                // The peer's highest-wins guard keeps the dead record, so every ack it sends
-                // would be tagged with it and dropped here - a permanent, silent checkpoint
-                // stall. The seed is raised above the recorded epoch and the handshake re-run
-                // once with a fresh draw, moving the record to this generation. Re-seeding is
-                // capped at once per handshake; a lost race against an even higher claim
-                // converges through the next recovery's handshake.
+                // A dead generation ran ahead of this clock, announce above.
                 lock (_initializeLock)
                 {
                     if (_selfCheckpointEpoch != selfEpoch || operationAbort.IsCancellationRequested)
@@ -360,13 +345,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // generation runs its own handshake.
                         throw new OperationCanceledException(SupersededHandshake);
                     }
-                    long seed;
-                    do
-                    {
-                        seed = Interlocked.Read(ref _checkpointEpochSeed);
-                    } while (seed < response.RecordedCheckpointEpoch &&
-                             Interlocked.CompareExchange(ref _checkpointEpochSeed, response.RecordedCheckpointEpoch, seed) != seed);
-                    _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
+                    SubstreamEpoch.Advance(ref _selfCheckpointEpoch, response.RecordedCheckpointEpoch);
                 }
                 _logger.LogWarning(
                     "The initialize handshake to substream {substreamName} announced checkpoint epoch {announced} but a higher epoch {recorded} is recorded there, re-announcing with a fresh epoch.",
@@ -384,9 +363,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // restarted generation's own handshake already recorded.
                     throw new OperationCanceledException(SupersededHandshake);
                 }
-                // Highest wins: a response delayed across the peer's failure must not regress
-                // what a newer handshake already recorded. Peer generations draw from a clock
-                // seed, so the current generation's epoch is always the highest.
+                // Highest wins, a delayed response must not regress the record.
                 RecordPeerEpoch_NoLock(Math.Max(_peerCheckpointEpoch, response.CheckpointEpoch));
             }
             if (response.Success)
@@ -429,7 +406,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     return;
                 }
                 _initializedSent = false;
-                _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
+                SubstreamEpoch.Advance(ref _selfCheckpointEpoch);
                 _durability?.Invalidate();
             }
         }
@@ -445,8 +422,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _initializedSent = false;
                 // New generation: acks tagged with the old epoch are now stale and get dropped.
-                // Drawn from the shared seed so it never collides with any other generation.
-                _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
+                SubstreamEpoch.Advance(ref _selfCheckpointEpoch);
                 // Same lock as the claim fence: nothing fenced or snapshotted before this is used after it.
                 _durability?.Invalidate();
                 // The peer rolls back with this stream, its committed versions restart;
@@ -470,15 +446,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             long recordedPeerEpoch;
             lock (_initializeLock)
             {
-                // Highest wins: a handshake from an aborted generation can land after the current
-                // generation already announced (a request in flight across the peer's failure).
-                // Applying it would regress the record, and every ack sent afterwards would be
-                // tagged stale and dropped - stalling the peer's checkpoints while data still
-                // flows, so no watchdog would fire. Peer generations draw from a clock seed, so
-                // the current generation's epoch is always the highest. A peer that hard-fails
-                // over onto a process whose clock is far behind legitimately announces a lower
-                // epoch and is refused here; the response carries the recorded epoch so it can
-                // re-seed above it and re-announce, see SendInitializeRequest.
+                // Highest wins, a lower announcer re-announces from the response.
                 RecordPeerEpoch_NoLock(Math.Max(_peerCheckpointEpoch, peerCheckpointEpoch));
                 recordedPeerEpoch = _peerCheckpointEpoch;
                 selfEpoch = _selfCheckpointEpoch;

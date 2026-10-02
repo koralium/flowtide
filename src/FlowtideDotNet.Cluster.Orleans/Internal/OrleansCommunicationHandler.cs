@@ -35,11 +35,8 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
         private Func<long, int, long, RecoveryWave, long, long, bool, Task>? _callReceiveDurabilityClaim;
         private Func<int, IMemoryAllocator>? _receiveAllocatorResolver;
         private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
-        // Every handler instance gets a unique epoch, the seed starts at the clock so
-        // processes never collide and increments per instance and failure. An abandoned
-        // stream instance can then always be told apart from the current one.
-        private static long _epochSeed = DateTime.UtcNow.Ticks;
-        private long _fetchEpoch = Interlocked.Increment(ref _epochSeed);
+        // Clock based, abandoned instances are told apart by it.
+        private long _fetchEpoch = SubstreamEpoch.Next(0);
         // Tick timestamp of the first consecutive fetch refused as unknown, 0 when fetches
         // are being served. Only touched from the single fetch loop.
         private long _requestorUnknownSince;
@@ -60,10 +57,8 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
 
         public void OnStreamFailure()
         {
-            // A fetch in flight when this stream failed would consume events the restarted stream
-            // needs. Bumping the epoch makes the other substream refuse such fetches; the new epoch
-            // (from the shared seed, so it never collides) is announced at the restart handshake.
-            Interlocked.Exchange(ref _fetchEpoch, Interlocked.Increment(ref _epochSeed));
+            // In flight fetches from before the failure get refused.
+            SubstreamEpoch.Advance(ref _fetchEpoch);
         }
 
         public async Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
@@ -163,24 +158,8 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
             var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch, cleanHandoff, wave.Counter, wave.Id));
             if (response.RecordedFetchEpoch > announcedEpoch)
             {
-                // The serving grain holds a higher epoch for this substream than was announced,
-                // recorded by an instance that no longer exists: after a silo failover this
-                // substream can run on a process whose clock-based seed started earlier than the
-                // dead instances, and the +1 drawn per failure never bridges a clock-scale gap.
-                // The refusal is answered as an already reconciled success, so without a
-                // re-announce every fetch would be refused as unknown and the stream would fail
-                // and recover forever. The shared seed is raised above the recorded epoch and the
-                // handshake re-run once with a fresh draw. A genuinely stale (zombie) instance can
-                // reach this path too, but only from its bounded startup retry loop; the live
-                // instance re-announces on every recovery and wins terminally.
-                long seed;
-                do
-                {
-                    seed = Interlocked.Read(ref _epochSeed);
-                } while (seed < response.RecordedFetchEpoch &&
-                         Interlocked.CompareExchange(ref _epochSeed, response.RecordedFetchEpoch, seed) != seed);
-                announcedEpoch = Interlocked.Increment(ref _epochSeed);
-                Interlocked.Exchange(ref _fetchEpoch, announcedEpoch);
+                // A dead instance ran ahead of this clock, announce above.
+                announcedEpoch = SubstreamEpoch.Advance(ref _fetchEpoch, response.RecordedFetchEpoch);
                 response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch, cleanHandoff, wave.Counter, wave.Id));
             }
             return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, response.RecordedCheckpointEpoch, response.CleanReconnect, response.PeerDraining, new RecoveryWave(response.WaveCounter, response.WaveId), response.PeerInInit);

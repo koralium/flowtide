@@ -72,24 +72,13 @@ namespace FlowtideDotNet.Cluster.Orleans.Messages
         public long CheckpointEpoch { get; }
 
         /// <summary>
-        /// The fetch epoch the responding grain has recorded for the requestor after handling this
-        /// handshake. Fetch epochs are drawn from a per-process clock-based seed, so after a silo
-        /// failover a live requestor can announce a lower epoch than its dead predecessor and be
-        /// refused as stale. The refusal is answered as an already reconciled success, so this value
-        /// is the requestor's only way to detect it: when it is higher than the announced epoch, the
-        /// requestor raises its seed above it and re-runs the handshake (see
-        /// OrleansCommunicationHandler.SendInitializeRequest), instead of being permanently fenced
-        /// out of its own data.
+        /// Recorded fetch epoch, a higher one makes the requestor re-announce.
         /// </summary>
         [Id(4)]
         public long RecordedFetchEpoch { get; }
 
         /// <summary>
-        /// The checkpoint epoch the responding substream has recorded for the requestor, the
-        /// checkpoint-epoch counterpart of <see cref="RecordedFetchEpoch"/>: when it is higher than
-        /// the epoch the requestor announced, a dead generation's record still stands and the
-        /// requestor re-seeds above it and re-announces, see
-        /// SubstreamCommunicationPoint.SendInitializeRequest.
+        /// Recorded checkpoint epoch, a higher one makes the requestor re-announce.
         /// </summary>
         [Id(5)]
         public long RecordedCheckpointEpoch { get; }

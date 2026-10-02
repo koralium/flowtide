@@ -62,14 +62,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public long CheckpointEpoch { get; }
 
         /// <summary>
-        /// The checkpoint epoch the responder has recorded for the REQUESTOR after handling this
-        /// handshake (its record is highest-wins). Epochs are clock-seeded per process, so after a
-        /// hard fail over onto a process whose clock seed is behind, a live requestor announces a
-        /// lower epoch than its dead predecessor and the responder keeps the dead record - every
-        /// ack the responder sends is then tagged with it and dropped by the requestor. When this
-        /// value is higher than the epoch the requestor announced, it re-seeds above it and re-runs
-        /// the handshake (see SubstreamCommunicationPoint.SendInitializeRequest) instead of being
-        /// permanently fenced out of its acks.
+        /// Recorded requestor epoch, a higher one makes the requestor re-announce.
         /// </summary>
         public long RecordedCheckpointEpoch { get; }
 

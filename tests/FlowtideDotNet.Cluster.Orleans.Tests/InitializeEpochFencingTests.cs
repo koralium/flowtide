@@ -220,46 +220,24 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         }
 
         /// <summary>
-        /// The guard's assumption "a newer stream instance always announces a higher epoch"
-        /// only holds within one process: the epoch seed is a per-process static initialized
-        /// from the clock. After a silo failover, the requestor's grain reactivates on
-        /// another, longer-running process whose seed started earlier, so the LIVE instance
-        /// announces a LOWER epoch than the dead instance recorded here - and is refused as
-        /// if it were stale, with a success-shaped answer it cannot distinguish from a real
-        /// handshake. Its fetches are then refused as RequestorUnknown, the stall limit fails
-        /// and recovers it, and the recovery draws the next epoch from the same low local
-        /// seed: +1 per failure never bridges a clock-scale gap (~600M ticks per minute of
-        /// process-start difference), while this serving grain keeps the recorded epoch alive
-        /// under its keep-alive reminder. The result is a deterministic, permanent
-        /// fail-and-recover loop for the only live instance.
-        ///
-        /// This pins the guard's own contract ("recovers on its own refused fetches, and
-        /// re-announces a newer epoch when it comes back"): after the live instance's
-        /// recovery handshake, the grain must end up serving the epoch it announced. Note the
-        /// deliberate tension with StaleInitializeDoesNotDisplaceTheLiveEpoch - a zombie's
-        /// announcement must still be refused - so the fix has to make the two cases
-        /// distinguishable rather than pick one.
+        /// A live instance behind a dead record re-announces above it.
         /// </summary>
         [Fact]
-        public async Task FailedOverInstanceFromAnEarlierSeededProcessIsNotPermanentlyFencedOut()
+        public async Task FailedOverInstanceBehindTheRecordedEpochIsNotPermanentlyFencedOut()
         {
             const string requestor = "peer";
             var grain = CreateGrain();
             var recorder = new ForwardingRecordingGrain(grain);
             var handler = new OrleansCommunicationHandler("stream", "target", requestor, new SingleGrainFactory(recorder));
 
-            // The live instance handshakes once so the test learns its real, seed-drawn epoch.
+            // Learn the live instance's epoch.
             await handler.SendInitializeRequest(0, 0, false, default, default);
             long liveEpoch = recorder.AnnouncedFetchEpochs[0];
 
-            // The dead instance ran on a silo whose process started a day later, so its
-            // clock-seeded announcement is far above anything this process's seed produces.
-            // It is recorded here and survives in grain memory.
+            // A dead instance ran a day ahead, its record survives.
             await grain.InitializeSubstreamRequest(new InitSubstreamRequest(requestor, 0, liveEpoch + TimeSpan.FromDays(1).Ticks));
 
-            // Failover: the live instance's fetches are refused as RequestorUnknown until the
-            // stall limit fails and recovers it. The recovery bumps its epoch off the LOCAL
-            // seed and the restart handshake re-announces it.
+            // Recovery bumps the epoch, the restart handshake re-announces.
             handler.OnStreamFailure();
             await handler.SendInitializeRequest(0, 0, false, default, default);
             long reAnnounced = recorder.AnnouncedFetchEpochs[^1];
@@ -268,8 +246,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             Assert.True(
                 recorded == reAnnounced,
                 $"The grain still records the dead instance's epoch ({recorded}) instead of the live instance's re-announced {reAnnounced}. " +
-                "Every fetch from the only live instance is refused as RequestorUnknown, and each recovery draws +1 from its local process " +
-                "seed which never bridges a clock-seeded gap: the substream is permanently fenced out of its own data after a silo failover.");
+                "Every fetch from the only live instance is refused as RequestorUnknown: the substream is fenced out of its own data after a silo failover.");
         }
     }
 }
