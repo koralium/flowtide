@@ -186,10 +186,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private async Task SendInitializeRequest(long restorePoint)
         {
-            await SendInitializeRequest(restorePoint, allowEpochReseed: true);
+            await SendInitializeRequest(restorePoint, allowEpochReseed: true, cleanlyResumed: false);
         }
 
-        private async Task SendInitializeRequest(long restorePoint, bool allowEpochReseed)
+        private async Task SendInitializeRequest(long restorePoint, bool allowEpochReseed, bool cleanlyResumed)
         {
             SubstreamInitializeResponse? response;
             long selfEpoch;
@@ -240,7 +240,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             await DoFailAndRecover(null);
                             return;
                         }
-                        else if (response.Wave > _waves.Current || ((wave == RecoveryWave.None || _waves.RestartUnseen) && !response.PeerInInit))
+                        // An accepted clean handoff already told the peer this object continues.
+                        else if (response.Wave > _waves.Current || (!cleanlyResumed && (wave == RecoveryWave.None || _waves.RestartUnseen) && !response.PeerInInit))
                         {
                             // The peer runs in a recovery this stream never saw, or this is a fresh stream object whose earlier
                             // runs the peers cannot tell from its wave: its restart is not noticed there. A wave above the
@@ -259,7 +260,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             // The start continues in the minted wave, it is a start in it.
                             var started = _waves.ForStart();
                             _durability?.EnterWave(started);
-                            await SendInitializeRequest(restorePoint, allowEpochReseed);
+                            await SendInitializeRequest(restorePoint, allowEpochReseed, cleanlyResumed: false);
                             return;
                         }
                     }
@@ -350,7 +351,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _logger.LogWarning(
                     "The initialize handshake to substream {substreamName} announced checkpoint epoch {announced} but a higher epoch {recorded} is recorded there, re-announcing with a fresh epoch.",
                     substreamName, selfEpoch, response.RecordedCheckpointEpoch);
-                await SendInitializeRequest(restorePoint, allowEpochReseed: false);
+                await SendInitializeRequest(restorePoint, allowEpochReseed: false, cleanlyResumed: response.CleanReconnect);
                 return;
             }
 

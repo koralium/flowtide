@@ -196,6 +196,63 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// A clean handoff behind the peer's recorded epoch resumes without any rollback.
+        /// </summary>
+        [Fact]
+        public async Task CleanHandoffBehindTheRecordedEpochResumesWithoutAnyRollback()
+        {
+            var testName = "e2e_clean_handoff_epoch_behind";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+
+            // The instance being moved ran on a silo whose clock is a day ahead.
+            var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+            var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false,
+                communicationFactory: new EpochAheadCommunicationFactory(hub.CreateFactory("substream_1"), TimeSpan.FromDays(1)));
+            await substream0.StartAsync();
+            await substream1.StartAsync();
+
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            await AwaitBounded(substream1.StopAsync(), "handoff stop");
+            await substream1.DisposeAsync();
+            lock (_streams)
+            {
+                _streams.Remove(substream1);
+            }
+
+            // The new activation's clock epoch is below what substream_0 recorded.
+            substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+            await substream1.StartAsync();
+
+            _generator.Generate(250);
+            var logs = _logBuffers["substream_1"];
+            string Evidence() =>
+                $"failures [{string.Join(", ", failures.Select(f => $"{f.Substream}:{f.Exception?.GetType().Name ?? "rollback"}"))}], " +
+                $"re-announces {logs.LinesContaining("re-announcing with a fresh epoch").Count}, " +
+                $"group restarts {logs.LinesContaining("this stream restarts the group").Count}";
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+            catch (Exception e)
+            {
+                DumpLogBuffers("epoch_behind");
+                Assert.Fail($"{e.Message} {Evidence()}");
+            }
+
+            // The setup must have put the new epoch behind the record.
+            Assert.True(logs.LinesContaining("re-announcing with a fresh epoch").Count > 0, Evidence());
+            Assert.True(failures.IsEmpty, Evidence());
+
+            await AwaitBounded(Task.WhenAll(substream0.StopAsync(), substream1.StopAsync()), "coordinated stop");
+        }
+
+        /// <summary>
         /// A crash right after a clean handoff does not roll back below committed versions.
         /// </summary>
         [Fact]
@@ -2246,6 +2303,48 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             {
                 Interlocked.Decrement(ref _inFlight);
             }
+        }
+
+        private sealed class EpochAheadCommunicationFactory(ISubstreamCommunicationHandlerFactory inner, TimeSpan ahead) : ISubstreamCommunicationHandlerFactory
+        {
+            public ISubstreamCommunicationHandler GetCommunicationHandler(string targetSubstreamName, string selfSubstreamName)
+            {
+                return new EpochAheadHandler(inner.GetCommunicationHandler(targetSubstreamName, selfSubstreamName), ahead);
+            }
+        }
+
+        // Sets the owning point's checkpoint epoch ahead of the clock, as a skewed silo would.
+        private sealed class EpochAheadHandler(ISubstreamCommunicationHandler inner, TimeSpan ahead) : ISubstreamCommunicationHandler
+        {
+            public void SetReceiveAllocatorResolver(Func<int, IMemoryAllocator> allocatorResolver) => inner.SetReceiveAllocatorResolver(allocatorResolver);
+
+            public void OnStreamFailure() => inner.OnStreamFailure();
+
+            public void Initialize(
+                Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<long, long, bool, Task> callRecieveCheckpointDone)
+            {
+                inner.Initialize(getDataFunction, callFailAndRecover, initializeFromTarget, callRecieveCheckpointDone);
+                var point = initializeFromTarget.Target!;
+                var epoch = point.GetType().GetField("_selfCheckpointEpoch", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+                epoch.SetValue(point, DateTime.UtcNow.Ticks + ahead.Ticks);
+            }
+
+            public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken) => inner.FetchData(targetIds, numberOfEvents, cancellationToken);
+
+            public Task SendFailAndRecover(RecoveryWave wave) => inner.SendFailAndRecover(wave);
+
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken) =>
+                inner.SendInitializeRequest(restoreVersion, checkpointEpoch, cleanHandoff, wave, cancellationToken);
+
+            public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier) => inner.SendCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
+
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim) => inner.InitializeDurabilityClaims(callReceiveDurabilityClaim);
+
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) =>
+                inner.SendDurabilityClaim(version, radius, initVersion, wave, senderCheckpointEpoch, targetCheckpointEpoch, requestReply, cancellationToken);
         }
 
         private sealed class GatedCommunicationFactory : ISubstreamCommunicationHandlerFactory
