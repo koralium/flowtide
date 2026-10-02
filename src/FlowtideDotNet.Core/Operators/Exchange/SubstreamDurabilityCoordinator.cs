@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private sealed class PeerSender(SubstreamCommunicationPoint point, string name)
         {
             public SubstreamCommunicationPoint Point = point;
-            public string Name = name;
+            public readonly string Name = name;
             public bool Pending;
             public bool RequestReply;
             public bool Running;
