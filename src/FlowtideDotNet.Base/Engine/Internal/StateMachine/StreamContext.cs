@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -53,6 +53,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly IStreamMemoryManager _streamMemoryManager;
         private readonly Meter _contextMeter;
         internal long? _restoreCheckpointVersion;
+        // Cancelled by the dispose, ends waits for the other streams.
+        private readonly CancellationTokenSource _disposeCancellation = new CancellationTokenSource();
 
         internal StreamState? _lastState;
         internal long producingTime = 0;
@@ -101,6 +103,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         // Failures in a row since the last proven recovery
         internal int _consecutiveFailures;
+        // A failure of this stream itself waits to be counted, restarts for a connected stream's recovery are not counted.
+        internal int _realFailurePending;
 
         // The version the stream came back at
         internal long _checkpointVersionAtLastFailure = -1;
@@ -117,13 +121,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // transitions happen under _blockClaimLock; they are cold control-plane paths.
         internal int _blocksCreated;
         internal int _blockGeneration;
+        internal readonly SemaphoreSlim _blockTeardownGate = new(1, 1);
         internal readonly object _blockClaimLock = new object();
+        private int _vertexCancellationGeneration = -1;
+        private Task _vertexCancellationTask = Task.CompletedTask;
 
         // Serializes the state manager region across starts. Guarded by _blockClaimLock.
         internal Task? _inFlightStartInitGate;
-
-        // The init gate of the start whose block initialization this call chain runs in, a teardown there must not wait on it.
-        internal static readonly AsyncLocal<Task?> OwnStartInitGate = new AsyncLocal<Task?>();
 
         // Test hooks, null in production. Each gets the stream name so a test can filter to its own
         // stream: CheckpointCommitHookForTests awaits inside the commit (so a test can hold a write in
@@ -154,6 +158,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal static Func<string, Task>? DeleteGaveUpHookForTests;
         // Test hook: blocks a fired schedule timer before it triggers.
         internal static Action<string>? ScheduledCheckpointFiredHookForTests;
+        // Test hook: the start read the group's version.
+        internal static Action<string, long?>? GroupVersionReadHookForTests;
 
         private StreamStatus _streamStatus;
 
@@ -172,7 +178,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         // Armed by a committed checkpoint, gates the minimum interval.
         internal bool _minimumIntervalThrottleArmed = false;
-        
+
         // Test variable
         internal long _startCheckpointVersion = 0;
 
@@ -361,6 +367,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
+        internal bool IsCurrentState(StreamStateMachineState state) => !_disposed && ReferenceEquals(Volatile.Read(ref _state), state) && state.AllowsPublication;
+
         // True once disposed, the context is then terminal
         internal bool IsDisposed => _disposed;
 
@@ -402,7 +410,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     // All errors are catched so notification reciever cant break the stream
                 }
             }
-            return this._state.Initialize(previous);
+            return state.Initialize(previous);
+        }
+
+        // Swap and Initialize in one lock scope, a stop must not see Running before its placeholder.
+        internal Task TransitionToRunning(StreamStateMachineState current)
+        {
+            lock (_contextLock)
+            {
+                return TransitionTo(current, StreamStateValue.Running);
+            }
         }
 
         public Task TransitionTo(StreamStateMachineState current, StreamStateValue newState)
@@ -535,6 +552,142 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             foreach (var block in egressBlocks)
             {
                 await action(block.Key, block.Value);
+            }
+        }
+
+        /// <summary>
+        /// Completes once every stream connected to this one is durable at the version.
+        /// A stream with no connections agrees with itself at once.
+        /// </summary>
+        internal async Task WaitForVersionAgreement(long version, CancellationToken cancellationToken)
+        {
+            // A dispose must not leave the wait, and what re-sends for it, running forever.
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCancellation.Token);
+            List<Task>? waits = null;
+            foreach (var block in _blockLookup)
+            {
+                if (block.Value is IStreamVersionAgreement agreement)
+                {
+                    waits ??= new List<Task>();
+                    waits.Add(agreement.WhenVersionAgreed(version, linked.Token));
+                }
+            }
+            if (waits != null)
+            {
+                await Task.WhenAll(waits);
+            }
+        }
+
+        internal bool HasVersionAgreements
+        {
+            get
+            {
+                foreach (var block in _blockLookup)
+                {
+                    if (block.Value is IStreamVersionAgreement)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// True while a start has initialized everything and only waits for the other streams.
+        /// </summary>
+        internal volatile bool _waitingForVersionAgreementAtStart;
+
+        internal bool IsVersionAgreed(long version)
+        {
+            foreach (var block in _blockLookup)
+            {
+                if (block.Value is IStreamVersionAgreement agreement && !agreement.IsVersionAgreed(version))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        internal void ForEachVersionAgreement(Action<IStreamVersionAgreement> action)
+        {
+            foreach (var block in _blockLookup)
+            {
+                if (block.Value is IStreamVersionAgreement agreement)
+                {
+                    action(agreement);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The version every connected stream has, once all of them announced theirs. Null without connected streams.
+        /// </summary>
+        internal async Task<long?> WaitForGroupVersion(CancellationToken cancellationToken)
+        {
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCancellation.Token);
+            List<Task<long?>>? waits = null;
+            foreach (var block in _blockLookup)
+            {
+                if (block.Value is IStreamVersionAgreement agreement)
+                {
+                    waits ??= new List<Task<long?>>();
+                    waits.Add(agreement.WhenGroupVersionKnown(linked.Token));
+                }
+            }
+            if (waits == null)
+            {
+                return null;
+            }
+            long? lowest = null;
+            foreach (var known in await Task.WhenAll(waits))
+            {
+                if (known.HasValue && (!lowest.HasValue || known.Value < lowest.Value))
+                {
+                    lowest = known;
+                }
+            }
+            return lowest;
+        }
+
+        /// <summary>
+        /// Null once every directly connected stream started its run at the group's version, else the lowest version that fell below this start.
+        /// </summary>
+        internal async Task<long?> WaitForGroupSettled(CancellationToken cancellationToken)
+        {
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCancellation.Token);
+            List<Task<long?>>? waits = null;
+            foreach (var block in _blockLookup)
+            {
+                if (block.Value is IStreamVersionAgreement agreement)
+                {
+                    waits ??= new List<Task<long?>>();
+                    waits.Add(agreement.WhenGroupSettled(linked.Token));
+                }
+            }
+            if (waits == null)
+            {
+                return null;
+            }
+            long? lowest = null;
+            foreach (var lowered in await Task.WhenAll(waits))
+            {
+                if (lowered.HasValue && (!lowest.HasValue || lowered.Value < lowest.Value))
+                {
+                    lowest = lowered;
+                }
+            }
+            return lowest;
+        }
+
+        internal async Task CommitVersionOnEgresses(long version, StreamStateMachineState run)
+        {
+            _logger.LogDebug("Committing version {version} on the egresses of stream {stream}", version, streamName);
+            foreach (var block in egressBlocks.Values)
+            {
+                if (!IsCurrentState(run)) return;
+                await block.CommitVersion(version);
             }
         }
 
@@ -797,6 +950,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _logger.LogDebug("Ignoring a failure on stream {stream}, the stream has been disposed.", streamName);
                 return Task.CompletedTask;
             }
+            if (e != null)
+            {
+                // Counted by the restart that follows, a coordination restart in between does not hide it.
+                Interlocked.Exchange(ref _realFailurePending, 1);
+            }
             var activity = s_exceptionActivitySource.StartActivity("StreamFailure", ActivityKind.Internal, null);
 
             if (activity != null)
@@ -918,7 +1076,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         }
 
         /// <summary>
-        /// Disposes the stream, completes all blocks and then disposes them.
+        /// Disposes the stream, faults and joins active blocks, then releases their resources.
         /// The stream cannot be started again after this.
         /// </summary>
         /// <returns></returns>
@@ -931,6 +1089,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
             // Marked first, a failing stream would otherwise restart forever
             _disposed = true;
+            _disposeCancellation.Cancel();
+            RequestVertexCancellation();
+            // A message parked at a pause gate would hold block completion forever
+            Resume();
+            ForEachVersionAgreement(agreement => agreement.AbortPendingOperations());
             _wantedState = StreamStateValue.NotStarted;
 
             CancelTriggerRegistration();
@@ -957,52 +1120,99 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             await WaitForStateManagerToSettle("Dispose");
 
-            bool blocksClaimed;
-            lock (_blockClaimLock)
+            await _blockTeardownGate.WaitAsync();
+            try
             {
-                blocksClaimed = _blocksCreated == 1;
-                _blocksCreated = 0;
-            }
-            if (blocksClaimed)
-            {
-                // Completing or disposing never-created blocks throws; a stream whose start
-                // failed before creating them (or whose failure teardown already disposed
-                // them) has nothing left to complete.
-                ForEachBlock((key, block) =>
+                bool blocksClaimed;
+                lock (_blockClaimLock)
                 {
-                    block.Complete();
-                });
-
-                await ForEachBlockAsync(async (key, block) =>
+                    blocksClaimed = _blocksCreated == 1;
+                    _blocksCreated = 0;
+                }
+                if (blocksClaimed)
                 {
-                    await block.DisposeAsync();
-                });
+                    // Completing or disposing never-created blocks throws; a stream whose start
+                    // failed before creating them (or whose failure teardown already disposed
+                    // them) has nothing left to complete.
+                    ForEachBlock((key, block) =>
+                    {
+                        block.Fault(new BlockStopException("The stream was disposed."));
+                    });
+
+                    await Task.WhenAll(GetCompletionTasks()).ContinueWith(t => { });
+                    await ForEachBlockAsync(async (key, block) =>
+                    {
+                        await block.DisposeAsync();
+                    });
+                }
+
+                _stateManager.Dispose();
+
+                _streamMemoryManager.Dispose();
+
+                // Nothing is left to honor a pending stop or delete
+                FailTeardownWaiters(new ObjectDisposedException(nameof(DataflowStream), $"The stream `{streamName}` was disposed while a stop or delete was pending."));
             }
+            finally { _blockTeardownGate.Release(); }
 
-            _stateManager.Dispose();
-
-            _streamMemoryManager.Dispose();
-
-            // Nothing is left to honor a pending stop or delete
-            FailTeardownWaiters(new ObjectDisposedException(nameof(DataflowStream), $"The stream `{streamName}` was disposed while a stop or delete was pending."));
         }
 
         /// <summary>
-        /// Waits until nothing is inside the state manager, bounded by StopDrainTimeout.
-        /// Every teardown runs this first, disposing the manager while it is written or restored corrupts it.
+        /// Requests cancellation once per run, without releasing callback or storage ownership.
+        /// </summary>
+        internal void RequestVertexCancellation()
+        {
+            lock (_blockClaimLock)
+            {
+                if (_blocksCreated == 0 || _vertexCancellationGeneration == _blockGeneration) return;
+                _vertexCancellationGeneration = _blockGeneration;
+                // CancelAsync marks each token now and invokes its handlers outside engine
+                // locks. Handlers may themselves request failure. Retain their lifetime too.
+                var cancellations = new List<Task>();
+                ForEachBlock((_, block) =>
+                {
+                    if (block is IStreamVertexCancellation cancellation)
+                        cancellations.Add(cancellation.CancelPendingOperations());
+                });
+                _vertexCancellationTask = ObserveVertexCancellation(Task.WhenAll(cancellations));
+            }
+        }
+
+        private async Task ObserveVertexCancellation(Task cancellation)
+        {
+            try { await cancellation.ConfigureAwait(false); }
+            catch (Exception e)
+            {
+                // CancelAsync still invokes every handler when one throws. Once all have
+                // settled, failure teardown can continue and release the run's resources.
+                _logger.LogWarning(e, "A vertex cancellation handler failed on stream {stream}.", streamName);
+            }
+        }
+
+        internal Task WaitForVertexCancellation()
+        {
+            lock (_blockClaimLock) return _vertexCancellationTask;
+        }
+
+        /// <summary>
+        /// Waits for initialization, writes, callbacks and cancellation handlers to settle.
+        /// A timeout stops background walks but never grants ownership to a successor.
         /// </summary>
         internal async Task WaitForStateManagerToSettle(string phase)
         {
             var waitStart = Stopwatch.GetTimestamp();
+            bool warned = false;
             while (true)
             {
                 Task? startInitGate;
+                Task vertexCancellation;
                 lock (_blockClaimLock)
                 {
                     startInitGate = _inFlightStartInitGate;
+                    vertexCancellation = _vertexCancellationTask;
                 }
-                // The gate spans the start's whole state manager region, a teardown inside that start's own chain cannot wait for it.
-                bool startSettled = startInitGate == null || startInitGate.IsCompleted || ReferenceEquals(startInitGate, OwnStartInitGate.Value);
+                // The gate spans the start's whole state manager region
+                bool startSettled = startInitGate == null || startInitGate.IsCompleted;
                 // Claimed under the checkpoint lock before the task is scheduled, so a zero read
                 // under it cannot race a claim decided before this teardown.
                 bool writesSettled;
@@ -1010,17 +1220,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     writesSettled = Volatile.Read(ref _stateManagerWriteCount) == 0;
                 }
-                // Walks start at the barrier and are only counted once a checkpoint joins them.
-                if (startSettled && writesSettled && !_stateManager.HasCommitsInFlight)
+                // Walks start at the barrier, after the stop request they are the manager's dispose to release.
+                bool walksSettled = warned || !_stateManager.HasCommitsInFlight;
+                if (startSettled && writesSettled && vertexCancellation.IsCompleted && walksSettled)
                 {
                     return;
                 }
-                if (Stopwatch.GetElapsedTime(waitStart) > _dataflowStreamOptions.StopDrainTimeout)
+                if (!warned && Stopwatch.GetElapsedTime(waitStart) > _dataflowStreamOptions.StopDrainTimeout)
                 {
-                    _logger.LogWarning("{phase} of stream {stream} proceeded while a start or a state manager write was still active after {timeout}, the state manager may be wedged on storage.", phase, streamName, _dataflowStreamOptions.StopDrainTimeout);
-                    // Drained as long as it will be, the state manager must not wait again.
+                    _logger.LogWarning("{phase} of stream {stream} is still waiting for initialization, callbacks or a state manager write after {timeout}, the state manager may be wedged on storage; ownership is retained until they settle.", phase, streamName, _dataflowStreamOptions.StopDrainTimeout);
+                    // Walks give up at their next page, a checkpoint joined on them can then settle.
                     _stateManager.RequestStopCommits();
-                    return;
+                    warned = true;
                 }
                 await Task.Delay(10);
             }
@@ -1099,9 +1310,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     return;
                 }
-                if (_stopTask != null || _deleteTask != null)
+                if (_stopTask != null || _deleteTask != null || _disposed)
                 {
-                    // A stop or delete supersedes the pause. Gating the sources here would
+                    // A stop, delete or dispose supersedes the pause. Gating the sources here would
                     // freeze the drain, a parked source can hold the ingress checkpoint
                     // lock that the stop cycle needs to inject its barrier.
                     return;
@@ -1228,6 +1439,21 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             stopTask?.TrySetException(exception);
         }
 
+        internal Task RequestFailure(int blockGeneration, Exception? exception, long? restoreVersion)
+        {
+            lock (_contextLock)
+            {
+                lock (_blockClaimLock)
+                {
+                    if (_disposed || _blocksCreated == 0 || _blockGeneration != blockGeneration)
+                    {
+                        return Task.CompletedTask;
+                    }
+                }
+                return FailAndRollback(exception, restoreVersion);
+            }
+        }
+
         internal Task FailAndRollback(Exception? exception, long? restoreVersion = default)
         {
             lock (_checkpointLock)
@@ -1257,7 +1483,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _logger.LogDebug("Stream {stream} is stopped, a peer requested a rollback to {version}, it applies at the next start.", streamName, restoreVersion.Value);
                 return Task.CompletedTask;
             }
-
+            if (!restoreVersion.HasValue && exception == null && currentState == StreamStateValue.NotStarted)
+            {
+                // A peer recovers, a stopped stream joins its wave at the next start.
+                _logger.LogDebug("Stream {stream} is stopped, a peer recovers, the versions are compared at the next start.", streamName);
+                return Task.CompletedTask;
+            }
             return OnFailure(exception);
         }
     }

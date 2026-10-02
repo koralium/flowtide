@@ -20,6 +20,7 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -42,16 +43,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private IObjectState<MockDataSourceState>? _state;
         private BatchConverter _batchConverter;
 
-        public static Dictionary<string, System.Threading.Tasks.TaskCompletionSource> TableInitialSignals { get; } = new Dictionary<string, System.Threading.Tasks.TaskCompletionSource>();
-        public static Dictionary<string, string> TableWaitSignals { get; } = new Dictionary<string, string>();
+        public static ConcurrentDictionary<string, System.Threading.Tasks.TaskCompletionSource> TableInitialSignals { get; } = new ConcurrentDictionary<string, System.Threading.Tasks.TaskCompletionSource>();
+        public static ConcurrentDictionary<string, string> TableWaitSignals { get; } = new ConcurrentDictionary<string, string>();
 
         private readonly TimeSpan? _initialDataDelay;
         private readonly bool _failInitialize;
         private readonly Func<bool>? _failInitializeWhen;
         private readonly Func<bool>? _rollbackInitializeWhen;
+        private readonly Action<long>? _onFailure;
         private readonly int? _batchSize;
 
-        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null, Func<bool>? failInitializeWhen = null, Func<bool>? rollbackInitializeWhen = null) : base(options)
+        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null, Func<bool>? failInitializeWhen = null, Func<bool>? rollbackInitializeWhen = null, Action<long>? onFailure = null) : base(options)
         {
             this.readRelation = readRelation;
             this.mockDatabase = mockDatabase;
@@ -59,6 +61,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _failInitialize = failInitialize;
             _failInitializeWhen = failInitializeWhen;
             _rollbackInitializeWhen = rollbackInitializeWhen;
+            _onFailure = onFailure;
             _batchSize = batchSize;
 
             _table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
@@ -72,6 +75,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public override Task DeleteAsync()
         {
             return Task.CompletedTask;
+        }
+
+        public override Task OnFailure(long rollbackVersion)
+        {
+            _onFailure?.Invoke(rollbackVersion);
+            return base.OnFailure(rollbackVersion);
         }
 
         private async Task FetchChanges(IngressOutput<StreamEventBatch> output, object? state)
@@ -281,7 +290,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             if (_rollbackInitializeWhen?.Invoke() ?? false)
             {
-                // Awaited like the exchange handshake awaits its rollback on a restore point mismatch.
+                // Awaited like the exchange handshake awaits its rollback when it joins a peer's recovery wave.
                 await FailAndRollback(new CrashException("Rollback requested from initialize"), restoreVersion: restoreTime);
                 return;
             }

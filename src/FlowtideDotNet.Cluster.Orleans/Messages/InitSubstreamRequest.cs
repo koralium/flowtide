@@ -22,13 +22,15 @@ namespace FlowtideDotNet.Cluster.Orleans.Messages
     [Immutable]
     public class InitSubstreamRequest
     {
-        public InitSubstreamRequest(string requestor, long restorePoint, long fetchEpoch, long checkpointEpoch = 0, bool cleanHandoff = false)
+        public InitSubstreamRequest(string requestor, long restorePoint, long fetchEpoch, long checkpointEpoch = 0, bool cleanHandoff = false, long waveCounter = 0, Guid waveId = default)
         {
             Requestor = requestor;
             RestorePoint = restorePoint;
             FetchEpoch = fetchEpoch;
             CheckpointEpoch = checkpointEpoch;
             CleanHandoff = cleanHandoff;
+            WaveCounter = waveCounter;
+            WaveId = waveId;
         }
 
         [Id(0)]
@@ -58,5 +60,12 @@ namespace FlowtideDotNet.Cluster.Orleans.Messages
         /// </summary>
         [Id(4)]
         public bool CleanHandoff { get; }
+        /// <summary>
+        /// The recovery the requestor is in, a receiver that is not in it yet restarts into it.
+        /// </summary>
+        [Id(5)]
+        public long WaveCounter { get; }
+        [Id(6)]
+        public Guid WaveId { get; }
     }
 }

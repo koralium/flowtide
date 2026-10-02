@@ -119,6 +119,23 @@ Following any recovery or completed checkpoint, the protocol deterministically e
 $$\mathcal{S} \equiv \sum_{i=1}^{v_{\text{cp}}} \Delta_i \quad \wedge \quad \forall r \in \mathcal{D}, \; r.v \le v_{\text{cp}}$$
 
 
+## Distributed mode
+
+In [distributed mode](../distributed/index.md) a checkpoint that completed in one substream is not final yet: if a connected substream fails before the same checkpoint is durable there, all of them roll back one version. The protocol then has two versions:
+
+* $v_{\text{local}}$ : the last durable checkpoint of this substream. It is what *OnInitialize* reads and what *OnCheckpointComplete* reports, and rows are still staged with the checkpoint they belong to, $v_{\text{local}} + 1$.
+* $v_{\text{cp}} \le v_{\text{local}}$ : the version last handed to *CommitVersion*. It is called once every connected substream, direct or through others, is known to be durable at the version, and at start with the restored version once the connected substreams agree on it.
+
+What changes in the algorithm:
+
+* **OnCheckpointComplete** only records $v_{\text{local}}$, it does not run the commit procedure.
+* **CommitVersion(v)** runs $P(\mathcal{D}, \mathcal{S}, v)$. It can be called again with the same version, the idempotency contract above applies to it.
+* **OnInitialize** only purges $r.v > v_{\text{local}}$. It does not run the commit procedure: the restored version can still be rolled back one step while the substreams reconcile at start, the *CommitVersion* call at start runs it. In the two-phase commit example a prepared transaction for a version $\le v_{\text{local}}$ likewise stays prepared until *CommitVersion* names it.
+
+No substream restores below a version that *CommitVersion* was called with in a substream it is connected to, as long as every substream keeps its state storage, so staged rows $\le v_{\text{cp}}$ are never purged.
+
+In a stream that is not distributed *CommitVersion* is called directly after each checkpoint, the two versions are the same and the algorithm above is unchanged.
+
 ## Implementation examples
 
 In this section, different destinations are given as examples and how they can fulfill this protocol.

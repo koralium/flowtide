@@ -44,6 +44,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
         public long CurrentSize => _localCacheManager.CurrentSize;
 
+        internal Task SuspendBackgroundWorkAsync() => _localCacheManager.SuspendBackgroundWorkAsync();
+
         public bool SupportsFileListing => _remoteStorage.SupportsFileListing;
 
         /// <summary>

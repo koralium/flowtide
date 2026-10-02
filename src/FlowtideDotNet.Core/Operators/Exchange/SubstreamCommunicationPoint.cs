@@ -14,6 +14,7 @@ using FlowtideDotNet.Base;
 using FlowtideDotNet.Storage.Memory;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
@@ -44,21 +45,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         // Initialize fields
         private bool _initializedSent = false;
         private long _selfInitializeVersion = 0;
-        private bool _initializeRecieved = false;
-        private long _targetInitializeVersion = 0;
         private readonly object _initializeLock = new object();
 
-        // Checkpoint epoch, guarded by _initializeLock. Identifies this generation of the point:
-        // the seed starts at the clock so a rebuilt point (hard restart, grain reactivation) never
-        // reuses an epoch a previous generation announced, and every failure draws a fresh value.
-        // The self epoch is announced through the handshake and recorded by the peer as its peer
-        // epoch. Checkpoint done acks are tagged with the peer epoch, so an ack from before a
-        // restart - soft or hard - carries an old epoch and is dropped by RecieveCheckpointDone.
-        private static long _checkpointEpochSeed = DateTime.UtcNow.Ticks;
-        private long _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
+        // Clock based generation epoch, guarded by _initializeLock, acks carry it.
+        private long _selfCheckpointEpoch = SubstreamEpoch.Next(0);
         private long _peerCheckpointEpoch = 0;
 
         // Send checkpoint fields
+        private CancellationTokenSource _operationAbort = new();
         private long _lastSentCheckpointVersion;
         private readonly object _sendCheckpointLock = new object();
 
@@ -103,7 +97,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         internal bool CleanReconnect => _cleanReconnect;
 
-        public SubstreamCommunicationPoint(ILogger logger, string selfSubstreamName, string substreamName, ISubstreamCommunicationHandler substreamCommunicationHandler, bool announceCleanHandoff = false)
+        // Shared by every communication point of this substream, null outside a substream group.
+        private readonly SubstreamDurabilityCoordinator? _durability;
+        private readonly SubstreamRecoveryWaves _waves;
+
+        internal SubstreamDurabilityCoordinator? Durability => _durability;
+
+        internal SubstreamRecoveryWaves Waves => _waves;
+
+        public SubstreamCommunicationPoint(ILogger logger, string selfSubstreamName, string substreamName, ISubstreamCommunicationHandler substreamCommunicationHandler, bool announceCleanHandoff = false, SubstreamDurabilityCoordinator? durability = null, SubstreamRecoveryWaves? waves = null)
         {
             _targetInfos = new ConcurrentDictionary<int, TargetInfo>();
             this._logger = logger;
@@ -111,7 +113,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             this.substreamName = substreamName;
             this._substreamCommunicationHandler = substreamCommunicationHandler;
             _announceCleanHandoff = announceCleanHandoff;
-            substreamCommunicationHandler.Initialize(GetData, DoFailAndRecover, OnTargetSubstreamInitialize, RecieveCheckpointDone);
+            _durability = durability;
+            _waves = waves ?? new SubstreamRecoveryWaves();
+            _durability?.Register(substreamName, this);
+            _waves.Register(this);
+            substreamCommunicationHandler.Initialize(GetData, OnPeerRecovering, OnTargetSubstreamInitialize, RecieveCheckpointDone);
+            substreamCommunicationHandler.InitializeDurabilityClaims(ReceiveDurabilityClaim);
             substreamCommunicationHandler.SetReceiveAllocatorResolver(GetReceiveAllocator);
         }
 
@@ -163,14 +170,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     return Task.CompletedTask;
                 }
-                if (_initializeRecieved)
-                {
-                    if (restorePoint != _targetInitializeVersion)
-                    {
-                        var minVersion = Math.Min(restorePoint, _targetInitializeVersion);
-                        return DoFailAndRecover(minVersion);
-                    }
-                }
                 _initializedSent = true;
                 _selfInitializeVersion = restorePoint;
                 // Each fresh handshake starts with no clean reconnect; the response re-sets it
@@ -183,18 +182,22 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return SendInitializeRequest(restorePoint);
         }
 
+        private const string SupersededHandshake = "The initialize handshake belongs to a run of the stream that ended.";
+
         private async Task SendInitializeRequest(long restorePoint)
         {
-            await SendInitializeRequest(restorePoint, allowEpochReseed: true);
+            await SendInitializeRequest(restorePoint, allowEpochReseed: true, cleanlyResumed: false);
         }
 
-        private async Task SendInitializeRequest(long restorePoint, bool allowEpochReseed)
+        private async Task SendInitializeRequest(long restorePoint, bool allowEpochReseed, bool cleanlyResumed)
         {
             SubstreamInitializeResponse? response;
             long selfEpoch;
+            CancellationToken operationAbort;
             lock (_initializeLock)
             {
                 selfEpoch = _selfCheckpointEpoch;
+                operationAbort = _operationAbort.Token;
             }
 
             try
@@ -206,18 +209,69 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     lock (_initializeLock)
                     {
-                        if (_selfCheckpointEpoch != selfEpoch)
+                        if (_selfCheckpointEpoch != selfEpoch || operationAbort.IsCancellationRequested)
                         {
                             // The stream failed while this handshake was pending, the loop belongs
                             // to the aborted generation. It must stop announcing its stale epoch,
                             // a late announcement would regress what the restarted generation's
                             // own handshake already recorded at the peer, and every ack the peer
-                            // sends afterwards would be dropped as stale.
+                            // sends afterwards would be dropped as stale. The operator's initialize
+                            // must not continue either, its state manager is gone.
+                            throw new OperationCanceledException(SupersededHandshake);
+                        }
+                    }
+                    var wave = _waves.Current;
+                    _logger.LogInformation("Sending initialize request to substream {substreamName} with restore point {restorePoint} in wave {wave}, try {tryCount}", substreamName, restorePoint, wave, tryCount);
+                    response = await _substreamCommunicationHandler.SendInitializeRequest(restorePoint, selfEpoch, _announceCleanHandoff, wave, operationAbort).WaitAsync(operationAbort);
+                    if (!response.NotStarted)
+                    {
+                        if (_announceCleanHandoff && response.CleanReconnect)
+                        {
+                            // Back into a running group, its recovery is this stream's now.
+                            var answeredBelow = _waves.Adopt(response.Wave, this);
+                            _durability?.EnterWave(response.Wave);
+                            if (answeredBelow)
+                            {
+                                // A peer finished its handshake below the adopted wave and may hold what was sent there, the group restarts.
+                                _logger.LogInformation("Substream {substreamName} runs in wave {peerWave} above a peer's handshake, this stream restarts the group.", substreamName, response.Wave);
+                                _announceCleanHandoff = false;
+                                await DoFailAndRecover(null);
+                                return;
+                            }
+                        }
+                        else if (response.Wave > wave && response.PeerInInit && _waves.TryEnter(response.Wave))
+                        {
+                            // The peer starts in a recovery above this one's, this stream joins it: nothing has crossed the
+                            // pair in that recovery yet, so the peer need not restart again for this stream. Entered
+                            // through another point already, the handshake stands in that wave.
+                            _logger.LogInformation("Substream {substreamName} starts in wave {peerWave}, this stream restarts into it.", substreamName, response.Wave);
+                            await DoFailAndRecover(null);
+                            return;
+                        }
+                        // An accepted clean handoff already told the peer this object continues.
+                        else if (response.Wave > _waves.Current || (!cleanlyResumed && (wave == RecoveryWave.None || _waves.RestartUnseen) && !response.PeerInInit))
+                        {
+                            // The peer runs in a recovery this stream never saw, or this is a fresh stream object whose earlier
+                            // runs the peers cannot tell from its wave: its restart is not noticed there. A wave above the
+                            // peer's makes it: announced again, the peer restarts into it. A refused clean handoff is one
+                            // such restart, the announcement is not repeated.
+                            // A stream object started again after a stop in the peer's wave is the same case, its peers stopped reading from it.
+                            var minted = _waves.MintAbove(response.Wave);
+                            _logger.LogInformation("Substream {substreamName} is in wave {peerWave}, this stream restarts the group in wave {wave}.", substreamName, response.Wave, minted);
+                            _announceCleanHandoff = false;
+                            if (_waves.Points.Any(p => !ReferenceEquals(p, this) && p.IsWired))
+                            {
+                                // Another point may have handshook in the old wave, the teardown tells every peer.
+                                await DoFailAndRecover(null);
+                                return;
+                            }
+                            // The start continues in the minted wave, it is a start in it.
+                            var started = _waves.ForStart();
+                            _durability?.EnterWave(started);
+                            await SendInitializeRequest(restorePoint, allowEpochReseed, cleanlyResumed: false);
                             return;
                         }
                     }
-                    _logger.LogInformation("Sending initialize request to substream {substreamName} with restore point {restorePoint}, try {tryCount}", substreamName, restorePoint, tryCount);
-                    response = await _substreamCommunicationHandler.SendInitializeRequest(restorePoint, selfEpoch, _announceCleanHandoff, default);
                     if (response.NotStarted && response.PeerDraining)
                     {
                         // Peer answers draining, budget not spent, wall clock bounds it.
@@ -235,7 +289,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             // Once at information, the wait can run minutes.
                             _logger.LogDebug("Substream {substreamName} is still stopping, waiting", substreamName);
                         }
-                        await Task.Delay(NotStartedRetrySliceMs * 4);
+                        await Task.Delay(NotStartedRetrySliceMs * 4, operationAbort);
                         continue;
                     }
                     drainingSinceTick = -1;
@@ -251,7 +305,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         // Kept short, this backoff cannot observe a stop.
                         var delay = Math.Min(NotStartedRetrySliceMs * tryCount, NotStartedRetrySliceMs * 4);
                         _logger.LogInformation("Substream {substreamName} not started yet, retrying in {delay} ms", substreamName, delay);
-                        await Task.Delay(delay);
+                        await Task.Delay(delay, operationAbort);
                     }
                 } while (response.NotStarted);
                 // The peer has decided on the announcement, a later generation must not repeat it.
@@ -291,69 +345,42 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             if (allowEpochReseed && response.RecordedCheckpointEpoch > selfEpoch)
             {
-                // The peer holds a higher checkpoint epoch for this substream than this
-                // generation announced, recorded from a generation that no longer exists:
-                // epochs are clock-seeded per process, so a hard fail over onto a process
-                // whose clock seed is behind announces lower than the dead generation did.
-                // The peer's highest-wins guard keeps the dead record, so every ack it sends
-                // would be tagged with it and dropped here - a permanent, silent checkpoint
-                // stall. The seed is raised above the recorded epoch and the handshake re-run
-                // once with a fresh draw, moving the record to this generation. Re-seeding is
-                // capped at once per handshake; a lost race against an even higher claim
-                // converges through the next recovery's handshake.
+                // A dead generation ran ahead of this clock, announce above.
                 lock (_initializeLock)
                 {
-                    if (_selfCheckpointEpoch != selfEpoch)
+                    if (_selfCheckpointEpoch != selfEpoch || operationAbort.IsCancellationRequested)
                     {
                         // The stream failed while the response was in flight, the restarted
                         // generation runs its own handshake.
-                        return;
+                        throw new OperationCanceledException(SupersededHandshake);
                     }
-                    long seed;
-                    do
-                    {
-                        seed = Interlocked.Read(ref _checkpointEpochSeed);
-                    } while (seed < response.RecordedCheckpointEpoch &&
-                             Interlocked.CompareExchange(ref _checkpointEpochSeed, response.RecordedCheckpointEpoch, seed) != seed);
-                    _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
+                    SubstreamEpoch.Advance(ref _selfCheckpointEpoch, response.RecordedCheckpointEpoch);
                 }
                 _logger.LogWarning(
                     "The initialize handshake to substream {substreamName} announced checkpoint epoch {announced} but a higher epoch {recorded} is recorded there, re-announcing with a fresh epoch.",
                     substreamName, selfEpoch, response.RecordedCheckpointEpoch);
-                await SendInitializeRequest(restorePoint, allowEpochReseed: false);
+                await SendInitializeRequest(restorePoint, allowEpochReseed: false, cleanlyResumed: response.CleanReconnect);
                 return;
             }
 
             lock (_initializeLock)
             {
-                if (_selfCheckpointEpoch != selfEpoch)
+                if (_selfCheckpointEpoch != selfEpoch || operationAbort.IsCancellationRequested)
                 {
                     // The stream failed while the response was in flight, it belongs to the
                     // aborted generation. Applying it could overwrite the peer epoch that the
                     // restarted generation's own handshake already recorded.
-                    return;
+                    throw new OperationCanceledException(SupersededHandshake);
                 }
-                // Highest wins: a response delayed across the peer's failure must not regress
-                // what a newer handshake already recorded. Peer generations draw from a clock
-                // seed, so the current generation's epoch is always the highest.
-                _peerCheckpointEpoch = Math.Max(_peerCheckpointEpoch, response.CheckpointEpoch);
+                // Highest wins, a delayed response must not regress the record.
+                RecordPeerEpoch_NoLock(Math.Max(_peerCheckpointEpoch, response.CheckpointEpoch));
+            }
+            if (response.Success)
+            {
+                // The peer listens now, it may have missed what was claimed before.
+                _durability?.ResendTo(this);
             }
 
-            if (!response.Success)
-            {
-                // The peer already reconciled to response.RestoreVersion, recover to it and
-                // stop. Falling through to the mismatch check below would recover a second
-                // time for the same handshake (RestoreVersion is <= restorePoint on a refusal).
-                await DoFailAndRecover(response.RestoreVersion);
-                return;
-            }
-
-            if (response.RestoreVersion != restorePoint)
-            {
-                _logger.LogInformation("Substream {substreamName} initialized with different restore point {targetRestoreVersion} than requested {restorePoint}, recovering.", substreamName, response.RestoreVersion, restorePoint);
-                var minVersion = Math.Min(restorePoint, response.RestoreVersion);
-                await DoFailAndRecover(minVersion);
-            }
         }
 
         public void RegisterSubstreamTarget(int exchangeTargetId, SubstreamTarget target)
@@ -374,6 +401,27 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
+        /// The local stream's run ended in a stop: the next start handshakes again with a new epoch, so claims and acks of
+        /// the run that ended are told apart from the next run's like after a failure.
+        /// </summary>
+        public void OnStreamStopped()
+        {
+            _waves.Stopped();
+            _waves.ForgetAnswer(this);
+            lock (_initializeLock)
+            {
+                if (!_initializedSent)
+                {
+                    // A failure ended the run already.
+                    return;
+                }
+                _initializedSent = false;
+                SubstreamEpoch.Advance(ref _selfCheckpointEpoch);
+                _durability?.Invalidate();
+            }
+        }
+
+        /// <summary>
         /// Called when the local stream fails. Resets the handshake state so the initialize
         /// handshake runs again when the stream restarts and both substreams converge on a
         /// common restore version before any events are exchanged.
@@ -383,10 +431,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             lock (_initializeLock)
             {
                 _initializedSent = false;
-                _initializeRecieved = false;
                 // New generation: acks tagged with the old epoch are now stale and get dropped.
-                // Drawn from the shared seed so it never collides with any other generation.
-                _selfCheckpointEpoch = Interlocked.Increment(ref _checkpointEpochSeed);
+                SubstreamEpoch.Advance(ref _selfCheckpointEpoch);
+                // Same lock as the claim fence: nothing fenced or snapshotted before this is used after it.
+                _durability?.Invalidate();
                 // The peer rolls back with this stream, its committed versions restart;
                 // re-baselined at the next handshake. Reset with the epoch bump so an ack
                 // that passed the fence in the old epoch cannot advance it afterwards.
@@ -396,96 +444,66 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _dataHandled = false;
             }
+            _waves.ForgetAnswer(this);
             // Lets the handler change its fetch epoch so in flight fetches from before the
             // failure are refused by the other substream instead of consuming events that the
             // restarted stream needs.
             _substreamCommunicationHandler.OnStreamFailure();
         }
 
-        private Task<SubstreamInitializeResponse> OnTargetSubstreamInitialize(long restorePoint, long peerCheckpointEpoch, bool cleanHandoff)
+        private Task<SubstreamInitializeResponse> OnTargetSubstreamInitialize(long restorePoint, long peerCheckpointEpoch, bool cleanHandoff, RecoveryWave wave)
         {
             long selfEpoch;
             long recordedPeerEpoch;
             lock (_initializeLock)
             {
-                // Highest wins: a handshake from an aborted generation can land after the current
-                // generation already announced (a request in flight across the peer's failure).
-                // Applying it would regress the record, and every ack sent afterwards would be
-                // tagged stale and dropped - stalling the peer's checkpoints while data still
-                // flows, so no watchdog would fire. Peer generations draw from a clock seed, so
-                // the current generation's epoch is always the highest. A peer that hard-fails
-                // over onto a process whose clock is far behind legitimately announces a lower
-                // epoch and is refused here; the response carries the recorded epoch so it can
-                // re-seed above it and re-announce, see SendInitializeRequest.
-                _peerCheckpointEpoch = Math.Max(_peerCheckpointEpoch, peerCheckpointEpoch);
+                // Highest wins, a lower announcer re-announces from the response.
+                RecordPeerEpoch_NoLock(Math.Max(_peerCheckpointEpoch, peerCheckpointEpoch));
                 recordedPeerEpoch = _peerCheckpointEpoch;
                 selfEpoch = _selfCheckpointEpoch;
             }
-            if (cleanHandoff)
+            // Sent on every request, the requester re-sends its own once the response arrives.
+            _durability?.ResendTo(this);
+            // A mover in a recovery this stream has not joined brings it in, a clean resume would split the waves.
+            if (cleanHandoff && wave <= _waves.Current)
             {
                 var handoffResult = TryAcceptCleanHandoff(restorePoint);
                 if (handoffResult == CleanHandoffResult.Accepted)
                 {
                     // The peer resumes from this version, its acked commits continue from here.
                     Interlocked.Exchange(ref _peerLastCommittedVersion, restorePoint);
-                    lock (_initializeLock)
-                    {
-                        _initializeRecieved = true;
-                        _targetInitializeVersion = restorePoint;
-                    }
-                    return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch, cleanReconnect: true));
+                    var accepted = _waves.Answer(this);
+                    return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch, cleanReconnect: true, wave: accepted.Wave, peerInInit: accepted.InInit));
                 }
                 if (handoffResult == CleanHandoffResult.RetryLater)
                 {
                     // Transient, not started makes the peer retry, draining spares budget.
-                    return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint, selfEpoch, recordedPeerEpoch, peerDraining: true));
+                    return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint, selfEpoch, recordedPeerEpoch, peerDraining: true, wave: _waves.Current, peerInInit: _waves.InInit));
                 }
-                // Rejected: the normal handshake below reconciles (failing over if data was exchanged).
+                // Rejected: the normal handshake reconciles. A running peer that refused makes the mover restart the group.
             }
-            lock (_dataHandledLock)
+            if (_waves.TryEnter(wave))
             {
-                if (_dataHandled)
+                // The peer restarts in a recovery this stream is not in: everything exchanged with it since the last
+                // checkpoint is void, this stream restarts into the same wave. The peer retries once that is done.
+                _logger.LogInformation("Substream {substreamName} initializes in wave {wave}, restarting into it.", substreamName, wave);
+                _ = Task.Run(async () =>
                 {
-                    // The other substream restarted mid-run after events were exchanged, so this
-                    // streams state can depend on events it no longer knows about. Roll back to its
-                    // restore point and return not started so it retries the handshake.
-                    _logger.LogInformation("Substream {substreamName} initialized with restore point {restorePoint} while this stream has live exchanged data, failing over to it.", substreamName, restorePoint);
-                    _ = Task.Run(async () =>
+                    try
                     {
-                        try
-                        {
-                            await DoFailAndRecover(restorePoint);
-                        }
-                        catch (Exception e)
-                        {
-                            // The rollback failed, the other substream retries the handshake.
-                            // Must be logged, an unobserved fault here would let the
-                            // substreams silently diverge.
-                            _logger.LogWarning(e, "Failing over to the restarted substream {substreamName} failed, the handshake retry runs the fail over again.", substreamName);
-                        }
-                    });
-                    return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint, selfEpoch, recordedPeerEpoch));
-                }
-            }
-            lock (_initializeLock)
-            {
-                if (_initializedSent)
-                {
-                    // Compare against the version in the incoming request, _targetInitializeVersion
-                    // still holds the value from the previous epoch at this point which would
-                    // force both substreams down to that stale version.
-                    if (_selfInitializeVersion != restorePoint)
-                    {
-                        var minVersion = Math.Min(_selfInitializeVersion, restorePoint);
-                        return Task.FromResult(new SubstreamInitializeResponse(false, false, minVersion, selfEpoch, recordedPeerEpoch));
+                        await DoFailAndRecover(null);
                     }
-                }
-                _initializeRecieved = true;
-                _targetInitializeVersion = restorePoint;
+                    catch (Exception e)
+                    {
+                        _logger.LogWarning(e, "Restarting into the wave of substream {substreamName} failed, its handshake retry runs it again.", substreamName);
+                    }
+                });
+                return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint, selfEpoch, recordedPeerEpoch, peerDraining: true, wave: wave, peerInInit: true));
             }
             // The peer (re)starts here, its committed versions count up from this point.
             Interlocked.Exchange(ref _peerLastCommittedVersion, restorePoint);
-            return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch));
+            var answer = _waves.Answer(this);
+            return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch, wave: answer.Wave, peerInInit: answer.InInit));
         }
 
         private enum CleanHandoffResult
@@ -506,6 +524,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         private CleanHandoffResult TryAcceptCleanHandoff(long restorePoint)
         {
+            if (_waves.InInit)
+            {
+                // Nothing to resume into: this stream starts itself and sends its init events, and its start waits for the
+                // mover's claim, so the mover must not wait here. It starts with this stream through the normal handshake.
+                return CleanHandoffResult.Rejected;
+            }
             List<SubstreamReadOperator> readOperators;
             lock (_readOperators)
             {
@@ -604,11 +628,65 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return outputList;
         }
 
-        private async Task DoFailAndRecover(long recoveryPoint)
+        /// <summary>
+        /// A peer fails in the wave. This stream restarts into it at its own last version, once per wave, the versions are
+        /// compared at the gate of the start. An older wave is a message from a recovery that is over.
+        /// </summary>
+        private Task OnPeerRecovering(RecoveryWave wave)
+        {
+            if (!_waves.TryEnter(wave))
+            {
+                _logger.LogDebug("Substream {substreamName} recovers in wave {wave}, this stream is in {ownWave} already.", substreamName, wave, _waves.Current);
+                return Task.CompletedTask;
+            }
+            _logger.LogInformation("Substream {substreamName} recovers in wave {wave}, restarting into it.", substreamName, wave);
+            return DoFailAndRecover(null);
+        }
+
+        private async Task<bool> DoFailAndRecover(long? recoveryPoint)
+        {
+            if (await TryFailAndRecoverWired(recoveryPoint))
+            {
+                return true;
+            }
+            foreach (var point in _waves.Points)
+            {
+                // Any wired operator of the substream carries it.
+                if (!ReferenceEquals(point, this) && await point.TryFailAndRecoverWired(recoveryPoint))
+                {
+                    return true;
+                }
+            }
+            // Nothing wired yet: the start under way has fetched nothing, it continues in the wave. Its claims
+            // and a come-down belong to that wave, like after the reset a restart would do.
+            _durability?.EnterWave(_waves.ForStart());
+            _logger.LogInformation("Received fail and recover to {recoveryPoint} before any exchange operator is initialized, the start continues in wave {wave}.", recoveryPoint, _waves.Current);
+            return false;
+        }
+
+        /// <summary>
+        /// True when a target or read operator of this point is wired; a stale wiring is dropped by the stream's generation fence.
+        /// </summary>
+        internal bool IsWired
+        {
+            get
+            {
+                if (_targetInfos.Values.Any(t => t.Target.CanFailAndRecover))
+                {
+                    return true;
+                }
+                lock (_readOperators)
+                {
+                    return _readOperators.Any(r => r.CanFailAndRecover);
+                }
+            }
+        }
+
+        private async Task<bool> TryFailAndRecoverWired(long? recoveryPoint)
         {
             // One rollback fails the whole stream over, any single wired operator carries
-            // it. Both targets and read operators register at construction but wire the
-            // rollback first at their initialize, so unwired ones must be skipped - an
+            // it. Both targets and read operators register at construction but are wired per
+            // run (targets by their exchange's initialize), so unwired ones must be skipped - an
             // arbitrary pick could land on one, and for a read operator the dispatch throws
             // into a fire and forget caller and the rollback is silently lost, wedging the
             // stream against the peer.
@@ -617,7 +695,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 if (targetInfo.Target.CanFailAndRecover)
                 {
                     await targetInfo.Target.FailAndRecover(recoveryPoint);
-                    return;
+                    return true;
                 }
             }
             SubstreamReadOperator? readOperator;
@@ -625,46 +703,43 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 readOperator = _readOperators.FirstOrDefault(r => r.CanFailAndRecover);
             }
-            if (readOperator != null)
+            if (readOperator == null)
             {
-                await readOperator.FailAndRecover(recoveryPoint);
+                return false;
             }
-            else
-            {
-                // Nothing wired yet, the stream is still starting or restarting, so there is
-                // nothing to recover. The initialize handshake reconciles versions at start.
-                _logger.LogInformation("Received fail and recover to {recoveryPoint} before any exchange operator is initialized, nothing to recover.", recoveryPoint);
-            }
+            await readOperator.FailAndRecover(recoveryPoint);
+            return true;
         }
 
-        public Task SendFailAndRecover(long recoveryPoint)
+        public Task SendFailAndRecover(RecoveryWave wave)
         {
-            return _substreamCommunicationHandler.SendFailAndRecover(recoveryPoint);
+            return _substreamCommunicationHandler.SendFailAndRecover(wave);
         }
 
-        private long _notifyFailInFlightVersion = -1;
+        private RecoveryWave? _notifyFailInFlightWave;
         private readonly object _notifyFailLock = new object();
 
         /// <summary>
-        /// Tells the other substream to fail and recover without waiting for the result, it
-        /// may be unreachable and waiting out its response timeout would stall the recovery
-        /// here. Concurrent notifications for the same recovery point are collapsed into one.
+        /// Tells the other substream that this one fails, in the wave the failure belongs to, without waiting for the
+        /// result: it may be unreachable and waiting out its response timeout would stall the recovery here. The version
+        /// is not sent, the versions are compared when the group starts. Concurrent notifications of one wave are one.
         /// </summary>
-        public void NotifyFailAndRecover(long recoveryPoint)
+        public void NotifyFailAndRecover()
         {
+            var wave = _waves.ForFailure();
             lock (_notifyFailLock)
             {
-                if (_notifyFailInFlightVersion == recoveryPoint)
+                if (_notifyFailInFlightWave == wave)
                 {
                     return;
                 }
-                _notifyFailInFlightVersion = recoveryPoint;
+                _notifyFailInFlightWave = wave;
             }
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await _substreamCommunicationHandler.SendFailAndRecover(recoveryPoint);
+                    await _substreamCommunicationHandler.SendFailAndRecover(wave);
                 }
                 catch (Exception e)
                 {
@@ -674,9 +749,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     lock (_notifyFailLock)
                     {
-                        if (_notifyFailInFlightVersion == recoveryPoint)
+                        if (_notifyFailInFlightWave == wave)
                         {
-                            _notifyFailInFlightVersion = -1;
+                            _notifyFailInFlightWave = null;
                         }
                     }
                 }
@@ -755,6 +830,91 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             });
         }
 
+        /// <summary>
+        /// A peer on a new epoch restarted, what it claimed before may no longer hold.
+        /// </summary>
+        private void RecordPeerEpoch_NoLock(long epoch)
+        {
+            Debug.Assert(Monitor.IsEntered(_initializeLock));
+            if (epoch != _peerCheckpointEpoch)
+            {
+                _peerCheckpointEpoch = epoch;
+                _durability?.PeerEpochChanged(substreamName);
+            }
+        }
+
+        /// <param name="generation">The coordinator generation the claim was read under.</param>
+        internal Task SendDurabilityClaim(SubstreamDurabilityClaim claim, RecoveryWave wave, long generation, bool requestReply, CancellationToken cancellationToken = default)
+        {
+            long selfEpoch;
+            long targetEpoch;
+            lock (_initializeLock)
+            {
+                // A claim read before a failure must not leave stamped with the epochs of the run after it.
+                if (_durability == null || _durability.Generation != generation)
+                {
+                    return Task.CompletedTask;
+                }
+                selfEpoch = _selfCheckpointEpoch;
+                targetEpoch = _peerCheckpointEpoch;
+            }
+            return SendDurabilityClaimCore(claim, wave, selfEpoch, targetEpoch, requestReply, cancellationToken);
+        }
+
+        private async Task SendDurabilityClaimCore(SubstreamDurabilityClaim claim, RecoveryWave wave, long selfEpoch, long targetEpoch, bool requestReply, CancellationToken cancellationToken)
+        {
+            try
+            {
+                // Await actual transport settlement; abandoning a wait does not retire a send.
+                await _substreamCommunicationHandler.SendDurabilityClaim(claim.Version, claim.Radius, claim.InitVersion, wave, selfEpoch, targetEpoch, requestReply, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                // Sent again on a timer while anything waits for the agreement.
+                _logger.LogDebug(e, "Sending a durability claim to substream {substreamName} failed.", substreamName);
+            }
+        }
+
+        private Task ReceiveDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply)
+        {
+            if (_durability == null)
+            {
+                return Task.CompletedTask;
+            }
+            long fencedGeneration;
+            lock (_initializeLock)
+            {
+                // Both ends: a claim from before a restart of either side must not count, the
+                // version number is reused after a rollback.
+                if (targetCheckpointEpoch != _selfCheckpointEpoch || senderCheckpointEpoch < _peerCheckpointEpoch)
+                {
+                    _logger.LogDebug("Dropping a durability claim from substream {substreamName}, its epochs {senderEpoch}/{targetEpoch} do not match {peerEpoch}/{selfEpoch}.", substreamName, senderCheckpointEpoch, targetCheckpointEpoch, _peerCheckpointEpoch, _selfCheckpointEpoch);
+                    return Task.CompletedTask;
+                }
+                // It knows this generation, so it was sent after a handshake with it. A higher
+                // sender epoch is that handshake's answer still on its way, forgets the old claims.
+                RecordPeerEpoch_NoLock(senderCheckpointEpoch);
+                // The write checks it again, a failure or a start after this point drops the claim.
+                fencedGeneration = _durability.Generation;
+            }
+            _durability.PeerClaim(substreamName, new SubstreamDurabilityClaim(radius, version, initVersion), wave, fencedGeneration, requestReply);
+            return Task.CompletedTask;
+        }
+
+        // Called before the engine waits for callback ownership to drain. Only local
+        // waits on fenced control messages are aborted; no storage task is abandoned.
+        internal void AbortPendingOperations() => Volatile.Read(ref _operationAbort).Cancel();
+
+        // Once per start, before any handshake; never disposed, a racing abort may still hold it.
+        internal void ResetPendingOperations()
+        {
+            var abort = Volatile.Read(ref _operationAbort);
+            if (abort.IsCancellationRequested)
+            {
+                Interlocked.CompareExchange(ref _operationAbort, new CancellationTokenSource(), abort);
+            }
+        }
+
         public Task SendCheckpointDone(long checkpointVersion)
         {
             lock (_sendCheckpointLock)
@@ -782,7 +942,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 coversPeerStopBarrier = _readOperators.All(r => r.PeerStopConsumedCommitted);
             }
             _logger.LogDebug("Sending checkpoint done to target: {substreamName} from {selfSubstreamName}", substreamName, _selfSubstreamName);
-            return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion, targetEpoch, coversPeerStopBarrier);
+            return WaitForNotification(_substreamCommunicationHandler.SendCheckpointDone(checkpointVersion, targetEpoch, coversPeerStopBarrier), _operationAbort.Token);
+        }
+
+        private static async Task WaitForNotification(Task operation, CancellationToken cancellationToken)
+        {
+            try { await operation.WaitAsync(cancellationToken).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Observe a later transport fault without holding the stopped run open.
+                _ = operation.ContinueWith(t => _ = t.Exception, CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
         }
 
         /// <summary>
