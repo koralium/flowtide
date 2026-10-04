@@ -307,6 +307,21 @@ namespace FlowtideDotNet.Core.Tests.LineageTests.Dbt
         }
 
         [Fact]
+        public void ConnectorColumnsAreIgnoredWhenTheStoreDidNotAskForThem()
+        {
+            // Another lineage consumer may have asked the connectors.
+            var lineage = Snapshot(
+                [Input("pg", "src", [Col("orderid", new Int64Type())], [Col("OrderId", new Int64Type())])],
+                [Output("pg", "out", [Col("orderid")], new() { ["orderid"] = [Identity("pg", "src", "orderid")] }, connectorColumns: [Col("OrderId", new Int64Type())])]);
+
+            var store = Store(o => o.IncludeConnectorSchema = false);
+            store.Register(lineage, "stream");
+            var model = Assert.Single(Parse(store.GetManifest()).GetProperty("nodes").EnumerateObject()).Value;
+
+            Assert.Equal(["orderid"], Keys(model.GetProperty("columns")));
+        }
+
+        [Fact]
         public void CaseVariantOutputColumnsMerge()
         {
             var first = Snapshot([Input("pg", "a", [Col("x")])], [Output("pg", "out", [Col("Id")], new() { ["Id"] = [Identity("pg", "a", "x")] })]);

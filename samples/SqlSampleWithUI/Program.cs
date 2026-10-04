@@ -38,9 +38,11 @@ INNER JOIN other o
 ON t.val = o.val;
 ";
 
+builder.Services.AddFlowtideDataHubLineage(o => o.ExcludedNamespaces.Clear());
 builder.Services.AddFlowtideStream("test")
 .AddSqlTextAsPlan(sqlText)
 .AddVersioningFromString("1.0.3")
+.AddDataHubLineage()
 .AddConnectors((connectorManager) =>
 {
     connectorManager.AddSource(new DummyReadFactory("*"));
@@ -66,7 +68,8 @@ app.UseCors(b =>
     b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
 });
 
+app.MapFlowtideDataHubLineage("/datahub");
 app.UseHealthChecks("/health");
-app.UseFlowtideUI("/");
+app.UseFlowtideUI("/stream");
 
 app.Run();

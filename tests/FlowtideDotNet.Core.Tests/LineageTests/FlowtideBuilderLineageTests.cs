@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Engine.Distributed;
 using FlowtideDotNet.Core.Lineage;
+using FlowtideDotNet.Core.Lineage.DataHub;
 using FlowtideDotNet.Core.Lineage.Dbt;
 using FlowtideDotNet.Core.Lineage.Internal;
 using FlowtideDotNet.Core.Tests.LineageTests.Dbt;
@@ -262,6 +263,119 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
             Assert.NotNull(stream);
             Assert.True(store.TryGetManifest("orders", out _));
             Assert.False(store.TryGetManifest("6_orders_sub1", out _));
+        }
+
+        [Fact]
+        public void DataHubStoreRegisteredOnceAfterBuild()
+        {
+            var logs = new ListLoggerProvider();
+            var store = CreateDataHubStore();
+            var builder = CreateBuilder(GetPlan(GetTimestampSql), "dataHubRegistered", logs)
+                .AddConnectorManager(CreateConnectorManager())
+                .WithDataHubLineageStore(store);
+            Assert.Equal(0, store.Version);
+
+            var stream = builder.Build();
+
+            Assert.NotNull(stream);
+            Assert.Equal(1, store.Version);
+            Assert.DoesNotContain(logs.Entries, x => x.Category == LineageCategory);
+            // The internal timestamp read never becomes an input.
+            Assert.Equal(
+                [
+                    "urn:li:dataFlow:(flowtide,stream,PROD)",
+                    "urn:li:dataJob:(urn:li:dataFlow:(flowtide,stream,PROD),failure.output)",
+                    "urn:li:dataset:(urn:li:dataPlatform:failure,output,PROD)",
+                    "urn:li:dataset:(urn:li:dataPlatform:test,input1,PROD)"
+                ],
+                store.GetSnapshot().Urns);
+        }
+
+        [Fact]
+        public void DataHubStoreNotRegisteredWhenLineageFails()
+        {
+            var logs = new ListLoggerProvider();
+            var store = CreateDataHubStore();
+            var connectorManager = new ConnectorManager();
+            connectorManager.AddSource(new TestIngressFactory("^input1$"));
+            connectorManager.AddSink(new ThrowingLineageSinkFactory());
+
+            var stream = CreateBuilder(GetPlan(GetTimestampSql), "dataHubLineageFailure", logs)
+                .AddConnectorManager(connectorManager)
+                .WithDataHubLineageStore(store)
+                .Build();
+
+            Assert.NotNull(stream);
+            Assert.Equal(LogLevel.Error, Assert.Single(logs.Entries, x => x.Category == LineageCategory).Level);
+            Assert.Equal(0, store.Version);
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void ConnectorSchemaRequestedByDataHubStore(bool storeIncludesSchema)
+        {
+            var source = new SchemaRecordingIngressFactory();
+            var connectorManager = new ConnectorManager();
+            connectorManager.AddSource(source);
+            connectorManager.AddSink(new FailureEgressFactory("*", new FailureEgressOptions()));
+
+            CreateBuilder(GetPlan(GetTimestampSql), $"dataHubSchema{storeIncludesSchema}", new ListLoggerProvider())
+                .AddConnectorManager(connectorManager)
+                .WithDataHubLineageStore(new DataHubLineageStore(new DataHubLineageOptions() { IncludeConnectorSchema = storeIncludesSchema }))
+                .Build();
+
+            Assert.Equal([storeIncludesSchema], source.IncludeSchemaCalls);
+        }
+
+        [Fact]
+        public void DataHubAndDbtStoresShareOneExtraction()
+        {
+            var source = new SchemaRecordingIngressFactory();
+            var connectorManager = new ConnectorManager();
+            connectorManager.AddSource(source);
+            connectorManager.AddSink(new FailureEgressFactory("*", new FailureEgressOptions()));
+            var dbtStore = CreateStore();
+            var dataHubStore = CreateDataHubStore();
+
+            CreateBuilder(GetPlan(GetTimestampSql), "dataHubAndDbt", new ListLoggerProvider())
+                .AddConnectorManager(connectorManager)
+                .WithDbtManifestStore(dbtStore)
+                .WithDataHubLineageStore(dataHubStore)
+                .Build();
+
+            Assert.Single(source.IncludeSchemaCalls);
+            Assert.Equal(1, dbtStore.Version);
+            Assert.Equal(1, dataHubStore.Version);
+        }
+
+        [Fact]
+        public void DataHubStoreUsesLogicalStreamName()
+        {
+            var store = CreateDataHubStore();
+            var stream = new FlowtideBuilder("6_orders_sub1")
+                .AddPlan(GetPlan(GetTimestampSql))
+                .AddConnectorManager(CreateConnectorManager())
+                .SetDistributedOptions(new DistributedOptions("sub1", null, new LocalSubstreamCommunicationHub().CreateFactory("sub1")))
+                .WithDataHubLineageStore(store)
+                .WithStateOptions(new StateManagerOptions()
+                {
+                    PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
+                    {
+                        DirectoryPath = "./data/tempFiles/dataHubLogicalName"
+                    })
+                })
+                .Build();
+
+            Assert.NotNull(stream);
+            Assert.Contains("urn:li:dataFlow:(flowtide,orders,PROD)", store.GetSnapshot().Urns);
+        }
+
+        private static DataHubLineageStore CreateDataHubStore()
+        {
+            var options = new DataHubLineageOptions();
+            options.ExcludedNamespaces.Clear();
+            return new DataHubLineageStore(options);
         }
 
         private static DbtManifestStore CreateStore()

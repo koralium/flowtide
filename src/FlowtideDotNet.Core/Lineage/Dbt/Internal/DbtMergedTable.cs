@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Lineage.Internal;
+
 namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
 {
     // One physical table across every snapshot in scope.
@@ -35,13 +37,13 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
 
         public SortedSet<string> Readers { get; } = new SortedSet<string>(StringComparer.Ordinal);
 
-        public List<DbtColumn> WrittenColumns { get; } = new List<DbtColumn>();
+        public List<LineageMergedColumn> WrittenColumns { get; } = new List<LineageMergedColumn>();
 
-        public List<DbtColumn> ReadColumns { get; } = new List<DbtColumn>();
+        public List<LineageMergedColumn> ReadColumns { get; } = new List<LineageMergedColumn>();
 
-        public List<DbtColumn> ReferencedColumns { get; } = new List<DbtColumn>();
+        public List<LineageMergedColumn> ReferencedColumns { get; } = new List<LineageMergedColumn>();
 
-        public DbtColumnSet Columns { get; private set; } = new DbtColumnSet();
+        public LineageColumnSet Columns { get; private set; } = new LineageColumnSet();
 
         // Projection order, keyed by canonical column names.
         public IReadOnlyList<string> OutputColumns => _outputColumns;
@@ -55,7 +57,7 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
         // Written columns first, then reads, then referenced fields.
         public void FinishColumns()
         {
-            var columns = new DbtColumnSet();
+            var columns = new LineageColumnSet();
             columns.AddRange(WrittenColumns);
             columns.AddRange(ReadColumns);
             columns.AddRange(ReferencedColumns);

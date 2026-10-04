@@ -12,11 +12,11 @@
 
 using FlowtideDotNet.Substrait.Type;
 
-namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
+namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    internal sealed class DbtColumn
+    internal sealed class LineageMergedColumn
     {
-        public DbtColumn(string name, SubstraitBaseType type, bool fromConnector)
+        public LineageMergedColumn(string name, SubstraitBaseType type, bool fromConnector)
         {
             Name = name;
             Type = type;
@@ -31,18 +31,18 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
     }
 
     // Case-insensitive column list, connector casing wins.
-    internal sealed class DbtColumnSet
+    internal sealed class LineageColumnSet
     {
-        private readonly List<DbtColumn> _columns = new List<DbtColumn>();
-        private readonly Dictionary<string, DbtColumn> _byName = new Dictionary<string, DbtColumn>(StringComparer.OrdinalIgnoreCase);
+        private readonly List<LineageMergedColumn> _columns = new List<LineageMergedColumn>();
+        private readonly Dictionary<string, LineageMergedColumn> _byName = new Dictionary<string, LineageMergedColumn>(StringComparer.OrdinalIgnoreCase);
 
-        public IReadOnlyList<DbtColumn> Columns => _columns;
+        public IReadOnlyList<LineageMergedColumn> Columns => _columns;
 
         public void Add(string name, SubstraitBaseType type, bool fromConnector)
         {
             if (!_byName.TryGetValue(name, out var existing))
             {
-                existing = new DbtColumn(name, type, fromConnector);
+                existing = new LineageMergedColumn(name, type, fromConnector);
                 _byName.Add(name, existing);
                 _columns.Add(existing);
                 return;
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
             }
         }
 
-        public void AddRange(IEnumerable<DbtColumn> columns)
+        public void AddRange(IEnumerable<LineageMergedColumn> columns)
         {
             foreach (var column in columns)
             {

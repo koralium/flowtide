@@ -17,6 +17,7 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Lineage;
+using FlowtideDotNet.Core.Lineage.DataHub;
 using FlowtideDotNet.Core.Lineage.Dbt;
 using FlowtideDotNet.Core.Lineage.Internal;
 using FlowtideDotNet.Core.Lineage.Internal.Models;
@@ -53,6 +54,7 @@ namespace FlowtideDotNet.Core.Engine
         private readonly string _streamName;
         private OpenLineageHttpOptions? _openLineageHttpOptions;
         private DbtManifestStore? _dbtManifestStore;
+        private DataHubLineageStore? _dataHubLineageStore;
         private DistributedOptions? _distributedOptions;
 
         public FlowtideBuilder(string streamName)
@@ -286,6 +288,17 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        /// <summary>
+        /// Registers the stream lineage in a DataHub lineage store.
+        /// </summary>
+        /// <param name="store">Store that serves the DataHub entities.</param>
+        public FlowtideBuilder WithDataHubLineageStore(DataHubLineageStore store)
+        {
+            ArgumentNullException.ThrowIfNull(store);
+            _dataHubLineageStore = store;
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
@@ -388,7 +401,7 @@ namespace FlowtideDotNet.Core.Engine
 
             StreamLineage? lineage = null;
             ILogger lineageLogger = NullLogger.Instance;
-            if (_openLineageHttpOptions != null || _dbtManifestStore != null)
+            if (_openLineageHttpOptions != null || _dbtManifestStore != null || _dataHubLineageStore != null)
             {
                 lineageLogger = dataflowStreamBuilder.LoggerFactory?.CreateLogger("FlowtideDotNet.Core.Lineage") ?? NullLogger.Instance;
                 if (_connectorManager == null)
@@ -410,7 +423,7 @@ namespace FlowtideDotNet.Core.Engine
                             ConnectorManager = _connectorManager,
                             BuilderStreamName = _streamName,
                             SubstreamScope = _distributedOptions?.SubstreamName,
-                            IncludeConnectorSchema = (_openLineageHttpOptions?.IncludeSchema ?? false) || (_dbtManifestStore?.IncludeConnectorSchema ?? false)
+                            IncludeConnectorSchema = (_openLineageHttpOptions?.IncludeSchema ?? false) || (_dbtManifestStore?.IncludeConnectorSchema ?? false) || (_dataHubLineageStore?.IncludeConnectorSchema ?? false)
                         });
                         if (_openLineageHttpOptions != null)
                         {
@@ -454,6 +467,17 @@ namespace FlowtideDotNet.Core.Engine
                 catch (Exception ex)
                 {
                     lineageLogger.LogError(ex, "Failed to register lineage for stream '{StreamName}' in the dbt manifest store.", _streamName);
+                }
+            }
+            if (lineage != null && _dataHubLineageStore != null)
+            {
+                try
+                {
+                    _dataHubLineageStore.Register(lineage, LineageStreamNames.GetLogicalStreamName(_streamName, _distributedOptions?.SubstreamName));
+                }
+                catch (Exception ex)
+                {
+                    lineageLogger.LogError(ex, "Failed to register lineage for stream '{StreamName}' in the DataHub lineage store.", _streamName);
                 }
             }
 

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Lineage.Internal;
 using System.Collections.ObjectModel;
 
 namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
@@ -27,8 +28,7 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
 
         public static string ShortNamespace(string @namespace)
         {
-            var index = @namespace.IndexOf("://", StringComparison.Ordinal);
-            return index < 0 ? @namespace : @namespace.Substring(0, index);
+            return LineageRelationNames.ShortNamespace(@namespace);
         }
 
         public bool IsExcluded(string @namespace)
@@ -81,34 +81,8 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
                 _settings.NamespaceMappings.TryGetValue(shortNamespace, out mapping);
             }
 
-            var database = mapping?.Database;
-            var defaultSchema = mapping?.DefaultSchema ?? GetBuiltInDefaultSchema(shortNamespace) ?? string.Empty;
-            if (IsFlat(shortNamespace))
-            {
-                return new DbtRelation(database, defaultSchema, tableName);
-            }
-
-            var parts = nameParts.Count > 0 ? nameParts : [tableName];
-            var count = parts.Count;
-            return count switch
-            {
-                1 => new DbtRelation(database, defaultSchema, parts[0]),
-                2 => new DbtRelation(database, parts[0], parts[1]),
-                3 => new DbtRelation(parts[0], parts[1], parts[2]),
-                _ => new DbtRelation(string.Join(".", parts.Take(count - 2)), parts[count - 2], parts[count - 1])
-            };
-        }
-
-        // Topics and indexes keep dots inside one identifier.
-        private static bool IsFlat(string shortNamespace)
-        {
-            return shortNamespace.Equals("elasticsearch", StringComparison.OrdinalIgnoreCase) ||
-                shortNamespace.StartsWith("kafka", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static string? GetBuiltInDefaultSchema(string shortNamespace)
-        {
-            return shortNamespace.Equals("mssql", StringComparison.OrdinalIgnoreCase) ? "dbo" : null;
+            var (database, schema, identifier) = LineageRelationNames.Split(shortNamespace, tableName, nameParts, mapping?.Database, mapping?.DefaultSchema);
+            return new DbtRelation(database, schema, identifier);
         }
     }
 }

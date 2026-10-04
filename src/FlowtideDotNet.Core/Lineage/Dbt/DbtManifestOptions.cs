@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Core.Lineage.Dbt
         /// <summary>
         /// Namespaces left out, full or before "://".
         /// </summary>
-        public ISet<string> ExcludedNamespaces { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "console", "blackhole", "test" };
+        public ISet<string> ExcludedNamespaces { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {  };
 
         /// <summary>
         /// Asks connectors for their table schema at build.

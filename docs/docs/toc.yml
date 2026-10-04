@@ -67,6 +67,8 @@
       href: monitoring/openlineage.md
     - name: dbt Manifest
       href: monitoring/dbt-manifest.md
+    - name: DataHub
+      href: monitoring/datahub.md
 - name: Operators
   items:
     - name: Projection Operator

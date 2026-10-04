@@ -50,9 +50,17 @@ builder.Services.AddHealthChecks()
 
 // Create the stream
 builder.Services.AddFlowtideStream("my_stream")
+    .AddDbtManifest()
     .AddSqlFileAsPlan("stream.sql")
     .AddVersioningFromString("1.0")
     .AddVersioningFromPlanHash()
+    .AddOpenLineageHttp(opt =>
+    {
+        opt.Url = "http://localhost:9002/openapi/openlineage/api/v1/lineage";
+        opt.OnRequest = (message) =>
+        {
+        };
+    })
     .AddConnectors(connectors =>
     {
         connectors.AddSqlServerAsCatalog("db1", () => sqlDb1ConnStr);
@@ -85,6 +93,7 @@ builder.Services.AddFlowtideStream("my_stream")
 
 var app = builder.Build();
 
+app.MapFlowtideDbtManifest();
 // Map health check
 app.MapHealthChecks("/health");
 

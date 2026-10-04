@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
         }
 
         // Registrations arrive in (stream, substream) ordinal order.
-        public static IReadOnlyDictionary<DbtTableIdentity, DbtMergedTable> Merge(IReadOnlyList<DbtRegistration> registrations, DbtRelationResolution resolution)
+        public static IReadOnlyDictionary<DbtTableIdentity, DbtMergedTable> Merge(IReadOnlyList<DbtRegistration> registrations, DbtRelationResolution resolution, bool includeConnectorSchema)
         {
             var tables = new Dictionary<DbtTableIdentity, DbtMergedTable>();
             var snapshots = new List<SnapshotIdentities>(registrations.Count);
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
                     {
                         var table = GetTable(tables, id);
                         table.Readers.Add(registration.StreamName);
-                        AddColumns(table.ReadColumns, input);
+                        AddColumns(table.ReadColumns, input, includeConnectorSchema);
                     }
                 }
                 foreach (var output in registration.Lineage.Outputs)
@@ -66,11 +66,11 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
                         var table = GetTable(tables, id);
                         table.IsWritten = true;
                         table.Writers.Add(registration.StreamName);
-                        AddColumns(table.WrittenColumns, output);
+                        AddColumns(table.WrittenColumns, output, includeConnectorSchema);
                         // Every projected alias needs a column entry.
                         foreach (var key in output.ColumnLineage?.Fields.Keys.Order(StringComparer.Ordinal) ?? Enumerable.Empty<string>())
                         {
-                            table.WrittenColumns.Add(new DbtColumn(key, AnyType.Instance, false));
+                            table.WrittenColumns.Add(new LineageMergedColumn(key, AnyType.Instance, false));
                         }
                     }
                 }
@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
                 {
                     if (ResolveField(snapshot, field, resolution) is DbtTableIdentity id)
                     {
-                        GetTable(tables, id).ReferencedColumns.Add(new DbtColumn(field.Field, AnyType.Instance, false));
+                        GetTable(tables, id).ReferencedColumns.Add(new LineageMergedColumn(field.Field, AnyType.Instance, false));
                     }
                 }
             }
@@ -250,18 +250,19 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
             return new DbtInputRef(identity, field.Namespace, field.TableName, name, field.Transformations);
         }
 
-        private static void AddColumns(List<DbtColumn> target, StreamLineageTable table)
+        // Connector columns only when this store asked for them.
+        private static void AddColumns(List<LineageMergedColumn> target, StreamLineageTable table, bool includeConnectorSchema)
         {
-            if (table.ConnectorColumns != null)
+            if (includeConnectorSchema && table.ConnectorColumns != null)
             {
                 foreach (var column in table.ConnectorColumns)
                 {
-                    target.Add(new DbtColumn(column.Name, column.Type, true));
+                    target.Add(new LineageMergedColumn(column.Name, column.Type, true));
                 }
             }
             foreach (var column in table.PlanColumns)
             {
-                target.Add(new DbtColumn(column.Name, column.Type, false));
+                target.Add(new LineageMergedColumn(column.Name, column.Type, false));
             }
         }
 

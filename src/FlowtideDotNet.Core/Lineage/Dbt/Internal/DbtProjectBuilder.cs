@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Core.Lineage.Dbt.Internal
         public static DbtProject Build(IReadOnlyList<DbtRegistration> registrations, DbtGeneratorSettings settings)
         {
             var resolution = new DbtRelationResolution(settings);
-            var tables = DbtScopeMerger.Merge(registrations, resolution);
+            var tables = DbtScopeMerger.Merge(registrations, resolution, settings.IncludeConnectorSchema);
             var dialect = settings.Dialect;
 
             var models = tables.Values.Where(x => x.IsWritten).ToList();
