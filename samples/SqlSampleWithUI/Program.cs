@@ -15,6 +15,7 @@ using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Sinks;
 using FlowtideDotNet.DependencyInjection;
+using FlowtideDotNet.Lineage.DataHub;
 using SqlSampleWithUI;
 
 var builder = WebApplication.CreateBuilder(args);

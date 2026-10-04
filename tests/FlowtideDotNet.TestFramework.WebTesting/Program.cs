@@ -1,6 +1,7 @@
 using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.DependencyInjection;
+using FlowtideDotNet.Lineage.DataHub;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,15 +17,12 @@ builder.Services.AddFlowtideStream("stream")
     {
         storage.AddTemporaryStorage();
     })
-    .AddDbtManifest();
-
-// Test connectors report the excluded namespace "test".
-builder.Services.AddFlowtideDbtManifest(o => o.ExcludedNamespaces.Remove("test"));
+    .AddDataHubLineage();
 
 var app = builder.Build();
 
 app.MapFlowtideTestInformation();
-app.MapFlowtideDbtManifest();
+app.MapFlowtideDataHubLineage();
 
 app.Run();
 

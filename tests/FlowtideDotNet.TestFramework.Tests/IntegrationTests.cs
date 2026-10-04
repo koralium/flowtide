@@ -15,6 +15,7 @@ using FlowtideDotNet.DependencyInjection;
 using Microsoft.AspNetCore.TestHost;
 using FlowtideDotNet.Core;
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace FlowtideDotNet.TestFramework.Tests
@@ -112,7 +113,7 @@ namespace FlowtideDotNet.TestFramework.Tests
         }
 
         [Fact]
-        public async Task DbtManifestServesStreamLineage()
+        public async Task DataHubEndpointServesStreamLineage()
         {
             // Own directory, the shared default path stays locked.
             using var factory = _factory.WithWebHostBuilder(b =>
@@ -122,27 +123,30 @@ namespace FlowtideDotNet.TestFramework.Tests
                     services.AddFlowtideStream("stream")
                     .AddStorage(storage =>
                     {
-                        storage.AddTemporaryDevelopmentStorage(o => o.DirectoryPath = $"./data/tempFiles/dbt{Guid.NewGuid():N}");
+                        storage.AddTemporaryDevelopmentStorage(o => o.DirectoryPath = $"./data/tempFiles/datahub{Guid.NewGuid():N}");
                     });
                 });
             });
             var client = factory.CreateClient();
             await _inProcessMonitor.WaitForCheckpoint();
 
-            var response = await client.GetAsync("/dbt/manifest.json");
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            using var manifest = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
-            var root = manifest.RootElement;
-            var model = Assert.Single(root.GetProperty("nodes").EnumerateObject(), x => x.Value.GetProperty("alias").GetString() == "output").Value;
-            var source = Assert.Single(root.GetProperty("sources").EnumerateObject(), x => x.Value.GetProperty("identifier").GetString() == "testtable").Value;
-            Assert.Equal("model", model.GetProperty("resource_type").GetString());
-            Assert.Contains($"FROM {source.GetProperty("relation_name").GetString()}", model.GetProperty("compiled_code").GetString());
-            Assert.Contains(source.GetProperty("unique_id").GetString(), model.GetProperty("depends_on").GetProperty("nodes").EnumerateArray().Select(x => x.GetString()));
+            using var config = JsonDocument.Parse(await client.GetStringAsync("/datahub/config"));
+            Assert.Equal("true", config.RootElement.GetProperty("noCode").GetString());
 
-            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/dbt/stream/manifest.json")).StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/dbt/catalog.json")).StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/dbt/missing/manifest.json")).StatusCode);
-            Assert.Equal(HttpStatusCode.MethodNotAllowed, (await client.PostAsync("/dbt/manifest.json", null)).StatusCode);
+            var scroll = await client.PostAsync("/datahub/api/graphql", JsonContent.Create(new { query = "query { scrollAcrossEntities }", variables = new { batchSize = 100 } }));
+            Assert.Equal(HttpStatusCode.OK, scroll.StatusCode);
+            using var scrollJson = JsonDocument.Parse(await scroll.Content.ReadAsByteArrayAsync());
+            var urns = scrollJson.RootElement.GetProperty("data").GetProperty("scrollAcrossEntities").GetProperty("searchResults")
+                .EnumerateArray().Select(x => x.GetProperty("entity").GetProperty("urn").GetString()).ToList();
+            const string job = "urn:li:dataJob:(urn:li:dataFlow:(flowtide,stream,PROD),test.output)";
+            const string input = "urn:li:dataset:(urn:li:dataPlatform:test,testtable,PROD)";
+            Assert.Equal(["urn:li:dataFlow:(flowtide,stream,PROD)", job, "urn:li:dataPlatform:flowtide", "urn:li:dataset:(urn:li:dataPlatform:test,output,PROD)", input], urns);
+
+            using var entity = JsonDocument.Parse(await client.GetStringAsync("/datahub/entitiesV2/" + Uri.EscapeDataString(job)));
+            var inputOutput = entity.RootElement.GetProperty("aspects").GetProperty("dataJobInputOutput").GetProperty("value");
+            Assert.Equal([input], inputOutput.GetProperty("inputDatasets").EnumerateArray().Select(x => x.GetString()));
+            var lineage = Assert.Single(inputOutput.GetProperty("fineGrainedLineages").EnumerateArray());
+            Assert.Equal($"urn:li:schemaField:({input},val)", Assert.Single(lineage.GetProperty("upstreams").EnumerateArray()).GetString());
         }
     }
 }

@@ -13,10 +13,8 @@
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Engine.Distributed;
 using FlowtideDotNet.Core.Lineage;
-using FlowtideDotNet.Core.Lineage.DataHub;
-using FlowtideDotNet.Core.Lineage.Dbt;
 using FlowtideDotNet.Core.Lineage.Internal;
-using FlowtideDotNet.Core.Tests.LineageTests.Dbt;
+using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Core.Tests.Failure;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
@@ -142,100 +140,116 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
             Assert.DoesNotContain(typeof(OpenLineageHttpReporter).FullName, logs.Categories);
         }
 
+        private sealed class RecordingLineageListener : IStreamLineageListener
+        {
+            public bool IncludeConnectorSchema { get; init; }
+
+            public Exception? Failure { get; init; }
+
+            public List<(StreamLineage Lineage, string StreamName)> Calls { get; } = new List<(StreamLineage Lineage, string StreamName)>();
+
+            public void OnStreamBuilt(StreamLineage lineage, string logicalStreamName)
+            {
+                Calls.Add((lineage, logicalStreamName));
+                if (Failure != null)
+                {
+                    throw Failure;
+                }
+            }
+        }
+
         [Fact]
-        public void DbtStoreRegisteredOnceAfterBuild()
+        public void ListenerReceivesLineageOnceAfterBuild()
         {
             var logs = new ListLoggerProvider();
-            var store = CreateStore();
-            var builder = CreateBuilder(GetPlan(GetTimestampSql), "dbtRegistered", logs)
+            var listener = new RecordingLineageListener();
+            var builder = CreateBuilder(GetPlan(GetTimestampSql), "listenerCalled", logs)
                 .AddConnectorManager(CreateConnectorManager())
-                .WithDbtManifestStore(store);
-            Assert.Equal(0, store.Version);
+                .AddLineageListener(listener);
+            Assert.Empty(listener.Calls);
 
             var stream = builder.Build();
 
             Assert.NotNull(stream);
-            Assert.Equal(1, store.Version);
             Assert.DoesNotContain(logs.Entries, x => x.Category == LineageCategory);
-            Assert.True(store.TryGetManifest("stream", out var manifest));
-            var root = DbtTestData.Parse(manifest);
-            Assert.Equal(["model.flowtide.failure__output"], DbtTestData.Keys(root.GetProperty("nodes")));
-            // The internal timestamp read never becomes a source.
-            Assert.Equal(["source.flowtide.test.input1"], DbtTestData.Keys(root.GetProperty("sources")));
+            var (lineage, streamName) = Assert.Single(listener.Calls);
+            Assert.Equal("stream", streamName);
+            Assert.Equal(["output"], lineage.Outputs.Select(x => x.TableName));
+            // The internal timestamp read never becomes an input.
+            Assert.Equal(["input1"], lineage.Inputs.Select(x => x.TableName));
         }
 
         [Fact]
-        public void DbtStoreNotRegisteredWhenLineageFails()
+        public void ListenerNotCalledWhenLineageFails()
         {
             var logs = new ListLoggerProvider();
-            var store = CreateStore();
+            var listener = new RecordingLineageListener();
             var connectorManager = new ConnectorManager();
             connectorManager.AddSource(new TestIngressFactory("^input1$"));
             connectorManager.AddSink(new ThrowingLineageSinkFactory());
 
-            var stream = CreateBuilder(GetPlan(GetTimestampSql), "dbtLineageFailure", logs)
+            var stream = CreateBuilder(GetPlan(GetTimestampSql), "listenerLineageFailure", logs)
                 .AddConnectorManager(connectorManager)
-                .WithDbtManifestStore(store)
+                .AddLineageListener(listener)
                 .Build();
 
             Assert.NotNull(stream);
             Assert.Equal(LogLevel.Error, Assert.Single(logs.Entries, x => x.Category == LineageCategory).Level);
-            Assert.Equal(0, store.Version);
+            Assert.Empty(listener.Calls);
         }
 
         [Fact]
-        public void DbtStoreNotRegisteredWhenBuildFails()
+        public void ListenerNotCalledWhenBuildFails()
         {
-            var store = CreateStore();
+            var listener = new RecordingLineageListener();
             var connectorManager = new ConnectorManager();
             // Lineage succeeds, creating the source throws.
             connectorManager.AddSource(new LineageTestSourceFactory());
             connectorManager.AddSink(new FailureEgressFactory("*", new FailureEgressOptions()));
 
-            Assert.Throws<NotSupportedException>(() => CreateBuilder(GetPlan(GetTimestampSql), "dbtBuildFailure", new ListLoggerProvider())
+            Assert.Throws<NotSupportedException>(() => CreateBuilder(GetPlan(GetTimestampSql), "listenerBuildFailure", new ListLoggerProvider())
                 .AddConnectorManager(connectorManager)
-                .WithDbtManifestStore(store)
+                .AddLineageListener(listener)
                 .Build());
 
-            Assert.Equal(0, store.Version);
+            Assert.Empty(listener.Calls);
         }
 
         [Fact]
-        public void DbtStoreWithoutConnectorManagerLogsWarning()
+        public void ListenerWithoutConnectorManagerLogsWarning()
         {
             var logs = new ListLoggerProvider();
-            var store = CreateStore();
+            var listener = new RecordingLineageListener();
             var readWriteFactory = new ReadWriteFactory()
                 .AddReadResolver((readRelation, functionsRegister, options) => new ReadOperatorInfo(new TestIngress(options)))
                 .AddWriteResolver((writeRelation, options) => new FailureEgress(options, new FailureEgressOptions()));
 
 #pragma warning disable CS0618 // Only the legacy factory builds without connectors.
-            var stream = CreateBuilder(GetPlan(GetTimestampSql), "dbtNoConnectorManager", logs)
+            var stream = CreateBuilder(GetPlan(GetTimestampSql), "listenerNoConnectorManager", logs)
                 .AddReadWriteFactory(readWriteFactory)
-                .WithDbtManifestStore(store)
+                .AddLineageListener(listener)
                 .Build();
 #pragma warning restore CS0618
 
             Assert.NotNull(stream);
             Assert.Equal(LogLevel.Warning, Assert.Single(logs.Entries, x => x.Category == LineageCategory).Level);
-            Assert.Equal(0, store.Version);
+            Assert.Empty(listener.Calls);
         }
 
         [Theory]
         [InlineData(true, false, true)]
         [InlineData(false, false, false)]
         [InlineData(false, true, true)]
-        public void ConnectorSchemaRequestedByStoreOrOpenLineage(bool storeIncludesSchema, bool openLineageIncludesSchema, bool expected)
+        public void ConnectorSchemaRequestedByListenerOrOpenLineage(bool listenerIncludesSchema, bool openLineageIncludesSchema, bool expected)
         {
             var source = new SchemaRecordingIngressFactory();
             var connectorManager = new ConnectorManager();
             connectorManager.AddSource(source);
             connectorManager.AddSink(new FailureEgressFactory("*", new FailureEgressOptions()));
-            var options = new DbtManifestOptions() { IncludeConnectorSchema = storeIncludesSchema };
 
-            CreateBuilder(GetPlan(GetTimestampSql), $"dbtSchema{storeIncludesSchema}{openLineageIncludesSchema}", new ListLoggerProvider())
+            CreateBuilder(GetPlan(GetTimestampSql), $"listenerSchema{listenerIncludesSchema}{openLineageIncludesSchema}", new ListLoggerProvider())
                 .AddConnectorManager(connectorManager)
-                .WithDbtManifestStore(new DbtManifestStore(options))
+                .AddLineageListener(new RecordingLineageListener() { IncludeConnectorSchema = listenerIncludesSchema })
                 .WithOpenLineageHttp(new OpenLineageHttpOptions() { Url = Url, IncludeSchema = openLineageIncludesSchema })
                 .Build();
 
@@ -243,146 +257,52 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
         }
 
         [Fact]
-        public void DbtStoreUsesLogicalStreamName()
-        {
-            var store = CreateStore();
-            var stream = new FlowtideBuilder("6_orders_sub1")
-                .AddPlan(GetPlan(GetTimestampSql))
-                .AddConnectorManager(CreateConnectorManager())
-                .SetDistributedOptions(new DistributedOptions("sub1", null, new LocalSubstreamCommunicationHub().CreateFactory("sub1")))
-                .WithDbtManifestStore(store)
-                .WithStateOptions(new StateManagerOptions()
-                {
-                    PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
-                    {
-                        DirectoryPath = "./data/tempFiles/dbtLogicalName"
-                    })
-                })
-                .Build();
-
-            Assert.NotNull(stream);
-            Assert.True(store.TryGetManifest("orders", out _));
-            Assert.False(store.TryGetManifest("6_orders_sub1", out _));
-        }
-
-        [Fact]
-        public void DataHubStoreRegisteredOnceAfterBuild()
+        public void ListenersShareOneExtractionAndAFailingListenerIsLogged()
         {
             var logs = new ListLoggerProvider();
-            var store = CreateDataHubStore();
-            var builder = CreateBuilder(GetPlan(GetTimestampSql), "dataHubRegistered", logs)
-                .AddConnectorManager(CreateConnectorManager())
-                .WithDataHubLineageStore(store);
-            Assert.Equal(0, store.Version);
-
-            var stream = builder.Build();
-
-            Assert.NotNull(stream);
-            Assert.Equal(1, store.Version);
-            Assert.DoesNotContain(logs.Entries, x => x.Category == LineageCategory);
-            // The internal timestamp read never becomes an input.
-            Assert.Equal(
-                [
-                    "urn:li:dataFlow:(flowtide,stream,PROD)",
-                    "urn:li:dataJob:(urn:li:dataFlow:(flowtide,stream,PROD),failure.output)",
-                    "urn:li:dataset:(urn:li:dataPlatform:failure,output,PROD)",
-                    "urn:li:dataset:(urn:li:dataPlatform:test,input1,PROD)"
-                ],
-                store.GetSnapshot().Urns);
-        }
-
-        [Fact]
-        public void DataHubStoreNotRegisteredWhenLineageFails()
-        {
-            var logs = new ListLoggerProvider();
-            var store = CreateDataHubStore();
-            var connectorManager = new ConnectorManager();
-            connectorManager.AddSource(new TestIngressFactory("^input1$"));
-            connectorManager.AddSink(new ThrowingLineageSinkFactory());
-
-            var stream = CreateBuilder(GetPlan(GetTimestampSql), "dataHubLineageFailure", logs)
-                .AddConnectorManager(connectorManager)
-                .WithDataHubLineageStore(store)
-                .Build();
-
-            Assert.NotNull(stream);
-            Assert.Equal(LogLevel.Error, Assert.Single(logs.Entries, x => x.Category == LineageCategory).Level);
-            Assert.Equal(0, store.Version);
-        }
-
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public void ConnectorSchemaRequestedByDataHubStore(bool storeIncludesSchema)
-        {
             var source = new SchemaRecordingIngressFactory();
             var connectorManager = new ConnectorManager();
             connectorManager.AddSource(source);
             connectorManager.AddSink(new FailureEgressFactory("*", new FailureEgressOptions()));
+            var failing = new RecordingLineageListener() { Failure = new InvalidOperationException("listener failed") };
+            var second = new RecordingLineageListener();
 
-            CreateBuilder(GetPlan(GetTimestampSql), $"dataHubSchema{storeIncludesSchema}", new ListLoggerProvider())
+            var stream = CreateBuilder(GetPlan(GetTimestampSql), "listenerFailure", logs)
                 .AddConnectorManager(connectorManager)
-                .WithDataHubLineageStore(new DataHubLineageStore(new DataHubLineageOptions() { IncludeConnectorSchema = storeIncludesSchema }))
+                .AddLineageListener(failing)
+                .AddLineageListener(second)
                 .Build();
 
-            Assert.Equal([storeIncludesSchema], source.IncludeSchemaCalls);
-        }
-
-        [Fact]
-        public void DataHubAndDbtStoresShareOneExtraction()
-        {
-            var source = new SchemaRecordingIngressFactory();
-            var connectorManager = new ConnectorManager();
-            connectorManager.AddSource(source);
-            connectorManager.AddSink(new FailureEgressFactory("*", new FailureEgressOptions()));
-            var dbtStore = CreateStore();
-            var dataHubStore = CreateDataHubStore();
-
-            CreateBuilder(GetPlan(GetTimestampSql), "dataHubAndDbt", new ListLoggerProvider())
-                .AddConnectorManager(connectorManager)
-                .WithDbtManifestStore(dbtStore)
-                .WithDataHubLineageStore(dataHubStore)
-                .Build();
-
+            Assert.NotNull(stream);
             Assert.Single(source.IncludeSchemaCalls);
-            Assert.Equal(1, dbtStore.Version);
-            Assert.Equal(1, dataHubStore.Version);
+            Assert.Same(Assert.Single(failing.Calls).Lineage, Assert.Single(second.Calls).Lineage);
+            var error = Assert.Single(logs.Entries, x => x.Category == LineageCategory);
+            Assert.Equal(LogLevel.Error, error.Level);
+            Assert.Equal("listener failed", error.Exception!.Message);
         }
 
         [Fact]
-        public void DataHubStoreUsesLogicalStreamName()
+        public void ListenerGetsTheLogicalStreamName()
         {
-            var store = CreateDataHubStore();
+            var listener = new RecordingLineageListener();
             var stream = new FlowtideBuilder("6_orders_sub1")
                 .AddPlan(GetPlan(GetTimestampSql))
                 .AddConnectorManager(CreateConnectorManager())
                 .SetDistributedOptions(new DistributedOptions("sub1", null, new LocalSubstreamCommunicationHub().CreateFactory("sub1")))
-                .WithDataHubLineageStore(store)
+                .AddLineageListener(listener)
                 .WithStateOptions(new StateManagerOptions()
                 {
                     PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
                     {
-                        DirectoryPath = "./data/tempFiles/dataHubLogicalName"
+                        DirectoryPath = "./data/tempFiles/listenerLogicalName"
                     })
                 })
                 .Build();
 
             Assert.NotNull(stream);
-            Assert.Contains("urn:li:dataFlow:(flowtide,orders,PROD)", store.GetSnapshot().Urns);
-        }
-
-        private static DataHubLineageStore CreateDataHubStore()
-        {
-            var options = new DataHubLineageOptions();
-            options.ExcludedNamespaces.Clear();
-            return new DataHubLineageStore(options);
-        }
-
-        private static DbtManifestStore CreateStore()
-        {
-            var options = new DbtManifestOptions();
-            options.ExcludedNamespaces.Clear();
-            return new DbtManifestStore(options);
+            var (lineage, streamName) = Assert.Single(listener.Calls);
+            Assert.Equal("orders", streamName);
+            Assert.Equal("sub1", lineage.SubstreamName);
         }
 
         private static ConnectorManager CreateConnectorManager()

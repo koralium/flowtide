@@ -17,8 +17,6 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Lineage;
-using FlowtideDotNet.Core.Lineage.DataHub;
-using FlowtideDotNet.Core.Lineage.Dbt;
 using FlowtideDotNet.Core.Lineage.Internal;
 using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Core.Optimizer;
@@ -53,8 +51,7 @@ namespace FlowtideDotNet.Core.Engine
         private bool _isCheckFailureRegistered = false;
         private readonly string _streamName;
         private OpenLineageHttpOptions? _openLineageHttpOptions;
-        private DbtManifestStore? _dbtManifestStore;
-        private DataHubLineageStore? _dataHubLineageStore;
+        private readonly List<IStreamLineageListener> _lineageListeners = new List<IStreamLineageListener>();
         private DistributedOptions? _distributedOptions;
 
         public FlowtideBuilder(string streamName)
@@ -277,25 +274,11 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
-        /// <summary>
-        /// Registers the stream lineage in a dbt manifest store.
-        /// </summary>
-        /// <param name="store">Store that serves the mock manifest.</param>
-        public FlowtideBuilder WithDbtManifestStore(DbtManifestStore store)
+        // Lineage packages hook in here, the listener gets the lineage after a successful build.
+        internal FlowtideBuilder AddLineageListener(IStreamLineageListener listener)
         {
-            ArgumentNullException.ThrowIfNull(store);
-            _dbtManifestStore = store;
-            return this;
-        }
-
-        /// <summary>
-        /// Registers the stream lineage in a DataHub lineage store.
-        /// </summary>
-        /// <param name="store">Store that serves the DataHub entities.</param>
-        public FlowtideBuilder WithDataHubLineageStore(DataHubLineageStore store)
-        {
-            ArgumentNullException.ThrowIfNull(store);
-            _dataHubLineageStore = store;
+            ArgumentNullException.ThrowIfNull(listener);
+            _lineageListeners.Add(listener);
             return this;
         }
 
@@ -401,7 +384,7 @@ namespace FlowtideDotNet.Core.Engine
 
             StreamLineage? lineage = null;
             ILogger lineageLogger = NullLogger.Instance;
-            if (_openLineageHttpOptions != null || _dbtManifestStore != null || _dataHubLineageStore != null)
+            if (_openLineageHttpOptions != null || _lineageListeners.Count > 0)
             {
                 lineageLogger = dataflowStreamBuilder.LoggerFactory?.CreateLogger("FlowtideDotNet.Core.Lineage") ?? NullLogger.Instance;
                 if (_connectorManager == null)
@@ -423,7 +406,7 @@ namespace FlowtideDotNet.Core.Engine
                             ConnectorManager = _connectorManager,
                             BuilderStreamName = _streamName,
                             SubstreamScope = _distributedOptions?.SubstreamName,
-                            IncludeConnectorSchema = (_openLineageHttpOptions?.IncludeSchema ?? false) || (_dbtManifestStore?.IncludeConnectorSchema ?? false) || (_dataHubLineageStore?.IncludeConnectorSchema ?? false)
+                            IncludeConnectorSchema = (_openLineageHttpOptions?.IncludeSchema ?? false) || _lineageListeners.Any(x => x.IncludeConnectorSchema)
                         });
                         if (_openLineageHttpOptions != null)
                         {
@@ -457,27 +440,20 @@ namespace FlowtideDotNet.Core.Engine
 
             var stream = dataflowStreamBuilder.Build();
 
-            // Only a successful build replaces the registration.
-            if (lineage != null && _dbtManifestStore != null)
+            // Only a successful build reaches the listeners.
+            if (lineage != null)
             {
-                try
+                var logicalStreamName = LineageStreamNames.GetLogicalStreamName(_streamName, _distributedOptions?.SubstreamName);
+                foreach (var listener in _lineageListeners)
                 {
-                    _dbtManifestStore.Register(lineage, LineageStreamNames.GetLogicalStreamName(_streamName, _distributedOptions?.SubstreamName));
-                }
-                catch (Exception ex)
-                {
-                    lineageLogger.LogError(ex, "Failed to register lineage for stream '{StreamName}' in the dbt manifest store.", _streamName);
-                }
-            }
-            if (lineage != null && _dataHubLineageStore != null)
-            {
-                try
-                {
-                    _dataHubLineageStore.Register(lineage, LineageStreamNames.GetLogicalStreamName(_streamName, _distributedOptions?.SubstreamName));
-                }
-                catch (Exception ex)
-                {
-                    lineageLogger.LogError(ex, "Failed to register lineage for stream '{StreamName}' in the DataHub lineage store.", _streamName);
+                    try
+                    {
+                        listener.OnStreamBuilt(lineage, logicalStreamName);
+                    }
+                    catch (Exception ex)
+                    {
+                        lineageLogger.LogError(ex, "Lineage listener {Listener} failed for stream '{StreamName}'.", listener.GetType().Name, _streamName);
+                    }
                 }
             }
 

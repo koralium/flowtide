@@ -65,8 +65,6 @@
       href: monitoring/azuremonitor.md
     - name: OpenLineage
       href: monitoring/openlineage.md
-    - name: dbt Manifest
-      href: monitoring/dbt-manifest.md
     - name: DataHub
       href: monitoring/datahub.md
 - name: Operators

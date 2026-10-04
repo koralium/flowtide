@@ -10,13 +10,11 @@ The lineage arrives as native DataHub metadata, so no SQL is parsed and every da
 * Every stream becomes a **data flow** with the orchestrator `flowtide`.
 * Every table a stream writes becomes a **data job** in that flow, with the tables it reads as inputs and column lineage between them.
 * Every table read or written becomes a **dataset** with a schema, unless turned off.
+* The `flowtide` **data platform** gets a display name and a logo, unless turned off.
+
+Install the NuGet package `FlowtideDotNet.Lineage.DataHub`. Everything below is in the namespace `FlowtideDotNet.Lineage.DataHub`.
 
 ## Setup with Dependency Injection
-
-Install the following NuGet packages:
-
-* FlowtideDotNet.DependencyInjection
-* FlowtideDotNet.AspNetCore
 
 Add the following code to your *Program.cs*:
 
@@ -61,9 +59,33 @@ app.MapFlowtideDataHubLineage(store, "/datahub");
 * The stream is registered after a successful `Build()`. A lineage failure is logged and never fails `Build()`.
 * The options are copied when the store is created, so later changes to them are ignored.
 
-Distributed streams register each substream separately, and the store merges the substreams of a stream into one data flow.
-Set the store with `ConfigureSubstream` on a `DistributedStreamBuilder`, or in `ConfigureBuilder` with Orleans, as described for the [dbt manifest](dbt-manifest.md#distributed-streams).
-Each process serves only the substreams built in it.
+### Distributed streams
+
+Each substream registers separately, and the store merges the substreams of a stream into one data flow under its logical name.
+
+With `DistributedStreamBuilder`:
+
+```csharp
+distributedStreamBuilder.ConfigureSubstream((substreamName, builder) => builder.WithDataHubLineageStore(store));
+```
+
+With Orleans, register the store as a singleton and set it in `ConfigureBuilder`:
+
+```csharp
+var store = new DataHubLineageStore();
+services.AddSingleton(store);
+
+services.AddFlowtideOrleans(connectors => { ... }, (streamName, substreamName, storage) => { ... },
+    options =>
+    {
+        options.ConfigureBuilder = (streamName, substreamName, flowtideBuilder) =>
+        {
+            flowtideBuilder.WithDataHubLineageStore(store);
+        };
+    });
+```
+
+Each process serves only the substreams built in it. There is no aggregation across a cluster.
 
 ## DataHub Recipe
 
@@ -116,14 +138,16 @@ app.MapFlowtideDataHubLineage().RequireAuthorization("lineage");
 | Option                 | Type                                                    | Default                        | Description                                                                                  |
 | ---------------------- | ------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------- |
 | Env                    | `string`                                                | `PROD`                         | Environment of datasets, flows and jobs. Must be a DataHub environment such as `PROD`, `DEV` or `QA`. `CERT` needs DataHub 1.7 or later. |
-| ExcludedNamespaces     | `ISet<string>`                                          | `console`, `blackhole`, `test` | Namespaces left out. Matches the full namespace or the part before `://`.                    |
+| ExcludedNamespaces     | `ISet<string>`                                          | empty                          | Namespaces left out, such as `console` or `blackhole`. Matches the full namespace or the part before `://`. |
 | IncludeConnectorSchema | `bool`                                                  | `true`                         | Asks connectors for their table schema at build and uses it for dataset schemas. The SQL Server connector queries metadata for every table. |
 | IncludeDatasetMetadata | `bool`                                                  | `true`                         | Serves status and schema for every dataset. See **Dataset Metadata**.                        |
 | WarmupTimeout          | `TimeSpan`                                              | 2 minutes                      | Longest time the routes answer 503 while expected streams are missing.                       |
 | DatasetResolver        | `Func<DataHubDatasetContext, DataHubDataset?>?`         | `null`                         | Overrides the platform, name, platform instance and environment of a table. Returning `null` keeps the default. |
 | AspectProvider         | `Func<DataHubEntityContext, IEnumerable<DataHubAspect>?>?` | `null`                      | Adds aspects to flows, jobs and datasets. See **Custom Aspects**.                            |
+| IncludePlatformInfo    | `bool`                                                  | `true`                         | Serves the `flowtide` data platform. See **Flowtide Platform**.                              |
+| PlatformLogoUrl        | `string?`                                               | The Flowtide logo on GitHub    | Logo of the `flowtide` data platform. `null` leaves the logo out.                            |
 
-Configuration binding only adds to `ExcludedNamespaces`; the default exclusions can only be removed in code. `MapNamespace`, `DatasetResolver` and `AspectProvider` can only be set in code.
+Configuration binding adds to `ExcludedNamespaces`. `MapNamespace`, `DatasetResolver` and `AspectProvider` can only be set in code.
 
 `DatasetResolver` and `AspectProvider` run when the entities are generated, on the first request after a stream registers. One generation runs at a time, on a request thread. An exception from either fails the routes with 500 and is logged, until the next registration.
 
@@ -146,7 +170,16 @@ Lineage only connects to the tables DataHub already has when the dataset urns ma
 The name of a dataset is built from the connector's table name:
 
 * `elasticsearch` and `kafka` keep the table name as is, so topic `orders.v1` is dataset `orders.v1`.
-* Other namespaces split the name on `.` and join database, schema and table, as described for the [dbt manifest](dbt-manifest.md#mapping-tables-to-dbt-relations). `mssql` table `orders` with `Database = "shop"` becomes `shop.dbo.orders`.
+* Other namespaces split the name on `.`, with catalog prefixes already removed, and join database, schema and table:
+
+  | Parts             | Database                      | Schema                          | Table     |
+  | ----------------- | ----------------------------- | ------------------------------- | --------- |
+  | `orders`          | `Database`                    | `DefaultSchema`, or empty       | `orders`  |
+  | `dbo.orders`      | `Database`                    | `dbo`                           | `orders`  |
+  | `shop.dbo.orders` | `shop`                        | `dbo`                           | `orders`  |
+  | more than 3 parts | leading parts joined with `.` | second to last part             | last part |
+
+  Empty parts are left out, and `mssql` defaults `DefaultSchema` to `dbo`, so `mssql` table `orders` with `Database = "shop"` becomes `shop.dbo.orders`.
 * The platform instance, when set, is prefixed: `prod-sql.shop.dbo.orders`.
 * `DatasetResolver` is called last, and a non-null result wins. Its result is used as is, so `LowercaseNames` does not apply to it, while the namespace's `IncludeDatasetMetadata` and `LowercaseColumns` still do.
 
@@ -182,6 +215,15 @@ opt.MapNamespace("mssql", m => m.IncludeDatasetMetadata = false);
 ```
 
 The data jobs still link to those datasets, and `AspectProvider` can still add aspects to them.
+
+## Flowtide Platform
+
+Flows and jobs belong to the data platform `flowtide`, which DataHub does not know.
+Flowtide serves `urn:li:dataPlatform:flowtide` with the same `dataPlatformInfo` that `datahub put platform` writes: display name `Flowtide`, type `OTHERS` and `PlatformLogoUrl` as the logo.
+The default logo is `https://raw.githubusercontent.com/koralium/flowtide/main/logo/flowtidelogo.svg`, so the browser that shows DataHub must reach GitHub. Point `PlatformLogoUrl` at a copy of the logo inside your network otherwise.
+
+Every run writes the platform again, so a platform set up with `datahub put platform --name flowtide` is overwritten. Set `IncludePlatformInfo = false` to keep your own.
+Only the `flowtide` platform is served. Dataset platforms such as `mssql` or `kafka` keep the logos and names DataHub ships with.
 
 ## Custom Aspects
 
