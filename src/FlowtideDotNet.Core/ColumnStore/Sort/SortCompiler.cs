@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -27,17 +28,87 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
         public delegate void SortWithTagsDelegate(SortCompareContext context, ref Span<int> indices, ref Span<int> tags, ref Span<RadixItem> radixItems);
 
-        private static readonly ConcurrentDictionary<UInt128, SortDelegate> _cache = new ConcurrentDictionary<UInt128, SortDelegate>();
+        /// <summary>
+        /// Compile cache key. Column count and directions join the state key since the tail columns
+        /// bake them in, nothing is decided at runtime. Only built on a state change.
+        /// </summary>
+        private readonly struct SortLayoutKey : IEquatable<SortLayoutKey>
+        {
+            public readonly UInt128 StateKey;
+            public readonly int ColumnCount;
+            public readonly SortColumnDirection[]? Directions;
 
-        private static readonly ConcurrentDictionary<UInt128, SortWithTagsDelegate> _tagsCache = new ConcurrentDictionary<UInt128, SortWithTagsDelegate>();
+            public SortLayoutKey(UInt128 stateKey, int columnCount, SortColumnDirection[]? directions)
+            {
+                StateKey = stateKey;
+                ColumnCount = columnCount;
+                Directions = directions;
+            }
+
+            public bool Equals(SortLayoutKey other)
+            {
+                if (StateKey != other.StateKey || ColumnCount != other.ColumnCount)
+                {
+                    return false;
+                }
+                if (ReferenceEquals(Directions, other.Directions))
+                {
+                    return true;
+                }
+                if (Directions == null || other.Directions == null || Directions.Length != other.Directions.Length)
+                {
+                    return false;
+                }
+                for (int i = 0; i < Directions.Length; i++)
+                {
+                    if (Directions[i] != other.Directions[i])
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            public override bool Equals(object? obj)
+            {
+                return obj is SortLayoutKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                var hash = HashCode.Combine(StateKey, ColumnCount);
+                if (Directions != null)
+                {
+                    for (int i = 0; i < Directions.Length; i++)
+                    {
+                        hash = HashCode.Combine(hash, Directions[i]);
+                    }
+                }
+                return hash;
+            }
+        }
+
+        private static readonly ConcurrentDictionary<SortLayoutKey, SortDelegate> _cache = new ConcurrentDictionary<SortLayoutKey, SortDelegate>();
+
+        private static readonly ConcurrentDictionary<SortLayoutKey, SortWithTagsDelegate> _tagsCache = new ConcurrentDictionary<SortLayoutKey, SortWithTagsDelegate>();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static UInt128 CreateKey(IColumn[] columns)
         {
+            return CreateKey(columns, null);
+        }
+
+        public static UInt128 CreateKey(IColumn[] columns, SortColumnDirection[]? directions)
+        {
             UInt128 key = 0;
             for (int i = 0; i < columns.Length && i < 7; i++)
             {
-                CompareColumnStateBuilder.BuildColumnsKey(ref key, columns[i].GetColumnState(), i);
+                var state = columns[i].GetColumnState();
+                if (directions != null && i < directions.Length)
+                {
+                    state = CompareColumnStateBuilder.ApplyDirection(state, directions[i]);
+                }
+                CompareColumnStateBuilder.BuildColumnsKey(ref key, state, i);
             }
             if (columns.Length > 7)
             {
@@ -54,49 +125,131 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
         public static SortDelegate GetOrCompile(UInt128 key, IColumn[] columns)
         {
-            return _cache.GetOrAdd<IColumn[]>(key, static (key, args) => Compile(args), columns);
+            return GetOrCompile(key, columns, null);
+        }
+
+        public static SortDelegate GetOrCompile(UInt128 key, IColumn[] columns, SortColumnDirection[]? directions)
+        {
+            return _cache.GetOrAdd(new SortLayoutKey(key, columns.Length, directions), static (key, args) => Compile(args.columns, args.directions), (columns, directions));
         }
 
         public const int AvailableBytesRadix = 12;
 
-        private static SortDelegate Compile(IColumn[] columns)
+        /// <summary>
+        /// One radix absorbed column, where its prefix bytes go.
+        /// </summary>
+        private readonly struct RadixExtraction
         {
+            public readonly int ColumnIndex;
+            public readonly int BytePosition;
+
+            public RadixExtraction(int columnIndex, int bytePosition)
+            {
+                ColumnIndex = columnIndex;
+                BytePosition = bytePosition;
+            }
+        }
+
+        /// <summary>
+        /// Shared radix routing: absorbed columns, tie comparer start, complement masks. Computed once
+        /// so the entry points and extractor never disagree.
+        /// </summary>
+        private sealed class RadixPlan
+        {
+            public int QuicksortStartIndex;
+            public int BytePasses;
+            public bool UsedRadix;
+            public ulong PrimaryComplementMask;
+            public uint SecondaryComplementMask;
+            public readonly List<RadixExtraction> Extractions = new List<RadixExtraction>();
+        }
+
+        private static RadixPlan ComputePlan(IColumn[] columns, SortColumnDirection[]? directions)
+        {
+            var plan = new RadixPlan();
             int availableBytes = AvailableBytesRadix;
-            int quicksortStartIndex = 0;
-            bool usedRadix = false;
+            var consumed = new List<(int columnIndex, int bytes, bool complement)>();
 
             for (int i = 0; i < columns.Length && i < 7; i++)
             {
+                var direction = BatchSortCompiler.GetEffectiveDirection(columns[i], directions, i);
+                if (direction.HasSwappedNulls())
+                {
+                    // The null byte is below the value bytes, so opposite null placement can't be
+                    // encoded in the prefix. The comparer resolves the order from here.
+                    plan.QuicksortStartIndex = i;
+                    break;
+                }
+
                 var capability = columns[i].SupportsRadixSort(availableBytes, false);
                 availableBytes -= capability.BytesConsumed;
                 if (capability.Support == RadixSupport.Full)
                 {
-                    quicksortStartIndex = i + 1;
-                    usedRadix = true;
+                    consumed.Add((i, capability.BytesConsumed, direction.IsDescending()));
+                    plan.QuicksortStartIndex = i + 1;
+                    plan.UsedRadix = true;
                 }
                 else if (capability.Support == RadixSupport.Partial)
                 {
                     // Radix grouped the prefix. Quicksort MUST start here to resolve string ties
-                    quicksortStartIndex = i;
-                    usedRadix = true;
+                    consumed.Add((i, capability.BytesConsumed, direction.IsDescending()));
+                    plan.QuicksortStartIndex = i;
+                    plan.UsedRadix = true;
                     break;
                 }
                 else
                 {
                     // RadixSupport.None. Quicksort starts here.
-                    quicksortStartIndex = i;
+                    plan.QuicksortStartIndex = i;
                     break;
                 }
             }
 
-            if (usedRadix)
+            int totalBytes = 0;
+            for (int i = 0; i < consumed.Count; i++)
             {
-                int bytePasses = AvailableBytesRadix - availableBytes;
-                return CompileWithRadix(columns, quicksortStartIndex, bytePasses);
+                totalBytes += consumed[i].bytes;
+            }
+            plan.BytePasses = totalBytes;
+
+            int cumulativeBytes = 0;
+            for (int i = 0; i < consumed.Count; i++)
+            {
+                cumulativeBytes += consumed[i].bytes;
+                int bytePosition = totalBytes - cumulativeBytes;
+                plan.Extractions.Add(new RadixExtraction(consumed[i].columnIndex, bytePosition));
+
+                if (consumed[i].complement)
+                {
+                    // Inverting the whole byte range turns nulls-first asc into nulls-last desc.
+                    for (int b = bytePosition; b < bytePosition + consumed[i].bytes; b++)
+                    {
+                        if (b < 4)
+                        {
+                            plan.SecondaryComplementMask |= (uint)0xFF << (8 * b);
+                        }
+                        else
+                        {
+                            plan.PrimaryComplementMask |= (ulong)0xFF << (8 * (b - 4));
+                        }
+                    }
+                }
             }
 
-            var comparerType = ComparerStructCompiler.Compile(columns, 0);
-            
+            return plan;
+        }
+
+        private static SortDelegate Compile(IColumn[] columns, SortColumnDirection[]? directions)
+        {
+            var plan = ComputePlan(columns, directions);
+
+            if (plan.UsedRadix)
+            {
+                return CompileWithRadix(columns, directions, plan);
+            }
+
+            var comparerType = ComparerStructCompiler.Compile(columns, 0, directions);
+
             var parameter = Expression.Parameter(typeof(SortCompareContext), "context");
             var radixWorkspaceParam = Expression.Parameter(typeof(Span<RadixItem>).MakeByRefType(), "workspace");
             var indicesParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "indices");
@@ -122,9 +275,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return lambda.Compile();
         }
 
-        private static SortDelegate CompileWithRadix(IColumn[] columns, int quicksortStartIndex, int bytePasses)
+        private static SortDelegate CompileWithRadix(IColumn[] columns, SortColumnDirection[]? directions, RadixPlan plan)
         {
-            var comparerType = ComparerStructCompiler.Compile(columns, quicksortStartIndex);
+            var comparerType = ComparerStructCompiler.Compile(columns, plan.QuicksortStartIndex, directions);
 
             var contextParam = Expression.Parameter(typeof(SortCompareContext), "context");
             var radixWorkspaceParam = Expression.Parameter(typeof(Span<RadixItem>).MakeByRefType(), "workspace");
@@ -135,8 +288,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
             executionSteps.Add(CallResetRadixItems(radixWorkspaceParam, indicesParameter));
 
-            Expression invokeExtractor = CompileRadixExtractor(columns, radixWorkspaceParam, columnsField);
-            executionSteps.Add(invokeExtractor);
+            AddRadixExtractorSteps(plan, radixWorkspaceParam, columnsField, executionSteps);
 
             var ctor = comparerType.GetConstructor([typeof(SortCompareContext)]);
             if (ctor == null) throw new InvalidOperationException($"Comparer struct {comparerType.FullName} is missing a constructor.");
@@ -150,8 +302,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
             var callSortRadix = Expression.Call(
                 doSortRadixMethod.MakeGenericMethod(comparerType),
-                Expression.Constant(bytePasses),
-                Expression.Constant(quicksortStartIndex < columns.Length),
+                Expression.Constant(plan.BytePasses),
+                Expression.Constant(plan.QuicksortStartIndex < columns.Length),
                 radixWorkspaceParam,
                 indicesParameter,
                 newComparerExpr
@@ -210,48 +362,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
         public static SortWithTagsDelegate GetOrCompileWithTags(UInt128 key, IColumn[] columns)
         {
-            return _tagsCache.GetOrAdd(key, static (key, args) => CompileWithTags(args), columns);
+            return GetOrCompileWithTags(key, columns, null);
         }
 
-        private static SortWithTagsDelegate CompileWithTags(IColumn[] columns)
+        public static SortWithTagsDelegate GetOrCompileWithTags(UInt128 key, IColumn[] columns, SortColumnDirection[]? directions)
         {
-            int availableBytes = AvailableBytesRadix;
-            int quicksortStartIndex = 0;
-            bool usedRadix = false;
+            return _tagsCache.GetOrAdd(new SortLayoutKey(key, columns.Length, directions), static (key, args) => CompileWithTags(args.columns, args.directions), (columns, directions));
+        }
 
-            // --- STEP 1: CAPABILITY ROUTING ---
-            for (int i = 0; i < columns.Length && i < 7; i++)
+        private static SortWithTagsDelegate CompileWithTags(IColumn[] columns, SortColumnDirection[]? directions)
+        {
+            var plan = ComputePlan(columns, directions);
+
+            if (plan.UsedRadix)
             {
-                var capability = columns[i].SupportsRadixSort(availableBytes, false);
-                availableBytes -= capability.BytesConsumed;
-
-                if (capability.Support == RadixSupport.Full)
-                {
-                    quicksortStartIndex = i + 1;
-                    usedRadix = true;
-                }
-                else if (capability.Support == RadixSupport.Partial)
-                {
-                    // Radix grouped the prefix. Quicksort MUST start here to resolve string ties
-                    quicksortStartIndex = i;
-                    usedRadix = true;
-                    break;
-                }
-                else
-                {
-                    // RadixSupport.None. Quicksort starts here.
-                    quicksortStartIndex = i;
-                    break;
-                }
+                return CompileWithTagsRadix(columns, directions, plan);
             }
 
-            if (usedRadix)
-            {
-                int bytePasses = AvailableBytesRadix - availableBytes;
-                return CompileWithTagsRadix(columns, quicksortStartIndex, bytePasses);
-            }
-
-            var comparerType = ComparerStructCompiler.Compile(columns, 0);
+            var comparerType = ComparerStructCompiler.Compile(columns, 0, directions);
 
             var parameter = Expression.Parameter(typeof(SortCompareContext), "context");
             var indicesParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "indices");
@@ -290,9 +418,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return lambda.Compile();
         }
 
-        private static SortWithTagsDelegate CompileWithTagsRadix(IColumn[] columns, int quicksortStartIndex, int bytePasses)
+        private static SortWithTagsDelegate CompileWithTagsRadix(IColumn[] columns, SortColumnDirection[]? directions, RadixPlan plan)
         {
-            var comparerType = ComparerStructCompiler.Compile(columns, quicksortStartIndex);
+            var comparerType = ComparerStructCompiler.Compile(columns, plan.QuicksortStartIndex, directions);
 
             var contextParam = Expression.Parameter(typeof(SortCompareContext), "context");
             var indicesParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "indices");
@@ -305,8 +433,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
             executionSteps.Add(CallResetRadixItems(radixWorkspaceParam, indicesParameter));
 
-            Expression invokeExtractor = CompileRadixExtractor(columns, radixWorkspaceParam, columnsField);
-            executionSteps.Add(invokeExtractor);
+            AddRadixExtractorSteps(plan, radixWorkspaceParam, columnsField, executionSteps);
 
             var ctor = comparerType.GetConstructor([typeof(SortCompareContext)]);
             if (ctor == null)
@@ -326,8 +453,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
             var callSortRadix = Expression.Call(
                 doSortRadixMethod.MakeGenericMethod(comparerType),
-                Expression.Constant(bytePasses),
-                Expression.Constant(quicksortStartIndex < columns.Length),
+                Expression.Constant(plan.BytePasses),
+                Expression.Constant(plan.QuicksortStartIndex < columns.Length),
                 radixWorkspaceParam,
                 indicesParameter,
                 tagsParameter,
@@ -379,15 +506,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             }
             int length = indices.Length;
             if (length == 0) return;
-            
+
             int start = 0;
             int currentGroup = 0;
 
             for (int i = 1; i <= length; i++)
             {
                 bool isTieBreak = i == length ||
-                    Unsafe.As<RadixItem, ulong>(ref radixItems[i]) != Unsafe.As<RadixItem, ulong>(ref radixItems[start]) ||
-                    Unsafe.Add(ref Unsafe.As<RadixItem, uint>(ref radixItems[i]), 2) != Unsafe.Add(ref Unsafe.As<RadixItem, uint>(ref radixItems[start]), 2);
+                    radixItems[i].PrimaryKey != radixItems[start].PrimaryKey ||
+                    radixItems[i].SecondaryKey != radixItems[start].SecondaryKey;
 
                 if (isTieBreak)
                 {
@@ -448,6 +575,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             }
         }
 
+        /// <summary>
+        /// Inverts descending columns in one pass with compile time constant masks.
+        /// </summary>
+        private static void ApplyComplementMasks(ref Span<RadixItem> items, ulong primaryMask, uint secondaryMask)
+        {
+            ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
+            for (int i = 0; i < items.Length; i++)
+            {
+                ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                item.PrimaryKey ^= primaryMask;
+                item.SecondaryKey ^= secondaryMask;
+            }
+        }
+
         private static Expression CallResetRadixItems(Expression radixItems, Expression indices)
         {
             var method = typeof(SortCompiler).GetMethod(nameof(ResetRadixItems), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
@@ -458,10 +599,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return Expression.Call(method, radixItems, indices);
         }
 
-        public static Expression CompileRadixExtractor(IColumn[] columns, Expression workspaceExpression, Expression columnsExpression)
+        private static void AddRadixExtractorSteps(RadixPlan plan, Expression workspaceExpression, Expression columnsExpression, List<Expression> executionSteps)
         {
-            var methodCalls = new List<Expression>();
-
             var setRadixMethod = typeof(IColumn).GetMethod(nameof(IColumn.SetRadixPrefix), [typeof(Span<RadixItem>), typeof(int)]);
 
             if (setRadixMethod == null)
@@ -469,50 +608,33 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                 throw new InvalidOperationException($"Could not find method {nameof(IColumn.SetRadixPrefix)} on {typeof(IColumn).FullName}.");
             }
 
-            int availableBytes = AvailableBytesRadix;
-            
-            // First pass: calculate total bytes used and list bytes used per column
-            int totalBytes = 0;
-            var listBytesUsed = new List<int>();
-            for (int i = 0; i < columns.Length && i < 7; i++)
+            for (int i = 0; i < plan.Extractions.Count; i++)
             {
-                var column = columns[i];
-                var capability = column.SupportsRadixSort(availableBytes, false);
-
-                if (capability.Support == RadixSupport.Full || capability.Support == RadixSupport.Partial)
-                {
-                    int bytesUsed = capability.BytesConsumed;
-                    listBytesUsed.Add(bytesUsed);
-                    availableBytes -= bytesUsed;
-                    totalBytes += bytesUsed;
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            // Second pass: generate expressions with correct reverse byte positions
-            int cumulativeBytes = 0;
-            for (int i = 0; i < listBytesUsed.Count; i++)
-            {
-                int bytesUsed = listBytesUsed[i];
-                cumulativeBytes += bytesUsed;
-                int currentBytePosition = totalBytes - cumulativeBytes;
-
-                var columnInstanceExpr = Expression.ArrayIndex(columnsExpression, Expression.Constant(i));
-                var positionExpr = Expression.Constant(currentBytePosition, typeof(int));
+                var extraction = plan.Extractions[i];
+                var columnInstanceExpr = Expression.ArrayIndex(columnsExpression, Expression.Constant(extraction.ColumnIndex));
+                var positionExpr = Expression.Constant(extraction.BytePosition, typeof(int));
                 var callExpr = Expression.Call(
                     columnInstanceExpr,
                     setRadixMethod,
                     workspaceExpression,
                     positionExpr);
 
-                methodCalls.Add(callExpr);
+                executionSteps.Add(callExpr);
             }
 
-            var block = Expression.Block(methodCalls);
-            return block;
+            if (plan.PrimaryComplementMask != 0 || plan.SecondaryComplementMask != 0)
+            {
+                var complementMethod = typeof(SortCompiler).GetMethod(nameof(ApplyComplementMasks), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                if (complementMethod == null)
+                {
+                    throw new InvalidOperationException($"Could not find method {nameof(ApplyComplementMasks)} on {typeof(SortCompiler).FullName}.");
+                }
+                executionSteps.Add(Expression.Call(
+                    complementMethod,
+                    workspaceExpression,
+                    Expression.Constant(plan.PrimaryComplementMask),
+                    Expression.Constant(plan.SecondaryComplementMask)));
+            }
         }
     }
 }

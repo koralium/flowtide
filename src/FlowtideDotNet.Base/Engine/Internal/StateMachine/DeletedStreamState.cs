@@ -33,14 +33,25 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task DeleteAsync()
         {
+            Debug.Assert(_context != null, nameof(_context));
+            // The stream is already deleted, but the delete task the caller awaits was
+            // created before this state was consulted and must still be completed.
+            lock (_context._checkpointLock)
+            {
+                if (_context._deleteTask != null)
+                {
+                    _context._deleteTask.SetResult();
+                    _context._deleteTask = null;
+                }
+            }
             return Task.CompletedTask;
         }
 
-        public override void EgressCheckpointDone(string name)
+        public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
         {
         }
 
-        public override void EgressDependenciesDone(string name)
+        public override void EgressDependenciesDone(string name, ILockingEvent? lockingEvent)
         {
         }
 
@@ -48,6 +59,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
             _context.SetStatus(StreamStatus.Deleted);
+            lock (_context._checkpointLock)
+            {
+                // The caller of DeleteAsync awaits this, the delete has fully finished.
+                if (_context._deleteTask != null)
+                {
+                    _context._deleteTask.SetResult();
+                    _context._deleteTask = null;
+                }
+                // A delete implies the stop, a stop that raced the delete must also
+                // complete or its caller waits forever.
+                if (_context._stopTask != null)
+                {
+                    _context._stopTask.SetResult();
+                    _context._stopTask = null;
+                }
+            }
             return Task.CompletedTask;
         }
 
@@ -63,7 +90,19 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task StopAsync()
         {
-            throw new NotSupportedException("Stream already deleted");
+            Debug.Assert(_context != null, nameof(_context));
+            // A deleted stream is stopped. The stop task the caller awaits was created
+            // before this state was consulted and must be completed, throwing here would
+            // orphan it and every later stop call would await it forever.
+            lock (_context._checkpointLock)
+            {
+                if (_context._stopTask != null)
+                {
+                    _context._stopTask.SetResult();
+                    _context._stopTask = null;
+                }
+            }
+            return Task.CompletedTask;
         }
 
         public override Task TriggerCheckpoint(bool isScheduled = false)

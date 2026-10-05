@@ -20,6 +20,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         private readonly MockDatabase mockDatabase;
 
+        // Generated keys must not depend on how much data other tests in the process have
+        // generated: Bogus' f.UniqueIndex is a process-wide static counter, and once a full
+        // suite run pushed it past 2^24/3 the float arithmetic tests started failing on
+        // float rounding of large keys.
+        private int _uniqueIndex;
+
         public List<User> Users { get; private set; }
         public List<Order> Orders { get; private set; }
         public List<Company> Companies { get; private set; }
@@ -233,7 +239,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             List<int> availableManagers = new List<int>();
 
             var testUsers = new Faker<User>()
-                .RuleFor(x => x.UserKey, (f, u) => f.UniqueIndex)
+                .RuleFor(x => x.UserKey, (f, u) => NextUniqueIndex())
                 .RuleFor(x => x.Gender, (f, u) => f.PickRandom<Gender>())
                 .RuleFor(x => x.FirstName, (f, u) => f.Name.FirstName((Bogus.DataSets.Name.Gender)u.Gender))
                 .RuleFor(x => x.LastName, (f, u) => f.Name.LastName((Bogus.DataSets.Name.Gender)u.Gender))
@@ -277,7 +283,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void GenerateOrders(int count)
         {
             var testOrders = new Faker<Order>()
-                .RuleFor(x => x.OrderKey, (f, u) => f.UniqueIndex)
+                .RuleFor(x => x.OrderKey, (f, u) => NextUniqueIndex())
                 .RuleFor(x => x.UserKey, (f, u) => f.PickRandom(Users).UserKey)
                 .RuleFor(x => x.Orderdate, (f, u) => f.Date.Between(DateTime.Parse("1980-01-01"), DateTime.Parse("2000-01-01")))
                 .RuleFor(x => x.GuidVal, (f, u) => Guid.NewGuid())
@@ -312,7 +318,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void GenerateProjects(int count)
         {
             var testProjects = new Faker<Project>()
-                .RuleFor(x => x.ProjectKey, (f, u) => f.UniqueIndex)
+                .RuleFor(x => x.ProjectKey, (f, u) => NextUniqueIndex())
                 .RuleFor(x => x.CompanyId, (f, u) => Companies[f.Random.Int(0, Companies.Count - 2)].CompanyId)
                 .RuleFor(x => x.ProjectNumber, (f, u) => f.Random.AlphaNumeric(9))
                 .RuleFor(x => x.Name, (f, u) => f.Commerce.ProductName());
@@ -330,7 +336,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .StrictMode(false)
                 .Rules((f, u) =>
                 {
-                    u.ProjectMemberKey = f.UniqueIndex;
+                    u.ProjectMemberKey = NextUniqueIndex();
                     var project = f.PickRandom(Projects);
                     u.CompanyId = project.CompanyId;
                     u.ProjectNumber = project.ProjectNumber;
@@ -347,7 +353,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void GenerateGraphNodes(int count)
         {
             var testGraphNodes = new Faker<GraphNode>()
-                .RuleFor(x => x.Id, (f, u) => f.UniqueIndex)
+                .RuleFor(x => x.Id, (f, u) => NextUniqueIndex())
                 .RuleFor(x => x.ParentId, (f, u) =>
                 {
                     if (GraphNodes.Count == 0)
@@ -436,5 +442,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockTable.AddOrUpdate(generated);
             _dailyMarketBatch++;
         }
+
+        private int NextUniqueIndex() => ++_uniqueIndex;
     }
 }

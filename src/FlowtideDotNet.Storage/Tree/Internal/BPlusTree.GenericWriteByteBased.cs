@@ -320,6 +320,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 m_stateClient.Metadata = m_stateClient.Metadata.UpdateRootAndDepth(internalNode.children[0], m_stateClient.Metadata.Depth - 1);
                 m_stateClient.Delete(internalNode.Id);
+                // Delete drops the cache rent, this drops the fetch rent.
+                internalNode.Return();
             }
             else
             {
@@ -606,11 +608,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
                 isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
 
+                // Delete drops the cache's rent, this releases the one taken when the node was
+                // fetched. Without it the merged away leaf never reaches zero and its containers
+                // are never disposed. The mirrored merge into right does the same for rightNode.
                 if (m_usePreviousPointer && leftNode.next != 0)
                 {
+                    leafNode.Return();
                     return UpdateRightPrevious(result, leftNode, isFull, true);
                 }
 
+                leafNode.Return();
                 leftNode.Return();
 
                 if (isFull)
@@ -708,7 +715,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var nextNodeObj = await m_stateClient.GetValue(leafNode.next);
             if (nextNodeObj is LeafNode<K, V, TKeyContainer, TValueContainer> nextNode)
             {
+                nextNode.EnterWriteLock();
                 nextNode.previous = leafNode.Id;
+                nextNode.ExitWriteLock();
                 isFull |= m_stateClient.AddOrUpdate(nextNode.Id, nextNode);
                 if (returnLeaf)
                 {

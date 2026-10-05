@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Base.Vertices
     /// managing backpressure, and handling locking/checkpoint sequences. Derived classes must implement 
     /// custom data processing logic using <see cref="OnRecieve(T, long)"/>
     /// </remarks>
-    public abstract class UnaryVertex<T> : IPropagatorBlock<IStreamEvent, IStreamEvent>, IStreamVertex
+    public abstract class UnaryVertex<T> : IPropagatorBlock<IStreamEvent, IStreamEvent>, IStreamVertex, IStreamVertexCancellation
     {
         private TransformManyBlock<IStreamEvent, IStreamEvent>? _transformBlock;
         private ParallelSource<IStreamEvent>? _parallelSource;
@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Base.Vertices
         private long _currentTime = 0;
         private IVertexHandler? _vertexHandler;
         private bool _isHealthy = true;
-        private TaskCompletionSource? _pauseSource;
+        private readonly PauseGate _pauseGate = new PauseGate();
 
         private string? _name;
         
@@ -80,6 +80,9 @@ namespace FlowtideDotNet.Base.Vertices
         /// Gets the version information of the currently running stream.
         /// </summary>
         public StreamVersionInformation? StreamVersion => _streamVersion;
+        private CancellationTokenSource _cancelToken = new CancellationTokenSource();
+
+        protected CancellationToken CancellationToken => _cancelToken.Token;
 
         protected IMemoryAllocator MemoryAllocator => _vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
 
@@ -96,6 +99,7 @@ namespace FlowtideDotNet.Base.Vertices
         [MemberNotNull(nameof(_transformBlock), nameof(_targetBlock), nameof(_sourceBlock))]
         private void InitializeBlocks()
         {
+            _cancelToken = new CancellationTokenSource();
             _transformBlock = new TransformManyBlock<IStreamEvent, IStreamEvent>((streamEvent) =>
             {
                 // Check if it is a checkpoint event
@@ -133,7 +137,7 @@ namespace FlowtideDotNet.Base.Vertices
                 {
                     var enumerator = OnRecieve(streamMessage.Data, streamMessage.Time);
 
-                    if (_pauseSource != null)
+                    if (_pauseGate.IsPaused)
                     {
                         enumerator = WaitForPause(enumerator);
                     }
@@ -335,8 +339,27 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async IAsyncEnumerable<IStreamEvent> HandleCheckpointEnumerable(ILockingEvent checkpointEvent)
         {
+            if (checkpointEvent is ICheckpointEvent)
+            {
+                await foreach (var e in OnCheckpointFlush())
+                {
+                    if (e is IRentable rentable)
+                    {
+                        rentable.Rent(_links.Count);
+                    }
+                    yield return new StreamMessage<T>(e, _currentTime);
+                }
+            }
             var transformedCheckpoint = await HandleCheckpoint(checkpointEvent);
             yield return transformedCheckpoint;
+        }
+
+        /// <summary>
+        /// Flush data before the checkpoint event is forwarded, not called in parallel mode
+        /// </summary>
+        protected virtual IAsyncEnumerable<T> OnCheckpointFlush()
+        {
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private async IAsyncEnumerable<IStreamEvent> HandleLockEventPrepare(LockingEventPrepare prepare)
@@ -369,7 +392,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async IAsyncEnumerable<T> WaitForPause(IAsyncEnumerable<T> input)
         {
-            var task = _pauseSource?.Task;
+            var task = _pauseGate.PauseTask;
             if (task != null)
             {
                 await task;
@@ -454,14 +477,38 @@ namespace FlowtideDotNet.Base.Vertices
             return (_transformBlock as ISourceBlock<IStreamEvent>).ConsumeMessage(messageHeader, target, out messageConsumed);
         }
 
+        Task IStreamVertexCancellation.CancelPendingOperations() => _cancelToken.CancelAsync();
+
         /// <summary>
         /// Puts the underlying block immediately into a faulted state due to a severe exception.
         /// </summary>
         /// <param name="exception">The triggering exception.</param>
         public void Fault(Exception exception)
         {
-            Debug.Assert(_transformBlock != null, nameof(_transformBlock));
+            if (_transformBlock == null)
+            {
+                // The block is created first at start, a failure before that (for example
+                // storage initialization) has nothing to fault.
+                return;
+            }
+            if (!_cancelToken.IsCancellationRequested)
+            {
+                _cancelToken.Cancel();
+            }
             (_transformBlock as IDataflowBlock).Fault(exception);
+if (_transformBlock.TryReceiveAll(out var pendingMessages))
+            {
+                foreach (var pendingMessage in pendingMessages)
+                {
+                    if (pendingMessage is StreamMessage<T> streamMessage && streamMessage.Data is IRentable rentable)
+                    {
+                        for (var i = 0; i < _links.Count; i++)
+                        {
+                            rentable.Return();
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -578,10 +625,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Pause()
         {
-            if (_pauseSource == null)
-            {
-                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            }
+            _pauseGate.Pause();
         }
 
         /// <summary>
@@ -589,11 +633,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Resume()
         {
-            if (_pauseSource != null)
-            {
-                _pauseSource.SetResult();
-                _pauseSource = null;
-            }
+            _pauseGate.Resume();
         }
 
         /// <summary>

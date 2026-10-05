@@ -17,6 +17,29 @@ namespace FlowtideDotNet.Base.Vertices
     /// </summary>
     public interface IStreamEgressVertex : IStreamVertex
     {
-        internal void SetCheckpointDoneFunction(Action<string> checkpointDone, Action<string> dependenciesDone);
+        internal void SetCheckpointDoneFunction(Action<string, ILockingEvent?> checkpointDone, Action<string, ILockingEvent?> dependenciesDone);
+
+        /// <summary>
+        /// Invoked when a checkpoint has successfully completed and its state is durable.
+        /// </summary>
+        /// <param name="checkpointVersion">
+        /// The state manager version of the completed checkpoint, the same domain as the
+        /// restore version the vertex receives at initialization.
+        /// </param>
+        Task CheckpointDone(long checkpointVersion);
+
+        /// <summary>
+        /// Invoked when the stream can no longer roll back below the version, also once at start with the restored version.
+        /// </summary>
+        /// <param name="version">Same domain as <see cref="CheckpointDone(long)"/>.</param>
+        Task CommitVersion(long version) => Task.CompletedTask;
+
+        /// <summary>
+        /// True when the vertex has everything it needs for the stream to finish stopping.
+        /// Exchanges that send to other substreams return false until the other substream
+        /// has fetched the stop barrier, so the stream does not dispose the exchanged events
+        /// before the other substream has received them.
+        /// </summary>
+        bool ReadyToStop => true;
     }
 }

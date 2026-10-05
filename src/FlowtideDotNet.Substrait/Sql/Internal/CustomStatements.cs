@@ -24,4 +24,18 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             writer.Write(';');
         }
     };
+
+    /// <summary>
+    /// Insert operation carrying the primary keys declared in the statement.
+    /// </summary>
+    public record FlowtideInsertOperation : InsertOperation
+    {
+        public FlowtideInsertOperation(ObjectName name, Statement.Select? source, Sequence<Ident> primaryKeys)
+            : base(name, source)
+        {
+            PrimaryKeys = primaryKeys;
+        }
+
+        public Sequence<Ident> PrimaryKeys { get; }
+    }
 }

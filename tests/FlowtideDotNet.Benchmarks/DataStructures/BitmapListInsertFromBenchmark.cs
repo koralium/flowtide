@@ -32,8 +32,8 @@ namespace FlowtideDotNet.Benchmarks.DataStructures
         private int[] _insertPositions = Array.Empty<int>();
 
         // Pre-built BitmapLists recreated before every iteration
-        private BitmapList? _targetList = null;
-        private BitmapList? _sourceList = null;
+        private BitmapList _targetList;
+        private BitmapList _sourceList;
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -69,51 +69,47 @@ namespace FlowtideDotNet.Benchmarks.DataStructures
         [IterationSetup]
         public void IterationSetup()
         {
-            _targetList = new BitmapList(GlobalMemoryManager.Instance);
+            _targetList = default(BitmapList);
             for (int i = 0; i < _baseData.Length; i++)
             {
-                _targetList.Add(_baseData[i]);
+                _targetList.Add(_baseData[i], GlobalMemoryManager.Instance);
             }
 
-            _sourceList = new BitmapList(GlobalMemoryManager.Instance);
+            _sourceList = default(BitmapList);
             for (int i = 0; i < _otherData.Length; i++)
             {
-                _sourceList.Add(_otherData[i]);
+                _sourceList.Add(_otherData[i], GlobalMemoryManager.Instance);
             }
         }
 
         [IterationCleanup]
         public void IterationCleanup()
         {
-            Debug.Assert(_targetList != null && _sourceList != null);
-            _targetList.Dispose();
-            _sourceList.Dispose();
+            _targetList.Dispose(GlobalMemoryManager.Instance);
+            _sourceList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Benchmark(Baseline = true)]
         public void InsertOneByOne()
         {
-            Debug.Assert(_targetList != null && _sourceList != null);
             for (int i = 0; i < _sortedLookup.Length; i++)
             {
                 int oIdx = _sortedLookup[i];
                 bool value = _sourceList.Get(oIdx);
-                _targetList.InsertAt(_insertPositions[i] + i, value);
+                _targetList.InsertAt(_insertPositions[i] + i, value, GlobalMemoryManager.Instance);
             }
         }
 
         [Benchmark]
         public void InsertFromBatch()
         {
-            Debug.Assert(_targetList != null && _sourceList != null);
-            ReadOnlySpan<int> sl = _sortedLookup; ReadOnlySpan<int> ip = _insertPositions; _targetList.InsertFrom(in _sourceList!, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = _sortedLookup; ReadOnlySpan<int> ip = _insertPositions; _targetList.InsertFrom(in _sourceList, in sl, in ip, -1, GlobalMemoryManager.Instance);
         }
 
         [Benchmark]
         public void CreateNewMergedList()
         {
-            Debug.Assert(_targetList != null && _sourceList != null);
-            var merged = new BitmapList(GlobalMemoryManager.Instance);
+            var merged = default(BitmapList);
 
             int baseIdx = 0;
             int sourceIdx = 0;
@@ -123,18 +119,18 @@ namespace FlowtideDotNet.Benchmarks.DataStructures
                 while (sourceIdx < InsertCount && _insertPositions[sourceIdx] == baseIdx)
                 {
                     int oIdx = _sortedLookup[sourceIdx];
-                    merged.Add(_sourceList.Get(oIdx));
+                    merged.Add(_sourceList.Get(oIdx), GlobalMemoryManager.Instance);
                     sourceIdx++;
                 }
 
                 if (baseIdx < BaseCount)
                 {
-                    merged.Add(_targetList.Get(baseIdx));
+                    merged.Add(_targetList.Get(baseIdx), GlobalMemoryManager.Instance);
                     baseIdx++;
                 }
             }
 
-            merged.Dispose();
+            merged.Dispose(GlobalMemoryManager.Instance);
         }
     }
 }

@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,1089 +22,158 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO.Hashing;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
     internal class IntegerColumn : IDataColumn
     {
-        private interface IIntData : IDisposable
-        {
-            long MaxSize { get; }
-            long MinSize { get; }
-
-            int BitWidth { get; }
-
-            int Count { get; }
-
-            int Add(in long value);
-
-            int Update(in int index, in long value);
-
-            void InsertAt(in int index, in long value);
-
-            long Get(in int index);
-
-            void RemoveAt(in int index);
-
-            void Clear();
-
-            void RemoveRange(int start, int count);
-
-            void InsertNullRange(int index, int count);
-
-            (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc);
-
-            int GetByteSize(int start, int end);
-
-            Memory<byte> SlicedMemory { get; }
-
-            IIntData Copy(IMemoryAllocator memoryAllocator);
-
-            void MoveRangeAt(int index, int count);
-
-            void InsertRangeFrom(int index, IIntData other, int start, int count);
-
-            (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount);
-
-            void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex);
-
-            void DeleteBatch(ReadOnlySpan<int> targets);
-
-            void SetSelfComparePointers(ref SelfComparePointers selfComparePointers);
-
-            System.Linq.Expressions.Expression CreateSelfCompareExpression(
-                System.Linq.Expressions.Expression selfComparePointerExpression,
-                System.Linq.Expressions.Expression xExpression,
-                System.Linq.Expressions.Expression yExpression);
-
-            CompareColumnState GetColumnState();
-
-            int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector);
-        }
-
-        private sealed class Int8Data : IIntData
-        {
-            private PrimitiveList<sbyte> _list;
-
-            public Int8Data(IMemoryAllocator memoryAllocator)
-            {
-                _list = new PrimitiveList<sbyte>(memoryAllocator);
-            }
-
-            public Int8Data(IMemoryAllocator memoryAllocator, int initialCapacity)
-            {
-                _list = new PrimitiveList<sbyte>(memoryAllocator, initialCapacity);
-            }
-
-            public Int8Data(PrimitiveList<sbyte> list)
-            {
-                _list = list;
-            }
-
-            public long MaxSize => sbyte.MaxValue;
-
-            public long MinSize => sbyte.MinValue;
-
-            public int Count => _list.Count;
-
-            public int BitWidth => 8;
-
-            public Memory<byte> SlicedMemory => _list.SlicedMemory;
-
-            public int Add(in long value)
-            {
-                var index = _list.Count;
-                _list.Add((sbyte)value);
-                return index;
-            }
-
-            public void Clear()
-            {
-                _list.Clear();
-            }
-
-            public IIntData Copy(IMemoryAllocator memoryAllocator)
-            {
-                return new Int8Data(_list.Copy(memoryAllocator));
-            }
-
-            public void Dispose()
-            {
-                _list.Dispose();
-            }
-
-            public long Get(in int index)
-            {
-                return _list[index];
-            }
-
-            public int GetByteSize(int start, int end)
-            {
-                return (end - start + 1);
-            }
-
-            public void InsertAt(in int index, in long value)
-            {
-                _list.InsertAt(index, (sbyte)value);
-            }
-
-            public void InsertNullRange(int index, int count)
-            {
-                _list.InsertStaticRange(index, 0, count);
-            }
-
-            public void InsertRangeFrom(int index, IIntData other, int start, int count)
-            {
-                if (other is Int8Data int8data)
-                {
-                    _list.InsertRangeFrom(index, int8data._list, start, count);
-                    return;
-                }
-                throw new NotImplementedException();
-            }
-
-            public void MoveRangeAt(int index, int count)
-            {
-                _list.MoveAtIndex(index, count);
-            }
-
-            public void RemoveAt(in int index)
-            {
-                _list.RemoveAt(index);
-            }
-
-            public void RemoveRange(int start, int count)
-            {
-                _list.RemoveRange(start, count);
-            }
-
-            public (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
-            {
-                if (desc)
-                {
-                    if (dataValue < sbyte.MinValue)
-                    {
-                        var index = ~(end + 1);
-                        return (index, index);
-                    }
-                    if (dataValue > sbyte.MaxValue)
-                    {
-                        return (~start, ~start);
-                    }
-                    return BoundarySearch.SearchBoundries(_list, (sbyte)dataValue, start, end, Int8ComparerDesc.Instance);
-                }
-                else
-                {
-                    if (dataValue < sbyte.MinValue)
-                    {
-                        return (~start, ~start);
-                    }
-                    if (dataValue > sbyte.MaxValue)
-                    {
-                        var index = ~(end + 1);
-                        return (index, index);
-                    }
-                    return BoundarySearch.SearchBoundries(_list, (sbyte)dataValue, start, end, Int8Comparer.Instance);
-                }
-            }
-
-            public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
-            {
-                var valueBuffer = new ArrowBuffer(_list.SlicedMemory);
-                return (new Int8Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int8Type.Default);
-            }
-
-            public int Update(in int index, in long value)
-            {
-                _list[index] = (sbyte)value;
-                return index;
-            }
-
-            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
-            {
-                if (other is Int8Data int8data)
-                {
-                    _list.InsertFrom(in int8data._list, in sortedLookup, in targetPositions, lookupNullIndex);
-                    return;
-                }
-                throw new NotImplementedException();
-            }
-
-            public void DeleteBatch(ReadOnlySpan<int> targets)
-            {
-                _list.DeleteBatch(targets);
-            }
-
-            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
-            {
-                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
-            }
-
-            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
-            {
-                return NativeSortHelpers.CallCompareInt8(selfComparePointerExpression, xExpression, yExpression);
-            }
-
-            public CompareColumnState GetColumnState()
-            {
-                return CompareColumnStateBuilder.Create(ArrowTypeId.Int8);
-            }
-
-            public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
-            {
-                ReadOnlySpan<sbyte> span = _list.Span;
-                ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
-
-                if (selectionVector.IsEmpty)
-                {
-                    for (int i = 0; i < items.Length; i++)
-                    {
-                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
-                        sbyte rawValue = span[item.Index];
-                        byte alignedValue = (byte)(rawValue ^ 0x80);
-                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
-                        byteOffset = alignedValue;
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < items.Length; i++)
-                    {
-                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
-                        int selectedIndex = selectionVector[item.Index];
-
-                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
-
-                        if (selectedIndex >= 0)
-                        {
-                            sbyte rawValue = span[selectedIndex];
-                            byteOffset = (byte)(rawValue ^ 0x80);
-                        }
-                        else
-                        {
-                            byteOffset = 0;
-                        }
-                    }
-                }
-
-                return 1;
-            }
-        }
-
-        private sealed class Int16Data : IIntData
-        {
-            private PrimitiveList<short> _list;
-
-            public Int16Data(IMemoryAllocator memoryAllocator)
-            {
-                _list = new PrimitiveList<short>(memoryAllocator);
-            }
-
-            public Int16Data(IMemoryAllocator memoryAllocator, int initialCapacity)
-            {
-                _list = new PrimitiveList<short>(memoryAllocator, initialCapacity);
-            }
-
-            public Int16Data(PrimitiveList<short> list)
-            {
-                _list = list;
-            }
-
-            public long MaxSize => short.MaxValue;
-
-            public long MinSize => short.MinValue;
-
-            public int Count => _list.Count;
-
-            public int BitWidth => 16;
-
-            public Memory<byte> SlicedMemory => _list.SlicedMemory;
-
-            public int Add(in long value)
-            {
-                var index = _list.Count;
-                _list.Add((short)value);
-                return index;
-            }
-
-            public void InsertAt(in int index, in long value)
-            {
-                _list.InsertAt(index, (short)value);
-            }
-
-            public int Update(in int index, in long value)
-            {
-                _list[index] = (short)value;
-                return index;
-            }
-
-            public long Get(in int index)
-            {
-                return _list[index];
-            }
-
-            public void Dispose()
-            {
-                _list.Dispose();
-            }
-
-            public void RemoveAt(in int index)
-            {
-                _list.RemoveAt(index);
-            }
-
-            public void Clear()
-            {
-                _list.Clear();
-            }
-
-            public void RemoveRange(int start, int count)
-            {
-                _list.RemoveRange(start, count);
-            }
-
-            public void InsertNullRange(int index, int count)
-            {
-                _list.InsertStaticRange(index, 0, count);
-            }
-
-            public (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
-            {
-                if (desc)
-                {
-                    if (dataValue < short.MinValue)
-                    {
-                        var index = ~(end + 1);
-                        return (index, index);
-                    }
-                    if (dataValue > short.MaxValue)
-                    {
-                        return (~start, ~start);
-                    }
-                    return BoundarySearch.SearchBoundries(_list, (short)dataValue, start, end, Int16ComparerDesc.Instance);
-                }
-                else
-                {
-                    if (dataValue < short.MinValue)
-                    {
-                        return (~start, ~start);
-                    }
-                    if (dataValue > short.MaxValue)
-                    {
-                        var index = ~(end + 1);
-                        return (index, index);
-                    }
-                    return BoundarySearch.SearchBoundries(_list, (short)dataValue, start, end, Int16Comparer.Instance);
-                }
-            }
-
-            public int GetByteSize(int start, int end)
-            {
-                return (end - start + 1) * sizeof(short);
-            }
-
-            public IIntData Copy(IMemoryAllocator memoryAllocator)
-            {
-                return new Int16Data(_list.Copy(memoryAllocator));
-            }
-
-            public void MoveRangeAt(int index, int count)
-            {
-                _list.MoveAtIndex(index, count);
-            }
-
-            public void InsertRangeFrom(int index, IIntData other, int start, int count)
-            {
-                if (other is Int16Data int16Data)
-                {
-                    _list.InsertRangeFrom(index, int16Data._list, start, count);
-                    return;
-                }
-                throw new NotImplementedException();
-            }
-
-            public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
-            {
-                var valueBuffer = new ArrowBuffer(_list.SlicedMemory);
-                return (new Int16Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int16Type.Default);
-            }
-
-            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
-            {
-                if (other is Int16Data int16Data)
-                {
-                    _list.InsertFrom(in int16Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
-                    return;
-                }
-                throw new NotImplementedException();
-            }
-
-            public void DeleteBatch(ReadOnlySpan<int> targets)
-            {
-                _list.DeleteBatch(targets);
-            }
-
-            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
-            {
-                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
-            }
-
-            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
-            {
-                return NativeSortHelpers.CallCompareInt16(selfComparePointerExpression, xExpression, yExpression);
-            }
-
-            public CompareColumnState GetColumnState()
-            {
-                return CompareColumnStateBuilder.Create(ArrowTypeId.Int16);
-            }
-
-            public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
-            {
-                ReadOnlySpan<short> span = _list.Span;
-                ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
-
-                if (selectionVector.IsEmpty)
-                {
-                    for (int i = 0; i < items.Length; i++)
-                    {
-                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
-                        short rawValue = span[item.Index];
-                        ushort alignedValue = (ushort)(rawValue ^ 0x8000);
-
-                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
-                        Unsafe.As<byte, ushort>(ref byteOffset) = alignedValue;
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < items.Length; i++)
-                    {
-                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
-                        int selectedIndex = selectionVector[item.Index];
-
-                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
-
-                        if (selectedIndex >= 0)
-                        {
-                            short rawValue = span[selectedIndex];
-                            ushort alignedValue = (ushort)(rawValue ^ 0x8000);
-                            Unsafe.As<byte, ushort>(ref byteOffset) = alignedValue;
-                        }
-                        else
-                        {
-                            Unsafe.As<byte, ushort>(ref byteOffset) = 0;
-                        }
-                    }
-                }
-
-                return 2;
-            }
-        }
-
-        private sealed class Int32Data : IIntData
-        {
-            private PrimitiveList<int> _list;
-
-
-            public Int32Data(IMemoryAllocator memoryAllocator)
-            {
-                _list = new PrimitiveList<int>(memoryAllocator);
-            }
-
-            public Int32Data(IMemoryAllocator memoryAllocator, int initialCapacity)
-            {
-                _list = new PrimitiveList<int>(memoryAllocator);
-            }
-
-            public Int32Data(PrimitiveList<int> list)
-            {
-                _list = list;
-            }
-
-            public long MaxSize => int.MaxValue;
-
-            public long MinSize => int.MinValue;
-
-            public int Count => _list.Count;
-
-            public int BitWidth => 32;
-
-            public Memory<byte> SlicedMemory => _list.SlicedMemory;
-
-            public int Add(in long value)
-            {
-                var index = _list.Count;
-                _list.Add((int)value);
-                return index;
-            }
-
-            public void InsertAt(in int index, in long value)
-            {
-                _list.InsertAt(index, (int)value);
-            }
-
-            public int Update(in int index, in long value)
-            {
-                _list[index] = (int)value;
-                return index;
-            }
-
-            public long Get(in int index)
-            {
-                return _list[index];
-            }
-
-            public void Dispose()
-            {
-                _list.Dispose();
-            }
-
-            public void RemoveAt(in int index)
-            {
-                _list.RemoveAt(index);
-            }
-
-            public void Clear()
-            {
-                _list.Clear();
-            }
-
-            public void RemoveRange(int start, int count)
-            {
-                _list.RemoveRange(start, count);
-            }
-
-            public void InsertNullRange(int index, int count)
-            {
-                _list.InsertStaticRange(index, 0, count);
-            }
-
-            public unsafe (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
-            {
-                if (desc)
-                {
-                    if (dataValue < int.MinValue)
-                    {
-                        var index = ~(end + 1);
-                        return (index, index);
-                    }
-                    if (dataValue > int.MaxValue)
-                    {
-                        return (~start, ~start);
-                    }
-                    return BoundarySearch.SearchBoundries(_list, (int)dataValue, start, end, Int32ComparerDesc.Instance);
-                }
-                else
-                {
-                    if (dataValue < int.MinValue)
-                    {
-                        return (~start, ~start);
-                    }
-                    if (dataValue > int.MaxValue)
-                    {
-                        var index = ~(end + 1);
-                        return (index, index);
-                    }
-                    return BoundarySearch.SearchBoundriesAsc(_list.GetPointer_Unsafe(), (int)dataValue, start, in end);
-                }
-            }
-
-            public int GetByteSize(int start, int end)
-            {
-                return (end - start + 1) * sizeof(int);
-            }
-
-            public IIntData Copy(IMemoryAllocator memoryAllocator)
-            {
-                return new Int32Data(_list.Copy(memoryAllocator));
-            }
-
-            public void MoveRangeAt(int index, int count)
-            {
-                _list.MoveAtIndex(index, count);
-            }
-
-            public void InsertRangeFrom(int index, IIntData other, int start, int count)
-            {
-                if (other is Int32Data int32Data)
-                {
-                    _list.InsertRangeFrom(index, int32Data._list, start, count);
-                    return;
-                }
-                throw new NotImplementedException();
-            }
-
-            public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
-            {
-                var valueBuffer = new ArrowBuffer(_list.SlicedMemory);
-                return (new Int32Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int32Type.Default);
-            }
-
-            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
-            {
-                if (other is Int32Data int32Data)
-                {
-                    _list.InsertFrom(in int32Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
-                    return;
-                }
-                throw new NotImplementedException();
-            }
-
-            public void DeleteBatch(ReadOnlySpan<int> targets)
-            {
-                _list.DeleteBatch(targets);
-            }
-
-            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
-            {
-                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
-            }
-
-            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
-            {
-                return NativeSortHelpers.CallCompareInt32(selfComparePointerExpression, xExpression, yExpression);
-            }
-
-            public CompareColumnState GetColumnState()
-            {
-                return CompareColumnStateBuilder.Create(ArrowTypeId.Int32);
-            }
-
-            public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
-            {
-                ReadOnlySpan<int> span = _list.Span;
-                ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
-
-                if (selectionVector.IsEmpty)
-                {
-                    for (int i = 0; i < items.Length; i++)
-                    {
-                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
-                        int rawValue = span[item.Index];
-
-                        uint alignedValue = (uint)rawValue ^ 0x80000000u;
-
-                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
-                        Unsafe.As<byte, uint>(ref byteOffset) = alignedValue;
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < items.Length; i++)
-                    {
-                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
-                        int selectedIndex = selectionVector[item.Index];
-
-                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
-
-                        if (selectedIndex >= 0)
-                        {
-                            int rawValue = span[selectedIndex];
-                            uint alignedValue = (uint)rawValue ^ 0x80000000u;
-                            Unsafe.As<byte, uint>(ref byteOffset) = alignedValue;
-                        }
-                        else
-                        {
-                            Unsafe.As<byte, uint>(ref byteOffset) = 0u;
-                        }
-                    }
-                }
-
-                return 4;
-            }
-        }
-
-        private sealed class Int64Data : IIntData
-        {
-            private PrimitiveList<long> _list;
-
-            public Int64Data(IMemoryAllocator memoryAllocator)
-            {
-                _list = new PrimitiveList<long>(memoryAllocator);
-            }
-
-            public Int64Data(IMemoryAllocator memoryAllocator, int initialCapacity)
-            {
-                _list = new PrimitiveList<long>(memoryAllocator, initialCapacity);
-            }
-
-            public Int64Data(PrimitiveList<long> list)
-            {
-                _list = list;
-            }
-
-            public long MaxSize => long.MaxValue;
-
-            public long MinSize => long.MinValue;
-
-            public int Count => _list.Count;
-
-            public int BitWidth => 64;
-
-            public Memory<byte> SlicedMemory => _list.SlicedMemory;
-
-            public int Add(in long value)
-            {
-                var index = _list.Count;
-                _list.Add(value);
-                return index;
-            }
-
-            public void InsertAt(in int index, in long value)
-            {
-                _list.InsertAt(index, value);
-            }
-
-            public int Update(in int index, in long value)
-            {
-                _list[index] = value;
-                return index;
-            }
-
-            public long Get(in int index)
-            {
-                return _list[index];
-            }
-
-            public void Dispose()
-            {
-                _list.Dispose();
-            }
-
-            public void RemoveAt(in int index)
-            {
-                _list.RemoveAt(index);
-            }
-
-            public void Clear()
-            {
-                _list.Clear();
-            }
-
-            public void RemoveRange(int start, int count)
-            {
-                _list.RemoveRange(start, count);
-            }
-
-            public void InsertNullRange(int index, int count)
-            {
-                _list.InsertStaticRange(index, 0, count);
-            }
-
-            public (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
-            {
-                if (desc)
-                {
-                    if (dataValue < long.MinValue)
-                    {
-                        var index = ~(end + 1);
-                        return (index, index);
-                    }
-                    if (dataValue > long.MaxValue)
-                    {
-                        return (~start, ~start);
-                    }
-                    return BoundarySearch.SearchBoundries(_list, dataValue, start, end, Int64ComparerDesc.Instance);
-                }
-                else
-                {
-                    if (dataValue < long.MinValue)
-                    {
-                        return (~start, ~start);
-                    }
-                    if (dataValue > long.MaxValue)
-                    {
-                        var index = ~(end + 1);
-                        return (index, index);
-                    }
-                    return BoundarySearch.SearchBoundries(_list, dataValue, start, end, Int64Comparer.Instance);
-                }
-            }
-
-            public int GetByteSize(int start, int end)
-            {
-                return (end - start + 1) * sizeof(long);
-            }
-
-            public IIntData Copy(IMemoryAllocator memoryAllocator)
-            {
-                return new Int64Data(_list.Copy(memoryAllocator));
-            }
-
-            public void MoveRangeAt(int index, int count)
-            {
-                _list.MoveAtIndex(index, count);
-            }
-
-            public void InsertRangeFrom(int index, IIntData other, int start, int count)
-            {
-                if (other is Int64Data int64Data)
-                {
-                    _list.InsertRangeFrom(index, int64Data._list, start, count);
-                    return;
-                }
-                throw new NotImplementedException();
-            }
-
-            public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
-            {
-                var valueBuffer = new ArrowBuffer(_list.SlicedMemory);
-                return (new Int64Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int64Type.Default);
-            }
-
-            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
-            {
-                if (other is Int64Data int64Data)
-                {
-                    _list.InsertFrom(in int64Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
-                    return;
-                }
-                throw new NotImplementedException();
-            }
-
-            public void DeleteBatch(ReadOnlySpan<int> targets)
-            {
-                _list.DeleteBatch(targets);
-            }
-
-            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
-            {
-                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
-            }
-
-            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
-            {
-                return NativeSortHelpers.CallCompareInt64(selfComparePointerExpression, xExpression, yExpression);
-            }
-
-            public CompareColumnState GetColumnState()
-            {
-                return CompareColumnStateBuilder.Create(ArrowTypeId.Int64);
-            }
-
-            public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
-            {
-                ReadOnlySpan<long> span = _list.Span;
-                ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
-
-                if (selectionVector.IsEmpty)
-                {
-                    for (int i = 0; i < items.Length; i++)
-                    {
-                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
-                        long rawValue = span[item.Index];
-
-                        ulong alignedValue = (ulong)rawValue ^ 0x8000000000000000ul;
-
-                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
-                        Unsafe.As<byte, ulong>(ref byteOffset) = alignedValue;
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < items.Length; i++)
-                    {
-                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
-                        int selectedIndex = selectionVector[item.Index];
-
-                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
-
-                        if (selectedIndex >= 0)
-                        {
-                            long rawValue = span[selectedIndex];
-                            ulong alignedValue = (ulong)rawValue ^ 0x8000000000000000ul;
-                            Unsafe.As<byte, ulong>(ref byteOffset) = alignedValue;
-                        }
-                        else
-                        {
-                            Unsafe.As<byte, ulong>(ref byteOffset) = 0ul;
-                        }
-                    }
-                }
-
-                return 8;
-            }
-        }
-
-        private IIntData? _data;
-        private readonly IMemoryAllocator _memoryAllocator;
+        // Not readonly, mutations would run on a copy.
+        private IntegerList _list;
 
         public IntegerColumn(IMemoryAllocator memoryAllocator)
         {
-            this._memoryAllocator = memoryAllocator;
         }
 
         public IntegerColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
         {
-            this._memoryAllocator = memoryAllocator;
             switch (columnSizeInfo.BitWidth)
             {
                 case 8:
-                    _data = new Int8Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    _list = new IntegerList(1);
                     break;
                 case 16:
-                    _data = new Int16Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    _list = new IntegerList(2);
                     break;
                 case 32:
-                    _data = new Int32Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    _list = new IntegerList(4);
                     break;
                 case 64:
-                    _data = new Int64Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    _list = new IntegerList(8);
                     break;
                 default:
                     throw new NotImplementedException();
             }
+            _list.EnsureCapacity(columnSizeInfo.TotalRows, memoryAllocator);
         }
 
-        public IntegerColumn(IMemoryAllocator memoryAllocator, IMemoryOwner<byte> memory, int length, int bitWidth)
+        public IntegerColumn(IMemoryAllocator memoryAllocator, FlowtideMemory memory, int length, int bitWidth)
         {
-            this._memoryAllocator = memoryAllocator;
-
             switch (bitWidth)
             {
                 case 8:
-                    _data = new Int8Data(new PrimitiveList<sbyte>(memory, length, memoryAllocator));
+                    _list = new IntegerList(memory, length, 1);
                     break;
                 case 16:
-                    _data = new Int16Data(new PrimitiveList<short>(memory, length, memoryAllocator));
+                    _list = new IntegerList(memory, length, 2);
                     break;
                 case 32:
-                    _data = new Int32Data(new PrimitiveList<int>(memory, length, memoryAllocator));
+                    _list = new IntegerList(memory, length, 4);
                     break;
                 case 64:
-                    _data = new Int64Data(new PrimitiveList<long>(memory, length, memoryAllocator));
+                    _list = new IntegerList(memory, length, 8);
                     break;
                 default:
+                    // Nothing owns the memory yet so we free it here.
+                    memoryAllocator.Free(ref memory);
                     throw new NotImplementedException();
             }
         }
 
-        public int Count => _data?.Count ?? 0;
+        public int Count => _list.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Int64;
 
         public StructHeader StructHeader => throw new NotImplementedException();
 
-        [MemberNotNull(nameof(_data))]
-        private void IncreaseSize(in long value)
+        private static byte ElementSizeFor(in long value)
         {
-            IIntData? newData;
-            if (value < sbyte.MaxValue && value > sbyte.MinValue)
+            if (value <= sbyte.MaxValue && value >= sbyte.MinValue)
             {
-                newData = new Int8Data(_memoryAllocator);
+                return 1;
             }
-            else if (value < short.MaxValue && value > short.MinValue)
+            else if (value <= short.MaxValue && value >= short.MinValue)
             {
-                newData = new Int16Data(_memoryAllocator);
+                return 2;
             }
-            else if (value < int.MaxValue && value > int.MinValue)
+            else if (value <= int.MaxValue && value >= int.MinValue)
             {
-                newData = new Int32Data(_memoryAllocator);
+                return 4;
             }
-            else
-            {
-                newData = new Int64Data(_memoryAllocator);
-            }
-
-            if (_data != null)
-            {
-                for (int i = 0; i < _data.Count; i++)
-                {
-                    newData.Add(_data.Get(i));
-                }
-                _data.Dispose();
-            }
-            _data = newData;
+            return 8;
         }
 
-        [MemberNotNull(nameof(_data))]
-        private void WidenToBitWidth(int targetBitWidth)
+        private void WidenToBitWidth(int targetBitWidth, IMemoryAllocator memoryAllocator)
         {
-            if (_data != null && targetBitWidth < _data.BitWidth)
+            if (_list.ElementSize != 0 && targetBitWidth < _list.BitWidth)
             {
-                throw new ArgumentOutOfRangeException(nameof(targetBitWidth), $"Cannot narrow integer column from {_data.BitWidth} bits to {targetBitWidth} bits.");
+                throw new ArgumentOutOfRangeException(nameof(targetBitWidth), $"Cannot narrow integer column from {_list.BitWidth} bits to {targetBitWidth} bits.");
             }
 
-            IIntData newData = targetBitWidth switch
+            switch (targetBitWidth)
             {
-                8 => new Int8Data(_memoryAllocator),
-                16 => new Int16Data(_memoryAllocator),
-                32 => new Int32Data(_memoryAllocator),
-                64 => new Int64Data(_memoryAllocator),
-                _ => throw new ArgumentOutOfRangeException(nameof(targetBitWidth), targetBitWidth, $"Unsupported bit width: {targetBitWidth}")
-            };
-
-            if (_data != null)
-            {
-                for (int i = 0; i < _data.Count; i++)
-                {
-                    newData.Add(_data.Get(i));
-                }
-                _data.Dispose();
-            }
-            _data = newData;
-        }
-
-        [MemberNotNull(nameof(_data))]
-        private void CheckSize(in long value)
-        {
-            if (_data == null)
-            {
-                IncreaseSize(in value);
-            }
-            else
-            {
-                if (value < _data.MinSize || value > _data.MaxSize)
-                {
-                    IncreaseSize(in value);
-                }
+                case 8:
+                    _list.Widen(1, memoryAllocator);
+                    break;
+                case 16:
+                    _list.Widen(2, memoryAllocator);
+                    break;
+                case 32:
+                    _list.Widen(4, memoryAllocator);
+                    break;
+                case 64:
+                    _list.Widen(8, memoryAllocator);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(targetBitWidth), targetBitWidth, $"Unsupported bit width: {targetBitWidth}");
             }
         }
 
-        public int Add<T>(in T value) where T : IDataValue
+        private void CheckSize(in long value, IMemoryAllocator memoryAllocator)
+        {
+            if (_list.ElementSize == 0)
+            {
+                _list.Widen(ElementSizeFor(in value), memoryAllocator);
+            }
+            else if (value < _list.MinValue || value > _list.MaxValue)
+            {
+                _list.Widen(ElementSizeFor(in value), memoryAllocator);
+            }
+        }
+
+        public int Add<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.IsNull)
             {
-                CheckSize(0);
-                return _data.Add(0);
+                CheckSize(0, memoryAllocator);
+                return _list.Add(0, memoryAllocator);
             }
 
             var val = value.AsLong;
 
-            CheckSize(in val);
+            CheckSize(in val, memoryAllocator);
 
-            return _data.Add(in val);
+            return _list.Add(val, memoryAllocator);
         }
 
-        public void AddToNewList<T>(in T value) where T : IDataValue
+        public void AddToNewList<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             throw new NotImplementedException();
         }
 
-        public void Clear()
+        public void Clear(IMemoryAllocator memoryAllocator)
         {
-            if (_data != null)
-            {
-                _data.Clear();
-            }
+            _list.Clear();
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
-            Debug.Assert(_data != null);
-            if (validityList != null &&
+            if (!validityList.IsNull &&
                 !validityList.Get(index))
             {
                 if (value.Type == ArrowTypeId.Null)
@@ -1118,52 +187,45 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return 1;
             }
             var longValue = value.AsLong;
-            return _data.Get(index).CompareTo(longValue);
+            return _list.Get(index).CompareTo(longValue);
         }
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            Debug.Assert(_data != null);
-
             if (otherColumn is IntegerColumn integerColumn)
             {
-                Debug.Assert(integerColumn._data != null);
-                return _data.Get(thisIndex).CompareTo(integerColumn._data.Get(otherIndex));
+                return _list.Get(thisIndex).CompareTo(integerColumn._list.Get(otherIndex));
             }
             throw new NotImplementedException();
         }
 
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
-            if (_data == null)
+            if (_list.ElementSize == 0)
             {
                 return new IntegerColumn(memoryAllocator);
             }
-            return new IntegerColumn(memoryAllocator) { _data = _data.Copy(memoryAllocator) };
+            return new IntegerColumn(memoryAllocator) { _list = _list.Copy(memoryAllocator) };
         }
 
-        public void Dispose()
+        public void Dispose(IMemoryAllocator memoryAllocator)
         {
-            if (_data != null)
-            {
-                _data.Dispose();
-                _data = null;
-            }
+            _list.Dispose(memoryAllocator);
         }
 
-        public int EndNewList()
+        public int EndNewList(IMemoryAllocator memoryAllocator)
         {
             throw new NotImplementedException();
         }
 
         public int GetByteSize(int start, int end)
         {
-            return _data?.GetByteSize(start, end) ?? 0;
+            return (end - start + 1) * _list.ElementSize;
         }
 
         public int GetByteSize()
         {
-            return _data?.GetByteSize(0, Count - 1) ?? 0;
+            return Count * _list.ElementSize;
         }
 
         public SerializationEstimation GetSerializationEstimate()
@@ -1178,64 +240,61 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            Debug.Assert(_data != null);
-            return new Int64Value(_data.Get(index));
+            return new Int64Value(_list.Get(index));
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
-            Debug.Assert(_data != null);
-
             dataValueContainer._type = ArrowTypeId.Int64;
-            dataValueContainer._int64Value = new Int64Value(_data.Get(index));
+            dataValueContainer._int64Value = new Int64Value(_list.Get(index));
         }
 
-        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        public void InsertAt<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.IsNull)
             {
-                CheckSize(0);
-                _data.InsertAt(index, 0);
+                CheckSize(0, memoryAllocator);
+                _list.InsertAt(index, 0, memoryAllocator);
                 return;
             }
 
             var val = value.AsLong;
 
-            CheckSize(val);
-            _data.InsertAt(index, val);
+            CheckSize(val, memoryAllocator);
+            _list.InsertAt(index, val, memoryAllocator);
         }
 
-        public void InsertNullRange(int index, int count)
+        public void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
-            CheckSize(0);
-            _data.InsertNullRange(index, count);
+            CheckSize(0, memoryAllocator);
+            _list.InsertNullRange(index, count, memoryAllocator);
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList, IMemoryAllocator memoryAllocator)
         {
             if (other is IntegerColumn integerColumn)
             {
-                // Check if we need to resize, this also creates an int8 data if it is null
-                CheckSize(0);
-                Debug.Assert(integerColumn._data != null);
-                if (_data.BitWidth == integerColumn._data.BitWidth)
+                Debug.Assert(integerColumn._list.ElementSize != 0 || count == 0);
+                // Check if we need to resize, this also sets a width if there is none
+                CheckSize(0, memoryAllocator);
+                if (_list.ElementSize == integerColumn._list.ElementSize)
                 {
-                    _data.InsertRangeFrom(index, integerColumn._data, start, count);
+                    _list.InsertRangeFrom(index, in integerColumn._list, start, count, memoryAllocator);
                     return;
                 }
                 else
                 {
                     // Create space for the new values, this increases the count as well
-                    _data.MoveRangeAt(index, count);
+                    _list.MoveRangeAt(index, count, memoryAllocator);
 
                     // Missmatch in bitwidth insert one by one to check if there is any size change
                     for (int i = 0; i < count; i++)
                     {
-                        var val = integerColumn._data.Get(start + i);
+                        var val = integerColumn._list.Get(start + i);
                         // Check if we need to resize
-                        CheckSize(val);
+                        CheckSize(val, memoryAllocator);
                         // Update the value
-                        _data.Update(index + i, val);
+                        _list.Update(index + i, val);
                     }
                 }
                 return;
@@ -1243,21 +302,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             throw new NotImplementedException();
         }
 
-        public void RemoveAt(in int index)
+        public void RemoveAt(in int index, IMemoryAllocator memoryAllocator)
         {
-            Debug.Assert(_data != null);
-            _data.RemoveAt(index);
+            _list.RemoveAt(index, memoryAllocator);
         }
 
-        public void RemoveRange(int start, int count)
+        public void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
         {
-            Debug.Assert(_data != null);
-            _data.RemoveRange(start, count);
+            _list.RemoveRange(start, count, memoryAllocator);
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
         {
-            if (_data == null)
+            if (_list.ElementSize == 0)
             {
                 if (!desc)
                 {
@@ -1269,43 +326,43 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     return (index, index);
                 }
             }
-            return _data.SearchBoundries(dataValue.AsLong, start, end, child, desc);
+            return _list.SearchBoundries(dataValue.AsLong, start, end, desc);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            if (_data == null)
+            if (_list.ElementSize == 0)
             {
                 return (new Int8Array(new ArrowBuffer(), nullBuffer, 0, nullCount, 0), Int8Type.Default);
             }
-            return _data.ToArrowArray(nullBuffer, nullCount);
+            return _list.ToArrowArray(nullBuffer, nullCount);
         }
 
-        public int Update<T>(in int index, in T value) where T : IDataValue
+        public int Update<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.IsNull)
             {
-                CheckSize(0);
-                return _data.Update(index, 0);
+                CheckSize(0, memoryAllocator);
+                _list.Update(index, 0);
+                return index;
             }
 
             var val = value.AsLong;
 
-            CheckSize(val);
+            CheckSize(val, memoryAllocator);
 
-            return _data.Update(index, val);
+            _list.Update(index, val);
+            return index;
         }
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
         {
-            Debug.Assert(_data != null);
-            writer.WriteNumberValue(_data.Get(index));
+            writer.WriteNumberValue(_list.Get(index));
         }
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            var memoryLength = _data?.SlicedMemory.Length ?? 0;
-            arrowSerializer.AddBufferForward(memoryLength);
+            arrowSerializer.AddBufferForward(_list.SlicedSpan.Length);
         }
 
         void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
@@ -1315,74 +372,58 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
-            int bitWidth = 8;
-
-            if (_data != null)
-            {
-                bitWidth = _data.BitWidth;
-            }
-
-            var typePointer = arrowSerializer.AddIntType(bitWidth);
+            var typePointer = arrowSerializer.AddIntType(_list.BitWidth);
             return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Int, typePointer);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            if (_data != null)
-            {
-                dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
-            }
-            else
-            {
-                dataWriter.WriteArrowBuffer(Span<byte>.Empty);
-            }
+            dataWriter.WriteArrowBuffer(_list.SlicedSpan);
         }
 
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
         {
-            Debug.Assert(_data != null);
-
             // Always use 8 bytes for the hash to produce same hash for say value 3 even if it is 1,2,4 or 8 bytes.
             Span<byte> buffer = stackalloc byte[8];
-            BinaryPrimitives.WriteInt64LittleEndian(buffer, _data.Get(index));
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, _list.Get(index));
             hashAlgorithm.Append(buffer);
         }
 
-        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             if (other is IntegerColumn integerColumn)
             {
-                // Check if we need to resize, this also creates an int8 data if it is null
-                Debug.Assert(integerColumn._data != null);
-                if (_data == null || _data.BitWidth != integerColumn._data.BitWidth)
+                Debug.Assert(integerColumn._list.ElementSize != 0);
+                // Check if we need to resize, this also sets a width if there is none
+                if (_list.ElementSize == 0 || _list.ElementSize != integerColumn._list.ElementSize)
                 {
-                    if (integerColumn._data.BitWidth > (_data?.BitWidth ?? 0))
+                    if (integerColumn._list.ElementSize > _list.ElementSize)
                     {
                         // Other is wider
-                        WidenToBitWidth(integerColumn._data.BitWidth);
+                        WidenToBitWidth(integerColumn._list.BitWidth, memoryAllocator);
                     }
                     else
                     {
-                        CheckSize(0);
+                        CheckSize(0, memoryAllocator);
                         // This is wider, for now to just inserts
                         for (int i = sortedLookup.Length - 1; i >= 0; i--)
                         {
-                            _data.InsertAt(insertPositions[i], integerColumn._data.Get(sortedLookup[i]));
+                            _list.InsertAt(insertPositions[i], integerColumn._list.Get(sortedLookup[i]), memoryAllocator);
                         }
                         return;
                     }
                 }
-                _data.InsertFrom(integerColumn._data, in sortedLookup, in insertPositions, lookupNullIndex);
+                _list.InsertFrom(in integerColumn._list, in sortedLookup, in insertPositions, lookupNullIndex, memoryAllocator);
                 return;
             }
             throw new NotImplementedException();
         }
 
-        public void DeleteBatch(ReadOnlySpan<int> targets)
+        public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
         {
-            if (_data != null)
+            if (_list.ElementSize != 0)
             {
-                _data.DeleteBatch(targets);
+                _list.DeleteBatch(targets, memoryAllocator);
             }
         }
 
@@ -1392,15 +433,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 DataType = ArrowTypeId.Int64,
                 TotalRows = Count,
-                BitWidth = _data?.BitWidth ?? 8
+                BitWidth = _list.BitWidth
             };
         }
 
         void IDataColumn.SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
         {
-            if (_data != null)
+            if (_list.ElementSize != 0)
             {
-                _data.SetSelfComparePointers(ref selfComparePointers);
+                _list.SetSelfComparePointers(ref selfComparePointers);
             }
         }
 
@@ -1409,9 +450,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             System.Linq.Expressions.Expression xExpression,
             System.Linq.Expressions.Expression yExpression)
         {
-            if (_data != null)
+            if (_list.ElementSize != 0)
             {
-                return _data.CreateSelfCompareExpression(selfComparePointerExpression, xExpression, yExpression);
+                return _list.CreateSelfCompareExpression(selfComparePointerExpression, xExpression, yExpression);
             }
             return System.Linq.Expressions.Expression.Constant(0); // No elements
         }
@@ -1420,19 +461,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public CompareColumnState GetColumnState()
         {
-            if (_data != null)
-            {
-                return _data.GetColumnState();
-            }
-            return CompareColumnStateBuilder.Create(ArrowTypeId.Int8);
+            return _list.GetColumnState();
         }
 
         public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
         {
-            if (_data != null)
+            if (_list.ElementSize != 0)
             {
                 int length = indices.Length;
-                var elementSize = _data.BitWidth / 8;
+                var elementSize = _list.ElementSize;
                 ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
 
                 int cumulativeMass = elementSize;
@@ -1447,34 +484,28 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         RadixCapability IDataColumn.SupportsRadixSort(int bytesLeft)
         {
-            if (_data != null)
+            switch (_list.ElementSize)
             {
-                switch (_data.BitWidth)
-                {
-                    case 8:
-                        return bytesLeft >= 1 ? RadixCapability.Full(1) : RadixCapability.None();
-                    case 16:
-                        return bytesLeft >= 2 ? RadixCapability.Full(2) : RadixCapability.None();
-                    case 32:
-                        return bytesLeft >= 4 ? RadixCapability.Full(4) : RadixCapability.None();
-                    case 64:
-                        return bytesLeft >= 8 ? RadixCapability.Full(8) : RadixCapability.None();
-                    default:
-                        return RadixCapability.None();
-                }
+                case 1:
+                    return bytesLeft >= 1 ? RadixCapability.Full(1) : RadixCapability.None();
+                case 2:
+                    return bytesLeft >= 2 ? RadixCapability.Full(2) : RadixCapability.None();
+                case 4:
+                    return bytesLeft >= 4 ? RadixCapability.Full(4) : RadixCapability.None();
+                case 8:
+                    return bytesLeft >= 8 ? RadixCapability.Full(8) : RadixCapability.None();
+                default:
+                    return RadixCapability.None();
             }
-            return RadixCapability.None();
         }
 
         int IDataColumn.SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
         {
-            if (_data != null) 
-            { 
-                return _data.SetRadixPrefix(items, insertBytePosition, selectionVector);
+            if (_list.ElementSize != 0)
+            {
+                return _list.SetRadixPrefix(items, insertBytePosition, selectionVector);
             }
             return 0;
         }
     }
 }
-
-

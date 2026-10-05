@@ -174,6 +174,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(internalNode.children[0]);
                 m_stateClient.Delete(internalNode.Id);
+                // Delete drops the cache rent, this drops the fetch rent.
+                internalNode.Return();
             }
             else
             {
@@ -508,6 +510,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (m_usePreviousPointer && leafNode.next != 0)
                 {
+                    rightNode.Return();
                     return UpdateRightPrevious(result, leafNode, isFull, true);
                 }
 
@@ -582,11 +585,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
                 isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
 
+                // Delete drops the cache's rent, this releases the one taken when the node was
+                // fetched. Without it the merged away leaf never reaches zero and its containers
+                // are never disposed. The mirrored merge into right does the same for rightNode.
                 if (m_usePreviousPointer && leftNode.next != 0)
                 {
+                    leafNode.Return();
                     return UpdateRightPrevious(result, leftNode, isFull, true);
                 }
 
+                leafNode.Return();
                 leftNode.Return();
 
                 if (isFull)
@@ -836,9 +844,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         private void MergeLeafNodesIntoLeft(in LeafNode<K, V, TKeyContainer, TValueContainer> leftNode, in LeafNode<K, V, TKeyContainer, TValueContainer> rightNode)
         {
+            leftNode.EnterWriteLock();
             leftNode.keys.AddRangeFrom(rightNode.keys, 0, rightNode.keys.Count);
             leftNode.values.AddRangeFrom(rightNode.values, 0, rightNode.values.Count);
             leftNode.next = rightNode.next;
+            leftNode.ExitWriteLock();
         }
 
         internal (K, IDisposable) DistributeBetweenNodesInternal(InternalNode<K, V, TKeyContainer> leftNode, InternalNode<K, V, TKeyContainer> rightNode, K parentKey)

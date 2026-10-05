@@ -22,8 +22,37 @@ using Protobuf = Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait
 {
-    internal class SubstraitSerializer
+    /// <summary>
+    /// Serializes a <see cref="Plan"/> into the Substrait protobuf format or its JSON
+    /// representation, the counterpart of <see cref="SubstraitDeserializer"/>. A serialized
+    /// plan is how plans travel between processes, for example to Orleans grains, and a
+    /// deserialization always produces a fresh plan instance, which matters because building
+    /// a stream mutates the plan in place.
+    /// </summary>
+    public class SubstraitSerializer
     {
+        /// <summary>
+        /// Writes function options, each option keeps a single preference value.
+        /// </summary>
+        private static void AddOptions(
+            Google.Protobuf.Collections.RepeatedField<Protobuf.FunctionOption> target,
+            SortedList<string, string>? options)
+        {
+            if (options == null)
+            {
+                return;
+            }
+            foreach (var option in options)
+            {
+                var functionOption = new Protobuf.FunctionOption()
+                {
+                    Name = option.Key
+                };
+                functionOption.Preference.Add(option.Value);
+                target.Add(functionOption);
+            }
+        }
+
         private sealed class SerializerVisitorState
         {
             public int uriCounter = 0;
@@ -63,14 +92,14 @@ namespace FlowtideDotNet.Substrait
                 return functionAnchor;
             }
 
-            private uint GetAnyTypeId()
+            private uint GetUserDefinedTypeId(string uri, string name)
             {
-                if (!_typeExtensions.TryGetValue("any", out var id))
+                if (!_typeExtensions.TryGetValue(name, out var id))
                 {
                     var anchor = uriCounter++;
                     Root.ExtensionUris.Add(new Protobuf.SimpleExtensionURI
                     {
-                        Uri = $"/any_type.yaml",
+                        Uri = uri,
                         ExtensionUriAnchor = (uint)anchor
                     });
                     var typeAnchor = (uint)extensionCounter++;
@@ -79,14 +108,54 @@ namespace FlowtideDotNet.Substrait
                         ExtensionType = new Protobuf.SimpleExtensionDeclaration.Types.ExtensionType()
                         {
                             ExtensionUriReference = (uint)anchor,
-                            Name = "any",
+                            Name = name,
                             TypeAnchor = typeAnchor
                         }
                     });
                     id = (int)typeAnchor;
-                    _typeExtensions.Add("any", id);
+                    _typeExtensions.Add(name, id);
                 }
                 return (uint)id;
+            }
+
+            private uint GetAnyTypeId()
+            {
+                return GetUserDefinedTypeId("/any_type.yaml", "any");
+            }
+
+            private Protobuf.Type GetNamedStructAsUserDefinedType(Type.NamedStruct namedStruct, Protobuf.Type.Types.Nullability nullability)
+            {
+                var userDefined = new Protobuf.Type.Types.UserDefined()
+                {
+                    Nullability = nullability,
+                    TypeReference = GetUserDefinedTypeId("/named_struct_type.yaml", "named_struct")
+                };
+                foreach (var name in namedStruct.Names)
+                {
+                    userDefined.TypeParameters.Add(new Protobuf.Type.Types.Parameter()
+                    {
+                        String = name
+                    });
+                }
+                if (namedStruct.Struct != null)
+                {
+                    var structType = new Protobuf.Type.Types.Struct();
+                    foreach (var fieldType in namedStruct.Struct.Types)
+                    {
+                        structType.Types_.Add(GetType(fieldType));
+                    }
+                    userDefined.TypeParameters.Add(new Protobuf.Type.Types.Parameter()
+                    {
+                        DataType = new Protobuf.Type()
+                        {
+                            Struct = structType
+                        }
+                    });
+                }
+                return new Protobuf.Type()
+                {
+                    UserDefined = userDefined
+                };
             }
 
             public Protobuf.Type GetType(SubstraitBaseType type, List<string>? names = default)
@@ -177,34 +246,30 @@ namespace FlowtideDotNet.Substrait
                             }
                         };
                     case SubstraitType.Struct:
-                        if (names == null)
-                        {
-                            throw new NotSupportedException("names list must be provided with serializing named structs");
-                        }
-                        var structType = new Protobuf.Type.Types.Struct();
-                        if (type is Type.NamedStruct namedStruct)
-                        {
-                            if (namedStruct.Struct != null)
-                            {
-                                for (int i = 0; i < namedStruct.Names.Count; i++)
-                                {
-                                    names.Add(namedStruct.Names[i]);
-                                    structType.Types_.Add(GetType(namedStruct.Struct.Types[i], names));
-                                }
-                                return new Protobuf.Type()
-                                {
-                                    Struct = structType
-                                };
-                            }
-                            else
-                            {
-                                throw new NotSupportedException("Inner structs must have data types");
-                            }
-                        }
-                        else
+                        if (type is not Type.NamedStruct namedStruct)
                         {
                             throw new InvalidOperationException("Struct must be NamedStruct");
                         }
+                        if (names == null)
+                        {
+                            // No names list means the type is stored on its own, substrait keeps struct field
+                            // names in a named struct only, so the names travel along in a user defined type.
+                            return GetNamedStructAsUserDefinedType(namedStruct, nullable);
+                        }
+                        if (namedStruct.Struct == null)
+                        {
+                            throw new NotSupportedException("Inner structs must have data types");
+                        }
+                        var structType = new Protobuf.Type.Types.Struct();
+                        for (int i = 0; i < namedStruct.Names.Count; i++)
+                        {
+                            names.Add(namedStruct.Names[i]);
+                            structType.Types_.Add(GetType(namedStruct.Struct.Types[i], names));
+                        }
+                        return new Protobuf.Type()
+                        {
+                            Struct = structType
+                        };
                     case SubstraitType.List:
                         if (type is ListType listType)
                         {
@@ -283,6 +348,7 @@ namespace FlowtideDotNet.Substrait
                         Value = Visit(arg, state)
                     });
                 }
+                AddOptions(scalar.Options, scalarFunction.Options);
 
                 return new Protobuf.Expression()
                 {
@@ -726,6 +792,7 @@ namespace FlowtideDotNet.Substrait
                                     });
                                 }
                             }
+                            AddOptions(m.Measure_.Options, measure.Measure.Options);
                             if (measure.Measure.OutputType != null)
                             {
                                 m.Measure_.OutputType = state.GetType(measure.Measure.OutputType);
@@ -916,6 +983,8 @@ namespace FlowtideDotNet.Substrait
                 output.FunctionReference = state.GetFunctionExtensionAnchor(windowFunction.ExtensionUri, windowFunction.ExtensionName);
                 output.Invocation = Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified;
                 
+                AddOptions(output.Options, windowFunction.Options);
+
                 if (windowFunction.LowerBound != null)
                 {
                     output.LowerBound = GetWindowBound(windowFunction.LowerBound);
@@ -1256,6 +1325,16 @@ namespace FlowtideDotNet.Substrait
                     writeRel.CreateMode = WriteRel.Types.CreateMode.ReplaceIfExists;
                 }
 
+                if (writeRelation.PrimaryKeyNames != null)
+                {
+                    var primaryKeys = new CustomProtobuf.WriteRelationPrimaryKeys();
+                    primaryKeys.Names.AddRange(writeRelation.PrimaryKeyNames);
+                    writeRel.AdvancedExtension = new Protobuf.AdvancedExtension()
+                    {
+                        Enhancement = Google.Protobuf.WellKnownTypes.Any.Pack(primaryKeys)
+                    };
+                }
+
                 writeRel.Input = Visit(writeRelation.Input, state);
 
                 return new Protobuf.Rel()
@@ -1308,14 +1387,26 @@ namespace FlowtideDotNet.Substrait
                     {
                         protoTarget.PartitionId.Add(partitionId);
                     }
-                    switch (target.Type)
+                    switch (target)
                     {
-                        case ExchangeTargetType.StandardOutput:
+                        case StandardOutputExchangeTarget:
                             protoTarget.Uri = "standard_output";
                             break;
-                        case ExchangeTargetType.PullBucket:
-                            // TODO: Fix later on when distributed mode is on.
-                            throw new NotImplementedException();
+                        case SubstreamExchangeTarget substreamTarget:
+                            protoTarget.Extended = Google.Protobuf.WellKnownTypes.Any.Pack(new CustomProtobuf.SubstreamExchangeTarget()
+                            {
+                                SubstreamName = substreamTarget.SubstreamName,
+                                ExchangeTargetId = substreamTarget.ExchangeTargetId
+                            });
+                            break;
+                        case PullBucketExchangeTarget pullBucketTarget:
+                            protoTarget.Extended = Google.Protobuf.WellKnownTypes.Any.Pack(new CustomProtobuf.PullBucketExchangeTarget()
+                            {
+                                ExchangeTargetId = pullBucketTarget.ExchangeTargetId
+                            });
+                            break;
+                        default:
+                            throw new NotImplementedException($"Exchange target type '{target.Type}' is not supported by serialization");
                     }
                     output.Targets.Add(protoTarget);
                 }
@@ -1345,7 +1436,61 @@ namespace FlowtideDotNet.Substrait
                 {
                     Detail = Google.Protobuf.WellKnownTypes.Any.Pack(target)
                 };
-                
+
+
+                return new Rel()
+                {
+                    ExtensionLeaf = rel
+                };
+            }
+
+            public override Rel VisitSubstreamExchangeReferenceRelation(SubstreamExchangeReferenceRelation substreamExchangeReferenceRelation, SerializerVisitorState state)
+            {
+                var reference = new CustomProtobuf.SubstreamExchangeReferenceRelation()
+                {
+                    SubstreamName = substreamExchangeReferenceRelation.SubStreamName,
+                    ExchangeTargetId = substreamExchangeReferenceRelation.ExchangeTargetId,
+                    OutputLength = substreamExchangeReferenceRelation.ReferenceOutputLength
+                };
+
+                var rel = new Protobuf.ExtensionLeafRel()
+                {
+                    Detail = Google.Protobuf.WellKnownTypes.Any.Pack(reference)
+                };
+
+                if (substreamExchangeReferenceRelation.EmitSet)
+                {
+                    rel.Common = new Protobuf.RelCommon();
+                    rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    rel.Common.Emit.OutputMapping.AddRange(substreamExchangeReferenceRelation.Emit);
+                }
+
+                return new Rel()
+                {
+                    ExtensionLeaf = rel
+                };
+            }
+
+            public override Rel VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, SerializerVisitorState state)
+            {
+                var reference = new CustomProtobuf.PullExchangeReferenceRelation()
+                {
+                    SubstreamName = pullExchangeReferenceRelation.SubStreamName,
+                    ExchangeTargetId = pullExchangeReferenceRelation.ExchangeTargetId,
+                    OutputLength = pullExchangeReferenceRelation.ReferenceOutputLength
+                };
+
+                var rel = new Protobuf.ExtensionLeafRel()
+                {
+                    Detail = Google.Protobuf.WellKnownTypes.Any.Pack(reference)
+                };
+
+                if (pullExchangeReferenceRelation.EmitSet)
+                {
+                    rel.Common = new Protobuf.RelCommon();
+                    rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    rel.Common.Emit.OutputMapping.AddRange(pullExchangeReferenceRelation.Emit);
+                }
 
                 return new Rel()
                 {
@@ -1625,13 +1770,7 @@ namespace FlowtideDotNet.Substrait
         public static string SerializeToJson(Plan plan)
         {
             var protoPlan = Serialize(plan);
-            var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
-                CustomProtobuf.IterationReferenceReadRelation.Descriptor,
-                CustomProtobuf.IterationRelation.Descriptor,
-                CustomProtobuf.NormalizationRelation.Descriptor,
-                CustomProtobuf.TopNRelation.Descriptor,
-                CustomProtobuf.StandardOutputTargetReferenceRelation.Descriptor);
-            var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
+            var settings = new Google.Protobuf.JsonFormatter.Settings(true, CustomProtoTypeRegistry.Instance)
                 .WithIndentation();
             var formatter = new Google.Protobuf.JsonFormatter(settings);
             return formatter.Format(protoPlan);

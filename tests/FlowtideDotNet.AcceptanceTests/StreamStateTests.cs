@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Engine;
+using System.Diagnostics;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -19,6 +20,207 @@ namespace FlowtideDotNet.AcceptanceTests
     {
         public StreamStateTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
         {
+        }
+
+        /// <summary>
+        /// Minimum interval throttles running checkpoints, never the stop.
+        /// </summary>
+        [Fact]
+        public async Task StopIsNotDelayedByTheMinimumCheckpointInterval()
+        {
+            // Well above the time the stop itself needs, so a stop clamped to this interval
+            // is clearly distinguishable from a prompt one.
+            MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(20);
+
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+
+            // Runs a checkpoint so the minimum-interval throttle is armed for what follows.
+            await WaitForUpdate();
+
+            var stopwatch = Stopwatch.StartNew();
+            await StopStream();
+            stopwatch.Stop();
+
+            Assert.Equal(StreamStateValue.NotStarted, State);
+            Assert.True(
+                stopwatch.Elapsed < TimeSpan.FromSeconds(10),
+                $"The stop took {stopwatch.Elapsed.TotalSeconds:F1}s, it was delayed by the minimum checkpoint interval instead of draining on its own cadence.");
+        }
+
+        /// <summary>
+        /// Clean stop runs the sinks' Compact for the stop checkpoint.
+        /// </summary>
+        [Fact]
+        public async Task CleanStopCompactsTheSinksForTheStopCheckpoint()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+            await WaitForUpdate();
+
+            await StopStream();
+
+            Assert.Equal(StreamStateValue.NotStarted, State);
+            Assert.True(SinkLastCheckpointDoneVersion >= 0, "The stop never committed a checkpoint.");
+            Assert.Equal(SinkLastCheckpointDoneVersion, SinkLastCompactedVersion);
+        }
+
+        /// <summary>
+        /// The first checkpoint should be instant, not wait the interval.
+        /// </summary>
+        [Fact]
+        public async Task FirstCheckpointAfterInitialDataIsNotDelayedByTheMinimumInterval()
+        {
+            // Well above what the checkpoint itself needs.
+            MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(20);
+            WaitForCheckpointAfterInitialData = true;
+
+            GenerateData();
+            var stopwatch = Stopwatch.StartNew();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+
+            await WaitForUpdate();
+            stopwatch.Stop();
+
+            Assert.True(
+                stopwatch.Elapsed < TimeSpan.FromSeconds(10),
+                $"The first checkpoint took {stopwatch.Elapsed.TotalSeconds:F1}s, it was delayed by the minimum checkpoint interval instead of following the initial data.");
+        }
+
+        /// <summary>
+        /// After the first one, the throttle applies again.
+        /// </summary>
+        [Fact]
+        public async Task CheckpointsAfterTheFirstAreThrottledByTheMinimumInterval()
+        {
+            MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(20);
+
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+
+            // The first checkpoint, which arms the throttle.
+            await WaitForUpdate();
+
+            // New data asks for a checkpoint, throttle holds it.
+            GenerateData();
+            var stopwatch = Stopwatch.StartNew();
+            var secondUpdate = WaitForUpdate();
+            var finished = await Task.WhenAny(secondUpdate, Task.Delay(TimeSpan.FromSeconds(5)));
+            stopwatch.Stop();
+
+            Assert.True(
+                finished != secondUpdate,
+                $"A second checkpoint committed after {stopwatch.Elapsed.TotalSeconds:F1}s, the minimum checkpoint interval no longer throttles a running stream.");
+        }
+
+        /// <summary>
+        /// A recovery needs a prompt baseline too.
+        /// </summary>
+        [Fact]
+        public async Task FirstCheckpointAfterARecoveryIsNotDelayedByTheMinimumInterval()
+        {
+            // Well above what the recovery itself needs.
+            MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(20);
+            AllowFailureAndRecover();
+
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+
+            // Arms the throttle, only a restart disarms it.
+            await WaitForUpdate();
+
+            await Crash();
+
+            // New data, so the stream asks for a checkpoint.
+            GenerateData();
+
+            // The recovery must commit promptly after reloading.
+            var stopwatch = Stopwatch.StartNew();
+            var afterRecovery = WaitForUpdate();
+            var finished = await Task.WhenAny(afterRecovery, Task.Delay(TimeSpan.FromSeconds(15)));
+            stopwatch.Stop();
+
+            Assert.True(
+                finished == afterRecovery,
+                $"No checkpoint committed within {stopwatch.Elapsed.TotalSeconds:F1}s of the recovery, the throttle stayed armed across the restart.");
+            await afterRecovery;
+        }
+
+        /// <summary>
+        /// A stop during initial data should not wait the interval.
+        /// </summary>
+        [Fact]
+        public async Task StopDuringInitialDataIsNotDelayedByTheMinimumCheckpointInterval()
+        {
+            // Well above what the stop itself needs.
+            MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(20);
+            // Keeps the stream parked in the placeholder window.
+            WaitForCheckpointAfterInitialData = true;
+            InitialDataDelay = TimeSpan.FromSeconds(2);
+
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+
+            // Wait for Running so the stop lands right.
+            var runningDeadline = DateTime.UtcNow.AddSeconds(5);
+            while (State != StreamStateValue.Running && DateTime.UtcNow < runningDeadline)
+            {
+                await Task.Delay(10);
+            }
+            Assert.Equal(StreamStateValue.Running, State);
+
+            var stopwatch = Stopwatch.StartNew();
+            var stopTask = StopStream();
+            var completed = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(completed == stopTask, "StopAsync hung: the stop landed during the initial-data checkpoint placeholder and its drain cycle was never started.");
+            await stopTask;
+            stopwatch.Stop();
+
+            Assert.Equal(StreamStateValue.NotStarted, State);
+            Assert.True(
+                stopwatch.Elapsed < TimeSpan.FromSeconds(12),
+                $"The stop took {stopwatch.Elapsed.TotalSeconds:F1}s, its queued drain cycle was promoted with the minimum checkpoint interval applied.");
+        }
+
+        /// <summary>
+        /// A big interval must not push past the drain timeout.
+        /// </summary>
+        [Fact]
+        public async Task StopWithAMinimumIntervalAboveTheDrainTimeoutStillDrainsCleanly()
+        {
+            var drainTimeout = TimeSpan.FromSeconds(3);
+            MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(30);
+            StopDrainTimeout = drainTimeout;
+
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+
+            // Arms the throttle.
+            await WaitForUpdate();
+
+            var stopwatch = Stopwatch.StartNew();
+            await StopStream();
+            stopwatch.Stop();
+
+            Assert.Equal(StreamStateValue.NotStarted, State);
+            // The drain runs 25ms cycles, a healthy stop measures ~31ms.
+            Assert.True(
+                stopwatch.Elapsed < drainTimeout,
+                $"The stop took {stopwatch.Elapsed.TotalSeconds:F1}s, it reached the drain timeout instead of draining on its own cadence.");
         }
 
         [Fact]
@@ -33,6 +235,47 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await StopStream();
 
+            Assert.Equal(StreamStateValue.NotStarted, State);
+        }
+
+        /// <summary>
+        /// A stop that lands while the stream is still loading its initial data must still
+        /// finish. With the checkpoint-after-initial-data option a checkpoint placeholder
+        /// holds the checkpoint slot during startup; a stop arriving then transitions to
+        /// Stopping, whose stop cycle can only be queued behind the placeholder. When the
+        /// initial data completes and the placeholder clears, the queued stop cycle has to
+        /// actually run, otherwise the stop never completes and the caller hangs forever.
+        /// </summary>
+        [Fact]
+        public async Task StopDuringInitialDataCheckpointPlaceholderCompletes()
+        {
+            GenerateData();
+            // The option installs the startup checkpoint placeholder; the delay keeps the
+            // stream parked in that window so the stop reliably lands while it is held.
+            WaitForCheckpointAfterInitialData = true;
+            InitialDataDelay = TimeSpan.FromSeconds(3);
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey, firstName FROM users");
+
+            // The stream reaches Running (installing the checkpoint placeholder) before its
+            // initial data, which is delayed. Wait for Running so the stop lands during the
+            // placeholder window, not during the earlier starting phase.
+            var runningDeadline = DateTime.UtcNow.AddSeconds(5);
+            while (State != StreamStateValue.Running && DateTime.UtcNow < runningDeadline)
+            {
+                await Task.Delay(10);
+            }
+            Assert.Equal(StreamStateValue.Running, State);
+
+            // Stop while the placeholder still holds the checkpoint slot. Not awaited: the
+            // stop only completes once its drain runs, which is the behavior under test.
+            var stopTask = StopStream();
+
+            var completed = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(30)));
+            Assert.True(completed == stopTask, "StopAsync hung: the stop landed during the initial-data checkpoint placeholder and no stop cycle was ever scheduled.");
+            await stopTask;
             Assert.Equal(StreamStateValue.NotStarted, State);
         }
 

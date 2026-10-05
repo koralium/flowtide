@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -64,9 +64,10 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
 
             foreach (var item in toInsert)
             {
-                bl.Add(item);
+                bl.Add(item, GlobalMemoryManager.Instance);
             }
 
+            bl.Dispose(GlobalMemoryManager.Instance);
         }
 
 
@@ -87,8 +88,8 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
         private int[] _insertPositions = Array.Empty<int>();
 
         // Pre-built BinaryLists recreated before every iteration
-        private BinaryList? _targetList = null;
-        private BinaryList? _sourceList = null;
+        private BinaryList _targetList;
+        private BinaryList _sourceList;
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -129,49 +130,45 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
             _targetList = new BinaryList(GlobalMemoryManager.Instance);
             for (int i = 0; i < _baseData.Length; i++)
             {
-                _targetList.Add(_baseData[i]);
+                _targetList.Add(_baseData[i], GlobalMemoryManager.Instance);
             }
 
             _sourceList = new BinaryList(GlobalMemoryManager.Instance);
             for (int i = 0; i < _otherData.Length; i++)
             {
-                _sourceList.Add(_otherData[i]);
+                _sourceList.Add(_otherData[i], GlobalMemoryManager.Instance);
             }
         }
 
         [IterationCleanup]
         public void IterationCleanup()
         {
-            Debug.Assert(_targetList != null && _sourceList != null);
-            _targetList.Dispose();
-            _sourceList.Dispose();
+            _targetList.Dispose(GlobalMemoryManager.Instance);
+            _sourceList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Benchmark(Baseline = true)]
         public void InsertOneByOne()
         {
-            Debug.Assert(_targetList != null && _sourceList != null);
             for (int i = 0; i < _sortedLookup.Length; i++)
             {
                 int oIdx = _sortedLookup[i];
                 var data = _sourceList.Get(oIdx);
-                _targetList.Insert(_insertPositions[i] + i, data);
+                _targetList.Insert(_insertPositions[i] + i, data, GlobalMemoryManager.Instance);
             }
         }
 
         [Benchmark]
         public void InsertFromBatch()
         {
-            Debug.Assert(_targetList != null && _sourceList != null);
             ReadOnlySpan<int> sl = _sortedLookup.AsSpan();
             ReadOnlySpan<int> ip = _insertPositions.AsSpan();
-            _targetList.InsertFrom(in _sourceList!, in sl, in ip, -1);
+            _targetList.InsertFrom(in _sourceList, in sl, in ip, -1, GlobalMemoryManager.Instance);
         }
 
         [Benchmark]
         public void CreateNewMergedList()
         {
-            Debug.Assert(_targetList != null && _sourceList != null);
             var merged = new BinaryList(GlobalMemoryManager.Instance);
 
             int baseIdx = 0;
@@ -183,18 +180,18 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
                 while (sourceIdx < InsertCount && _insertPositions[sourceIdx] == baseIdx)
                 {
                     int oIdx = _sortedLookup[sourceIdx];
-                    merged.Add(_sourceList.Get(oIdx));
+                    merged.Add(_sourceList.Get(oIdx), GlobalMemoryManager.Instance);
                     sourceIdx++;
                 }
 
                 if (baseIdx < BaseCount)
                 {
-                    merged.Add(_targetList.Get(baseIdx));
+                    merged.Add(_targetList.Get(baseIdx), GlobalMemoryManager.Instance);
                     baseIdx++;
                 }
             }
 
-            merged.Dispose();
+            merged.Dispose(GlobalMemoryManager.Instance);
         }
     }
 
@@ -211,7 +208,7 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
         private int[] _deleteTargets = Array.Empty<int>();
 
         // Pre-built BinaryList recreated before every iteration
-        private BinaryList? _targetList = null;
+        private BinaryList _targetList;
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -239,39 +236,35 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
             _targetList = new BinaryList(GlobalMemoryManager.Instance);
             for (int i = 0; i < _baseData.Length; i++)
             {
-                _targetList.Add(_baseData[i]);
+                _targetList.Add(_baseData[i], GlobalMemoryManager.Instance);
             }
         }
 
         [IterationCleanup]
         public void IterationCleanup()
         {
-            Debug.Assert(_targetList != null);
-            _targetList.Dispose();
+            _targetList.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Benchmark(Baseline = true)]
         public void RemoveOneByOne()
         {
-            Debug.Assert(_targetList != null);
             // Iterate in reverse so indices stay valid after each removal
             for (int i = _deleteTargets.Length - 1; i >= 0; i--)
             {
-                _targetList.RemoveAt(_deleteTargets[i]);
+                _targetList.RemoveAt(_deleteTargets[i], GlobalMemoryManager.Instance);
             }
         }
 
         [Benchmark]
         public void DeleteBatch()
         {
-            Debug.Assert(_targetList != null);
-            _targetList.DeleteBatch(_deleteTargets.AsSpan());
+            _targetList.DeleteBatch(_deleteTargets.AsSpan(), GlobalMemoryManager.Instance);
         }
 
         [Benchmark]
         public void CreateNewFilteredList()
         {
-            Debug.Assert(_targetList != null);
             var filtered = new BinaryList(GlobalMemoryManager.Instance);
 
             int deleteIdx = 0;
@@ -284,10 +277,10 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
                     continue;
                 }
 
-                filtered.Add(_targetList.Get(i));
+                filtered.Add(_targetList.Get(i), GlobalMemoryManager.Instance);
             }
 
-            filtered.Dispose();
+            filtered.Dispose(GlobalMemoryManager.Instance);
         }
     }
 }

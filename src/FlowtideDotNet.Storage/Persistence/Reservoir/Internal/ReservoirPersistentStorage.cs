@@ -58,6 +58,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         internal LocalCacheProvider? CacheProvider { get; }
 
+        public bool SupportsDistributedCheckpoints => _fileProvider.SupportsFileListing;
+
         public ReservoirPersistentStorage(ReservoirBuilder reservoirBuilder)
             : this(reservoirBuilder.Build())
         {
@@ -264,15 +266,24 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 await dataFileReader.SkipPageOffsets();
 
                 _mergedBlobFileWriter.StartAddingSequences(pageLocations.Count);
-                for (int i = 0; i < pageLocations.Count; i++)
+                try
                 {
-                    var location = pageLocations[i];
-                    var pageData = await dataFileReader.ReadDataPage(location.Offset, location.Size);
-                    // Check the checksum so there is no corruption before we add the data
-                    CrcUtils.CheckPageCrc32(crc32, location.PageId, pageData, location.Crc32);
-                    _mergedBlobFileWriter.AddSequence(location.PageId, location.Crc32, pageData);
+                    for (int i = 0; i < pageLocations.Count; i++)
+                    {
+                        var location = pageLocations[i];
+                        var pageData = await dataFileReader.ReadDataPage(location.Offset, location.Size);
+                        // Check the checksum so there is no corruption before we add the data
+                        CrcUtils.CheckPageCrc32(crc32, location.PageId, pageData, location.Crc32);
+                        _mergedBlobFileWriter.AddSequence(location.PageId, location.Crc32, pageData);
+                    }
+                    _mergedBlobFileWriter.FinishAddingSequences();
                 }
-                _mergedBlobFileWriter.FinishAddingSequences();
+                catch
+                {
+                    // If we leave the batch open later compactions fail.
+                    _mergedBlobFileWriter.CancelAddingSequences();
+                    throw;
+                }
                 // Read to the end of the file, this must be done to get correct crc64
                 await dataFileReader.ReadToEnd();
 
@@ -309,7 +320,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             while(reader.TryGetNextPageId(out var pageId))
             {
                 if ((!_temporaryPageLocations.ContainsKey(pageId)) &&
-                    _checkpointHandler.TryGetPageFileLocation(pageId, out var location) &&
+                    _checkpointHandler.TryGetReadablePageFileLocation(pageId, out var location) &&
                     location.FileId == fileId)
                 {
                     pageFileLocations.Add(new PageDataInfo(pageId, location.Offset, location.Size, location.Crc32));
@@ -328,49 +339,68 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             await _adminSession.Commit();
 
             Volatile.Write(ref _takingCheckpoint, true);
-            // If there is any data in the merged blob file writer, we need to finish it and send it to the checkpoint handler
-            await _mergedBlobLock.WaitAsync();
-            // Add compaction data
-            await CompactFiles();
-            if (_mergedBlobFileWriter.PageIds.Count > 0)
+            try
             {
-                _mergedBlobFileWriter.Finish();
-                // Send the file to checkpoint handler
-                if (Volatile.Read(ref _numberOfWrittenFiles) > 0)
-                {
-                    // If we already sent files, send another one since we will do a "big" checkpoint
-                    // If not we will do a bundle checkpoint to do a single write to the storage
-                    await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
-                    _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
-                }
-            }
-            _mergedBlobLock.Release();
-            if (Volatile.Read(ref _numberOfWrittenFiles) == 0)
-            {
-                bool finishedCheckpoint = false;
+                // If there is any data in the merged blob file writer, we need to finish it and send it to the checkpoint handler
                 await _mergedBlobLock.WaitAsync();
-                if (_mergedBlobFileWriter.PageIds.Count > 0)
+                try
                 {
-                    var file = _mergedBlobFileWriter;
-                    _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
-                    await _checkpointHandler.FinishCheckpoint(file);
-                    finishedCheckpoint = true;
+                    // Add compaction data
+                    await CompactFiles();
+                    if (_mergedBlobFileWriter.PageIds.Count > 0)
+                    {
+                        _mergedBlobFileWriter.Finish();
+                        // Send the file to checkpoint handler
+                        if (Volatile.Read(ref _numberOfWrittenFiles) > 0)
+                        {
+                            // If we already sent files, send another one since we will do a "big" checkpoint
+                            // If not we will do a bundle checkpoint to do a single write to the storage
+                            await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
+                            _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
+                        }
+                    }
                 }
-                _mergedBlobLock.Release();
-
-                if (!finishedCheckpoint)
+                finally
                 {
-                    // If we did not write any data at all, just finish with a normal checkpoint
+                    _mergedBlobLock.Release();
+                }
+
+                if (Volatile.Read(ref _numberOfWrittenFiles) == 0)
+                {
+                    bool finishedCheckpoint = false;
+                    await _mergedBlobLock.WaitAsync();
+                    try
+                    {
+                        if (_mergedBlobFileWriter.PageIds.Count > 0)
+                        {
+                            var file = _mergedBlobFileWriter;
+                            _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
+                            await _checkpointHandler.FinishCheckpoint(file);
+                            finishedCheckpoint = true;
+                        }
+                    }
+                    finally
+                    {
+                        _mergedBlobLock.Release();
+                    }
+
+                    if (!finishedCheckpoint)
+                    {
+                        // If we did not write any data at all, just finish with a normal checkpoint
+                        await _checkpointHandler.FinishCheckpoint(default);
+                    }
+                }
+                else
+                {
                     await _checkpointHandler.FinishCheckpoint(default);
                 }
             }
-            else
+            finally
             {
-                await _checkpointHandler.FinishCheckpoint(default);
+                // Storage checkpoint teardown must always reset checkpoint flags.
+                Volatile.Write(ref _numberOfWrittenFiles, 0);
+                Volatile.Write(ref _takingCheckpoint, false);
             }
-
-            Volatile.Write(ref _numberOfWrittenFiles, 0);
-            Volatile.Write(ref _takingCheckpoint, false);
             await TryDeleteOldStreamVersions(default);
         }
 
@@ -419,7 +449,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before reading data");
 
-            if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
+            if (_checkpointHandler.TryGetReadablePageFileLocation(key, out var location))
             {
                 var memory = await _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size, location.Crc32);
                 return new ReadOnlySequence<byte>(memory);
@@ -431,7 +461,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before reading data");
 
-            if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
+            if (_checkpointHandler.TryGetReadablePageFileLocation(key, out var location))
             {
                 return _fileProvider.ReadAsync<T>(location.FileId, location.Offset, location.Size, location.Crc32, stateSerializer);
             }
@@ -470,6 +500,17 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             return session;
         }
 
+        /// <summary>
+        /// Drops a disposed session, it must not be reset or committed again.
+        /// </summary>
+        internal void RemoveSession(ReservoirPersistentSession session)
+        {
+            lock (_sessionsLock)
+            {
+                _sessions.Remove(session);
+            }
+        }
+
         public void Dispose()
         {
             if (_mergedBlobFileWriter != null)
@@ -486,7 +527,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 _adminSession.Dispose();
             }
             
-            foreach(var session in _sessions)
+            // Copied out, a session deregisters itself while it disposes.
+            ReservoirPersistentSession[] sessions;
+            lock (_sessionsLock)
+            {
+                sessions = _sessions.ToArray();
+            }
+            foreach (var session in sessions)
             {
                 session.Dispose();
             }
@@ -563,6 +610,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
 
             var checkpointHandlerLogger = _loggerFactory.CreateLogger("ReservoirCheckpointHandler");
+            if (CacheProvider != null)
+            {
+                await CacheProvider.SuspendBackgroundWorkAsync().ConfigureAwait(false);
+            }
             _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger, CacheProvider);
             // Reset taking checkpoint
             Volatile.Write(ref _takingCheckpoint, false);
@@ -615,7 +666,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             else if (!(_fileProvider is MetricsFileStorageProvider))
             {
                 // Add the metrics proxy here so we get metrics
-                _fileProvider = new MetricsFileStorageProvider(_meter, _fileProvider);
+                _fileProvider = new MetricsFileStorageProvider(_meter, metadata.StreamName, _fileProvider);
             }
             
         }
@@ -638,6 +689,26 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             {
                 await _checkpointHandler.DisposeAsync();
             }
+
+            // The reset starts version numbering from 1 again. Files from a previous timeline
+            // must be removed, an old checkpoint bundle with a higher version would otherwise
+            // be picked up as the newest registry on a later restart and reference files this
+            // timeline overwrites with different content, permanently failing recovery on
+            // checksum mismatches.
+            if (_fileProvider.SupportsFileListing)
+            {
+                var staleCheckpointIds = await _fileProvider.ListCheckpointFilesAsync(default);
+                foreach (var staleCheckpointId in staleCheckpointIds)
+                {
+                    await _fileProvider.DeleteCheckpointFileAsync(staleCheckpointId, default);
+                }
+                var staleDataFileIds = await _fileProvider.GetStoredDataFileIdsAsync(default);
+                foreach (var staleDataFileId in staleDataFileIds)
+                {
+                    await _fileProvider.DeleteDataFileAsync(staleDataFileId, default);
+                }
+            }
+
             var checkpointHandlerLogger = _loggerFactory.CreateLogger("ReservoirCheckpointHandler");
             _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger, CacheProvider);
             _temporaryPageLocations.Clear();
@@ -654,7 +725,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before fetching values");
 
-            if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
+            if (_checkpointHandler.TryGetReadablePageFileLocation(key, out var location))
             {
                 value = _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size, location.Crc32).GetAwaiter().GetResult();
                 return true;

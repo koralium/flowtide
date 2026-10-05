@@ -35,6 +35,8 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
       working-directory: .
+    - name: Package mimalloc
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.MiMalloc/FlowtideDotNet.MiMalloc.csproj
     - name: Package storage
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Storage/FlowtideDotNet.Storage.csproj
     - name: Package base

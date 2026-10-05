@@ -98,7 +98,11 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public void ClearForRestore()
         {
-            Dispose();
+            if (!_ignoreDispose)
+            {
+                // Pages are overwritten in place, a restore can only start from empty.
+                m_fileCache.FreeAll(Array.Empty<long>());
+            }
         }
     }
 }

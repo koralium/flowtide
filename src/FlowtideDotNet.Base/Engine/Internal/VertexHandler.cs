@@ -20,20 +20,21 @@ namespace FlowtideDotNet.Base.Engine.Internal
     internal class VertexHandler : IVertexHandler
     {
         private readonly string operatorName;
-        private readonly Action<TimeSpan> checkpointFunc;
+        private readonly Action<TimeSpan, long?> checkpointFunc;
         private readonly Func<string, string, TimeSpan?, Task> registerTrigger;
         private readonly Func<Exception?, long?, Task> failRollbackFunc;
 
         public VertexHandler(
             string streamName,
             string operatorName,
-            Action<TimeSpan> checkpointFunc,
+            Action<TimeSpan, long?> checkpointFunc,
             Func<string, string, TimeSpan?, Task> registerTrigger,
             IMeter metrics,
             IStateManagerClient stateClient,
             ILoggerFactory loggerFactory,
             IOperatorMemoryManager memoryManager,
-            Func<Exception?, long?, Task> failRollbackFunc)
+            Func<Exception?, long?, Task> failRollbackFunc,
+            TimeSpan? stopDrainTimeout = null)
         {
             StreamName = streamName;
             this.operatorName = operatorName;
@@ -44,9 +45,12 @@ namespace FlowtideDotNet.Base.Engine.Internal
             LoggerFactory = loggerFactory;
             MemoryManager = memoryManager;
             this.failRollbackFunc = failRollbackFunc;
+            StopDrainTimeout = stopDrainTimeout ?? TimeSpan.FromSeconds(30);
         }
 
         public string StreamName { get; }
+
+        public TimeSpan StopDrainTimeout { get; }
 
         public IMeter Metrics { get; }
 
@@ -68,9 +72,9 @@ namespace FlowtideDotNet.Base.Engine.Internal
             return registerTrigger(operatorName, name, scheduledInterval);
         }
 
-        public void ScheduleCheckpoint(TimeSpan time)
+        public void ScheduleCheckpoint(TimeSpan time, long? providedCheckpointToken)
         {
-            checkpointFunc(time);
+            checkpointFunc(time, providedCheckpointToken);
         }
     }
 }

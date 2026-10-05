@@ -18,10 +18,5 @@ namespace FlowtideDotNet.Base.Engine.Internal
         {
             return Task.FromResult<StreamState?>(null);
         }
-
-        public Task WriteLatestState(string streamName, StreamState state)
-        {
-            return Task.CompletedTask;
-        }
     }
 }

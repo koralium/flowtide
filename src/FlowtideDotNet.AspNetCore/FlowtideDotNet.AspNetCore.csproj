@@ -26,6 +26,11 @@
 
 	<ItemGroup>
 		<PackageReference Include="PromQL.Parser" />
+		<PackageReference Include="Roslyn.Diagnostics.Analyzers" PrivateAssets="all" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="FlowtideDotNet.AspNetCore.Tests" />
 	</ItemGroup>
 
   <ItemGroup>

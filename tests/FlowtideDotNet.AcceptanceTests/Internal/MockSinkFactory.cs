@@ -26,17 +26,29 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly Action<EventBatchData> onDataUpdate;
         private readonly Action<Watermark> onWatemrark;
         private readonly int egressCrashOnCheckpointCount;
+        private readonly int checkpointsBeforeCrash;
+        private readonly int deleteFailCount;
+        private readonly Action<int>? onChangeRowsReceived;
+        private readonly Action<long>? onCheckpointDone;
+        private readonly Action<long>? onCompact;
+        private readonly Action<long>? onCommitVersion;
 
-        public MockSinkFactory(string regexPattern, Action<EventBatchData> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark) : base(regexPattern)
+        public MockSinkFactory(string regexPattern, Action<EventBatchData> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark, int checkpointsBeforeCrash = 0, int deleteFailCount = 0, Action<int>? onChangeRowsReceived = null, Action<long>? onCheckpointDone = null, Action<long>? onCompact = null, Action<long>? onCommitVersion = null) : base(regexPattern)
         {
             this.onDataUpdate = onDataUpdate;
             this.egressCrashOnCheckpointCount = egressCrashOnCheckpointCount;
             this.onWatemrark = onwatermark;
+            this.checkpointsBeforeCrash = checkpointsBeforeCrash;
+            this.deleteFailCount = deleteFailCount;
+            this.onChangeRowsReceived = onChangeRowsReceived;
+            this.onCheckpointDone = onCheckpointDone;
+            this.onCompact = onCompact;
+            this.onCommitVersion = onCommitVersion;
         }
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new MockDataSink(writeRelation, dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark);
+            return new MockDataSink(writeRelation, dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark, checkpointsBeforeCrash, deleteFailCount, onChangeRowsReceived, onCheckpointDone, onCompact, onCommitVersion);
         }
 
         public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)

@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Base.Vertices
     /// only when all discrete input branches have reached an agreed-upon synchronization point. Derived classes implement 
     /// <see cref="OnRecieve(int, T, long)"/> to provide specific processing logic per target.
     /// </remarks>
-    public abstract class MultipleInputVertex<T> : ISourceBlock<IStreamEvent>, IStreamVertex
+    public abstract class MultipleInputVertex<T> : ISourceBlock<IStreamEvent>, IStreamVertex, IStreamVertexCancellation
     {
         private readonly MultipleInputTargetHolder[] _targetHolders;
         private TransformManyBlock<KeyValuePair<int, IStreamEvent>, IStreamEvent>? _transformBlock;
@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Base.Vertices
         private bool _isHealthy = true;
         private CancellationTokenSource? tokenSource;
         private IMemoryAllocator? _memoryAllocator;
-        private TaskCompletionSource? _pauseSource;
+        private readonly PauseGate _pauseGate = new PauseGate();
         private bool _initialWatermarkSent;
 
         private string? _name;
@@ -143,6 +143,7 @@ namespace FlowtideDotNet.Base.Vertices
                     allInput?.WriteLine($"Received locking event {ev.GetType().Name} from target {r.Key}");
                     allInput?.Flush();
 #endif
+                    Logger.ReceivedLockingEventOnTarget(Name, ev.GetType().Name, r.Key);
                     if (TargetInCheckpoint(r.Key, ev, out var checkpoints))
                     {
                         _lastSeenCheckpointEvents = checkpoints;
@@ -161,7 +162,7 @@ namespace FlowtideDotNet.Base.Vertices
                 if (r.Value is TriggerEvent triggerEvent)
                 {
                     var enumerator = OnTrigger(triggerEvent.Name, triggerEvent.State);
-                    if (_pauseSource != null)
+                    if (_pauseGate.IsPaused)
                     {
                         enumerator = WaitForPause(enumerator);
                     }
@@ -179,7 +180,7 @@ namespace FlowtideDotNet.Base.Vertices
                     Debug.Assert(_targetSentDataSinceLastWatermark != null);
                     _targetSentDataSinceLastWatermark[r.Key] = true;
                     var enumerator = OnRecieve(r.Key, streamMessage.Data, streamMessage.Time);
-                    if (_pauseSource != null)
+                    if (_pauseGate.IsPaused)
                     {
                         enumerator = WaitForPause(enumerator);
                     }
@@ -345,7 +346,25 @@ namespace FlowtideDotNet.Base.Vertices
                 }
             }
 
-            return new SingleAsyncEnumerable<IStreamEvent>(lockingEventPrepare);
+            return FlushAndForwardPrepare(lockingEventPrepare);
+        }
+
+        private async IAsyncEnumerable<IStreamEvent> FlushAndForwardPrepare(LockingEventPrepare lockingEventPrepare)
+        {
+            await foreach (var e in OnLockingEventPrepare())
+            {
+                if (e is IRentable rentable)
+                {
+                    rentable.Rent(_links.Count);
+                }
+                yield return new StreamMessage<T>(e, _currentTime);
+            }
+            yield return lockingEventPrepare;
+        }
+
+        protected virtual IAsyncEnumerable<T> OnLockingEventPrepare()
+        {
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private async IAsyncEnumerable<IStreamEvent> HandleInitialDataDoneEvent(int targetId, InitialDataDoneEvent initialDataDoneEvent)
@@ -513,9 +532,28 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async IAsyncEnumerable<IStreamEvent> HandleCheckpointEnumerable(ILockingEvent checkpointEvent)
         {
+            if (checkpointEvent is ICheckpointEvent)
+            {
+                await foreach (var e in OnCheckpointFlush())
+                {
+                    if (e is IRentable rentable)
+                    {
+                        rentable.Rent(_links.Count);
+                    }
+                    yield return new StreamMessage<T>(e, _currentTime);
+                }
+            }
             var transformedEvent = await HandleCheckpoint(checkpointEvent);
             CheckpointSent();
             yield return transformedEvent;
+        }
+
+        /// <summary>
+        /// Flush data before the aligned checkpoint event is forwarded, not called in parallel mode
+        /// </summary>
+        protected virtual IAsyncEnumerable<T> OnCheckpointFlush()
+        {
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private async Task<ILockingEvent> HandleCheckpoint(ILockingEvent lockingEvent)
@@ -596,7 +634,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async IAsyncEnumerable<T> WaitForPause(IAsyncEnumerable<T> input)
         {
-            var task = _pauseSource?.Task;
+            var task = _pauseGate.PauseTask;
             if (task != null)
             {
                 await task;
@@ -630,6 +668,21 @@ namespace FlowtideDotNet.Base.Vertices
                 if (allInCheckpoint)
                 {
                     Logger.CheckpointInOperator(StreamName, Name);
+
+                    for (int i = 0; i < _targetInCheckpoint.Length; i++)
+                    {
+                        if (_targetInCheckpoint[i]!.GetType() != checkpointEvent.GetType())
+                        {
+                            // The aligned locking events have different types, the inputs have
+                            // received different amounts of locking events and every alignment
+                            // from here on pairs unrelated events, which corrupts checkpoint
+                            // consistency between the inputs.
+                            Logger.LogError(
+                                "Operator {operatorId} aligned locking events of different types, target {targetId} has {targetEventType} while target {completingTargetId} has {completingEventType}. The inputs have diverged in locking event counts.",
+                                Name, i, _targetInCheckpoint[i]!.GetType().Name, targetId, checkpointEvent.GetType().Name);
+                        }
+                    }
+
                     // Create a new array here, have already checked that noone is null in the array
 #pragma warning disable CS8619 // Nullability of reference types in value doesn't match target type.
                     checkpoints = _targetInCheckpoint.ToArray();
@@ -698,18 +751,25 @@ namespace FlowtideDotNet.Base.Vertices
             return _sourceBlock.ConsumeMessage(messageHeader, target, out messageConsumed);
         }
 
+        Task IStreamVertexCancellation.CancelPendingOperations() =>
+            tokenSource?.CancelAsync() ?? Task.CompletedTask;
+
         /// <summary>
         /// Puts the underlying block immediately into a faulted state due to a severe exception.
         /// </summary>
         /// <param name="exception">The triggering exception.</param>
         public void Fault(Exception exception)
         {
-            Debug.Assert(_transformBlock != null, nameof(_transformBlock));
             if (tokenSource != null)
             {
                 tokenSource.Cancel();
             }
-
+            if (_transformBlock == null)
+            {
+                // The block is created first at start, a failure before that (for example
+                // storage initialization) has nothing to fault.
+                return;
+            }
             (_transformBlock as IDataflowBlock).Fault(exception);
         }
 
@@ -951,10 +1011,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Pause()
         {
-            if (_pauseSource == null)
-            {
-                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            }
+            _pauseGate.Pause();
         }
 
         /// <summary>
@@ -962,11 +1019,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Resume()
         {
-            if (_pauseSource != null)
-            {
-                _pauseSource.SetResult();
-                _pauseSource = null;
-            }
+            _pauseGate.Resume();
         }
 
         /// <summary>

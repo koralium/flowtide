@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.Operators.Partition
 
         public override string DisplayName => "Partition";
 
-        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreVersion, IStateManagerClient stateManagerClient)
         {
             if (_eventsProcessed == null)
             {

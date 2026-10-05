@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -47,6 +47,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private Base.Engine.DataflowStream? _stream;
         private readonly object _lock = new object();
         private readonly string testName;
+        private readonly List<ILoggerProvider> _addedLoggerProviders = new List<ILoggerProvider>();
         private EventBatchData? _actualData;
         int updateCounter = 0;
         int waitCounter = 0;
@@ -84,11 +85,90 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public int CachePageCount { get; set; } = 100_000;
 
+        /// <summary>
+        /// The floor the cache is never evicted below. Set to 0 to let the cache empty completely.
+        /// </summary>
+        public int MinCachePageCount { get; set; } = 1000;
+
+        /// <summary>
+        /// Enables the stream option that takes a checkpoint right after initial data, which
+        /// installs a checkpoint placeholder during startup. Set before starting the stream.
+        /// </summary>
+        public bool WaitForCheckpointAfterInitialData { get; set; }
+
+        /// <summary>
+        /// Delays every source's initial data send by this amount, keeping the stream in its
+        /// starting phase so a test can act while startup is still in progress. Set before
+        /// starting the stream.
+        /// </summary>
+        public TimeSpan? InitialDataDelay { get; set; }
+
+        /// <summary>
+        /// Overrides the mock source's batch flush size. Set before starting the stream.
+        /// </summary>
+        public int? SourceBatchSize { get; set; }
+
+        /// <summary>
+        /// Asked on every source initialization attempt, true makes it throw. Set before starting the stream.
+        /// </summary>
+        public Func<bool>? FailSourceInitializeWhen { get; set; }
+
+        /// <summary>
+        /// Asked on every source initialization attempt, true makes it await a rollback of its own stream. Set before starting the stream.
+        /// </summary>
+        public Func<bool>? RollbackSourceInitializeWhen { get; set; }
+
+        /// <summary>
+        /// Called with the rollback version whenever a source gets OnFailure. Set before starting the stream.
+        /// </summary>
+        public Action<long>? SourceOnFailure { get; set; }
+
+        /// <summary>
+        /// Also sends the stream's logs to this provider. Set before starting the stream.
+        /// </summary>
+        public void AddLoggerProvider(ILoggerProvider provider)
+        {
+            _addedLoggerProviders.Add(provider);
+            flowtideBuilder.WithLoggerFactory(new LoggerFactory(_addedLoggerProviders.Prepend(new DebugLoggerProvider())));
+        }
+
+        /// <summary>
+        /// Also notifies this listener of state changes. Set before starting the stream.
+        /// </summary>
+        public void AddStateChangeListener(IStreamStateChangeListener listener)
+        {
+            flowtideBuilder.WithStateChangeListener(listener);
+        }
+
+        /// <summary>
+        /// Sets the minimum time between checkpoint triggers. Set before starting the stream.
+        /// </summary>
+        public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
+
+        /// <summary>
+        /// Sets the stop drain timeout, which also bounds a stop deferred behind an
+        /// in-progress checkpoint. Set before starting the stream.
+        /// </summary>
+        public TimeSpan? StopDrainTimeout { get; set; }
+
         public int BPlusTreePageSizeBytes { get; set; } = 32 * 1024;
+
+        /// <summary>
+        /// Overrides the column store mode of the stream. Set before starting the stream.
+        /// </summary>
+        public bool? UseColumnStore { get; set; }
+
+        /// <summary>
+        /// Runs every dataflow task on this scheduler. Set before starting the stream.
+        /// </summary>
+        public TaskScheduler? TaskScheduler { get; set; }
 
         public Watermark? LastWatermark => _lastWatermark;
 
         public StreamStateValue State => _stream!.State;
+
+        // A rising count means the stream restarts itself
+        public int FailureNotificationCount => _notificationReciever == null ? 0 : Volatile.Read(ref _notificationReciever._failureNotifications);
 
         public FlowtideTestStream(string testName)
         {
@@ -253,7 +333,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             bool ignoreSameDataCheck = false,
             ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
-            string? version = default)
+            string? version = default,
+            DistributedOptions? distributedOptions = default)
         {
             if (stateSerializeOptions == null)
             {
@@ -288,6 +369,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     .CreateLogger();
                 b.AddSerilog(logger);
                 b.AddDebug();
+                // This factory replaces the one AddLoggerProvider set, keep its providers at every level.
+                foreach (var provider in _addedLoggerProviders)
+                {
+                    b.AddProvider(provider);
+                }
+                b.SetMinimumLevel(LogLevel.Trace);
             });
 #endif
 
@@ -316,6 +403,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
                     CachePageCount = CachePageCount,
+                    MinCachePageCount = MinCachePageCount,
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _persistentStorage,
                     DefaultBPlusTreePageSize = pageSize,
@@ -331,10 +419,38 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 flowtideBuilder.SetVersion(version);
             }
 
+            if (UseColumnStore.HasValue)
+            {
+                flowtideBuilder.ColumnStore(UseColumnStore.Value);
+            }
+
+            if (TaskScheduler != null)
+            {
+                flowtideBuilder.SetTaskScheduler(TaskScheduler);
+            }
+
+            if (distributedOptions != null)
+            {
+                flowtideBuilder.SetDistributedOptions(distributedOptions);
+            }
+
             if (checkFailureListener != null)
             {
                 flowtideBuilder.WithCheckFailureListener(checkFailureListener);
             }
+
+            if (WaitForCheckpointAfterInitialData)
+            {
+                flowtideBuilder.WaitForCheckpointAfterInitialData(true);
+            }
+
+            if (MinimumTimeBetweenCheckpoints.HasValue)
+            {
+                flowtideBuilder.SetMinimumTimeBetweenCheckpoint(MinimumTimeBetweenCheckpoints.Value);
+            }
+
+            // Per stream, never a mutated process wide default.
+            flowtideBuilder.SetStopDrainTimeout(StopDrainTimeout ?? FastEngineTimings.StopDrainTimeout);
 
             var stream = flowtideBuilder.Build();
             _stream = stream;
@@ -350,9 +466,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             bool ignoreSameDataCheck = false,
             ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
-            string? version = default)
+            string? version = default,
+            DistributedOptions? distributedOptions = default)
         {
-            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version);
+            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version, distributedOptions);
             await _stream!.StartAsync();
         }
 
@@ -367,6 +484,38 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 _actualData = actualData;
                 _dataUpdated = true;
+            }
+        }
+
+        private int _changeRowsReceived;
+
+        /// <summary>
+        /// Rows sent to the sink, not the state.
+        /// </summary>
+        public int ChangeRowsReceived
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _changeRowsReceived;
+                }
+            }
+        }
+
+        public void ResetChangeRowsReceived()
+        {
+            lock (_lock)
+            {
+                _changeRowsReceived = 0;
+            }
+        }
+
+        private void OnChangeRowsReceived(int count)
+        {
+            lock (_lock)
+            {
+                _changeRowsReceived += count;
             }
         }
 
@@ -395,17 +544,26 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// <returns></returns>
         public async Task Crash()
         {
+            Debug.Assert(_notificationReciever != null);
+            int failuresBefore = Volatile.Read(ref _notificationReciever._failureNotifications);
             await _stream!.CallTrigger("crash", default);
 
-            var graph = _stream.GetDiagnosticsGraph();
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
-            while (_stream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
+            while (Volatile.Read(ref _notificationReciever._failureNotifications) == failuresBefore)
             {
-                graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
                 CheckForErrors();
             }
+        }
+
+        /// <summary>
+        /// Fires the crash trigger without waiting for the stream to reach the failure
+        /// state, so a test can control scheduler ticks around the crash itself.
+        /// </summary>
+        public Task FireCrashTrigger()
+        {
+            return _stream!.CallTrigger("crash", default);
         }
 
         public async Task StopMockIngressAutocompleteDependencies()
@@ -464,6 +622,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             CheckForErrors();
         }
 
+        /// <summary>
+        /// When true, stream failures without an exception do not fail the test.
+        /// Used by tests that expect a fail and recover, for example distributed tests
+        /// where substreams recover to a common checkpoint version.
+        /// </summary>
+        public bool AllowFailureAndRecover { get; set; }
+
         private void CheckForErrors()
         {
             if (_notificationReciever != null && _notificationReciever._error)
@@ -472,7 +637,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 {
                     throw _notificationReciever._exception;
                 }
-                else
+                else if (!AllowFailureAndRecover)
                 {
                     throw new Exception("Unknown error occured in stream without exception");
                 }
@@ -504,12 +669,34 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource));
+            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay, batchSize: SourceBatchSize, failInitializeWhen: FailSourceInitializeWhen, rollbackInitializeWhen: RollbackSourceInitializeWhen, onFailure: SourceOnFailure));
         }
+
+        /// <summary>
+        /// Makes the sinks DeleteAsync throw this many times, simulating a storage delete
+        /// that fails transiently, or permanently when set above the delete retry budget.
+        /// </summary>
+        public int SinkDeleteFailCount { get; set; }
+
+        private long _sinkLastCheckpointDone = -1;
+        private long _sinkLastCompacted = -1;
+
+        // Versions the sinks last saw in CheckpointDone and Compact.
+        public long SinkLastCheckpointDoneVersion => Volatile.Read(ref _sinkLastCheckpointDone);
+
+        public long SinkLastCompactedVersion => Volatile.Read(ref _sinkLastCompacted);
 
         protected virtual void AddWriteResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark));
+            connectorManger.AddSink(new MockSinkFactory(
+                "*",
+                OnDataUpdate,
+                _egressCrashOnCheckpointCount,
+                OnWatermark,
+                deleteFailCount: SinkDeleteFailCount,
+                onChangeRowsReceived: OnChangeRowsReceived,
+                onCheckpointDone: version => Volatile.Write(ref _sinkLastCheckpointDone, version),
+                onCompact: version => Volatile.Write(ref _sinkLastCompacted, version)));
         }
 
         protected virtual void OnWatermark(Watermark watermark)
@@ -521,6 +708,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             var expectedBatch = BatchConverter.ConvertToBatchSorted(data, GlobalMemoryManager.Instance);
             EventBatchAssertion.Equal(expectedBatch, _actualData!);
+            expectedBatch.Dispose();
         }
 
         public EventBatchData GetActualRowsAsVectors()
@@ -551,9 +739,54 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return _stream!.GetDiagnosticsGraph();
         }
 
+        public void Pause()
+        {
+            _stream!.Pause();
+        }
+
+        public void Resume()
+        {
+            _stream!.Resume();
+        }
+
         public Task StopStream()
         {
             return _stream!.StopAsync();
+        }
+
+        /// <summary>
+        /// Injects a failure as if a block had faulted, so a test can drive the failure
+        /// paths at a precise moment, for example while a state manager write is held in
+        /// flight by a test hook.
+        /// </summary>
+        public Task InjectFailure(Exception exception)
+        {
+            return _stream!.InjectFailureForTests(exception);
+        }
+
+        /// <summary>
+        /// Delivers an egress checkpoint done into the stream as if an egress vertex fired it,
+        /// so a test can reproduce a spurious or stale acknowledgement arriving at a precise
+        /// moment.
+        /// </summary>
+        public void InjectEgressCheckpointDone(string operatorName, ILockingEvent? lockingEvent)
+        {
+            _stream!.InjectEgressCheckpointDoneForTests(operatorName, lockingEvent);
+        }
+
+        public void TryScheduleCheckpoint(TimeSpan t)
+        {
+            _stream!.TryScheduleCheckpoint(t);
+        }
+
+        public Task TriggerCheckpoint()
+        {
+            return _stream!.TriggerCheckpoint();
+        }
+
+        public Task WaitForCheckpointsToSettle()
+        {
+            return CheckpointSettle.WaitForCheckpointsToSettle(_stream!);
         }
 
         public Task StartStream()

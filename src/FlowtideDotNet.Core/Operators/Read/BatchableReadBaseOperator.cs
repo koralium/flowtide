@@ -324,8 +324,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                 outputList = new List<RowEvent>();
             }
 
-            var tmpIterator = _fullLoadTempTree.CreateIterator();
-            var persistentIterator = _persistentTree.CreateIterator();
+            using var tmpIterator = _fullLoadTempTree.CreateIterator();
+            using var persistentIterator = _persistentTree.CreateIterator();
             await tmpIterator.SeekFirst();
             await persistentIterator.SeekFirst();
 
@@ -365,7 +365,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             // Clear the temp tree
             await _fullLoadTempTree.Clear();
 
-            var deleteIterator = _deletionsTree.CreateIterator();
+            using var deleteIterator = _deletionsTree.CreateIterator();
             await deleteIterator.SeekFirst();
 
             await foreach (var page in deleteIterator)

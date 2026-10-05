@@ -17,5 +17,25 @@ namespace FlowtideDotNet.Base.Engine.Internal
         public bool WaitForCheckpointAfterInitialData { get; set; } = true;
 
         public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
+
+        /// <summary>
+        /// How long a stopping stream waits for vertices that exchange data with other
+        /// substreams to drain before it begins teardown. Active callbacks and storage
+        /// operations retain ownership until they settle, even after this timeout.
+        /// Every teardown also waits at most this long for background commits, then asks them to stop at their next page.
+        /// </summary>
+        public TimeSpan StopDrainTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Failures restarted at the base delay before the wait grows.
+        /// Keeps ordinary crash and recover fast.
+        /// </summary>
+        public int FailureRestartGraceCount { get; set; } = 3;
+
+        /// <summary>
+        /// The longest wait before a restart, in base restart delays.
+        /// Bounds the log volume of a permanently failing stream.
+        /// </summary>
+        public int MaxFailureRestartDelaySlices { get; set; } = 60;
     }
 }

@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.Optimizer.FilterPushdown;
 using FlowtideDotNet.Core.Optimizer.GetTimestamp;
 using FlowtideDotNet.Core.Optimizer.WatermarkOutput;
+using FlowtideDotNet.Core.Optimizer.Window;
 using FlowtideDotNet.Substrait;
 
 namespace FlowtideDotNet.Core.Optimizer
@@ -44,7 +45,17 @@ namespace FlowtideDotNet.Core.Optimizer
                 var filterIntoRead = new FilterIntoReadOptimizer();
                 relation = filterIntoRead.Visit(relation, null!);
 
+                var rowNumberFilterHint = new RowNumberFilterHintVisitor();
+                relation = rowNumberFilterHint.Visit(relation, null!);
+
                 plan.Relations[i] = relation;
+            }
+
+            // Runs after filter pushdown so subtrees that only differ in pushed
+            // down filters are not merged, but before emits diverge the subtrees.
+            if (settings.FindCommonSubPlans)
+            {
+                plan = CommonSubPlan.CommonSubPlanOptimizer.Optimize(plan);
             }
 
             plan = JoinProjectionPushdown.JoinProjectionPushdown.Optimize(plan);
@@ -61,6 +72,18 @@ namespace FlowtideDotNet.Core.Optimizer
                 plan.Relations[i] = relation;
             }
 
+            // Runs after merge joins are found since it rewrites merge join keys
+            if (settings.WindowJoinKeyOptimization)
+            {
+                plan = WindowJoin.TumblingWindowJoinKeyOptimizer.Optimize(plan);
+            }
+
+            // Runs before emit optimizations so the projection is simplified
+            if (settings.GroupByToDistinct)
+            {
+                plan = GroupByToDistinct.GroupByToDistinctOptimizer.Optimize(plan);
+            }
+
             // Try and remove any direct field references if possible
             if (settings.SimplifyProjection)
             {
@@ -74,7 +97,13 @@ namespace FlowtideDotNet.Core.Optimizer
 
             EmitPushdown.EmitPushdown.Optimize(plan);
 
-            if (settings.Parallelization > 1)
+            if (settings.DistributedPlanOptions != null)
+            {
+                // Distribution replaces the parallelization step, the operators are
+                // partitioned with one partition per substream instead.
+                plan = DistributedMode.DistributedPlanModifier.ToDistributedPlan(plan, settings.DistributedPlanOptions);
+            }
+            else if (settings.Parallelization > 1)
             {
                 plan = MergeJoinParallelize.ParallelizeOptimizer.Optimize(plan, settings.Parallelization);
             }

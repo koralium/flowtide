@@ -1,29 +1,26 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.Mimalloc;
 using System;
-using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Memory
 {
+    // note: alias inside the namespace, the FlowtideDotNet.MiMalloc NAMESPACE otherwise
+    // shadows the type name when resolving from FlowtideDotNet.* namespaces
+    using MiMalloc = FlowtideDotNet.MiMalloc.MiMalloc;
+
     internal unsafe struct FlowtideAllocatedMemory
     {
         public void* ptr;
@@ -31,12 +28,32 @@ namespace FlowtideDotNet.Storage.Memory
     }
     internal unsafe static class FlowtideMemoryAllocation
     {
-        private static readonly bool _isMimallocAvailable;
+        // The managed mimalloc port requires a 64-bit process; on 32-bit fall back to NativeMemory.
+        private static readonly bool _useMimalloc = IntPtr.Size == 8;
+
+        /// <summary>
+        /// Whether <see cref="GetAllocationSize"/> can recover a block's size from its pointer alone.
+        /// Only mimalloc can do this; the <see cref="NativeMemory"/> fallback has no equivalent, so a
+        /// caller that needs the size on a free path must remember it itself when this is false.
+        /// </summary>
+        public static bool CanQueryAllocationSize => _useMimalloc;
+
+        /// <summary>
+        /// The size of a block previously returned by <see cref="AllocateAligned"/>. Only valid when
+        /// <see cref="CanQueryAllocationSize"/> is true -- asking mimalloc about a pointer it did not
+        /// hand out reads through a page map that has no entry for it.
+        /// </summary>
+        public static nuint GetAllocationSize(void* ptr)
+        {
+            Debug.Assert(_useMimalloc, "GetAllocationSize is only valid when mimalloc is in use");
+            return MiMalloc.mi_usable_size(ptr);
+        }
 
         static FlowtideMemoryAllocation()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
+                // mimalloc reads these on first use
                 if (Environment.GetEnvironmentVariable("MIMALLOC_ALLOW_THP") == null)
                 {
                     Environment.SetEnvironmentVariable("MIMALLOC_ALLOW_THP", "0");
@@ -47,29 +64,12 @@ namespace FlowtideDotNet.Storage.Memory
                     Environment.SetEnvironmentVariable("MIMALLOC_PURGE_DECOMMITS", "1");
                 }
             }
-
-            _isMimallocAvailable = NativeLibrary.TryLoad(MiMalloc.NATIVE_LIBRARY,
-                typeof(FlowtideMemoryAllocation).Assembly,
-                DllImportSearchPath.AssemblyDirectory | DllImportSearchPath.ApplicationDirectory,
-                out _);
-
-            if (!_isMimallocAvailable)
-            {
-                // If it failed to load try a simple load again
-                _isMimallocAvailable = NativeLibrary.TryLoad(MiMalloc.NATIVE_LIBRARY,
-                out _);
-            }
-
-            if (!_isMimallocAvailable)
-            {
-                Console.WriteLine("[Flowtide Warning] 'mimalloc' native library could not be loaded. Falling back to standard NativeMemory. Performance may be degraded.");
-            }
         }
 
         public static FlowtideAllocatedMemory AllocateAligned(int size, int alignment)
         {
             Debug.Assert(BitOperations.IsPow2(alignment), "Alignment must be a power of 2");
-            if (_isMimallocAvailable)
+            if (_useMimalloc)
             {
                 return AllocateMimalloc(size, alignment);
             }
@@ -78,32 +78,22 @@ namespace FlowtideDotNet.Storage.Memory
 
         public static void FreeAligned(void* ptr, nuint alignment)
         {
-            if (_isMimallocAvailable)
+            if (_useMimalloc)
             {
-                FreeAlignedMimalloc(ptr, alignment);
+                if (ptr != null)
+                {
+                    MiMalloc.mi_free_aligned(ptr, alignment);
+                }
             }
             else
             {
-                FreeAlignedNativeMemory(ptr);
-            }
-        }
-
-        private static void FreeAlignedNativeMemory(void* ptr)
-        {
-            NativeMemory.AlignedFree(ptr);
-        }
-
-        private static void FreeAlignedMimalloc(void* ptr, nuint alignment)
-        {
-            if (ptr != null)
-            {
-                MiMalloc.mi_free_aligned(ptr, alignment);
+                NativeMemory.AlignedFree(ptr);
             }
         }
 
         public static FlowtideAllocatedMemory ReallocAligned(void* ptr, int oldSize, int newSize, int alignment)
         {
-            if (_isMimallocAvailable)
+            if (_useMimalloc)
             {
                 return ReallocMimalloc(ptr, oldSize, newSize, alignment);
             }
@@ -166,9 +156,16 @@ namespace FlowtideDotNet.Storage.Memory
 
         public static void Collect()
         {
-            if (_isMimallocAvailable)
+            if (_useMimalloc)
             {
-                MiMalloc.mi_collect(true);
+                // Overallocate a bunch of work items to try and hit all threads in the thread pool to run the collection.
+                for (int i = 0; i < Environment.ProcessorCount * 8; i++)
+                {
+                    ThreadPool.QueueUserWorkItem<object?>((_) =>
+                    {
+                        MiMalloc.mi_collect(true);
+                    }, default, false);
+                }
             }
         }
     }

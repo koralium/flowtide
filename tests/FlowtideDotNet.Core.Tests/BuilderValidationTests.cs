@@ -11,7 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Engine.Distributed;
 using FlowtideDotNet.Core.Exceptions;
+using FlowtideDotNet.Core.Optimizer;
+using FlowtideDotNet.Core.Optimizer.DistributedMode;
 using FlowtideDotNet.Core.Sinks;
 using FlowtideDotNet.Core.Tests.Failure;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
@@ -111,6 +114,51 @@ namespace FlowtideDotNet.Core.Tests
                     .Build();
             });
             Assert.Equal("No connector can handle the write relation 'test'.", e.Message);
+        }
+
+        /// <summary>
+        /// A substream name the plan does not contain must be rejected at build. Every
+        /// substream root would be skipped, silently building an empty stream that produces
+        /// nothing while the other substreams wait forever for its data.
+        /// </summary>
+        [Fact]
+        public void TestUnknownSubstreamName()
+        {
+            SqlPlanBuilder builder = new SqlPlanBuilder();
+            var tableDefinition = new NamedStruct()
+            {
+                Names = new List<string>() { "c1" },
+                Struct = new Struct()
+                {
+                    Types = new List<SubstraitBaseType>() { new AnyType() }
+                }
+            };
+            builder.AddTableDefinition("a", tableDefinition);
+            builder.AddTableDefinition("b", tableDefinition);
+            builder.Sql("INSERT INTO test SELECT t1.c1 FROM a t1 INNER JOIN b t2 ON t1.c1 = t2.c1");
+            var plan = PlanOptimizer.Optimize(builder.GetPlan(), new PlanOptimizerSettings()
+            {
+                DistributedPlanOptions = new DistributedPlanOptions()
+                {
+                    SubstreamCount = 2
+                }
+            });
+
+            var factory = new ConnectorManager();
+            factory.AddSource(new TestIngressFactory("*"));
+            factory.AddSink(new FailureEgressFactory("*", new FailureEgressOptions()));
+
+            var hub = new LocalSubstreamCommunicationHub();
+            var e = Assert.Throws<InvalidOperationException>(() =>
+            {
+                new FlowtideBuilder("test")
+                    .AddPlan(plan)
+                    .AddConnectorManager(factory)
+                    .SetDistributedOptions(new DistributedOptions("substream_7", default, hub.CreateFactory("substream_7")))
+                    .Build();
+            });
+            Assert.Contains("substream_7", e.Message);
+            Assert.Contains("substream_0", e.Message);
         }
 
         [Fact]

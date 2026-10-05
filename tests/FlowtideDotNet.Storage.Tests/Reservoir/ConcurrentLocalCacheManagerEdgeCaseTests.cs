@@ -663,6 +663,36 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         }
 
         [Fact]
+        public async Task ReinitializationWaitsForAnOldDownloadBeforeReplacingCacheState()
+        {
+            var s = CreateStack();
+            var (crc32, offset, _) = await CommitAsync(s.Storage, new byte[] { 1, 2, 3 });
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            s.LocalData.InjectWriteException(_ => { entered.TrySetResult(); return null; });
+            s.LocalData.BlockWrites();
+            var read = s.Cclm.ReadMemoryAsync(0, offset, 3, crc32).AsTask();
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                using var meter = new Meter("cache-reinitialize");
+                var initialize = s.Cclm.InitializeAsync(
+                    new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance),
+                    meter, DefaultCtx, CancellationToken.None);
+                Assert.False(initialize.IsCompleted);
+                s.LocalData.UnblockWrites();
+                Assert.Equal(new byte[] { 1, 2, 3 }, (await read.WaitAsync(TimeSpan.FromSeconds(5))).ToArray());
+                await initialize.WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.Equal(new byte[] { 1, 2, 3 }, (await s.Cclm.ReadMemoryAsync(0, offset, 3, crc32)).ToArray());
+            }
+            finally
+            {
+                s.LocalData.UnblockWrites();
+                await s.Cclm.DisposeAsync();
+                s.Storage.Dispose();
+            }
+        }
+
+        [Fact]
         public async Task TestDisposeAsyncAwaitsBackgroundTasksToComplete()
         {
             var s = CreateStack();
@@ -775,9 +805,18 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             TaskCompletionSource evictionLoopSignal = new TaskCompletionSource();
             s.Cclm.SetEvictionLoopSignal_Test(evictionLoopSignal);
-            fakeTime.Advance(TimeSpan.FromSeconds(20));
 
-            await evictionLoopSignal.Task;
+            // The eviction loop re-arms its Task.Delay asynchronously, so a single large
+            // advance can race past a timer that is not armed yet (the loop then waits for
+            // fake time that never comes). Advance in steps, yielding real time in between,
+            // until the loop has completed a pass.
+            var timeout = Task.Delay(TimeSpan.FromSeconds(30));
+            while (!evictionLoopSignal.Task.IsCompleted && !timeout.IsCompleted)
+            {
+                fakeTime.Advance(TimeSpan.FromSeconds(20));
+                await Task.WhenAny(evictionLoopSignal.Task, Task.Delay(50));
+            }
+            Assert.True(evictionLoopSignal.Task.IsCompleted, "Eviction loop did not complete a pass within the timeout.");
 
             Assert.True(s.Cclm.CurrentSize <= maxSize * 0.8, "Background loop failed to evict files.");
         }

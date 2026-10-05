@@ -1,0 +1,196 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Memory;
+using System.Diagnostics;
+
+namespace FlowtideDotNet.Core.Operators.Window.Bulk
+{
+    /// <summary>
+    /// Materializes rows before a scan start so functions can seed their state.
+    /// Newest first, back = 1 is the row immediately before the scan start.
+    /// </summary>
+    internal class BulkWindowSeedReader : IDisposable
+    {
+        private readonly BulkWindowBackwardPartitionReader _reader;
+        private readonly int _keyColumnCount;
+        private readonly int _stateColumnCount;
+        private readonly Column[] _rowColumns;
+        private readonly Column[] _stateColumns;
+        private readonly IMemoryAllocator _memoryAllocator;
+        private readonly EventBatchData _rowBatch;
+        private int _materializedRows;
+        private bool _exhausted;
+        private bool _active;
+        // Next duplicate owed by the row the reader sits on, -1 when it is spent
+        private int _pendingDuplicate = -1;
+
+        public BulkWindowSeedReader(
+            BulkWindowBackwardPartitionReader reader,
+            int keyColumnCount,
+            int stateColumnCount,
+            IMemoryAllocator memoryAllocator)
+        {
+            _reader = reader;
+            _keyColumnCount = keyColumnCount;
+            _stateColumnCount = stateColumnCount;
+            _memoryAllocator = memoryAllocator;
+            _rowColumns = new Column[keyColumnCount];
+            _stateColumns = new Column[stateColumnCount];
+            for (int i = 0; i < keyColumnCount; i++)
+            {
+                _rowColumns[i] = Column.Create(memoryAllocator);
+            }
+            for (int i = 0; i < stateColumnCount; i++)
+            {
+                _stateColumns[i] = Column.Create(memoryAllocator);
+            }
+            _rowBatch = new EventBatchData(_rowColumns);
+        }
+
+        /// <summary>
+        /// The number of logical rows materialized so far.
+        /// </summary>
+        public int MaterializedRows => _materializedRows;
+
+        /// <summary>
+        /// Starts a seed at the anchor, exposing earlier rows in its partition.
+        /// </summary>
+        public async ValueTask Reset(ColumnRowReference anchor)
+        {
+            Clear();
+            _active = true;
+            _exhausted = false;
+            await _reader.Reset(anchor);
+        }
+
+        /// <summary>
+        /// Marks the seed as empty, used when a scan starts at the partition start.
+        /// </summary>
+        public void ResetEmpty()
+        {
+            Clear();
+            _active = true;
+            _exhausted = true;
+        }
+
+        private void Clear()
+        {
+            for (int i = 0; i < _keyColumnCount; i++)
+            {
+                _rowColumns[i].Clear();
+            }
+            for (int i = 0; i < _stateColumnCount; i++)
+            {
+                _stateColumns[i].Clear();
+            }
+            _materializedRows = 0;
+            _pendingDuplicate = -1;
+        }
+
+        /// <summary>
+        /// Materializes the requested rows, false when the partition start came first.
+        /// </summary>
+        public async ValueTask<bool> EnsureRows(int logicalRows)
+        {
+            Debug.Assert(_active, "Reset must be called before EnsureRows");
+            while (_materializedRows < logicalRows)
+            {
+                if (_pendingDuplicate < 0)
+                {
+                    if (_exhausted)
+                    {
+                        return false;
+                    }
+                    if (!await _reader.MoveNextRow())
+                    {
+                        _exhausted = true;
+                        return _materializedRows >= logicalRows;
+                    }
+                    _pendingDuplicate = _reader.Weight - 1;
+                }
+                MaterializeCurrentRow(logicalRows);
+            }
+            return true;
+        }
+
+        // Takes only the duplicates asked for, one tie group can be wider than any seed
+        private void MaterializeCurrentRow(int logicalRows)
+        {
+            var batch = _reader.Batch;
+            var rowIndex = _reader.RowIndex;
+            var values = _reader.Values;
+
+            // Duplicates are materialized newest first, the last duplicate is the closest logical row.
+            while (_pendingDuplicate >= 0 && _materializedRows < logicalRows)
+            {
+                var dup = _pendingDuplicate--;
+                for (int c = 0; c < _keyColumnCount; c++)
+                {
+                    _rowColumns[c].Add(batch.Columns[c].GetValueAt(rowIndex, default));
+                }
+                for (int s = 0; s < _stateColumnCount; s++)
+                {
+                    var listLength = values._functionStates[s].GetListLength(rowIndex);
+                    if (dup < listLength)
+                    {
+                        _stateColumns[s].Add(values._functionStates[s].GetListElementValue(rowIndex, dup));
+                    }
+                    else
+                    {
+                        // Rows before a scan start always have one state entry per duplicate.
+                        Debug.Assert(false, "Seed row is missing stored state for a duplicate, function state would seed incorrectly");
+                        _stateColumns[s].Add(NullValue.Instance);
+                    }
+                }
+                _materializedRows++;
+            }
+        }
+
+        /// <summary>
+        /// The row <paramref name="back"/> rows before the scan start, 1 is closest.
+        /// </summary>
+        public ColumnRowReference GetRow(int back)
+        {
+            Debug.Assert(back >= 1 && back <= _materializedRows);
+            return new ColumnRowReference()
+            {
+                referenceBatch = _rowBatch,
+                RowIndex = back - 1
+            };
+        }
+
+        /// <summary>
+        /// Returns the stored state value (output or auxiliary) of a previous logical row.
+        /// </summary>
+        public IDataValue GetState(int back, int stateColumnIndex)
+        {
+            Debug.Assert(back >= 1 && back <= _materializedRows);
+            return _stateColumns[stateColumnIndex].GetValueAt(back - 1, default);
+        }
+
+        public void Dispose()
+        {
+            for (int i = 0; i < _keyColumnCount; i++)
+            {
+                _rowColumns[i].Dispose();
+            }
+            for (int i = 0; i < _stateColumnCount; i++)
+            {
+                _stateColumns[i].Dispose();
+            }
+        }
+    }
+}

@@ -32,12 +32,22 @@ namespace FlowtideDotNet.Base.Vertices
         internal void DoLockingEvent(ILockingEvent lockingEvent);
 
         /// <summary>
-        /// Invoked when a checkpoint has successfully completed.
+        /// Invoked when a checkpoint has successfully completed and its state is durable.
         /// </summary>
-        /// <param name="checkpointVersion">The completed checkpoint version.</param>
+        /// <param name="checkpointVersion">
+        /// The state manager version of the completed checkpoint, the same domain as the
+        /// restore version the vertex receives at initialization. Earlier releases passed
+        /// the checkpoints timestamp here, persisted values from those releases must not be
+        /// compared against these versions.
+        /// </param>
         /// <returns>A task representing the completion callback operation.</returns>
         Task CheckpointDone(long checkpointVersion);
 
         internal void SetDependenciesDoneFunction(Action<string> dependenciesDone);
+
+        /// <summary>
+        /// Substream readers stay false until consuming the peer stop barrier.
+        /// </summary>
+        bool ReadyToStop => true;
     }
 }

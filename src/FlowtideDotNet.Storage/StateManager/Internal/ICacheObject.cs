@@ -23,6 +23,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 
         void Return();
 
+        /// <summary>
+        /// Claims the object for eviction only if the cache holds the sole reference.
+        /// Disposes and returns true on success, otherwise leaves it untouched and returns false
+        /// so a page still in use is never evicted.
+        /// </summary>
+        bool TryReclaimForEviction();
+
         int RentCount { get; }
 
         bool RemovedFromCache { get; set; }

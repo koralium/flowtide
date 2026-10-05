@@ -278,7 +278,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Normalization
     //            }
     //        }
 
-    //        await op.SendAsync(new Checkpoint(0, 1));
+    //        await op.SendAsync(new Checkpoint(0, 1, 1));
 
     //        msg = await recieveBuffer.ReceiveAsync();
 

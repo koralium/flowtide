@@ -92,6 +92,39 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
         }
 
         [Fact]
+        public void OptionsChangedNotEqual()
+        {
+            // Options change how the function behaves, substring uses negative_start
+            root.Options = new SortedList<string, string>() { { "negative_start", "WRAP_FROM_END" } };
+            clone.Options = new SortedList<string, string>() { { "negative_start", "LEFT_OF_BEGINNING" } };
+            Assert.NotEqual(root, clone);
+        }
+
+        [Fact]
+        public void OptionsAddedNotEqual()
+        {
+            clone.Options = new SortedList<string, string>() { { "negative_start", "WRAP_FROM_END" } };
+            Assert.NotEqual(root, clone);
+        }
+
+        [Fact]
+        public void SameOptionsIsEqual()
+        {
+            root.Options = new SortedList<string, string>() { { "negative_start", "WRAP_FROM_END" } };
+            clone.Options = new SortedList<string, string>() { { "negative_start", "WRAP_FROM_END" } };
+            Assert.Equal(root, clone);
+            Assert.Equal(root.GetHashCode(), clone.GetHashCode());
+        }
+
+        [Fact]
+        public void EmptyOptionsEqualsNullOptions()
+        {
+            clone.Options = new SortedList<string, string>();
+            Assert.Equal(root, clone);
+            Assert.Equal(root.GetHashCode(), clone.GetHashCode());
+        }
+
+        [Fact]
         public void EqualsOperator()
         {
             Assert.True(root == clone);

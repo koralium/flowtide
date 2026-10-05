@@ -57,5 +57,35 @@ namespace FlowtideDotNet.Core.Utils
            Level = LogLevel.Information,
            Message = "Done fetching existing data, in stream: `{stream}`, operator: `{operatorId}`")]
         public static partial void DoneFetchingExistingData(this ILogger logger, string stream, string operatorId);
+
+        [LoggerMessage(
+           EventId = 8,
+           Level = LogLevel.Debug,
+           Message = "Substream read {name} processing event of type {eventType}")]
+        public static partial void SubstreamReadProcessingEvent(this ILogger logger, string? name, string eventType);
+
+        [LoggerMessage(
+           EventId = 9,
+           Level = LogLevel.Debug,
+           Message = "Substream read {name} recieved data batch with {count} rows")]
+        public static partial void SubstreamReadRecievedDataBatch(this ILogger logger, string? name, int count);
+
+        [LoggerMessage(
+           EventId = 10,
+           Level = LogLevel.Debug,
+           Message = "Target {targetId} stores batch with {count} rows")]
+        public static partial void SubstreamTargetStoresBatch(this ILogger logger, int targetId, int count);
+
+        [LoggerMessage(
+           EventId = 11,
+           Level = LogLevel.Debug,
+           Message = "Exchange {name} partitions batch with {count} rows")]
+        public static partial void ExchangePartitionInput(this ILogger logger, string? name, int count);
+
+        [LoggerMessage(
+           EventId = 12,
+           Level = LogLevel.Debug,
+           Message = "Exchange {name} emits batch with {count} rows to output {outputIndex}")]
+        public static partial void ExchangePartitionOutput(this ILogger logger, string? name, int count, int outputIndex);
     }
 }

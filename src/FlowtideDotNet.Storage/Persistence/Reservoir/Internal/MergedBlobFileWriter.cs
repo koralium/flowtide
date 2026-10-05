@@ -94,6 +94,17 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _sequencesOffset = 0;
         }
 
+        /// <summary>
+        /// Abandons an in-progress sequence batch.
+        /// </summary>
+        public void CancelAddingSequences()
+        {
+            _sequencesMemory?.Dispose();
+            _sequencesMemory = null;
+            _addingSequences = false;
+            _sequencesOffset = 0;
+        }
+
         public void AddSequence(long pageId, uint crc32, ReadOnlySequence<byte> data)
         {
             if (_finished)
@@ -142,6 +153,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 throw new InvalidOperationException("No sequences memory allocated");
             }
             var segment = new BufferSegment(_sequencesMemory, _sequencesOffset);
+            // The segment chain owns it from here.
+            _sequencesMemory = null;
             _end.SetNext(segment);
             _end = segment;
             endIndex = segment.Length;
@@ -326,10 +339,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     }
                 }
 
-                _pageIds.Dispose();
-                _pageOffset.Dispose();
-                _crc32s.Dispose();
-                _headerData.Dispose();
+                // These are unassigned if the constructor threw.
+                _pageIds?.Dispose();
+                _pageOffset?.Dispose();
+                _crc32s?.Dispose();
+                _headerData?.Dispose();
+                // Only set while a sequence batch is in flight.
+                _sequencesMemory?.Dispose();
+                _sequencesMemory = null;
 
                 // Dispose segments since there may be segments from sequences here
                 var segment = _head;

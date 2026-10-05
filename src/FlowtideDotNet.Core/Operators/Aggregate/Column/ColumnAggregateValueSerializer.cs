@@ -48,26 +48,37 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             {
                 throw new InvalidOperationException("Failed to read previous value length");
             }
-            var previousValueNativeMemory = memoryAllocator.Allocate(previousValueLength, 64);
-            var slice = previousValueNativeMemory.Memory.Span.Slice(0, previousValueLength);
-            if (!reader.TryCopyTo(slice))
+            var previousValueNativeMemory = memoryAllocator.AllocateMemory(previousValueLength);
+            FlowtideMemory weightNativeMemory = default;
+            EventBatchDeserializeResult eventBatchResult;
+            try
             {
-                throw new InvalidOperationException("Failed to read previous value");
-            }
-            reader.Advance(previousValueLength);
+                var slice = previousValueNativeMemory.Span.Slice(0, previousValueLength);
+                if (!reader.TryCopyTo(slice))
+                {
+                    throw new InvalidOperationException("Failed to read previous value");
+                }
+                reader.Advance(previousValueLength);
 
-            if (!reader.TryReadLittleEndian(out int weightLength))
-            {
-                throw new InvalidOperationException("Failed to read weight length");
-            }
-            var weightNativeMemory = memoryAllocator.Allocate(weightLength, 64);
-            if (!reader.TryCopyTo(weightNativeMemory.Memory.Span.Slice(0, weightLength)))
-            {
-                throw new InvalidOperationException("Failed to read weight");
-            }
-            reader.Advance(weightLength);
+                if (!reader.TryReadLittleEndian(out int weightLength))
+                {
+                    throw new InvalidOperationException("Failed to read weight length");
+                }
+                weightNativeMemory = memoryAllocator.AllocateMemory(weightLength);
+                if (!reader.TryCopyTo(weightNativeMemory.Span.Slice(0, weightLength)))
+                {
+                    throw new InvalidOperationException("Failed to read weight");
+                }
+                reader.Advance(weightLength);
 
-            var eventBatchResult = _batchSerializer.Deserialize(ref reader, memoryAllocator);
+                eventBatchResult = _batchSerializer.Deserialize(ref reader, memoryAllocator);
+            }
+            catch
+            {
+                memoryAllocator.Free(ref previousValueNativeMemory);
+                memoryAllocator.Free(ref weightNativeMemory);
+                throw;
+            }
             var previousValueList = new PrimitiveList<bool>(previousValueNativeMemory, eventBatchResult.Count, memoryAllocator);
             var weightsList = new PrimitiveList<int>(weightNativeMemory, eventBatchResult.Count, memoryAllocator);
 
@@ -81,18 +92,18 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void Serialize(in IBufferWriter<byte> writer, in ColumnAggregateValueContainer values)
         {
-            var previousValueMemory = values._previousValueSent.SlicedMemory;
+            var previousValueSpan = values._previousValueSent.SlicedSpan;
             var lengthSpan = writer.GetSpan(4);
-            BinaryPrimitives.WriteInt32LittleEndian(lengthSpan, previousValueMemory.Length);
+            BinaryPrimitives.WriteInt32LittleEndian(lengthSpan, previousValueSpan.Length);
             writer.Advance(4);
 
-            writer.Write(previousValueMemory.Span);
-            var weightMemory = values._weights.SlicedMemory;
+            writer.Write(previousValueSpan);
+            var weightSpan = values._weights.SlicedSpan;
             lengthSpan = writer.GetSpan(4);
-            BinaryPrimitives.WriteInt32LittleEndian(lengthSpan, weightMemory.Length);
+            BinaryPrimitives.WriteInt32LittleEndian(lengthSpan, weightSpan.Length);
             writer.Advance(4);
 
-            writer.Write(weightMemory.Span);
+            writer.Write(weightSpan);
 
             _batchSerializer.Serialize(writer, values._eventBatch, values._weights.Count);
         }

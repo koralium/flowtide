@@ -46,10 +46,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 throw new InvalidOperationException("Failed to read length");
             }
-            var nativeMemory = _memoryAllocator.Allocate(length, 64);
+            var nativeMemory = _memoryAllocator.AllocateMemory(length);
 
-            if (!reader.TryCopyTo(nativeMemory.Memory.Span.Slice(0, length)))
+            if (!reader.TryCopyTo(nativeMemory.Span.Slice(0, length)))
             {
+                _memoryAllocator.Free(ref nativeMemory);
                 throw new InvalidOperationException("Failed to read bytes");
             }
             reader.Advance(length);
@@ -64,14 +65,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public void Serialize(in IBufferWriter<byte> writer, in JoinWeightsValueContainer values)
         {
-            var memory = values.Memory;
+            var dataSpan = values.SlicedSpan;
 
             var headerSpan = writer.GetSpan(8);
             BinaryPrimitives.WriteInt32LittleEndian(headerSpan, values.Count);
-            BinaryPrimitives.WriteInt32LittleEndian(headerSpan.Slice(4), memory.Length);
+            BinaryPrimitives.WriteInt32LittleEndian(headerSpan.Slice(4), dataSpan.Length);
             writer.Advance(8);
 
-            writer.Write(memory.Span);
+            writer.Write(dataSpan);
         }
     }
 }

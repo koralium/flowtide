@@ -201,6 +201,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
         }
 
+        /// <summary>
+        /// The tree copies out of the projection during ApplyBatch, so once the batch is applied nothing
+        /// reads it again. Null it as well so a later read throws instead of touching freed memory.
+        /// In shared tree mode NewBatch never allocates, hence the null conditional.
+        /// </summary>
+        public void BatchDone()
+        {
+            _projectedDataColumn?.Dispose();
+            _projectedDataColumn = null;
+        }
+
         public async ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int length, Column outputColumn)
         {
             var batch = new EventBatchData(groupingValuesSorted);

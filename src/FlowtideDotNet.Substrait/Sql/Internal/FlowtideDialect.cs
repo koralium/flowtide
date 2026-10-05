@@ -155,8 +155,112 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 var objName = parser.ParseObjectName();
                 return new BeginSubStream(objName);
             }
+            else if (HasPrimaryKeyDeclaration(parser))
+            {
+                parser.ParseKeyword(Keyword.INSERT);
+                return ParseInsertWithPrimaryKeys(parser);
+            }
 
             return base.ParseStatement(parser);
+        }
+
+        /// <summary>
+        /// Peeks if the insert declares primary keys, consumes nothing.
+        /// </summary>
+        private static bool HasPrimaryKeyDeclaration(Parser parser)
+        {
+            if (parser.PeekToken() is not Word insertWord ||
+                insertWord.Keyword != Keyword.INSERT)
+            {
+                return false;
+            }
+
+            // Read in chunks, peeking token by token is quadratic.
+            var chunkSize = 64;
+            while (true)
+            {
+                var tokens = parser.PeekTokens(chunkSize);
+                var parenthesisDepth = 0;
+                // TABLE can precede the destination name, skip the prefix first.
+                var inTablePrefix = true;
+                for (int i = 1; i < tokens.Count; i++)
+                {
+                    var token = tokens[i];
+                    if (token is EOF)
+                    {
+                        return false;
+                    }
+                    if (inTablePrefix && token is Word prefixWord &&
+                        prefixWord.Keyword is Keyword.OVERWRITE or Keyword.INTO or Keyword.TABLE)
+                    {
+                        continue;
+                    }
+                    inTablePrefix = false;
+                    if (token is LeftParen)
+                    {
+                        parenthesisDepth++;
+                        continue;
+                    }
+                    if (token is RightParen)
+                    {
+                        parenthesisDepth--;
+                        continue;
+                    }
+                    // Tokens inside parenthesis belong to a column list.
+                    if (parenthesisDepth != 0 || token is not Word word)
+                    {
+                        continue;
+                    }
+                    // The query starts here, no declaration was found.
+                    if (word.Keyword is Keyword.SELECT or Keyword.VALUES or Keyword.WITH or Keyword.TABLE)
+                    {
+                        return false;
+                    }
+                    if (word.Keyword == Keyword.PRIMARY)
+                    {
+                        if (i + 1 < tokens.Count)
+                        {
+                            return tokens[i + 1] is Word keyWord && keyWord.Keyword == Keyword.KEY;
+                        }
+                        // Next token is outside the chunk, grow it.
+                        break;
+                    }
+                }
+                if (tokens.Count < chunkSize)
+                {
+                    // Reached the end of the statement.
+                    return false;
+                }
+                chunkSize *= 4;
+            }
+        }
+
+        /// <summary>
+        /// Parses an insert that declares primary keys.
+        /// </summary>
+        private static Statement ParseInsertWithPrimaryKeys(Parser parser)
+        {
+            var overwrite = parser.ParseKeyword(Keyword.OVERWRITE);
+            var into = parser.ParseKeyword(Keyword.INTO);
+            var table = parser.ParseKeyword(Keyword.TABLE);
+            var tableName = parser.ParseObjectName();
+            var columns = parser.ParseParenthesizedColumnList(IsOptional.Optional, false);
+
+            if (!parser.ParseKeywordSequence(Keyword.PRIMARY, Keyword.KEY))
+            {
+                throw Parser.Expected("PRIMARY KEY", parser.PeekToken());
+            }
+            var primaryKeys = parser.ParseParenthesizedColumnList(IsOptional.Mandatory, false);
+
+            var source = parser.ParseQuery();
+
+            return new Statement.Insert(new FlowtideInsertOperation(tableName, source, primaryKeys)
+            {
+                Into = into,
+                Overwrite = overwrite,
+                Table = table,
+                Columns = columns
+            });
         }
 
         public Statement.CreateTable ParseCreateTable(Parser parser, bool orReplace, bool temporary, bool? global, bool transient)

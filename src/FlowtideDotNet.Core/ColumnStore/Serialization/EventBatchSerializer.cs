@@ -19,15 +19,28 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
     public class EventBatchSerializer
     {
-        private int[] vtable;
-        private int[] vtables;
-        private int[] stackPointers;
+        // Build scratch, per thread since checkpoint commit and cache eviction serialize concurrently
+        [ThreadStatic]
+        private static int[]? t_vtable;
 
-        public EventBatchSerializer()
+        [ThreadStatic]
+        private static int[]? t_vtables;
+
+        [ThreadStatic]
+        private static int[]? t_stackPointers;
+
+        private static void RentScratch(int fieldNodeCount, out int[] vtable, out int[] vtables, out int[] stackPointers)
         {
-            vtable = new int[256];
-            vtables = new int[256];
-            stackPointers = new int[256];
+            var size = Math.Max(256, fieldNodeCount * 2);
+            if (t_vtable == null || t_vtable.Length < size)
+            {
+                t_vtable = new int[size];
+                t_vtables = new int[size];
+                t_stackPointers = new int[size];
+            }
+            vtable = t_vtable;
+            vtables = t_vtables!;
+            stackPointers = t_stackPointers!;
         }
 
         public SerializationEstimation GetSerializationEstimation(EventBatchData eventBatchData)
@@ -232,12 +245,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new ArgumentException("Destination span is too small");
             }
 
-            if ((serializationEstimation.fieldNodeCount * 2) > vtable.Length)
-            {
-                vtable = new int[serializationEstimation.fieldNodeCount * 2];
-                vtables = new int[serializationEstimation.fieldNodeCount * 2];
-                stackPointers = new int[serializationEstimation.fieldNodeCount * 2];
-            }
+            RentScratch(serializationEstimation.fieldNodeCount, out var vtable, out var vtables, out var stackPointers);
 
             ArrowSerializer arrowSerializer = new ArrowSerializer(destination, vtable, vtables);
 
@@ -290,12 +298,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new ArgumentException("Destination span is too small");
             }
 
-            if ((serializationEstimation.fieldNodeCount * 2) > vtable.Length)
-            {
-                vtable = new int[serializationEstimation.fieldNodeCount * 2];
-                vtables = new int[serializationEstimation.fieldNodeCount * 2];
-                stackPointers = new int[serializationEstimation.fieldNodeCount * 2];
-            }
+            RentScratch(serializationEstimation.fieldNodeCount, out var vtable, out var vtables, out var stackPointers);
 
             ArrowSerializer arrowSerializer = new ArrowSerializer(destination, vtable, vtables);
 
@@ -365,12 +368,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new ArgumentException("Destination span is too small");
             }
 
-            if ((serializationEstimation.fieldNodeCount * 2) > vtable.Length)
-            {
-                vtable = new int[serializationEstimation.fieldNodeCount * 2];
-                vtables = new int[serializationEstimation.fieldNodeCount * 2];
-                stackPointers = new int[serializationEstimation.fieldNodeCount * 2];
-            }
+            RentScratch(serializationEstimation.fieldNodeCount, out var vtable, out var vtables, out var stackPointers);
 
             ArrowSerializer arrowSerializer = new ArrowSerializer(destination, vtable, vtables);
 
@@ -404,12 +402,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new ArgumentException("Destination span is too small");
             }
 
-            if ((serializationEstimation.fieldNodeCount * 2) > vtable.Length)
-            {
-                vtable = new int[serializationEstimation.fieldNodeCount * 2];
-                vtables = new int[serializationEstimation.fieldNodeCount * 2];
-                stackPointers = new int[serializationEstimation.fieldNodeCount * 2];
-            }
+            RentScratch(serializationEstimation.fieldNodeCount, out var vtable, out var vtables, out var stackPointers);
 
             ArrowSerializer arrowSerializer = new ArrowSerializer(destination, vtable, vtables);
 

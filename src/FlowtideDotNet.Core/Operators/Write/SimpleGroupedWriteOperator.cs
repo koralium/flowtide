@@ -127,8 +127,8 @@ namespace FlowtideDotNet.Core.Operators.Write
             Debug.Assert(m_existingData != null);
             Debug.Assert(PrimaryKeyComparer != null);
 
-            var treeIterator = m_modified.CreateIterator();
-            var existingIterator = m_existingData.CreateIterator();
+            using var treeIterator = m_modified.CreateIterator();
+            using var existingIterator = m_existingData.CreateIterator();
             await treeIterator.SeekFirst();
             await existingIterator.SeekFirst();
 
@@ -176,7 +176,7 @@ namespace FlowtideDotNet.Core.Operators.Write
         private async IAsyncEnumerable<SimpleChangeEvent> GetChangedRows()
         {
             Debug.Assert(m_modified != null);
-            var iterator = m_modified.CreateIterator();
+            using var iterator = m_modified.CreateIterator();
             await iterator.SeekFirst();
             await foreach (var page in iterator)
             {

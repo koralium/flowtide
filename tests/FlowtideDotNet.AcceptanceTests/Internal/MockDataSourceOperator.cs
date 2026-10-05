@@ -19,6 +19,8 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -31,7 +33,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     internal class MockDataSourceOperator : ReadBaseOperator
     {
 #if DEBUG_WRITE
-        private StreamWriter? allOutput;
+        private TextWriter? allOutput;
 #endif
 
         private readonly ReadRelation readRelation;
@@ -41,13 +43,26 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private IObjectState<MockDataSourceState>? _state;
         private BatchConverter _batchConverter;
 
-        public static Dictionary<string, System.Threading.Tasks.TaskCompletionSource> TableInitialSignals { get; } = new Dictionary<string, System.Threading.Tasks.TaskCompletionSource>();
-        public static Dictionary<string, string> TableWaitSignals { get; } = new Dictionary<string, string>();
+        public static ConcurrentDictionary<string, System.Threading.Tasks.TaskCompletionSource> TableInitialSignals { get; } = new ConcurrentDictionary<string, System.Threading.Tasks.TaskCompletionSource>();
+        public static ConcurrentDictionary<string, string> TableWaitSignals { get; } = new ConcurrentDictionary<string, string>();
 
-        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options) : base(options)
+        private readonly TimeSpan? _initialDataDelay;
+        private readonly bool _failInitialize;
+        private readonly Func<bool>? _failInitializeWhen;
+        private readonly Func<bool>? _rollbackInitializeWhen;
+        private readonly Action<long>? _onFailure;
+        private readonly int? _batchSize;
+
+        public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options, TimeSpan? initialDataDelay = null, bool failInitialize = false, int? batchSize = null, Func<bool>? failInitializeWhen = null, Func<bool>? rollbackInitializeWhen = null, Action<long>? onFailure = null) : base(options)
         {
             this.readRelation = readRelation;
             this.mockDatabase = mockDatabase;
+            _initialDataDelay = initialDataDelay;
+            _failInitialize = failInitialize;
+            _failInitializeWhen = failInitializeWhen;
+            _rollbackInitializeWhen = rollbackInitializeWhen;
+            _onFailure = onFailure;
+            _batchSize = batchSize;
 
             _table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
 
@@ -62,41 +77,94 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return Task.CompletedTask;
         }
 
+        public override Task OnFailure(long rollbackVersion)
+        {
+            _onFailure?.Invoke(rollbackVersion);
+            return base.OnFailure(rollbackVersion);
+        }
+
         private async Task FetchChanges(IngressOutput<StreamEventBatch> output, object? state)
         {
-            mockDatabase.RwLock.Wait();
             Debug.Assert(_state?.Value != null);
+            // The checkpoint lock is entered before the database lock, and the database lock
+            // is not held while sending. Both waits can park indefinitely: the checkpoint
+            // lock while a checkpoint is in flight, a send on the pause gate while the
+            // stream is paused. Holding a database slot across either wait starves the data
+            // generator (and, with the synchronous wait that used to sit here, a thread pool
+            // thread per fired trigger), deadlocking a test that pauses a stream and then
+            // generates data.
             await output.EnterCheckpointLock();
-            var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
-            bool sentData = false;
+            await mockDatabase.RwLock.WaitAsync();
 
-
-            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
-            Column[] columns = new Column[readRelation.OutputLength];
-
-            for (int i = 0; i < readRelation.OutputLength; i++)
+            List<StreamEventBatch> pendingBatches = new List<StreamEventBatch>();
+            int fetchedOffset;
+            try
             {
-                columns[i] = new Column(MemoryAllocator);
-            }
+                var (operations, offset) = _table.GetOperations(_state.Value.LatestOffset);
+                fetchedOffset = offset;
+                Logger.LogDebug("Mock source {table} fetch changes from offset {offset} to offset {fetchedOffset}", readRelation.NamedTable.DotSeperated, _state.Value.LatestOffset, fetchedOffset);
 
-            foreach (var operation in operations)
-            {
-                _batchConverter.AppendToColumns(operation.Object, columns);
+                PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+                PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+                Column[] columns = new Column[readRelation.OutputLength];
 
-                iterations.Add(1);
-                if (operation.IsDelete)
+                for (int i = 0; i < readRelation.OutputLength; i++)
                 {
-                    weights.Add(-1);
+                    columns[i] = new Column(MemoryAllocator);
+                }
+
+                foreach (var operation in operations)
+                {
+                    _batchConverter.AppendToColumns(operation.Object, columns);
+
+                    iterations.Add(1);
+                    if (operation.IsDelete)
+                    {
+                        weights.Add(-1);
+                    }
+                    else
+                    {
+                        weights.Add(1);
+                    }
+
+                    if (weights.Count > (_batchSize ?? 100))
+                    {
+                        pendingBatches.Add(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+
+                        columns = new Column[readRelation.OutputLength];
+                        for (int i = 0; i < readRelation.OutputLength; i++)
+                        {
+                            columns[i] = new Column(MemoryAllocator);
+                        }
+                        weights = new PrimitiveList<int>(MemoryAllocator);
+                        iterations = new PrimitiveList<uint>(MemoryAllocator);
+                    }
+                }
+
+                if (weights.Count > 0)
+                {
+                    pendingBatches.Add(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 }
                 else
                 {
-                    weights.Add(1);
+                    weights.Dispose();
+                    iterations.Dispose();
+                    foreach (var column in columns)
+                    {
+                        column.Dispose();
+                    }
                 }
+            }
+            finally
+            {
+                mockDatabase.RwLock.Release();
+            }
 
-                if (weights.Count > 100)
+            int sentCount = 0;
+            try
+            {
+                foreach (var outputBatch in pendingBatches)
                 {
-                    var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
 #if DEBUG_WRITE
                     foreach (var o in outputBatch.Events)
                     {
@@ -104,62 +172,53 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     }
                     await allOutput!.FlushAsync();
 #endif
-                    sentData = true;
                     await output.SendAsync(outputBatch);
-
-                    columns = new Column[readRelation.OutputLength];
-                    for (int i = 0; i < readRelation.OutputLength; i++)
-                    {
-                        columns[i] = new Column(MemoryAllocator);
-                    }
-                    weights = new PrimitiveList<int>(MemoryAllocator);
-                    iterations = new PrimitiveList<uint>(MemoryAllocator);
+                    sentCount++;
                 }
-            }
 
-            if (weights.Count > 0)
-            {
-                var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
-#if DEBUG_WRITE
-                foreach (var o in outputBatch.Events)
+                // Only advanced on a complete send, a partial send has to be refetched.
+                _state.Value.LatestOffset = fetchedOffset;
+
+                if (pendingBatches.Count > 0)
                 {
-                    allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
-                }
-                await allOutput!.FlushAsync();
-#endif
-                sentData = true;
-                await output.SendAsync(outputBatch);
-            }
-            else
-            {
-                weights.Dispose();
-                iterations.Dispose();
-                foreach (var column in columns)
-                {
-                    column.Dispose();
-                }
-            }
-            _state.Value.LatestOffset = fetchedOffset;
-
-            if (sentData)
-            {
-                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
-                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
+                    await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
+                    this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
 #if DEBUG_WRITE
-                allOutput!.WriteLine("Delta done");
-                await allOutput!.FlushAsync();
+                    allOutput!.WriteLine("Delta done");
+                    await allOutput!.FlushAsync();
 #endif
+                }
+            }
+            catch
+            {
+                // Return any non sent
+                for (int i = sentCount; i < pendingBatches.Count; i++)
+                {
+                    pendingBatches[i].Return();
+                }
+                output.ExitCheckpointLock();
+                throw;
             }
 
             output.ExitCheckpointLock();
-            mockDatabase.RwLock.Release();
         }
 
         private async Task SendEmptyBatch(IngressOutput<StreamEventBatch> output, object? state)
         {
-            await mockDatabase.RwLock.WaitAsync();
             Debug.Assert(_state?.Value != null);
+            // Same lock discipline as FetchChanges: checkpoint lock first, no database slot
+            // held across a send that can park on the pause gate.
             await output.EnterCheckpointLock();
+            await mockDatabase.RwLock.WaitAsync();
+            int fetchedOffset;
+            try
+            {
+                fetchedOffset = _state.Value.LatestOffset;
+            }
+            finally
+            {
+                mockDatabase.RwLock.Release();
+            }
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
@@ -173,12 +232,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
             await output.SendAsync(outputBatch);
 
-            var fetchedOffset = _state.Value.LatestOffset;
             await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
             this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
 
             output.ExitCheckpointLock();
-            mockDatabase.RwLock.Release();
         }
 
         public override Task OnTrigger(string triggerName, object? state)
@@ -227,6 +284,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
+            if (_failInitialize || (_failInitializeWhen?.Invoke() ?? false))
+            {
+                throw new InvalidOperationException($"Mock source {readRelation.NamedTable.DotSeperated} is configured to fail initialization.");
+            }
+            if (_rollbackInitializeWhen?.Invoke() ?? false)
+            {
+                // Awaited like the exchange handshake awaits its rollback when it joins a peer's recovery wave.
+                await FailAndRollback(new CrashException("Rollback requested from initialize"), restoreVersion: restoreTime);
+                return;
+            }
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))
             {
@@ -234,7 +301,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             if (allOutput == null)
             {
-                allOutput = File.CreateText($"debugwrite/{StreamName}_{Name}_mock.alloutput.txt");
+                allOutput = TextWriter.Synchronized(File.CreateText($"debugwrite/{StreamName}_{Name}_mock.alloutput.txt"));
             }
             else
             {
@@ -248,6 +315,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 _state.Value = new MockDataSourceState();
             }
+            Logger.LogDebug("Mock source {table} initialized with restored offset {offset}, restore time {restoreTime}", readRelation.NamedTable.DotSeperated, _state.Value.LatestOffset, restoreTime);
             await RegisterTrigger("crash");
             await RegisterTrigger("ingress_no_autocomplete_dependencies");
             await RegisterTrigger("ingress_fail_and_rollback");
@@ -270,9 +338,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 await waitTcs.Task;
             }
 
+            if (_initialDataDelay.HasValue)
+            {
+                // Keeps this stream in its starting phase, simulating a substream whose
+                // startup is much slower than its peers.
+                await Task.Delay(_initialDataDelay.Value);
+            }
+
             Debug.Assert(_state?.Value != null);
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
+            Logger.LogDebug("Mock source {table} sending initial from offset {offset} to offset {fetchedOffset}", tableName, _state.Value.LatestOffset, fetchedOffset);
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
@@ -297,7 +373,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     weights.Add(1);
                 }
 
-                if (weights.Count > 1000)
+                if (weights.Count > (_batchSize ?? 1000))
                 {
                     var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
 #if DEBUG_WRITE

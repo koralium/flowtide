@@ -28,7 +28,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         // Upper 8 bits: Execution Branches
         HasValidityBitmap = 1 << 8,  // Standard null bitmap (if used)
         IsIndirectView = 1 << 9,  // "Using Offset" -> The data is behind an indirection array
-        OffsetContainsNull = 1 << 10 // The -1 fast-null check is required
+        OffsetContainsNull = 1 << 10, // The -1 fast-null check is required
+
+        // Sort request bits, keyed so a descending layout never reuses an ascending delegate.
+        SortDescending = 1 << 11,
+        SortNullsSwapped = 1 << 12
     }
 
     public static class CompareColumnStateBuilder
@@ -45,6 +49,35 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         {
             if (index >= MaxFastPathColumns) return;
             key |= ((UInt128)(ushort)state) << (index * 16);
+        }
+
+        public static CompareColumnState ApplyDirection(CompareColumnState state, SortColumnDirection direction)
+        {
+            if (direction.IsDescending())
+            {
+                state |= CompareColumnState.SortDescending;
+            }
+            if (direction.HasSwappedNulls())
+            {
+                state |= CompareColumnState.SortNullsSwapped;
+            }
+            return state;
+        }
+
+        /// <summary>
+        /// True when the layout can yield a null, so an asymmetric null placement must be kept.
+        /// </summary>
+        public static bool CanContainNull(CompareColumnState state)
+        {
+            // An indirect view encodes its nulls as negative offsets, not as a bitmap, so it
+            // reports OffsetContainsNull. IsIndirectView alone only means the indirection exists.
+            if ((state & (CompareColumnState.HasValidityBitmap | CompareColumnState.OffsetContainsNull)) != 0)
+            {
+                return true;
+            }
+            // A null typed column carries no flag, and a union keeps its nulls in a child.
+            var type = (ArrowTypeId)(byte)(state & CompareColumnState.TypeMask);
+            return type == ArrowTypeId.Null || type == ArrowTypeId.Union;
         }
 
         public static void AddHasTailToKey(ref UInt128 key)

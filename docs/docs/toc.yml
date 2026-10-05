@@ -4,6 +4,17 @@
   href: statepersistence.md
 - name: Parallelism
   href: parallelism.md
+- name: Distributed Mode
+  href: distributed/index.md
+  items:
+    - name: Automatic Distribution
+      href: distributed/automaticdistribution.md
+    - name: SQL Substream Statements
+      href: distributed/sqlsubstreams.md
+    - name: In-Process Hosting
+      href: distributed/inprocess.md
+    - name: Orleans Hosting
+      href: distributed/orleans.md
 - name: Connectors
   items:
     - name: Catalogs
@@ -117,6 +128,8 @@
       items:
         - name: Generic Functions
           href: expressions/tablefunctions/generic.md
+        - name: Datetime Functions
+          href: expressions/tablefunctions/datetime.md
     - name: Window Functions
       href: expressions/windowfunctions/index.md
       items:
@@ -124,6 +137,8 @@
           href: expressions/windowfunctions/arithmetic.md
         - name: Generic Functions
           href: expressions/windowfunctions/generic.md
+        - name: Datetime Functions
+          href: expressions/windowfunctions/datetime.md
     - name: Specialized Expressions
       href: expressions/specializedexpressions.md
 - name: SQL
@@ -163,6 +178,8 @@
       href: internal/projectstructure.md
     - name: Reservoir Storage System
       href: internal/reservoir/index.md
+    - name: Requirements for data consistency
+      href: internal/dataconsistency.md
     - name: Storage
       items:
         - name: Persistent Storage Rules

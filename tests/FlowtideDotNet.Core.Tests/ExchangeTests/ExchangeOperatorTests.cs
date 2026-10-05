@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
                 },
                 PartitionCount = 1
             };
-            var op = new ExchangeOperator(relation, FunctionsRegister, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 });
+            var op = new ExchangeOperator(relation, new SubstreamCommunicationPointFactory(), FunctionsRegister, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 });
 
             var outputBlock = new BufferBlock<IStreamEvent>();
             op.Sources[0].LinkTo(outputBlock);
@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
             await op.SendAsync(new Watermark("test", new LongWatermarkValue(123)));
 
             // Do a checkpoint to save the data to disk
-            await op.SendAsync(new Checkpoint(1, 2));
+            await op.SendAsync(new Checkpoint(1, 2, 1));
 
             // wait for checkpoint to complete
             var timedSource = new CancellationTokenSource(TimeSpan.FromSeconds(1));
@@ -197,7 +197,7 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
                 },
                 PartitionCount = 1
             };
-            var op = new ExchangeOperator(relation, FunctionsRegister, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 });
+            var op = new ExchangeOperator(relation, new SubstreamCommunicationPointFactory(), FunctionsRegister, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 });
 
             var outputBlock = new BufferBlock<IStreamEvent>();
             op.Sources[0].LinkTo(outputBlock);

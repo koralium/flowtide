@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.BoundarySearching;
 using FlowtideDotNet.Storage.Tree;
 
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
@@ -18,6 +19,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
     {
         private DataValueContainer dataValueContainer;
         private readonly int columnCount;
+        private readonly ColumnBoundarySearch _columnBoundarySearch;
 
         public bool SeekNextPageForValue => false;
 
@@ -25,6 +27,12 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             dataValueContainer = new DataValueContainer();
             this.columnCount = columnCount;
+            var columnOrder = new int[columnCount];
+            for (int i = 0; i < columnCount; i++)
+            {
+                columnOrder[i] = i;
+            }
+            _columnBoundarySearch = new ColumnBoundarySearch(columnOrder, columnOrder);
         }
 
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
@@ -70,9 +78,56 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return index;
         }
 
-        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, int startIndex, int length)
+        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, int startIndex, int endIndex)
         {
-            throw new NotImplementedException();
+            int start = startIndex;
+            int end = endIndex;
+
+            if (columnCount == 0)
+            {
+                // No columns, so the whole range matches
+                if (start > end)
+                {
+                    return new FindBoundriesResult(~start, ~start);
+                }
+                return new FindBoundriesResult(start, end);
+            }
+
+            for (int i = 0; i < columnCount; i++)
+            {
+                // Get value by container to skip boxing for each value
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, dataValueContainer, default);
+                var (low, high) = keyContainer._data.Columns[i].SearchBoundries(dataValueContainer, start, end, default);
+
+                if (low < 0)
+                {
+                    return new FindBoundriesResult(low, low);
+                }
+                start = low;
+                end = high;
+            }
+            return new FindBoundriesResult(start, end);
+        }
+
+        void IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>.FindBoundriesBulk(
+            ReadOnlySpan<ColumnRowReference> keys,
+            ReadOnlySpan<int> sortedLookup,
+            in ColumnKeyStorageContainer keyContainer,
+            Span<int> lowerBounds,
+            Span<int> upperBounds,
+            Span<int> lookupBuffer)
+        {
+            if (columnCount == 0)
+            {
+                // No columns, all keys match the first row
+                var bounds = keyContainer.Count > 0 ? 0 : ~0;
+                lowerBounds.Fill(bounds);
+                upperBounds.Fill(keyContainer.Count > 0 ? keyContainer.Count - 1 : ~0);
+                return;
+            }
+            // All keys come from the same batch
+            var incomingColumns = keys[0].referenceBatch.Columns;
+            _columnBoundarySearch.SearchBoundries(keyContainer._data.Columns, incomingColumns, sortedLookup, lowerBounds, upperBounds, 0, keyContainer.Count - 1, false, lookupBuffer);
         }
     }
 }

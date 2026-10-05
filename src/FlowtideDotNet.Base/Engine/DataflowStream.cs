@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Vertices;
 
 namespace FlowtideDotNet.Base.Engine
 {
@@ -62,6 +63,43 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
+        /// Test seam: injects a failure as if a block had faulted, so tests can drive the
+        /// state machine's failure paths at a precise moment, for example while a state
+        /// manager write is held in flight by another test hook.
+        /// </summary>
+        internal Task InjectFailureForTests(Exception exception)
+        {
+            return streamContext.OnFailure(exception);
+        }
+
+        // Test seam: current block-created flag.
+        internal int BlocksCreatedForTests => streamContext._blocksCreated;
+
+        // Test seam: no cycle or schedule left by a stop.
+        internal bool CheckpointSchedulingIdleForTests
+        {
+            get
+            {
+                lock (streamContext._checkpointLock)
+                {
+                    return streamContext.checkpointTask == null
+                        && streamContext._scheduleCheckpointTask == null
+                        && streamContext.inQueueCheckpoint == null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Test seam: delivers an egress checkpoint done into the current state as if an egress
+        /// vertex fired it, so tests can reproduce a spurious or stale acknowledgement arriving
+        /// at a precise moment, such as a late parallel egress checkpoint landing during startup.
+        /// </summary>
+        internal void InjectEgressCheckpointDoneForTests(string operatorName, ILockingEvent? lockingEvent)
+        {
+            streamContext.EgressCheckpointDone(operatorName, lockingEvent);
+        }
+
+        /// <summary>
         /// Gets the current high-level state machine value of the stream.
         /// </summary>
         /// <remarks>
@@ -70,6 +108,13 @@ namespace FlowtideDotNet.Base.Engine
         /// <see cref="StreamStateValue.Failure"/>, or <see cref="StreamStateValue.Stopping"/>.
         /// </remarks>
         public StreamStateValue State => streamContext.currentState;
+
+        /// <summary>
+        /// True while the stream has initialized and only waits for the streams it exchanges data
+        /// with to initialize at the same version. It stays in the starting state meanwhile, a
+        /// host must not take that for a start that is stuck.
+        /// </summary>
+        public bool IsWaitingForConnectedStreams => streamContext._waitingForVersionAgreementAtStart;
 
         /// <summary>
         /// Gets the desired target state that the stream is transitioning towards.
@@ -147,13 +192,14 @@ namespace FlowtideDotNet.Base.Engine
                 var diagnosticsWriter = File.CreateText("diagnostics.txt");
 #endif
                 await StartAsync();
-                PeriodicTimer periodicTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
+                using PeriodicTimer periodicTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
                 int count = 0;
-                while (await periodicTimer.WaitForNextTickAsync() && State != StreamStateValue.NotStarted)
+                // A dispose leaves the state, so end the loop too
+                while (await periodicTimer.WaitForNextTickAsync() && State != StreamStateValue.NotStarted && !streamContext.IsDisposed)
                 {
                     await streamScheduler.Tick();
                     count++;
-                    
+
                     if (count % 1000 == 0)
                     {
 #if DEBUG_WRITE
@@ -190,7 +236,7 @@ namespace FlowtideDotNet.Base.Engine
         /// <param name="timeSpan">The delay after which the checkpoint should be triggered.</param>
         public void TryScheduleCheckpoint(TimeSpan timeSpan)
         {
-            streamContext.TryScheduleCheckpointIn(timeSpan);
+            streamContext.TryScheduleCheckpointIn(timeSpan, default);
         }
 
         /// <summary>
@@ -228,8 +274,8 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
-        /// Releases all resources held by the stream asynchronously, completing all dataflow blocks
-        /// and disposing each vertex.
+        /// Releases all resources held by the stream asynchronously, faulting and awaiting active
+        /// dataflow blocks before disposing each vertex. Use StopAsync for a graceful stop.
         /// </summary>
         /// <returns>A <see cref="ValueTask"/> representing the asynchronous dispose operation.</returns>
         public ValueTask DisposeAsync()
@@ -256,6 +302,8 @@ namespace FlowtideDotNet.Base.Engine
         /// <returns>A task that completes when the stream has fully stopped.</returns>
         public Task StopAsync()
         {
+            // Stopping supersedes a pause, the paused data flows during the stop and
+            // becomes part of the final state, see StreamContext.StopAsync.
             return streamContext.StopAsync();
         }
 

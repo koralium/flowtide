@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Optimizer.DistributedMode;
+
 namespace FlowtideDotNet.Core.Optimizer
 {
     public class PlanOptimizerSettings
@@ -29,8 +31,36 @@ namespace FlowtideDotNet.Core.Optimizer
         /// </summary>
         public bool SimplifyProjection { get; set; } = true;
 
+        /// <summary>
+        /// Finds identical subtrees in the plan and computes them only once,
+        /// each usage references the shared result.
+        /// </summary>
+        public bool FindCommonSubPlans { get; set; } = true;
+
+        /// <summary>
+        /// Rewrites a group by without measures into a distinct.
+        /// </summary>
+        public bool GroupByToDistinct { get; set; } = true;
+
         public int Parallelization { get; set; } = 1;
 
         public bool TryAddWatermarkOutputMode { get; set; } = true;
+
+        /// <summary>
+        /// Rewrites merge joins with a tumbling window band condition to lead with
+        /// an equality on the computed window bucket, so the join state trees sort
+        /// window first and time correlated inserts become appends.
+        /// </summary>
+        public bool WindowJoinKeyOptimization { get; set; } = true;
+
+        /// <summary>
+        /// If set, the plan is split into substreams for distributed mode as the last
+        /// optimization step. Merge joins, aggregates and window functions are partitioned
+        /// with one partition per substream. Plans that already contain substream statements
+        /// should not use this setting.
+        /// When set, the <see cref="Parallelization"/> setting is not used, the substream count
+        /// controls the partitioning instead.
+        /// </summary>
+        public DistributedPlanOptions? DistributedPlanOptions { get; set; }
     }
 }

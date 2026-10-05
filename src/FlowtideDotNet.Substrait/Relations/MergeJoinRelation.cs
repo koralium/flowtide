@@ -66,17 +66,43 @@ namespace FlowtideDotNet.Substrait.Relations
                 Equals(relation);
         }
 
+        /// <summary>
+        /// The comparison type for a key. A null or missing comparison type means an equality
+        /// comparison, so a null list and a list of all equal comparisons describe the same
+        /// join. This matches how the comparison types are serialized.
+        /// </summary>
+        public JoinComparisonType GetComparisonType(int index)
+        {
+            if (ComparisonTypes != null && index < ComparisonTypes.Count)
+            {
+                return ComparisonTypes[index];
+            }
+            return JoinComparisonType.Equal;
+        }
+
         public bool Equals(MergeJoinRelation? other)
         {
-            return other != null &&
-                base.Equals(other) &&
-                Equals(Type, other.Type) &&
-                Equals(Left, other.Left) &&
-                Equals(Right, other.Right) &&
-                LeftKeys.SequenceEqual(other.LeftKeys) &&
-                RightKeys.SequenceEqual(other.RightKeys) &&
-                (ComparisonTypes == null ? other.ComparisonTypes == null : other.ComparisonTypes != null && ComparisonTypes.SequenceEqual(other.ComparisonTypes)) &&
-                Equals(PostJoinFilter, other.PostJoinFilter);
+            if (other == null ||
+                !base.Equals(other) ||
+                !Equals(Type, other.Type) ||
+                !Equals(Left, other.Left) ||
+                !Equals(Right, other.Right) ||
+                !LeftKeys.SequenceEqual(other.LeftKeys) ||
+                !RightKeys.SequenceEqual(other.RightKeys) ||
+                !Equals(PostJoinFilter, other.PostJoinFilter))
+            {
+                return false;
+            }
+            // A null or missing comparison type means an equality comparison, compare the
+            // effective type per key so a null list and an all equal list are equal.
+            for (int i = 0; i < LeftKeys.Count; i++)
+            {
+                if (GetComparisonType(i) != other.GetComparisonType(i))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         public override int GetHashCode()
@@ -96,12 +122,11 @@ namespace FlowtideDotNet.Substrait.Relations
                 code.Add(key);
             }
 
-            if (ComparisonTypes != null)
+            // Use the effective comparison type per key so a null list and an all equal list
+            // produce the same hash, consistent with Equals.
+            for (int i = 0; i < LeftKeys.Count; i++)
             {
-                foreach (var comp in ComparisonTypes)
-                {
-                    code.Add(comp);
-                }
+                code.Add(GetComparisonType(i));
             }
 
             code.Add(PostJoinFilter);

@@ -58,11 +58,13 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             }
             else
             {
+#pragma warning disable CS0618 // Covers the obsolete option until it is removed.
                 factory.AddSqlServerSink(new SqlServerSinkOptions()
                 {
                     ConnectionStringFunc = options?.ConnectionStringFunc != null ? options.ConnectionStringFunc : () => connectionString,
                     CustomPrimaryKeys = customPrimaryKeys
                 });
+#pragma warning restore CS0618
             }
         }
     }

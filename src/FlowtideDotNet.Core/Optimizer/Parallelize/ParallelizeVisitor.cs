@@ -129,7 +129,11 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
         public override Relation VisitAggregateRelation(AggregateRelation aggregateRelation, object state)
         {
             Debug.Assert(_plan != null);
-            if (parallelCount < 2 || (aggregateRelation.Groupings == null || aggregateRelation.Groupings.Count < 1))
+            // Only a single grouping set is parallelized. Multiple sets (GROUPING SETS,
+            // ROLLUP, CUBE) have no single column set that co-locates every group -
+            // scattering on the union of all sets splits an individual set's groups across
+            // partitions and gives wrong aggregates - so they run unparallelized.
+            if (parallelCount < 2 || aggregateRelation.Groupings == null || aggregateRelation.Groupings.Count != 1)
             {
                 aggregateRelation.Input = Visit(aggregateRelation.Input, state);
                 return aggregateRelation;
@@ -214,11 +218,114 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
             return setRelation;
         }
 
+        public override Relation VisitSetRelation(SetRelation setRelation, object state)
+        {
+            Debug.Assert(_plan != null);
+
+            // Union all keeps no state, there is nothing to gain from partitioning it
+            if (parallelCount < 2 ||
+                setRelation.Operation == SetOperation.UnionAll ||
+                setRelation.Inputs[0].OutputLength == 0)
+            {
+                for (int i = 0; i < setRelation.Inputs.Count; i++)
+                {
+                    setRelation.Inputs[i] = Visit(setRelation.Inputs[i], state);
+                }
+                return setRelation;
+            }
+
+            // The key of a set operation is the whole row. Every input is scattered on all its
+            // columns, so equal rows from all the inputs end up in the same partition.
+            var inputLength = setRelation.Inputs[0].OutputLength;
+
+            var exchangeIds = new int[setRelation.Inputs.Count];
+            var exchangeLengths = new int[setRelation.Inputs.Count];
+
+            for (int i = 0; i < setRelation.Inputs.Count; i++)
+            {
+                List<ExchangeTarget> exchangeTargets = new List<ExchangeTarget>();
+                for (int p = 0; p < parallelCount; p++)
+                {
+                    exchangeTargets.Add(new StandardOutputExchangeTarget()
+                    {
+                        PartitionIds = new List<int>() { p }
+                    });
+                }
+
+                List<FieldReference> fields = new List<FieldReference>();
+                for (int f = 0; f < inputLength; f++)
+                {
+                    fields.Add(new DirectFieldReference()
+                    {
+                        ReferenceSegment = new StructReferenceSegment() { Field = f }
+                    });
+                }
+
+                var exchange = new ExchangeRelation()
+                {
+                    ExchangeKind = new ScatterExchangeKind()
+                    {
+                        Fields = fields
+                    },
+                    Input = setRelation.Inputs[i],
+                    Targets = exchangeTargets,
+                    PartitionCount = parallelCount
+                };
+
+                exchangeIds[i] = _plan.Relations.Count;
+                exchangeLengths[i] = exchange.OutputLength;
+                _plan.Relations.Add(exchange);
+            }
+
+            SetRelation[] parallelSets = new SetRelation[parallelCount];
+
+            for (int p = 0; p < parallelCount; p++)
+            {
+                var inputs = new List<Relation>();
+                for (int i = 0; i < setRelation.Inputs.Count; i++)
+                {
+                    inputs.Add(new StandardOutputExchangeReferenceRelation()
+                    {
+                        TargetId = p,
+                        ReferenceOutputLength = exchangeLengths[i],
+                        RelationId = exchangeIds[i]
+                    });
+                }
+
+                parallelSets[p] = new SetRelation()
+                {
+                    Inputs = inputs,
+                    Operation = setRelation.Operation,
+                    Emit = setRelation.Emit
+                };
+            }
+
+            return new SetRelation()
+            {
+                Inputs = new List<Relation>(parallelSets),
+                Operation = SetOperation.UnionAll
+            };
+        }
+
         public override Relation VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, object state)
         {
             Debug.Assert(_plan != null);
             if (parallelCount < 2)
             {
+                return mergeJoinRelation;
+            }
+
+            // Only equality keys can drive the partitioning: rows must land in the same
+            // partition to be able to match, which only holds for keys compared with
+            // equality. Inequality keys (range joins) carry different values on the two
+            // sides of a match.
+            var equalityKeyIndices = GetEqualityKeyIndices(mergeJoinRelation);
+            if (equalityKeyIndices.Count == 0)
+            {
+                // A pure inequality join cannot be co-partitioned, it is not parallelized.
+                // The inputs are still visited so operators below it parallelize.
+                mergeJoinRelation.Left = Visit(mergeJoinRelation.Left, state);
+                mergeJoinRelation.Right = Visit(mergeJoinRelation.Right, state);
                 return mergeJoinRelation;
             }
 
@@ -232,11 +339,30 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
                 });
             }
 
+            var rightKeys = mergeJoinRelation.RightKeys.Select(x =>
+            {
+                if (x is DirectFieldReference directField)
+                {
+                    if (directField.ReferenceSegment is StructReferenceSegment structRef)
+                    {
+                        return new DirectFieldReference()
+                        {
+                            ReferenceSegment = new StructReferenceSegment()
+                            {
+                                Field = structRef.Field - mergeJoinRelation.Left.OutputLength,
+                                Child = structRef.Child
+                            }
+                        };
+                    }
+                }
+                return x;
+            }).ToList();
+
             var leftExchange = new ExchangeRelation()
             {
                 ExchangeKind = new ScatterExchangeKind()
                 {
-                    Fields = mergeJoinRelation.LeftKeys
+                    Fields = equalityKeyIndices.Select(i => (FieldReference)mergeJoinRelation.LeftKeys[i]).ToList()
                 },
                 Input = mergeJoinRelation.Left,
                 Targets = exchangeTargets,
@@ -246,24 +372,7 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
             {
                 ExchangeKind = new ScatterExchangeKind()
                 {
-                    Fields = mergeJoinRelation.RightKeys.Select(x =>
-                    {
-                        if (x is DirectFieldReference directField)
-                        {
-                            if (directField.ReferenceSegment is StructReferenceSegment structRef)
-                            {
-                                return new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
-                                        Field = structRef.Field - mergeJoinRelation.Left.OutputLength,
-                                        Child = structRef.Child
-                                    }
-                                };
-                            }
-                        }
-                        return x;
-                    }).ToList()
+                    Fields = equalityKeyIndices.Select(i => (FieldReference)rightKeys[i]).ToList()
                 },
                 Input = mergeJoinRelation.Right,
                 Targets = exchangeTargets,
@@ -295,6 +404,9 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
                     },
                     LeftKeys = mergeJoinRelation.LeftKeys,
                     RightKeys = mergeJoinRelation.RightKeys,
+                    // The comparison types must follow the copies, without them every key is
+                    // treated as an equality comparison and range joins return wrong results.
+                    ComparisonTypes = mergeJoinRelation.ComparisonTypes,
                     Type = mergeJoinRelation.Type,
                     PostJoinFilter = mergeJoinRelation.PostJoinFilter,
                     Emit = mergeJoinRelation.Emit
@@ -308,6 +420,19 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
             };
 
             return setRelation;
+        }
+
+        private static List<int> GetEqualityKeyIndices(MergeJoinRelation mergeJoinRelation)
+        {
+            var indices = new List<int>();
+            for (int i = 0; i < mergeJoinRelation.LeftKeys.Count; i++)
+            {
+                if (mergeJoinRelation.GetComparisonType(i) == JoinComparisonType.Equal)
+                {
+                    indices.Add(i);
+                }
+            }
+            return indices;
         }
     }
 }

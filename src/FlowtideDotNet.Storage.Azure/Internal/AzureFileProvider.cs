@@ -80,10 +80,16 @@ namespace FlowtideDotNet.Storage.AzureBlobs
 
         public Task<IEnumerable<ulong>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException("GetStoredDataFileIdsAsync is not supported, Azure Blobs should be used with local cache which supports this operation.");
+            return ListDataFileIdsAsync(cancellationToken);
         }
 
         public async Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion, CancellationToken cancellationToken = default)
+        {
+            var fileIds = await ListDataFileIdsAsync(cancellationToken).ConfigureAwait(false);
+            return fileIds.Where(fileId => fileId > minVersion);
+        }
+
+        private async Task<IEnumerable<ulong>> ListDataFileIdsAsync(CancellationToken cancellationToken)
         {
             var list = _blobContainerClient.GetBlobsAsync(new Azure.Storage.Blobs.Models.GetBlobsOptions()
             {
@@ -97,10 +103,7 @@ namespace FlowtideDotNet.Storage.AzureBlobs
                 {
                     if (ulong.TryParse(name.AsSpan(9, 20), out var fileId))
                     {
-                        if (fileId > minVersion)
-                        {
-                            result.Add(fileId);
-                        }
+                        result.Add(fileId);
                     }
                 }
             }

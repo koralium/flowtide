@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -1833,6 +1833,90 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
+        /// Computed group key through a crash restore. InitializeOrRestore runs a second time on the
+        /// same operator instance, so the groupExpressions guard must not skip rebuilding
+        /// m_groupDirectFields / m_groupValues.
+        /// </summary>
+        [Fact]
+        public async Task AggregateComputedGroupKey_ThroughCrash()
+        {
+            SetPageSizeBytes(256);
+            for (int i = 0; i < 600; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 3).ToString("D4"), FirstName = "n" + i, Visits = i });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT concat(companyId, '_grp'), sum(visits)
+                FROM users
+                GROUP BY concat(companyId, '_grp')");
+
+            void AssertExpected()
+            {
+                var expected = Users
+                    .GroupBy(x => x.CompanyId + "_grp")
+                    .OrderBy(x => x.Key)
+                    .Select(x => new { Key = x.Key, Sum = x.Sum(y => (long)(y.Visits ?? 0)) });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            await Crash();
+
+            for (int i = 0; i < 600; i += 3)
+            {
+                var u = Users.First(uu => uu.UserKey == i);
+                u.Visits = (u.Visits ?? 0) + 50000;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// Mixed grouping through a crash restore: one direct field plus one computed expression. The
+        /// direct slot must not mask the computed one.
+        /// </summary>
+        [Fact]
+        public async Task AggregateMixedGroupKey_ThroughCrash()
+        {
+            for (int i = 0; i < 60; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 6).ToString("D4"), FirstName = "n" + i, Visits = i });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, visits % 2, sum(visits)
+                FROM users
+                GROUP BY companyId, visits % 2");
+
+            void AssertExpected()
+            {
+                var expected = Users
+                    .GroupBy(x => new { x.CompanyId, Parity = (x.Visits ?? 0) % 2 })
+                    .OrderBy(x => x.Key.CompanyId).ThenBy(x => x.Key.Parity)
+                    .Select(x => new { Key = x.Key.CompanyId, Parity = (long)x.Key.Parity, Sum = x.Sum(y => (long)(y.Visits ?? 0)) });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            await Crash();
+
+            for (int i = 0; i < 60; i += 6)
+            {
+                var u = Users.First(uu => uu.UserKey == i);
+                u.Visits = (u.Visits ?? 0) + 500;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
         /// Crash and restore with a multi-leaf persisted tree AND shared trees (min/max/list_agg), then
         /// continue with member churn. Verifies the serialized persisted + shared tree state restores
         /// correctly and the operator keeps incrementally updating afterwards.
@@ -3368,6 +3452,149 @@ namespace FlowtideDotNet.AcceptanceTests
                 await WaitForUpdate();
                 AssertExpected();
             }
+        }
+
+        /// <summary>
+        /// Group by without measures, with and without the rewrite.
+        /// </summary>
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task GroupByWithoutMeasures(bool groupByToDistinct)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                AddUser(new Entities.User
+                {
+                    UserKey = i,
+                    CompanyId = "co_" + (i % 10),
+                    Visits = i % 5 == 0 ? null : i % 4
+                });
+            }
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, visits
+                FROM users
+                GROUP BY companyId, visits",
+                planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings { GroupByToDistinct = groupByToDistinct });
+
+            void AssertExpected()
+            {
+                AssertCurrentDataEqual(Users.Select(x => new { x.CompanyId, x.Visits }).Distinct().ToList());
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            // All combinations still have members left
+            foreach (var user in Users.Where(x => x.UserKey % 3 == 0).ToList())
+            {
+                DeleteUser(user);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Removes the combinations that have three visits
+            foreach (var user in Users.Where(x => x.Visits == 3).ToList())
+            {
+                DeleteUser(user);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task GroupByWithoutMeasuresOnExpression(bool groupByToDistinct)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i % 10), Visits = i % 4 });
+            }
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT visits + 1
+                FROM users
+                GROUP BY visits + 1",
+                planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings { GroupByToDistinct = groupByToDistinct });
+
+            void AssertExpected()
+            {
+                AssertCurrentDataEqual(Users.Select(x => new { Value = x.Visits + 1 }).Distinct().ToList());
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Removes one of the values completely
+            foreach (var user in Users.Where(x => x.Visits == 2).ToList())
+            {
+                DeleteUser(user);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        [Fact]
+        public async Task AggregateGroupCreatedAndEmptiedInOneDeferredBatch()
+        {
+            // Wide group keys spread the groups over many leaves.
+            const int groupCount = 3000;
+            static string GroupName(int group) => group.ToString("D5") + new string('x', 1000);
+            for (int i = 0; i < groupCount; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, FirstName = GroupName(i) });
+            }
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT firstName, count(*), sum(userkey)
+                FROM users
+                GROUP BY firstName");
+
+            void AssertExpected()
+            {
+                AssertCurrentDataEqual(Users.GroupBy(x => x.FirstName).Select(x => new { x.Key, Count = x.Count(), Sum = x.Sum(y => (long)y.UserKey) }));
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            EnterDataWriteLock();
+            // A first source batch scattered over the leaves turns deferred inserts on.
+            for (int i = 0; i < 150; i++)
+            {
+                AddUser(new Entities.User { UserKey = groupCount + i, FirstName = GroupName(i * (groupCount / 150)) });
+            }
+            // Added and moved away in one fetch, the merged batch nets this group to zero.
+            AddOrUpdateUser(new Entities.User { UserKey = groupCount + 1000, FirstName = "only here for a moment" });
+            AddOrUpdateUser(new Entities.User { UserKey = groupCount + 1000, FirstName = GroupName(7) });
+            ExitDataWriteLock();
+
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        [Fact]
+        public async Task AggregateGlobalFirstBatchNetsToZero()
+        {
+            // No normalization, the add and the delete reach the aggregate in one batch.
+            SourceImmutable();
+            var user = new Entities.User { UserKey = 1 };
+            AddUser(user);
+            DeleteUser(user);
+
+            await StartStream("INSERT INTO output SELECT count(*), sum(userkey) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Cnt = 0L, Sum = (long?)null } });
+
+            // The single row must still pick up later data.
+            AddUser(new Entities.User { UserKey = 5 });
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Cnt = 1L, Sum = (long?)5L } });
         }
     }
 }

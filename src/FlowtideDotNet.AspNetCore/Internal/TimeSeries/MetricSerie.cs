@@ -17,6 +17,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
     internal class MetricSerie : IMetricExecutor
     {
         private readonly AppendTree<long, double, TimestampKeyContainer, DoubleValueContainer> tree;
+        private long _lastTimestamp = long.MinValue;
         public MetricSerie(
             string name,
             IReadOnlyDictionary<string, string> tags,
@@ -33,9 +34,19 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         public SerieType SerieType => SerieType.Matrix;
 
-        public ValueTask SetValue(long timestamp, double value)
+        public async ValueTask SetValue(long timestamp, double value)
         {
-            return tree.Append(timestamp, value);
+            // The append tree requires strictly increasing keys. Multiple instruments can map to
+            // the same serie (same name and tags, for instance the same untagged instrument
+            // registered by several streams in one process), which stores the same timestamp more
+            // than once per gather pass. First value wins, later duplicates are skipped.
+            if (timestamp <= _lastTimestamp)
+            {
+                return;
+            }
+
+            await tree.Append(timestamp, value);
+            _lastTimestamp = timestamp;
         }
 
         public ValueTask Prune(long timestamp)

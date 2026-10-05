@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Storage.DataStructures
 
         public int GetByteSize()
         {
-            return _list.SlicedMemory.Length;
+            return _list.SlicedSpan.Length;
         }
 
         public unsafe int GetByteSize(int start, int end)

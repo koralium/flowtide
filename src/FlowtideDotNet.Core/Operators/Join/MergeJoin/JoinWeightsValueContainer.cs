@@ -23,12 +23,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public Memory<byte> Memory => _values.SlicedMemory;
 
+        public Span<byte> SlicedSpan => _values.SlicedSpan;
+
         public JoinWeightsValueContainer(IMemoryAllocator memoryAllocator)
         {
             _values = new PrimitiveList<JoinWeights>(memoryAllocator);
         }
 
-        public JoinWeightsValueContainer(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
+        public JoinWeightsValueContainer(FlowtideMemory memory, int count, IMemoryAllocator memoryAllocator)
         {
             _values = new PrimitiveList<JoinWeights>(memory, count, memoryAllocator);
         }

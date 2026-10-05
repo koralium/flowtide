@@ -195,5 +195,29 @@ namespace FlowtideDotNet.Base.Utils
           Level = LogLevel.Error,
           Message = "Failed to stop and dispose stream during failure state initialization., stream: `{stream}`")]
         public static partial void FailedStopAndDispose(this ILogger logger, Exception? e, string stream);
+
+        [LoggerMessage(
+          EventId = 31,
+          Level = LogLevel.Debug,
+          Message = "Ingress `{name}` waiting for checkpoint lock for locking event `{eventType}`")]
+        public static partial void IngressWaitingForCheckpointLock(this ILogger logger, string name, string eventType);
+
+        [LoggerMessage(
+          EventId = 32,
+          Level = LogLevel.Debug,
+          Message = "Ingress `{name}` acquired checkpoint lock for locking event `{eventType}`")]
+        public static partial void IngressAcquiredCheckpointLock(this ILogger logger, string name, string eventType);
+
+        [LoggerMessage(
+          EventId = 33,
+          Level = LogLevel.Debug,
+          Message = "Ingress `{name}` finished locking event `{eventType}`")]
+        public static partial void IngressFinishedLockingEvent(this ILogger logger, string name, string eventType);
+
+        [LoggerMessage(
+          EventId = 34,
+          Level = LogLevel.Trace,
+          Message = "Operator `{operatorId}` received locking event `{eventType}` on target `{targetId}`")]
+        public static partial void ReceivedLockingEventOnTarget(this ILogger logger, string operatorId, string eventType, int targetId);
     }
 }

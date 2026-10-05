@@ -48,6 +48,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         private List<int>? _primaryKeyColumns;
         private List<int>? _otherColumns;
         private List<int>? _emitList;
+        private List<int>? _sortedEmitList;
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _fullLoadTempTree;
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _persistentTree;
         private IBPlusTree<ColumnRowReference, int, NormalizeKeyStorage, PrimitiveListValueContainer<int>>? _deleteTree;
@@ -197,6 +198,8 @@ namespace FlowtideDotNet.Core.Operators.Read
             if (_readRelation.EmitSet)
             {
                 _emitList = _readRelation.Emit;
+                _sortedEmitList = new List<int>(_readRelation.Emit);
+                _sortedEmitList.Sort();
                 for (int i = 0; i < _readRelation.Emit.Count; i++)
                 {
                     if (!_primaryKeyColumns.Contains(_readRelation.Emit[i]))
@@ -423,6 +426,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                                 shouldDisposeOffsets = false;
                             }
                         }
+                        DisposeUnusedColumns(e.BatchData.EventBatchData);
                         if (shouldDisposeOffsets)
                         {
                             toEmitOffsets.Dispose();
@@ -495,6 +499,29 @@ namespace FlowtideDotNet.Core.Operators.Read
                 }
 
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            }
+        }
+
+        private void DisposeUnusedColumns(EventBatchData batchData)
+        {
+            // If we emit all columns (no EmitSet), there is nothing to dispose.
+            if (_sortedEmitList == null || _sortedEmitList.Count == batchData.Columns.Count)
+            {
+                return;
+            }
+
+            for (int k = 0, sortIndex = 0; k < batchData.Columns.Count; k++)
+            {
+                // Go through sorted emit list and check if the column is in the emit list, if not, we need to dispose it
+                // Since its sorted we do a merge check
+                if (sortIndex < _sortedEmitList.Count && _sortedEmitList[sortIndex] == k)
+                {
+                    sortIndex++;
+                }
+                else
+                {
+                    batchData.Columns[k].Dispose();
+                }
             }
         }
 
@@ -610,6 +637,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                             shouldDisposeOffsets = false;
                         }
                     }
+                    DisposeUnusedColumns(columnReadEvent.BatchData.EventBatchData);
                     if (shouldDisposeOffsets)
                     {
                         toEmitOffsets.Dispose();
@@ -768,12 +796,14 @@ namespace FlowtideDotNet.Core.Operators.Read
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
-            IColumn[] deleteBatchColumns = new IColumn[_readRelation.BaseSchema.Names.Count];
-
-            for (int i = 0; i < _readRelation.BaseSchema.Names.Count; i++)
+            // Indexed by base schema, only the emitted slots are built since only they are sent.
+            var isEmitted = new bool[_readRelation.BaseSchema.Names.Count];
+            for (int k = 0; k < _emitList.Count; k++)
             {
-                deleteBatchColumns[i] = Column.Create(MemoryAllocator);
+                isEmitted[_emitList[k]] = true;
             }
+            IColumn[] deleteBatchColumns = new IColumn[_readRelation.BaseSchema.Names.Count];
+            CreateEmittedColumns();
 
             using var deleteIterator = _deleteTree.CreateIterator();
             await deleteIterator.SeekFirst();
@@ -800,7 +830,10 @@ namespace FlowtideDotNet.Core.Operators.Read
                             // Output delete event
                             for (int k = 0; k < _otherColumns.Count; k++)
                             {
-                                deleteBatchColumns[_otherColumns[k]].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
+                                if (isEmitted[_otherColumns[k]])
+                                {
+                                    deleteBatchColumns[_otherColumns[k]].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
+                                }
                             }
                             return (current, GenericWriteOperation.Delete);
                         }
@@ -814,7 +847,10 @@ namespace FlowtideDotNet.Core.Operators.Read
                         // If it is a delete, add the key values as well
                         for (int i = 0; i < _primaryKeyColumns.Count; i++)
                         {
-                            deleteBatchColumns[_primaryKeyColumns[i]].Add(kv.Key.referenceBatch.Columns[i].GetValueAt(kv.Key.RowIndex, default));
+                            if (isEmitted[_primaryKeyColumns[i]])
+                            {
+                                deleteBatchColumns[_primaryKeyColumns[i]].Add(kv.Key.referenceBatch.Columns[i].GetValueAt(kv.Key.RowIndex, default));
+                            }
                         }
                     }
                     if (weights.Count >= 100)
@@ -832,10 +868,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                         // Reset
                         weights = new PrimitiveList<int>(MemoryAllocator);
                         iterations = new PrimitiveList<uint>(MemoryAllocator);
-                        for (int i = 0; i < _readRelation.OutputLength; i++)
-                        {
-                            deleteBatchColumns[i] = Column.Create(MemoryAllocator);
-                        }
+                        // The sent columns belong to the batch now, every emitted slot needs a new one.
+                        CreateEmittedColumns();
                     }
                 }
             }
@@ -857,14 +891,28 @@ namespace FlowtideDotNet.Core.Operators.Read
                 weights.Dispose();
                 iterations.Dispose();
 
-                for (int i = 0; i < _readRelation.OutputLength; i++)
+                for (int i = 0; i < deleteBatchColumns.Length; i++)
                 {
-                    deleteBatchColumns[i].Dispose();
+                    if (isEmitted[i])
+                    {
+                        deleteBatchColumns[i].Dispose();
+                    }
                 }
             }
 
             await _deleteTree.Clear();
             return sentData;
+
+            void CreateEmittedColumns()
+            {
+                for (int i = 0; i < deleteBatchColumns.Length; i++)
+                {
+                    if (isEmitted[i])
+                    {
+                        deleteBatchColumns[i] = Column.Create(MemoryAllocator);
+                    }
+                }
+            }
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)

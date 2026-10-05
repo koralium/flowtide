@@ -104,8 +104,14 @@ namespace FlowtideDotNet.Storage.FileCache
                 if (disposing)
                 {
                     semaphoreSlim.Wait();
-                    fileStream.Dispose();
-                    semaphoreSlim.Release();
+                    try
+                    {
+                        fileStream.Dispose();
+                    }
+                    finally
+                    {
+                        semaphoreSlim.Release();
+                    }
                 }
 
                 disposedValue = true;
@@ -115,11 +121,17 @@ namespace FlowtideDotNet.Storage.FileCache
         public void Flush()
         {
             semaphoreSlim.Wait();
-            // Flush data
-            fileStream.Flush(true);
-            // Clear cache
-            PosixUnix.SetAdvice(fileStream.SafeFileHandle, 0, 0, PosixUnix.FileAdvice.POSIX_FADV_DONTNEED);
-            semaphoreSlim.Release();
+            try
+            {
+                // Flush data
+                fileStream.Flush(true);
+                // Clear cache
+                PosixUnix.SetAdvice(fileStream.SafeFileHandle, 0, 0, PosixUnix.FileAdvice.POSIX_FADV_DONTNEED);
+            }
+            finally
+            {
+                semaphoreSlim.Release();
+            }
         }
 
         public void Dispose()

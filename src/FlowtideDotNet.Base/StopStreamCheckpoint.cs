@@ -23,7 +23,9 @@ namespace FlowtideDotNet.Base
         /// </summary>
         /// <param name="checkpointTime">The time of the checkpoint being finalized.</param>
         /// <param name="newTime">The time for the newly created checkpoint span.</param>
-        public StopStreamCheckpoint(long checkpointTime, long newTime) : base(checkpointTime, newTime)
+        /// <param name="checkpointVersion">The state manager version this checkpoint is written under.</param>
+        public StopStreamCheckpoint(long checkpointTime, long newTime, long checkpointVersion)
+            : base(checkpointTime, newTime, checkpointVersion)
         {
         }
     }

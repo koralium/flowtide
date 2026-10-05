@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
         {
             if (results.TryGetValue(diagnoserResults.BenchmarkCase, out var rowCount))
             {
-                double execNano = diagnoserResults.Measurements.First(m => m.IterationStage == IterationStage.Result).Nanoseconds / 1_000_000_000.0;
+                double execNano = diagnoserResults.Measurements.Where(m => m.IterationStage == IterationStage.Result).Average(x => x.Nanoseconds) / 1_000_000_000.0;
                 yield return new Metric(new EventCountMetricDescriptor(), rowCount / execNano);
             }
         }

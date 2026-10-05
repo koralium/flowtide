@@ -22,6 +22,28 @@ namespace FlowtideDotNet.Substrait
 {
     public class SubstraitDeserializer
     {
+        /// <summary>
+        /// Reads function options, the consumer uses the first supported preference.
+        /// </summary>
+        private static SortedList<string, string>? ReadOptions(
+            Google.Protobuf.Collections.RepeatedField<Protobuf.FunctionOption> options)
+        {
+            if (options.Count == 0)
+            {
+                return null;
+            }
+            var result = new SortedList<string, string>();
+            foreach (var option in options)
+            {
+                if (option.Preference.Count > 0)
+                {
+                    // Allow duplicate option names by letting later entries win.
+                    result[option.Name] = option.Preference[0];
+                }
+            }
+            return result.Count == 0 ? null : result;
+        }
+
         private sealed class ExpressionDeserializerImpl
         {
             private readonly Dictionary<uint, string> idToFunctionLookup = new Dictionary<uint, string>();
@@ -110,6 +132,10 @@ namespace FlowtideDotNet.Substrait
                             {
                                 return new AnyType();
                             }
+                            else if (typeName.Equals("named_struct", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return ParseNamedStructType(type.UserDefined);
+                            }
                             else
                             {
                                 throw new NotImplementedException($"User defined type not implemented {typeName}");
@@ -187,6 +213,40 @@ namespace FlowtideDotNet.Substrait
                 }
 
                 return st;
+            }
+
+            private NamedStruct ParseNamedStructType(Protobuf.Type.Types.UserDefined userDefined)
+            {
+                var names = new List<string>();
+                Struct? structType = default;
+                foreach (var parameter in userDefined.TypeParameters)
+                {
+                    switch (parameter.ParameterCase)
+                    {
+                        case Protobuf.Type.Types.Parameter.ParameterOneofCase.String:
+                            names.Add(parameter.String);
+                            break;
+                        case Protobuf.Type.Types.Parameter.ParameterOneofCase.DataType:
+                            if (parameter.DataType.KindCase != Protobuf.Type.KindOneofCase.Struct)
+                            {
+                                throw new InvalidOperationException($"Named struct field types must be a struct, got {parameter.DataType.KindCase}");
+                            }
+                            structType = ParseStruct(parameter.DataType.Struct);
+                            break;
+                        default:
+                            throw new NotImplementedException($"Named struct type parameter not implemented {parameter.ParameterCase}");
+                    }
+                }
+                if (structType != null && structType.Types.Count != names.Count)
+                {
+                    throw new InvalidOperationException("Named struct must have one name per field type");
+                }
+                return new NamedStruct()
+                {
+                    Names = names,
+                    Struct = structType,
+                    Nullable = userDefined.Nullability != Protobuf.Type.Types.Nullability.Required
+                };
             }
 
             internal NamedStruct ParseNamedStruct(Protobuf.NamedStruct namedStruct)
@@ -393,7 +453,8 @@ namespace FlowtideDotNet.Substrait
                 {
                     ExtensionName = name,
                     ExtensionUri = uri,
-                    Arguments = new List<Expression>()
+                    Arguments = new List<Expression>(),
+                    Options = ReadOptions(aggregateFunction.Options)
                 };
 #pragma warning disable CS0612 // Type or member is obsolete
                 if (aggregateFunction.Args.Count > 0)
@@ -459,8 +520,12 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
-            public WindowBound? GetWindowBound(Protobuf.Expression.Types.WindowFunction.Types.Bound bound)
+            public WindowBound? GetWindowBound(Protobuf.Expression.Types.WindowFunction.Types.Bound? bound)
             {
+                if (bound == null)
+                {
+                    return null;
+                }
                 switch (bound.KindCase)
                 {
                     case Protobuf.Expression.Types.WindowFunction.Types.Bound.KindOneofCase.CurrentRow:
@@ -505,6 +570,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     result.Arguments.Add(VisitExpression(arg.Value));
                 }
+                result.Options = ReadOptions(windowRelFunction.Options);
                 return result;
             }
 
@@ -650,7 +716,8 @@ namespace FlowtideDotNet.Substrait
                 {
                     ExtensionUri = uri,
                     ExtensionName = name,
-                    Arguments = args
+                    Arguments = args,
+                    Options = ReadOptions(scalarFunction.Options)
                 };
 
 
@@ -677,6 +744,10 @@ namespace FlowtideDotNet.Substrait
                 _relations = new List<Relation>();
             }
 
+            // Reference output lengths that could not be resolved while deserializing because
+            // the referenced relation appears later in the plan, see SetReferenceOutputLength.
+            private readonly List<(int RelationId, Action<int> Apply)> _pendingReferenceOutputLengths = new List<(int, Action<int>)>();
+
             public Plan Convert()
             {
                 return VisitPlan(plan);
@@ -692,7 +763,36 @@ namespace FlowtideDotNet.Substrait
                 {
                     output.Relations.Add(VisitPlanRel(relation));
                 }
+                // Applied in reverse registration order so a chain of forward references
+                // resolves the deepest reference first, its consumer then reads an output
+                // length that is already patched.
+                for (int i = _pendingReferenceOutputLengths.Count - 1; i >= 0; i--)
+                {
+                    var (relationId, apply) = _pendingReferenceOutputLengths[i];
+                    if (relationId < 0 || relationId >= _relations.Count)
+                    {
+                        throw new InvalidOperationException($"A reference relation points at relation {relationId} which does not exist in the plan.");
+                    }
+                    apply(_relations[relationId].OutputLength);
+                }
                 return output;
+            }
+
+            /// <summary>
+            /// Resolves the output length of a referenced top level relation. A reference can
+            /// point at a relation that appears later in the plan - the distributed plan
+            /// modifier appends hoisted exchange and lane relations after the sinks that
+            /// consume them - so when the referenced relation has not been deserialized yet
+            /// the assignment is deferred until every relation exists.
+            /// </summary>
+            private void SetReferenceOutputLength(int relationId, Action<int> apply)
+            {
+                if (relationId >= 0 && relationId < _relations.Count)
+                {
+                    apply(_relations[relationId].OutputLength);
+                    return;
+                }
+                _pendingReferenceOutputLengths.Add((relationId, apply));
             }
 
             private Relation VisitPlanRel(Protobuf.PlanRel planRel)
@@ -884,12 +984,40 @@ namespace FlowtideDotNet.Substrait
                 List<ExchangeTarget> targets = new List<ExchangeTarget>();
                 foreach(var target in exchange.Targets)
                 {
-                    if (target.Uri == "standard_output")
+                    if (target.TargetTypeCase == Protobuf.ExchangeRel.Types.ExchangeTarget.TargetTypeOneofCase.Uri &&
+                        target.Uri == "standard_output")
                     {
                         targets.Add(new StandardOutputExchangeTarget()
                         {
                             PartitionIds = target.PartitionId.ToList()
                         });
+                    }
+                    else if (target.TargetTypeCase == Protobuf.ExchangeRel.Types.ExchangeTarget.TargetTypeOneofCase.Extended)
+                    {
+                        var typeName = Google.Protobuf.WellKnownTypes.Any.GetTypeName(target.Extended.TypeUrl);
+                        if (typeName == CustomProtobuf.SubstreamExchangeTarget.Descriptor.FullName)
+                        {
+                            var substreamTarget = target.Extended.Unpack<CustomProtobuf.SubstreamExchangeTarget>();
+                            targets.Add(new SubstreamExchangeTarget()
+                            {
+                                PartitionIds = target.PartitionId.ToList(),
+                                SubstreamName = substreamTarget.SubstreamName,
+                                ExchangeTargetId = substreamTarget.ExchangeTargetId
+                            });
+                        }
+                        else if (typeName == CustomProtobuf.PullBucketExchangeTarget.Descriptor.FullName)
+                        {
+                            var pullBucketTarget = target.Extended.Unpack<CustomProtobuf.PullBucketExchangeTarget>();
+                            targets.Add(new PullBucketExchangeTarget()
+                            {
+                                PartitionIds = target.PartitionId.ToList(),
+                                ExchangeTargetId = pullBucketTarget.ExchangeTargetId
+                            });
+                        }
+                        else
+                        {
+                            throw new NotImplementedException($"Exchange target extension '{typeName}' is not supported by deserialization");
+                        }
                     }
                     else
                     {
@@ -1041,11 +1169,12 @@ namespace FlowtideDotNet.Substrait
 
             private Relation VisitReference(Protobuf.ReferenceRel referenceRel)
             {
-                return new ReferenceRelation()
+                var reference = new ReferenceRelation()
                 {
-                    RelationId = referenceRel.SubtreeOrdinal,
-                    ReferenceOutputLength = _relations[referenceRel.SubtreeOrdinal].OutputLength
+                    RelationId = referenceRel.SubtreeOrdinal
                 };
+                SetReferenceOutputLength(reference.RelationId, length => reference.ReferenceOutputLength = length);
+                return reference;
             }
 
             private Relation VisitExtensionMulti(Protobuf.ExtensionMultiRel extensionMulti)
@@ -1102,13 +1231,29 @@ namespace FlowtideDotNet.Substrait
                     overwrite = true;
                 }
 
+                List<string>? primaryKeyNames = null;
+                if (writeRel.AdvancedExtension?.Enhancement != null)
+                {
+                    var typeName = Google.Protobuf.WellKnownTypes.Any.GetTypeName(writeRel.AdvancedExtension.Enhancement.TypeUrl);
+                    if (typeName == CustomProtobuf.WriteRelationPrimaryKeys.Descriptor.FullName)
+                    {
+                        var primaryKeys = writeRel.AdvancedExtension.Enhancement.Unpack<CustomProtobuf.WriteRelationPrimaryKeys>();
+                        primaryKeyNames = primaryKeys.Names.ToList();
+                    }
+                    else
+                    {
+                        throw new NotImplementedException($"Write relation enhancement '{typeName}' is not supported by deserialization");
+                    }
+                }
+
                 var writeRelation = new WriteRelation()
                 {
                     Input = input,
                     NamedObject = namedTableObj,
                     TableSchema = namedStruct,
                     Emit = emitData,
-                    Overwrite = overwrite
+                    Overwrite = overwrite,
+                    PrimaryKeyNames = primaryKeyNames
                 };
 
                 return writeRelation;
@@ -1168,10 +1313,32 @@ namespace FlowtideDotNet.Substrait
                     var rel = new StandardOutputExchangeReferenceRelation()
                     {
                         RelationId = standardOutputRef.RelationId,
-                        TargetId = standardOutputRef.TargetId,
-                        ReferenceOutputLength = _relations[standardOutputRef.RelationId].OutputLength
+                        TargetId = standardOutputRef.TargetId
                     };
+                    SetReferenceOutputLength(rel.RelationId, length => rel.ReferenceOutputLength = length);
                     return rel;
+                }
+                else if (typeName == CustomProtobuf.SubstreamExchangeReferenceRelation.Descriptor.FullName)
+                {
+                    var substreamRef = extensionLeaf.Detail.Unpack<CustomProtobuf.SubstreamExchangeReferenceRelation>();
+                    return new SubstreamExchangeReferenceRelation()
+                    {
+                        SubStreamName = substreamRef.SubstreamName,
+                        ExchangeTargetId = substreamRef.ExchangeTargetId,
+                        ReferenceOutputLength = substreamRef.OutputLength,
+                        Emit = GetEmit(extensionLeaf.Common)
+                    };
+                }
+                else if (typeName == CustomProtobuf.PullExchangeReferenceRelation.Descriptor.FullName)
+                {
+                    var pullRef = extensionLeaf.Detail.Unpack<CustomProtobuf.PullExchangeReferenceRelation>();
+                    return new PullExchangeReferenceRelation()
+                    {
+                        SubStreamName = pullRef.SubstreamName,
+                        ExchangeTargetId = pullRef.ExchangeTargetId,
+                        ReferenceOutputLength = pullRef.OutputLength,
+                        Emit = GetEmit(extensionLeaf.Common)
+                    };
                 }
 
                 throw new NotImplementedException();
@@ -1486,10 +1653,7 @@ namespace FlowtideDotNet.Substrait
 
         public Plan Deserialize(string json)
         {
-            var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
-                    CustomProtobuf.IterationReferenceReadRelation.Descriptor,
-                    CustomProtobuf.IterationRelation.Descriptor);
-            var parser = new Google.Protobuf.JsonParser(new Google.Protobuf.JsonParser.Settings(300, typeRegistry));
+            var parser = new Google.Protobuf.JsonParser(new Google.Protobuf.JsonParser.Settings(300, CustomProtoTypeRegistry.Instance));
             var plan = parser.Parse<Protobuf.Plan>(json);
             return Deserialize(plan);
         }

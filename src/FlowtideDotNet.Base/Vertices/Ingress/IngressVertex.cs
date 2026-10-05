@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.dataflow;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -28,7 +29,6 @@ namespace FlowtideDotNet.Base.Vertices
         public BufferBlock<IStreamEvent>? _block;
         public ISourceBlock<IStreamEvent>? _sourceBlock;
         public long _currentTime;
-        public long _restoreTime;
         public IVertexHandler? _vertexHandler;
         public SemaphoreSlim? _checkpointLock;
         public bool _inCheckpointLock;
@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Base.Vertices
     /// managing triggers, and forwarding locking events. Derived classes must implement 
     /// custom data source reading logic and use <see cref="IngressOutput{TData}"/> to emit events.
     /// </remarks>
-    public abstract class IngressVertex<TData> : ISourceBlock<IStreamEvent>, IStreamIngressVertex
+    public abstract class IngressVertex<TData> : ISourceBlock<IStreamEvent>, IStreamIngressVertex, IStreamVertexCancellation
     {
         private readonly object _stateLock;
         private readonly DataflowBlockOptions options;
@@ -95,6 +95,11 @@ namespace FlowtideDotNet.Base.Vertices
         /// Gets the memory allocator for managing native memory allocations within this vertex.
         /// </summary>
         protected IMemoryAllocator MemoryAllocator => _ingressState?._vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
+
+        /// <summary>
+        /// The streams drain timeout.
+        /// </summary>
+        protected TimeSpan StopDrainTimeout => _ingressState?._vertexHandler?.StopDrainTimeout ?? TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// Gets or sets a value indicating whether dependencies should be automatically completed.
@@ -147,15 +152,18 @@ namespace FlowtideDotNet.Base.Vertices
                 _ingressState._sourceBlock = source;
                 _ingressState._output = new IngressOutput<TData>(_ingressState, _ingressState._block);
                 _ingressState._tokenSource = new CancellationTokenSource();
-                _ingressState._block.Completion.ContinueWith(t =>
+                // Completion may be dispatched after recovery created another run.
+                // Its cancellation and task gate belong to this block's state only.
+                var ingressState = _ingressState;
+                ingressState._block.Completion.ContinueWith(t =>
                 {
                     Logger.LogDebug(t.Exception, "Block failure");
                     lock (_stateLock)
                     {
-                        _ingressState._taskEnabled = false;
+                        ingressState._taskEnabled = false;
                     }
 
-                    _ingressState._tokenSource.Cancel();
+                    ingressState._tokenSource.Cancel();
                 });
             }
         }
@@ -221,14 +229,21 @@ namespace FlowtideDotNet.Base.Vertices
             return _ingressState._sourceBlock.ConsumeMessage(messageHeader, target, out messageConsumed);
         }
 
+        Task IStreamVertexCancellation.CancelPendingOperations() =>
+            _ingressState?._tokenSource?.CancelAsync() ?? Task.CompletedTask;
+
         /// <summary>
         /// Causes the dataflow block to complete in a <see cref="TaskStatus.Faulted"/> state.
         /// </summary>
         /// <param name="exception">The <see cref="Exception"/> that caused the faulting.</param>
         public void Fault(Exception exception)
         {
-            Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
-            Debug.Assert(_ingressState?._tokenSource != null, nameof(_ingressState._tokenSource));
+            if (_ingressState?._block == null || _ingressState._tokenSource == null)
+            {
+                // The block is created first at start, a failure before that (for example
+                // storage initialization) has nothing to fault.
+                return;
+            }
             lock (_stateLock)
             {
                 _ingressState._taskEnabled = false;
@@ -297,14 +312,21 @@ namespace FlowtideDotNet.Base.Vertices
             Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
 
             var lockingEvent = (ILockingEvent)state!;
+            if (_logger != null)
+            {
+                _logger.IngressWaitingForCheckpointLock(Name, lockingEvent.GetType().Name);
+            }
             await _ingressState._checkpointLock.WaitAsync(_ingressState._output.CancellationToken);
+            if (_logger != null)
+            {
+                _logger.IngressAcquiredCheckpointLock(Name, lockingEvent.GetType().Name);
+            }
             _ingressState._inCheckpointLock = true;
-            bool isStopStreamEvent = false;
             if (lockingEvent is ICheckpointEvent checkpoint)
             {
                 if (checkpoint is StopStreamCheckpoint)
                 {
-                    isStopStreamEvent = true;
+                    // Stop emitting, checkpoint lock still releases for a pairing cycle.
                     output.Stop();
                 }
                 await OnCheckpoint(checkpoint.CheckpointTime);
@@ -321,10 +343,11 @@ namespace FlowtideDotNet.Base.Vertices
                 SetDependenciesDone();
             }
 
-            if (!isStopStreamEvent)
+            _ingressState._inCheckpointLock = false;
+            _ingressState._checkpointLock.Release();
+            if (_logger != null)
             {
-                _ingressState._inCheckpointLock = false;
-                _ingressState._checkpointLock.Release();
+                _logger.IngressFinishedLockingEvent(Name, lockingEvent.GetType().Name);
             }
         }
 
@@ -350,13 +373,28 @@ namespace FlowtideDotNet.Base.Vertices
         }
 
         /// <summary>
+        /// Marks the dependencies for this vertex as completed if the vertex has been fully initialized.
+        /// Returns false when the dependencies done function has not been set yet, which can happen
+        /// when another substream completes a checkpoint before this stream has finished starting.
+        /// </summary>
+        protected bool TrySetDependenciesDone()
+        {
+            if (_dependenciesDone != null)
+            {
+                _dependenciesDone(Name);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Triggers a locking event asynchronously for the stream.
         /// </summary>
         /// <remarks>
         /// This method is used to send checkpoints or other event types that require synchronization with the stream's processing. 
         /// </remarks>
         /// <param name="lockingEvent">The locking event to execute.</param>
-        public void DoLockingEvent(ILockingEvent lockingEvent)
+        public virtual void DoLockingEvent(ILockingEvent lockingEvent)
         {
             RunTask(RunLockingEvent, lockingEvent);
         }
@@ -365,7 +403,8 @@ namespace FlowtideDotNet.Base.Vertices
         /// Schedules a checkpoint to occur after the specified delay.
         /// </summary>
         /// <param name="inTime">The timespan indicating how long to wait before checkpointing.</param>
-        protected void ScheduleCheckpoint(TimeSpan inTime)
+        /// <param name="providedCheckpointToken">Dedup token, compared for equality only. Not a checkpoint version.</param>
+        protected void ScheduleCheckpoint(TimeSpan inTime, long? providedCheckpointToken = default)
         {
             Debug.Assert(_ingressState?._vertexHandler != null, nameof(_ingressState._vertexHandler));
 
@@ -373,7 +412,7 @@ namespace FlowtideDotNet.Base.Vertices
             {
                 throw new NotSupportedException("Cannot schedule checkpoint before initialize");
             }
-            _ingressState._vertexHandler.ScheduleCheckpoint(inTime);
+            _ingressState._vertexHandler.ScheduleCheckpoint(inTime, providedCheckpointToken);
         }
 
         private sealed record TaskState(Func<IngressOutput<TData>, object?, Task> func, IngressOutput<TData> ingressOutput, object? state, int taskId);
@@ -395,6 +434,7 @@ namespace FlowtideDotNet.Base.Vertices
             {
                 if (_ingressState._block.Completion.IsFaulted || !_ingressState._taskEnabled)
                 {
+                    _logger?.LogDebug("Ingress {name} dropped a task, block faulted: {faulted}, tasks enabled: {enabled}", Name, _ingressState._block.Completion.IsFaulted, _ingressState._taskEnabled);
                     return Task.CompletedTask;
                 }
 
@@ -414,6 +454,7 @@ namespace FlowtideDotNet.Base.Vertices
                     var taskState = (TaskState)state!;
                     if (task.IsCanceled && !taskState.ingressOutput.CancellationToken.IsCancellationRequested)
                     {
+                        _logger?.LogDebug("Ingress {name} task was canceled without cancellation being requested, faulting output", Name);
                         taskState.ingressOutput.Fault(new InvalidOperationException($"Task was canceled without cancellation being requested"));
                     }
                     if (t.IsFaulted)
@@ -432,6 +473,15 @@ namespace FlowtideDotNet.Base.Vertices
         }
 
         /// <summary>
+        /// Whether <see cref="InitializationCompleted"/> reports the initial data as done right
+        /// after <see cref="SendInitial"/> returns. A vertex whose initial data is produced by
+        /// another substream and arrives asynchronously overrides this with false and forwards
+        /// the real completion signal instead: reporting done here would release downstream
+        /// watermark alignment before the data has arrived, flushing partial results.
+        /// </summary>
+        protected virtual bool SendInitialDataDoneAfterInitial => true;
+
+        /// <summary>
         /// Called when the internal initialization sequence has completed successfully.
         /// </summary>
         /// <returns>A task that handles post-initialization tasks, such as triggering initial data emission.</returns>
@@ -440,8 +490,11 @@ namespace FlowtideDotNet.Base.Vertices
             return RunTask(async (output, state) =>
             {
                 await SendInitial(output);
-                // Send event here that initial is completed
-                await output.SendEvent(new InitialDataDoneEvent());
+                if (SendInitialDataDoneAfterInitial)
+                {
+                    // Send event here that initial is completed
+                    await output.SendEvent(new InitialDataDoneEvent());
+                }
             }, taskCreationOptions: TaskCreationOptions.LongRunning);
         }
 
@@ -449,7 +502,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// Asynchronously initializes the vertex, wiring up metrics, dependencies, and persistent state retrieval.
         /// </summary>
         /// <param name="name">The name assigned to the vertex.</param>
-        /// <param name="restoreTime">The time representing the last known good state to restore from.</param>
+        /// <param name="restoreTime">The checkpoint version to restore from.</param>
         /// <param name="newTime">The new logical stream execution time.</param>
         /// <param name="vertexHandler">The handler containing stream environment references like state client and metrics.</param>
         /// <param name="streamVersionInformation">Configuration tracking the overall version of stream changes.</param>
@@ -470,7 +523,6 @@ namespace FlowtideDotNet.Base.Vertices
 
             _ingressState._vertexHandler = vertexHandler;
             _ingressState._currentTime = newTime;
-            _ingressState._restoreTime = restoreTime;
             _ingressState._metrics = vertexHandler.Metrics;
 
             Metrics.CreateObservableGauge("backpressure", () =>
@@ -570,7 +622,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// <summary>
         /// Performs the specific state initialization or restoration logic using the state manager.
         /// </summary>
-        /// <param name="restoreTime">The time to restore from.</param>
+        /// <param name="restoreTime">The checkpoint version to restore from.</param>
         /// <param name="stateManagerClient">The state manager client used to access persistent state.</param>
         /// <returns>A task representing the state initialization/restoration operation.</returns>
         protected abstract Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient);
@@ -680,11 +732,7 @@ namespace FlowtideDotNet.Base.Vertices
             return _links.Select(x => x.Item1);
         }
 
-        /// <summary>
-        /// Invoked when a checkpoint has successfully completed.
-        /// </summary>
-        /// <param name="checkpointVersion">The completed checkpoint version.</param>
-        /// <returns>A task representing the completion callback operation.</returns>
+        /// <inheritdoc cref="IStreamIngressVertex.CheckpointDone"/>
         public virtual Task CheckpointDone(long checkpointVersion)
         {
             return Task.CompletedTask;
@@ -692,11 +740,12 @@ namespace FlowtideDotNet.Base.Vertices
 
         /// <summary>
         /// Temporarily stops the data output generation for the connected streams.
+        /// A vertex that is not initialized yet has no output to gate, the gates are applied
+        /// again when the stream enters its running state.
         /// </summary>
         public void Pause()
         {
-            Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
-            _ingressState._output.Stop();
+            _ingressState?._output?.Pause();
         }
 
         /// <summary>
@@ -704,8 +753,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void Resume()
         {
-            Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
-            _ingressState._output.Resume();
+            _ingressState?._output?.Resume();
         }
 
         /// <summary>
@@ -716,6 +764,14 @@ namespace FlowtideDotNet.Base.Vertices
         {
             return Task.CompletedTask;
         }
+
+        /// <summary>
+        /// True when the vertex is wired to dispatch a fail and rollback: initialize has set
+        /// the vertex handler for the current block. A vertex that was constructed, or whose
+        /// block was recreated by a restart, has no handler until its initialize runs and
+        /// <see cref="FailAndRollback"/> would throw.
+        /// </summary>
+        internal bool CanFailAndRollback => _ingressState?._vertexHandler != null;
 
         /// <summary>
         /// Triggers a rollback sequence on the data pipeline flow, optionally specifying the version and error.
@@ -738,6 +794,13 @@ namespace FlowtideDotNet.Base.Vertices
         {
             _dependenciesDone = dependenciesDone;
         }
+
+        /// <summary>
+        /// True when the vertex has everything it needs for the stream to finish stopping.
+        /// Overridden by ingress vertices that read from other substreams, they are ready
+        /// first when the other substreams stop barrier has been consumed.
+        /// </summary>
+        public virtual bool ReadyToStop => true;
 
         /// <summary>
         /// Indicates a rollback behavior hook whenever a previous version is targeted for restoring due to errors.

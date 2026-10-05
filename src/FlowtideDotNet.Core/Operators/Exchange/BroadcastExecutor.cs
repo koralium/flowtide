@@ -46,7 +46,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return exchangeRelation.Targets.Any(x => x.Type == ExchangeTargetType.PullBucket);
         }
 
-        public async Task Initialize(ExchangeRelation exchangeRelation, IStateManagerClient stateManagerClient, ExchangeOperatorState exchangeOperatorState, IMemoryAllocator memoryAllocator)
+        public async Task Initialize(
+            long restoreVersion,
+            ExchangeRelation exchangeRelation, 
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState exchangeOperatorState, 
+            IMemoryAllocator memoryAllocator,
+            Func<long?, Task> failAndRecoverFunc,
+            TimeSpan stopDrainTimeout)
         {
             _eventCounter = exchangeOperatorState.EventCounter;
 
@@ -104,6 +111,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
+        public async Task OnInitialDataDone()
+        {
+            if (_events != null)
+            {
+                await _events.Upsert(_eventCounter++, new InitialDataDoneEvent());
+            }
+        }
+
         public Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState)
         {
             exchangeOperatorState.EventCounter = _eventCounter;
@@ -113,7 +128,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public async Task GetPullBucketData(int exchangeTargetId, ExchangeFetchDataMessage fetchDataRequest)
         {
             Debug.Assert(_events != null);
-            var iterator = _events.CreateIterator();
+            using var iterator = _events.CreateIterator();
             await iterator.Seek(fetchDataRequest.FromEventId);
 
             List<IStreamEvent> outputData = new List<IStreamEvent>();
@@ -132,6 +147,20 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
             }
             fetchDataRequest.OutEvents = outputData;
+        }
+
+        public Task OnFailure(long recoveryPoint)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task CheckpointDone(long checkpointVersion)
+        {
+            return Task.CompletedTask;
+        }
+
+        public void SetRollbacks(Func<long?, Task>? failAndRecoverFunc)
+        {
         }
     }
 }

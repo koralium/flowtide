@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -18,6 +18,7 @@ using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Substrait.Sql;
@@ -50,6 +51,16 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public StreamStateValue State => flowtideTestStream.State;
 
+        /// <summary>
+        /// State cache page count, set before starting. A small value keeps eviction active.
+        /// </summary>
+        protected int CachePageCount { set => flowtideTestStream.CachePageCount = value; }
+
+        /// <summary>
+        /// Scheduler for every dataflow task, set before starting.
+        /// </summary>
+        protected TaskScheduler? TaskScheduler { set => flowtideTestStream.TaskScheduler = value; }
+
         protected Task StartStream(
             string sql,
             int parallelism = 1,
@@ -57,14 +68,73 @@ namespace FlowtideDotNet.AcceptanceTests
             int pageSize = 1024,
             bool ignoreSameDataCheck = false,
             ICheckFailureListener? failureListener = default,
-            PlanOptimizerSettings? planOptimizerSettings = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck, failureListener, planOptimizerSettings);
+            PlanOptimizerSettings? planOptimizerSettings = default,
+            DistributedOptions? distributedOptions = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck, failureListener, planOptimizerSettings, distributedOptions: distributedOptions);
 
 
         protected Task StopStream() => flowtideTestStream.StopStream();
 
+        protected Task InjectFailure(Exception exception) => flowtideTestStream.InjectFailure(exception);
+
+        protected void InjectEgressCheckpointDone(string operatorName, FlowtideDotNet.Base.ILockingEvent? lockingEvent) => flowtideTestStream.InjectEgressCheckpointDone(operatorName, lockingEvent);
+
+        protected void Pause() => flowtideTestStream.Pause();
+
+        protected void Resume() => flowtideTestStream.Resume();
+
+        /// <summary>
+        /// Allows the stream to fail and recover without failing the test.
+        /// Used by tests that expect a fail and recover, such as distributed version mismatch tests.
+        /// </summary>
+        protected void AllowFailureAndRecover() => flowtideTestStream.AllowFailureAndRecover = true;
+
         protected Task StartStream() => flowtideTestStream.StartStream();
 
+        /// <summary>
+        /// Makes the sinks DeleteAsync throw this many times, set before StartStream.
+        /// </summary>
+        protected int SinkDeleteFailCount { set => flowtideTestStream.SinkDeleteFailCount = value; }
+
+        protected long SinkLastCheckpointDoneVersion => flowtideTestStream.SinkLastCheckpointDoneVersion;
+
+        protected long SinkLastCompactedVersion => flowtideTestStream.SinkLastCompactedVersion;
+
+        /// <summary>
+        /// Enables the checkpoint-after-initial-data stream option, set before StartStream.
+        /// </summary>
+        protected bool WaitForCheckpointAfterInitialData { set => flowtideTestStream.WaitForCheckpointAfterInitialData = value; }
+
+        /// <summary>
+        /// Delays every source's initial data send, keeping the stream in startup, set before
+        /// StartStream.
+        /// </summary>
+        protected TimeSpan? InitialDataDelay { set => flowtideTestStream.InitialDataDelay = value; }
+
+        /// <summary>
+        /// Overrides the mock source's batch flush size, set before StartStream.
+        /// </summary>
+        protected int? SourceBatchSize { set => flowtideTestStream.SourceBatchSize = value; }
+
+        /// <summary>
+        /// Sets the minimum time between checkpoint triggers, set before StartStream.
+        /// </summary>
+        protected TimeSpan? MinimumTimeBetweenCheckpoints { set => flowtideTestStream.MinimumTimeBetweenCheckpoints = value; }
+
+        /// <summary>
+        /// Sets the stop drain timeout, which also bounds a stop deferred behind an
+        /// in-progress checkpoint. Set before StartStream.
+        /// </summary>
+        protected TimeSpan? StopDrainTimeout { set => flowtideTestStream.StopDrainTimeout = value; }
+
         public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
+
+        /// <summary>
+        /// Rows sent to the sink, not the state.
+        /// A retract and its replacing insert count as two.
+        /// </summary>
+        protected int ChangeRowsReceived => flowtideTestStream.ChangeRowsReceived;
+
+        protected void ResetChangeRowsReceived() => flowtideTestStream.ResetChangeRowsReceived();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)
         {
@@ -139,6 +209,16 @@ namespace FlowtideDotNet.AcceptanceTests
         protected Task Crash()
         {
             return flowtideTestStream.Crash();
+        }
+
+        protected Task SchedulerTick()
+        {
+            return flowtideTestStream.SchedulerTick();
+        }
+
+        protected Task FireCrashTrigger()
+        {
+            return flowtideTestStream.FireCrashTrigger();
         }
 
         protected Task StopMockIngressAutocompleteDependencies()
@@ -243,6 +323,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper, bool usePersistentStorage = false)
         {
+            FastEngineTimings.Apply();
             var baseType = this.GetType();
             var testName = GetTestClassName(testOutputHelper);
             if (usePersistentStorage)
@@ -265,6 +346,12 @@ namespace FlowtideDotNet.AcceptanceTests
             return test.TestCase.TestMethod.Method.Name;
         }
 
+        // A rising count means the stream restarts itself
+        protected int FailureNotificationCount => flowtideTestStream.FailureNotificationCount;
+
+        // Disposes inside the test, the teardown dispose then does nothing
+        protected ValueTask DisposeStream() => flowtideTestStream.DisposeAsync();
+
         public async Task DisposeAsync()
         {
 
@@ -274,6 +361,21 @@ namespace FlowtideDotNet.AcceptanceTests
         public Task InitializeAsync()
         {
             return Task.CompletedTask;
+        }
+
+        protected void TryScheduleCheckpoint(TimeSpan t)
+        {
+            flowtideTestStream.TryScheduleCheckpoint(t);
+        }
+
+        protected Task TriggerCheckpoint()
+        {
+            return flowtideTestStream.TriggerCheckpoint();
+        }
+
+        protected Task WaitForCheckpointsToSettle()
+        {
+            return flowtideTestStream.WaitForCheckpointsToSettle();
         }
 
         public Task DeleteStream()

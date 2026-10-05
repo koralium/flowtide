@@ -33,6 +33,7 @@ namespace FlowtideDotNet.Substrait.Sql
         private SortedDictionary<string, Expression.CompoundIdentifier> compundIdentifiers;
         private List<string> _names;
         private List<SubstraitBaseType> _types;
+        private readonly HashSet<int> _hiddenFromWildcard;
 
         public EmitData()
         {
@@ -40,6 +41,7 @@ namespace FlowtideDotNet.Substrait.Sql
             compundIdentifiers = new SortedDictionary<string, Expression.CompoundIdentifier>(StringComparer.OrdinalIgnoreCase);
             _names = new List<string>();
             _types = new List<SubstraitBaseType>();
+            _hiddenFromWildcard = new HashSet<int>();
         }
 
         public EmitData Clone()
@@ -61,12 +63,14 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 clone._types.Add(type);
             }
+            clone._hiddenFromWildcard.UnionWith(_hiddenFromWildcard);
             return clone;
         }
 
         public EmitData CloneWithAlias(string alias, List<string>? columnNames)
         {
             var clone = new EmitData();
+            clone._hiddenFromWildcard.UnionWith(_hiddenFromWildcard);
 
             if (columnNames != null)
             {
@@ -162,6 +166,10 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 _types.Add(type);
             }
+            foreach (var hidden in left._hiddenFromWildcard)
+            {
+                _hiddenFromWildcard.Add(hidden + offset);
+            }
         }
 
         public void UpdateType(int index, SubstraitBaseType type)
@@ -175,8 +183,13 @@ namespace FlowtideDotNet.Substrait.Sql
             Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(name) })), index, name, type);
         }
 
-        public void Add(Expression expr, int index, string name, SubstraitBaseType type)
+        /// <param name="hiddenFromWildcard">Column exists only for internal use, '*' must not expand to it.</param>
+        public void Add(Expression expr, int index, string name, SubstraitBaseType type, bool hiddenFromWildcard = false)
         {
+            if (hiddenFromWildcard)
+            {
+                _hiddenFromWildcard.Add(index);
+            }
             if (expr is Expression.CompoundIdentifier compound)
             {
                 var k = string.Join(".", compound.Idents.Select(x => x.Value));
@@ -405,6 +418,7 @@ namespace FlowtideDotNet.Substrait.Sql
             var indicesToExpression = emitList
                 .Where(x => ExpressionStartsWith(x.Key, objectName))
                 .SelectMany(x => x.Value.Index.Select(y => new { index = y, expression = x.Key }))
+                .Where(x => !_hiddenFromWildcard.Contains(x.index))
                 .GroupBy(x => x.index)
                 .Select(x => new ExpressionInformation(x.Key, GetName(x.Key), x.Select(z => z.expression).ToList(), _types[x.Key]))
                 .OrderBy(x => x.Index)

@@ -103,12 +103,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return stateManager.CreateObjectStateAsync<T>(combinedName);
         }
 
+        public bool StateExists(string name)
+        {
+            return stateManager.StateExists($"{m_name}_{name}");
+        }
+
         public async ValueTask<IFlowtideQueue<V, TValueContainer>> GetOrCreateQueue<V, TValueContainer>(string name, FlowtideQueueOptions<V, TValueContainer> options) where TValueContainer : IValueContainer<V>
         {
             var stateClient = await CreateStateClient<IBPlusTreeNode, FlowtideQueueMetadata>(name, new FlowtideQueueSerializer<V, TValueContainer>(options.ValueSerializer), options.MemoryAllocator);
             if (options.PageSizeBytes == null)
             {
-                options.PageSizeBytes = stateClient.BPlusTreePageSize;
+                options.PageSizeBytes = stateClient.BPlusTreePageSizeBytes;
             }
             var queue = new FlowtideQueue<V, TValueContainer>(stateClient, options);
             await queue.InitializeAsync();

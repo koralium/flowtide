@@ -23,8 +23,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             IntegerColumn integerColumn = new IntegerColumn(GlobalMemoryManager.Instance);
 
-            integerColumn.Add(new Int64Value(100));
-            integerColumn.Add(new Int64Value(200));
+            integerColumn.Add(new Int64Value(100), GlobalMemoryManager.Instance);
+            integerColumn.Add(new Int64Value(200), GlobalMemoryManager.Instance);
 
             Assert.Equal(100, integerColumn.GetValueAt(0, default).AsLong);
             Assert.Equal(200, integerColumn.GetValueAt(1, default).AsLong);
@@ -35,8 +35,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             IntegerColumn integerColumn = new IntegerColumn(GlobalMemoryManager.Instance);
 
-            integerColumn.Add(new Int64Value(300));
-            integerColumn.Add(new Int64Value(100_000));
+            integerColumn.Add(new Int64Value(300), GlobalMemoryManager.Instance);
+            integerColumn.Add(new Int64Value(100_000), GlobalMemoryManager.Instance);
 
             Assert.Equal(300, integerColumn.GetValueAt(0, default).AsLong);
             Assert.Equal(100_000, integerColumn.GetValueAt(1, default).AsLong);
@@ -47,8 +47,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             IntegerColumn integerColumn = new IntegerColumn(GlobalMemoryManager.Instance);
 
-            integerColumn.Add(new Int64Value(100_000));
-            integerColumn.Add(new Int64Value(100_000_000));
+            integerColumn.Add(new Int64Value(100_000), GlobalMemoryManager.Instance);
+            integerColumn.Add(new Int64Value(100_000_000), GlobalMemoryManager.Instance);
 
             Assert.Equal(100_000, integerColumn.GetValueAt(0, default).AsLong);
             Assert.Equal(100_000_000, integerColumn.GetValueAt(1, default).AsLong);
