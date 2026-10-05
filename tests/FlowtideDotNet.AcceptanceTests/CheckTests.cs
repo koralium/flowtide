@@ -747,6 +747,8 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Equal(raised + initialCount, listener.RaisedCount);
             Assert.Equal(0, listener.ResolvedCount);
 
+            // The snapshot is published during init, a stop before running fails the start
+            await WaitForRunning();
             await StopStream();
             DeleteUser(Users.First(x => x.UserKey >= 900));
             await StartStream();
@@ -956,6 +958,12 @@ namespace FlowtideDotNet.AcceptanceTests
         {
             await WaitUntil(() => listener.Count >= count);
             Assert.True(listener.Count >= count, $"Expected at least {count} statuses, got {listener.Count}.");
+        }
+
+        private async Task WaitForRunning()
+        {
+            await WaitUntil(() => State == StreamStateValue.Running);
+            Assert.Equal(StreamStateValue.Running, State);
         }
 
         private async Task WaitForLatestStatus(CheckStatusListener listener, long activeIssues, long failingRows)
