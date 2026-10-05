@@ -194,7 +194,7 @@ It is a function to allow fetching new credentials</p>
 
   <div class="markdown level1 summary"><p>Action to apply custom mappings to the index
 This will be called on startup.</p>
-<p>If the index does not exist the properties will be empty.</p>
+<p>If the index does not exist the properties will be empty, and they are sent in the create index request.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
@@ -223,7 +223,7 @@ This will be called on startup.</p>
 
   <h3 id="FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_ExecutionMode" data-uid="FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.ExecutionMode">
   ExecutionMode
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.ElasticSearch/FlowtideElasticsearchOptions.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.ElasticSearch/FlowtideElasticsearchOptions.cs/#L66"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -254,10 +254,11 @@ This will be called on startup.</p>
 
   <h3 id="FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_GetIndexNameFunc" data-uid="FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.GetIndexNameFunc">
   GetIndexNameFunc
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.ElasticSearch/FlowtideElasticsearchOptions.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.ElasticSearch/FlowtideElasticsearchOptions.cs/#L40"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 summary"><p>Returns the index name for a write relation, defaults to the table name.</p>
+</div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
@@ -285,7 +286,7 @@ This will be called on startup.</p>
 
   <h3 id="FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_OnDataSent" data-uid="FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnDataSent">
   OnDataSent
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.ElasticSearch/FlowtideElasticsearchOptions.cs/#L50"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.ElasticSearch/FlowtideElasticsearchOptions.cs/#L64"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Called each time after data has been sent to elasticsearch</p>
@@ -313,11 +314,48 @@ This will be called on startup.</p>
 
 
 
+  <a id="FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_OnIndexCreation_" data-uid="FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnIndexCreation*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_OnIndexCreation" data-uid="FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnIndexCreation">
+  OnIndexCreation
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.ElasticSearch/FlowtideElasticsearchOptions.cs/#L51"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called before the sink creates an index that does not exist.
+Change the request in the context to set settings such as shards, replicas, refresh interval and analyzers, aliases or mappings.</p>
+<p>Not called if the index already exists, settings are never applied to an existing index.
+Runs on startup after <a class="xref" href="FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_CustomMappings">CustomMappings</a>, it can run concurrently and in multiple processes for the same index.
+If another process creates the index first, only the mapping properties are applied.
+Settings, aliases and other mapping options such as Dynamic are discarded.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Func&lt;FlowtideElasticsearchIndexCreationContext, Task&gt;? OnIndexCreation { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.html">FlowtideElasticsearchIndexCreationContext</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_OnInitialDataSent_" data-uid="FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnInitialDataSent*"></a>
 
   <h3 id="FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_OnInitialDataSent" data-uid="FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnInitialDataSent">
   OnInitialDataSent
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.ElasticSearch/FlowtideElasticsearchOptions.cs/#L45"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.ElasticSearch/FlowtideElasticsearchOptions.cs/#L59"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Function that gets called after the initial data has been saved to elasticsearch.

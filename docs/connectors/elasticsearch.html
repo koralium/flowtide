@@ -87,7 +87,7 @@
         <article data-uid="">
 <h1 id="elasticsearch-connector">Elasticsearch Connector</h1>
 
-<p>The ElasticsSarch connector allows you to insert data into ElasticSearch.
+<p>The Elasticsearch connector allows you to insert data into ElasticSearch.
 There is only a sink operator implemented, and there is no plans yet to support a source.</p>
 <h2 id="sink">Sink</h2>
 <p>The ElasticSearch sink allows insertion into an index.</p>
@@ -103,6 +103,61 @@ This field will not be added to the source fields.</p>
 });
 </code></pre>
 <p>The table name in the write relation becomes the index the sink writes to. The connection settings are a function to allow the usage of rolling passwords when connecting to elasticsearch.</p>
+<h3 id="options">Options</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Option</th>
+<th style="text-align: center;">required</th>
+<th style="text-align: center;">default</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">ConnectionSettings</td>
+<td style="text-align: center;">True</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">Function returning the client settings, called for each new client to allow rolling credentials.</td>
+</tr>
+<tr>
+<td style="text-align: left;">GetIndexNameFunc</td>
+<td style="text-align: center;">False</td>
+<td style="text-align: center;">table name</td>
+<td style="text-align: left;">Returns the index name for a write relation. Must be a concrete index, not an alias or data stream.</td>
+</tr>
+<tr>
+<td style="text-align: left;">CustomMappings</td>
+<td style="text-align: center;">False</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">Modifies the mapping properties on startup. Receives the existing properties, or empty for a new index.</td>
+</tr>
+<tr>
+<td style="text-align: left;">OnIndexCreation</td>
+<td style="text-align: center;">False</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">Called before the sink creates an index that does not exist, to set settings, aliases and mappings.</td>
+</tr>
+<tr>
+<td style="text-align: left;">OnInitialDataSent</td>
+<td style="text-align: center;">False</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">Called after the initial data has been sent to elasticsearch.</td>
+</tr>
+<tr>
+<td style="text-align: left;">OnDataSent</td>
+<td style="text-align: center;">False</td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;">Called each time after data has been sent to elasticsearch.</td>
+</tr>
+<tr>
+<td style="text-align: left;">ExecutionMode</td>
+<td style="text-align: center;">False</td>
+<td style="text-align: center;">Hybrid</td>
+<td style="text-align: left;">Execution mode of the sink.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="example">Example</h3>
 <p>Having a column named '_id' is required for the sink to function.</p>
 <pre><code class="lang-csharp">sqlBuilder.Sql(@&quot;
@@ -118,16 +173,62 @@ connectorManager.AddElasticsearchSink(&quot;*&quot;, new FlowtideElasticsearchOp
 
 ...
 </code></pre>
+<h3 id="customizing-index-creation">Customizing index creation</h3>
+<p>When the index does not exist, the sink creates it with a single create index request.
+<em>OnIndexCreation</em> is called before that request is sent, with a context containing the client, the write relation, the index name and the <em>CreateIndexRequest</em>.
+The request mappings already contain the properties from <em>CustomMappings</em>, so the mappings can use analyzers and normalizers defined in the same request.</p>
+<p>Example:</p>
+<pre><code class="lang-csharp">using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.Analysis;
+using Elastic.Clients.Elasticsearch.IndexManagement;
+using Elastic.Clients.Elasticsearch.Mapping;
+
+connectorManager.AddElasticsearchSink(&quot;*&quot;, new FlowtideElasticsearchOptions()
+{
+    ConnectionSettings = () =&gt; connectionSettings,
+    CustomMappings = (properties) =&gt;
+    {
+        properties[&quot;name&quot;] = new TextProperty { Analyzer = &quot;folding&quot; };
+        properties[&quot;sku&quot;] = new KeywordProperty { Normalizer = &quot;lc&quot; };
+    },
+    OnIndexCreation = (context) =&gt;
+    {
+        context.Request.Settings = new IndexSettings
+        {
+            NumberOfShards = 3,
+            NumberOfReplicas = 1,
+            RefreshInterval = &quot;30s&quot;,
+            Analysis = new IndexSettingsAnalysis
+            {
+                Analyzers = new Analyzers
+                {
+                    { &quot;folding&quot;, new CustomAnalyzer(&quot;standard&quot;) { Filter = new List&lt;string&gt; { &quot;lowercase&quot;, &quot;asciifolding&quot; } } }
+                },
+                Normalizers = new Normalizers
+                {
+                    { &quot;lc&quot;, new CustomNormalizer { Filter = new List&lt;string&gt; { &quot;lowercase&quot; } } }
+                }
+            }
+        };
+        context.Request.Aliases = new Dictionary&lt;Name, Alias&gt;
+        {
+            [$&quot;{context.WriteRelation.NamedObject.DotSeperated}_search&quot;] = new Alias()
+        };
+        return Task.CompletedTask;
+    }
+});
+</code></pre>
 <h3 id="set-alias-on-initial-data-completion">Set alias on initial data completion</h3>
 <p>One way to integrate with elasticsearch is to create a new index for each new stream version and change an alias to point to the new index.
-This is possible by using the <em>GetIndexNameFunc</em> and <em>OnInitialDataSent</em> functions in the options.</p>
+This is possible by using the <em>GetIndexNameFunc</em> and <em>OnInitialDataSent</em> functions in the options.
+Combine it with <em>OnIndexCreation</em> to give each new index its own settings.</p>
 <p>Example:</p>
 <pre><code class="lang-csharp">connectorManager.AddElasticsearchSink(&quot;*&quot;, new FlowtideElasticsearchOptions()
 {
     ConnectionSettings = () =&gt; connectionSettings,
     CustomMappings = (props) =&gt;
     {
-        // Add cusotm mappings
+        // Add custom mappings
     },
     GetIndexNameFunc = (writeRelation) =&gt;
     {
@@ -137,12 +238,12 @@ This is possible by using the <em>GetIndexNameFunc</em> and <em>OnInitialDataSen
     },
     OnInitialDataSent = async (client, writeRelation, indexName) =&gt;
     {
-        var aliasName = writeRel.NamedObject.DotSeperated;
+        var aliasName = writeRelation.NamedObject.DotSeperated;
         var getAliasResponse = await client.Indices.GetAliasAsync(new Elastic.Clients.Elasticsearch.IndexManagement.GetAliasRequest(name: aliasName));
 
-        var putAliasResponse = await client.Indices.PutAliasAsync(indexName, writeRel.NamedObject.DotSeperated);
+        var putAliasResponse = await client.Indices.PutAliasAsync(indexName, aliasName);
 
-        var oldIndices = getAliasResponse.Aliases.Keys.ToList();
+        var oldIndices = getAliasResponse.Aliases?.Keys.ToList() ?? new List&lt;string&gt;();
         if (putAliasResponse.IsSuccess())
         {
             foreach (var oldIndex in oldIndices)
@@ -155,7 +256,7 @@ This is possible by using the <em>GetIndexNameFunc</em> and <em>OnInitialDataSen
         }
         else
         {
-            throw new InvalidOperationException(putAliasResponse.ElasticsearchServerError!.Error.StackTrace);
+            throw new InvalidOperationException($&quot;Failed to put alias '{aliasName}' on '{indexName}': {putAliasResponse.ElasticsearchServerError?.Error?.Reason ?? putAliasResponse.DebugInformation}&quot;);
         }
     },
 });

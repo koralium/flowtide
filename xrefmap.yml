@@ -10580,6 +10580,64 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.ElasticSearch.Exceptions.FlowtideElasticsearchResponseException.Response
   nameWithType: FlowtideElasticsearchResponseException.Response
+- uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext
+  name: FlowtideElasticsearchIndexCreationContext
+  href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.html
+  commentId: T:FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext
+  fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext
+  nameWithType: FlowtideElasticsearchIndexCreationContext
+- uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Client
+  name: Client
+  href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchIndexCreationContext_Client
+  commentId: P:FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Client
+  fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Client
+  nameWithType: FlowtideElasticsearchIndexCreationContext.Client
+- uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Client*
+  name: Client
+  href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchIndexCreationContext_Client_
+  commentId: Overload:FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Client
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Client
+  nameWithType: FlowtideElasticsearchIndexCreationContext.Client
+- uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.IndexName
+  name: IndexName
+  href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchIndexCreationContext_IndexName
+  commentId: P:FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.IndexName
+  fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.IndexName
+  nameWithType: FlowtideElasticsearchIndexCreationContext.IndexName
+- uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.IndexName*
+  name: IndexName
+  href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchIndexCreationContext_IndexName_
+  commentId: Overload:FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.IndexName
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.IndexName
+  nameWithType: FlowtideElasticsearchIndexCreationContext.IndexName
+- uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Request
+  name: Request
+  href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchIndexCreationContext_Request
+  commentId: P:FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Request
+  fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Request
+  nameWithType: FlowtideElasticsearchIndexCreationContext.Request
+- uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Request*
+  name: Request
+  href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchIndexCreationContext_Request_
+  commentId: Overload:FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Request
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.Request
+  nameWithType: FlowtideElasticsearchIndexCreationContext.Request
+- uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.WriteRelation
+  name: WriteRelation
+  href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchIndexCreationContext_WriteRelation
+  commentId: P:FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.WriteRelation
+  fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.WriteRelation
+  nameWithType: FlowtideElasticsearchIndexCreationContext.WriteRelation
+- uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.WriteRelation*
+  name: WriteRelation
+  href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchIndexCreationContext_WriteRelation_
+  commentId: Overload:FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.WriteRelation
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.WriteRelation
+  nameWithType: FlowtideElasticsearchIndexCreationContext.WriteRelation
 - uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions
   name: FlowtideElasticsearchOptions
   href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.html
@@ -10651,6 +10709,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnDataSent
   nameWithType: FlowtideElasticsearchOptions.OnDataSent
+- uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnIndexCreation
+  name: OnIndexCreation
+  href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_OnIndexCreation
+  commentId: P:FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnIndexCreation
+  fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnIndexCreation
+  nameWithType: FlowtideElasticsearchOptions.OnIndexCreation
+- uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnIndexCreation*
+  name: OnIndexCreation
+  href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_OnIndexCreation_
+  commentId: Overload:FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnIndexCreation
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnIndexCreation
+  nameWithType: FlowtideElasticsearchOptions.OnIndexCreation
 - uid: FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnInitialDataSent
   name: OnInitialDataSent
   href: api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.html#FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_OnInitialDataSent

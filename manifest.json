@@ -1679,6 +1679,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchIndexCreationContext.yml\" sourcestartlinenumber=\"1\">Passed to <xref href=\"FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.OnIndexCreation\" data-throw-if-not-resolved=\"false\"></xref> before the sink creates an index that does not exist.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions.yml",
       "output": {
         ".html": {
