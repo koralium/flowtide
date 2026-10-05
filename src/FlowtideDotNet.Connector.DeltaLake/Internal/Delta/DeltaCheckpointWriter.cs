@@ -205,7 +205,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             var pathOrInlineDvBuilder = new StringArray.Builder();
             var offsetBuilder = new Int32Array.Builder();
             var sizeInBytesBuilder = new Int32Array.Builder();
-            var cardinalityBuilder = new Int32Array.Builder();
+            var cardinalityBuilder = new Int64Array.Builder();
             var nullBitmap = new ArrowBuffer.BitmapBuilder();
 
             int nullCount = 0;
@@ -235,7 +235,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                         offsetBuilder.AppendNull();
                     }
                     sizeInBytesBuilder.Append(dv.SizeInBytes);
-                    cardinalityBuilder.Append((int)dv.Cardinality);
+                    cardinalityBuilder.Append(dv.Cardinality);
                 }
             }
 
@@ -245,7 +245,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 new Field("pathOrInlineDv", new StringType(), true),
                 new Field("offset", new Int32Type(), true),
                 new Field("sizeInBytes", new Int32Type(), true),
-                new Field("cardinality", new Int32Type(), true)
+                new Field("cardinality", new Int64Type(), true)
             };
             var structType = new StructType(fields);
             var children = new IArrowArray[]
@@ -522,6 +522,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             var modificationTimeBuilder = new Int64Array.Builder();
             var dataChangeBuilder = new BooleanArray.Builder();
             var statsBuilder = new StringArray.Builder();
+            var baseRowIdBuilder = new Int64Array.Builder();
+            var defaultRowCommitVersionBuilder = new Int64Array.Builder();
+            var clusteringProviderBuilder = new StringArray.Builder();
             var nullBitmap = new ArrowBuffer.BitmapBuilder();
 
             var partitionValuesList = new List<Dictionary<string, string>?>();
@@ -539,6 +542,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     modificationTimeBuilder.Append(add.ModificationTime);
                     dataChangeBuilder.Append(add.DataChange);
                     statsBuilder.Append(add.Statistics);
+                    if (add.BaseRowId.HasValue)
+                    {
+                        baseRowIdBuilder.Append(add.BaseRowId.Value);
+                    }
+                    else
+                    {
+                        baseRowIdBuilder.AppendNull();
+                    }
+                    if (add.DefaultRowCommitVersion.HasValue)
+                    {
+                        defaultRowCommitVersionBuilder.Append(add.DefaultRowCommitVersion.Value);
+                    }
+                    else
+                    {
+                        defaultRowCommitVersionBuilder.AppendNull();
+                    }
+                    clusteringProviderBuilder.Append(add.ClusteringProvider);
 
                     partitionValuesList.Add(add.PartitionValues);
                     tagsList.Add(add.Tags);
@@ -552,6 +572,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     modificationTimeBuilder.AppendNull();
                     dataChangeBuilder.AppendNull();
                     statsBuilder.AppendNull();
+                    baseRowIdBuilder.AppendNull();
+                    defaultRowCommitVersionBuilder.AppendNull();
+                    clusteringProviderBuilder.AppendNull();
 
                     partitionValuesList.Add(null);
                     tagsList.Add(null);
@@ -572,7 +595,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 new Field("dataChange", new BooleanType(), true),
                 new Field("stats", new StringType(), true),
                 new Field("tags", tagsArray.Data.DataType, true),
-                new Field("deletionVector", deletionVectorArray.Data.DataType, true)
+                new Field("deletionVector", deletionVectorArray.Data.DataType, true),
+                new Field("baseRowId", new Int64Type(), true),
+                new Field("defaultRowCommitVersion", new Int64Type(), true),
+                new Field("clusteringProvider", new StringType(), true)
             };
             var structType = new StructType(fields);
             var children = new IArrowArray[]
@@ -584,7 +610,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 dataChangeBuilder.Build(),
                 statsBuilder.Build(),
                 tagsArray,
-                deletionVectorArray
+                deletionVectorArray,
+                baseRowIdBuilder.Build(),
+                defaultRowCommitVersionBuilder.Build(),
+                clusteringProviderBuilder.Build()
             };
 
             return new StructArray(structType, totalRows, children, nullBitmap.Build(), startRowIndex);

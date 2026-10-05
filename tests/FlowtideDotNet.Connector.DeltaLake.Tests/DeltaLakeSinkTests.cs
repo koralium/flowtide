@@ -1245,6 +1245,80 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
+        public async Task TestCheckpointKeepsAddFieldsAndLongCardinality()
+        {
+            var storage = Files.Of.InternalMemory("./test_checkpoint_fields");
+
+            JsonSerializerOptions jsonOptions = new JsonSerializerOptions();
+            jsonOptions.Converters.Add(new TypeConverter());
+            var schemaStruct = new StructType(new List<StructField>()
+            {
+                new StructField("userkey", new IntegerType(), true, new Dictionary<string, object>())
+            });
+
+            await DeltaTransactionWriter.WriteCommit(storage, "fields", 0, new List<Internal.Delta.Actions.DeltaAction>()
+            {
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions),
+                        Format = new Internal.Delta.Actions.DeltaMetadataFormat() { Provider = "parquet", Options = new Dictionary<string, string>() },
+                        PartitionColumns = new List<string>(),
+                        Configuration = new Dictionary<string, string>(),
+                        CreatedTime = 1
+                    }
+                },
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction()
+                    {
+                        MinReaderVersion = 3,
+                        MinWriterVersion = 7,
+                        ReaderFeatures = new List<string>() { "deletionVectors" },
+                        WriterFeatures = new List<string>() { "deletionVectors" }
+                    }
+                },
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    Add = new Internal.Delta.Actions.DeltaAddAction()
+                    {
+                        Path = "a.parquet",
+                        PartitionValues = new Dictionary<string, string>(),
+                        Size = 1,
+                        ModificationTime = 1,
+                        DataChange = true,
+                        BaseRowId = 42,
+                        DefaultRowCommitVersion = 7,
+                        ClusteringProvider = "liquid",
+                        DeletionVector = new Internal.Delta.DeletionVectors.DeletionVector()
+                        {
+                            StorageType = "p",
+                            PathOrInlineDv = "dv.bin",
+                            Offset = 1,
+                            SizeInBytes = 10,
+                            Cardinality = 3_000_000_000
+                        }
+                    }
+                }
+            });
+
+            var table = await DeltaTransactionReader.ReadTable(storage, "fields");
+            Assert.NotNull(table);
+            await DeltaCheckpointWriter.WriteCheckpoint(storage, "fields", table);
+
+            var checkpointFile = (await DeltaTransactionReader.ReadTransactionLog(storage, "fields")).Single(x => x.IsCheckpoint);
+            var checkpointActions = await new Internal.Delta.ParquetFormat.CheckpointReading.ParquetCheckpointReader().ReadCheckpointFile(storage, checkpointFile.IOEntry);
+            var add = checkpointActions.Single(x => x.Add != null).Add!;
+
+            Assert.Equal(42, add.BaseRowId);
+            Assert.Equal(7, add.DefaultRowCommitVersion);
+            Assert.Equal("liquid", add.ClusteringProvider);
+            Assert.Equal(3_000_000_000, add.DeletionVector!.Cardinality);
+        }
+
+        [Fact]
         public async Task TestCrashBeforeCommitVersionPublishesOnRestart()
         {
             var storage = new CrashOnceFileStorage(Files.Of.InternalMemory("./test_crash_commit"), "00000000000000000001.json");
