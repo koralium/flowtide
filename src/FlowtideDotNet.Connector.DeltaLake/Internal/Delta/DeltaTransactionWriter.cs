@@ -20,10 +20,63 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
     {
         public const string DeltaLogDirName = "_delta_log/";
 
-        public static async Task WriteCommit(IFileStorage storage, IOPath tablePath, long version, List<DeltaAction> actions)
+        public static Task WriteCommit(IFileStorage storage, IOPath tablePath, long version, List<DeltaAction> actions)
         {
-            string fileName = version.ToString("D20") + ".json";
-            using var stream = await storage.OpenWrite(tablePath.Combine(DeltaLogDirName).Combine(fileName));
+            return WriteActions(storage, tablePath.Combine(DeltaLogDirName).Combine(CommitFileName(version)), actions);
+        }
+
+        /// <summary>
+        /// Writes the commit to a hidden file, published later.
+        /// </summary>
+        public static async Task<string> StageCommit(IFileStorage storage, IOPath tablePath, long version, List<DeltaAction> actions)
+        {
+            // Hidden name, log readers skip it.
+            var stagedFileName = $".{CommitFileName(version)}.{Guid.NewGuid():N}.tmp";
+            await WriteActions(storage, tablePath.Combine(DeltaLogDirName).Combine(stagedFileName), actions);
+            return stagedFileName;
+        }
+
+        /// <summary>
+        /// Moves a staged commit into the log, idempotent.
+        /// </summary>
+        public static async Task PublishCommit(IFileStorage storage, IOPath tablePath, long version, string stagedFileName)
+        {
+            var logPath = tablePath.Combine(DeltaLogDirName);
+            var stagedPath = logPath.Combine(stagedFileName);
+            var commitPath = logPath.Combine(CommitFileName(version));
+
+            if (!await storage.Exists(stagedPath))
+            {
+                // Published by an earlier call.
+                if (await storage.Exists(commitPath))
+                {
+                    return;
+                }
+                throw new InvalidOperationException($"Staged commit '{stagedFileName}' for version {version} is missing");
+            }
+
+            // Stowage Ren copies then deletes, fails on Windows disk.
+            using (var source = await storage.OpenRead(stagedPath))
+            using (var target = await storage.OpenWrite(commitPath))
+            {
+                if (source == null || target == null)
+                {
+                    throw new InvalidOperationException($"Failed to publish staged commit '{stagedFileName}' as version {version}");
+                }
+                await source.CopyToAsync(target);
+            }
+
+            await storage.Rm(stagedPath);
+        }
+
+        private static string CommitFileName(long version)
+        {
+            return version.ToString("D20") + ".json";
+        }
+
+        private static async Task WriteActions(IFileStorage storage, IOPath path, List<DeltaAction> actions)
+        {
+            using var stream = await storage.OpenWrite(path);
 
             if (stream == null)
             {

@@ -288,7 +288,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             List<LogTransactionFile> logs = new List<LogTransactionFile>();
             foreach (var file in files)
             {
-                if (file.Name.EndsWith(".crc"))
+                // Staged commits and hidden files are not log entries.
+                if (file.Name.EndsWith(".crc") || file.Name.StartsWith('.'))
                 {
                     continue;
                 }
