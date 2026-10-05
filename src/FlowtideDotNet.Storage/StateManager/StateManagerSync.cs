@@ -532,6 +532,11 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null, long? checkpointVersion = null)
         {
+            if (checkpointVersion < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(checkpointVersion));
+            }
+            Initialized = false;
             bool newMetadata = false;
 
             // Recovery waits for abandoned writers and their resources.
@@ -562,7 +567,7 @@ namespace FlowtideDotNet.Storage.StateManager
             // sessions, or a page the walk writes afterwards lands in the new epoch's writer
             // and the next checkpoint seals it over the checkpointed one.
             var pausedClients = new List<StateClient>();
-            // A snapshot, a teardown that gave up waiting can clear the dictionary meanwhile.
+            // Snapshot the clients under their registration lock.
             List<StateClient> stateClients;
             lock (m_lock)
             {
@@ -585,46 +590,92 @@ namespace FlowtideDotNet.Storage.StateManager
                 m_cacheTable.ClearAndReturnRents();
                 await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
 
-                // Check that metadata exist, also that the checkpoint version is larger than 0
-                // If zero we revert back to an empty state
-                if (m_persistentStorage.TryGetValue(1, out var metadataBytes) && (!checkpointVersion.HasValue || checkpointVersion.Value > 0))
+                // The file cache keeps no pages across a restore, it starts from empty instead of failing.
+                var startsEmptyWithoutMetadata = m_persistentStorage is FileCachePersistentStorage;
+                long restoreVersion = checkpointVersion ?? 0;
+                bool restore = restoreVersion > 0;
+                if (!checkpointVersion.HasValue)
                 {
-                    // Never fall through, the else branch resets the stream.
-                    var metadata = metadataBytes ?? throw new InvalidOperationException("Metadata page was found but empty.");
+                    if (m_persistentStorage.TryGetValue(1, out var latestBytes))
+                    {
+                        var latest = latestBytes ?? throw new InvalidOperationException("Metadata page was found but empty.");
+                        restoreVersion = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(latest), latest.Length).CheckpointVersion;
+                        if (restoreVersion < 0)
+                        {
+                            throw new InvalidOperationException("Persisted metadata must identify a completed checkpoint.");
+                        }
+                        // A persisted page restores even at 0, SQL Server numbers its first checkpoint 0.
+                        restore = true;
+                    }
+                    else if (m_persistentStorage.CurrentVersion > 1 && !startsEmptyWithoutMetadata)
+                    {
+                        throw new InvalidOperationException("Completed checkpoint is missing its state manager metadata.");
+                    }
+                }
+                if (restore && startsEmptyWithoutMetadata && !m_persistentStorage.TryGetValue(1, out _))
+                {
+                    restoreVersion = 0;
+                    restore = false;
+                }
+
+                if (restore)
+                {
+                    await m_persistentStorage.RecoverAsync(restoreVersion).ConfigureAwait(false);
+                    // Recover can select an older timeline. Only its metadata may describe the
+                    // restored pages, client locations and engine checkpoint time.
+                    if (!m_persistentStorage.TryGetValue(1, out var metadataBytes) || metadataBytes == null)
+                    {
+                        throw new InvalidOperationException($"Checkpoint {restoreVersion} is missing its state manager metadata.");
+                    }
+                    var metadata = metadataBytes.Value;
+                    var restoredMetadata = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(metadata), metadata.Length);
+                    if (restoredMetadata.CheckpointVersion != restoreVersion)
+                    {
+                        throw new InvalidOperationException($"Checkpoint {restoreVersion} contains metadata for checkpoint {restoredMetadata.CheckpointVersion}.");
+                    }
                     lock (m_lock)
                     {
-                        m_metadata = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(metadata), metadata.Length);
+                        m_metadata = restoredMetadata;
                     }
-                    await m_persistentStorage.RecoverAsync(!checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value).ConfigureAwait(false);
-                    LastCompletedCheckpointVersion = !checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value;
                 }
                 else
                 {
                     lock (m_lock)
                     {
                         m_metadata = NewMetadata();
-                        // Increase the page counter to avoid using the same page id as the metadata page.
-                        if (_stateClients.Count > 0)
-                        {
-                            m_metadata.PageCounter = _stateClients.Max(x => x.Value.MetadataId) + 1;
-                        }
                         newMetadata = true;
                     }
                     await m_persistentStorage.ResetAsync();
-                    LastCompletedCheckpointVersion = 0;
+                }
+
+                // Clients survive in-process recovery. Preserve their bindings even if they
+                // were created after this cut, and keep their IDs out of the page allocator.
+                lock (m_lock)
+                {
+                    foreach (var (name, client) in _stateClients)
+                    {
+                        if (m_metadata.ClientMetadataLocations.TryGetValue(name, out var location) && location != client.MetadataId)
+                        {
+                            throw new InvalidOperationException($"Restored metadata changed the page binding for state client '{name}'.");
+                        }
+                        m_metadata.ClientMetadataLocations[name] = client.MetadataId;
+                        m_metadata.PageCounter = Math.Max(m_metadata.PageCounter, client.MetadataId + 1);
+                    }
                 }
 
                 // Reset cached values in the state clients
                 foreach (var stateClient in stateClients)
                 {
-                    await stateClient.Reset(newMetadata);
-                    if (newMetadata)
+                    var metadataMissing = newMetadata || !m_persistentStorage.TryGetValue(stateClient.MetadataId, out _);
+                    await stateClient.Reset(metadataMissing);
+                    if (metadataMissing)
                     {
                         stateClient.ForgetCheckpointedMetadata();
                     }
                     // Rolled back, the aborted epoch's failed commit no longer applies.
                     stateClient.ClearCommitFault();
                 }
+                LastCompletedCheckpointVersion = restoreVersion;
             }
             finally
             {

@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public Dictionary<int, long> TargetsEventCounter { get; set; } = new Dictionary<int, long>();
     }
 
-    internal class ExchangeOperator : PartitionVertex<StreamEventBatch>, IStreamEgressVertex
+    internal class ExchangeOperator : PartitionVertex<StreamEventBatch>, IStreamEgressVertex, IStreamVersionAgreement
     {
         private const string PullBucketRequestTriggerPrefix = "exchange_";
 
@@ -93,13 +93,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         public bool ReadyToStop => _executor.ReadyToStop;
 
-        private Task FailAndRecoverMethod(long recoveryPoint)
+        private Task FailAndRecoverMethod(long? recoveryPoint)
         {
             return FailAndRollback(restoreVersion: recoveryPoint);
         }
 
         protected override async Task InitializeOrRestore(long restoreVersion, IStateManagerClient stateManagerClient)
         {
+            // This run's handler is set, every target restarts it from here.
+            _executor.SetRollbacks(FailAndRecoverMethod);
             lock (_dependenciesDoneLock)
             {
                 // Reset credits from a checkpoint that was aborted by a failure so an old
@@ -293,7 +295,65 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public Task CheckpointDone(long checkpointVersion)
         {
+            // Not through the targets, an exchange with local targets only has none that send.
+            _communicationPointFactory.Durability?.LocalDurable(checkpointVersion);
             return _executor.CheckpointDone(checkpointVersion);
+        }
+
+        public Task CommitVersion(long version)
+        {
+            // Nothing external, the peer acknowledgement stays in CheckpointDone.
+            return Task.CompletedTask;
+        }
+
+        void IStreamVersionAgreement.AbortPendingOperations() => _communicationPointFactory.AbortPendingOperations();
+
+        void IStreamVersionAgreement.ResetAgreement()
+        {
+            // Before the wave: a peer's wave in between finds no dead-run target.
+            _executor.SetRollbacks(null);
+            _communicationPointFactory.ResetPendingOperations();
+            _communicationPointFactory.Durability?.EnterWave(_communicationPointFactory.Waves.ForStart());
+        }
+
+        void IStreamVersionAgreement.AnnounceInitialized(long restoreVersion)
+        {
+            _communicationPointFactory.Durability?.LocalInit(restoreVersion);
+        }
+
+        Task IStreamVersionAgreement.WhenVersionAgreed(long version, CancellationToken cancellationToken)
+        {
+            return _communicationPointFactory.Durability?.WhenAgreed(version, cancellationToken) ?? Task.CompletedTask;
+        }
+
+        bool IStreamVersionAgreement.IsVersionAgreed(long version)
+        {
+            return _communicationPointFactory.Durability?.IsAgreed(version) ?? true;
+        }
+
+        Task<long?> IStreamVersionAgreement.WhenGroupVersionKnown(CancellationToken cancellationToken)
+        {
+            return SubstreamReadOperator.WhenGroupVersionKnown(_communicationPointFactory.Durability, cancellationToken);
+        }
+
+        Task<long?> IStreamVersionAgreement.WhenGroupSettled(CancellationToken cancellationToken)
+        {
+            return SubstreamReadOperator.WhenGroupSettled(_communicationPointFactory.Durability, cancellationToken);
+        }
+
+        void IStreamVersionAgreement.ComingDownTo(long groupVersion)
+        {
+            _communicationPointFactory.Waves.MintForLowering(groupVersion);
+        }
+
+        void IStreamVersionAgreement.StartCompleted()
+        {
+            _communicationPointFactory.Waves.StartCompleted();
+        }
+
+        void IStreamVersionAgreement.StreamStopped()
+        {
+            _communicationPointFactory.OnStreamStopped();
         }
     }
 }

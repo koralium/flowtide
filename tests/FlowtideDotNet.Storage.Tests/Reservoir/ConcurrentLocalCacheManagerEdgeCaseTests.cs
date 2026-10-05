@@ -663,6 +663,36 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         }
 
         [Fact]
+        public async Task ReinitializationWaitsForAnOldDownloadBeforeReplacingCacheState()
+        {
+            var s = CreateStack();
+            var (crc32, offset, _) = await CommitAsync(s.Storage, new byte[] { 1, 2, 3 });
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            s.LocalData.InjectWriteException(_ => { entered.TrySetResult(); return null; });
+            s.LocalData.BlockWrites();
+            var read = s.Cclm.ReadMemoryAsync(0, offset, 3, crc32).AsTask();
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                using var meter = new Meter("cache-reinitialize");
+                var initialize = s.Cclm.InitializeAsync(
+                    new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance),
+                    meter, DefaultCtx, CancellationToken.None);
+                Assert.False(initialize.IsCompleted);
+                s.LocalData.UnblockWrites();
+                Assert.Equal(new byte[] { 1, 2, 3 }, (await read.WaitAsync(TimeSpan.FromSeconds(5))).ToArray());
+                await initialize.WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.Equal(new byte[] { 1, 2, 3 }, (await s.Cclm.ReadMemoryAsync(0, offset, 3, crc32)).ToArray());
+            }
+            finally
+            {
+                s.LocalData.UnblockWrites();
+                await s.Cclm.DisposeAsync();
+                s.Storage.Dispose();
+            }
+        }
+
+        [Fact]
         public async Task TestDisposeAsyncAwaitsBackgroundTasksToComplete()
         {
             var s = CreateStack();

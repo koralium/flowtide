@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     /// through the communication point and buffered in a transient channel; after a failure both
     /// substreams roll back to a common checkpoint and the other substream replays the events.
     /// </summary>
-    internal class SubstreamReadOperator : IngressVertex<StreamEventBatch>
+    internal class SubstreamReadOperator : IngressVertex<StreamEventBatch>, IStreamVersionAgreement
     {
         /// <summary>
         /// Placed in the channel when this stream takes its stop checkpoint, so the fetch loop
@@ -152,6 +152,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // Clear checkpoint state from a run that was interrupted by a failure,
                 // otherwise the first checkpoint after a restore could complete a stale wait.
                 _currentCheckpoint = null;
+                // The previous fetch operation has been joined by ingress teardown,
+                // but its cleanup continuation can still be queued. It must not
+                // prevent the replacement run from starting its own fetch loop.
+                _fetchTask = null;
                 staleWaitForCheckpoint = _waitForCheckpoint;
                 _waitForCheckpoint = null;
                 _initWatermarksHandled = false;
@@ -580,7 +584,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             // Best effort, the other substream may be unreachable and waiting for its response
             // timeout would stall the recovery. The initialize handshake at restart reconciles
             // the versions when it is reachable again.
-            _communicationPoint.NotifyFailAndRecover(rollbackVersion);
+            _communicationPoint.NotifyFailAndRecover();
             return Task.CompletedTask;
         }
 
@@ -595,7 +599,66 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public override Task CheckpointDone(long checkpointVersion)
         {
             // Send checkpoint done to the communication point so the other substream can set dependencies done.
+            _communicationPoint.Durability?.LocalDurable(checkpointVersion);
             return _communicationPoint.SendCheckpointDone(checkpointVersion);
+        }
+
+        void IStreamVersionAgreement.AbortPendingOperations() => _communicationPoint.AbortPendingOperations();
+
+        void IStreamVersionAgreement.ResetAgreement()
+        {
+            _communicationPoint.ResetPendingOperations();
+            _communicationPoint.Durability?.EnterWave(_communicationPoint.Waves.ForStart());
+        }
+
+        void IStreamVersionAgreement.AnnounceInitialized(long restoreVersion)
+        {
+            _communicationPoint.Durability?.LocalInit(restoreVersion);
+        }
+
+        Task IStreamVersionAgreement.WhenVersionAgreed(long version, CancellationToken cancellationToken)
+        {
+            return _communicationPoint.Durability?.WhenAgreed(version, cancellationToken) ?? Task.CompletedTask;
+        }
+
+        bool IStreamVersionAgreement.IsVersionAgreed(long version)
+        {
+            return _communicationPoint.Durability?.IsAgreed(version) ?? true;
+        }
+
+        Task<long?> IStreamVersionAgreement.WhenGroupVersionKnown(CancellationToken cancellationToken)
+        {
+            return WhenGroupVersionKnown(_communicationPoint.Durability, cancellationToken);
+        }
+
+        Task<long?> IStreamVersionAgreement.WhenGroupSettled(CancellationToken cancellationToken)
+        {
+            return WhenGroupSettled(_communicationPoint.Durability, cancellationToken);
+        }
+
+        void IStreamVersionAgreement.ComingDownTo(long groupVersion)
+        {
+            _communicationPoint.Waves.MintForLowering(groupVersion);
+        }
+
+        void IStreamVersionAgreement.StartCompleted()
+        {
+            _communicationPoint.Waves.StartCompleted();
+        }
+
+        void IStreamVersionAgreement.StreamStopped()
+        {
+            _communicationPoint.OnStreamStopped();
+        }
+
+        internal static async Task<long?> WhenGroupVersionKnown(SubstreamDurabilityCoordinator? durability, CancellationToken cancellationToken)
+        {
+            return durability == null ? null : await durability.WhenAgreedKnown(cancellationToken);
+        }
+
+        internal static async Task<long?> WhenGroupSettled(SubstreamDurabilityCoordinator? durability, CancellationToken cancellationToken)
+        {
+            return durability == null ? null : await durability.WhenSettled(cancellationToken);
         }
 
         /// <summary>
@@ -711,7 +774,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        public Task FailAndRecover(long recoveryPoint)
+        public Task FailAndRecover(long? recoveryPoint)
         {
             return FailAndRollback(restoreVersion: recoveryPoint);
         }

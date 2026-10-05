@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Core.Operators.Exchange;
 
 namespace FlowtideDotNet.Core.Engine.Distributed
@@ -29,9 +28,10 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         private readonly string _targetSubstreamName;
 
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
-        private Func<long, Task>? _callFailAndRecover;
-        private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
+        private Func<RecoveryWave, Task>? _callFailAndRecover;
+        private Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
         private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
+        private Func<long, int, long, RecoveryWave, long, long, bool, Task>? _callReceiveDurabilityClaim;
 
         public LocalSubstreamCommunicationHandler(LocalSubstreamCommunicationHub hub, string selfSubstreamName, string targetSubstreamName)
         {
@@ -47,8 +47,8 @@ namespace FlowtideDotNet.Core.Engine.Distributed
 
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-            Func<long, Task> callFailAndRecover,
-            Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<RecoveryWave, Task> callFailAndRecover,
+            Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
             Func<long, long, bool, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
@@ -62,41 +62,45 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._getDataFunction != null)
             {
-                if (StreamContext.OwnStartInitGate.Value != null)
-                {
-                    return Detached((peer._getDataFunction, targetIds, numberOfEvents, cancellationToken), static s => s.Item1(s.targetIds, s.numberOfEvents, s.cancellationToken));
-                }
                 return peer._getDataFunction(targetIds, numberOfEvents, cancellationToken);
             }
             return Task.FromResult<IReadOnlyList<SubstreamEventData>>(new List<SubstreamEventData>());
         }
 
-        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
         {
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._initializeFromTarget != null)
             {
-                if (StreamContext.OwnStartInitGate.Value != null)
-                {
-                    return Detached((peer._initializeFromTarget, restoreVersion, checkpointEpoch, cleanHandoff), static s => s.Item1(s.restoreVersion, s.checkpointEpoch, s.cleanHandoff));
-                }
-                return peer._initializeFromTarget(restoreVersion, checkpointEpoch, cleanHandoff);
+                return peer._initializeFromTarget(restoreVersion, checkpointEpoch, cleanHandoff, wave);
             }
             return Task.FromResult(new SubstreamInitializeResponse(true, false, restoreVersion));
         }
 
-        public Task SendFailAndRecover(long restoreVersion)
+        public Task SendFailAndRecover(RecoveryWave wave)
         {
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._callFailAndRecover != null)
             {
-                if (StreamContext.OwnStartInitGate.Value != null)
-                {
-                    return Detached((peer._callFailAndRecover, restoreVersion), static s => s.Item1(s.restoreVersion));
-                }
-                return peer._callFailAndRecover(restoreVersion);
+                return peer._callFailAndRecover(wave);
             }
             // The other substream has not started yet, there is nothing to recover.
+            return Task.CompletedTask;
+        }
+
+        public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
+        {
+            _callReceiveDurabilityClaim = callReceiveDurabilityClaim;
+        }
+
+        public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
+        {
+            if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
+                peer._callReceiveDurabilityClaim != null)
+            {
+                return peer._callReceiveDurabilityClaim(version, radius, initVersion, wave, senderCheckpointEpoch, targetCheckpointEpoch, requestReply);
+            }
+            // The other substream has not been built yet, the claim is sent again later.
             return Task.CompletedTask;
         }
 
@@ -105,30 +109,11 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._callRecieveCheckpointDone != null)
             {
-                if (StreamContext.OwnStartInitGate.Value != null)
-                {
-                    return Detached((peer._callRecieveCheckpointDone, checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier), static s => s.Item1(s.checkpointVersion, s.targetCheckpointEpoch, s.coversPeerStopBarrier));
-                }
                 return peer._callRecieveCheckpointDone(checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier);
             }
             // The other substream has not started yet, there is no pending checkpoint
             // that waits for this notification.
             return Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Calls the peer without this substream's start marker, work it spawns must not count as this start's own chain.
-        /// </summary>
-        private static async Task<TResult> Detached<TState, TResult>(TState state, Func<TState, Task<TResult>> call)
-        {
-            StreamContext.OwnStartInitGate.Value = null;
-            return await call(state);
-        }
-
-        private static async Task Detached<TState>(TState state, Func<TState, Task> call)
-        {
-            StreamContext.OwnStartInitGate.Value = null;
-            await call(state);
         }
     }
 }

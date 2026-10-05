@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,8 +28,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private readonly HashSet<string> _preCompletedDependencies = new HashSet<string>();
         private Checkpoint? _currentCheckpoint;
         private bool _doingCheckpoint = false;
+        // Cancelled on failure, the streams waited for may never get there.
+        private readonly CancellationTokenSource _agreementAbort = new CancellationTokenSource();
+        // Dependency of every cycle when other streams are connected: the version is agreed.
+        private const string VersionAgreementDependency = "$version_agreement";
+        // Set by a deferred stop, a stopped peer may never relay the agreement.
+        private readonly TaskCompletionSource _stopRequested = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        // The cycle stopped waiting for agreement, its version must not be committed or compacted.
+        private volatile bool _agreementSkippedForStop;
         private bool _initialCheckpointTaken = false;
         private bool _compactionStarted = false;
+        // The transition swaps the state before Initialize runs, a cycle must not start before its setup.
+        private bool _initialized;
 
         public override void EgressCheckpointDone(string name, ILockingEvent? lockingEvent)
         {
@@ -83,6 +93,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (waitingForDependencies == null || !waitingForDependencies.Contains(name))
                 {
+                    if (name == VersionAgreementDependency)
+                    {
+                        // Belongs to one version only, it must never complete another cycle early.
+                        return;
+                    }
                     // This stream has not yet started checkpointing, but a dependency is already done
                     // Add it to pre completed
                     _context._logger.LogDebug("Operator {Operator} has completed dependencies before checkpoint started on stream {Stream}, marking as precompleted.", name, _context.streamName);
@@ -96,7 +111,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // compaction once a teardown has moved the stream out of the running state,
                 // it would write the state manager the teardown is about to dispose.
                 // A dispose leaves the state, so check it here
-                if (waitingForDependencies.Count > 0 || !_initialCheckpointTaken || _compactionStarted || _context.currentState != StreamStateValue.Running || _context.IsDisposed)
+                if (waitingForDependencies.Count > 0 || !_initialCheckpointTaken || _compactionStarted || _context.currentState != StreamStateValue.Running || _context.IsDisposed || _agreementAbort.IsCancellationRequested)
                 {
                     return;
                 }
@@ -120,10 +135,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 catch(Exception e)
                 {
-                    await run._context.OnFailure(e);
+                    if (run._context.IsCurrentState(run)) await run._context.OnFailure(e);
                     return;
                 }
-                
+
                 // Finish the checkpoint
                 run.CheckpointCompleted();
                 run._context._logger.CheckpointDone(_context.streamName);
@@ -163,12 +178,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         await scheduledHook(run._context.streamName);
                     }
 
-                    var commitHook = StreamContext.CheckpointCommitHookForTests;
-                    if (commitHook != null)
-                    {
-                        await commitHook(run._context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
-                    }
-
                     // Write the latest state
                     run._context._lastState = new StreamState(
                         run._currentCheckpoint.CheckpointTime,
@@ -176,10 +185,19 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                     run._context._stateManager.Metadata = run._context._lastState;
 
-                    await _context.ForEachBlockAsync(static async (key, block) =>
+                    await _context.ForEachBlockAsync(async (key, block) =>
                     {
+                        if (!run._context.IsCurrentState(run)) return;
                         await block.BeforeSaveCheckpoint();
                     });
+
+                    if (!run._context.IsCurrentState(run)) return;
+
+                    var commitHook = StreamContext.CheckpointCommitHookForTests;
+                    if (commitHook != null)
+                    {
+                        await commitHook(run._context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
+                    }
 
                     // Take state checkpoint
                     _context._logger.StartingStateManagerCheckpoint(_context.streamName);
@@ -193,7 +211,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                     await _context.ForEachIngressBlockAsync((key, block) =>
                     {
-                        if (block is IStreamIngressVertex streamIngressVertex)
+                        if (run._context.IsCurrentState(run) && block is IStreamIngressVertex streamIngressVertex)
                         {
                             return streamIngressVertex.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
                         }
@@ -201,13 +219,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     });
                     await _context.ForEachEgressBlockAsync((key, block) =>
                     {
-                        return block.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
+                        return run._context.IsCurrentState(run) ? block.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion) : Task.CompletedTask;
                     });
+                    if (run._context.IsCurrentState(run)) run.WaitForVersionAgreementDependency(run._context._stateManager.LastCompletedCheckpointVersion);
                 }
                 catch
                 {
-                    // Released here only on a fault, the continuation's IsFaulted branch must
-                    // not release again. On success the claim carries into the continuation.
+                    // Faults and cancellation release here. Neither may enter the
+                    // continuation's success path and release the same claim again.
                     System.Threading.Interlocked.Decrement(ref run._context._stateManagerWriteCount);
                     throw;
                 }
@@ -217,9 +236,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                  {
                      RunningStreamState @this = (RunningStreamState)state!;
                      Debug.Assert(@this.waitingForDependencies != null);
-                     if (t.IsFaulted)
+                     if (t.IsFaulted || t.IsCanceled)
                      {
-                         await _context.OnFailure(t.Exception);
+                         if (_context.IsCurrentState(@this))
+                             await _context.OnFailure(t.Exception ?? (Exception)new TaskCanceledException(t));
                          return;
                      }
 
@@ -235,7 +255,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                          // Check if all egresses has done their dependencies. Do not start
                          // compaction once a teardown has moved the stream out of the running
                          // state, it would write the state manager the teardown disposes.
-                         if (@this.waitingForDependencies.Count > 0 || _compactionStarted || _context.currentState != StreamStateValue.Running)
+                         if (@this.waitingForDependencies.Count > 0 || _compactionStarted || !_context.IsCurrentState(@this))
                          {
                              // Releases the commit claim carried from the task body, the cycle
                              // now waits for acknowledgements (or a teardown owns the stream)
@@ -255,16 +275,77 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      }
                      catch (Exception e)
                      {
-                         await _context.OnFailure(e);
+                         if (_context.IsCurrentState(this)) await _context.OnFailure(e);
                          return;
                      }
 
-                     
+
                      // Finish the checkpoint
                      @this.CheckpointCompleted();
                      _context._logger.CheckpointDone(_context.streamName);
                  }, this)
                  .Unwrap();
+        }
+
+        /// <summary>
+        /// Waits outside the compaction claim, a stop deferred behind the cycle can still time
+        /// out on it. Completes the agreement dependency like a peer acknowledgement would.
+        /// </summary>
+        private void WaitForVersionAgreementDependency(long version)
+        {
+            Debug.Assert(_context != null);
+            if (!_context.HasVersionAgreements)
+            {
+                return;
+            }
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var released = CancellationTokenSource.CreateLinkedTokenSource(_agreementAbort.Token);
+                    var agreed = _context.WaitForVersionAgreement(version, released.Token);
+                    if (!await AgreedWithinStopGrace(agreed))
+                    {
+                        _agreementSkippedForStop = true;
+                        released.Cancel();
+                        // Abandoned, a late fault must not go unobserved.
+                        _ = agreed.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
+                        _context._logger.LogDebug("Stream {stream} stops without waiting for version {version} to be agreed, the next start commits it.", _context.streamName, version);
+                    }
+                    else
+                    {
+                        await agreed;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // A failure or a dispose ended the cycle.
+                    return;
+                }
+                catch (Exception e)
+                {
+                    if (_context.IsCurrentState(this)) await _context.OnFailure(e);
+                    return;
+                }
+                // This instance, a successor state has its own cycle and its own dependencies.
+                EgressDependenciesDone(VersionAgreementDependency, null);
+            });
+        }
+
+        // How long a deferred stop waits for the agreement before its cycle skips it.
+        internal static readonly TimeSpan StopAgreementReleaseGrace = TimeSpan.FromSeconds(1);
+
+        // Agreement first; after a stop, a grace from the later of the stop and this wait's start.
+        private async Task<bool> AgreedWithinStopGrace(Task agreed)
+        {
+            if (await Task.WhenAny(agreed, _stopRequested.Task) == agreed)
+            {
+                return true;
+            }
+            using var grace = new CancellationTokenSource();
+            var first = await Task.WhenAny(agreed, Task.Delay(StopAgreementReleaseGrace, grace.Token));
+            grace.Cancel();
+            return first == agreed;
         }
 
         private async Task DoCompaction()
@@ -277,6 +358,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // queued compaction is about to write. This method releases the count.
             try
             {
+                // A stop skipped the agreement, the version may still be rolled back.
+                if (_agreementSkippedForStop) return;
+
+                // Every connected stream is durable at it, the agreement was a dependency of the
+                // cycle. Committed here so it lands before the next checkpoint prepares.
+                await _context.CommitVersionOnEgresses(_context._stateManager.LastCompletedCheckpointVersion, this);
+
+                if (!_context.IsCurrentState(this)) return;
+
                 // Holds the task in the window between being scheduled and starting its work,
                 // the window a failure teardown races.
                 var scheduledHook = StreamContext.CompactionScheduledHookForTests;
@@ -290,6 +380,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     await compactionHook(_context.streamName);
                 }
+
+                if (!_context.IsCurrentState(this)) return;
 
                 // After writing do compaction
                 _context._logger.StartingCompactionOnVertices(_context.streamName);
@@ -309,6 +401,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                 await Task.WhenAll(tasks);
 
+                if (!_context.IsCurrentState(this)) return;
                 await _context._stateManager.Compact();
                 _context._logger.CompactionDoneOnVertices(_context.streamName);
             }
@@ -324,6 +417,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             StreamStateValue? wishTransition = null;
             lock (_context._checkpointLock)
             {
+                // A callback can acknowledge failure and finish normally after its run
+                // has been fenced. It must not complete a successor's checkpoint.
+                // Initial-data completion also releases a placeholder during stop.
+                if (checkpointCommitted && !_context.IsCurrentState(this)) return;
                 if (_context.RawStatus == StreamStatus.Failing)
                 {
                     // If the stream was in the failure status, we can now set it to running to mark that it is operational
@@ -468,12 +565,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _preCompletedDependencies.Add(earlyDependency);
                     }
                     _context._earlyDependenciesDone.Clear();
-                }
 
-                if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
-                {
-                    // Set the checkpoint task to stop any other checkpoint from happening
-                    _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
+                    {
+                        // Set the checkpoint task to stop any other checkpoint from happening
+                        _context.checkpointTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    }
+                    _initialized = true;
+                    // A timer may have elapsed while the stream was starting. With an
+                    // initial-data placeholder its completion promotes the request;
+                    // without one, this transition must do so itself.
+                    if (!_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
+                    {
+                        TryPromoteQueuedCheckpoint();
+                    }
                 }
 
                 _initialBatchTask = Task.Factory.StartNew(async () =>
@@ -518,6 +623,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task OnFailure()
         {
+            // A cycle waiting for the other streams would hold up the teardown.
+            _agreementAbort.Cancel();
             return TransitionTo(StreamStateValue.Failure);
         }
 
@@ -590,6 +697,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 else
                 {
+                    if (!_initialized)
+                    {
+                        // A peer's barrier can schedule a cycle between the transition and Initialize: started now it
+                        // would be overwritten by the initial data placeholder and run beside the next cycle.
+                        _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1), _context._scheduledProvidedCheckpointToken);
+                        return Task.CompletedTask;
+                    }
                     // The wish check and the checkpoint start must share one lock scope. If
                     // the lock is released in between, a completing cycle can clear
                     // _doingCheckpoint and the new cycle would run without the flag that
@@ -619,6 +733,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     foreach(var key in _context.ingressBlocks.Keys)
                     {
                         waitingForDependencies.Add(key);
+                    }
+                    if (_context.HasVersionAgreements)
+                    {
+                        // Direct peers acknowledge, streams further away may not be durable yet.
+                        waitingForDependencies.Add(VersionAgreementDependency);
                     }
                     foreach(var precompleted in _preCompletedDependencies)
                     {
@@ -780,6 +899,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     _context._logger.LogDebug("Stop requested while a checkpoint is in progress, the stop runs when the checkpoint completes");
                     ArmDeferredWishWatchdog(_context, this, ObservedTask(_context, forDelete: false), forDelete: false);
+                    // Lets the agreement wait start its grace, a peer that stopped first may never relay it.
+                    _stopRequested.TrySetResult();
                     return Task.CompletedTask;
                 }
             }

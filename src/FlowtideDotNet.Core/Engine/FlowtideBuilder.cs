@@ -203,7 +203,8 @@ namespace FlowtideDotNet.Core.Engine
 
         /// <summary>
         /// Sets how long a stopping stream waits for vertices that exchange data with other
-        /// substreams to drain before it finishes stopping anyway.
+        /// substreams to drain before it begins teardown. Active callbacks and storage
+        /// operations must still settle before their resources are released.
         /// </summary>
         public FlowtideBuilder SetStopDrainTimeout(TimeSpan timeSpan)
         {

@@ -33,6 +33,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         {
             public List<long> FetchEpochs = new List<long>();
             public List<long> AnnouncedEpochs = new List<long>();
+            public Task DurabilityOperation = Task.CompletedTask;
 
             public Task<FetchDataResponse> FetchDataAsync(FetchDataRequest request)
             {
@@ -50,6 +51,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             public Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request) => throw new NotImplementedException();
             public Task FailAndRecoverAsync(FailAndRecoverRequest request) => Task.CompletedTask;
             public Task CheckpointDone(CheckpointDoneRequest request) => Task.CompletedTask;
+            public Task DurabilityClaim(DurabilityClaimRequest request) => DurabilityOperation;
             public Task StopStreamAsync() => Task.CompletedTask;
             public Task DeleteStreamAsync() => Task.CompletedTask;
             public Task MigrateAsync() => Task.CompletedTask;
@@ -87,12 +89,29 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         }
 
         [Fact]
+        public async Task CancellingTheCallerDoesNotHideAnUnsettledDurabilityRpc()
+        {
+            var operation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var grain = new RecordingSubStreamGrain { DurabilityOperation = operation.Task };
+            var handler = new OrleansCommunicationHandler("stream", "peer", "self", new SingleGrainFactory(grain));
+            using var cancel = new CancellationTokenSource();
+            var send = handler.SendDurabilityClaim(1, 0, 0, default, 1, 1, false, cancel.Token);
+            cancel.Cancel();
+            Assert.Same(operation.Task, send);
+            Assert.False(send.IsCompleted);
+            operation.SetResult();
+            await send;
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                handler.SendDurabilityClaim(1, 0, 0, default, 1, 1, false, cancel.Token));
+        }
+
+        [Fact]
         public async Task FetchCarriesTheAnnouncedEpochAndFailureChangesIt()
         {
             var grain = new RecordingSubStreamGrain();
             var handler = new OrleansCommunicationHandler("stream", "peer", "self", new SingleGrainFactory(grain));
 
-            await handler.SendInitializeRequest(0, 0, false, default);
+            await handler.SendInitializeRequest(0, 0, false, default, default);
             await handler.FetchData(new HashSet<int>() { 1 }, 10, default);
 
             Assert.Single(grain.AnnouncedEpochs);
@@ -108,7 +127,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             Assert.NotEqual(grain.FetchEpochs[0], grain.FetchEpochs[1]);
 
             // The next handshake announces the new epoch, matching the fetches again.
-            await handler.SendInitializeRequest(0, 0, false, default);
+            await handler.SendInitializeRequest(0, 0, false, default, default);
             Assert.Equal(2, grain.AnnouncedEpochs.Count);
             Assert.Equal(grain.FetchEpochs[1], grain.AnnouncedEpochs[1]);
         }
