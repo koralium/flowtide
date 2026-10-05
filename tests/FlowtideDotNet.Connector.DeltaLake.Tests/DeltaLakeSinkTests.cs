@@ -1208,5 +1208,71 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
             }
         }
+
+        [Fact]
+        public async Task TestStagedCommitHiddenUntilPublished()
+        {
+            var storage = Files.Of.InternalMemory("./test_staged_commit");
+
+            JsonSerializerOptions jsonOptions = new JsonSerializerOptions();
+            jsonOptions.Converters.Add(new TypeConverter());
+            var schemaStruct = new StructType(new List<StructField>()
+            {
+                new StructField("userkey", new IntegerType(), true, new Dictionary<string, object>())
+            });
+
+            var stagedFile = await DeltaTransactionWriter.StageCommit(storage, "staged", 0, new List<Internal.Delta.Actions.DeltaAction>()
+            {
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
+                    {
+                        SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions)
+                    }
+                }
+            });
+
+            Assert.Null(await DeltaTransactionReader.ReadTable(storage, "staged"));
+
+            await DeltaTransactionWriter.PublishCommit(storage, "staged", 0, stagedFile);
+            // Second publish is a no-op, as after a restart.
+            await DeltaTransactionWriter.PublishCommit(storage, "staged", 0, stagedFile);
+
+            Assert.False(await storage.Exists($"/staged/_delta_log/{stagedFile}"));
+            var table = await DeltaTransactionReader.ReadTable(storage, "staged");
+            Assert.NotNull(table);
+            Assert.Equal(0, table.Version);
+        }
+
+        [Fact]
+        public async Task TestCrashBeforeCommitVersionPublishesOnRestart()
+        {
+            var storage = new CrashOnceFileStorage(Files.Of.InternalMemory("./test_crash_commit"), "00000000000000000001.json");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCrashBeforeCommitVersionPublishesOnRestart), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    Name STRING,
+                    LastName STRING,
+                    NullableString STRING
+                );
+
+                INSERT INTO test
+                SELECT userKey, firstName as Name, lastName, NullableString FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            stream.Generate(5);
+
+            // First publish of version 1 crashes, the restart publishes it.
+            await WaitForVersion(storage, "test", stream, 1);
+            Assert.Equal(1, storage.Crashes);
+
+            await AssertResult(nameof(TestCrashBeforeCommitVersionPublishesOnRestart), storage, "test", 2, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
+        }
     }
 }
