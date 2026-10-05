@@ -595,15 +595,15 @@ references:
   commentId: T:FlowtideDotNet.Base.Engine.CheckFailureNotification
   fullName: FlowtideDotNet.Base.Engine.CheckFailureNotification
   nameWithType: CheckFailureNotification
-- uid: FlowtideDotNet.Base.Engine.CheckFailureNotification.#ctor(System.String@,System.String,System.ReadOnlySpan{System.Collections.Generic.KeyValuePair{System.String,System.Object}})
-  name: CheckFailureNotification(ref string, string, ReadOnlySpan<KeyValuePair<string, object?>>)
-  href: api/FlowtideDotNet.Base.Engine.CheckFailureNotification.html#FlowtideDotNet_Base_Engine_CheckFailureNotification__ctor_System_String__System_String_System_ReadOnlySpan_System_Collections_Generic_KeyValuePair_System_String_System_Object___
-  commentId: M:FlowtideDotNet.Base.Engine.CheckFailureNotification.#ctor(System.String@,System.String,System.ReadOnlySpan{System.Collections.Generic.KeyValuePair{System.String,System.Object}})
-  name.vb: New(String, String, ReadOnlySpan(Of KeyValuePair(Of String, Object)))
-  fullName: FlowtideDotNet.Base.Engine.CheckFailureNotification.CheckFailureNotification(ref string, string, System.ReadOnlySpan<System.Collections.Generic.KeyValuePair<string, object?>>)
-  fullName.vb: FlowtideDotNet.Base.Engine.CheckFailureNotification.New(String, String, System.ReadOnlySpan(Of System.Collections.Generic.KeyValuePair(Of String, Object)))
-  nameWithType: CheckFailureNotification.CheckFailureNotification(ref string, string, ReadOnlySpan<KeyValuePair<string, object?>>)
-  nameWithType.vb: CheckFailureNotification.New(String, String, ReadOnlySpan(Of KeyValuePair(Of String, Object)))
+- uid: FlowtideDotNet.Base.Engine.CheckFailureNotification.#ctor(System.String@,System.String,System.String,System.ReadOnlySpan{System.Collections.Generic.KeyValuePair{System.String,System.Object}})
+  name: CheckFailureNotification(ref string, string, string, ReadOnlySpan<KeyValuePair<string, object?>>)
+  href: api/FlowtideDotNet.Base.Engine.CheckFailureNotification.html#FlowtideDotNet_Base_Engine_CheckFailureNotification__ctor_System_String__System_String_System_String_System_ReadOnlySpan_System_Collections_Generic_KeyValuePair_System_String_System_Object___
+  commentId: M:FlowtideDotNet.Base.Engine.CheckFailureNotification.#ctor(System.String@,System.String,System.String,System.ReadOnlySpan{System.Collections.Generic.KeyValuePair{System.String,System.Object}})
+  name.vb: New(String, String, String, ReadOnlySpan(Of KeyValuePair(Of String, Object)))
+  fullName: FlowtideDotNet.Base.Engine.CheckFailureNotification.CheckFailureNotification(ref string, string, string, System.ReadOnlySpan<System.Collections.Generic.KeyValuePair<string, object?>>)
+  fullName.vb: FlowtideDotNet.Base.Engine.CheckFailureNotification.New(String, String, String, System.ReadOnlySpan(Of System.Collections.Generic.KeyValuePair(Of String, Object)))
+  nameWithType: CheckFailureNotification.CheckFailureNotification(ref string, string, string, ReadOnlySpan<KeyValuePair<string, object?>>)
+  nameWithType.vb: CheckFailureNotification.New(String, String, String, ReadOnlySpan(Of KeyValuePair(Of String, Object)))
 - uid: FlowtideDotNet.Base.Engine.CheckFailureNotification.#ctor*
   name: CheckFailureNotification
   href: api/FlowtideDotNet.Base.Engine.CheckFailureNotification.html#FlowtideDotNet_Base_Engine_CheckFailureNotification__ctor_
@@ -614,12 +614,18 @@ references:
   fullName.vb: FlowtideDotNet.Base.Engine.CheckFailureNotification.New
   nameWithType: CheckFailureNotification.CheckFailureNotification
   nameWithType.vb: CheckFailureNotification.New
-- uid: FlowtideDotNet.Base.Engine.CheckFailureNotification.Message
-  name: Message
-  href: api/FlowtideDotNet.Base.Engine.CheckFailureNotification.html#FlowtideDotNet_Base_Engine_CheckFailureNotification_Message
-  commentId: F:FlowtideDotNet.Base.Engine.CheckFailureNotification.Message
-  fullName: FlowtideDotNet.Base.Engine.CheckFailureNotification.Message
-  nameWithType: CheckFailureNotification.Message
+- uid: FlowtideDotNet.Base.Engine.CheckFailureNotification.CheckId
+  name: CheckId
+  href: api/FlowtideDotNet.Base.Engine.CheckFailureNotification.html#FlowtideDotNet_Base_Engine_CheckFailureNotification_CheckId
+  commentId: F:FlowtideDotNet.Base.Engine.CheckFailureNotification.CheckId
+  fullName: FlowtideDotNet.Base.Engine.CheckFailureNotification.CheckId
+  nameWithType: CheckFailureNotification.CheckId
+- uid: FlowtideDotNet.Base.Engine.CheckFailureNotification.CheckName
+  name: CheckName
+  href: api/FlowtideDotNet.Base.Engine.CheckFailureNotification.html#FlowtideDotNet_Base_Engine_CheckFailureNotification_CheckName
+  commentId: F:FlowtideDotNet.Base.Engine.CheckFailureNotification.CheckName
+  fullName: FlowtideDotNet.Base.Engine.CheckFailureNotification.CheckName
+  nameWithType: CheckFailureNotification.CheckName
 - uid: FlowtideDotNet.Base.Engine.CheckFailureNotification.StreamName
   name: StreamName
   href: api/FlowtideDotNet.Base.Engine.CheckFailureNotification.html#FlowtideDotNet_Base_Engine_CheckFailureNotification_StreamName
@@ -632,6 +638,134 @@ references:
   commentId: F:FlowtideDotNet.Base.Engine.CheckFailureNotification.Tags
   fullName: FlowtideDotNet.Base.Engine.CheckFailureNotification.Tags
   nameWithType: CheckFailureNotification.Tags
+- uid: FlowtideDotNet.Base.Engine.CheckResetNotification
+  name: CheckResetNotification
+  href: api/FlowtideDotNet.Base.Engine.CheckResetNotification.html
+  commentId: T:FlowtideDotNet.Base.Engine.CheckResetNotification
+  fullName: FlowtideDotNet.Base.Engine.CheckResetNotification
+  nameWithType: CheckResetNotification
+- uid: FlowtideDotNet.Base.Engine.CheckResetNotification.#ctor(System.String@,System.String,System.String)
+  name: CheckResetNotification(ref string, string, string)
+  href: api/FlowtideDotNet.Base.Engine.CheckResetNotification.html#FlowtideDotNet_Base_Engine_CheckResetNotification__ctor_System_String__System_String_System_String_
+  commentId: M:FlowtideDotNet.Base.Engine.CheckResetNotification.#ctor(System.String@,System.String,System.String)
+  name.vb: New(String, String, String)
+  fullName: FlowtideDotNet.Base.Engine.CheckResetNotification.CheckResetNotification(ref string, string, string)
+  fullName.vb: FlowtideDotNet.Base.Engine.CheckResetNotification.New(String, String, String)
+  nameWithType: CheckResetNotification.CheckResetNotification(ref string, string, string)
+  nameWithType.vb: CheckResetNotification.New(String, String, String)
+- uid: FlowtideDotNet.Base.Engine.CheckResetNotification.#ctor*
+  name: CheckResetNotification
+  href: api/FlowtideDotNet.Base.Engine.CheckResetNotification.html#FlowtideDotNet_Base_Engine_CheckResetNotification__ctor_
+  commentId: Overload:FlowtideDotNet.Base.Engine.CheckResetNotification.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Base.Engine.CheckResetNotification.CheckResetNotification
+  fullName.vb: FlowtideDotNet.Base.Engine.CheckResetNotification.New
+  nameWithType: CheckResetNotification.CheckResetNotification
+  nameWithType.vb: CheckResetNotification.New
+- uid: FlowtideDotNet.Base.Engine.CheckResetNotification.CheckId
+  name: CheckId
+  href: api/FlowtideDotNet.Base.Engine.CheckResetNotification.html#FlowtideDotNet_Base_Engine_CheckResetNotification_CheckId
+  commentId: F:FlowtideDotNet.Base.Engine.CheckResetNotification.CheckId
+  fullName: FlowtideDotNet.Base.Engine.CheckResetNotification.CheckId
+  nameWithType: CheckResetNotification.CheckId
+- uid: FlowtideDotNet.Base.Engine.CheckResetNotification.CheckName
+  name: CheckName
+  href: api/FlowtideDotNet.Base.Engine.CheckResetNotification.html#FlowtideDotNet_Base_Engine_CheckResetNotification_CheckName
+  commentId: F:FlowtideDotNet.Base.Engine.CheckResetNotification.CheckName
+  fullName: FlowtideDotNet.Base.Engine.CheckResetNotification.CheckName
+  nameWithType: CheckResetNotification.CheckName
+- uid: FlowtideDotNet.Base.Engine.CheckResetNotification.StreamName
+  name: StreamName
+  href: api/FlowtideDotNet.Base.Engine.CheckResetNotification.html#FlowtideDotNet_Base_Engine_CheckResetNotification_StreamName
+  commentId: F:FlowtideDotNet.Base.Engine.CheckResetNotification.StreamName
+  fullName: FlowtideDotNet.Base.Engine.CheckResetNotification.StreamName
+  nameWithType: CheckResetNotification.StreamName
+- uid: FlowtideDotNet.Base.Engine.CheckState
+  name: CheckState
+  href: api/FlowtideDotNet.Base.Engine.CheckState.html
+  commentId: T:FlowtideDotNet.Base.Engine.CheckState
+  fullName: FlowtideDotNet.Base.Engine.CheckState
+  nameWithType: CheckState
+- uid: FlowtideDotNet.Base.Engine.CheckState.Failed
+  name: Failed
+  href: api/FlowtideDotNet.Base.Engine.CheckState.html#FlowtideDotNet_Base_Engine_CheckState_Failed
+  commentId: F:FlowtideDotNet.Base.Engine.CheckState.Failed
+  fullName: FlowtideDotNet.Base.Engine.CheckState.Failed
+  nameWithType: CheckState.Failed
+- uid: FlowtideDotNet.Base.Engine.CheckState.NotEvaluated
+  name: NotEvaluated
+  href: api/FlowtideDotNet.Base.Engine.CheckState.html#FlowtideDotNet_Base_Engine_CheckState_NotEvaluated
+  commentId: F:FlowtideDotNet.Base.Engine.CheckState.NotEvaluated
+  fullName: FlowtideDotNet.Base.Engine.CheckState.NotEvaluated
+  nameWithType: CheckState.NotEvaluated
+- uid: FlowtideDotNet.Base.Engine.CheckState.Passed
+  name: Passed
+  href: api/FlowtideDotNet.Base.Engine.CheckState.html#FlowtideDotNet_Base_Engine_CheckState_Passed
+  commentId: F:FlowtideDotNet.Base.Engine.CheckState.Passed
+  fullName: FlowtideDotNet.Base.Engine.CheckState.Passed
+  nameWithType: CheckState.Passed
+- uid: FlowtideDotNet.Base.Engine.CheckStatusNotification
+  name: CheckStatusNotification
+  href: api/FlowtideDotNet.Base.Engine.CheckStatusNotification.html
+  commentId: T:FlowtideDotNet.Base.Engine.CheckStatusNotification
+  fullName: FlowtideDotNet.Base.Engine.CheckStatusNotification
+  nameWithType: CheckStatusNotification
+- uid: FlowtideDotNet.Base.Engine.CheckStatusNotification.#ctor(System.String@,System.String,System.String,FlowtideDotNet.Base.Engine.CheckState,System.Int64,System.Int64)
+  name: CheckStatusNotification(ref string, string, string, CheckState, long, long)
+  href: api/FlowtideDotNet.Base.Engine.CheckStatusNotification.html#FlowtideDotNet_Base_Engine_CheckStatusNotification__ctor_System_String__System_String_System_String_FlowtideDotNet_Base_Engine_CheckState_System_Int64_System_Int64_
+  commentId: M:FlowtideDotNet.Base.Engine.CheckStatusNotification.#ctor(System.String@,System.String,System.String,FlowtideDotNet.Base.Engine.CheckState,System.Int64,System.Int64)
+  name.vb: New(String, String, String, CheckState, Long, Long)
+  fullName: FlowtideDotNet.Base.Engine.CheckStatusNotification.CheckStatusNotification(ref string, string, string, FlowtideDotNet.Base.Engine.CheckState, long, long)
+  fullName.vb: FlowtideDotNet.Base.Engine.CheckStatusNotification.New(String, String, String, FlowtideDotNet.Base.Engine.CheckState, Long, Long)
+  nameWithType: CheckStatusNotification.CheckStatusNotification(ref string, string, string, CheckState, long, long)
+  nameWithType.vb: CheckStatusNotification.New(String, String, String, CheckState, Long, Long)
+- uid: FlowtideDotNet.Base.Engine.CheckStatusNotification.#ctor*
+  name: CheckStatusNotification
+  href: api/FlowtideDotNet.Base.Engine.CheckStatusNotification.html#FlowtideDotNet_Base_Engine_CheckStatusNotification__ctor_
+  commentId: Overload:FlowtideDotNet.Base.Engine.CheckStatusNotification.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Base.Engine.CheckStatusNotification.CheckStatusNotification
+  fullName.vb: FlowtideDotNet.Base.Engine.CheckStatusNotification.New
+  nameWithType: CheckStatusNotification.CheckStatusNotification
+  nameWithType.vb: CheckStatusNotification.New
+- uid: FlowtideDotNet.Base.Engine.CheckStatusNotification.ActiveIssues
+  name: ActiveIssues
+  href: api/FlowtideDotNet.Base.Engine.CheckStatusNotification.html#FlowtideDotNet_Base_Engine_CheckStatusNotification_ActiveIssues
+  commentId: F:FlowtideDotNet.Base.Engine.CheckStatusNotification.ActiveIssues
+  fullName: FlowtideDotNet.Base.Engine.CheckStatusNotification.ActiveIssues
+  nameWithType: CheckStatusNotification.ActiveIssues
+- uid: FlowtideDotNet.Base.Engine.CheckStatusNotification.CheckId
+  name: CheckId
+  href: api/FlowtideDotNet.Base.Engine.CheckStatusNotification.html#FlowtideDotNet_Base_Engine_CheckStatusNotification_CheckId
+  commentId: F:FlowtideDotNet.Base.Engine.CheckStatusNotification.CheckId
+  fullName: FlowtideDotNet.Base.Engine.CheckStatusNotification.CheckId
+  nameWithType: CheckStatusNotification.CheckId
+- uid: FlowtideDotNet.Base.Engine.CheckStatusNotification.CheckName
+  name: CheckName
+  href: api/FlowtideDotNet.Base.Engine.CheckStatusNotification.html#FlowtideDotNet_Base_Engine_CheckStatusNotification_CheckName
+  commentId: F:FlowtideDotNet.Base.Engine.CheckStatusNotification.CheckName
+  fullName: FlowtideDotNet.Base.Engine.CheckStatusNotification.CheckName
+  nameWithType: CheckStatusNotification.CheckName
+- uid: FlowtideDotNet.Base.Engine.CheckStatusNotification.FailingRows
+  name: FailingRows
+  href: api/FlowtideDotNet.Base.Engine.CheckStatusNotification.html#FlowtideDotNet_Base_Engine_CheckStatusNotification_FailingRows
+  commentId: F:FlowtideDotNet.Base.Engine.CheckStatusNotification.FailingRows
+  fullName: FlowtideDotNet.Base.Engine.CheckStatusNotification.FailingRows
+  nameWithType: CheckStatusNotification.FailingRows
+- uid: FlowtideDotNet.Base.Engine.CheckStatusNotification.State
+  name: State
+  href: api/FlowtideDotNet.Base.Engine.CheckStatusNotification.html#FlowtideDotNet_Base_Engine_CheckStatusNotification_State
+  commentId: F:FlowtideDotNet.Base.Engine.CheckStatusNotification.State
+  fullName: FlowtideDotNet.Base.Engine.CheckStatusNotification.State
+  nameWithType: CheckStatusNotification.State
+- uid: FlowtideDotNet.Base.Engine.CheckStatusNotification.StreamName
+  name: StreamName
+  href: api/FlowtideDotNet.Base.Engine.CheckStatusNotification.html#FlowtideDotNet_Base_Engine_CheckStatusNotification_StreamName
+  commentId: F:FlowtideDotNet.Base.Engine.CheckStatusNotification.StreamName
+  fullName: FlowtideDotNet.Base.Engine.CheckStatusNotification.StreamName
+  nameWithType: CheckStatusNotification.StreamName
 - uid: FlowtideDotNet.Base.Engine.DataflowStream
   name: DataflowStream
   href: api/FlowtideDotNet.Base.Engine.DataflowStream.html
@@ -913,6 +1047,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckFailureListener
   nameWithType: DataflowStreamBuilder.AddCheckFailureListener
+- uid: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckStatusListener(FlowtideDotNet.Base.Engine.ICheckStatusListener)
+  name: AddCheckStatusListener(ICheckStatusListener)
+  href: api/FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckStatusListener_FlowtideDotNet_Base_Engine_ICheckStatusListener_
+  commentId: M:FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckStatusListener(FlowtideDotNet.Base.Engine.ICheckStatusListener)
+  fullName: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckStatusListener(FlowtideDotNet.Base.Engine.ICheckStatusListener)
+  nameWithType: DataflowStreamBuilder.AddCheckStatusListener(ICheckStatusListener)
+- uid: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckStatusListener*
+  name: AddCheckStatusListener
+  href: api/FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckStatusListener_
+  commentId: Overload:FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckStatusListener
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckStatusListener
+  nameWithType: DataflowStreamBuilder.AddCheckStatusListener
 - uid: FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckpointListener(FlowtideDotNet.Base.Engine.ICheckpointListener)
   name: AddCheckpointListener(ICheckpointListener)
   href: api/FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckpointListener_FlowtideDotNet_Base_Engine_ICheckpointListener_
@@ -1289,28 +1436,60 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckFailure
   nameWithType: ICheckFailureListener.OnCheckFailure
-- uid: FlowtideDotNet.Base.Engine.ICheckNotificationReceiver
-  name: ICheckNotificationReceiver
-  href: api/FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.html
-  commentId: T:FlowtideDotNet.Base.Engine.ICheckNotificationReceiver
-  fullName: FlowtideDotNet.Base.Engine.ICheckNotificationReceiver
-  nameWithType: ICheckNotificationReceiver
-- uid: FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.OnCheckFailure(System.String@,System.ReadOnlySpan{System.Collections.Generic.KeyValuePair{System.String,System.Object}})
-  name: OnCheckFailure(in string, ReadOnlySpan<KeyValuePair<string, object?>>)
-  href: api/FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.html#FlowtideDotNet_Base_Engine_ICheckNotificationReceiver_OnCheckFailure_System_String__System_ReadOnlySpan_System_Collections_Generic_KeyValuePair_System_String_System_Object___
-  commentId: M:FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.OnCheckFailure(System.String@,System.ReadOnlySpan{System.Collections.Generic.KeyValuePair{System.String,System.Object}})
-  name.vb: OnCheckFailure(String, ReadOnlySpan(Of KeyValuePair(Of String, Object)))
-  fullName: FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.OnCheckFailure(in string, System.ReadOnlySpan<System.Collections.Generic.KeyValuePair<string, object?>>)
-  fullName.vb: FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.OnCheckFailure(String, System.ReadOnlySpan(Of System.Collections.Generic.KeyValuePair(Of String, Object)))
-  nameWithType: ICheckNotificationReceiver.OnCheckFailure(in string, ReadOnlySpan<KeyValuePair<string, object?>>)
-  nameWithType.vb: ICheckNotificationReceiver.OnCheckFailure(String, ReadOnlySpan(Of KeyValuePair(Of String, Object)))
-- uid: FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.OnCheckFailure*
-  name: OnCheckFailure
-  href: api/FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.html#FlowtideDotNet_Base_Engine_ICheckNotificationReceiver_OnCheckFailure_
-  commentId: Overload:FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.OnCheckFailure
+- uid: FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckReset(FlowtideDotNet.Base.Engine.CheckResetNotification@)
+  name: OnCheckReset(ref readonly CheckResetNotification)
+  href: api/FlowtideDotNet.Base.Engine.ICheckFailureListener.html#FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckReset_FlowtideDotNet_Base_Engine_CheckResetNotification__
+  commentId: M:FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckReset(FlowtideDotNet.Base.Engine.CheckResetNotification@)
+  name.vb: OnCheckReset(CheckResetNotification)
+  fullName: FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckReset(ref readonly FlowtideDotNet.Base.Engine.CheckResetNotification)
+  fullName.vb: FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckReset(FlowtideDotNet.Base.Engine.CheckResetNotification)
+  nameWithType: ICheckFailureListener.OnCheckReset(ref readonly CheckResetNotification)
+  nameWithType.vb: ICheckFailureListener.OnCheckReset(CheckResetNotification)
+- uid: FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckReset*
+  name: OnCheckReset
+  href: api/FlowtideDotNet.Base.Engine.ICheckFailureListener.html#FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckReset_
+  commentId: Overload:FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckReset
   isSpec: "True"
-  fullName: FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.OnCheckFailure
-  nameWithType: ICheckNotificationReceiver.OnCheckFailure
+  fullName: FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckReset
+  nameWithType: ICheckFailureListener.OnCheckReset
+- uid: FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckResolved(FlowtideDotNet.Base.Engine.CheckFailureNotification@)
+  name: OnCheckResolved(ref readonly CheckFailureNotification)
+  href: api/FlowtideDotNet.Base.Engine.ICheckFailureListener.html#FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckResolved_FlowtideDotNet_Base_Engine_CheckFailureNotification__
+  commentId: M:FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckResolved(FlowtideDotNet.Base.Engine.CheckFailureNotification@)
+  name.vb: OnCheckResolved(CheckFailureNotification)
+  fullName: FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckResolved(ref readonly FlowtideDotNet.Base.Engine.CheckFailureNotification)
+  fullName.vb: FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckResolved(FlowtideDotNet.Base.Engine.CheckFailureNotification)
+  nameWithType: ICheckFailureListener.OnCheckResolved(ref readonly CheckFailureNotification)
+  nameWithType.vb: ICheckFailureListener.OnCheckResolved(CheckFailureNotification)
+- uid: FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckResolved*
+  name: OnCheckResolved
+  href: api/FlowtideDotNet.Base.Engine.ICheckFailureListener.html#FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckResolved_
+  commentId: Overload:FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckResolved
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckResolved
+  nameWithType: ICheckFailureListener.OnCheckResolved
+- uid: FlowtideDotNet.Base.Engine.ICheckStatusListener
+  name: ICheckStatusListener
+  href: api/FlowtideDotNet.Base.Engine.ICheckStatusListener.html
+  commentId: T:FlowtideDotNet.Base.Engine.ICheckStatusListener
+  fullName: FlowtideDotNet.Base.Engine.ICheckStatusListener
+  nameWithType: ICheckStatusListener
+- uid: FlowtideDotNet.Base.Engine.ICheckStatusListener.OnCheckStatus(FlowtideDotNet.Base.Engine.CheckStatusNotification@)
+  name: OnCheckStatus(ref readonly CheckStatusNotification)
+  href: api/FlowtideDotNet.Base.Engine.ICheckStatusListener.html#FlowtideDotNet_Base_Engine_ICheckStatusListener_OnCheckStatus_FlowtideDotNet_Base_Engine_CheckStatusNotification__
+  commentId: M:FlowtideDotNet.Base.Engine.ICheckStatusListener.OnCheckStatus(FlowtideDotNet.Base.Engine.CheckStatusNotification@)
+  name.vb: OnCheckStatus(CheckStatusNotification)
+  fullName: FlowtideDotNet.Base.Engine.ICheckStatusListener.OnCheckStatus(ref readonly FlowtideDotNet.Base.Engine.CheckStatusNotification)
+  fullName.vb: FlowtideDotNet.Base.Engine.ICheckStatusListener.OnCheckStatus(FlowtideDotNet.Base.Engine.CheckStatusNotification)
+  nameWithType: ICheckStatusListener.OnCheckStatus(ref readonly CheckStatusNotification)
+  nameWithType.vb: ICheckStatusListener.OnCheckStatus(CheckStatusNotification)
+- uid: FlowtideDotNet.Base.Engine.ICheckStatusListener.OnCheckStatus*
+  name: OnCheckStatus
+  href: api/FlowtideDotNet.Base.Engine.ICheckStatusListener.html#FlowtideDotNet_Base_Engine_ICheckStatusListener_OnCheckStatus_
+  commentId: Overload:FlowtideDotNet.Base.Engine.ICheckStatusListener.OnCheckStatus
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Engine.ICheckStatusListener.OnCheckStatus
+  nameWithType: ICheckStatusListener.OnCheckStatus
 - uid: FlowtideDotNet.Base.Engine.ICheckpointListener
   name: ICheckpointListener
   href: api/FlowtideDotNet.Base.Engine.ICheckpointListener.html
@@ -28843,51 +29022,12 @@ references:
   commentId: T:FlowtideDotNet.Core.Compute.FunctionServices
   fullName: FlowtideDotNet.Core.Compute.FunctionServices
   nameWithType: FunctionServices
-- uid: FlowtideDotNet.Core.Compute.FunctionServices.CheckNotificationReceiver
-  name: CheckNotificationReceiver
-  href: api/FlowtideDotNet.Core.Compute.FunctionServices.html#FlowtideDotNet_Core_Compute_FunctionServices_CheckNotificationReceiver
-  commentId: P:FlowtideDotNet.Core.Compute.FunctionServices.CheckNotificationReceiver
-  fullName: FlowtideDotNet.Core.Compute.FunctionServices.CheckNotificationReceiver
-  nameWithType: FunctionServices.CheckNotificationReceiver
-- uid: FlowtideDotNet.Core.Compute.FunctionServices.CheckNotificationReceiver*
-  name: CheckNotificationReceiver
-  href: api/FlowtideDotNet.Core.Compute.FunctionServices.html#FlowtideDotNet_Core_Compute_FunctionServices_CheckNotificationReceiver_
-  commentId: Overload:FlowtideDotNet.Core.Compute.FunctionServices.CheckNotificationReceiver
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Compute.FunctionServices.CheckNotificationReceiver
-  nameWithType: FunctionServices.CheckNotificationReceiver
-- uid: FlowtideDotNet.Core.Compute.FunctionServices.SetCheckNotificationReceiver(FlowtideDotNet.Base.Engine.ICheckNotificationReceiver)
-  name: SetCheckNotificationReceiver(ICheckNotificationReceiver)
-  href: api/FlowtideDotNet.Core.Compute.FunctionServices.html#FlowtideDotNet_Core_Compute_FunctionServices_SetCheckNotificationReceiver_FlowtideDotNet_Base_Engine_ICheckNotificationReceiver_
-  commentId: M:FlowtideDotNet.Core.Compute.FunctionServices.SetCheckNotificationReceiver(FlowtideDotNet.Base.Engine.ICheckNotificationReceiver)
-  fullName: FlowtideDotNet.Core.Compute.FunctionServices.SetCheckNotificationReceiver(FlowtideDotNet.Base.Engine.ICheckNotificationReceiver)
-  nameWithType: FunctionServices.SetCheckNotificationReceiver(ICheckNotificationReceiver)
-- uid: FlowtideDotNet.Core.Compute.FunctionServices.SetCheckNotificationReceiver*
-  name: SetCheckNotificationReceiver
-  href: api/FlowtideDotNet.Core.Compute.FunctionServices.html#FlowtideDotNet_Core_Compute_FunctionServices_SetCheckNotificationReceiver_
-  commentId: Overload:FlowtideDotNet.Core.Compute.FunctionServices.SetCheckNotificationReceiver
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Compute.FunctionServices.SetCheckNotificationReceiver
-  nameWithType: FunctionServices.SetCheckNotificationReceiver
 - uid: FlowtideDotNet.Core.Compute.IFunctionServices
   name: IFunctionServices
   href: api/FlowtideDotNet.Core.Compute.IFunctionServices.html
   commentId: T:FlowtideDotNet.Core.Compute.IFunctionServices
   fullName: FlowtideDotNet.Core.Compute.IFunctionServices
   nameWithType: IFunctionServices
-- uid: FlowtideDotNet.Core.Compute.IFunctionServices.CheckNotificationReceiver
-  name: CheckNotificationReceiver
-  href: api/FlowtideDotNet.Core.Compute.IFunctionServices.html#FlowtideDotNet_Core_Compute_IFunctionServices_CheckNotificationReceiver
-  commentId: P:FlowtideDotNet.Core.Compute.IFunctionServices.CheckNotificationReceiver
-  fullName: FlowtideDotNet.Core.Compute.IFunctionServices.CheckNotificationReceiver
-  nameWithType: IFunctionServices.CheckNotificationReceiver
-- uid: FlowtideDotNet.Core.Compute.IFunctionServices.CheckNotificationReceiver*
-  name: CheckNotificationReceiver
-  href: api/FlowtideDotNet.Core.Compute.IFunctionServices.html#FlowtideDotNet_Core_Compute_IFunctionServices_CheckNotificationReceiver_
-  commentId: Overload:FlowtideDotNet.Core.Compute.IFunctionServices.CheckNotificationReceiver
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Compute.IFunctionServices.CheckNotificationReceiver
-  nameWithType: IFunctionServices.CheckNotificationReceiver
 - uid: FlowtideDotNet.Core.Compute.IFunctionsRegister
   name: IFunctionsRegister
   href: api/FlowtideDotNet.Core.Compute.IFunctionsRegister.html
@@ -30758,6 +30898,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckLogger
   nameWithType: FlowtideBuilder.WithCheckLogger
+- uid: FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckStatusListener(FlowtideDotNet.Base.Engine.ICheckStatusListener)
+  name: WithCheckStatusListener(ICheckStatusListener)
+  href: api/FlowtideDotNet.Core.Engine.FlowtideBuilder.html#FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckStatusListener_FlowtideDotNet_Base_Engine_ICheckStatusListener_
+  commentId: M:FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckStatusListener(FlowtideDotNet.Base.Engine.ICheckStatusListener)
+  fullName: FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckStatusListener(FlowtideDotNet.Base.Engine.ICheckStatusListener)
+  nameWithType: FlowtideBuilder.WithCheckStatusListener(ICheckStatusListener)
+- uid: FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckStatusListener*
+  name: WithCheckStatusListener
+  href: api/FlowtideDotNet.Core.Engine.FlowtideBuilder.html#FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckStatusListener_
+  commentId: Overload:FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckStatusListener
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckStatusListener
+  nameWithType: FlowtideBuilder.WithCheckStatusListener
 - uid: FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckpointListener(FlowtideDotNet.Base.Engine.ICheckpointListener)
   name: WithCheckpointListener(ICheckpointListener)
   href: api/FlowtideDotNet.Core.Engine.FlowtideBuilder.html#FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckpointListener_FlowtideDotNet_Base_Engine_ICheckpointListener_
@@ -52271,6 +52424,877 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.CustomProtobuf.BufferRelation.WriteTo
   nameWithType: BufferRelation.WriteTo
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation
+  name: CheckRelation
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html
+  commentId: T:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation
+  nameWithType: CheckRelation
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.#ctor
+  name: CheckRelation()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation__ctor
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.#ctor
+  name.vb: New()
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.CheckRelation()
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.New()
+  nameWithType: CheckRelation.CheckRelation()
+  nameWithType.vb: CheckRelation.New()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation)
+  name: CheckRelation(CheckRelation)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation__ctor_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation)
+  name.vb: New(CheckRelation)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.CheckRelation(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.New(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation)
+  nameWithType: CheckRelation.CheckRelation(CheckRelation)
+  nameWithType.vb: CheckRelation.New(CheckRelation)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.#ctor*
+  name: CheckRelation
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation__ctor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.CheckRelation
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.New
+  nameWithType: CheckRelation.CheckRelation
+  nameWithType.vb: CheckRelation.New
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.CalculateSize
+  name: CalculateSize()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_CalculateSize
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.CalculateSize
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.CalculateSize()
+  nameWithType: CheckRelation.CalculateSize()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.CalculateSize*
+  name: CalculateSize
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_CalculateSize_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.CalculateSize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.CalculateSize
+  nameWithType: CheckRelation.CalculateSize
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Checks
+  name: Checks
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Checks
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Checks
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Checks
+  nameWithType: CheckRelation.Checks
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Checks*
+  name: Checks
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Checks_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Checks
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Checks
+  nameWithType: CheckRelation.Checks
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.ChecksFieldNumber
+  name: ChecksFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_ChecksFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.ChecksFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.ChecksFieldNumber
+  nameWithType: CheckRelation.ChecksFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Clone
+  name: Clone()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Clone
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Clone
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Clone()
+  nameWithType: CheckRelation.Clone()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Clone*
+  name: Clone
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Clone_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Clone
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Clone
+  nameWithType: CheckRelation.Clone
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Descriptor
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Descriptor
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Descriptor
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Descriptor
+  nameWithType: CheckRelation.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Descriptor*
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Descriptor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Descriptor
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Descriptor
+  nameWithType: CheckRelation.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation)
+  name: Equals(CheckRelation)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Equals_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation)
+  nameWithType: CheckRelation.Equals(CheckRelation)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Equals(System.Object)
+  name: Equals(object)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Equals(object)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Equals(Object)
+  nameWithType: CheckRelation.Equals(object)
+  nameWithType.vb: CheckRelation.Equals(Object)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Equals
+  nameWithType: CheckRelation.Equals
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.GetHashCode
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.GetHashCode()
+  nameWithType: CheckRelation.GetHashCode()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.GetHashCode
+  nameWithType: CheckRelation.GetHashCode
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation)
+  name: MergeFrom(CheckRelation)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_MergeFrom_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation)
+  nameWithType: CheckRelation.MergeFrom(CheckRelation)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.MergeFrom(Google.Protobuf.CodedInputStream)
+  name: MergeFrom(CodedInputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_MergeFrom_Google_Protobuf_CodedInputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.MergeFrom(Google.Protobuf.CodedInputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.MergeFrom(Google.Protobuf.CodedInputStream)
+  nameWithType: CheckRelation.MergeFrom(CodedInputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.MergeFrom*
+  name: MergeFrom
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_MergeFrom_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.MergeFrom
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.MergeFrom
+  nameWithType: CheckRelation.MergeFrom
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Parser
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Parser
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Parser
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Parser
+  nameWithType: CheckRelation.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Parser*
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Parser_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Parser
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Parser
+  nameWithType: CheckRelation.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.ToString
+  name: ToString()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_ToString
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.ToString
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.ToString()
+  nameWithType: CheckRelation.ToString()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.ToString*
+  name: ToString
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_ToString_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.ToString
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.ToString
+  nameWithType: CheckRelation.ToString
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types
+  name: CheckRelation.Types
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.html
+  commentId: T:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types
+  nameWithType: CheckRelation.Types
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check
+  name: CheckRelation.Types.Check
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html
+  commentId: T:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check
+  nameWithType: CheckRelation.Types.Check
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.#ctor
+  name: Check()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check__ctor
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.#ctor
+  name.vb: New()
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Check()
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.New()
+  nameWithType: CheckRelation.Types.Check.Check()
+  nameWithType.vb: CheckRelation.Types.Check.New()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check)
+  name: Check(Check)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check__ctor_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check)
+  name.vb: New(Check)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Check(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.New(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check)
+  nameWithType: CheckRelation.Types.Check.Check(CheckRelation.Types.Check)
+  nameWithType.vb: CheckRelation.Types.Check.New(CheckRelation.Types.Check)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.#ctor*
+  name: Check
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check__ctor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Check
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.New
+  nameWithType: CheckRelation.Types.Check.Check
+  nameWithType.vb: CheckRelation.Types.Check.New
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.CalculateSize
+  name: CalculateSize()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_CalculateSize
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.CalculateSize
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.CalculateSize()
+  nameWithType: CheckRelation.Types.Check.CalculateSize()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.CalculateSize*
+  name: CalculateSize
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_CalculateSize_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.CalculateSize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.CalculateSize
+  nameWithType: CheckRelation.Types.Check.CalculateSize
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Clone
+  name: Clone()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Clone
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Clone
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Clone()
+  nameWithType: CheckRelation.Types.Check.Clone()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Clone*
+  name: Clone
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Clone_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Clone
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Clone
+  nameWithType: CheckRelation.Types.Check.Clone
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Condition
+  name: Condition
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Condition
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Condition
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Condition
+  nameWithType: CheckRelation.Types.Check.Condition
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Condition*
+  name: Condition
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Condition_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Condition
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Condition
+  nameWithType: CheckRelation.Types.Check.Condition
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.ConditionFieldNumber
+  name: ConditionFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_ConditionFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.ConditionFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.ConditionFieldNumber
+  nameWithType: CheckRelation.Types.Check.ConditionFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Descriptor
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Descriptor
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Descriptor
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Descriptor
+  nameWithType: CheckRelation.Types.Check.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Descriptor*
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Descriptor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Descriptor
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Descriptor
+  nameWithType: CheckRelation.Types.Check.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check)
+  name: Equals(Check)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Equals_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check)
+  nameWithType: CheckRelation.Types.Check.Equals(CheckRelation.Types.Check)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Equals(System.Object)
+  name: Equals(object)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Equals(object)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Equals(Object)
+  nameWithType: CheckRelation.Types.Check.Equals(object)
+  nameWithType.vb: CheckRelation.Types.Check.Equals(Object)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Equals
+  nameWithType: CheckRelation.Types.Check.Equals
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.GetHashCode
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.GetHashCode()
+  nameWithType: CheckRelation.Types.Check.GetHashCode()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.GetHashCode
+  nameWithType: CheckRelation.Types.Check.GetHashCode
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Guards
+  name: Guards
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Guards
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Guards
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Guards
+  nameWithType: CheckRelation.Types.Check.Guards
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Guards*
+  name: Guards
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Guards_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Guards
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Guards
+  nameWithType: CheckRelation.Types.Check.Guards
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.GuardsFieldNumber
+  name: GuardsFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_GuardsFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.GuardsFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.GuardsFieldNumber
+  nameWithType: CheckRelation.Types.Check.GuardsFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check)
+  name: MergeFrom(Check)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_MergeFrom_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check)
+  nameWithType: CheckRelation.Types.Check.MergeFrom(CheckRelation.Types.Check)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MergeFrom(Google.Protobuf.CodedInputStream)
+  name: MergeFrom(CodedInputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_MergeFrom_Google_Protobuf_CodedInputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MergeFrom(Google.Protobuf.CodedInputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MergeFrom(Google.Protobuf.CodedInputStream)
+  nameWithType: CheckRelation.Types.Check.MergeFrom(CodedInputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MergeFrom*
+  name: MergeFrom
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_MergeFrom_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MergeFrom
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MergeFrom
+  nameWithType: CheckRelation.Types.Check.MergeFrom
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Message
+  name: Message
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Message
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Message
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Message
+  nameWithType: CheckRelation.Types.Check.Message
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Message*
+  name: Message
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Message_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Message
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Message
+  nameWithType: CheckRelation.Types.Check.Message
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MessageFieldNumber
+  name: MessageFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_MessageFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MessageFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.MessageFieldNumber
+  nameWithType: CheckRelation.Types.Check.MessageFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Parser
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Parser
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Parser
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Parser
+  nameWithType: CheckRelation.Types.Check.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Parser*
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Parser_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Parser
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Parser
+  nameWithType: CheckRelation.Types.Check.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Tags
+  name: Tags
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Tags
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Tags
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Tags
+  nameWithType: CheckRelation.Types.Check.Tags
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Tags*
+  name: Tags
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_Tags_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Tags
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.Tags
+  nameWithType: CheckRelation.Types.Check.Tags
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.TagsFieldNumber
+  name: TagsFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_TagsFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.TagsFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.TagsFieldNumber
+  nameWithType: CheckRelation.Types.Check.TagsFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.ToString
+  name: ToString()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_ToString
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.ToString
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.ToString()
+  nameWithType: CheckRelation.Types.Check.ToString()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.ToString*
+  name: ToString
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_ToString_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.ToString
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.ToString
+  nameWithType: CheckRelation.Types.Check.ToString
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.WriteTo(Google.Protobuf.CodedOutputStream)
+  name: WriteTo(CodedOutputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_WriteTo_Google_Protobuf_CodedOutputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.WriteTo(Google.Protobuf.CodedOutputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.WriteTo(Google.Protobuf.CodedOutputStream)
+  nameWithType: CheckRelation.Types.Check.WriteTo(CodedOutputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.WriteTo*
+  name: WriteTo
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Check_WriteTo_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.WriteTo
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.WriteTo
+  nameWithType: CheckRelation.Types.Check.WriteTo
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard
+  name: CheckRelation.Types.Guard
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html
+  commentId: T:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard
+  nameWithType: CheckRelation.Types.Guard
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.#ctor
+  name: Guard()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard__ctor
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.#ctor
+  name.vb: New()
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Guard()
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.New()
+  nameWithType: CheckRelation.Types.Guard.Guard()
+  nameWithType.vb: CheckRelation.Types.Guard.New()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard)
+  name: Guard(Guard)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard__ctor_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard)
+  name.vb: New(Guard)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Guard(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.New(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard)
+  nameWithType: CheckRelation.Types.Guard.Guard(CheckRelation.Types.Guard)
+  nameWithType.vb: CheckRelation.Types.Guard.New(CheckRelation.Types.Guard)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.#ctor*
+  name: Guard
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard__ctor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Guard
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.New
+  nameWithType: CheckRelation.Types.Guard.Guard
+  nameWithType.vb: CheckRelation.Types.Guard.New
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.CalculateSize
+  name: CalculateSize()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_CalculateSize
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.CalculateSize
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.CalculateSize()
+  nameWithType: CheckRelation.Types.Guard.CalculateSize()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.CalculateSize*
+  name: CalculateSize
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_CalculateSize_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.CalculateSize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.CalculateSize
+  nameWithType: CheckRelation.Types.Guard.CalculateSize
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Clone
+  name: Clone()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Clone
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Clone
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Clone()
+  nameWithType: CheckRelation.Types.Guard.Clone()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Clone*
+  name: Clone
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Clone_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Clone
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Clone
+  nameWithType: CheckRelation.Types.Guard.Clone
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Descriptor
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Descriptor
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Descriptor
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Descriptor
+  nameWithType: CheckRelation.Types.Guard.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Descriptor*
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Descriptor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Descriptor
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Descriptor
+  nameWithType: CheckRelation.Types.Guard.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard)
+  name: Equals(Guard)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Equals_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard)
+  nameWithType: CheckRelation.Types.Guard.Equals(CheckRelation.Types.Guard)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Equals(System.Object)
+  name: Equals(object)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Equals(object)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Equals(Object)
+  nameWithType: CheckRelation.Types.Guard.Equals(object)
+  nameWithType.vb: CheckRelation.Types.Guard.Equals(Object)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Equals
+  nameWithType: CheckRelation.Types.Guard.Equals
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Expression
+  name: Expression
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Expression
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Expression
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Expression
+  nameWithType: CheckRelation.Types.Guard.Expression
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Expression*
+  name: Expression
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Expression_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Expression
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Expression
+  nameWithType: CheckRelation.Types.Guard.Expression
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.ExpressionFieldNumber
+  name: ExpressionFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_ExpressionFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.ExpressionFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.ExpressionFieldNumber
+  nameWithType: CheckRelation.Types.Guard.ExpressionFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.GetHashCode
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.GetHashCode()
+  nameWithType: CheckRelation.Types.Guard.GetHashCode()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.GetHashCode
+  nameWithType: CheckRelation.Types.Guard.GetHashCode
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Kind
+  name: Kind
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Kind
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Kind
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Kind
+  nameWithType: CheckRelation.Types.Guard.Kind
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Kind*
+  name: Kind
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Kind_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Kind
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Kind
+  nameWithType: CheckRelation.Types.Guard.Kind
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.KindFieldNumber
+  name: KindFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_KindFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.KindFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.KindFieldNumber
+  nameWithType: CheckRelation.Types.Guard.KindFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard)
+  name: MergeFrom(Guard)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_MergeFrom_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard)
+  nameWithType: CheckRelation.Types.Guard.MergeFrom(CheckRelation.Types.Guard)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.MergeFrom(Google.Protobuf.CodedInputStream)
+  name: MergeFrom(CodedInputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_MergeFrom_Google_Protobuf_CodedInputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.MergeFrom(Google.Protobuf.CodedInputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.MergeFrom(Google.Protobuf.CodedInputStream)
+  nameWithType: CheckRelation.Types.Guard.MergeFrom(CodedInputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.MergeFrom*
+  name: MergeFrom
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_MergeFrom_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.MergeFrom
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.MergeFrom
+  nameWithType: CheckRelation.Types.Guard.MergeFrom
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Parser
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Parser
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Parser
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Parser
+  nameWithType: CheckRelation.Types.Guard.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Parser*
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Parser_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Parser
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Parser
+  nameWithType: CheckRelation.Types.Guard.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.ToString
+  name: ToString()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_ToString
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.ToString
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.ToString()
+  nameWithType: CheckRelation.Types.Guard.ToString()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.ToString*
+  name: ToString
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_ToString_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.ToString
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.ToString
+  nameWithType: CheckRelation.Types.Guard.ToString
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types
+  name: CheckRelation.Types.Guard.Types
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.html
+  commentId: T:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types
+  nameWithType: CheckRelation.Types.Guard.Types
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind
+  name: CheckRelation.Types.Guard.Types.Kind
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.html
+  commentId: T:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind
+  nameWithType: CheckRelation.Types.Guard.Types.Kind
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNotTrue
+  name: IsNotTrue
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Types_Kind_IsNotTrue
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNotTrue
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNotTrue
+  nameWithType: CheckRelation.Types.Guard.Types.Kind.IsNotTrue
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNull
+  name: IsNull
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Types_Kind_IsNull
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNull
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNull
+  nameWithType: CheckRelation.Types.Guard.Types.Kind.IsNull
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsTrue
+  name: IsTrue
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_Types_Kind_IsTrue
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsTrue
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsTrue
+  nameWithType: CheckRelation.Types.Guard.Types.Kind.IsTrue
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.WriteTo(Google.Protobuf.CodedOutputStream)
+  name: WriteTo(CodedOutputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_WriteTo_Google_Protobuf_CodedOutputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.WriteTo(Google.Protobuf.CodedOutputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.WriteTo(Google.Protobuf.CodedOutputStream)
+  nameWithType: CheckRelation.Types.Guard.WriteTo(CodedOutputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.WriteTo*
+  name: WriteTo
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Guard_WriteTo_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.WriteTo
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.WriteTo
+  nameWithType: CheckRelation.Types.Guard.WriteTo
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag
+  name: CheckRelation.Types.Tag
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html
+  commentId: T:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag
+  nameWithType: CheckRelation.Types.Tag
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.#ctor
+  name: Tag()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag__ctor
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.#ctor
+  name.vb: New()
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Tag()
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.New()
+  nameWithType: CheckRelation.Types.Tag.Tag()
+  nameWithType.vb: CheckRelation.Types.Tag.New()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag)
+  name: Tag(Tag)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag__ctor_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag)
+  name.vb: New(Tag)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Tag(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.New(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag)
+  nameWithType: CheckRelation.Types.Tag.Tag(CheckRelation.Types.Tag)
+  nameWithType.vb: CheckRelation.Types.Tag.New(CheckRelation.Types.Tag)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.#ctor*
+  name: Tag
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag__ctor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Tag
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.New
+  nameWithType: CheckRelation.Types.Tag.Tag
+  nameWithType.vb: CheckRelation.Types.Tag.New
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.CalculateSize
+  name: CalculateSize()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_CalculateSize
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.CalculateSize
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.CalculateSize()
+  nameWithType: CheckRelation.Types.Tag.CalculateSize()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.CalculateSize*
+  name: CalculateSize
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_CalculateSize_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.CalculateSize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.CalculateSize
+  nameWithType: CheckRelation.Types.Tag.CalculateSize
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Clone
+  name: Clone()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Clone
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Clone
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Clone()
+  nameWithType: CheckRelation.Types.Tag.Clone()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Clone*
+  name: Clone
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Clone_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Clone
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Clone
+  nameWithType: CheckRelation.Types.Tag.Clone
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Descriptor
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Descriptor
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Descriptor
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Descriptor
+  nameWithType: CheckRelation.Types.Tag.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Descriptor*
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Descriptor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Descriptor
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Descriptor
+  nameWithType: CheckRelation.Types.Tag.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag)
+  name: Equals(Tag)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Equals_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Equals(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag)
+  nameWithType: CheckRelation.Types.Tag.Equals(CheckRelation.Types.Tag)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Equals(System.Object)
+  name: Equals(object)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Equals(object)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Equals(Object)
+  nameWithType: CheckRelation.Types.Tag.Equals(object)
+  nameWithType.vb: CheckRelation.Types.Tag.Equals(Object)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Equals
+  nameWithType: CheckRelation.Types.Tag.Equals
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.GetHashCode
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.GetHashCode()
+  nameWithType: CheckRelation.Types.Tag.GetHashCode()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.GetHashCode
+  nameWithType: CheckRelation.Types.Tag.GetHashCode
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Key
+  name: Key
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Key
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Key
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Key
+  nameWithType: CheckRelation.Types.Tag.Key
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Key*
+  name: Key
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Key_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Key
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Key
+  nameWithType: CheckRelation.Types.Tag.Key
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.KeyFieldNumber
+  name: KeyFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_KeyFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.KeyFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.KeyFieldNumber
+  nameWithType: CheckRelation.Types.Tag.KeyFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag)
+  name: MergeFrom(Tag)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_MergeFrom_FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag)
+  nameWithType: CheckRelation.Types.Tag.MergeFrom(CheckRelation.Types.Tag)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.MergeFrom(Google.Protobuf.CodedInputStream)
+  name: MergeFrom(CodedInputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_MergeFrom_Google_Protobuf_CodedInputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.MergeFrom(Google.Protobuf.CodedInputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.MergeFrom(Google.Protobuf.CodedInputStream)
+  nameWithType: CheckRelation.Types.Tag.MergeFrom(CodedInputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.MergeFrom*
+  name: MergeFrom
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_MergeFrom_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.MergeFrom
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.MergeFrom
+  nameWithType: CheckRelation.Types.Tag.MergeFrom
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Parser
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Parser
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Parser
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Parser
+  nameWithType: CheckRelation.Types.Tag.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Parser*
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Parser_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Parser
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Parser
+  nameWithType: CheckRelation.Types.Tag.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.ToString
+  name: ToString()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_ToString
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.ToString
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.ToString()
+  nameWithType: CheckRelation.Types.Tag.ToString()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.ToString*
+  name: ToString
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_ToString_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.ToString
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.ToString
+  nameWithType: CheckRelation.Types.Tag.ToString
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Value
+  name: Value
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Value
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Value
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Value
+  nameWithType: CheckRelation.Types.Tag.Value
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Value*
+  name: Value
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_Value_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Value
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.Value
+  nameWithType: CheckRelation.Types.Tag.Value
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.ValueFieldNumber
+  name: ValueFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_ValueFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.ValueFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.ValueFieldNumber
+  nameWithType: CheckRelation.Types.Tag.ValueFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.WriteTo(Google.Protobuf.CodedOutputStream)
+  name: WriteTo(CodedOutputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_WriteTo_Google_Protobuf_CodedOutputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.WriteTo(Google.Protobuf.CodedOutputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.WriteTo(Google.Protobuf.CodedOutputStream)
+  nameWithType: CheckRelation.Types.Tag.WriteTo(CodedOutputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.WriteTo*
+  name: WriteTo
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_Types_Tag_WriteTo_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.WriteTo
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.WriteTo
+  nameWithType: CheckRelation.Types.Tag.WriteTo
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.WriteTo(Google.Protobuf.CodedOutputStream)
+  name: WriteTo(CodedOutputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_WriteTo_Google_Protobuf_CodedOutputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.WriteTo(Google.Protobuf.CodedOutputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.WriteTo(Google.Protobuf.CodedOutputStream)
+  nameWithType: CheckRelation.WriteTo(CodedOutputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.WriteTo*
+  name: WriteTo
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_CheckRelation_WriteTo_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.WriteTo
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.WriteTo
+  nameWithType: CheckRelation.WriteTo
 - uid: FlowtideDotNet.Substrait.CustomProtobuf.CustomProtoReflection
   name: CustomProtoReflection
   href: api/FlowtideDotNet.Substrait.CustomProtobuf.CustomProtoReflection.html
@@ -61253,6 +62277,517 @@ references:
   fullName.vb: FlowtideDotNet.Substrait.Relations.BufferRelation.<>
   nameWithType: BufferRelation.operator !=
   nameWithType.vb: BufferRelation.<>
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition
+  name: CheckDefinition
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html
+  commentId: T:FlowtideDotNet.Substrait.Relations.CheckDefinition
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition
+  nameWithType: CheckDefinition
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.Condition
+  name: Condition
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_Condition
+  commentId: P:FlowtideDotNet.Substrait.Relations.CheckDefinition.Condition
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.Condition
+  nameWithType: CheckDefinition.Condition
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.Condition*
+  name: Condition
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_Condition_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckDefinition.Condition
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.Condition
+  nameWithType: CheckDefinition.Condition
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.Equals(FlowtideDotNet.Substrait.Relations.CheckDefinition)
+  name: Equals(CheckDefinition?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_Equals_FlowtideDotNet_Substrait_Relations_CheckDefinition_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckDefinition.Equals(FlowtideDotNet.Substrait.Relations.CheckDefinition)
+  name.vb: Equals(CheckDefinition)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.Equals(FlowtideDotNet.Substrait.Relations.CheckDefinition?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckDefinition.Equals(FlowtideDotNet.Substrait.Relations.CheckDefinition)
+  nameWithType: CheckDefinition.Equals(CheckDefinition?)
+  nameWithType.vb: CheckDefinition.Equals(CheckDefinition)
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.Equals(System.Object)
+  name: Equals(object?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckDefinition.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.Equals(object?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckDefinition.Equals(Object)
+  nameWithType: CheckDefinition.Equals(object?)
+  nameWithType.vb: CheckDefinition.Equals(Object)
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckDefinition.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.Equals
+  nameWithType: CheckDefinition.Equals
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckDefinition.GetHashCode
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.GetHashCode()
+  nameWithType: CheckDefinition.GetHashCode()
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckDefinition.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.GetHashCode
+  nameWithType: CheckDefinition.GetHashCode
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.Guards
+  name: Guards
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_Guards
+  commentId: P:FlowtideDotNet.Substrait.Relations.CheckDefinition.Guards
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.Guards
+  nameWithType: CheckDefinition.Guards
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.Guards*
+  name: Guards
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_Guards_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckDefinition.Guards
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.Guards
+  nameWithType: CheckDefinition.Guards
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.Message
+  name: Message
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_Message
+  commentId: P:FlowtideDotNet.Substrait.Relations.CheckDefinition.Message
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.Message
+  nameWithType: CheckDefinition.Message
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.Message*
+  name: Message
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_Message_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckDefinition.Message
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.Message
+  nameWithType: CheckDefinition.Message
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.Tags
+  name: Tags
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_Tags
+  commentId: P:FlowtideDotNet.Substrait.Relations.CheckDefinition.Tags
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.Tags
+  nameWithType: CheckDefinition.Tags
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.Tags*
+  name: Tags
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_Tags_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckDefinition.Tags
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.Tags
+  nameWithType: CheckDefinition.Tags
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.op_Equality(FlowtideDotNet.Substrait.Relations.CheckDefinition,FlowtideDotNet.Substrait.Relations.CheckDefinition)
+  name: operator ==(CheckDefinition?, CheckDefinition?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_op_Equality_FlowtideDotNet_Substrait_Relations_CheckDefinition_FlowtideDotNet_Substrait_Relations_CheckDefinition_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckDefinition.op_Equality(FlowtideDotNet.Substrait.Relations.CheckDefinition,FlowtideDotNet.Substrait.Relations.CheckDefinition)
+  name.vb: =(CheckDefinition, CheckDefinition)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.operator ==(FlowtideDotNet.Substrait.Relations.CheckDefinition?, FlowtideDotNet.Substrait.Relations.CheckDefinition?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckDefinition.=(FlowtideDotNet.Substrait.Relations.CheckDefinition, FlowtideDotNet.Substrait.Relations.CheckDefinition)
+  nameWithType: CheckDefinition.operator ==(CheckDefinition?, CheckDefinition?)
+  nameWithType.vb: CheckDefinition.=(CheckDefinition, CheckDefinition)
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.op_Equality*
+  name: operator ==
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_op_Equality_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckDefinition.op_Equality
+  isSpec: "True"
+  name.vb: =
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.operator ==
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckDefinition.=
+  nameWithType: CheckDefinition.operator ==
+  nameWithType.vb: CheckDefinition.=
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.op_Inequality(FlowtideDotNet.Substrait.Relations.CheckDefinition,FlowtideDotNet.Substrait.Relations.CheckDefinition)
+  name: operator !=(CheckDefinition?, CheckDefinition?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_op_Inequality_FlowtideDotNet_Substrait_Relations_CheckDefinition_FlowtideDotNet_Substrait_Relations_CheckDefinition_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckDefinition.op_Inequality(FlowtideDotNet.Substrait.Relations.CheckDefinition,FlowtideDotNet.Substrait.Relations.CheckDefinition)
+  name.vb: <>(CheckDefinition, CheckDefinition)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.operator !=(FlowtideDotNet.Substrait.Relations.CheckDefinition?, FlowtideDotNet.Substrait.Relations.CheckDefinition?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckDefinition.<>(FlowtideDotNet.Substrait.Relations.CheckDefinition, FlowtideDotNet.Substrait.Relations.CheckDefinition)
+  nameWithType: CheckDefinition.operator !=(CheckDefinition?, CheckDefinition?)
+  nameWithType.vb: CheckDefinition.<>(CheckDefinition, CheckDefinition)
+- uid: FlowtideDotNet.Substrait.Relations.CheckDefinition.op_Inequality*
+  name: operator !=
+  href: api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html#FlowtideDotNet_Substrait_Relations_CheckDefinition_op_Inequality_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckDefinition.op_Inequality
+  isSpec: "True"
+  name.vb: <>
+  fullName: FlowtideDotNet.Substrait.Relations.CheckDefinition.operator !=
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckDefinition.<>
+  nameWithType: CheckDefinition.operator !=
+  nameWithType.vb: CheckDefinition.<>
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard
+  name: CheckGuard
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html
+  commentId: T:FlowtideDotNet.Substrait.Relations.CheckGuard
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard
+  nameWithType: CheckGuard
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.Equals(FlowtideDotNet.Substrait.Relations.CheckGuard)
+  name: Equals(CheckGuard?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_Equals_FlowtideDotNet_Substrait_Relations_CheckGuard_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckGuard.Equals(FlowtideDotNet.Substrait.Relations.CheckGuard)
+  name.vb: Equals(CheckGuard)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.Equals(FlowtideDotNet.Substrait.Relations.CheckGuard?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckGuard.Equals(FlowtideDotNet.Substrait.Relations.CheckGuard)
+  nameWithType: CheckGuard.Equals(CheckGuard?)
+  nameWithType.vb: CheckGuard.Equals(CheckGuard)
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.Equals(System.Object)
+  name: Equals(object?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckGuard.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.Equals(object?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckGuard.Equals(Object)
+  nameWithType: CheckGuard.Equals(object?)
+  nameWithType.vb: CheckGuard.Equals(Object)
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckGuard.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.Equals
+  nameWithType: CheckGuard.Equals
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.Expression
+  name: Expression
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_Expression
+  commentId: P:FlowtideDotNet.Substrait.Relations.CheckGuard.Expression
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.Expression
+  nameWithType: CheckGuard.Expression
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.Expression*
+  name: Expression
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_Expression_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckGuard.Expression
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.Expression
+  nameWithType: CheckGuard.Expression
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckGuard.GetHashCode
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.GetHashCode()
+  nameWithType: CheckGuard.GetHashCode()
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckGuard.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.GetHashCode
+  nameWithType: CheckGuard.GetHashCode
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.Kind
+  name: Kind
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_Kind
+  commentId: P:FlowtideDotNet.Substrait.Relations.CheckGuard.Kind
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.Kind
+  nameWithType: CheckGuard.Kind
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.Kind*
+  name: Kind
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_Kind_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckGuard.Kind
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.Kind
+  nameWithType: CheckGuard.Kind
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.op_Equality(FlowtideDotNet.Substrait.Relations.CheckGuard,FlowtideDotNet.Substrait.Relations.CheckGuard)
+  name: operator ==(CheckGuard?, CheckGuard?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_op_Equality_FlowtideDotNet_Substrait_Relations_CheckGuard_FlowtideDotNet_Substrait_Relations_CheckGuard_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckGuard.op_Equality(FlowtideDotNet.Substrait.Relations.CheckGuard,FlowtideDotNet.Substrait.Relations.CheckGuard)
+  name.vb: =(CheckGuard, CheckGuard)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.operator ==(FlowtideDotNet.Substrait.Relations.CheckGuard?, FlowtideDotNet.Substrait.Relations.CheckGuard?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckGuard.=(FlowtideDotNet.Substrait.Relations.CheckGuard, FlowtideDotNet.Substrait.Relations.CheckGuard)
+  nameWithType: CheckGuard.operator ==(CheckGuard?, CheckGuard?)
+  nameWithType.vb: CheckGuard.=(CheckGuard, CheckGuard)
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.op_Equality*
+  name: operator ==
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_op_Equality_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckGuard.op_Equality
+  isSpec: "True"
+  name.vb: =
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.operator ==
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckGuard.=
+  nameWithType: CheckGuard.operator ==
+  nameWithType.vb: CheckGuard.=
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.op_Inequality(FlowtideDotNet.Substrait.Relations.CheckGuard,FlowtideDotNet.Substrait.Relations.CheckGuard)
+  name: operator !=(CheckGuard?, CheckGuard?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_op_Inequality_FlowtideDotNet_Substrait_Relations_CheckGuard_FlowtideDotNet_Substrait_Relations_CheckGuard_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckGuard.op_Inequality(FlowtideDotNet.Substrait.Relations.CheckGuard,FlowtideDotNet.Substrait.Relations.CheckGuard)
+  name.vb: <>(CheckGuard, CheckGuard)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.operator !=(FlowtideDotNet.Substrait.Relations.CheckGuard?, FlowtideDotNet.Substrait.Relations.CheckGuard?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckGuard.<>(FlowtideDotNet.Substrait.Relations.CheckGuard, FlowtideDotNet.Substrait.Relations.CheckGuard)
+  nameWithType: CheckGuard.operator !=(CheckGuard?, CheckGuard?)
+  nameWithType.vb: CheckGuard.<>(CheckGuard, CheckGuard)
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuard.op_Inequality*
+  name: operator !=
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuard.html#FlowtideDotNet_Substrait_Relations_CheckGuard_op_Inequality_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckGuard.op_Inequality
+  isSpec: "True"
+  name.vb: <>
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuard.operator !=
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckGuard.<>
+  nameWithType: CheckGuard.operator !=
+  nameWithType.vb: CheckGuard.<>
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuardKind
+  name: CheckGuardKind
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuardKind.html
+  commentId: T:FlowtideDotNet.Substrait.Relations.CheckGuardKind
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuardKind
+  nameWithType: CheckGuardKind
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuardKind.IsNotTrue
+  name: IsNotTrue
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuardKind.html#FlowtideDotNet_Substrait_Relations_CheckGuardKind_IsNotTrue
+  commentId: F:FlowtideDotNet.Substrait.Relations.CheckGuardKind.IsNotTrue
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuardKind.IsNotTrue
+  nameWithType: CheckGuardKind.IsNotTrue
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuardKind.IsNull
+  name: IsNull
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuardKind.html#FlowtideDotNet_Substrait_Relations_CheckGuardKind_IsNull
+  commentId: F:FlowtideDotNet.Substrait.Relations.CheckGuardKind.IsNull
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuardKind.IsNull
+  nameWithType: CheckGuardKind.IsNull
+- uid: FlowtideDotNet.Substrait.Relations.CheckGuardKind.IsTrue
+  name: IsTrue
+  href: api/FlowtideDotNet.Substrait.Relations.CheckGuardKind.html#FlowtideDotNet_Substrait_Relations_CheckGuardKind_IsTrue
+  commentId: F:FlowtideDotNet.Substrait.Relations.CheckGuardKind.IsTrue
+  fullName: FlowtideDotNet.Substrait.Relations.CheckGuardKind.IsTrue
+  nameWithType: CheckGuardKind.IsTrue
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation
+  name: CheckRelation
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html
+  commentId: T:FlowtideDotNet.Substrait.Relations.CheckRelation
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation
+  nameWithType: CheckRelation
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.Accept*
+  name: Accept
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_Accept_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckRelation.Accept
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.Accept
+  nameWithType: CheckRelation.Accept
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.Accept``2(FlowtideDotNet.Substrait.Relations.RelationVisitor{``0,``1},``1)
+  name: Accept<TReturn, TState>(RelationVisitor<TReturn, TState>, TState)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_Accept__2_FlowtideDotNet_Substrait_Relations_RelationVisitor___0___1____1_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckRelation.Accept``2(FlowtideDotNet.Substrait.Relations.RelationVisitor{``0,``1},``1)
+  name.vb: Accept(Of TReturn, TState)(RelationVisitor(Of TReturn, TState), TState)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.Accept<TReturn, TState>(FlowtideDotNet.Substrait.Relations.RelationVisitor<TReturn, TState>, TState)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckRelation.Accept(Of TReturn, TState)(FlowtideDotNet.Substrait.Relations.RelationVisitor(Of TReturn, TState), TState)
+  nameWithType: CheckRelation.Accept<TReturn, TState>(RelationVisitor<TReturn, TState>, TState)
+  nameWithType.vb: CheckRelation.Accept(Of TReturn, TState)(RelationVisitor(Of TReturn, TState), TState)
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.Checks
+  name: Checks
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_Checks
+  commentId: P:FlowtideDotNet.Substrait.Relations.CheckRelation.Checks
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.Checks
+  nameWithType: CheckRelation.Checks
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.Checks*
+  name: Checks
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_Checks_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckRelation.Checks
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.Checks
+  nameWithType: CheckRelation.Checks
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.Equals(FlowtideDotNet.Substrait.Relations.CheckRelation)
+  name: Equals(CheckRelation?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_Equals_FlowtideDotNet_Substrait_Relations_CheckRelation_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckRelation.Equals(FlowtideDotNet.Substrait.Relations.CheckRelation)
+  name.vb: Equals(CheckRelation)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.Equals(FlowtideDotNet.Substrait.Relations.CheckRelation?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckRelation.Equals(FlowtideDotNet.Substrait.Relations.CheckRelation)
+  nameWithType: CheckRelation.Equals(CheckRelation?)
+  nameWithType.vb: CheckRelation.Equals(CheckRelation)
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.Equals(System.Object)
+  name: Equals(object?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckRelation.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.Equals(object?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckRelation.Equals(Object)
+  nameWithType: CheckRelation.Equals(object?)
+  nameWithType.vb: CheckRelation.Equals(Object)
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckRelation.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.Equals
+  nameWithType: CheckRelation.Equals
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckRelation.GetHashCode
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.GetHashCode()
+  nameWithType: CheckRelation.GetHashCode()
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckRelation.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.GetHashCode
+  nameWithType: CheckRelation.GetHashCode
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.Input
+  name: Input
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_Input
+  commentId: P:FlowtideDotNet.Substrait.Relations.CheckRelation.Input
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.Input
+  nameWithType: CheckRelation.Input
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.Input*
+  name: Input
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_Input_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckRelation.Input
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.Input
+  nameWithType: CheckRelation.Input
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.OutputLength
+  name: OutputLength
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_OutputLength
+  commentId: P:FlowtideDotNet.Substrait.Relations.CheckRelation.OutputLength
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.OutputLength
+  nameWithType: CheckRelation.OutputLength
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.OutputLength*
+  name: OutputLength
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_OutputLength_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckRelation.OutputLength
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.OutputLength
+  nameWithType: CheckRelation.OutputLength
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.op_Equality(FlowtideDotNet.Substrait.Relations.CheckRelation,FlowtideDotNet.Substrait.Relations.CheckRelation)
+  name: operator ==(CheckRelation?, CheckRelation?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_op_Equality_FlowtideDotNet_Substrait_Relations_CheckRelation_FlowtideDotNet_Substrait_Relations_CheckRelation_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckRelation.op_Equality(FlowtideDotNet.Substrait.Relations.CheckRelation,FlowtideDotNet.Substrait.Relations.CheckRelation)
+  name.vb: =(CheckRelation, CheckRelation)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.operator ==(FlowtideDotNet.Substrait.Relations.CheckRelation?, FlowtideDotNet.Substrait.Relations.CheckRelation?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckRelation.=(FlowtideDotNet.Substrait.Relations.CheckRelation, FlowtideDotNet.Substrait.Relations.CheckRelation)
+  nameWithType: CheckRelation.operator ==(CheckRelation?, CheckRelation?)
+  nameWithType.vb: CheckRelation.=(CheckRelation, CheckRelation)
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.op_Equality*
+  name: operator ==
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_op_Equality_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckRelation.op_Equality
+  isSpec: "True"
+  name.vb: =
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.operator ==
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckRelation.=
+  nameWithType: CheckRelation.operator ==
+  nameWithType.vb: CheckRelation.=
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.op_Inequality(FlowtideDotNet.Substrait.Relations.CheckRelation,FlowtideDotNet.Substrait.Relations.CheckRelation)
+  name: operator !=(CheckRelation?, CheckRelation?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_op_Inequality_FlowtideDotNet_Substrait_Relations_CheckRelation_FlowtideDotNet_Substrait_Relations_CheckRelation_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckRelation.op_Inequality(FlowtideDotNet.Substrait.Relations.CheckRelation,FlowtideDotNet.Substrait.Relations.CheckRelation)
+  name.vb: <>(CheckRelation, CheckRelation)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.operator !=(FlowtideDotNet.Substrait.Relations.CheckRelation?, FlowtideDotNet.Substrait.Relations.CheckRelation?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckRelation.<>(FlowtideDotNet.Substrait.Relations.CheckRelation, FlowtideDotNet.Substrait.Relations.CheckRelation)
+  nameWithType: CheckRelation.operator !=(CheckRelation?, CheckRelation?)
+  nameWithType.vb: CheckRelation.<>(CheckRelation, CheckRelation)
+- uid: FlowtideDotNet.Substrait.Relations.CheckRelation.op_Inequality*
+  name: operator !=
+  href: api/FlowtideDotNet.Substrait.Relations.CheckRelation.html#FlowtideDotNet_Substrait_Relations_CheckRelation_op_Inequality_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckRelation.op_Inequality
+  isSpec: "True"
+  name.vb: <>
+  fullName: FlowtideDotNet.Substrait.Relations.CheckRelation.operator !=
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckRelation.<>
+  nameWithType: CheckRelation.operator !=
+  nameWithType.vb: CheckRelation.<>
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag
+  name: CheckTag
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html
+  commentId: T:FlowtideDotNet.Substrait.Relations.CheckTag
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag
+  nameWithType: CheckTag
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.Equals(FlowtideDotNet.Substrait.Relations.CheckTag)
+  name: Equals(CheckTag?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_Equals_FlowtideDotNet_Substrait_Relations_CheckTag_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckTag.Equals(FlowtideDotNet.Substrait.Relations.CheckTag)
+  name.vb: Equals(CheckTag)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.Equals(FlowtideDotNet.Substrait.Relations.CheckTag?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckTag.Equals(FlowtideDotNet.Substrait.Relations.CheckTag)
+  nameWithType: CheckTag.Equals(CheckTag?)
+  nameWithType.vb: CheckTag.Equals(CheckTag)
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.Equals(System.Object)
+  name: Equals(object?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckTag.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.Equals(object?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckTag.Equals(Object)
+  nameWithType: CheckTag.Equals(object?)
+  nameWithType.vb: CheckTag.Equals(Object)
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckTag.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.Equals
+  nameWithType: CheckTag.Equals
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckTag.GetHashCode
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.GetHashCode()
+  nameWithType: CheckTag.GetHashCode()
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckTag.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.GetHashCode
+  nameWithType: CheckTag.GetHashCode
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.Key
+  name: Key
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_Key
+  commentId: P:FlowtideDotNet.Substrait.Relations.CheckTag.Key
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.Key
+  nameWithType: CheckTag.Key
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.Key*
+  name: Key
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_Key_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckTag.Key
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.Key
+  nameWithType: CheckTag.Key
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.Value
+  name: Value
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_Value
+  commentId: P:FlowtideDotNet.Substrait.Relations.CheckTag.Value
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.Value
+  nameWithType: CheckTag.Value
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.Value*
+  name: Value
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_Value_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckTag.Value
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.Value
+  nameWithType: CheckTag.Value
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.op_Equality(FlowtideDotNet.Substrait.Relations.CheckTag,FlowtideDotNet.Substrait.Relations.CheckTag)
+  name: operator ==(CheckTag?, CheckTag?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_op_Equality_FlowtideDotNet_Substrait_Relations_CheckTag_FlowtideDotNet_Substrait_Relations_CheckTag_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckTag.op_Equality(FlowtideDotNet.Substrait.Relations.CheckTag,FlowtideDotNet.Substrait.Relations.CheckTag)
+  name.vb: =(CheckTag, CheckTag)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.operator ==(FlowtideDotNet.Substrait.Relations.CheckTag?, FlowtideDotNet.Substrait.Relations.CheckTag?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckTag.=(FlowtideDotNet.Substrait.Relations.CheckTag, FlowtideDotNet.Substrait.Relations.CheckTag)
+  nameWithType: CheckTag.operator ==(CheckTag?, CheckTag?)
+  nameWithType.vb: CheckTag.=(CheckTag, CheckTag)
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.op_Equality*
+  name: operator ==
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_op_Equality_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckTag.op_Equality
+  isSpec: "True"
+  name.vb: =
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.operator ==
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckTag.=
+  nameWithType: CheckTag.operator ==
+  nameWithType.vb: CheckTag.=
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.op_Inequality(FlowtideDotNet.Substrait.Relations.CheckTag,FlowtideDotNet.Substrait.Relations.CheckTag)
+  name: operator !=(CheckTag?, CheckTag?)
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_op_Inequality_FlowtideDotNet_Substrait_Relations_CheckTag_FlowtideDotNet_Substrait_Relations_CheckTag_
+  commentId: M:FlowtideDotNet.Substrait.Relations.CheckTag.op_Inequality(FlowtideDotNet.Substrait.Relations.CheckTag,FlowtideDotNet.Substrait.Relations.CheckTag)
+  name.vb: <>(CheckTag, CheckTag)
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.operator !=(FlowtideDotNet.Substrait.Relations.CheckTag?, FlowtideDotNet.Substrait.Relations.CheckTag?)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckTag.<>(FlowtideDotNet.Substrait.Relations.CheckTag, FlowtideDotNet.Substrait.Relations.CheckTag)
+  nameWithType: CheckTag.operator !=(CheckTag?, CheckTag?)
+  nameWithType.vb: CheckTag.<>(CheckTag, CheckTag)
+- uid: FlowtideDotNet.Substrait.Relations.CheckTag.op_Inequality*
+  name: operator !=
+  href: api/FlowtideDotNet.Substrait.Relations.CheckTag.html#FlowtideDotNet_Substrait_Relations_CheckTag_op_Inequality_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.CheckTag.op_Inequality
+  isSpec: "True"
+  name.vb: <>
+  fullName: FlowtideDotNet.Substrait.Relations.CheckTag.operator !=
+  fullName.vb: FlowtideDotNet.Substrait.Relations.CheckTag.<>
+  nameWithType: CheckTag.operator !=
+  nameWithType.vb: CheckTag.<>
 - uid: FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation
   name: ConsistentPartitionWindowRelation
   href: api/FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation.html
@@ -63975,6 +65510,23 @@ references:
   fullName.vb: FlowtideDotNet.Substrait.Relations.RelationVisitor(Of TReturn, TState).VisitBufferRelation
   nameWithType: RelationVisitor<TReturn, TState>.VisitBufferRelation
   nameWithType.vb: RelationVisitor(Of TReturn, TState).VisitBufferRelation
+- uid: FlowtideDotNet.Substrait.Relations.RelationVisitor`2.VisitCheckRelation(FlowtideDotNet.Substrait.Relations.CheckRelation,`1)
+  name: VisitCheckRelation(CheckRelation, TState)
+  href: api/FlowtideDotNet.Substrait.Relations.RelationVisitor-2.html#FlowtideDotNet_Substrait_Relations_RelationVisitor_2_VisitCheckRelation_FlowtideDotNet_Substrait_Relations_CheckRelation__1_
+  commentId: M:FlowtideDotNet.Substrait.Relations.RelationVisitor`2.VisitCheckRelation(FlowtideDotNet.Substrait.Relations.CheckRelation,`1)
+  fullName: FlowtideDotNet.Substrait.Relations.RelationVisitor<TReturn, TState>.VisitCheckRelation(FlowtideDotNet.Substrait.Relations.CheckRelation, TState)
+  fullName.vb: FlowtideDotNet.Substrait.Relations.RelationVisitor(Of TReturn, TState).VisitCheckRelation(FlowtideDotNet.Substrait.Relations.CheckRelation, TState)
+  nameWithType: RelationVisitor<TReturn, TState>.VisitCheckRelation(CheckRelation, TState)
+  nameWithType.vb: RelationVisitor(Of TReturn, TState).VisitCheckRelation(CheckRelation, TState)
+- uid: FlowtideDotNet.Substrait.Relations.RelationVisitor`2.VisitCheckRelation*
+  name: VisitCheckRelation
+  href: api/FlowtideDotNet.Substrait.Relations.RelationVisitor-2.html#FlowtideDotNet_Substrait_Relations_RelationVisitor_2_VisitCheckRelation_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.RelationVisitor`2.VisitCheckRelation
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.RelationVisitor<TReturn, TState>.VisitCheckRelation
+  fullName.vb: FlowtideDotNet.Substrait.Relations.RelationVisitor(Of TReturn, TState).VisitCheckRelation
+  nameWithType: RelationVisitor<TReturn, TState>.VisitCheckRelation
+  nameWithType.vb: RelationVisitor(Of TReturn, TState).VisitCheckRelation
 - uid: FlowtideDotNet.Substrait.Relations.RelationVisitor`2.VisitConsistentPartitionWindowRelation(FlowtideDotNet.Substrait.Relations.ConsistentPartitionWindowRelation,`1)
   name: VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation, TState)
   href: api/FlowtideDotNet.Substrait.Relations.RelationVisitor-2.html#FlowtideDotNet_Substrait_Relations_RelationVisitor_2_VisitConsistentPartitionWindowRelation_FlowtideDotNet_Substrait_Relations_ConsistentPartitionWindowRelation__1_

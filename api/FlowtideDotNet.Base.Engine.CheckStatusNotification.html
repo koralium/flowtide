@@ -2,11 +2,11 @@
 <html>
   <head>
     <meta charset="utf-8">
-      <title>Struct CheckFailureNotification | Flowtide.NET </title>
+      <title>Struct CheckStatusNotification | Flowtide.NET </title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <meta name="title" content="Struct CheckFailureNotification | Flowtide.NET ">
+      <meta name="title" content="Struct CheckStatusNotification | Flowtide.NET ">
       
-      <meta name="description" content="A check issue delivered to , valid only during the call.">
+      <meta name="description" content="The status of a check delivered to , valid only during the call.">
       <link rel="icon" href="../images/favicon.ico">
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
@@ -16,7 +16,7 @@
       <meta name="docfx:rel" content="../">
       
       
-      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Base_Engine_CheckFailureNotification.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Base.Engine.CheckFailureNotification%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Base_Engine_CheckStatusNotification.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Base.Engine.CheckStatusNotification%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
       <meta name="loc:inThisArticle" content="In this article">
       <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
       <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
@@ -84,12 +84,12 @@
           <nav id="breadcrumb"></nav>
         </div>
 
-        <article data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification">
+        <article data-uid="FlowtideDotNet.Base.Engine.CheckStatusNotification">
 
 
 
-  <h1 id="FlowtideDotNet_Base_Engine_CheckFailureNotification" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification" class="text-break">
-Struct CheckFailureNotification  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L137"><i class="bi bi-code-slash"></i></a>
+  <h1 id="FlowtideDotNet_Base_Engine_CheckStatusNotification" data-uid="FlowtideDotNet.Base.Engine.CheckStatusNotification" class="text-break">
+Struct CheckStatusNotification  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L205"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -97,12 +97,12 @@ Struct CheckFailureNotification  <a class="header-action link-secondary" title="
   <dl><dt>Assembly</dt><dd>FlowtideDotNet.Base.dll</dd></dl>
   </div>
 
-  <div class="markdown summary"><p>A check issue delivered to <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckFailureListener.html">ICheckFailureListener</a>, valid only during the call.</p>
+  <div class="markdown summary"><p>The status of a check delivered to <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckStatusListener.html">ICheckStatusListener</a>, valid only during the call.</p>
 </div>
   <div class="markdown conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public ref struct CheckFailureNotification</code></pre>
+    <pre><code class="lang-csharp hljs">public ref struct CheckStatusNotification</code></pre>
   </div>
 
 
@@ -143,19 +143,19 @@ Struct CheckFailureNotification  <a class="header-action link-secondary" title="
 </h2>
 
 
-  <a id="FlowtideDotNet_Base_Engine_CheckFailureNotification__ctor_" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification.#ctor*"></a>
+  <a id="FlowtideDotNet_Base_Engine_CheckStatusNotification__ctor_" data-uid="FlowtideDotNet.Base.Engine.CheckStatusNotification.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Base_Engine_CheckFailureNotification__ctor_System_String__System_String_System_String_System_ReadOnlySpan_System_Collections_Generic_KeyValuePair_System_String_System_Object___" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification.#ctor(System.String@,System.String,System.String,System.ReadOnlySpan{System.Collections.Generic.KeyValuePair{System.String,System.Object}})">
-  CheckFailureNotification(ref string, string, string, ReadOnlySpan&lt;KeyValuePair&lt;string, object?&gt;&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L162"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Base_Engine_CheckStatusNotification__ctor_System_String__System_String_System_String_FlowtideDotNet_Base_Engine_CheckState_System_Int64_System_Int64_" data-uid="FlowtideDotNet.Base.Engine.CheckStatusNotification.#ctor(System.String@,System.String,System.String,FlowtideDotNet.Base.Engine.CheckState,System.Int64,System.Int64)">
+  CheckStatusNotification(ref string, string, string, CheckState, long, long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L240"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Creates a notification for one issue of a check.</p>
+  <div class="markdown level1 summary"><p>Creates a status notification for a check.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public CheckFailureNotification(ref string streamName, string checkId, string checkName, ReadOnlySpan&lt;KeyValuePair&lt;string, object?&gt;&gt; tags)</code></pre>
+    <pre><code class="lang-csharp hljs">public CheckStatusNotification(ref string streamName, string checkId, string checkName, CheckState state, long activeIssues, long failingRows)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -166,7 +166,11 @@ Struct CheckFailureNotification  <a class="header-action link-secondary" title="
     <dd></dd>
     <dt><code>checkName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
-    <dt><code>tags</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.keyvaluepair-2">KeyValuePair</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>&gt;&gt;</dt>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Base.Engine.CheckState.html">CheckState</a></dt>
+    <dd></dd>
+    <dt><code>activeIssues</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+    <dt><code>failingRows</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
     <dd></dd>
   </dl>
 
@@ -186,9 +190,40 @@ Struct CheckFailureNotification  <a class="header-action link-secondary" title="
 
 
 
-  <h3 id="FlowtideDotNet_Base_Engine_CheckFailureNotification_CheckId" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification.CheckId">
+  <h3 id="FlowtideDotNet_Base_Engine_CheckStatusNotification_ActiveIssues" data-uid="FlowtideDotNet.Base.Engine.CheckStatusNotification.ActiveIssues">
+  ActiveIssues
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L230"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The number of distinct active issues.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly long ActiveIssues</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <h3 id="FlowtideDotNet_Base_Engine_CheckStatusNotification_CheckId" data-uid="FlowtideDotNet.Base.Engine.CheckStatusNotification.CheckId">
   CheckId
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L147"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L215"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Identifies the check within the stream.</p>
@@ -217,12 +252,12 @@ Struct CheckFailureNotification  <a class="header-action link-secondary" title="
 
 
 
-  <h3 id="FlowtideDotNet_Base_Engine_CheckFailureNotification_CheckName" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification.CheckName">
+  <h3 id="FlowtideDotNet_Base_Engine_CheckStatusNotification_CheckName" data-uid="FlowtideDotNet.Base.Engine.CheckStatusNotification.CheckName">
   CheckName
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L152"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L220"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>The check's message template, its {tag} placeholders are not rendered.</p>
+  <div class="markdown level1 summary"><p>The check's message template.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
@@ -248,9 +283,71 @@ Struct CheckFailureNotification  <a class="header-action link-secondary" title="
 
 
 
-  <h3 id="FlowtideDotNet_Base_Engine_CheckFailureNotification_StreamName" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification.StreamName">
+  <h3 id="FlowtideDotNet_Base_Engine_CheckStatusNotification_FailingRows" data-uid="FlowtideDotNet.Base.Engine.CheckStatusNotification.FailingRows">
+  FailingRows
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L235"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The number of rows that fail the check.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly long FailingRows</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <h3 id="FlowtideDotNet_Base_Engine_CheckStatusNotification_State" data-uid="FlowtideDotNet.Base.Engine.CheckStatusNotification.State">
+  State
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L225"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Whether the check is evaluated yet, and if so whether it passes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly CheckState State</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.CheckState.html">CheckState</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <h3 id="FlowtideDotNet_Base_Engine_CheckStatusNotification_StreamName" data-uid="FlowtideDotNet.Base.Engine.CheckStatusNotification.StreamName">
   StreamName
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L142"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L210"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The name of the stream that runs the check.</p>
@@ -279,41 +376,10 @@ Struct CheckFailureNotification  <a class="header-action link-secondary" title="
 
 
 
-  <h3 id="FlowtideDotNet_Base_Engine_CheckFailureNotification_Tags" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification.Tags">
-  Tags
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L157"><i class="bi bi-code-slash"></i></a>
-  </h3>
-
-  <div class="markdown level1 summary"><p>The issue tags, must not be kept after the call returns.</p>
-</div>
-  <div class="markdown level1 conceptual"></div>
-
-  <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public readonly ReadOnlySpan&lt;KeyValuePair&lt;string, object?&gt;&gt; Tags</code></pre>
-  </div>
-
-
-
-
-  <h4 class="section">Field Value</h4>
-  <dl class="parameters">
-    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.keyvaluepair-2">KeyValuePair</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>&gt;&gt;</dt>
-    <dd></dd>
-  </dl>
-
-
-
-
-
-
-
-
-
-
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L137" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L205" class="edit-link">Edit this page</a>
         </div>
 
 

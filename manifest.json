@@ -191,7 +191,49 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "FlowtideDotNet.Base.Engine.CheckFailureNotification",
-      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Base.Engine.CheckFailureNotification.yml\" sourcestartlinenumber=\"1\">A stack-allocated notification carrying data quality check failure information\ndelivered to <xref href=\"FlowtideDotNet.Base.Engine.ICheckFailureListener\" data-throw-if-not-resolved=\"false\"></xref> implementations.</p>\n"
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Base.Engine.CheckFailureNotification.yml\" sourcestartlinenumber=\"1\">A check issue delivered to <xref href=\"FlowtideDotNet.Base.Engine.ICheckFailureListener\" data-throw-if-not-resolved=\"false\"></xref>, valid only during the call.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Base.Engine.CheckResetNotification.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Base.Engine.CheckResetNotification.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Base.Engine.CheckResetNotification",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Base.Engine.CheckResetNotification.yml\" sourcestartlinenumber=\"1\">Tells <xref href=\"FlowtideDotNet.Base.Engine.ICheckFailureListener\" data-throw-if-not-resolved=\"false\"></xref> to forget every issue of a check.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Base.Engine.CheckState.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Base.Engine.CheckState.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Base.Engine.CheckState",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Base.Engine.CheckState.yml\" sourcestartlinenumber=\"1\">The state of a check reported to <xref href=\"FlowtideDotNet.Base.Engine.ICheckStatusListener\" data-throw-if-not-resolved=\"false\"></xref>.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Base.Engine.CheckStatusNotification.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Base.Engine.CheckStatusNotification.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Base.Engine.CheckStatusNotification",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Base.Engine.CheckStatusNotification.yml\" sourcestartlinenumber=\"1\">The status of a check delivered to <xref href=\"FlowtideDotNet.Base.Engine.ICheckStatusListener\" data-throw-if-not-resolved=\"false\"></xref>, valid only during the call.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -247,21 +289,21 @@
       "Uid": null,
       "IsMRef": true,
       "Title": "FlowtideDotNet.Base.Engine.ICheckFailureListener",
-      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Base.Engine.ICheckFailureListener.yml\" sourcestartlinenumber=\"1\">Defines a receiver for data quality check failure notifications raised by the stream.</p>\n"
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Base.Engine.ICheckFailureListener.yml\" sourcestartlinenumber=\"1\">Receives check issues of committed state, changes per checkpoint and a snapshot at every start.</p>\n"
     },
     {
       "type": "ManagedReference",
-      "source_relative_path": "api/FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.yml",
+      "source_relative_path": "api/FlowtideDotNet.Base.Engine.ICheckStatusListener.yml",
       "output": {
         ".html": {
-          "relative_path": "api/FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.html"
+          "relative_path": "api/FlowtideDotNet.Base.Engine.ICheckStatusListener.html"
         }
       },
       "version": "",
       "Uid": null,
       "IsMRef": true,
-      "Title": "FlowtideDotNet.Base.Engine.ICheckNotificationReceiver",
-      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.yml\" sourcestartlinenumber=\"1\">Defines the internal compute-layer sink for data quality check failure events raised\ndirectly from compiled SQL <code>CHECK</code> expressions.</p>\n"
+      "Title": "FlowtideDotNet.Base.Engine.ICheckStatusListener",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Base.Engine.ICheckStatusListener.yml\" sourcestartlinenumber=\"1\">Receives the state and counts of each check, at every start and when they change.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -8819,6 +8861,104 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Check",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.Kind",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.Types.yml\" sourcestartlinenumber=\"1\">Container for nested types declared in the Guard message type.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Guard",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.Tag",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.Types.yml\" sourcestartlinenumber=\"1\">Container for nested types declared in the CheckRelation message type.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Substrait.CustomProtobuf.CheckRelation.yml\" sourcestartlinenumber=\"1\">Passes its input through and tracks the issues raised by its checks.\nPacked into the detail of an extension single rel.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Substrait.CustomProtobuf.CustomProtoReflection.yml",
       "output": {
         ".html": {
@@ -10076,6 +10216,76 @@
       "IsMRef": true,
       "Title": "FlowtideDotNet.Substrait.Relations.BufferRelation",
       "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.Relations.CheckDefinition.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.Relations.CheckDefinition.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.Relations.CheckDefinition",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Substrait.Relations.CheckDefinition.yml\" sourcestartlinenumber=\"1\">One check, all expressions are evaluated against the input row.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.Relations.CheckGuard.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.Relations.CheckGuard.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.Relations.CheckGuard",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Substrait.Relations.CheckGuard.yml\" sourcestartlinenumber=\"1\">Condition that must hold before a check is evaluated.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.Relations.CheckGuardKind.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.Relations.CheckGuardKind.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.Relations.CheckGuardKind",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.Relations.CheckRelation.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.Relations.CheckRelation.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.Relations.CheckRelation",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Substrait.Relations.CheckRelation.yml\" sourcestartlinenumber=\"1\">Passes its input through and tracks the issues raised by its checks.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Substrait.Relations.CheckTag.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Substrait.Relations.CheckTag.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Substrait.Relations.CheckTag",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Substrait.Relations.CheckTag.yml\" sourcestartlinenumber=\"1\">Named tag value attached to an issue.</p>\n"
     },
     {
       "type": "ManagedReference",
@@ -12534,6 +12744,16 @@
       "output": {
         ".html": {
           "relative_path": "docs/operators/buffer.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/operators/check.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/operators/check.html"
         }
       },
       "version": ""

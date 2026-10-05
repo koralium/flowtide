@@ -6,7 +6,7 @@
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta name="title" content="Interface ICheckFailureListener | Flowtide.NET ">
       
-      <meta name="description" content="Defines a receiver for data quality check failure notifications raised by the stream.">
+      <meta name="description" content="Receives check issues of committed state, changes per checkpoint and a snapshot at every start.">
       <link rel="icon" href="../images/favicon.ico">
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
@@ -89,7 +89,7 @@
 
 
   <h1 id="FlowtideDotNet_Base_Engine_ICheckFailureListener" data-uid="FlowtideDotNet.Base.Engine.ICheckFailureListener" class="text-break">
-Interface ICheckFailureListener  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/ICheckFailureListener.cs/#L41"><i class="bi bi-code-slash"></i></a>
+Interface ICheckFailureListener  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/ICheckFailureListener.cs/#L18"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -97,7 +97,7 @@ Interface ICheckFailureListener  <a class="header-action link-secondary" title="
   <dl><dt>Assembly</dt><dd>FlowtideDotNet.Base.dll</dd></dl>
   </div>
 
-  <div class="markdown summary"><p>Defines a receiver for data quality check failure notifications raised by the stream.</p>
+  <div class="markdown summary"><p>Receives check issues of committed state, changes per checkpoint and a snapshot at every start.</p>
 </div>
   <div class="markdown conceptual"></div>
 
@@ -115,29 +115,6 @@ Interface ICheckFailureListener  <a class="header-action link-secondary" title="
 
 
 
-  <h2 id="FlowtideDotNet_Base_Engine_ICheckFailureListener_remarks">Remarks</h2>
-  <div class="markdown level0 remarks"><p>
-Implementations are registered on a <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a> via
-<a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckFailureListener_FlowtideDotNet_Base_Engine_ICheckFailureListener_">AddCheckFailureListener(ICheckFailureListener)</a> and are invoked each time a
-SQL-level <code>CHECK</code> assertion evaluated within the stream produces a failing result.
-Multiple listeners can be registered; each is called in registration order.
-</p>
-<p>
-The notification is passed as a <code>ref readonly</code> <a class="xref" href="FlowtideDotNet.Base.Engine.CheckFailureNotification.html">CheckFailureNotification</a>,
-which is a <code>ref struct</code>. This avoids a heap allocation and allows the
-notification to carry a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan&lt;T&gt;</a> of diagnostic tags.
-Implementations must therefore not store the notification beyond the duration of
-<a class="xref" href="FlowtideDotNet.Base.Engine.ICheckFailureListener.html#FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckFailure_FlowtideDotNet_Base_Engine_CheckFailureNotification__">OnCheckFailure(ref readonly CheckFailureNotification)</a> — copy any required fields to local variables instead.
-</p>
-<p>
-Exceptions thrown by an implementation are swallowed by the stream engine to ensure
-that a misbehaving listener cannot disrupt stream processing.
-The built-in implementations are <code>LoggerCheckFailureListener</code>, which forwards the
-failure message and tags to <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.ilogger">ILogger</a>, and
-<code>ActivityCheckFailureListener</code>, which emits an OpenTelemetry
-<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.activity">Activity</a> under the source <code>FlowtideDotNet.CheckFailures</code>.
-</p>
-</div>
 
 
   <h2 class="section" id="methods">Methods
@@ -148,10 +125,10 @@ failure message and tags to <a class="xref" href="https://learn.microsoft.com/do
 
   <h3 id="FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckFailure_FlowtideDotNet_Base_Engine_CheckFailureNotification__" data-uid="FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckFailure(FlowtideDotNet.Base.Engine.CheckFailureNotification@)">
   OnCheckFailure(ref readonly CheckFailureNotification)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/ICheckFailureListener.cs/#L58"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/ICheckFailureListener.cs/#L23"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Called when a data quality check within the stream produces a failing result.</p>
+  <div class="markdown level1 summary"><p>Called when an issue becomes active.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
@@ -162,10 +139,7 @@ failure message and tags to <a class="xref" href="https://learn.microsoft.com/do
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>notification</code> <a class="xref" href="FlowtideDotNet.Base.Engine.CheckFailureNotification.html">CheckFailureNotification</a></dt>
-    <dd><p>A <code>ref readonly</code> <a class="xref" href="FlowtideDotNet.Base.Engine.CheckFailureNotification.html">CheckFailureNotification</a> carrying the stream name,
-failure message, and a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan&lt;T&gt;</a> of diagnostic tags
-that describe the context in which the check failed.</p>
-</dd>
+    <dd></dd>
   </dl>
 
 
@@ -175,13 +149,70 @@ that describe the context in which the check failed.</p>
 
 
 
-  <h4 class="section" id="FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckFailure_FlowtideDotNet_Base_Engine_CheckFailureNotification___remarks">Remarks</h4>
-  <div class="markdown level1 remarks"><p>The <code class="paramref">notification</code> is a <code>ref readonly</code> <code>ref struct</code>;
-it must not be stored or captured beyond the scope of this method call.
-Access <a class="xref" href="FlowtideDotNet.Base.Engine.CheckFailureNotification.html#FlowtideDotNet_Base_Engine_CheckFailureNotification_StreamName">StreamName</a> to identify the originating stream,
-<a class="xref" href="FlowtideDotNet.Base.Engine.CheckFailureNotification.html#FlowtideDotNet_Base_Engine_CheckFailureNotification_Message">Message</a> for the human-readable failure description,
-and <a class="xref" href="FlowtideDotNet.Base.Engine.CheckFailureNotification.html#FlowtideDotNet_Base_Engine_CheckFailureNotification_Tags">Tags</a> for the associated diagnostic key-value metadata.</p>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckReset_" data-uid="FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckReset*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckReset_FlowtideDotNet_Base_Engine_CheckResetNotification__" data-uid="FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckReset(FlowtideDotNet.Base.Engine.CheckResetNotification@)">
+  OnCheckReset(ref readonly CheckResetNotification)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/ICheckFailureListener.cs/#L33"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called to forget every issue of the check, its active issues follow as failures.</p>
 </div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void OnCheckReset(ref readonly CheckResetNotification notification)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>notification</code> <a class="xref" href="FlowtideDotNet.Base.Engine.CheckResetNotification.html">CheckResetNotification</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckResolved_" data-uid="FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckResolved*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckResolved_FlowtideDotNet_Base_Engine_CheckFailureNotification__" data-uid="FlowtideDotNet.Base.Engine.ICheckFailureListener.OnCheckResolved(FlowtideDotNet.Base.Engine.CheckFailureNotification@)">
+  OnCheckResolved(ref readonly CheckFailureNotification)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/ICheckFailureListener.cs/#L28"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called when an active issue is no longer active.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void OnCheckResolved(ref readonly CheckFailureNotification notification)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>notification</code> <a class="xref" href="FlowtideDotNet.Base.Engine.CheckFailureNotification.html">CheckFailureNotification</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
 
 
 
@@ -190,7 +221,7 @@ and <a class="xref" href="FlowtideDotNet.Base.Engine.CheckFailureNotification.ht
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/ICheckFailureListener.cs/#L41" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/ICheckFailureListener.cs/#L18" class="edit-link">Edit this page</a>
         </div>
 
 

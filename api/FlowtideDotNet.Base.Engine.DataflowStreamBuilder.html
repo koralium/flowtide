@@ -214,11 +214,10 @@ throughout the lifetime of the stream.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckFailureListener_FlowtideDotNet_Base_Engine_ICheckFailureListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckFailureListener(FlowtideDotNet.Base.Engine.ICheckFailureListener)">
   AddCheckFailureListener(ICheckFailureListener)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L336"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L331"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Subscribes an <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckFailureListener.html">ICheckFailureListener</a> to receive a notification each time
-a data quality check within the stream fails.</p>
+  <div class="markdown level1 summary"><p>Subscribes an <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckFailureListener.html">ICheckFailureListener</a> to the check issues of the committed state.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
@@ -246,10 +245,45 @@ a data quality check within the stream fails.</p>
 
 
 
-  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckFailureListener_FlowtideDotNet_Base_Engine_ICheckFailureListener__remarks">Remarks</h4>
-  <div class="markdown level1 remarks"><p>Multiple listeners can be registered. Exceptions thrown by a listener are swallowed to
-ensure they cannot disrupt the stream.</p>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckStatusListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckStatusListener*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckStatusListener_FlowtideDotNet_Base_Engine_ICheckStatusListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckStatusListener(FlowtideDotNet.Base.Engine.ICheckStatusListener)">
+  AddCheckStatusListener(ICheckStatusListener)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L342"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Subscribes an <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckStatusListener.html">ICheckStatusListener</a> to the status of every check.</p>
 </div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder AddCheckStatusListener(ICheckStatusListener listener)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>listener</code> <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckStatusListener.html">ICheckStatusListener</a></dt>
+    <dd><p>The listener to register.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
 
 
 
@@ -530,7 +564,7 @@ ensure they cannot disrupt the stream.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_Build" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.Build">
   Build()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L396"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L402"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Validates the configuration, applies defaults for any unset optional components, and constructs
@@ -748,7 +782,7 @@ at most this long for background commits, then asks them to stop at their next p
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetVersion_System_String_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetVersion(System.String)">
   SetVersion(string)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L371"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L377"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Sets the semantic version string for this stream configuration.</p>
@@ -930,7 +964,7 @@ internal stream components.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithPauseMonitor_Microsoft_Extensions_Options_IOptionsMonitor_FlowtideDotNet_Base_FlowtidePauseOptions__" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithPauseMonitor(Microsoft.Extensions.Options.IOptionsMonitor{FlowtideDotNet.Base.FlowtidePauseOptions})">
   WithPauseMonitor(IOptionsMonitor&lt;FlowtidePauseOptions&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L353"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L359"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Wires up an <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.options.ioptionsmonitor-1">IOptionsMonitor&lt;TOptions&gt;</a> so that the stream can be

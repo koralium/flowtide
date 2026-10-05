@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Check Operator | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Check Operator | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../../images/favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/blob/main/docs/docs/operators/check.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="check-operator">Check Operator</h1>
+
+<p>The <em>Check Operator</em> evaluates <a href="../expressions/scalarfunctions/check.html">check functions</a> and keeps track of the
+issues they raise and the counts of each check. It is not written by hand: the plan optimizer finds every
+<code>check_value</code> and <code>check_true</code> call, moves it into a check operator on the input the call is evaluated against, and
+replaces the call with its result (the value for <code>check_value</code>, the condition being <code>true</code> for <code>check_true</code>).</p>
+<p>Rows pass through the operator unchanged. Rows that pass all checks only cost the evaluation of each check condition and
+its guards, and are never copied. The operator implements the common <em>Emit</em> field, which reuses the input columns.</p>
+<p>The operator is stateful. Per check it uses one persistent B+ tree keyed on the tag values, with the net number of
+failing rows of each issue as the value. A check without tags uses a single constant key, so it has one issue. The
+number of active issues and failing rows of every check is kept in memory, updated as rows are processed, and stored
+as an object state at each checkpoint, together with a flag that marks the checks as evaluated.</p>
+<p>At each checkpoint the issue changes and the status of each check whose state or counts changed are handed to the
+stream, which publishes them to the listeners once the checkpoint is committed. Every start publishes the active issues
+and the status of every check from the restored state before new data is processed. When the operator has no committed
+state yet, the checks report <code>NotEvaluated</code>, and the first checkpoint reports <code>Passed</code> or <code>Failed</code> for every check,
+also when the counts are zero.</p>
+<p>The work for each kind of listener is only done when such a listener is registered. With a check failure listener,
+a second, temporary B+ tree per check collects the issues that became active or resolved since the last checkpoint.
+With a check status listener, the counts are compared with the last reported status at each checkpoint. The counts and
+the metrics are always maintained.</p>
+<p>A deletion of a failing row that the operator has never seen, for example after an inconsistent source, is kept as a
+negative count. It never makes an issue active and is not counted as a failing row, and a later insert of the same
+row brings the count back to zero.</p>
+<p>The operator is only supported with the column store.</p>
+<h2 id="check-relation">Check Relation</h2>
+<p>The operator is defined by a custom relation that uses <code>ExtensionSingleRel</code> in substrait, with the following message
+in the detail field and the emit in the common field:</p>
+<pre><code>message CheckRelation {
+    repeated Check checks = 1;
+
+    message Check {
+        // Raises an issue when it evaluates to boolean false.
+        substrait.Expression condition = 1;
+
+        // Check name template, placeholders like {tag} are left unrendered.
+        string message = 2;
+
+        repeated Tag tags = 3;
+
+        // Must all hold before the check is evaluated, empty means always.
+        repeated Guard guards = 4;
+    }
+
+    message Tag {
+        string key = 1;
+        substrait.Expression value = 2;
+    }
+
+    message Guard {
+        substrait.Expression expression = 1;
+        Kind kind = 2;
+
+        enum Kind {
+            // The expression is true, the CASE branch was taken.
+            KIND_IS_TRUE = 0;
+            // The expression is not true, an earlier CASE branch was not taken.
+            KIND_IS_NOT_TRUE = 1;
+            // The expression is null, an earlier COALESCE argument was null.
+            KIND_IS_NULL = 2;
+        }
+    }
+}
+</code></pre>
+<p>The condition, the tag values and the guards are evaluated against the input row of the relation. The message is the
+name of the check and is never evaluated.</p>
+<h2 id="metrics">Metrics</h2>
+<p>The <em>Check Operator</em> has the following metrics:</p>
+<table>
+<thead>
+<tr>
+<th>Metric Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>busy</td>
+<td>Gauge</td>
+<td>Value 0-1 on how busy the operator is.</td>
+</tr>
+<tr>
+<td>backpressure</td>
+<td>Gauge</td>
+<td>Value 0-1 on how much backpressure the operator has.</td>
+</tr>
+<tr>
+<td>health</td>
+<td>Gauge</td>
+<td>Value 0 or 1, if the operator is healthy or not.</td>
+</tr>
+<tr>
+<td>events</td>
+<td>Counter</td>
+<td>How many events that pass through the operator.</td>
+</tr>
+<tr>
+<td>events_processed</td>
+<td>Counter</td>
+<td>How many events the operator processes.</td>
+</tr>
+<tr>
+<td>check_active_issues</td>
+<td>Gauge</td>
+<td>How many issues of a check are active, one value per evaluated check.</td>
+</tr>
+<tr>
+<td>check_failing_rows</td>
+<td>Gauge</td>
+<td>How many rows fail a check, one value per evaluated check.</td>
+</tr>
+</tbody>
+</table>
+<p><code>check_active_issues</code> and <code>check_failing_rows</code> have these labels on top of the standard labels:</p>
+<table>
+<thead>
+<tr>
+<th>Label Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>check_name</td>
+<td>The message of the check as written in the query, with the placeholders not filled in.</td>
+</tr>
+<tr>
+<td>check_id</td>
+<td>The id of the check, <code>{operatorId}:{checkIndex}</code>, prefixed by the substream name in distributed mode.</td>
+</tr>
+</tbody>
+</table>
+<p>The tag values of the issues never become labels, so the number of series is the number of checks times the number of
+partitions they run in, however many issues there are. This keeps the metrics safe to scrape with Prometheus. The
+values follow the processed rows, so they can be ahead of what the listeners have received until the next checkpoint
+is committed.</p>
+<p>Until the operator's first checkpoint is committed, its checks are not evaluated and both gauges have no measurement
+for them. The series appear right after that commit, also when it is the checkpoint taken when the stream stops, and a
+checkpoint that fails never shows them. A missing series means that the status of the check is not known yet, and zero keeps meaning that
+no row fails the check. After a restart from committed state the series are present from the start.</p>
+<p>A check in a partitioned part of the plan has one series per partition. When every check has its own message,
+summing <code>check_failing_rows</code> over them gives the failing rows of the check, for example
+<code>sum by (check_name) (flowtide_check_failing_rows)</code>. <code>check_active_issues</code> does not add up over partitions: rows with
+the same tag values can fail in several partitions, so one issue can be counted in several series, and a check without
+tags counts one issue in every partition that has a failing row. A check passes when all its series are present and
+zero.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>At this point, a check operator will never be unhealthy.
+If there is a failure against the state, the stream will instead restart.</p>
+</div>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/docs/docs/operators/check.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
