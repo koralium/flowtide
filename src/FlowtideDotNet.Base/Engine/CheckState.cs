@@ -13,13 +13,23 @@
 namespace FlowtideDotNet.Base.Engine
 {
     /// <summary>
-    /// Receives the state and counts of each check, at every start and when they change.
+    /// The state of a check reported to <see cref="ICheckStatusListener"/>.
     /// </summary>
-    public interface ICheckStatusListener
+    public enum CheckState
     {
         /// <summary>
-        /// Called with the committed status of one check.
+        /// No checkpoint containing the check has been committed yet.
         /// </summary>
-        void OnCheckStatus(ref readonly CheckStatusNotification notification);
+        NotEvaluated = 0,
+
+        /// <summary>
+        /// The check is evaluated and has no active issue.
+        /// </summary>
+        Passed = 1,
+
+        /// <summary>
+        /// The check is evaluated and has at least one active issue.
+        /// </summary>
+        Failed = 2
     }
 }

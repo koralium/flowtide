@@ -220,6 +220,11 @@ namespace FlowtideDotNet.Base.Engine
         public readonly string CheckName;
 
         /// <summary>
+        /// Whether the check is evaluated yet, and if so whether it passes.
+        /// </summary>
+        public readonly CheckState State;
+
+        /// <summary>
         /// The number of distinct active issues.
         /// </summary>
         public readonly long ActiveIssues;
@@ -230,18 +235,14 @@ namespace FlowtideDotNet.Base.Engine
         public readonly long FailingRows;
 
         /// <summary>
-        /// True when the check has no active issue.
-        /// </summary>
-        public readonly bool Passed => ActiveIssues == 0;
-
-        /// <summary>
         /// Creates a status notification for a check.
         /// </summary>
-        public CheckStatusNotification(ref string streamName, string checkId, string checkName, long activeIssues, long failingRows)
+        public CheckStatusNotification(ref string streamName, string checkId, string checkName, CheckState state, long activeIssues, long failingRows)
         {
             StreamName = ref streamName;
             CheckId = checkId;
             CheckName = checkName;
+            State = state;
             ActiveIssues = activeIssues;
             FailingRows = failingRows;
         }

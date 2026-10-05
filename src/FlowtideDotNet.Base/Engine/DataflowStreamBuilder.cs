@@ -335,7 +335,7 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
-        /// Subscribes an <see cref="ICheckStatusListener"/> to the pass or fail status of every check.
+        /// Subscribes an <see cref="ICheckStatusListener"/> to the status of every check.
         /// </summary>
         /// <param name="listener">The listener to register.</param>
         /// <returns>This builder instance for method chaining.</returns>

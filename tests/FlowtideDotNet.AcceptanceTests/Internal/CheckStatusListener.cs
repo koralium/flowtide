@@ -17,7 +17,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     /// <summary>
     /// One received check status.
     /// </summary>
-    internal readonly record struct ReportedCheckStatus(string StreamName, string CheckId, string CheckName, long ActiveIssues, long FailingRows, bool Passed);
+    internal readonly record struct ReportedCheckStatus(string StreamName, string CheckId, string CheckName, CheckState State, long ActiveIssues, long FailingRows);
 
     /// <summary>
     /// Records every check status in arrival order and checks it against the issue view when one is given.
@@ -28,6 +28,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly CheckIssueListener? _issues;
         private readonly List<ReportedCheckStatus> _statuses = new List<ReportedCheckStatus>();
         private readonly List<string> _violations = new List<string>();
+        private readonly HashSet<(string StreamName, string CheckId)> _evaluated = new HashSet<(string StreamName, string CheckId)>();
 
         /// <summary>
         /// Creates a listener, issues must be registered on the same stream when given.
@@ -85,14 +86,29 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void OnCheckStatus(ref readonly CheckStatusNotification notification)
         {
-            var status = new ReportedCheckStatus(notification.StreamName, notification.CheckId, notification.CheckName, notification.ActiveIssues, notification.FailingRows, notification.Passed);
+            var status = new ReportedCheckStatus(notification.StreamName, notification.CheckId, notification.CheckName, notification.State, notification.ActiveIssues, notification.FailingRows);
             // Issues of the same item are dispatched before its status
             var activeIssues = _issues?.ActiveIssueCount(notification.StreamName, notification.CheckId);
             lock (_lock)
             {
-                if (status.Passed != (status.ActiveIssues == 0))
+                if (status.State == CheckState.NotEvaluated)
                 {
-                    _violations.Add($"Passed does not follow the active issues: {status}");
+                    if (status.ActiveIssues != 0 || status.FailingRows != 0)
+                    {
+                        _violations.Add($"Not evaluated with counts: {status}");
+                    }
+                    if (_evaluated.Contains((status.StreamName, status.CheckId)))
+                    {
+                        _violations.Add($"Not evaluated after an evaluated status: {status}");
+                    }
+                }
+                else
+                {
+                    _evaluated.Add((status.StreamName, status.CheckId));
+                    if ((status.State == CheckState.Passed) != (status.ActiveIssues == 0))
+                    {
+                        _violations.Add($"The state does not follow the active issues: {status}");
+                    }
                 }
                 if (status.ActiveIssues < 0 || status.FailingRows < status.ActiveIssues)
                 {

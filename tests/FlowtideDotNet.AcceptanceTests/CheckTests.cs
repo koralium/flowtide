@@ -12,9 +12,11 @@
 
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Base.Engine;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Xunit.Abstractions;
+using static FlowtideDotNet.Base.Engine.CheckState;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
@@ -184,6 +186,8 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
             AssertIssues(listener, ExpectedUserKeyIssues());
+            // Gauges appear once the first checkpoint is durable
+            await WaitUntil(() => ReadCheckGauges().Count == 2);
             Assert.Equal(ExpectedUserKeyIssues().Count, ReadActiveIssuesGauge());
             Assert.Equal(ExpectedUserKeyIssues().Count, ReadFailingRowsGauge());
 
@@ -218,9 +222,9 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertIssues(listener, ExpectedUserKeyIssues());
             AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
 
-            // Every start passes, only the committed epoch fails
+            // No start before the first commit is evaluated
             var expectedCount = ExpectedUserKeyIssues().Count;
-            AssertStatuses(status, (0, 0), (0, 0), (0, 0), (expectedCount, expectedCount));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (NotEvaluated, 0, 0), (NotEvaluated, 0, 0), (Failed, expectedCount, expectedCount));
         }
 
         [Fact]
@@ -559,7 +563,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task CheckStatusPassingCheckReportsPassedAtStart()
+        public async Task CheckStatusPassingCheckIsNotEvaluatedUntilTheFirstCheckpoint()
         {
             GenerateData();
 
@@ -576,15 +580,18 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Equal(1, listener.ResetCount);
             AssertIssues(listener, []);
 
-            // The checkpoint left the counts at zero, so only the start reports
-            var reported = Assert.Single(status.Statuses());
-            Assert.True(reported.Passed);
-            Assert.Equal(0, reported.ActiveIssues);
-            Assert.Equal(0, reported.FailingRows);
+            // The first checkpoint reports passed although the counts stay zero
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Passed, 0, 0));
+            var reported = status.Statuses()[^1];
             Assert.Equal("Userkey is not positive", reported.CheckName);
             Assert.Matches("^[0-9]+:0$", reported.CheckId);
             Assert.Equal(StreamName, reported.StreamName);
-            Assert.Empty(status.Violations());
+
+            // A restart reports the committed passed status
+            await StopStream();
+            await StartStream();
+            await WaitForStatusCount(status, 3);
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Passed, 0, 0), (Passed, 0, 0));
         }
 
         [Fact]
@@ -598,33 +605,30 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            // The empty committed state passes at start, the first checkpoint fails
+            // Not evaluated at start, the first checkpoint fails
             var initialCount = ExpectedUserKeyIssues().Count;
-            AssertStatuses(status, (0, 0), (initialCount, initialCount));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, initialCount, initialCount));
             var failed = status.Statuses()[^1];
-            Assert.False(failed.Passed);
             Assert.Equal(UserKeyCheckName, failed.CheckName);
             Assert.Equal(Assert.Single(listener.CheckIds()), failed.CheckId);
 
             DeleteFailingUsers(3);
             await WaitForUpdate();
 
-            AssertStatuses(status, (0, 0), (initialCount, initialCount), (initialCount - 3, initialCount - 3));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, initialCount, initialCount), (Failed, initialCount - 3, initialCount - 3));
 
             // Fail to pass
             DeleteFailingUsers();
             await WaitForUpdate();
 
-            AssertStatuses(status, (0, 0), (initialCount, initialCount), (initialCount - 3, initialCount - 3), (0, 0));
-            Assert.True(status.Statuses()[^1].Passed);
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, initialCount, initialCount), (Failed, initialCount - 3, initialCount - 3), (Passed, 0, 0));
             AssertIssues(listener, []);
 
             // Pass to fail
             AddUser(new User() { UserKey = 5000 });
             await WaitForUpdate();
 
-            AssertStatuses(status, (0, 0), (initialCount, initialCount), (initialCount - 3, initialCount - 3), (0, 0), (1, 1));
-            Assert.False(status.Statuses()[^1].Passed);
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, initialCount, initialCount), (Failed, initialCount - 3, initialCount - 3), (Passed, 0, 0), (Failed, 1, 1));
             AssertIssues(listener, ["Userkey: 5000 is too large"]);
         }
 
@@ -641,13 +645,13 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream(VisitsCheckSql, failureListener: listener, statusListener: status);
 
             await WaitForUpdate();
-            AssertStatuses(status, (0, 0), (2, 2));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, 2, 2));
 
             // A passing row changes
             AddOrUpdateUser(With(Users[20], x => x.Visits = 50));
             await WaitForUpdate();
 
-            AssertStatuses(status, (0, 0), (2, 2));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, 2, 2));
             Assert.Equal(2, listener.RaisedCount);
 
             // An issue is replaced by another, the counts stay the same
@@ -657,7 +661,7 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertIssues(listener, ExpectedVisitsIssues());
             Assert.Equal(1, listener.ResolvedCount);
             Assert.Equal(3, listener.RaisedCount);
-            AssertStatuses(status, (0, 0), (2, 2));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, 2, 2));
         }
 
         [Fact]
@@ -678,7 +682,7 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.True(initialCount > 1);
             AssertIssues(listener, ["Userkey too large"]);
             Assert.Equal(1, listener.RaisedCount);
-            AssertStatuses(status, (0, 0), (1, initialCount));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, 1, initialCount));
 
             DeleteFailingUsers(3);
             await WaitForUpdate();
@@ -687,14 +691,14 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertIssues(listener, ["Userkey too large"]);
             Assert.Equal(1, listener.RaisedCount);
             Assert.Equal(0, listener.ResolvedCount);
-            AssertStatuses(status, (0, 0), (1, initialCount), (1, initialCount - 3));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, 1, initialCount), (Failed, 1, initialCount - 3));
 
             DeleteFailingUsers();
             await WaitForUpdate();
 
             AssertIssues(listener, []);
             Assert.Equal(1, listener.ResolvedCount);
-            AssertStatuses(status, (0, 0), (1, initialCount), (1, initialCount - 3), (0, 0));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, 1, initialCount), (Failed, 1, initialCount - 3), (Passed, 0, 0));
         }
 
         [Fact]
@@ -707,13 +711,13 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
             var initialCount = ExpectedUserKeyIssues().Count;
-            AssertStatuses(status, (0, 0), (initialCount, initialCount));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, initialCount, initialCount));
             Assert.All(status.Statuses(), x => Assert.Equal(UserKeyCheckName, x.CheckName));
 
             DeleteFailingUsers(3);
             await WaitForUpdate();
 
-            AssertStatuses(status, (0, 0), (initialCount, initialCount), (initialCount - 3, initialCount - 3));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, initialCount, initialCount), (Failed, initialCount - 3, initialCount - 3));
             Assert.Equal(initialCount - 3, ReadActiveIssuesGauge());
             AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
         }
@@ -730,7 +734,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             var initialCount = ExpectedUserKeyIssues().Count;
             var raised = listener.RaisedCount;
-            AssertStatuses(status, (0, 0), (initialCount, initialCount));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, initialCount, initialCount));
 
             // An idle restart reports the committed counts and issues once more
             await StopStream();
@@ -738,7 +742,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForStatusCount(status, 3);
             await WaitForIssues(listener, ExpectedUserKeyIssues(), minResets: 2);
 
-            AssertStatuses(status, (0, 0), (initialCount, initialCount), (initialCount, initialCount));
+            AssertStatuses(status, (NotEvaluated, 0, 0), (Failed, initialCount, initialCount), (Failed, initialCount, initialCount));
             Assert.Equal(2, listener.ResetCount);
             Assert.Equal(raised + initialCount, listener.RaisedCount);
             Assert.Equal(0, listener.ResolvedCount);
@@ -751,11 +755,11 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForStatusCount(status, 5);
             AssertStatuses(
                 status,
-                (0, 0),
-                (initialCount, initialCount),
-                (initialCount, initialCount),
-                (initialCount, initialCount),
-                (initialCount - 1, initialCount - 1));
+                (NotEvaluated, 0, 0),
+                (Failed, initialCount, initialCount),
+                (Failed, initialCount, initialCount),
+                (Failed, initialCount, initialCount),
+                (Failed, initialCount - 1, initialCount - 1));
             AssertIssues(listener, ExpectedUserKeyIssues());
             Assert.Equal(3, listener.ResetCount);
         }
@@ -777,6 +781,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 FROM users", failureListener: listener);
 
             await WaitForUpdate();
+            await WaitUntil(() => ReadCheckGauges().Count == 4);
 
             var userKeyCount = ExpectedUserKeyIssues().Count;
             var gauges = ReadCheckGauges();
@@ -923,9 +928,9 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Empty(listener.Violations());
         }
 
-        private static void AssertStatuses(CheckStatusListener listener, params (long ActiveIssues, long FailingRows)[] expected)
+        private static void AssertStatuses(CheckStatusListener listener, params (CheckState State, long ActiveIssues, long FailingRows)[] expected)
         {
-            Assert.Equal(expected, listener.Statuses().Select(x => (x.ActiveIssues, x.FailingRows)));
+            Assert.Equal(expected, listener.Statuses().Select(x => (x.State, x.ActiveIssues, x.FailingRows)));
             Assert.Empty(listener.Violations());
         }
 

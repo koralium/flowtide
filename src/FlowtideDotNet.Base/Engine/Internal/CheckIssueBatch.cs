@@ -40,9 +40,14 @@ namespace FlowtideDotNet.Base.Engine.Internal
         public required IReadOnlyList<CheckIssueChange> Changes { get; init; }
 
         /// <summary>
-        /// The check's counts, null when the status is not reported.
+        /// The check's state and counts, null when the status is not reported.
         /// </summary>
         public CheckStatus? Status { get; init; }
+
+        /// <summary>
+        /// Runs once the batch is published, also when no listener is registered.
+        /// </summary>
+        public Action? Committed { get; init; }
     }
 
     /// <summary>
@@ -51,7 +56,21 @@ namespace FlowtideDotNet.Base.Engine.Internal
     internal readonly record struct CheckIssueChange(bool Active, KeyValuePair<string, object?>[] Tags);
 
     /// <summary>
-    /// The counts of one check.
+    /// The state and counts of one check.
     /// </summary>
-    internal readonly record struct CheckStatus(long ActiveIssues, long FailingRows);
+    internal readonly record struct CheckStatus(CheckState State, long ActiveIssues, long FailingRows)
+    {
+        /// <summary>
+        /// The status of a check that has not been evaluated yet.
+        /// </summary>
+        public static CheckStatus NotEvaluated => new CheckStatus(CheckState.NotEvaluated, 0, 0);
+
+        /// <summary>
+        /// The status of an evaluated check with these counts.
+        /// </summary>
+        public static CheckStatus Evaluated(long activeIssues, long failingRows)
+        {
+            return new CheckStatus(activeIssues > 0 ? CheckState.Failed : CheckState.Passed, activeIssues, failingRows);
+        }
+    }
 }

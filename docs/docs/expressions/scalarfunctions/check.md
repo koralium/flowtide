@@ -7,8 +7,8 @@ sidebar_position: 7
 Check functions validate data quality inside a stream. Every check has a *name*, which is its message written as a
 string literal, for example `'Userkey {userkey} is too large'`. Each failing row raises an *issue*, identified by the
 check and the values of its tags, and the issue is *resolved* again when no row produces it anymore, for example after
-the row is deleted or updated so it passes. On top of the issues, every check reports a *status*: whether it passes,
-and how many issues and failing rows it has.
+the row is deleted or updated so it passes. On top of the issues, every check reports a *status*: whether it has been
+evaluated yet, whether it passes, and how many issues and failing rows it has.
 
 The plan optimizer moves every check into a [check operator](../../operators/check.md), which keeps track of the
 active issues and the counts in the stream state.
@@ -17,8 +17,9 @@ There are two kinds of listeners:
 
 * A **check failure listener** (`ICheckFailureListener`) receives every issue with its tags when it is raised or
   resolved. Use it to act on individual issues.
-* A **check status listener** (`ICheckStatusListener`) receives one status per check with the number of active issues
-  and failing rows, without any tags. Use it for dashboards and alerts that should not grow with the number of issues.
+* A **check status listener** (`ICheckStatusListener`) receives one status per check with its state and the number of
+  active issues and failing rows, without any tags. Use it for dashboards and alerts that should not grow with the
+  number of issues.
 
 The built-in logger is both:
 
@@ -122,25 +123,51 @@ rows apart, such as a key column, in the tags if every failing row should be its
 
 ## Check status
 
-Every check reports its status with two counts:
+Every check reports its status as a state and two counts:
 
 * **Active issues** - the number of distinct issues that are active, that is distinct tag values with at least one
   failing row.
 * **Failing rows** - the number of rows that fail the check.
 
-A check passes when it has no active issues. For example, with the tag `company => CompanyId`, three failing rows of
-two companies give two active issues and three failing rows. A check without tags has at most one active issue, and
-its failing rows count every failing row.
+For example, with the tag `company => CompanyId`, three failing rows of two companies give two active issues and three
+failing rows. A check without tags has at most one active issue, and its failing rows count every failing row.
+
+The state is one of the values of `CheckState`:
+
+| State | Meaning |
+| ----- | ------- |
+| `NotEvaluated` | No checkpoint that contains the check has been committed yet, so it is not known whether the check passes. The counts are zero. |
+| `Passed` | The check is evaluated and has no active issues. |
+| `Failed` | The check is evaluated and has at least one active issue. |
+
+A check becomes evaluated when the first checkpoint that contains it is committed. By default the stream takes that
+checkpoint right after the initial data has been loaded, so a check reports `Passed` or `Failed` once it has seen the
+initial data. A listener that wants to treat a check that has not been evaluated yet as passing can map
+`NotEvaluated` to passing itself.
 
 The status is reported:
 
-* At every start of the stream, including restarts after a stop and recoveries after a failure, for every check, from
-  the restored, already committed state, before new data is processed. A passing check reports that it passes.
-* After each committed checkpoint, for every check whose counts changed since its last reported status. A checkpoint
-  that leaves the counts of a check unchanged reports nothing for it, also when one issue was resolved and another
-  raised in it.
+* At every start of the stream, including restarts after a stop and recoveries after a failure, for every check,
+  before new data is processed. A stream that has not committed a checkpoint yet, also after a failure before its
+  first checkpoint, reports `NotEvaluated` with zero counts. Otherwise the status comes from the restored, already
+  committed state, so it is `Passed` or `Failed` with the committed counts.
+* After each committed checkpoint, for every check whose state or counts changed since its last reported status. The
+  first checkpoint after the stream started without committed state therefore always reports every check, also a
+  check that has no failing rows. A checkpoint that leaves the state and counts of a check unchanged reports nothing
+  for it, also when one issue was resolved and another raised in it.
 
 Like the issues, the status only covers committed state, so a checkpoint that fails is never reported.
+
+An example of the statuses one check reports:
+
+| Event | Reported status |
+| ----- | --------------- |
+| The stream starts for the first time | `NotEvaluated`, 0 issues, 0 failing rows |
+| The checkpoint after the initial data is committed, two rows of one company fail | `Failed`, 1 issue, 2 failing rows |
+| One of the rows is fixed and the next checkpoint is committed | `Failed`, 1 issue, 1 failing row |
+| A checkpoint is committed without changes to the check | Nothing |
+| The other row is fixed and the next checkpoint is committed | `Passed`, 0 issues, 0 failing rows |
+| The stream restarts | `Passed`, 0 issues, 0 failing rows, from the committed state |
 
 ## When listeners are called
 
@@ -153,7 +180,7 @@ data is processed: `OnCheckReset` followed by one `OnCheckFailure` per active is
 snapshot replaces everything the failure listener knows about that check, so issues from a checkpoint that was rolled
 back are corrected here. It is also sent when the check has no active issues, so the listener learns that the check
 is empty. After the snapshot, only changes are published: `OnCheckFailure` when an issue becomes active,
-`OnCheckResolved` when it is no longer active, and `OnCheckStatus` when the counts changed.
+`OnCheckResolved` when it is no longer active, and `OnCheckStatus` when the state or the counts changed.
 
 For each check the calls of one checkpoint or start come in this order: the reset of a snapshot, the issue changes,
 then the status. A listener registered as both kinds therefore sees a status whose active issues match the issues it
@@ -195,8 +222,8 @@ public interface ICheckStatusListener
 }
 ```
 
-`CheckStatusNotification` contains `StreamName`, `CheckId`, `CheckName`, `ActiveIssues`, `FailingRows` and `Passed`,
-which is `true` when `ActiveIssues` is zero.
+`CheckStatusNotification` contains `StreamName`, `CheckId`, `CheckName`, `State`, `ActiveIssues` and `FailingRows`.
+`State` is `NotEvaluated`, `Passed` or `Failed`, see [Check status](#check-status).
 
 With dependency injection, a custom listener is added through `AddCustomOptions`:
 
@@ -215,7 +242,7 @@ partition, so one check in SQL can report under several check ids, each with the
 partition. When every check has its own message, the failing rows of all check ids with the same `CheckName` add up
 to the failing rows of the check. The active issues do not add up: rows with the same tag values can fail in several
 partitions, so one issue can be active under several check ids, and a check without tags reports one active issue in
-every partition that has a failing row. The check passes when all its check ids report that they pass.
+every partition that has a failing row. The check passes when all its check ids report `Passed`.
 
 Changes are published when a checkpoint completes, and the snapshot is published by each check operator while the
 stream starts, before new data is processed. The calls of one stream are serialized but can come from different
@@ -227,7 +254,7 @@ The built-in listeners:
 
 | Builder method | DI method | Behavior |
 | -------------- | --------- | -------- |
-| `WithCheckLogger(logLevel)` | `WriteCheckFailuresToLogger(logLevel)` | A failure and a status listener. Logs `Check failed: ...` and `Check resolved: ...` at the given level, `Warning` by default, with the tags filled into the check name, and a reset at debug level. The check id and the tags are added as structured properties. Logs the status at information level as `Check passed: {CheckName}` or `Check failed: {CheckName}, {ActiveIssues} issues, {FailingRows} failing rows`. |
+| `WithCheckLogger(logLevel)` | `WriteCheckFailuresToLogger(logLevel)` | A failure and a status listener. Logs `Check failed: ...` and `Check resolved: ...` at the given level, `Warning` by default, with the tags filled into the check name, and a reset at debug level. The check id and the tags are added as structured properties. Logs the status at information level as `Check passed: {CheckName}` or `Check failed: {CheckName}, {ActiveIssues} issues, {FailingRows} failing rows`, and a check that is not evaluated yet at debug level as `Check not evaluated yet: {CheckName}`, so starting a stream does not add an information entry per check. |
 | `WithCheckActivityLogger()` | `WriteCheckFailuresAsActivity()` | A failure listener. Starts a `CheckFailure` or `CheckResolved` activity on the `FlowtideDotNet.CheckFailures` activity source, with the check id, the check name, the message with the tags filled in and the tags as activity tags. Resets are ignored. |
 
 The logger gives every kind of entry its own event id and message template, so structured log sinks can tell a
@@ -239,13 +266,16 @@ raised issue from a resolved one:
 | 2 | `CheckResolved` | The given level | `Check resolved: ` followed by the check name | The tags and `CheckId` |
 | 3 | `CheckStatus` | Information | `Check passed: {CheckName}` or `Check failed: {CheckName}, {ActiveIssues} issues, {FailingRows} failing rows` | `CheckName`, `ActiveIssues`, `FailingRows` and `CheckId` |
 | 4 | `CheckReset` | Debug | `Check reset: {CheckName}, {CheckId}` | `CheckName` and `CheckId` |
+| 5 | `CheckNotEvaluated` | Debug | `Check not evaluated yet: {CheckName}` | `CheckName` and `CheckId` |
 
 The `CheckId` property of an issue is left out when one of its tags has the key `CheckId`. Sinks that render the
 message template themselves, such as Serilog, fill in the `{tag}` placeholders from the tag properties, matching the
 key by exact case.
 
 The [check operator](../../operators/check.md#metrics) also exposes the counts of every check as the metrics
-`flowtide_check_active_issues` and `flowtide_check_failing_rows`, labeled with the check name.
+`flowtide_check_active_issues` and `flowtide_check_failing_rows`, labeled with the check name. A check that is not
+evaluated yet has no value in these metrics, so a missing value means the status is not known yet and zero means that
+no row fails the check.
 
 ## Where checks are evaluated
 
@@ -312,8 +342,8 @@ issues were never resolved. These changes require action when upgrading:
   placeholders not filled in. Fill them in from `Tags` where a rendered text is needed.
 * `ICheckFailureListener` has the new required members `OnCheckResolved` and `OnCheckReset`.
 * The `CheckFailureNotification` constructor takes the check id and the check name.
-* `ICheckStatusListener` is new, for the pass or fail status of every check. `WithCheckLogger` and
-  `WriteCheckFailuresToLogger` now also log the status of every check at information level.
+* `ICheckStatusListener` is new, for the state and counts of every check. `WithCheckLogger` and
+  `WriteCheckFailuresToLogger` now also log the status of every evaluated check at information level.
 * The check logger writes each kind of entry with its own [event id](#listener-interfaces) instead of event id 0,
   and the message template of a failure now starts with `Check failed: `.
 * `ICheckNotificationReceiver`, `IFunctionServices.CheckNotificationReceiver` and `SetCheckNotificationReceiver` on

@@ -41,6 +41,8 @@ namespace FlowtideDotNet.Core.Operators.Check
         public long[] ActiveIssues { get; set; } = Array.Empty<long>();
 
         public long[] FailingRows { get; set; } = Array.Empty<long>();
+
+        public bool Evaluated { get; set; }
     }
 
     /// <summary>
@@ -122,6 +124,9 @@ namespace FlowtideDotNet.Core.Operators.Check
 
         private IObjectState<ColumnCheckOperatorState>? _state;
         private long _checkpointVersion;
+        // Read by the gauge collecting thread
+        private volatile bool _evaluated;
+        private readonly Action _markEvaluated;
 
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
@@ -159,6 +164,7 @@ namespace FlowtideDotNet.Core.Operators.Check
                 _checks[i] = new CheckInstance(checkIds[i], relation.Checks[i], functionsRegister);
             }
             _tagConverter = new ObjectConverterResolver().GetConverter(ObjectConverterTypeInfoLookup.GetTypeInfo(typeof(object)));
+            _markEvaluated = () => _evaluated = true;
         }
 
         public override string DisplayName => "Check";
@@ -199,7 +205,22 @@ namespace FlowtideDotNet.Core.Operators.Check
                 state.ActiveIssues[i] = check.Counts.ActiveIssues;
                 state.FailingRows[i] = check.Counts.FailingRows;
             }
+            state.Evaluated = true;
             await _state.Commit();
+            // A relation without checks has no gauges to show
+            if (!_evaluated && _checks.Length > 0)
+            {
+                // Gauges appear once this checkpoint is committed, on the stop path too
+                _publisher.Enqueue(new CheckIssueBatch()
+                {
+                    CheckId = _checks[0].CheckId,
+                    CheckName = _checks[0].CheckName,
+                    Version = _checkpointVersion,
+                    IsSnapshot = false,
+                    Changes = Array.Empty<CheckIssueChange>(),
+                    Committed = _markEvaluated
+                });
+            }
         }
 
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -454,7 +475,8 @@ namespace FlowtideDotNet.Core.Operators.Check
             CheckStatus? status = null;
             if (_publisher.StatusEnabled)
             {
-                var current = new CheckStatus(check.Counts.ActiveIssues, check.Counts.FailingRows);
+                // Evaluated once this checkpoint commits
+                var current = CheckStatus.Evaluated(check.Counts.ActiveIssues, check.Counts.FailingRows);
                 if (current != check.LastReportedStatus)
                 {
                     status = current;
@@ -524,10 +546,15 @@ namespace FlowtideDotNet.Core.Operators.Check
         }
 
         /// <summary>
-        /// One measurement per check from the mirrors, runs on the collecting thread.
+        /// One measurement per evaluated check from the mirrors, runs on the collecting thread.
         /// </summary>
         private IEnumerable<Measurement<long>> ObserveCounts(bool failingRows)
         {
+            if (!_evaluated)
+            {
+                // No series until the first commit
+                return Array.Empty<Measurement<long>>();
+            }
             var measurements = new Measurement<long>[_checks.Length];
             for (int i = 0; i < _checks.Length; i++)
             {
@@ -571,6 +598,7 @@ namespace FlowtideDotNet.Core.Operators.Check
                 state.FailingRows = failingRows;
             }
             _state.Value = state;
+            _evaluated = state.Evaluated;
 
             for (int i = 0; i < _checks.Length; i++)
             {
@@ -582,7 +610,7 @@ namespace FlowtideDotNet.Core.Operators.Check
                 check.Counts.FailingRows = state.FailingRows[i];
                 Volatile.Write(ref check.ActiveIssuesMirror, check.Counts.ActiveIssues);
                 Volatile.Write(ref check.FailingRowsMirror, check.Counts.FailingRows);
-                var status = new CheckStatus(check.Counts.ActiveIssues, check.Counts.FailingRows);
+                var status = state.Evaluated ? CheckStatus.Evaluated(check.Counts.ActiveIssues, check.Counts.FailingRows) : CheckStatus.NotEvaluated;
                 check.LastReportedStatus = status;
                 check.FailingCount = 0;
                 check.PendingDirty = false;
@@ -618,7 +646,7 @@ namespace FlowtideDotNet.Core.Operators.Check
         internal CheckStatus GetCountsForTests(int checkIndex)
         {
             var counts = _checks[checkIndex].Counts;
-            return new CheckStatus(counts.ActiveIssues, counts.FailingRows);
+            return CheckStatus.Evaluated(counts.ActiveIssues, counts.FailingRows);
         }
 
         /// <summary>
@@ -648,7 +676,7 @@ namespace FlowtideDotNet.Core.Operators.Check
                     }
                 }
             }
-            return new CheckStatus(activeIssues, failingRows);
+            return CheckStatus.Evaluated(activeIssues, failingRows);
         }
 
         private BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>> CreateTreeOptions(int columnCount)

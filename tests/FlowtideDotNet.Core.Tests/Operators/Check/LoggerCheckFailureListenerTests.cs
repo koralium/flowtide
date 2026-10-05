@@ -160,14 +160,16 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             using var _ = serilog;
             string streamName = "stream";
 
-            var failing = new CheckStatusNotification(ref streamName, "1:0", "User {userkey} has no company", 2, 5);
+            var failing = new CheckStatusNotification(ref streamName, "1:0", "User {userkey} has no company", CheckState.Failed, 2, 5);
             listener.OnCheckStatus(in failing);
-            var passing = new CheckStatusNotification(ref streamName, "1:0", "User {userkey} has no company", 0, 0);
+            var passing = new CheckStatusNotification(ref streamName, "1:0", "User {userkey} has no company", CheckState.Passed, 0, 0);
             listener.OnCheckStatus(in passing);
             var reset = new CheckResetNotification(ref streamName, "1:0", "User {userkey} has no company");
             listener.OnCheckReset(in reset);
+            var notEvaluated = new CheckStatusNotification(ref streamName, "1:0", "User {userkey} has no company", CheckState.NotEvaluated, 0, 0);
+            listener.OnCheckStatus(in notEvaluated);
 
-            Assert.Equal(3, sink.Events.Count);
+            Assert.Equal(4, sink.Events.Count);
 
             var failed = sink.Events[0];
             Assert.Equal((3, "CheckStatus"), EventIdOf(failed));
@@ -189,6 +191,13 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             Assert.Equal((4, "CheckReset"), EventIdOf(resetEvent));
             Assert.Equal(LogEventLevel.Debug, resetEvent.Level);
             Assert.Equal("1:0", ScalarOf(resetEvent, "CheckId"));
+
+            // No counts before the first evaluation
+            var notEvaluatedEvent = sink.Events[3];
+            Assert.Equal((5, "CheckNotEvaluated"), EventIdOf(notEvaluatedEvent));
+            Assert.Equal(LogEventLevel.Debug, notEvaluatedEvent.Level);
+            Assert.Equal("Check not evaluated yet: {CheckName}", notEvaluatedEvent.MessageTemplate.Text);
+            Assert.Equal(new[] { "CheckId", "CheckName" }, notEvaluatedEvent.Properties.Keys.Where(x => x != "EventId" && x != "SourceContext").Order(StringComparer.Ordinal));
         }
     }
 }

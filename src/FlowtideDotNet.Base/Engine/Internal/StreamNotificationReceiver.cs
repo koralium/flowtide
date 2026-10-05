@@ -132,6 +132,10 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         private bool CanBeReceived(CheckIssueBatch batch)
         {
+            if (batch.Committed != null)
+            {
+                return true;
+            }
             if (batch.Status.HasValue && _checkStatusListeners.Count > 0)
             {
                 return true;
@@ -173,6 +177,17 @@ namespace FlowtideDotNet.Base.Engine.Internal
             if (batch.Status.HasValue && _checkStatusListeners.Count > 0)
             {
                 NotifyCheckStatus(batch, batch.Status.Value);
+            }
+            if (batch.Committed != null)
+            {
+                try
+                {
+                    batch.Committed();
+                }
+                catch
+                {
+                    // The callback cant break the stream
+                }
             }
         }
 
@@ -241,7 +256,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         private void NotifyCheckStatus(CheckIssueBatch batch, CheckStatus status)
         {
-            var notification = new CheckStatusNotification(ref _streamName, batch.CheckId, batch.CheckName, status.ActiveIssues, status.FailingRows);
+            var notification = new CheckStatusNotification(ref _streamName, batch.CheckId, batch.CheckName, status.State, status.ActiveIssues, status.FailingRows);
             foreach (var listener in _checkStatusListeners)
             {
                 try

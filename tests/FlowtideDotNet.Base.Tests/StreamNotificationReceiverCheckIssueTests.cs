@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Base.Tests
 
             public void OnCheckStatus(ref readonly CheckStatusNotification notification)
             {
-                var outcome = notification.Passed ? "passed" : "failed";
+                var outcome = notification.State.ToString().ToLowerInvariant();
                 lock (_events)
                 {
                     _events.Add($"status {notification.StreamName} {notification.CheckId} {notification.CheckName} {outcome} {notification.ActiveIssues} {notification.FailingRows}");
@@ -122,7 +122,7 @@ namespace FlowtideDotNet.Base.Tests
                 Version = version,
                 IsSnapshot = isSnapshot,
                 Changes = changes,
-                Status = status is { } s ? new CheckStatus(s.Active, s.Rows) : null
+                Status = status is { } s ? CheckStatus.Evaluated(s.Active, s.Rows) : null
             };
         }
 
@@ -236,8 +236,17 @@ namespace FlowtideDotNet.Base.Tests
 
             receiver.Enqueue(Batch("1:0", 1, false, [Raised("pending")], (2, 2)));
             receiver.Publish(Batch("1:0", 0, true, [Raised("a")], (1, 4)));
+            // The start of a check without committed state
+            receiver.Publish(new CheckIssueBatch() { CheckId = "2:0", CheckName = CheckName, Version = 0, IsSnapshot = true, Changes = [], Status = CheckStatus.NotEvaluated });
 
-            Assert.Equal(new[] { "reset stream 1:0 chk", "failure stream 1:0 chk k=a", "status stream 1:0 chk failed 1 4" }, events);
+            Assert.Equal(new[]
+            {
+                "reset stream 1:0 chk",
+                "failure stream 1:0 chk k=a",
+                "status stream 1:0 chk failed 1 4",
+                "reset stream 2:0 chk",
+                "status stream 2:0 chk notevaluated 0 0"
+            }, events);
         }
 
         [Theory]
@@ -291,7 +300,7 @@ namespace FlowtideDotNet.Base.Tests
                 Version = 1,
                 IsSnapshot = true,
                 Changes = [new CheckIssueChange(true, [new KeyValuePair<string, object?>("k", 17L), new KeyValuePair<string, object?>("user", "u1")])],
-                Status = new CheckStatus(1, 2)
+                Status = CheckStatus.Evaluated(1, 2)
             });
             receiver.OnCheckpointComplete(1);
 
@@ -318,6 +327,32 @@ namespace FlowtideDotNet.Base.Tests
             receiver.OnCheckpointComplete(2);
 
             Assert.Equal(new[] { "failure stream 2:0 chk k=b1", "failure stream 2:0 chk k=b2", "status stream 2:0 chk failed 1 1" }, events);
+        }
+
+        [Fact]
+        public void CommitCallbackRunsAtItsCommitWithoutListeners()
+        {
+            var receiver = new StreamNotificationReceiver("stream");
+            var committed = new List<string>();
+            CheckIssueBatch Marker(string checkId, long version, string name) => new CheckIssueBatch()
+            {
+                CheckId = checkId,
+                CheckName = CheckName,
+                Version = version,
+                IsSnapshot = false,
+                Changes = [],
+                Committed = () => committed.Add(name)
+            };
+
+            receiver.Enqueue(Marker("1:0", 2, "kept"));
+            receiver.Enqueue(Marker("2:0", 2, "discarded"));
+            receiver.DiscardPending("2:0");
+
+            receiver.OnCheckpointComplete(1);
+            Assert.Empty(committed);
+
+            receiver.OnCheckpointComplete(2);
+            Assert.Equal(new[] { "kept" }, committed);
         }
 
         [Fact]

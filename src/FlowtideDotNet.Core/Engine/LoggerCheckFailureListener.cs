@@ -22,12 +22,14 @@ namespace FlowtideDotNet.Core.Engine
         private const string ResolvedPrefix = "Check resolved: ";
         private const string PassedTemplate = "Check passed: {CheckName}";
         private const string FailingTemplate = "Check failed: {CheckName}, {ActiveIssues} issues, {FailingRows} failing rows";
+        private const string NotEvaluatedTemplate = "Check not evaluated yet: {CheckName}";
         private const string CheckIdProperty = "CheckId";
 
         private static readonly EventId s_checkFailedEvent = new EventId(1, "CheckFailed");
         private static readonly EventId s_checkResolvedEvent = new EventId(2, "CheckResolved");
         private static readonly EventId s_checkStatusEvent = new EventId(3, "CheckStatus");
         private static readonly EventId s_checkResetEvent = new EventId(4, "CheckReset");
+        private static readonly EventId s_checkNotEvaluatedEvent = new EventId(5, "CheckNotEvaluated");
 
         private readonly ILogger _logger;
         private readonly LogLevel _logLevel;
@@ -59,12 +61,15 @@ namespace FlowtideDotNet.Core.Engine
         /// <inheritdoc/>
         public void OnCheckStatus(ref readonly CheckStatusNotification notification)
         {
-            if (!_logger.IsEnabled(LogLevel.Information))
+            // Not evaluated logs at debug to keep startup quiet
+            var notEvaluated = notification.State == CheckState.NotEvaluated;
+            var logLevel = notEvaluated ? LogLevel.Debug : LogLevel.Information;
+            if (!_logger.IsEnabled(logLevel))
             {
                 return;
             }
-            var state = new CheckStatusLog(notification.CheckId, notification.CheckName, notification.ActiveIssues, notification.FailingRows);
-            _logger.Log(LogLevel.Information, s_checkStatusEvent, state, default, static (state, exception) => state.ToString());
+            var state = new CheckStatusLog(notification.CheckId, notification.CheckName, notification.State, notification.ActiveIssues, notification.FailingRows);
+            _logger.Log(logLevel, notEvaluated ? s_checkNotEvaluatedEvent : s_checkStatusEvent, state, default, static (state, exception) => state.ToString());
         }
 
         private void LogIssue(EventId eventId, string prefix, ref readonly CheckFailureNotification notification)
@@ -146,13 +151,15 @@ namespace FlowtideDotNet.Core.Engine
         {
             private readonly string _checkId;
             private readonly string _checkName;
+            private readonly CheckState _state;
             private readonly long _activeIssues;
             private readonly long _failingRows;
 
-            public CheckStatusLog(string checkId, string checkName, long activeIssues, long failingRows)
+            public CheckStatusLog(string checkId, string checkName, CheckState state, long activeIssues, long failingRows)
             {
                 _checkId = checkId;
                 _checkName = checkName;
+                _state = state;
                 _activeIssues = activeIssues;
                 _failingRows = failingRows;
             }
@@ -161,19 +168,30 @@ namespace FlowtideDotNet.Core.Engine
             {
                 get
                 {
+                    if (_state == CheckState.NotEvaluated)
+                    {
+                        // No counts before the first evaluation
+                        return index switch
+                        {
+                            0 => new KeyValuePair<string, object?>("CheckName", _checkName),
+                            1 => new KeyValuePair<string, object?>(CheckIdProperty, _checkId),
+                            2 => new KeyValuePair<string, object?>("{OriginalFormat}", NotEvaluatedTemplate),
+                            _ => throw new ArgumentOutOfRangeException(nameof(index))
+                        };
+                    }
                     return index switch
                     {
                         0 => new KeyValuePair<string, object?>("CheckName", _checkName),
                         1 => new KeyValuePair<string, object?>("ActiveIssues", _activeIssues),
                         2 => new KeyValuePair<string, object?>("FailingRows", _failingRows),
                         3 => new KeyValuePair<string, object?>(CheckIdProperty, _checkId),
-                        4 => new KeyValuePair<string, object?>("{OriginalFormat}", _activeIssues == 0 ? PassedTemplate : FailingTemplate),
+                        4 => new KeyValuePair<string, object?>("{OriginalFormat}", _state == CheckState.Passed ? PassedTemplate : FailingTemplate),
                         _ => throw new ArgumentOutOfRangeException(nameof(index))
                     };
                 }
             }
 
-            public int Count => 5;
+            public int Count => _state == CheckState.NotEvaluated ? 3 : 5;
 
             public IEnumerator<KeyValuePair<string, object?>> GetEnumerator()
             {
@@ -185,11 +203,12 @@ namespace FlowtideDotNet.Core.Engine
 
             public override string ToString()
             {
-                if (_activeIssues == 0)
+                return _state switch
                 {
-                    return $"Check passed: {_checkName}";
-                }
-                return $"Check failed: {_checkName}, {_activeIssues} issues, {_failingRows} failing rows";
+                    CheckState.NotEvaluated => $"Check not evaluated yet: {_checkName}",
+                    CheckState.Passed => $"Check passed: {_checkName}",
+                    _ => $"Check failed: {_checkName}, {_activeIssues} issues, {_failingRows} failing rows"
+                };
             }
 
             IEnumerator IEnumerable.GetEnumerator()

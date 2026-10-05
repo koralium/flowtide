@@ -42,11 +42,31 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
 
             public bool StatusEnabled { get; set; }
 
+            // Commit callbacks without content, kept apart from the published batches
+            public List<CheckIssueBatch> Markers { get; } = new List<CheckIssueBatch>();
+
             public void Enqueue(CheckIssueBatch batch)
             {
                 lock (Batches)
                 {
+                    if (batch.Committed != null && batch.Changes.Count == 0 && batch.Status == null)
+                    {
+                        Markers.Add(batch);
+                        return;
+                    }
                     Batches.Add(batch);
+                }
+            }
+
+            public void CommitMarkers()
+            {
+                lock (Batches)
+                {
+                    foreach (var marker in Markers)
+                    {
+                        marker.Committed!();
+                    }
+                    Markers.Clear();
                 }
             }
 
@@ -350,6 +370,21 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
         }
 
         [Fact]
+        public async Task RelationWithoutChecksPassesThroughAndCheckpoints()
+        {
+            var op = await StartOperator(CreateRelation(checks: new List<CheckDefinition>()), Array.Empty<string>());
+
+            var input = CreateBatch(new Row("a", false, 1, 1));
+            await op.SendAsync(new StreamMessage<StreamEventBatch>(input, 0));
+            var output = Assert.IsType<StreamMessage<StreamEventBatch>>(await Receive(op));
+            Assert.Same(input, output.Data);
+            output.Data.Return();
+
+            Assert.Empty(await Checkpoint(op, 1));
+            Assert.Empty(_publisher.Markers);
+        }
+
+        [Fact]
         public async Task EmitReusesInputColumns()
         {
             var op = await StartOperator(CreateRelation(emit: new List<int>() { 2, 0 }));
@@ -429,7 +464,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             var weights = new[] { -2, -1, 1, 1, 2, 3 };
             var model = new Dictionary<(string?, long), long>();
             var op = await StartOperator();
-            var lastStatus = new CheckStatus(0, 0);
+            var lastStatus = CheckStatus.NotEvaluated;
 
             for (int round = 0; round < 60; round++)
             {
@@ -446,7 +481,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
                 }
                 (await Send(op, rows)).Return();
 
-                var expected = new CheckStatus(model.Values.Count(x => x > 0), model.Values.Where(x => x > 0).Sum());
+                var expected = CheckStatus.Evaluated(model.Values.Count(x => x > 0), model.Values.Where(x => x > 0).Sum());
                 Assert.Equal(expected, op.GetCountsForTests(0));
                 Assert.Equal(expected, await op.ScanCountsForTests(0));
 
@@ -476,34 +511,43 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             var start = Assert.Single(_startItems);
             Assert.True(start.IsSnapshot);
             Assert.Empty(start.Changes);
-            Assert.Equal(new CheckStatus(0, 0), start.Status);
+            Assert.Equal(CheckStatus.NotEvaluated, start.Status);
+
+            // A restart before the first commit is still not evaluated
+            await ReinitializeOperator(op);
+            Assert.Equal(CheckStatus.NotEvaluated, Assert.Single(_publisher.Take()).Status);
 
             (await Send(op, new Row("a", false, 1, 1), new Row("a", false, 1, 1), new Row("b", false, 2, 1))).Return();
             var batch = Assert.Single(await Checkpoint(op, 1));
             Assert.False(batch.IsSnapshot);
             Assert.Equal(1, batch.Version);
             Assert.Equal(new[] { "+a:tag=1", "+b:tag=2" }, Describe(batch));
-            Assert.Equal(new CheckStatus(2, 3), batch.Status);
+            Assert.Equal(CheckStatus.Evaluated(2, 3), batch.Status);
 
             await ReinitializeOperator(op);
             var restored = Assert.Single(_publisher.Take());
             Assert.True(restored.IsSnapshot);
             Assert.Equal(new[] { "+a:tag=1", "+b:tag=2" }, Describe(restored));
-            Assert.Equal(new CheckStatus(2, 3), restored.Status);
+            Assert.Equal(CheckStatus.Evaluated(2, 3), restored.Status);
             Assert.Empty(await Checkpoint(op, 2));
         }
 
         [Fact]
-        public async Task StatusIsOnlyReportedWhenCountsChange()
+        public async Task StatusIsOnlyReportedWhenStateOrCountsChange()
         {
             _publisher.StatusEnabled = true;
             var op = await StartOperator();
-            Assert.Empty(await Checkpoint(op, 1));
+            // The first checkpoint evaluates the check, also without issues
+            Assert.Equal(CheckStatus.Evaluated(0, 0), Assert.Single(await Checkpoint(op, 1)).Status);
+
+            // A restart after the commit stays evaluated
+            await ReinitializeOperator(op);
+            Assert.Equal(CheckStatus.Evaluated(0, 0), Assert.Single(_publisher.Take()).Status);
 
             (await Send(op, new Row("a", false, 1, 1))).Return();
             var batch = Assert.Single(await Checkpoint(op, 2));
             Assert.Equal(new[] { "+a:tag=1" }, Describe(batch));
-            Assert.Equal(new CheckStatus(1, 1), batch.Status);
+            Assert.Equal(CheckStatus.Evaluated(1, 1), batch.Status);
 
             Assert.Empty(await Checkpoint(op, 3));
 
@@ -517,7 +561,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             (await Send(op, new Row("b", false, 2, 1))).Return();
             batch = Assert.Single(await Checkpoint(op, 5));
             Assert.Empty(batch.Changes);
-            Assert.Equal(new CheckStatus(1, 2), batch.Status);
+            Assert.Equal(CheckStatus.Evaluated(1, 2), batch.Status);
 
             // Changes that cancel out within the epoch
             (await Send(op, new Row("b", false, 2, -1))).Return();
@@ -527,7 +571,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             (await Send(op, new Row("b", false, 2, -2))).Return();
             batch = Assert.Single(await Checkpoint(op, 7));
             Assert.Equal(new[] { "-b:tag=2" }, Describe(batch));
-            Assert.Equal(new CheckStatus(0, 0), batch.Status);
+            Assert.Equal(CheckStatus.Evaluated(0, 0), batch.Status);
         }
 
         [Fact]
@@ -535,7 +579,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
         {
             _publisher.StatusEnabled = true;
             var op = await StartOperator(CreateRelation(checks: new List<CheckDefinition>() { TaglessCheck("Ok is false") }));
-            Assert.Equal(new CheckStatus(0, 0), Assert.Single(_startItems).Status);
+            Assert.Equal(CheckStatus.NotEvaluated, Assert.Single(_startItems).Status);
 
             (await Send(op,
                 new Row("a", false, 1, 1),
@@ -548,20 +592,20 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             var change = Assert.Single(batch.Changes);
             Assert.True(change.Active);
             Assert.Empty(change.Tags);
-            Assert.Equal(new CheckStatus(1, 5), batch.Status);
+            Assert.Equal(CheckStatus.Evaluated(1, 5), batch.Status);
 
             (await Send(op, new Row("a", false, 1, -1), new Row("c", false, 3, -1))).Return();
             batch = Assert.Single(await Checkpoint(op, 2));
             Assert.Empty(batch.Changes);
-            Assert.Equal(new CheckStatus(1, 3), batch.Status);
-            Assert.Equal(new CheckStatus(1, 3), await op.ScanCountsForTests(0));
+            Assert.Equal(CheckStatus.Evaluated(1, 3), batch.Status);
+            Assert.Equal(CheckStatus.Evaluated(1, 3), await op.ScanCountsForTests(0));
 
             (await Send(op, new Row("x", false, 9, -3))).Return();
             batch = Assert.Single(await Checkpoint(op, 3));
             change = Assert.Single(batch.Changes);
             Assert.False(change.Active);
             Assert.Empty(change.Tags);
-            Assert.Equal(new CheckStatus(0, 0), batch.Status);
+            Assert.Equal(CheckStatus.Evaluated(0, 0), batch.Status);
         }
 
         [Fact]
@@ -572,18 +616,18 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             var op = await StartOperator();
             var start = Assert.Single(_startItems);
             Assert.Empty(start.Changes);
-            Assert.Equal(new CheckStatus(0, 0), start.Status);
+            Assert.Equal(CheckStatus.NotEvaluated, start.Status);
 
             (await Send(op, new Row("a", false, 1, 1), new Row("a", false, 1, 1))).Return();
             var batch = Assert.Single(await Checkpoint(op, 1));
             Assert.False(batch.IsSnapshot);
             Assert.Empty(batch.Changes);
-            Assert.Equal(new CheckStatus(1, 2), batch.Status);
+            Assert.Equal(CheckStatus.Evaluated(1, 2), batch.Status);
 
             (await Send(op, new Row("a", false, 1, -2))).Return();
             batch = Assert.Single(await Checkpoint(op, 2));
             Assert.Empty(batch.Changes);
-            Assert.Equal(new CheckStatus(0, 0), batch.Status);
+            Assert.Equal(CheckStatus.Evaluated(0, 0), batch.Status);
 
             (await Send(op, new Row("b", false, 2, 1))).Return();
             await Checkpoint(op, 3);
@@ -591,7 +635,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             var restored = Assert.Single(_publisher.Take());
             Assert.False(restored.IsSnapshot);
             Assert.Empty(restored.Changes);
-            Assert.Equal(new CheckStatus(1, 1), restored.Status);
+            Assert.Equal(CheckStatus.Evaluated(1, 1), restored.Status);
         }
 
         [Fact]
@@ -608,7 +652,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             // Only the counts change
             (await Send(op, new Row("a", false, 1, 1))).Return();
             Assert.Empty(await Checkpoint(op, 2));
-            Assert.Equal(new CheckStatus(1, 2), op.GetCountsForTests(0));
+            Assert.Equal(CheckStatus.Evaluated(1, 2), op.GetCountsForTests(0));
 
             await ReinitializeOperator(op);
             var restored = Assert.Single(_publisher.Take());
@@ -667,7 +711,18 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
 
             (await Send(op, new Row("a", false, 1, 1), new Row("a", false, 1, 1), new Row("b", false, 2, 1))).Return();
 
-            // Live counts, before any checkpoint
+            // No series before the first commit
+            observed.Clear();
+            listener.RecordObservableInstruments();
+            Assert.Empty(observed);
+
+            // Still none until the checkpoint is durable
+            await Checkpoint(op, 1);
+            observed.Clear();
+            listener.RecordObservableInstruments();
+            Assert.Empty(observed);
+
+            _publisher.CommitMarkers();
             observed.Clear();
             listener.RecordObservableInstruments();
             Assert.Equal(4, observed.Count);
@@ -676,6 +731,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             Assert.Equal((1L, (object?)"Ok is false", (object?)"1"), observed[("flowtide_check_active_issues", taglessId)]);
             Assert.Equal((3L, (object?)"Ok is false", (object?)"1"), observed[("flowtide_check_failing_rows", taglessId)]);
 
+            // Live counts, ahead of the next checkpoint
             (await Send(op, new Row("a", false, 1, -2))).Return();
             observed.Clear();
             listener.RecordObservableInstruments();

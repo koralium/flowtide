@@ -147,7 +147,7 @@ namespace FlowtideDotNet.Core.Engine
         }
 
         /// <summary>
-        /// Reports the pass or fail status of every check at each start and when its counts change.
+        /// Reports the state and counts of every check at each start and when they change.
         /// </summary>
         public FlowtideBuilder WithCheckStatusListener(ICheckStatusListener listener)
         {

@@ -15,11 +15,13 @@ its guards, and are never copied. The operator implements the common *Emit* fiel
 The operator is stateful. Per check it uses one persistent B+ tree keyed on the tag values, with the net number of
 failing rows of each issue as the value. A check without tags uses a single constant key, so it has one issue. The
 number of active issues and failing rows of every check is kept in memory, updated as rows are processed, and stored
-as an object state at each checkpoint.
+as an object state at each checkpoint, together with a flag that marks the checks as evaluated.
 
-At each checkpoint the issue changes and the status of each check whose counts changed are handed to the stream,
-which publishes them to the listeners once the checkpoint is committed. Every start publishes the active issues and
-the status of every check from the restored state before new data is processed.
+At each checkpoint the issue changes and the status of each check whose state or counts changed are handed to the
+stream, which publishes them to the listeners once the checkpoint is committed. Every start publishes the active issues
+and the status of every check from the restored state before new data is processed. When the operator has no committed
+state yet, the checks report `NotEvaluated`, and the first checkpoint reports `Passed` or `Failed` for every check,
+also when the counts are zero.
 
 The work for each kind of listener is only done when such a listener is registered. With a check failure listener,
 a second, temporary B+ tree per check collects the issues that became active or resolved since the last checkpoint.
@@ -89,8 +91,8 @@ The *Check Operator* has the following metrics:
 | health                | Gauge     | Value 0 or 1, if the operator is healthy or not.             |
 | events                | Counter   | How many events that pass through the operator.              |
 | events_processed      | Counter   | How many events the operator processes.                      |
-| check_active_issues   | Gauge     | How many issues of a check are active, one value per check.  |
-| check_failing_rows    | Gauge     | How many rows fail a check, one value per check.             |
+| check_active_issues   | Gauge     | How many issues of a check are active, one value per evaluated check. |
+| check_failing_rows    | Gauge     | How many rows fail a check, one value per evaluated check.   |
 
 `check_active_issues` and `check_failing_rows` have these labels on top of the standard labels:
 
@@ -104,11 +106,17 @@ partitions they run in, however many issues there are. This keeps the metrics sa
 values follow the processed rows, so they can be ahead of what the listeners have received until the next checkpoint
 is committed.
 
+Until the operator's first checkpoint is committed, its checks are not evaluated and both gauges have no measurement
+for them. The series appear right after that commit, also when it is the checkpoint taken when the stream stops, and a
+checkpoint that fails never shows them. A missing series means that the status of the check is not known yet, and zero keeps meaning that
+no row fails the check. After a restart from committed state the series are present from the start.
+
 A check in a partitioned part of the plan has one series per partition. When every check has its own message,
 summing `check_failing_rows` over them gives the failing rows of the check, for example
 `sum by (check_name) (flowtide_check_failing_rows)`. `check_active_issues` does not add up over partitions: rows with
 the same tag values can fail in several partitions, so one issue can be counted in several series, and a check without
-tags counts one issue in every partition that has a failing row. A check passes when all its series are zero.
+tags counts one issue in every partition that has a failing row. A check passes when all its series are present and
+zero.
 
 > [!NOTE]
 > At this point, a check operator will never be unhealthy.

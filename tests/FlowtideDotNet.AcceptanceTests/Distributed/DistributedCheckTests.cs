@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
@@ -118,11 +119,12 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             Assert.Equal(2, listener.ResetCount);
             Assert.Equal(new[] { "Order {orderkey} is too large" }, listener.CheckNames());
 
-            // Each lane reports the status of its own part
+            // Each lane starts not evaluated and reports its own part
             await WaitForStatus(status, failures, initialIssues.Count);
             Assert.Equal(checkIds.OrderBy(x => x, StringComparer.Ordinal), status.Latest().Keys.Select(x => x.CheckId).OrderBy(x => x, StringComparer.Ordinal));
             Assert.All(status.Statuses(), x => Assert.Equal("Order {orderkey} is too large", x.CheckName));
-            Assert.All(status.Latest().Values, x => Assert.True(x.ActiveIssues > 0));
+            Assert.All(status.Statuses().GroupBy(x => x.CheckId), x => Assert.Equal(CheckState.NotEvaluated, x.First().State));
+            Assert.All(status.Latest().Values, x => Assert.Equal(CheckState.Failed, x.State));
 
             // Deleted orders and deleted users resolve issues
             var deletedOrders = failingOrders.Skip(50).Take(20).ToList();
