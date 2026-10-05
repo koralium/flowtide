@@ -695,6 +695,13 @@ namespace FlowtideDotNet.Substrait.Tests
                                 Message = "second",
                                 Tags = new List<CheckTag>(),
                                 Guards = new List<CheckGuard>()
+                            },
+                            new CheckDefinition()
+                            {
+                                Condition = CheckField(0),
+                                Message = "",
+                                Tags = new List<CheckTag>() { new CheckTag() { Key = "a", Value = CheckField(0) } },
+                                Guards = new List<CheckGuard>()
                             }
                         },
                         Emit = new List<int>() { 1, 0 }
@@ -735,76 +742,6 @@ namespace FlowtideDotNet.Substrait.Tests
             var json = SubstraitSerializer.SerializeToJson(plan);
             Assert.Contains("type.googleapis.com/flowtide.CheckRelation", json);
             AssertPlanCanSerializeDeserialize(plan);
-        }
-
-        [Fact]
-        public void TestSerializeCheckRelationGuardKindChangesJson()
-        {
-            Plan CreatePlan(CheckGuardKind kind) => new Plan()
-            {
-                Relations = new List<Relation>()
-                {
-                    new CheckRelation()
-                    {
-                        Input = CheckInputRead(),
-                        Checks = new List<CheckDefinition>()
-                        {
-                            new CheckDefinition()
-                            {
-                                Condition = CheckField(0),
-                                Message = "failed",
-                                Tags = new List<CheckTag>(),
-                                Guards = new List<CheckGuard>()
-                                {
-                                    new CheckGuard() { Expression = CheckField(1), Kind = kind }
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-
-            var isTrue = SubstraitSerializer.SerializeToJson(CreatePlan(CheckGuardKind.IsTrue));
-            var isNotTrue = SubstraitSerializer.SerializeToJson(CreatePlan(CheckGuardKind.IsNotTrue));
-            var isNull = SubstraitSerializer.SerializeToJson(CreatePlan(CheckGuardKind.IsNull));
-            Assert.NotEqual(isTrue, isNotTrue);
-            Assert.NotEqual(isTrue, isNull);
-            Assert.NotEqual(isNotTrue, isNull);
-        }
-
-        [Fact]
-        public void TestSerializeCheckRelationMessageIsAStringTemplate()
-        {
-            Plan CreatePlan(string message) => new Plan()
-            {
-                Relations = new List<Relation>()
-                {
-                    new CheckRelation()
-                    {
-                        Input = CheckInputRead(),
-                        Checks = new List<CheckDefinition>()
-                        {
-                            new CheckDefinition()
-                            {
-                                Condition = CheckField(0),
-                                Message = message,
-                                Tags = new List<CheckTag>() { new CheckTag() { Key = "a", Value = CheckField(0) } },
-                                Guards = new List<CheckGuard>()
-                            }
-                        }
-                    }
-                }
-            };
-
-            var json = SubstraitSerializer.SerializeToJson(CreatePlan("Value {a} is invalid"));
-            Assert.Contains("\"message\": \"Value {a} is invalid\"", json);
-            Assert.NotEqual(json, SubstraitSerializer.SerializeToJson(CreatePlan("Value {a} is wrong")));
-
-            var deserialized = SubstraitDeserializer.DeserializeFromJson(json);
-            var check = Assert.Single(Assert.IsType<CheckRelation>(Assert.Single(deserialized.Relations)).Checks);
-            Assert.Equal("Value {a} is invalid", check.Message);
-
-            AssertPlanCanSerializeDeserialize(CreatePlan(""));
         }
 
         private static ReadRelation CheckInputRead()

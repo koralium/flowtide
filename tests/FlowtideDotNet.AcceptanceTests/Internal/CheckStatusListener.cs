@@ -60,17 +60,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         }
 
         /// <summary>
-        /// The received statuses of one check name in arrival order.
-        /// </summary>
-        public List<ReportedCheckStatus> Statuses(string checkName)
-        {
-            lock (_lock)
-            {
-                return _statuses.Where(x => string.Equals(x.CheckName, checkName, StringComparison.Ordinal)).ToList();
-            }
-        }
-
-        /// <summary>
         /// The last status of every check scope, keyed by stream name and check id.
         /// </summary>
         public Dictionary<(string StreamName, string CheckId), ReportedCheckStatus> Latest()

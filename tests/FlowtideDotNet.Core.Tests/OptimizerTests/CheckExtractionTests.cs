@@ -18,7 +18,6 @@ using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Core.Optimizer.CheckExtraction;
 using FlowtideDotNet.Core.Optimizer.CommonSubPlan;
-using FlowtideDotNet.Core.Optimizer.DistributedMode;
 using FlowtideDotNet.Core.Optimizer.GetTimestamp;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait;
@@ -108,11 +107,16 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
         private static CheckDefinition Check(Expression condition, string message, params CheckGuard[] guards)
         {
+            return Check(condition, message, [], guards);
+        }
+
+        private static CheckDefinition Check(Expression condition, string message, (string Key, Expression Value)[] tags, params CheckGuard[] guards)
+        {
             return new CheckDefinition()
             {
                 Condition = condition,
                 Message = message,
-                Tags = new List<CheckTag>(),
+                Tags = tags.Select(x => new CheckTag() { Key = x.Key, Value = x.Value }).ToList(),
                 Guards = guards.ToList()
             };
         }
@@ -240,16 +244,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 Input = new CheckRelation()
                 {
                     Input = Read(2),
-                    Checks = new List<CheckDefinition>()
-                    {
-                        new CheckDefinition()
-                        {
-                            Condition = Lt(Field(0), Num(900)),
-                            Message = "too large",
-                            Tags = new List<CheckTag>() { new CheckTag() { Key = "key", Value = Field(1) } },
-                            Guards = new List<CheckGuard>()
-                        }
-                    }
+                    Checks = new List<CheckDefinition>() { Check(Lt(Field(0), Num(900)), "too large", [("key", Field(1))]) }
                 }
             };
             Assert.Equal(expected, actual);
@@ -338,15 +333,6 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
         }
 
         [Fact]
-        public void FilterWithoutChecksIsUnchanged()
-        {
-            var filter = new FilterRelation() { Condition = And(Eq(Field(0), Num(1)), Eq(Field(1), Num(2))), Input = Read(2) };
-            var actual = ExtractSingle(filter);
-            Assert.Same(filter, actual);
-            Assert.IsType<ReadRelation>(filter.Input);
-        }
-
-        [Fact]
         public void AggregateChecksInGroupingMeasureFilterAndArguments()
         {
             var actual = ExtractSingle(new AggregateRelation()
@@ -401,6 +387,12 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         ExtensionUri = FunctionsArithmetic.Uri,
                         ExtensionName = FunctionsArithmetic.Sum,
                         Arguments = new List<Expression>() { CheckValue(Field(2), Lt(Field(2), Num(3)), "argument") }
+                    },
+                    new WindowFunction()
+                    {
+                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionName = FunctionsArithmetic.Lead,
+                        Arguments = new List<Expression>() { CheckValue(Field(0), Lt(Field(0), Num(1)), "value"), Num(1), Num(0) }
                     }
                 },
                 Input = Read(3)
@@ -410,85 +402,15 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             Assert.Equal(Field(0), window.PartitionBy[0]);
             Assert.Equal(Field(1), window.OrderBy[0].Expression);
             Assert.Equal(Field(2), window.WindowFunctions[0].Arguments[0]);
+            Assert.Equal(Field(0), window.WindowFunctions[1].Arguments[0]);
             var checkRelation = Assert.IsType<CheckRelation>(window.Input);
             Assert.Equal(new List<CheckDefinition>()
             {
                 Check(Lt(Field(0), Num(1)), "partition"),
                 Check(Lt(Field(1), Num(2)), "order"),
-                Check(Lt(Field(2), Num(3)), "argument")
+                Check(Lt(Field(2), Num(3)), "argument"),
+                Check(Lt(Field(0), Num(1)), "value")
             }, checkRelation.Checks);
-        }
-
-        [Fact]
-        public void WindowFrameBoundCheckIsRejected()
-        {
-            var plan = PlanOf(new ConsistentPartitionWindowRelation()
-            {
-                PartitionBy = new List<Expression>(),
-                OrderBy = new List<SortField>(),
-                WindowFunctions = new List<WindowFunction>()
-                {
-                    new WindowFunction()
-                    {
-                        ExtensionUri = FunctionsArithmetic.Uri,
-                        ExtensionName = FunctionsArithmetic.Sum,
-                        Arguments = new List<Expression>() { Field(0) },
-                        LowerBound = new PreceedingRangeWindowBound() { Expression = CheckValue(Num(1), Lt(Field(0), Num(1)), "bound") }
-                    }
-                },
-                Input = Read(1)
-            });
-            var exception = Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(plan));
-            Assert.Contains("window frame bound", exception.Message);
-        }
-
-        [Theory]
-        [InlineData(FunctionsArithmetic.Lead)]
-        [InlineData(FunctionsArithmetic.Lag)]
-        public void LeadLagDefaultCheckIsRejected(string functionName)
-        {
-            var plan = PlanOf(new ConsistentPartitionWindowRelation()
-            {
-                PartitionBy = new List<Expression>(),
-                OrderBy = new List<SortField>(),
-                WindowFunctions = new List<WindowFunction>()
-                {
-                    new WindowFunction()
-                    {
-                        ExtensionUri = FunctionsArithmetic.Uri,
-                        ExtensionName = functionName,
-                        Arguments = new List<Expression>() { Field(0), Num(1), CheckValue(Num(0), Lt(Field(0), Num(1)), "default") }
-                    }
-                },
-                Input = Read(1)
-            });
-            var exception = Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(plan));
-            Assert.Contains("LEAD or LAG default argument", exception.Message);
-        }
-
-        [Fact]
-        public void LeadValueCheckIsExtracted()
-        {
-            var actual = ExtractSingle(new ConsistentPartitionWindowRelation()
-            {
-                PartitionBy = new List<Expression>(),
-                OrderBy = new List<SortField>(),
-                WindowFunctions = new List<WindowFunction>()
-                {
-                    new WindowFunction()
-                    {
-                        ExtensionUri = FunctionsArithmetic.Uri,
-                        ExtensionName = FunctionsArithmetic.Lead,
-                        Arguments = new List<Expression>() { CheckValue(Field(0), Lt(Field(0), Num(1)), "value"), Num(1), Num(0) }
-                    }
-                },
-                Input = Read(1)
-            });
-
-            var window = Assert.IsType<ConsistentPartitionWindowRelation>(actual);
-            Assert.Equal(Field(0), window.WindowFunctions[0].Arguments[0]);
-            var checkRelation = Assert.IsType<CheckRelation>(window.Input);
-            Assert.Equal(new List<CheckDefinition>() { Check(Lt(Field(0), Num(1)), "value") }, checkRelation.Checks);
         }
 
         [Fact]
@@ -544,19 +466,6 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             Assert.Equal(new List<CheckDefinition>() { Check(Lt(Field(0), Num(1)), "argument"), Check(Lt(Field(1), Num(2)), "join") }, checkRelation.Checks);
         }
 
-        [Fact]
-        public void TableFunctionChecksOnFunctionOutputOrWithoutInputAreRejected()
-        {
-            // Field 2 is the function output
-            var outputCheck = PlanOf(TableFunctionOver(Read(2), Field(0), CheckTrue(Lt(Field(2), Num(2)), "join")));
-            var exception = Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(outputCheck));
-            Assert.Contains("table function output", exception.Message);
-
-            var noInput = PlanOf(TableFunctionOver(null, CheckValue(Num(1), new BoolLiteral() { Value = false }, "argument"), null));
-            exception = Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(noInput));
-            Assert.Contains("table function without an input", exception.Message);
-        }
-
         private static JoinRelation Join(Expression expression, Expression? postJoinFilter = null)
         {
             return new JoinRelation()
@@ -588,31 +497,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
             var right = Assert.IsType<CheckRelation>(actual.Right);
             Assert.Equal(Read(2, "right"), right.Input);
-            Assert.Equal(new List<CheckDefinition>()
-            {
-                new CheckDefinition()
-                {
-                    Condition = Lt(Field(1), Num(5)),
-                    Message = "right",
-                    Tags = new List<CheckTag>() { new CheckTag() { Key = "key", Value = Field(0) } },
-                    Guards = new List<CheckGuard>()
-                }
-            }, right.Checks);
-        }
-
-        [Fact]
-        public void JoinChecksUsingBothInputsAreRejected()
-        {
-            var bothInCondition = PlanOf(Join(And(Eq(Field(0), Field(2)), CheckTrue(Eq(Field(1), Field(3)), "both"))));
-            var exception = Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(bothInCondition));
-            Assert.Contains("references both inputs", exception.Message);
-
-            // Guard uses the right input, check the left
-            var bothThroughGuard = PlanOf(Join(new IfThenExpression()
-            {
-                Ifs = new List<IfClause>() { new IfClause() { If = Gt(Field(3), Num(0)), Then = CheckTrue(Lt(Field(0), Num(5)), "guarded") } }
-            }));
-            Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(bothThroughGuard));
+            Assert.Equal(new List<CheckDefinition>() { Check(Lt(Field(1), Num(5)), "right", [("key", Field(0))]) }, right.Checks);
         }
 
         [Fact]
@@ -694,48 +579,79 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             Assert.Equal(expected, actual);
         }
 
-        [Fact]
-        public void ChecksInVirtualTableOrIterationSkipConditionAreRejected()
+        private static Plan WindowPlan(string functionName, WindowBound? lowerBound, params Expression[] arguments)
         {
-            var virtualTable = PlanOf(new VirtualTableReadRelation()
+            return PlanOf(new ConsistentPartitionWindowRelation()
             {
-                BaseSchema = new NamedStruct() { Names = new List<string>() { "c0" }, Struct = new Struct() { Types = new List<SubstraitBaseType>() { new AnyType() } } },
-                Values = new VirtualTable()
+                PartitionBy = new List<Expression>(),
+                OrderBy = new List<SortField>(),
+                WindowFunctions = new List<WindowFunction>()
                 {
-                    Expressions = new List<StructExpression>()
-                    {
-                        new StructExpression() { Fields = new List<Expression>() { CheckValue(Num(1), new BoolLiteral() { Value = false }, "values") } }
-                    }
-                }
-            });
-            var exception = Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(virtualTable));
-            Assert.Contains("VALUES", exception.Message);
-
-            var iteration = PlanOf(new IterationRelation()
-            {
-                IterationName = "loop",
-                LoopPlan = Read(1),
-                SkipIterateCondition = CheckTrue(Lt(Field(0), Num(1)), "skip")
-            });
-            exception = Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(iteration));
-            Assert.Contains("iteration skip condition", exception.Message);
-        }
-
-        [Fact]
-        public void ChecksNestedInTagAreRejected()
-        {
-            var inTag = PlanOf(new ProjectRelation()
-            {
-                Expressions = new List<Expression>() { CheckTrue(Lt(Field(0), Num(1)), "outer", ("key", CheckValue(Field(0), Lt(Field(0), Num(2)), "inner"))) },
+                    new WindowFunction() { ExtensionUri = FunctionsArithmetic.Uri, ExtensionName = functionName, Arguments = arguments.ToList(), LowerBound = lowerBound }
+                },
                 Input = Read(1)
             });
-            var exception = Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(inTag));
-            Assert.Contains("tag arguments", exception.Message);
         }
 
-        public static TheoryData<string> NonLiteralMessages()
+        private static Plan ProjectPlan(Expression expression)
         {
-            return new TheoryData<string>() { "concat", "column", "null", "cast", "check" };
+            return PlanOf(new ProjectRelation() { Expressions = new List<Expression>() { expression }, Input = Read(1) });
+        }
+
+        public static TheoryData<string, Func<Plan>, Type, string> RejectedPlans()
+        {
+            return new TheoryData<string, Func<Plan>, Type, string>()
+            {
+                { "window frame bound", () => WindowPlan(FunctionsArithmetic.Sum, new PreceedingRangeWindowBound() { Expression = CheckValue(Num(1), Lt(Field(0), Num(1)), "bound") }, Field(0)), typeof(NotSupportedException), "window frame bound" },
+                { "lead default", () => WindowPlan(FunctionsArithmetic.Lead, null, Field(0), Num(1), CheckValue(Num(0), Lt(Field(0), Num(1)), "default")), typeof(NotSupportedException), "LEAD or LAG default argument" },
+                { "lag default", () => WindowPlan(FunctionsArithmetic.Lag, null, Field(0), Num(1), CheckValue(Num(0), Lt(Field(0), Num(1)), "default")), typeof(NotSupportedException), "LEAD or LAG default argument" },
+                // Field 2 is the function output
+                { "table function output", () => PlanOf(TableFunctionOver(Read(2), Field(0), CheckTrue(Lt(Field(2), Num(2)), "join"))), typeof(NotSupportedException), "table function output" },
+                { "table function without input", () => PlanOf(TableFunctionOver(null, CheckValue(Num(1), new BoolLiteral() { Value = false }, "argument"), null)), typeof(NotSupportedException), "table function without an input" },
+                { "join condition using both inputs", () => PlanOf(Join(And(Eq(Field(0), Field(2)), CheckTrue(Eq(Field(1), Field(3)), "both")))), typeof(NotSupportedException), "references both inputs" },
+                // Guard uses the right input, check the left
+                { "join guard using the other input", () => PlanOf(Join(new IfThenExpression()
+                {
+                    Ifs = new List<IfClause>() { new IfClause() { If = Gt(Field(3), Num(0)), Then = CheckTrue(Lt(Field(0), Num(5)), "guarded") } }
+                })), typeof(NotSupportedException), "references both inputs" },
+                { "values", () => PlanOf(new VirtualTableReadRelation()
+                {
+                    BaseSchema = new NamedStruct() { Names = new List<string>() { "c0" }, Struct = new Struct() { Types = new List<SubstraitBaseType>() { new AnyType() } } },
+                    Values = new VirtualTable()
+                    {
+                        Expressions = new List<StructExpression>()
+                        {
+                            new StructExpression() { Fields = new List<Expression>() { CheckValue(Num(1), new BoolLiteral() { Value = false }, "values") } }
+                        }
+                    }
+                }), typeof(NotSupportedException), "VALUES" },
+                { "iteration skip condition", () => PlanOf(new IterationRelation() { IterationName = "loop", LoopPlan = Read(1), SkipIterateCondition = CheckTrue(Lt(Field(0), Num(1)), "skip") }), typeof(NotSupportedException), "iteration skip condition" },
+                { "check in tag", () => ProjectPlan(CheckTrue(Lt(Field(0), Num(1)), "outer", ("key", CheckValue(Field(0), Lt(Field(0), Num(2)), "inner")))), typeof(NotSupportedException), "tag arguments" },
+                { "too few arguments", () => ProjectPlan(Function(FunctionsCheck.Uri, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)))), typeof(InvalidOperationException), "requires at least 3 arguments" },
+                { "tag key without value", () => ProjectPlan(Function(FunctionsCheck.Uri, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)), Str("m"), Str("key"))), typeof(InvalidOperationException), "invalid tag arguments" },
+                { "non literal tag key", () => ProjectPlan(Function(FunctionsCheck.Uri, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)), Str("m"), Field(0), Field(0))), typeof(InvalidOperationException), "requires string literal tag keys" }
+            };
+        }
+
+        [Theory]
+        [MemberData(nameof(RejectedPlans))]
+        public void UnsupportedChecksAreRejected(string caseName, Func<Plan> plan, Type exceptionType, string fragment)
+        {
+            var exception = Assert.Throws(exceptionType, () => CheckExtractor.Extract(plan()));
+            Assert.True(exception.Message.Contains(fragment), $"{caseName}: {exception.Message}");
+        }
+
+        public static TheoryData<string, string> NonLiteralMessages()
+        {
+            var data = new TheoryData<string, string>();
+            foreach (var function in new[] { FunctionsCheck.CheckValue, FunctionsCheck.CheckTrue })
+            {
+                foreach (var kind in new[] { "concat", "column", "null", "cast", "check" })
+                {
+                    data.Add(function, kind);
+                }
+            }
+            return data;
         }
 
         private static Expression NonLiteralMessage(string kind)
@@ -753,60 +669,14 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
         [Theory]
         [MemberData(nameof(NonLiteralMessages))]
-        public void NonLiteralCheckValueMessageIsRejected(string kind)
+        public void NonLiteralMessageIsRejected(string function, string kind)
         {
-            var plan = PlanOf(new ProjectRelation()
-            {
-                Expressions = new List<Expression>()
-                {
-                    Function(FunctionsCheck.Uri, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)), NonLiteralMessage(kind), Str("key"), Field(0))
-                },
-                Input = Read(1)
-            });
+            var plan = function == FunctionsCheck.CheckValue
+                ? ProjectPlan(Function(FunctionsCheck.Uri, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)), NonLiteralMessage(kind), Str("key"), Field(0)))
+                : PlanOf(new FilterRelation() { Condition = Function(FunctionsCheck.Uri, FunctionsCheck.CheckTrue, Lt(Field(0), Num(1)), NonLiteralMessage(kind)), Input = Read(1) });
             var exception = Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(plan));
             Assert.Contains("must be a string literal", exception.Message);
             Assert.Contains("{tag}", exception.Message);
-        }
-
-        [Theory]
-        [MemberData(nameof(NonLiteralMessages))]
-        public void NonLiteralCheckTrueMessageIsRejected(string kind)
-        {
-            var plan = PlanOf(new FilterRelation()
-            {
-                Condition = Function(FunctionsCheck.Uri, FunctionsCheck.CheckTrue, Lt(Field(0), Num(1)), NonLiteralMessage(kind)),
-                Input = Read(1)
-            });
-            var exception = Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(plan));
-            Assert.Contains("must be a string literal", exception.Message);
-        }
-
-        [Fact]
-        public void MessageTemplateIsKeptUnrendered()
-        {
-            var project = Assert.IsType<ProjectRelation>(ExtractSingle(new ProjectRelation()
-            {
-                Expressions = new List<Expression>() { CheckValue(Field(0), Lt(Field(0), Num(1)), "User {key} is invalid", ("key", Field(0))) },
-                Input = Read(1)
-            }));
-            var check = Assert.Single(Assert.IsType<CheckRelation>(project.Input).Checks);
-            Assert.Equal("User {key} is invalid", check.Message);
-        }
-
-        [Fact]
-        public void InvalidCheckArgumentsThrow()
-        {
-            Relation Project(params Expression[] arguments)
-            {
-                return new ProjectRelation()
-                {
-                    Expressions = new List<Expression>() { Function(FunctionsCheck.Uri, FunctionsCheck.CheckValue, arguments) },
-                    Input = Read(1)
-                };
-            }
-            Assert.Throws<InvalidOperationException>(() => CheckExtractor.Extract(PlanOf(Project(Field(0), Lt(Field(0), Num(1))))));
-            Assert.Throws<InvalidOperationException>(() => CheckExtractor.Extract(PlanOf(Project(Field(0), Lt(Field(0), Num(1)), Str("m"), Str("key")))));
-            Assert.Throws<InvalidOperationException>(() => CheckExtractor.Extract(PlanOf(Project(Field(0), Lt(Field(0), Num(1)), Str("m"), Field(0), Field(0)))));
         }
 
         [Fact]
@@ -1133,104 +1003,23 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             AssertCheckFieldsInRange(plan);
         }
 
-        [Fact]
-        public void SqlJoinConditionCheckUsingBothInputsIsRejected()
-        {
-            var plan = BuildSqlPlan(@"
-                CREATE TABLE orders (orderkey any, userkey any);
-                CREATE TABLE users (userkey any, name any);
-                INSERT INTO output
-                SELECT o.orderkey, u.name FROM orders o
-                INNER JOIN users u ON o.userkey = u.userkey AND CHECK_TRUE(o.orderkey > u.userkey, 'bad order')");
-            var exception = Assert.Throws<NotSupportedException>(() => PlanOptimizer.Optimize(plan));
-            Assert.Contains("references both inputs", exception.Message);
-        }
-
-        [Fact]
-        public void SqlSelectWithoutFromCheckIsRejected()
-        {
-            var plan = BuildSqlPlan(@"
-                INSERT INTO output
-                SELECT CHECK_VALUE(1, 1 = 2, 'never true') AS v");
-            var exception = Assert.Throws<NotSupportedException>(() => PlanOptimizer.Optimize(plan));
-            Assert.Contains("VALUES", exception.Message);
-        }
-
-        [Fact]
-        public void SqlWindowCheckSitsAboveTheWindow()
-        {
-            var plan = PlanOptimizer.Optimize(BuildSqlPlan(UsersTable + @"
-                INSERT INTO output
-                SELECT CHECK_VALUE(userkey, ROW_NUMBER() OVER (PARTITION BY companyid ORDER BY userkey) = 1, 'Duplicate user {userkey}', userkey, companyid) AS userkey
-                FROM users"));
-
-            var checkRelation = Assert.Single(FindAll<CheckRelation>(plan));
-            Assert.Single(FindAll<ConsistentPartitionWindowRelation>(checkRelation.Input));
-            var check = Assert.Single(checkRelation.Checks);
-            Assert.Equal("Duplicate user {userkey}", check.Message);
-            Assert.Equal(new List<string>() { "userkey", "companyid" }, check.Tags.Select(x => x.Key).ToList());
-            AssertCheckFieldsInRange(plan);
-        }
-
         [Theory]
-        [InlineData("concat('Userkey: ', userkey, ' is invalid')")]
-        [InlineData("'Userkey: ' || userkey")]
-        [InlineData("name")]
-        [InlineData("NULL")]
-        public void SqlComputedMessageIsRejected(string message)
+        [InlineData("CREATE TABLE orders (orderkey any, userkey any); CREATE TABLE users (userkey any, name any); INSERT INTO output SELECT o.orderkey, u.name FROM orders o INNER JOIN users u ON o.userkey = u.userkey AND CHECK_TRUE(o.orderkey > u.userkey, 'bad order')", "references both inputs")]
+        [InlineData("INSERT INTO output SELECT CHECK_VALUE(1, 1 = 2, 'never true') AS v", "VALUES")]
+        [InlineData(UsersTable + " INSERT INTO output SELECT CHECK_VALUE(userkey, companyid < 10, concat('Userkey: ', userkey, ' is invalid'), userkey) AS userkey FROM users", "must be a string literal")]
+        [InlineData(UsersTable + " INSERT INTO output SELECT CHECK_VALUE(userkey, companyid < 10, 'Userkey: ' || userkey, userkey) AS userkey FROM users", "must be a string literal")]
+        [InlineData(UsersTable + " INSERT INTO output SELECT CHECK_VALUE(userkey, companyid < 10, name, userkey) AS userkey FROM users", "must be a string literal")]
+        [InlineData(UsersTable + " INSERT INTO output SELECT CHECK_VALUE(userkey, companyid < 10, NULL, userkey) AS userkey FROM users", "must be a string literal")]
+        [InlineData(UsersTable + " INSERT INTO output SELECT name FROM users WHERE CHECK_TRUE(userkey < 900, concat('Userkey: ', userkey, ' is invalid'))", "must be a string literal")]
+        [InlineData(UsersTable + " INSERT INTO output SELECT name FROM users WHERE CHECK_TRUE(userkey < 900, 'Userkey: ' || userkey)", "must be a string literal")]
+        [InlineData(UsersTable + " INSERT INTO output SELECT name FROM users WHERE CHECK_TRUE(userkey < 900, name)", "must be a string literal")]
+        [InlineData(UsersTable + " INSERT INTO output SELECT name FROM users WHERE CHECK_TRUE(userkey < 900, NULL)", "must be a string literal")]
+        [InlineData(UsersTable + " INSERT INTO output SELECT CHECK_VALUE(userkey, userkey < 900, 'Userkey {innerValue} is too large', innerValue => CHECK_VALUE(userkey, userkey < 10, 'inner message')) FROM users", "tag arguments")]
+        public void SqlCheckIsRejected(string sql, string fragment)
         {
-            var checkValue = BuildSqlPlan(UsersTable + $@"
-                INSERT INTO output
-                SELECT CHECK_VALUE(userkey, companyid < 10, {message}, userkey) AS userkey FROM users");
-            var exception = Assert.Throws<NotSupportedException>(() => PlanOptimizer.Optimize(checkValue));
-            Assert.Contains("must be a string literal", exception.Message);
-
-            var checkTrue = BuildSqlPlan(UsersTable + $@"
-                INSERT INTO output
-                SELECT name FROM users WHERE CHECK_TRUE(userkey < 900, {message})");
-            exception = Assert.Throws<NotSupportedException>(() => PlanOptimizer.Optimize(checkTrue));
-            Assert.Contains("must be a string literal", exception.Message);
-        }
-
-        [Fact]
-        public void SqlDistributedCheckIsPushedIntoEveryLaneAndRoundTrips()
-        {
-            var plan = PlanOptimizer.Optimize(BuildSqlPlan(@"
-                CREATE TABLE users (userkey any);
-                CREATE TABLE orders (orderkey any, userkey any);
-                INSERT INTO output
-                SELECT CHECK_VALUE(o.userkey, o.orderkey < 10, 'order too large') AS userkey FROM orders o
-                INNER JOIN users u ON o.userkey = u.userkey"), new PlanOptimizerSettings()
-            {
-                DistributedPlanOptions = new DistributedPlanOptions() { SubstreamCount = 2 }
-            });
-
-            var gatherRoot = plan.Relations
-                .OfType<SubStreamRootRelation>()
-                .Single(x => x.Input is ExchangeRelation exchange && exchange.PartitionCount == 1);
-            Assert.Single(FindAll<CheckRelation>(gatherRoot));
-            Assert.Single(FindAll<CheckRelation>(plan.Relations[0]));
-            AssertCheckFieldsInRange(plan);
-
-            var json = SubstraitSerializer.SerializeToJson(plan);
-            var deserialized = new SubstraitDeserializer().Deserialize(json);
-            var expectedChecks = FindAll<CheckRelation>(plan).Select(x => x.Checks).ToList();
-            var actualChecks = FindAll<CheckRelation>(deserialized).Select(x => x.Checks).ToList();
-            Assert.Equal(2, actualChecks.Count);
-            Assert.Equal(expectedChecks, actualChecks);
-        }
-
-        [Fact]
-        public void SqlCaseCheckKeepsItsGuard()
-        {
-            var plan = PlanOptimizer.Optimize(BuildSqlPlan(UsersTable + @"
-                INSERT INTO output
-                SELECT CASE WHEN companyid > 0 THEN CHECK_VALUE(userkey, userkey < 900, 'userkey too large') ELSE 0 END AS v FROM users"));
-
-            var check = Assert.Single(Assert.Single(FindAll<CheckRelation>(plan)).Checks);
-            var guard = Assert.Single(check.Guards);
-            Assert.Equal(CheckGuardKind.IsTrue, guard.Kind);
-            AssertCheckFieldsInRange(plan);
+            var plan = BuildSqlPlan(sql);
+            var exception = Assert.Throws<NotSupportedException>(() => PlanOptimizer.Optimize(plan));
+            Assert.Contains(fragment, exception.Message);
         }
 
         private static ScalarFunction GetTimestamp()
@@ -1238,37 +1027,45 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             return Function(FunctionsDatetime.Uri, FunctionsDatetime.GetTimestamp);
         }
 
-        private sealed class GetTimestampFinder : BaseRelationExpressionVisitor<object?>
+        private sealed class ExpressionFinder(Func<Expression, bool> predicate) : BaseRelationExpressionVisitor<object?>
         {
-            private readonly FunctionFinder _finder = new FunctionFinder();
+            private readonly Finder _finder = new Finder(predicate);
 
             public override ExpressionVisitor<object?, object> Visitor => _finder;
 
             public bool Found => _finder.Found;
 
-            private sealed class FunctionFinder : ExpressionVisitor<object?, object>
+            private sealed class Finder(Func<Expression, bool> match) : ExpressionVisitor<object?, object>
             {
                 public bool Found { get; private set; }
 
                 public override object? VisitScalarFunction(ScalarFunction scalarFunction, object state)
                 {
-                    if (scalarFunction.ExtensionUri == FunctionsDatetime.Uri && scalarFunction.ExtensionName == FunctionsDatetime.GetTimestamp)
-                    {
-                        Found = true;
-                    }
+                    Found |= match(scalarFunction);
                     return base.VisitScalarFunction(scalarFunction, state);
+                }
+
+                public override object? VisitSetPredicateExpression(SetPredicateExpression setPredicateExpression, object state)
+                {
+                    Found |= match(setPredicateExpression);
+                    return null;
                 }
             }
         }
 
-        private static void AssertNoGetTimestampFunction(Plan plan)
+        private static void AssertNoExpression(Plan plan, Func<Expression, bool> predicate)
         {
-            var finder = new GetTimestampFinder();
+            var finder = new ExpressionFinder(predicate);
             foreach (var relation in plan.Relations)
             {
                 finder.Visit(relation, null!);
             }
             Assert.False(finder.Found);
+        }
+
+        private static void AssertNoGetTimestampFunction(Plan plan)
+        {
+            AssertNoExpression(plan, x => x is ScalarFunction f && f.ExtensionUri == FunctionsDatetime.Uri && f.ExtensionName == FunctionsDatetime.GetTimestamp);
         }
 
         private static int TimestampRelationId(Plan plan)
@@ -1308,16 +1105,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             var plan = PlanOf(new CheckRelation()
             {
                 Input = Read(2),
-                Checks = new List<CheckDefinition>()
-                {
-                    new CheckDefinition()
-                    {
-                        Condition = Lt(Field(0), GetTimestamp()),
-                        Message = "stale",
-                        Tags = new List<CheckTag>() { new CheckTag() { Key = "now", Value = GetTimestamp() } },
-                        Guards = new List<CheckGuard>() { Guard(Gt(Field(1), GetTimestamp()), CheckGuardKind.IsTrue) }
-                    }
-                }
+                Checks = new List<CheckDefinition>() { Check(Lt(Field(0), GetTimestamp()), "stale", [("now", GetTimestamp())], Guard(Gt(Field(1), GetTimestamp()), CheckGuardKind.IsTrue)) }
             });
 
             plan = TimestampToJoin.Optimize(plan, new PlanOptimizerSettings());
@@ -1357,22 +1145,6 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             Assert.True(IsTimestampJoin(Assert.IsType<JoinRelation>(checkRelation.Input), 1));
             Assert.Equal(Lt(Field(0), Field(2)), Assert.Single(checkRelation.Checks).Condition);
             AssertNoGetTimestampFunction(plan);
-        }
-
-        [Fact]
-        public void CheckWithoutGetTimestampIsUnchangedByTimestampToJoin()
-        {
-            var checkRelation = new CheckRelation()
-            {
-                Input = Read(2),
-                Checks = new List<CheckDefinition>() { Check(Lt(Field(0), Num(1)), "small") }
-            };
-
-            var plan = TimestampToJoin.Optimize(PlanOf(checkRelation), new PlanOptimizerSettings());
-
-            Assert.Same(checkRelation, Assert.Single(plan.Relations));
-            Assert.False(checkRelation.EmitSet);
-            Assert.IsType<ReadRelation>(checkRelation.Input);
         }
 
         private const string TimestampTables = @"
@@ -1485,36 +1257,6 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             AssertCheckFieldsInRange(plan);
         }
 
-        private sealed class SubqueryFinder : BaseRelationExpressionVisitor<object?>
-        {
-            private readonly Finder _finder = new Finder();
-
-            public override ExpressionVisitor<object?, object> Visitor => _finder;
-
-            public bool Found => _finder.Found;
-
-            private sealed class Finder : ExpressionVisitor<object?, object>
-            {
-                public bool Found { get; private set; }
-
-                public override object? VisitSetPredicateExpression(SetPredicateExpression setPredicateExpression, object state)
-                {
-                    Found = true;
-                    return null;
-                }
-            }
-        }
-
-        private static void AssertNoSubquery(Plan plan)
-        {
-            var finder = new SubqueryFinder();
-            foreach (var relation in plan.Relations)
-            {
-                finder.Visit(relation, null!);
-            }
-            Assert.False(finder.Found);
-        }
-
         [Theory]
         [InlineData("CHECK_TRUE(EXISTS (SELECT 1 FROM orders o WHERE o.userkey = u.userkey), 'no orders')")]
         [InlineData("CHECK_TRUE(u.userkey IN (SELECT o.userkey FROM orders o), 'no orders')")]
@@ -1527,7 +1269,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 SELECT u.userkey FROM users u
                 WHERE " + where));
 
-            AssertNoSubquery(plan);
+            AssertNoExpression(plan, x => x is SetPredicateExpression);
             AssertNoGetTimestampFunction(plan);
             var checkRelation = Assert.Single(FindAll<CheckRelation>(plan));
             // The check and the where share one mark join

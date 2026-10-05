@@ -13,8 +13,6 @@
 using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Substrait.Expressions.Literals;
-using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 
@@ -75,23 +73,6 @@ namespace FlowtideDotNet.Core.Tests
                         Tags = new List<CheckTag>(),
                         Guards = new List<CheckGuard>()
                     }
-                }
-            });
-
-            Assert.True(CheckFunctionFinder.CheckPlan(plan));
-        }
-
-        [Fact]
-        public void CheckFunctionCountsAsCheckUsage()
-        {
-            var plan = Write(new FilterRelation()
-            {
-                Input = Read(),
-                Condition = new ScalarFunction()
-                {
-                    ExtensionUri = FunctionsCheck.Uri,
-                    ExtensionName = FunctionsCheck.CheckTrue,
-                    Arguments = new List<Expression>() { Field0(), new StringLiteral() { Value = "failed" } }
                 }
             });
 

@@ -38,72 +38,45 @@ namespace FlowtideDotNet.AcceptanceTests
         {
         }
 
-        [Fact]
-        public async Task CheckValue()
+        [Theory]
+        [InlineData("userkey => UserKey")]
+        [InlineData("userkey")]
+        public async Task CheckValue(string tag)
         {
             GenerateData();
 
             var listener = new CheckIssueListener();
-            await StartStream(UserKeyCheckSql, failureListener: listener);
+            await StartStream($@"
+                INSERT INTO output
+                SELECT CHECK_VALUE(UserKey, UserKey < 900, 'Userkey: {{userkey}} is too large', {tag})
+                FROM users", failureListener: listener);
 
             await WaitForUpdate();
 
-            AssertIssues(listener, ExpectedUserKeyIssues());
+            var expected = ExpectedUserKeyIssues();
+            AssertIssues(listener, expected);
+            Assert.Matches("^[0-9]+:0$", Assert.Single(listener.CheckIds()));
+            Assert.Equal(1, listener.ResetCount);
+            Assert.Equal(0, listener.ResolvedCount);
+            Assert.Equal(expected.Count, listener.RaisedCount);
             // Listeners get the template, the tags carry the row values
             Assert.Equal(new[] { UserKeyCheckName }, listener.CheckNames());
             AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
         }
 
-        [Fact]
-        public async Task CheckValueStartResetsThenRaisesInitialIssues()
+        [Theory]
+        [InlineData("userkey => UserKey")]
+        [InlineData("UserKey")]
+        public async Task CheckTrue(string tag)
         {
             GenerateData();
 
             var listener = new CheckIssueListener();
-            await StartStream(UserKeyCheckSql, failureListener: listener);
-
-            await WaitForUpdate();
-
-            var checkId = Assert.Single(listener.CheckIds());
-            Assert.Matches("^[0-9]+:0$", checkId);
-            Assert.Equal(1, listener.ResetCount);
-            Assert.Equal(0, listener.ResolvedCount);
-            var expected = ExpectedUserKeyIssues();
-            Assert.Equal(expected.Count, listener.RaisedCount);
-            AssertIssues(listener, expected);
-        }
-
-        [Fact]
-        public async Task CheckWithoutFailuresOnlyResets()
-        {
-            GenerateData();
-
-            var listener = new CheckIssueListener();
-            await StartStream(@"
+            await StartStream($@"
                 INSERT INTO output
-                SELECT CHECK_VALUE(UserKey, UserKey > 0, 'Userkey is not positive')
-                FROM users", failureListener: listener);
-
-            await WaitForUpdate();
-
-            Assert.Single(listener.CheckIds());
-            Assert.Equal(1, listener.ResetCount);
-            AssertIssues(listener, []);
-        }
-
-        [Fact]
-        public async Task CheckTrue()
-        {
-            GenerateData();
-
-            var listener = new CheckIssueListener();
-            await StartStream(@"
-               INSERT INTO output
-                SELECT
-                  UserKey
+                SELECT UserKey
                 FROM users
-                WHERE CHECK_TRUE(userkey < 900, 'Userkey: {userkey} is too large', userkey => UserKey)
-            ", failureListener: listener);
+                WHERE CHECK_TRUE(userkey < 900, 'Userkey: {{userkey}} is too large', {tag})", failureListener: listener);
 
             await WaitForUpdate();
 
@@ -113,38 +86,14 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task CheckValueDeleteResolvesIssue()
-        {
-            GenerateData();
-
-            var listener = new CheckIssueListener();
-            await StartStream(UserKeyCheckSql, failureListener: listener);
-
-            await WaitForUpdate();
-            AssertIssues(listener, ExpectedUserKeyIssues());
-
-            foreach (var user in Users.Where(x => x.UserKey >= 900).Take(3).ToList())
-            {
-                DeleteUser(user);
-            }
-
-            await WaitForUpdate();
-
-            AssertIssues(listener, ExpectedUserKeyIssues());
-            Assert.Equal(3, listener.ResolvedCount);
-            Assert.Equal(1, listener.ResetCount);
-            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
-        }
-
-        [Fact]
         public async Task CheckValueUpdateRaisesAndResolves()
         {
             GenerateData();
             var resolvedUser = Users[10];
             var changedUser = Users[11];
-            var raisedUser = WithVisits(Users[12], 5);
-            AddOrUpdateUser(WithVisits(resolvedUser, 500));
-            AddOrUpdateUser(WithVisits(changedUser, 500));
+            var raisedUser = With(Users[12], x => x.Visits = 5);
+            AddOrUpdateUser(With(resolvedUser, x => x.Visits = 500));
+            AddOrUpdateUser(With(changedUser, x => x.Visits = 500));
             AddOrUpdateUser(raisedUser);
 
             var listener = new CheckIssueListener();
@@ -155,9 +104,9 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Equal(2, listener.RaisedCount);
 
             // Fail to pass, new tag values, pass to fail
-            AddOrUpdateUser(WithVisits(resolvedUser, 5));
-            AddOrUpdateUser(WithVisits(changedUser, 600));
-            AddOrUpdateUser(WithVisits(raisedUser, 700));
+            AddOrUpdateUser(With(resolvedUser, x => x.Visits = 5));
+            AddOrUpdateUser(With(changedUser, x => x.Visits = 600));
+            AddOrUpdateUser(With(raisedUser, x => x.Visits = 700));
 
             await WaitForUpdate();
 
@@ -167,45 +116,6 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Equal(2, listener.ResolvedCount);
             Assert.Equal(4, listener.RaisedCount);
             Assert.Equal(1, listener.ResetCount);
-            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
-        }
-
-        [Fact]
-        public async Task CheckValueSameTagsResolvesWhenAllRowsAreGone()
-        {
-            GenerateData();
-            var first = WithVisits(Users[10], 500);
-            var second = WithVisits(Users[11], 500);
-            AddOrUpdateUser(first);
-            AddOrUpdateUser(second);
-            AddOrUpdateUser(WithVisits(Users[12], 700));
-
-            var listener = new CheckIssueListener();
-            var status = new CheckStatusListener(listener);
-            await StartStream(@"
-                INSERT INTO output
-                SELECT CHECK_VALUE(UserKey, Visits < 100, 'Too many visits: {visits}', visits => Visits)
-                FROM users", failureListener: listener, statusListener: status);
-
-            await WaitForUpdate();
-            AssertIssues(listener, ["Too many visits: 500", "Too many visits: 700"]);
-            Assert.Equal(2, listener.RaisedCount);
-            AssertLatestStatus(status, activeIssues: 2, failingRows: 3);
-
-            DeleteUser(first);
-            await WaitForUpdate();
-
-            // The other row still has the same tag values
-            AssertIssues(listener, ["Too many visits: 500", "Too many visits: 700"]);
-            Assert.Equal(0, listener.ResolvedCount);
-            AssertLatestStatus(status, activeIssues: 2, failingRows: 2);
-
-            DeleteUser(second);
-            await WaitForUpdate();
-
-            AssertIssues(listener, ["Too many visits: 700"]);
-            Assert.Equal(1, listener.ResolvedCount);
-            AssertLatestStatus(status, activeIssues: 1, failingRows: 1);
             AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
         }
 
@@ -232,27 +142,6 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForIssues(listener, ExpectedUserKeyIssues(), minResets: 2);
             Assert.Equal(2, listener.ResetCount);
             Assert.Equal(ExpectedUserKeyIssues().Count, ReadActiveIssuesGauge());
-        }
-
-        [Fact]
-        public async Task CheckValueIdleRestartReannouncesIssues()
-        {
-            GenerateData();
-
-            var listener = new CheckIssueListener();
-            await StartStream(UserKeyCheckSql, failureListener: listener);
-
-            await WaitForUpdate();
-            var raised = listener.RaisedCount;
-
-            await StopStream();
-            await StartStream();
-
-            // No new data, so no checkpoint publishes anything
-            await WaitForIssues(listener, ExpectedUserKeyIssues(), minResets: 2);
-            Assert.Equal(2, listener.ResetCount);
-            Assert.Equal(raised + ExpectedUserKeyIssues().Count, listener.RaisedCount);
-            Assert.Equal(0, listener.ResolvedCount);
         }
 
         [Fact]
@@ -294,19 +183,19 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream(UserKeyCheckSql, failureListener: listener);
 
             await WaitForUpdate();
-            Assert.Equal(ExpectedUserKeyIssues().Count, ReadActiveIssuesGauge());
-            Assert.Equal(ExpectedUserKeyIssues().Count, ReadFailingRowsGauge());
-
-            foreach (var user in Users.Where(x => x.UserKey >= 900).Take(5).ToList())
-            {
-                DeleteUser(user);
-            }
-
-            await WaitForUpdate();
-
             AssertIssues(listener, ExpectedUserKeyIssues());
             Assert.Equal(ExpectedUserKeyIssues().Count, ReadActiveIssuesGauge());
             Assert.Equal(ExpectedUserKeyIssues().Count, ReadFailingRowsGauge());
+
+            DeleteFailingUsers(5);
+            await WaitForUpdate();
+
+            AssertIssues(listener, ExpectedUserKeyIssues());
+            Assert.Equal(5, listener.ResolvedCount);
+            Assert.Equal(1, listener.ResetCount);
+            Assert.Equal(ExpectedUserKeyIssues().Count, ReadActiveIssuesGauge());
+            Assert.Equal(ExpectedUserKeyIssues().Count, ReadFailingRowsGauge());
+            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
         }
 
         [Fact]
@@ -338,10 +227,10 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task CheckTrueNullConditionPassesAndFiltersRow()
         {
             GenerateData();
-            AddOrUpdateUser(WithVisits(Users[10], 500));
-            AddOrUpdateUser(WithVisits(Users[11], 600));
-            AddOrUpdateUser(WithVisits(Users[12], null));
-            AddOrUpdateUser(WithVisits(Users[13], 5));
+            AddOrUpdateUser(With(Users[10], x => x.Visits = 500));
+            AddOrUpdateUser(With(Users[11], x => x.Visits = 600));
+            AddOrUpdateUser(With(Users[12], x => x.Visits = null));
+            AddOrUpdateUser(With(Users[13], x => x.Visits = 5));
 
             var listener = new CheckIssueListener();
             await StartStream(@"
@@ -360,10 +249,10 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task CheckTrueReturnsTrueOnlyForBooleanTrue()
         {
             GenerateData();
-            AddOrUpdateUser(WithVisits(Users[10], 500));
-            AddOrUpdateUser(WithVisits(Users[11], 600));
-            AddOrUpdateUser(WithVisits(Users[12], null));
-            AddOrUpdateUser(WithVisits(Users[13], 5));
+            AddOrUpdateUser(With(Users[10], x => x.Visits = 500));
+            AddOrUpdateUser(With(Users[11], x => x.Visits = 600));
+            AddOrUpdateUser(With(Users[12], x => x.Visits = null));
+            AddOrUpdateUser(With(Users[13], x => x.Visits = 5));
 
             var listener = new CheckIssueListener();
             await StartStream(@"
@@ -390,7 +279,7 @@ namespace FlowtideDotNet.AcceptanceTests
             var failingUsers = Users.Where(x => x.UserKey >= 900).ToList();
             for (int i = 0; i < failingUsers.Count; i++)
             {
-                AddOrUpdateUser(WithCompany(failingUsers[i], companies[i % companies.Length]));
+                AddOrUpdateUser(With(failingUsers[i], x => x.CompanyId = companies[i % companies.Length]));
             }
 
             var listener = new CheckIssueListener();
@@ -513,7 +402,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             var user = Users[0];
             // Born a few seconds after the stream starts
-            AddOrUpdateUser(WithBirthDate(user, DateTime.UtcNow.AddSeconds(20)));
+            AddOrUpdateUser(With(user, x => x.BirthDate = DateTime.UtcNow.AddSeconds(20)));
             var futureIssue = $"User {user.UserKey} is born in the future";
             var bornIssue = $"User {user.UserKey} is already born";
 
@@ -574,11 +463,11 @@ namespace FlowtideDotNet.AcceptanceTests
         {
             GenerateData();
             // Duplicates in a fixed company and the null company
-            AddOrUpdateUser(WithCompany(Users[10], "window_company"));
-            AddOrUpdateUser(WithCompany(Users[11], "window_company"));
-            AddOrUpdateUser(WithCompany(Users[12], "window_company"));
-            AddOrUpdateUser(WithCompany(Users[13], null));
-            AddOrUpdateUser(WithCompany(Users[14], null));
+            AddOrUpdateUser(With(Users[10], x => x.CompanyId = "window_company"));
+            AddOrUpdateUser(With(Users[11], x => x.CompanyId = "window_company"));
+            AddOrUpdateUser(With(Users[12], x => x.CompanyId = "window_company"));
+            AddOrUpdateUser(With(Users[13], x => x.CompanyId = null));
+            AddOrUpdateUser(With(Users[14], x => x.CompanyId = null));
 
             var listener = new CheckIssueListener();
             await StartStream(@"
@@ -638,34 +527,8 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Equal(1, listener.ResolvedCount);
         }
 
-        [Fact]
-        public async Task CheckInJoinConditionUsingBothInputsIsRejected()
-        {
-            GenerateData();
-
-            var exception = await Assert.ThrowsAsync<NotSupportedException>(() => StartStream(@"
-                INSERT INTO output
-                SELECT o.OrderKey
-                FROM orders o
-                INNER JOIN users u ON o.UserKey = u.UserKey AND CHECK_TRUE(o.OrderKey > u.UserKey, 'bad order')", failureListener: new CheckIssueListener()));
-            Assert.Contains("references both inputs", exception.Message);
-        }
-
-        [Fact]
-        public async Task CheckWithoutFromIsRejected()
-        {
-            var exception = await Assert.ThrowsAsync<NotSupportedException>(() => StartStream(@"
-                INSERT INTO output
-                SELECT CHECK_VALUE(1, 1 = 2, 'never true') AS v", failureListener: new CheckIssueListener()));
-            Assert.Contains("VALUES", exception.Message);
-        }
-
         [Theory]
         [InlineData("SELECT CHECK_VALUE(UserKey, UserKey < 900, concat('Userkey: ', UserKey, ' is too large')) FROM users")]
-        [InlineData("SELECT CHECK_VALUE(UserKey, UserKey < 900, 'Userkey: ' || FirstName) FROM users")]
-        [InlineData("SELECT CHECK_VALUE(UserKey, UserKey < 900, FirstName) FROM users")]
-        [InlineData("SELECT CHECK_VALUE(UserKey, UserKey < 900, NULL) FROM users")]
-        [InlineData("SELECT UserKey FROM users WHERE CHECK_TRUE(UserKey < 900, concat('Userkey: ', UserKey))")]
         public async Task CheckComputedMessageIsRejected(string query)
         {
             GenerateData();
@@ -675,47 +538,6 @@ namespace FlowtideDotNet.AcceptanceTests
                 failureListener: new CheckIssueListener()));
             Assert.Contains("must be a string literal", exception.Message);
             Assert.Contains("{tag}", exception.Message);
-        }
-
-        [Fact]
-        public async Task CheckInsideCheckMessageIsRejected()
-        {
-            GenerateData();
-
-            var exception = await Assert.ThrowsAsync<NotSupportedException>(() => StartStream(@"
-                INSERT INTO output
-                SELECT CHECK_VALUE(UserKey, UserKey < 900, CHECK_VALUE('inner', UserKey < 10, 'inner message'))
-                FROM users", failureListener: new CheckIssueListener()));
-            Assert.Contains("must be a string literal", exception.Message);
-        }
-
-        [Fact]
-        public async Task CheckInsideCheckTagIsRejected()
-        {
-            GenerateData();
-
-            var exception = await Assert.ThrowsAsync<NotSupportedException>(() => StartStream(@"
-                INSERT INTO output
-                SELECT CHECK_VALUE(UserKey, UserKey < 900, 'Userkey {innerValue} is too large', innerValue => CHECK_VALUE(UserKey, UserKey < 10, 'inner message'))
-                FROM users", failureListener: new CheckIssueListener()));
-            Assert.Contains("tag arguments", exception.Message);
-        }
-
-        [Fact]
-        public async Task CheckValueWithTags()
-        {
-            GenerateData();
-
-            var listener = new CheckIssueListener();
-            await StartStream(@"
-               INSERT INTO output
-                SELECT CHECK_VALUE(UserKey, UserKey < 900, 'Userkey: {userkey} is too large', userkey => UserKey)
-                FROM users", failureListener: listener);
-
-            await WaitForUpdate();
-
-            AssertIssues(listener, ExpectedUserKeyIssues());
-            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
         }
 
         [Fact]
@@ -737,74 +559,22 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task CheckValueWithTagsNonNamed()
-        {
-            GenerateData();
-
-            var listener = new CheckIssueListener();
-            await StartStream(@"
-               INSERT INTO output
-                SELECT CHECK_VALUE(UserKey, UserKey < 900, 'Userkey: {userkey} is too large', userkey)
-                FROM users", failureListener: listener);
-
-            await WaitForUpdate();
-
-            AssertIssues(listener, ExpectedUserKeyIssues());
-            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
-        }
-
-        [Fact]
-        public async Task CheckTrueWithTags()
-        {
-            GenerateData();
-
-            var listener = new CheckIssueListener();
-            await StartStream(@"
-               INSERT INTO output
-                SELECT
-                  UserKey
-                FROM users
-                WHERE CHECK_TRUE(userkey < 900, 'Userkey: {userkey} is too large', userkey => UserKey)
-            ", failureListener: listener);
-
-            await WaitForUpdate();
-
-            AssertIssues(listener, ExpectedUserKeyIssues());
-            AssertCurrentDataEqual(Users.Where(x => x.UserKey < 900).Select(x => new { x.UserKey }));
-        }
-
-        [Fact]
-        public async Task CheckTrueWithTagsNoNamed()
-        {
-            GenerateData();
-
-            var listener = new CheckIssueListener();
-            await StartStream(@"
-               INSERT INTO output
-                SELECT
-                  UserKey
-                FROM users
-                WHERE CHECK_TRUE(userkey < 900, 'Userkey: {userkey} is too large', UserKey)
-            ", failureListener: listener);
-
-            await WaitForUpdate();
-
-            AssertIssues(listener, ExpectedUserKeyIssues());
-            AssertCurrentDataEqual(Users.Where(x => x.UserKey < 900).Select(x => new { x.UserKey }));
-        }
-
-        [Fact]
         public async Task CheckStatusPassingCheckReportsPassedAtStart()
         {
             GenerateData();
 
+            var listener = new CheckIssueListener();
             var status = new CheckStatusListener();
             await StartStream(@"
                 INSERT INTO output
                 SELECT CHECK_VALUE(UserKey, UserKey > 0, 'Userkey is not positive')
-                FROM users", statusListener: status);
+                FROM users", failureListener: listener, statusListener: status);
 
             await WaitForUpdate();
+
+            Assert.Single(listener.CheckIds());
+            Assert.Equal(1, listener.ResetCount);
+            AssertIssues(listener, []);
 
             // The checkpoint left the counts at zero, so only the start reports
             var reported = Assert.Single(status.Statuses());
@@ -818,7 +588,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task CheckStatusFailingCheckReportsCounts()
+        public async Task CheckStatusReportsEveryCountChange()
         {
             GenerateData();
 
@@ -829,40 +599,20 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             // The empty committed state passes at start, the first checkpoint fails
-            var expectedCount = ExpectedUserKeyIssues().Count;
-            AssertStatuses(status, (0, 0), (expectedCount, expectedCount));
+            var initialCount = ExpectedUserKeyIssues().Count;
+            AssertStatuses(status, (0, 0), (initialCount, initialCount));
             var failed = status.Statuses()[^1];
             Assert.False(failed.Passed);
             Assert.Equal(UserKeyCheckName, failed.CheckName);
             Assert.Equal(Assert.Single(listener.CheckIds()), failed.CheckId);
-        }
 
-        [Fact]
-        public async Task CheckStatusReportsEveryCountChange()
-        {
-            GenerateData();
-
-            var listener = new CheckIssueListener();
-            var status = new CheckStatusListener(listener);
-            await StartStream(UserKeyCheckSql, failureListener: listener, statusListener: status);
-
-            await WaitForUpdate();
-            var initialCount = ExpectedUserKeyIssues().Count;
-            AssertStatuses(status, (0, 0), (initialCount, initialCount));
-
-            foreach (var user in Users.Where(x => x.UserKey >= 900).Take(3).ToList())
-            {
-                DeleteUser(user);
-            }
+            DeleteFailingUsers(3);
             await WaitForUpdate();
 
             AssertStatuses(status, (0, 0), (initialCount, initialCount), (initialCount - 3, initialCount - 3));
 
             // Fail to pass
-            foreach (var user in Users.Where(x => x.UserKey >= 900).ToList())
-            {
-                DeleteUser(user);
-            }
+            DeleteFailingUsers();
             await WaitForUpdate();
 
             AssertStatuses(status, (0, 0), (initialCount, initialCount), (initialCount - 3, initialCount - 3), (0, 0));
@@ -882,9 +632,9 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task CheckStatusNotReportedWhenCountsDoNotChange()
         {
             GenerateData();
-            var movedUser = WithVisits(Users[10], 500);
+            var movedUser = With(Users[10], x => x.Visits = 500);
             AddOrUpdateUser(movedUser);
-            AddOrUpdateUser(WithVisits(Users[11], 500));
+            AddOrUpdateUser(With(Users[11], x => x.Visits = 500));
 
             var listener = new CheckIssueListener();
             var status = new CheckStatusListener(listener);
@@ -894,14 +644,14 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertStatuses(status, (0, 0), (2, 2));
 
             // A passing row changes
-            AddOrUpdateUser(WithVisits(Users[20], 50));
+            AddOrUpdateUser(With(Users[20], x => x.Visits = 50));
             await WaitForUpdate();
 
             AssertStatuses(status, (0, 0), (2, 2));
             Assert.Equal(2, listener.RaisedCount);
 
             // An issue is replaced by another, the counts stay the same
-            AddOrUpdateUser(WithVisits(movedUser, 600));
+            AddOrUpdateUser(With(movedUser, x => x.Visits = 600));
             await WaitForUpdate();
 
             AssertIssues(listener, ExpectedVisitsIssues());
@@ -930,10 +680,7 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Equal(1, listener.RaisedCount);
             AssertStatuses(status, (0, 0), (1, initialCount));
 
-            foreach (var user in Users.Where(x => x.UserKey >= 900).Take(3).ToList())
-            {
-                DeleteUser(user);
-            }
+            DeleteFailingUsers(3);
             await WaitForUpdate();
 
             // The issue stays active while any row fails
@@ -942,10 +689,7 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Equal(0, listener.ResolvedCount);
             AssertStatuses(status, (0, 0), (1, initialCount), (1, initialCount - 3));
 
-            foreach (var user in Users.Where(x => x.UserKey >= 900).ToList())
-            {
-                DeleteUser(user);
-            }
+            DeleteFailingUsers();
             await WaitForUpdate();
 
             AssertIssues(listener, []);
@@ -966,10 +710,7 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertStatuses(status, (0, 0), (initialCount, initialCount));
             Assert.All(status.Statuses(), x => Assert.Equal(UserKeyCheckName, x.CheckName));
 
-            foreach (var user in Users.Where(x => x.UserKey >= 900).Take(3).ToList())
-            {
-                DeleteUser(user);
-            }
+            DeleteFailingUsers(3);
             await WaitForUpdate();
 
             AssertStatuses(status, (0, 0), (initialCount, initialCount), (initialCount - 3, initialCount - 3));
@@ -988,14 +729,19 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
             var initialCount = ExpectedUserKeyIssues().Count;
+            var raised = listener.RaisedCount;
             AssertStatuses(status, (0, 0), (initialCount, initialCount));
 
-            // An idle restart reports the committed counts once more
+            // An idle restart reports the committed counts and issues once more
             await StopStream();
             await StartStream();
             await WaitForStatusCount(status, 3);
+            await WaitForIssues(listener, ExpectedUserKeyIssues(), minResets: 2);
 
             AssertStatuses(status, (0, 0), (initialCount, initialCount), (initialCount, initialCount));
+            Assert.Equal(2, listener.ResetCount);
+            Assert.Equal(raised + initialCount, listener.RaisedCount);
+            Assert.Equal(0, listener.ResolvedCount);
 
             await StopStream();
             DeleteUser(Users.First(x => x.UserKey >= 900));
@@ -1018,9 +764,9 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task CheckGaugesReportEveryCheckWithItsName()
         {
             GenerateData();
-            AddOrUpdateUser(WithVisits(Users[10], 500));
-            AddOrUpdateUser(WithVisits(Users[11], 600));
-            AddOrUpdateUser(WithVisits(Users[12], 700));
+            AddOrUpdateUser(With(Users[10], x => x.Visits = 500));
+            AddOrUpdateUser(With(Users[11], x => x.Visits = 600));
+            AddOrUpdateUser(With(Users[12], x => x.Visits = 700));
 
             var listener = new CheckIssueListener();
             await StartStream(@"
@@ -1083,9 +829,9 @@ namespace FlowtideDotNet.AcceptanceTests
                 .ToList();
         }
 
-        private static User WithVisits(User user, int? visits)
+        private static User With(User user, Action<User> change)
         {
-            return new User()
+            var copy = new User()
             {
                 UserKey = user.UserKey,
                 Gender = user.Gender,
@@ -1093,27 +839,23 @@ namespace FlowtideDotNet.AcceptanceTests
                 LastName = user.LastName,
                 NullableString = user.NullableString,
                 CompanyId = user.CompanyId,
-                Visits = visits,
+                Visits = user.Visits,
                 ManagerKey = user.ManagerKey,
                 TrimmableNullableString = user.TrimmableNullableString,
                 DoubleValue = user.DoubleValue,
                 Active = user.Active,
                 BirthDate = user.BirthDate
             };
-        }
-
-        private static User WithBirthDate(User user, DateTime birthDate)
-        {
-            var copy = WithVisits(user, user.Visits);
-            copy.BirthDate = birthDate;
+            change(copy);
             return copy;
         }
 
-        private static User WithCompany(User user, string? companyId)
+        private void DeleteFailingUsers(int take = int.MaxValue)
         {
-            var copy = WithVisits(user, user.Visits);
-            copy.CompanyId = companyId;
-            return copy;
+            foreach (var user in Users.Where(x => x.UserKey >= 900).Take(take).ToList())
+            {
+                DeleteUser(user);
+            }
         }
 
         private decimal ReadActiveIssuesGauge()

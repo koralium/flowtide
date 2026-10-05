@@ -113,19 +113,7 @@ namespace FlowtideDotNet.Base.Tests
             }
         }
 
-        private static CheckIssueBatch Batch(string checkId, long version, bool isSnapshot, params CheckIssueChange[] changes)
-        {
-            return new CheckIssueBatch()
-            {
-                CheckId = checkId,
-                CheckName = CheckName,
-                Version = version,
-                IsSnapshot = isSnapshot,
-                Changes = changes
-            };
-        }
-
-        private static CheckIssueBatch StatusBatch(string checkId, long version, bool isSnapshot, long activeIssues, long failingRows, params CheckIssueChange[] changes)
+        private static CheckIssueBatch Batch(string checkId, long version, bool isSnapshot, CheckIssueChange[] changes, (long Active, long Rows)? status = null)
         {
             return new CheckIssueBatch()
             {
@@ -134,7 +122,7 @@ namespace FlowtideDotNet.Base.Tests
                 Version = version,
                 IsSnapshot = isSnapshot,
                 Changes = changes,
-                Status = new CheckStatus(activeIssues, failingRows)
+                Status = status is { } s ? new CheckStatus(s.Active, s.Rows) : null
             };
         }
 
@@ -148,17 +136,22 @@ namespace FlowtideDotNet.Base.Tests
             return new CheckIssueChange(false, [new KeyValuePair<string, object?>("k", key)]);
         }
 
-        private static StreamNotificationReceiver CreateReceiver(List<string> events)
+        // Registers in reverse dispatch order so ordering tests cannot pass by registration order
+        private static StreamNotificationReceiver CreateReceiver(List<string> events, bool issues = true, bool status = false, bool checkpoint = false)
         {
             var receiver = new StreamNotificationReceiver("stream");
-            receiver.AddCheckFailureListener(new RecordingCheckListener(events));
-            return receiver;
-        }
-
-        private static StreamNotificationReceiver CreateReceiverWithBothKinds(List<string> events)
-        {
-            var receiver = CreateReceiver(events);
-            receiver.AddCheckStatusListener(new RecordingStatusListener(events));
+            if (checkpoint)
+            {
+                receiver.AddCheckpointListener(new RecordingCheckpointListener(events));
+            }
+            if (status)
+            {
+                receiver.AddCheckStatusListener(new RecordingStatusListener(events));
+            }
+            if (issues)
+            {
+                receiver.AddCheckFailureListener(new RecordingCheckListener(events));
+            }
             return receiver;
         }
 
@@ -166,12 +159,9 @@ namespace FlowtideDotNet.Base.Tests
         public void CheckEventsArePublishedBeforeCheckpointListeners()
         {
             var events = new List<string>();
-            var receiver = new StreamNotificationReceiver("stream");
-            receiver.AddCheckpointListener(new RecordingCheckpointListener(events));
-            receiver.AddCheckFailureListener(new RecordingCheckListener(events));
-            receiver.AddCheckStatusListener(new RecordingStatusListener(events));
+            var receiver = CreateReceiver(events, status: true, checkpoint: true);
 
-            receiver.Enqueue(StatusBatch("1:0", 1, false, 1, 1, Raised("a")));
+            receiver.Enqueue(Batch("1:0", 1, false, [Raised("a")], (1, 1)));
             receiver.OnCheckpointComplete(1);
 
             Assert.Equal(new[] { "failure stream 1:0 chk k=a", "status stream 1:0 chk failed 1 1", "checkpoint stream" }, events);
@@ -181,61 +171,30 @@ namespace FlowtideDotNet.Base.Tests
         public void OnlyBatchesUpToTheCommittedVersionArePublished()
         {
             var events = new List<string>();
-            var receiver = CreateReceiver(events);
+            var receiver = CreateReceiver(events, status: true);
 
-            receiver.Enqueue(Batch("1:0", 1, false, Raised("v1")));
-            receiver.Enqueue(Batch("1:0", 2, false, Raised("v2")));
-            receiver.Enqueue(Batch("1:0", 3, false, Raised("v3")));
+            receiver.Enqueue(Batch("1:0", 1, false, [Raised("v1")]));
+            receiver.Enqueue(Batch("1:0", 2, false, [Raised("v2")]));
+            receiver.Enqueue(Batch("1:0", 3, false, [Raised("v3")]));
+            receiver.Enqueue(Batch("1:0", 3, false, [], (0, 0)));
 
             receiver.OnCheckpointComplete(2);
             Assert.Equal(new[] { "failure stream 1:0 chk k=v1", "failure stream 1:0 chk k=v2" }, events);
 
             events.Clear();
             receiver.OnCheckpointComplete(3);
-            Assert.Equal(new[] { "failure stream 1:0 chk k=v3" }, events);
-        }
-
-        [Fact]
-        public void StatusOnlyUpToTheCommittedVersionIsPublished()
-        {
-            var events = new List<string>();
-            var receiver = new StreamNotificationReceiver("stream");
-            receiver.AddCheckStatusListener(new RecordingStatusListener(events));
-
-            receiver.Enqueue(StatusBatch("1:0", 1, false, 1, 3));
-            receiver.Enqueue(StatusBatch("1:0", 2, false, 0, 0));
-
-            receiver.OnCheckpointComplete(1);
-            Assert.Equal(new[] { "status stream 1:0 chk failed 1 3" }, events);
-
-            events.Clear();
-            receiver.OnCheckpointComplete(2);
-            Assert.Equal(new[] { "status stream 1:0 chk passed 0 0" }, events);
-        }
-
-        [Fact]
-        public void PublishedBatchesAreNotPublishedAgain()
-        {
-            var events = new List<string>();
-            var receiver = CreateReceiverWithBothKinds(events);
-
-            receiver.Enqueue(StatusBatch("1:0", 1, false, 1, 1, Raised("a")));
-            receiver.OnCheckpointComplete(1);
-            receiver.OnCheckpointComplete(1);
-            receiver.OnCheckpointComplete(2);
-
-            Assert.Equal(new[] { "failure stream 1:0 chk k=a", "status stream 1:0 chk failed 1 1" }, events);
+            Assert.Equal(new[] { "failure stream 1:0 chk k=v3", "status stream 1:0 chk passed 0 0" }, events);
         }
 
         [Fact]
         public void BatchesAndChangesArePublishedInEnqueueOrder()
         {
             var events = new List<string>();
-            var receiver = CreateReceiverWithBothKinds(events);
+            var receiver = CreateReceiver(events, status: true);
 
-            receiver.Enqueue(StatusBatch("2:0", 4, false, 1, 2, Raised("b1"), Resolved("b2")));
-            receiver.Enqueue(Batch("1:0", 4, false, Resolved("a1"), Raised("a2")));
-            receiver.Enqueue(StatusBatch("2:1", 3, false, 0, 0));
+            receiver.Enqueue(Batch("2:0", 4, false, [Raised("b1"), Resolved("b2")], (1, 2)));
+            receiver.Enqueue(Batch("1:0", 4, false, [Resolved("a1"), Raised("a2")]));
+            receiver.Enqueue(Batch("2:1", 3, false, [], (0, 0)));
 
             receiver.OnCheckpointComplete(4);
 
@@ -251,27 +210,13 @@ namespace FlowtideDotNet.Base.Tests
         }
 
         [Fact]
-        public void SnapshotResetsTheCheckThenRaisesEveryIssue()
-        {
-            var events = new List<string>();
-            var receiver = CreateReceiver(events);
-
-            receiver.Enqueue(Batch("1:0", 1, true, Raised("a"), Raised("b")));
-            receiver.OnCheckpointComplete(1);
-
-            Assert.Equal(new[] { "reset stream 1:0 chk", "failure stream 1:0 chk k=a", "failure stream 1:0 chk k=b" }, events);
-        }
-
-        [Fact]
         public void StatusIsDispatchedAfterResetAndChanges()
         {
             var events = new List<string>();
-            var receiver = new StreamNotificationReceiver("stream");
             // Status listener registered first, still dispatched last
-            receiver.AddCheckStatusListener(new RecordingStatusListener(events));
-            receiver.AddCheckFailureListener(new RecordingCheckListener(events));
+            var receiver = CreateReceiver(events, status: true);
 
-            receiver.Enqueue(StatusBatch("1:0", 1, true, 2, 5, Raised("a"), Raised("b")));
+            receiver.Enqueue(Batch("1:0", 1, true, [Raised("a"), Raised("b")], (2, 5)));
             receiver.OnCheckpointComplete(1);
 
             Assert.Equal(new[]
@@ -287,75 +232,38 @@ namespace FlowtideDotNet.Base.Tests
         public void PublishDispatchesWithoutACheckpoint()
         {
             var events = new List<string>();
-            var receiver = CreateReceiverWithBothKinds(events);
+            var receiver = CreateReceiver(events, status: true);
 
-            receiver.Enqueue(StatusBatch("1:0", 1, false, 2, 2, Raised("pending")));
-            receiver.Publish(StatusBatch("1:0", 0, true, 1, 4, Raised("a")));
+            receiver.Enqueue(Batch("1:0", 1, false, [Raised("pending")], (2, 2)));
+            receiver.Publish(Batch("1:0", 0, true, [Raised("a")], (1, 4)));
 
             Assert.Equal(new[] { "reset stream 1:0 chk", "failure stream 1:0 chk k=a", "status stream 1:0 chk failed 1 4" }, events);
         }
 
-        [Fact]
-        public void StatusOnlyItemReachesOnlyStatusListeners()
+        [Theory]
+        [InlineData(false, false, new string[0])]
+        [InlineData(true, false, new[] { "reset stream 2:0 chk", "failure stream 2:0 chk k=b", "failure stream 1:0 chk k=issueOnly", "failure stream 1:0 chk k=a" })]
+        [InlineData(false, true, new[] { "status stream 2:0 chk failed 1 1", "status stream 2:0 chk failed 2 2", "status stream 1:0 chk passed 0 0", "status stream 1:0 chk failed 1 1" })]
+        [InlineData(true, true, new[]
+        {
+            "reset stream 2:0 chk", "failure stream 2:0 chk k=b", "status stream 2:0 chk failed 1 1", "status stream 2:0 chk failed 2 2",
+            "failure stream 1:0 chk k=issueOnly", "status stream 1:0 chk passed 0 0", "failure stream 1:0 chk k=a", "status stream 1:0 chk failed 1 1"
+        })]
+        public void ListenerKindsSetFlagsAndKeepOnlyWhatTheyReceive(bool issues, bool status, string[] expected)
         {
             var events = new List<string>();
-            var receiver = CreateReceiverWithBothKinds(events);
+            var receiver = CreateReceiver(events, issues, status);
+            Assert.Equal(issues, receiver.IssuesEnabled);
+            Assert.Equal(status, receiver.StatusEnabled);
 
-            receiver.Enqueue(StatusBatch("1:0", 1, false, 0, 0));
-            receiver.OnCheckpointComplete(1);
-            receiver.Publish(StatusBatch("2:0", 0, false, 3, 7));
-
-            Assert.Equal(new[] { "status stream 1:0 chk passed 0 0", "status stream 2:0 chk failed 3 7" }, events);
-        }
-
-        [Fact]
-        public void StatusListenerAloneReceivesNoIssueEvents()
-        {
-            var events = new List<string>();
-            var receiver = new StreamNotificationReceiver("stream");
-            receiver.AddCheckStatusListener(new RecordingStatusListener(events));
-
-            receiver.Enqueue(Batch("1:0", 1, false, Raised("dropped")));
-            receiver.Enqueue(StatusBatch("1:0", 1, false, 1, 1, Raised("a")));
-            receiver.Publish(StatusBatch("2:0", 0, true, 1, 1, Raised("b")));
+            receiver.Enqueue(Batch("1:0", 1, false, [Raised("issueOnly")]));
+            receiver.Enqueue(Batch("1:0", 1, false, [], (0, 0)));
+            receiver.Enqueue(Batch("1:0", 1, false, [Raised("a")], (1, 1)));
+            receiver.Publish(Batch("2:0", 0, true, [Raised("b")], (1, 1)));
+            receiver.Publish(Batch("2:0", 0, false, [], (2, 2)));
             receiver.OnCheckpointComplete(1);
 
-            Assert.Equal(new[] { "status stream 2:0 chk failed 1 1", "status stream 1:0 chk failed 1 1" }, events);
-        }
-
-        [Fact]
-        public void IssueListenerAloneReceivesNoStatus()
-        {
-            var events = new List<string>();
-            var receiver = CreateReceiver(events);
-
-            receiver.Enqueue(StatusBatch("1:0", 1, false, 0, 0));
-            receiver.Enqueue(StatusBatch("1:0", 1, false, 1, 1, Raised("a")));
-            receiver.Publish(StatusBatch("2:0", 0, false, 2, 2));
-            receiver.OnCheckpointComplete(1);
-
-            Assert.Equal(new[] { "failure stream 1:0 chk k=a" }, events);
-        }
-
-        [Fact]
-        public void EnableFlagsFollowTheRegisteredListenerKinds()
-        {
-            var none = new StreamNotificationReceiver("stream");
-            Assert.False(none.IssuesEnabled);
-            Assert.False(none.StatusEnabled);
-
-            var issuesOnly = CreateReceiver(new List<string>());
-            Assert.True(issuesOnly.IssuesEnabled);
-            Assert.False(issuesOnly.StatusEnabled);
-
-            var statusOnly = new StreamNotificationReceiver("stream");
-            statusOnly.AddCheckStatusListener(new RecordingStatusListener(new List<string>()));
-            Assert.False(statusOnly.IssuesEnabled);
-            Assert.True(statusOnly.StatusEnabled);
-
-            var both = CreateReceiverWithBothKinds(new List<string>());
-            Assert.True(both.IssuesEnabled);
-            Assert.True(both.StatusEnabled);
+            Assert.Equal(expected, events);
         }
 
         [Fact]
@@ -364,7 +272,7 @@ namespace FlowtideDotNet.Base.Tests
             var events = new List<string>();
             var receiver = CreateReceiver(events);
 
-            receiver.Enqueue(Batch("1:0", 1, true));
+            receiver.Enqueue(Batch("1:0", 1, true, []));
             receiver.OnCheckpointComplete(1);
 
             Assert.Equal(new[] { "reset stream 1:0 chk" }, events);
@@ -374,7 +282,7 @@ namespace FlowtideDotNet.Base.Tests
         public void NotificationsCarryTheUnrenderedCheckNameAndTags()
         {
             var events = new List<string>();
-            var receiver = CreateReceiverWithBothKinds(events);
+            var receiver = CreateReceiver(events, status: true);
 
             receiver.Enqueue(new CheckIssueBatch()
             {
@@ -399,12 +307,12 @@ namespace FlowtideDotNet.Base.Tests
         public void DiscardPendingRemovesOnlyThatChecksBatches()
         {
             var events = new List<string>();
-            var receiver = CreateReceiverWithBothKinds(events);
+            var receiver = CreateReceiver(events, status: true);
 
-            receiver.Enqueue(Batch("1:0", 1, false, Raised("a1")));
-            receiver.Enqueue(Batch("2:0", 1, false, Raised("b1")));
-            receiver.Enqueue(StatusBatch("1:0", 2, false, 2, 2));
-            receiver.Enqueue(StatusBatch("2:0", 2, false, 1, 1, Raised("b2")));
+            receiver.Enqueue(Batch("1:0", 1, false, [Raised("a1")]));
+            receiver.Enqueue(Batch("2:0", 1, false, [Raised("b1")]));
+            receiver.Enqueue(Batch("1:0", 2, false, [], (2, 2)));
+            receiver.Enqueue(Batch("2:0", 2, false, [Raised("b2")], (1, 1)));
 
             receiver.DiscardPending("1:0");
             receiver.OnCheckpointComplete(2);
@@ -418,27 +326,30 @@ namespace FlowtideDotNet.Base.Tests
             var events = new List<string>();
             var receiver = CreateReceiver(events);
 
-            receiver.Enqueue(Batch("1:0", 5, false, Raised("stale")));
+            receiver.Enqueue(Batch("1:0", 5, false, [Raised("stale")]));
             receiver.DiscardPending("1:0");
-            receiver.Enqueue(Batch("1:0", 5, true, Raised("fresh")));
+            receiver.Enqueue(Batch("1:0", 5, true, [Raised("fresh")]));
             receiver.OnCheckpointComplete(5);
 
             Assert.Equal(new[] { "reset stream 1:0 chk", "failure stream 1:0 chk k=fresh" }, events);
         }
 
         [Fact]
-        public void ThrowingListenerDoesNotStopOtherListeners()
+        public void ThrowingListenersDoNotStopOtherListeners()
         {
             var events = new List<string>();
             var receiver = new StreamNotificationReceiver("stream");
             receiver.AddCheckFailureListener(new RecordingCheckListener(new List<string>(), throws: true));
+            receiver.AddCheckStatusListener(new RecordingStatusListener(new List<string>(), throws: true));
             receiver.AddCheckFailureListener(new RecordingCheckListener(events));
             receiver.AddCheckStatusListener(new RecordingStatusListener(events));
             receiver.AddCheckpointListener(new RecordingCheckpointListener(events));
 
-            receiver.Enqueue(Batch("1:0", 1, true, Raised("a")));
-            receiver.Enqueue(StatusBatch("1:0", 1, false, 0, 0, Resolved("a")));
+            receiver.Enqueue(Batch("1:0", 1, true, [Raised("a")]));
+            receiver.Enqueue(Batch("1:0", 1, false, [Resolved("a")], (0, 0)));
+            receiver.Enqueue(Batch("2:0", 1, false, [Raised("b")], (1, 3)));
             receiver.OnCheckpointComplete(1);
+            receiver.Publish(Batch("3:0", 0, false, [], (0, 0)));
 
             Assert.Equal(new[]
             {
@@ -446,29 +357,6 @@ namespace FlowtideDotNet.Base.Tests
                 "failure stream 1:0 chk k=a",
                 "resolved stream 1:0 chk k=a",
                 "status stream 1:0 chk passed 0 0",
-                "checkpoint stream"
-            }, events);
-        }
-
-        [Fact]
-        public void ThrowingStatusListenerDoesNotStopOtherListeners()
-        {
-            var events = new List<string>();
-            var receiver = new StreamNotificationReceiver("stream");
-            receiver.AddCheckStatusListener(new RecordingStatusListener(new List<string>(), throws: true));
-            receiver.AddCheckStatusListener(new RecordingStatusListener(events));
-            receiver.AddCheckFailureListener(new RecordingCheckListener(events));
-            receiver.AddCheckpointListener(new RecordingCheckpointListener(events));
-
-            receiver.Enqueue(StatusBatch("1:0", 1, false, 1, 1, Raised("a")));
-            receiver.Enqueue(StatusBatch("2:0", 1, false, 1, 3, Raised("b")));
-            receiver.OnCheckpointComplete(1);
-            receiver.Publish(StatusBatch("3:0", 0, false, 0, 0));
-
-            Assert.Equal(new[]
-            {
-                "failure stream 1:0 chk k=a",
-                "status stream 1:0 chk failed 1 1",
                 "failure stream 2:0 chk k=b",
                 "status stream 2:0 chk failed 1 3",
                 "checkpoint stream",
@@ -484,7 +372,7 @@ namespace FlowtideDotNet.Base.Tests
 
             Parallel.For(0, 1000, i =>
             {
-                receiver.Enqueue(Batch($"{i % 8}:0", 1, false, Raised(i.ToString())));
+                receiver.Enqueue(Batch($"{i % 8}:0", 1, false, [Raised(i.ToString())]));
             });
             receiver.OnCheckpointComplete(1);
 

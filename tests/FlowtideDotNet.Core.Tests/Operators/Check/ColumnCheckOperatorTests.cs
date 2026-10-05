@@ -164,8 +164,10 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             op.LinkTo(_output);
             await InitializeOperator(op);
             _startItems = _publisher.Take();
-            // One start item per check when anyone listens
+            // One empty start item per check, in check order, when anyone listens
             Assert.Equal(_publisher.IssuesEnabled || _publisher.StatusEnabled ? checkIds.Length : 0, _startItems.Count);
+            Assert.Equal(checkIds.Take(_startItems.Count), _startItems.Select(x => x.CheckId));
+            Assert.All(_startItems, x => Assert.Empty(x.Changes));
             Assert.All(_startItems, x => Assert.Equal(_publisher.IssuesEnabled, x.IsSnapshot));
             Assert.All(_startItems, x => Assert.Equal(_publisher.StatusEnabled, x.Status.HasValue));
             return op;
@@ -257,26 +259,15 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             (await Send(op,
                 new Row("a", false, 1, 1),
                 new Row("b", true, 2, 1),
-                new Row("c", null, 3, 1))).Return();
+                new Row("c", null, 3, 1),
+                new Row(null, false, 4, 1))).Return();
 
             var batches = await Checkpoint(op, 7);
             var batch = Assert.Single(batches);
             Assert.False(batch.IsSnapshot);
             Assert.Equal(CheckId, batch.CheckId);
             Assert.Equal(7, batch.Version);
-            Assert.Equal(new[] { "+a:tag=1" }, Describe(batch));
-        }
-
-        [Fact]
-        public async Task StartPublishesEmptySnapshot()
-        {
-            var op = await StartOperator();
-            var snapshot = Assert.Single(_startItems);
-            Assert.Equal(CheckId, snapshot.CheckId);
-            Assert.Empty(snapshot.Changes);
-
-            Assert.Empty(await Checkpoint(op, 1));
-            Assert.Empty(await Checkpoint(op, 2));
+            Assert.Equal(new[] { "+null:tag=4", "+a:tag=1" }, Describe(batch));
         }
 
         [Fact]
@@ -288,20 +279,6 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             Assert.Empty(await Checkpoint(op, 1));
             (await Send(op, new Row("a", false, 1, -1))).Return();
             Assert.Empty(await Checkpoint(op, 2));
-        }
-
-        [Fact]
-        public async Task TransitionsAfterSnapshot()
-        {
-            var op = await StartOperator();
-            (await Send(op, new Row("a", false, 1, 1))).Return();
-            await Checkpoint(op, 1);
-
-            (await Send(op, new Row("a", false, 1, -1), new Row("b", false, 2, 1))).Return();
-            var batch = Assert.Single(await Checkpoint(op, 2));
-            Assert.False(batch.IsSnapshot);
-            Assert.Equal(2, batch.Version);
-            Assert.Equal(new[] { "-a:tag=1", "+b:tag=2" }, Describe(batch));
         }
 
         [Fact]
@@ -327,7 +304,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
         public async Task RaiseAndResolveInOneEpochPublishesNothing()
         {
             var op = await StartOperator();
-            await Checkpoint(op, 1);
+            Assert.Empty(await Checkpoint(op, 1));
 
             (await Send(op, new Row("a", false, 1, 1))).Return();
             (await Send(op, new Row("a", false, 1, -1))).Return();
@@ -352,15 +329,6 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             (await Send(op, new Row("a", false, 1, 1))).Return();
             var batch = Assert.Single(await Checkpoint(op, 4));
             Assert.Equal(new[] { "+a:tag=1" }, Describe(batch));
-        }
-
-        [Fact]
-        public async Task NullTagValueRaisesAnIssue()
-        {
-            var op = await StartOperator();
-            (await Send(op, new Row(null, false, 1, 1))).Return();
-            var batch = Assert.Single(await Checkpoint(op, 1));
-            Assert.Equal(new[] { "+null:tag=1" }, Describe(batch));
         }
 
         [Fact]
@@ -399,51 +367,31 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             Assert.Equal(new[] { "+a:tag=1" }, Describe(batch));
         }
 
-        [Fact]
-        public async Task GuardsFollowToBoolAndNullSemantics()
+        // The row message names its guard value
+        private static IDataValue GuardValue(string name) => name switch
         {
-            var op = await StartOperator(CreateRelation(guards: new List<CheckGuard>()
-            {
-                new CheckGuard() { Expression = Field(3), Kind = CheckGuardKind.IsTrue }
-            }));
-            (await Send(op,
-                new Row("bool-true", false, 1, 1, BoolValue.True),
-                new Row("bool-false", false, 2, 1, BoolValue.False),
-                new Row("int-positive", false, 3, 1, new Int64Value(5)),
-                new Row("int-zero", false, 4, 1, new Int64Value(0)),
-                new Row("null", false, 5, 1, NullValue.Instance),
-                new Row("string", false, 6, 1, new StringValue("true")))).Return();
-            var batch = Assert.Single(await Checkpoint(op, 1));
-            Assert.Equal(new[] { "+bool-true:tag=1", "+int-positive:tag=3" }, Describe(batch));
-        }
+            "bool-true" => BoolValue.True,
+            "bool-false" => BoolValue.False,
+            "int-positive" => new Int64Value(5),
+            "int-zero" => new Int64Value(0),
+            "null" => NullValue.Instance,
+            "string" => new StringValue("true"),
+            _ => throw new ArgumentException(name)
+        };
 
-        [Fact]
-        public async Task NotTrueGuardFollowsToBool()
+        [Theory]
+        [InlineData(CheckGuardKind.IsTrue, new[] { "bool-true", "bool-false", "int-positive", "int-zero", "null", "string" }, new[] { "+bool-true:tag=1", "+int-positive:tag=3" })]
+        [InlineData(CheckGuardKind.IsNotTrue, new[] { "bool-true", "int-zero", "null" }, new[] { "+int-zero:tag=2", "+null:tag=3" })]
+        [InlineData(CheckGuardKind.IsNull, new[] { "bool-false", "null" }, new[] { "+null:tag=2" })]
+        public async Task GuardsFollowToBoolAndNullSemantics(CheckGuardKind kind, string[] values, string[] expected)
         {
             var op = await StartOperator(CreateRelation(guards: new List<CheckGuard>()
             {
-                new CheckGuard() { Expression = Field(3), Kind = CheckGuardKind.IsNotTrue }
+                new CheckGuard() { Expression = Field(3), Kind = kind }
             }));
-            (await Send(op,
-                new Row("bool-true", false, 1, 1, BoolValue.True),
-                new Row("int-zero", false, 2, 1, new Int64Value(0)),
-                new Row("null", false, 3, 1, NullValue.Instance))).Return();
+            (await Send(op, values.Select((x, i) => new Row(x, false, i + 1, 1, GuardValue(x))).ToArray())).Return();
             var batch = Assert.Single(await Checkpoint(op, 1));
-            Assert.Equal(new[] { "+int-zero:tag=2", "+null:tag=3" }, Describe(batch));
-        }
-
-        [Fact]
-        public async Task NullGuardRequiresNull()
-        {
-            var op = await StartOperator(CreateRelation(guards: new List<CheckGuard>()
-            {
-                new CheckGuard() { Expression = Field(3), Kind = CheckGuardKind.IsNull }
-            }));
-            (await Send(op,
-                new Row("bool-false", false, 1, 1, BoolValue.False),
-                new Row("null", false, 2, 1, NullValue.Instance))).Return();
-            var batch = Assert.Single(await Checkpoint(op, 1));
-            Assert.Equal(new[] { "+null:tag=2" }, Describe(batch));
+            Assert.Equal(expected, Describe(batch));
         }
 
         [Fact]
