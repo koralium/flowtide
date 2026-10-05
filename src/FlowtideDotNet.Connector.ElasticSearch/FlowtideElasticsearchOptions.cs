@@ -45,7 +45,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch
         ///
         /// Not called if the index already exists, settings are never applied to an existing index.
         /// Runs on startup after <see cref="CustomMappings"/>, it can run concurrently and in multiple processes for the same index.
-        /// If another process creates the index first, the request is discarded and only the mappings are applied.
+        /// If another process creates the index first, only the mapping properties are applied.
+        /// Settings, aliases and other mapping options such as Dynamic are discarded.
         /// </summary>
         public Func<FlowtideElasticsearchIndexCreationContext, Task>? OnIndexCreation { get; set; }
 

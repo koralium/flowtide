@@ -556,6 +556,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
                         var createResponse = await ctx.Client.Indices.CreateAsync(ctx.IndexName);
                         Assert.True(createResponse.IsValidResponse);
                         ctx.Request.Settings = new IndexSettings { NumberOfShards = 2 };
+                        ctx.Request.Mappings!.Dynamic = DynamicMapping.False;
                     };
                 });
             stream.Generate();
@@ -563,11 +564,14 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
 
             ElasticsearchClient elasticClient = new ElasticsearchClient(elasticSearchFixture.GetConnectionSettings());
 
+            // Settings and mapping options from the hook are discarded
             var settings = await GetFlatSettings(elasticClient);
             Assert.Equal("1", settings.GetProperty("index.number_of_shards").GetString());
 
-            var properties = await GetProperties(elasticClient);
-            Assert.IsType<KeywordProperty>(properties["FirstName"]);
+            var mappingInfo = await elasticClient.Indices.GetMappingAsync<User>(b => b.Indices("testindex"));
+            var typeMapping = mappingInfo.Mappings["testindex"].Mappings;
+            Assert.NotEqual(DynamicMapping.False, typeMapping.Dynamic);
+            Assert.IsType<KeywordProperty>(typeMapping.Properties!["FirstName"]);
 
             await WaitForDocument(stream, elasticClient, stream.Users.Last().UserKey.ToString());
         }

@@ -158,7 +158,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                     return;
                 }
 
-                // Created by another process, only apply the mappings
+                // Created by another process, only apply the mapping properties
                 if (createResponse.ElasticsearchServerError?.Error?.Type != "resource_already_exists_exception")
                 {
                     throw CreateResponseException("create index", createResponse);
