@@ -22,7 +22,7 @@
     <PackageVersion Include="Microsoft.Graph" Version="6.0.3" />
     <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.1" />
     <!-- Grpc -->
-    <PackageVersion Include="Grpc.Tools" Version="2.80.0" />
+    <PackageVersion Include="Grpc.Tools" Version="2.83.0" />
     <PackageVersion Include="Grpc.Net.Client" Version="2.83.0" />
     <PackageVersion Include="Google.Protobuf" Version="3.36.0" />
     <!-- Polly -->
