@@ -179,7 +179,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     }
 
                     var version = run._context._stateManager.LastCompletedCheckpointVersion;
-                    run._context._notificationReciever?.OnCheckpointComplete();
+                    run._context._notificationReciever?.OnCheckpointComplete(version);
 
                     await run._context.ForEachIngressBlockAsync((key, block) =>
                     {
