@@ -152,11 +152,45 @@ Class DeltaLakeOptions  <a class="header-action link-secondary" title="View sour
 </h2>
 
 
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointInterval_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointInterval" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval">
+  CheckpointInterval
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the checkpoint interval in number of commits.
+A checkpoint file (.checkpoint.parquet) is written every time this number of commits is reached.
+Setting this to 0 or a negative value disables checkpoint writing.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int CheckpointInterval { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_DeltaCheckInterval_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.DeltaCheckInterval*"></a>
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_DeltaCheckInterval" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.DeltaCheckInterval">
   DeltaCheckInterval
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L33"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -187,7 +221,7 @@ Class DeltaLakeOptions  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_EnableColumnMappingOnNewTables" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.EnableColumnMappingOnNewTables">
   EnableColumnMappingOnNewTables
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L32"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L39"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -218,7 +252,7 @@ Class DeltaLakeOptions  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_EnableDeletionVectorsOnNewTables" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.EnableDeletionVectorsOnNewTables">
   EnableDeletionVectorsOnNewTables
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L30"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L37"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -249,7 +283,7 @@ Class DeltaLakeOptions  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaxFileSizeBytes" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxFileSizeBytes">
   MaxFileSizeBytes
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L51"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets or sets the maximum allowed file size, in bytes. Files are usually smaller than this value because of compression.</p>
@@ -351,7 +385,7 @@ The default value is set to 100 MB.</p>
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_WriteChangeDataOnNewTables" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.WriteChangeDataOnNewTables">
   WriteChangeDataOnNewTables
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L28"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L35"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>

@@ -10116,6 +10116,19 @@ references:
   commentId: T:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions
   nameWithType: DeltaLakeOptions
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval
+  name: CheckpointInterval
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointInterval
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval
+  nameWithType: DeltaLakeOptions.CheckpointInterval
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval*
+  name: CheckpointInterval
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointInterval_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval
+  nameWithType: DeltaLakeOptions.CheckpointInterval
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.DeltaCheckInterval
   name: DeltaCheckInterval
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_DeltaCheckInterval
