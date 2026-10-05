@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             IStateManagerClient stateManagerClient,
             ExchangeOperatorState exchangeOperatorState,
             IMemoryAllocator memoryAllocator,
-            Func<long, Task> failAndRecoverFunc,
+            Func<long?, Task> failAndRecoverFunc,
             TimeSpan stopDrainTimeout);
 
         IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time);
@@ -55,6 +55,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         Task OnFailure(long recoveryPoint);
 
         Task CheckpointDone(long checkpointVersion);
+
+        void SetRollbacks(Func<long?, Task>? failAndRecoverFunc);
 
         /// <summary>
         /// True when all targets have everything they need for the stream to finish stopping.

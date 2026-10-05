@@ -46,15 +46,14 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 Volatile.Write(ref currentVersion, v);
                 Interlocked.Increment(ref numberOfcheckpoints);
                 return Task.CompletedTask;
-            }, (v) =>
+            }, (wave) =>
             {
-                // Runs on an unawaited Task.Run (SubstreamCommunicationPoint.NotifyFailAndRecover),
-                // concurrently with the restarting stream's initialize request reading the version.
-                Volatile.Write(ref currentVersion, v);
+                // The notification carries no version, the other substream is told it at the handshake.
                 return Task.CompletedTask;
             }, (v, epoch) =>
             {
-                return Task.FromResult(new SubstreamInitializeResponse(false, true, Volatile.Read(ref currentVersion)));
+                Volatile.Write(ref currentVersion, v);
+                return Task.FromResult(new SubstreamInitializeResponse(false, true, v));
             });
             // The version mismatch triggers an intentional fail and recover without an exception
             AllowFailureAndRecover();
@@ -250,6 +249,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 await comFactory.ComHandler.CallRecieveCheckpointDone(lastVersion, Volatile.Read(ref capturedSelfEpoch));
             }
 
+            // The stream must have got as far as a checkpoint, a start that never finished proves nothing.
+            Assert.True(seen >= 1, "No checkpoint was reached, the stale-epoch fence was never exercised.");
             Assert.True(
                 seen <= 2,
                 $"Checkpoints kept completing on stale-epoch acks ({seen}); the checkpoint-done ack was not fenced by epoch.");

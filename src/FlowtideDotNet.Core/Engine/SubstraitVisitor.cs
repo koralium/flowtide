@@ -152,7 +152,13 @@ namespace FlowtideDotNet.Core.Engine
             _doneRelations = new Dictionary<int, RelationTree>();
             if (distributedOptions != null && distributedOptions.CommunicationHandlerFactory != null)
             {
-                _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory, distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory, distributedOptions.AnnounceCleanHandoff);
+                // From the full plan, the blocks built below only show this substream's part.
+                var group = SubstreamGroupResolver.Resolve(plan, distributedOptions.SubstreamName);
+                if (group.GroupSize > 1)
+                {
+                    dataflowStreamBuilder.RequireDistributedCheckpointRecovery();
+                }
+                _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory, distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory, distributedOptions.AnnounceCleanHandoff, group);
             }
             else
             {
