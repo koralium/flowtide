@@ -605,6 +605,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 { "window frame bound", () => WindowPlan(FunctionsArithmetic.Sum, new PreceedingRangeWindowBound() { Expression = CheckValue(Num(1), Lt(Field(0), Num(1)), "bound") }, Field(0)), typeof(NotSupportedException), "window frame bound" },
                 { "lead default", () => WindowPlan(FunctionsArithmetic.Lead, null, Field(0), Num(1), CheckValue(Num(0), Lt(Field(0), Num(1)), "default")), typeof(NotSupportedException), "LEAD or LAG default argument" },
                 { "lag default", () => WindowPlan(FunctionsArithmetic.Lag, null, Field(0), Num(1), CheckValue(Num(0), Lt(Field(0), Num(1)), "default")), typeof(NotSupportedException), "LEAD or LAG default argument" },
+                { "upper case lead default", () => WindowPlan("LEAD", null, Field(0), Num(1), CheckValue(Num(0), Lt(Field(0), Num(1)), "default")), typeof(NotSupportedException), "LEAD or LAG default argument" },
                 // Field 2 is the function output
                 { "table function output", () => PlanOf(TableFunctionOver(Read(2), Field(0), CheckTrue(Lt(Field(2), Num(2)), "join"))), typeof(NotSupportedException), "table function output" },
                 { "table function without input", () => PlanOf(TableFunctionOver(null, CheckValue(Num(1), new BoolLiteral() { Value = false }, "argument"), null)), typeof(NotSupportedException), "table function without an input" },

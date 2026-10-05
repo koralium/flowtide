@@ -452,8 +452,10 @@ namespace FlowtideDotNet.Core.Optimizer.CheckExtraction
 
         private static bool IsLeadOrLag(WindowFunction windowFunction)
         {
-            return windowFunction.ExtensionUri == FunctionsArithmetic.Uri &&
-                (windowFunction.ExtensionName == FunctionsArithmetic.Lead || windowFunction.ExtensionName == FunctionsArithmetic.Lag);
+            // Case insensitive like the function lookup
+            return string.Equals(windowFunction.ExtensionUri, FunctionsArithmetic.Uri, StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(windowFunction.ExtensionName, FunctionsArithmetic.Lead, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(windowFunction.ExtensionName, FunctionsArithmetic.Lag, StringComparison.OrdinalIgnoreCase));
         }
 
         private static NotSupportedException Unsupported(string context)

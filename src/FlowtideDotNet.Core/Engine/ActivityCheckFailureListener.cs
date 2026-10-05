@@ -43,13 +43,14 @@ namespace FlowtideDotNet.Core.Engine
             {
                 var message = CheckNameRenderer.Render(notification.CheckName, notification.Tags);
                 activity.DisplayName = displayPrefix + message;
-                activity.SetTag("CheckId", notification.CheckId);
-                activity.SetTag("CheckName", notification.CheckName);
-                activity.SetTag("Message", message);
                 foreach (var tag in notification.Tags)
                 {
                     activity.SetTag(tag.Key, tag.Value);
                 }
+                // Written last, the flowtide.check namespace is reserved
+                activity.SetTag("flowtide.check.id", notification.CheckId);
+                activity.SetTag("flowtide.check.name", notification.CheckName);
+                activity.SetTag("flowtide.check.message", message);
                 activity.Stop();
             }
         }

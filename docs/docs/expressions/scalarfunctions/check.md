@@ -255,7 +255,7 @@ The built-in listeners:
 | Builder method | DI method | Behavior |
 | -------------- | --------- | -------- |
 | `WithCheckLogger(logLevel)` | `WriteCheckFailuresToLogger(logLevel)` | A failure and a status listener. Logs `Check failed: ...` and `Check resolved: ...` at the given level, `Warning` by default, with the tags filled into the check name, and a reset at debug level. The check id and the tags are added as structured properties. Logs the status at information level as `Check passed: {CheckName}` or `Check failed: {CheckName}, {ActiveIssues} issues, {FailingRows} failing rows`, and a check that is not evaluated yet at debug level as `Check not evaluated yet: {CheckName}`, so starting a stream does not add an information entry per check. |
-| `WithCheckActivityLogger()` | `WriteCheckFailuresAsActivity()` | A failure listener. Starts a `CheckFailure` or `CheckResolved` activity on the `FlowtideDotNet.CheckFailures` activity source, with the check id, the check name, the message with the tags filled in and the tags as activity tags. Resets are ignored. |
+| `WithCheckActivityLogger()` | `WriteCheckFailuresAsActivity()` | A failure listener. Starts a `CheckFailure` or `CheckResolved` activity on the `FlowtideDotNet.CheckFailures` activity source, with the activity tags `flowtide.check.id`, `flowtide.check.name` and `flowtide.check.message` (the message with the tags filled in) and every check tag under its own key. The `flowtide.check.` prefix is reserved, a tag with such a key is replaced. Resets are ignored. |
 
 The logger gives every kind of entry its own event id and message template, so structured log sinks can tell a
 raised issue from a resolved one:

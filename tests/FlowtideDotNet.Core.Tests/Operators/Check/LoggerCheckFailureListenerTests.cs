@@ -57,12 +57,13 @@ namespace FlowtideDotNet.Core.Tests.Operators.Check
             }
         }
 
-        private static (LoggerCheckFailureListener Listener, CapturingSink Sink, Serilog.Core.Logger Serilog) CreateWithSerilog()
+        // Disposing the provider also disposes the Serilog logger
+        private static (LoggerCheckFailureListener Listener, CapturingSink Sink, SerilogLoggerProvider Serilog) CreateWithSerilog()
         {
             var sink = new CapturingSink();
             var serilog = new LoggerConfiguration().MinimumLevel.Verbose().WriteTo.Sink(sink).CreateLogger();
-            var provider = new SerilogLoggerProvider(serilog);
-            return (new LoggerCheckFailureListener(provider.CreateLogger("checks"), LogLevel.Warning), sink, serilog);
+            var provider = new SerilogLoggerProvider(serilog, dispose: true);
+            return (new LoggerCheckFailureListener(provider.CreateLogger("checks"), LogLevel.Warning), sink, provider);
         }
 
         private static (int Id, string? Name) EventIdOf(LogEvent logEvent)
