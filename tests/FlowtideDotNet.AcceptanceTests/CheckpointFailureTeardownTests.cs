@@ -1014,7 +1014,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
-        /// A block Initialize that awaits a rollback, like the exchange handshake on a restore point mismatch, must not hold the first start on its own failure teardown.
+        /// A block Initialize that awaits a rollback, like the exchange handshake joining a peer's recovery wave, must not hold the first start on its own failure teardown.
         /// </summary>
         [Fact]
         public async Task StartReturnsPromptlyWhenABlockInitializeAwaitsARollback()

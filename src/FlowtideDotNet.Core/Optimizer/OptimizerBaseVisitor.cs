@@ -130,6 +130,12 @@ namespace FlowtideDotNet.Core.Optimizer
             return fetchRelation;
         }
 
+        public override Relation VisitCheckRelation(CheckRelation checkRelation, object state)
+        {
+            checkRelation.Input = Visit(checkRelation.Input, state);
+            return checkRelation;
+        }
+
         public override Relation VisitSortRelation(SortRelation sortRelation, object state)
         {
             sortRelation.Input = Visit(sortRelation.Input, state);

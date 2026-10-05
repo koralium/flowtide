@@ -20,6 +20,7 @@ using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Core.Lineage.Internal;
 using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Core.Optimizer;
+using FlowtideDotNet.Core.Optimizer.CheckExtraction;
 using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait;
@@ -48,7 +49,7 @@ namespace FlowtideDotNet.Core.Engine
         private bool _useColumnStore = true;
         private string _version = "";
         private List<(string? stringVersion, bool? addHashVersion)>? _versionParts;
-        private bool _isCheckFailureRegistered = false;
+        private bool _isCheckListenerRegistered = false;
         private readonly string _streamName;
         private OpenLineageHttpOptions? _openLineageHttpOptions;
         private readonly List<IStreamLineageListener> _lineageListeners = new List<IStreamLineageListener>();
@@ -142,8 +143,18 @@ namespace FlowtideDotNet.Core.Engine
 
         public FlowtideBuilder WithCheckFailureListener(ICheckFailureListener listener)
         {
-            _isCheckFailureRegistered = true;
+            _isCheckListenerRegistered = true;
             dataflowStreamBuilder.AddCheckFailureListener(listener);
+            return this;
+        }
+
+        /// <summary>
+        /// Reports the state and counts of every check at each start and when they change.
+        /// </summary>
+        public FlowtideBuilder WithCheckStatusListener(ICheckStatusListener listener)
+        {
+            _isCheckListenerRegistered = true;
+            dataflowStreamBuilder.AddCheckStatusListener(listener);
             return this;
         }
 
@@ -205,7 +216,8 @@ namespace FlowtideDotNet.Core.Engine
 
         /// <summary>
         /// Sets how long a stopping stream waits for vertices that exchange data with other
-        /// substreams to drain before it finishes stopping anyway.
+        /// substreams to drain before it begins teardown. Active callbacks and storage
+        /// operations must still settle before their resources are released.
         /// </summary>
         public FlowtideBuilder SetStopDrainTimeout(TimeSpan timeSpan)
         {
@@ -254,12 +266,14 @@ namespace FlowtideDotNet.Core.Engine
             {
                 throw new InvalidOperationException("LoggerFactory is not set. Cannot add check logger.");
             }
-            WithCheckFailureListener(new LoggerCheckFailureListener(dataflowStreamBuilder.LoggerFactory.CreateLogger<LoggerCheckFailureListener>(), logLevel));
+            var listener = new LoggerCheckFailureListener(dataflowStreamBuilder.LoggerFactory.CreateLogger<LoggerCheckFailureListener>(), logLevel);
+            WithCheckFailureListener(listener);
+            WithCheckStatusListener(listener);
             return this;
         }
 
         /// <summary>
-        /// Adds check failures as an activity with name FlowtideDotNet.CheckFailures.CheckFailure
+        /// Reports check failures and resolutions as CheckFailure and CheckResolved activities on the FlowtideDotNet.CheckFailures source.
         /// </summary>
         /// <returns></returns>
         public FlowtideBuilder WithCheckActivityLogger()
@@ -318,6 +332,9 @@ namespace FlowtideDotNet.Core.Engine
             {
                 throw new InvalidOperationException("No connector manager or ReadWriteFactory has been added.");
             }
+
+            // Safety net for plans added without optimization
+            _plan = CheckExtractor.Extract(_plan);
 
             var hash = ComputePlanHash();
 
@@ -422,17 +439,14 @@ namespace FlowtideDotNet.Core.Engine
                 }
             }
 
-            // Set the notification receiver to the function register to allow check functions get access to it.
-            _functionsRegister.SetCheckNotificationReceiver(dataflowStreamBuilder.StreamNotificationReceiver);
-
-            if (!_isCheckFailureRegistered)
+            if (!_isCheckListenerRegistered)
             {
                 // This should perhaps be moved in the future to some validation step
                 if (CheckFunctionFinder.CheckPlan(_plan) &&
                     dataflowStreamBuilder.LoggerFactory != null)
                 {
                     var checkFunctionLogger = dataflowStreamBuilder.LoggerFactory.CreateLogger("FlowtideDotNet.Core.Engine.CheckFunctionFinder");
-                    checkFunctionLogger.LogWarning("Check function found in plan, but no check failure listener is registered.");
+                    checkFunctionLogger.LogWarning("Check function found in plan, but no check failure or check status listener is registered.");
                 }
             }
 

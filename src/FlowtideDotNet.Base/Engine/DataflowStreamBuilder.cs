@@ -246,8 +246,10 @@ namespace FlowtideDotNet.Base.Engine
 
         /// <summary>
         /// Sets how long a stopping stream waits for vertices that exchange data with other
-        /// substreams to drain before it finishes stopping anyway. Protects the stop from
-        /// waiting forever when another substream has crashed or never started.
+        /// substreams to drain before it begins teardown. Protects the drain from waiting
+        /// forever for an unavailable peer. Active callbacks and storage operations must
+        /// still settle before teardown can release their resources. Every teardown also waits
+        /// at most this long for background commits, then asks them to stop at their next page.
         /// </summary>
         /// <param name="timeSpan">The maximum time to wait for the drain.</param>
         /// <returns>This builder instance for method chaining.</returns>
@@ -322,18 +324,24 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
-        /// Subscribes an <see cref="ICheckFailureListener"/> to receive a notification each time
-        /// a data quality check within the stream fails.
+        /// Subscribes an <see cref="ICheckFailureListener"/> to the check issues of the committed state.
         /// </summary>
-        /// <remarks>
-        /// Multiple listeners can be registered. Exceptions thrown by a listener are swallowed to
-        /// ensure they cannot disrupt the stream.
-        /// </remarks>
         /// <param name="listener">The listener to register.</param>
         /// <returns>This builder instance for method chaining.</returns>
         public DataflowStreamBuilder AddCheckFailureListener(ICheckFailureListener listener)
         {
             _streamNotificationReceiver.AddCheckFailureListener(listener);
+            return this;
+        }
+
+        /// <summary>
+        /// Subscribes an <see cref="ICheckStatusListener"/> to the status of every check.
+        /// </summary>
+        /// <param name="listener">The listener to register.</param>
+        /// <returns>This builder instance for method chaining.</returns>
+        public DataflowStreamBuilder AddCheckStatusListener(ICheckStatusListener listener)
+        {
+            _streamNotificationReceiver.AddCheckStatusListener(listener);
             return this;
         }
 
@@ -397,6 +405,10 @@ namespace FlowtideDotNet.Base.Engine
             {
                 throw new InvalidOperationException("State options must be set.");
             }
+            if (_requiresDistributedCheckpointRecovery && _stateManagerOptions.PersistentStorage?.SupportsDistributedCheckpoints != true)
+            {
+                throw new NotSupportedException("Distributed substreams require storage with durable checkpoint recovery. Configure Reservoir with a file provider that supports file listing; legacy storage and non-listing Reservoir providers are not supported.");
+            }
             if (_stateHandler == null)
             {
                 _stateHandler = new NullStateHandler();
@@ -425,5 +437,9 @@ namespace FlowtideDotNet.Base.Engine
 
             return new DataflowStream(streamContext);
         }
+
+        private bool _requiresDistributedCheckpointRecovery;
+
+        internal void RequireDistributedCheckpointRecovery() => _requiresDistributedCheckpointRecovery = true;
     }
 }

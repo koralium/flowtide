@@ -1635,9 +1635,10 @@ namespace FlowtideDotNet.AcceptanceTests
 
             Validate();
 
-            var firstCompany = Companies.First();
+            // A company with users, so the delete changes the output.
+            var companyWithUsers = Companies.First(c => c.CompanyId != null && Users.Any(u => u.CompanyId == c.CompanyId));
 
-            foreach(var user in Users.Where(x => x.CompanyId == firstCompany.CompanyId).ToList())
+            foreach(var user in Users.Where(x => x.CompanyId == companyWithUsers.CompanyId).ToList())
             {
                 DeleteUser(user);
             }
@@ -1714,9 +1715,10 @@ namespace FlowtideDotNet.AcceptanceTests
 
             Validate();
 
-            var firstCompany = Companies.First();
+            // A company with users, so the delete changes the output.
+            var companyWithUsers = Companies.First(c => c.CompanyId != null && Users.Any(u => u.CompanyId == c.CompanyId));
 
-            foreach (var user in Users.Where(x => x.CompanyId == firstCompany.CompanyId).ToList())
+            foreach (var user in Users.Where(x => x.CompanyId == companyWithUsers.CompanyId).ToList())
             {
                 DeleteUser(user);
             }

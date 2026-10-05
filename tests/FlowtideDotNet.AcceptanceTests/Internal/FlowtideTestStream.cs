@@ -47,6 +47,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private Base.Engine.DataflowStream? _stream;
         private readonly object _lock = new object();
         private readonly string testName;
+        private readonly List<ILoggerProvider> _addedLoggerProviders = new List<ILoggerProvider>();
         private EventBatchData? _actualData;
         int updateCounter = 0;
         int waitCounter = 0;
@@ -59,6 +60,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private Watermark? _lastWatermark;
 
         public string TestName => testName;
+
+        public string StreamName => testName.Replace("/", "_");
 
         public IReadOnlyList<User> Users => generator.Users;
 
@@ -116,6 +119,28 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// Asked on every source initialization attempt, true makes it await a rollback of its own stream. Set before starting the stream.
         /// </summary>
         public Func<bool>? RollbackSourceInitializeWhen { get; set; }
+
+        /// <summary>
+        /// Called with the rollback version whenever a source gets OnFailure. Set before starting the stream.
+        /// </summary>
+        public Action<long>? SourceOnFailure { get; set; }
+
+        /// <summary>
+        /// Also sends the stream's logs to this provider. Set before starting the stream.
+        /// </summary>
+        public void AddLoggerProvider(ILoggerProvider provider)
+        {
+            _addedLoggerProviders.Add(provider);
+            flowtideBuilder.WithLoggerFactory(new LoggerFactory(_addedLoggerProviders.Prepend(new DebugLoggerProvider())));
+        }
+
+        /// <summary>
+        /// Also notifies this listener of state changes. Set before starting the stream.
+        /// </summary>
+        public void AddStateChangeListener(IStreamStateChangeListener listener)
+        {
+            flowtideBuilder.WithStateChangeListener(listener);
+        }
 
         /// <summary>
         /// Sets the minimum time between checkpoint triggers. Set before starting the stream.
@@ -311,7 +336,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
             string? version = default,
-            DistributedOptions? distributedOptions = default)
+            DistributedOptions? distributedOptions = default,
+            ICheckStatusListener? checkStatusListener = default)
         {
             if (stateSerializeOptions == null)
             {
@@ -346,6 +372,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     .CreateLogger();
                 b.AddSerilog(logger);
                 b.AddDebug();
+                // This factory replaces the one AddLoggerProvider set, keep its providers at every level.
+                foreach (var provider in _addedLoggerProviders)
+                {
+                    b.AddProvider(provider);
+                }
+                b.SetMinimumLevel(LogLevel.Trace);
             });
 #endif
 
@@ -410,6 +442,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 flowtideBuilder.WithCheckFailureListener(checkFailureListener);
             }
 
+            if (checkStatusListener != null)
+            {
+                flowtideBuilder.WithCheckStatusListener(checkStatusListener);
+            }
+
             if (WaitForCheckpointAfterInitialData)
             {
                 flowtideBuilder.WaitForCheckpointAfterInitialData(true);
@@ -438,9 +475,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
             string? version = default,
-            DistributedOptions? distributedOptions = default)
+            DistributedOptions? distributedOptions = default,
+            ICheckStatusListener? checkStatusListener = default)
         {
-            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version, distributedOptions);
+            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version, distributedOptions, checkStatusListener);
             await _stream!.StartAsync();
         }
 
@@ -640,7 +678,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay, batchSize: SourceBatchSize, failInitializeWhen: FailSourceInitializeWhen, rollbackInitializeWhen: RollbackSourceInitializeWhen));
+            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource, InitialDataDelay, batchSize: SourceBatchSize, failInitializeWhen: FailSourceInitializeWhen, rollbackInitializeWhen: RollbackSourceInitializeWhen, onFailure: SourceOnFailure));
         }
 
         /// <summary>

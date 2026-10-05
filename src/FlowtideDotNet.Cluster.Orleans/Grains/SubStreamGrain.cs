@@ -85,6 +85,21 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             await handler.TargetCheckpointDone(request.CheckpointVersion, request.CheckpointEpoch, request.CoversPeerStopBarrier);
         }
 
+        // Test seam: drops durability claims arriving at an activation (grain key, activation id).
+        internal static Func<string, string, bool>? DropDurabilityClaimForTests;
+
+        public async Task DurabilityClaim(DurabilityClaimRequest request)
+        {
+            if (DropDurabilityClaimForTests?.Invoke(this.GetPrimaryKeyString(), ((IGrainBase)this).GrainContext.ActivationId.ToString()) == true) return;
+            if (_orleansCommunicationFactory == null ||
+                !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
+            {
+                // The stream has not started yet, the claim is sent again later
+                return;
+            }
+            await handler.TargetDurabilityClaim(request.Version, request.Radius, request.InitVersion, new RecoveryWave(request.WaveCounter, request.WaveId), request.SenderCheckpointEpoch, request.TargetCheckpointEpoch, request.RequestReply);
+        }
+
         public Task FailAndRecoverAsync(FailAndRecoverRequest request)
         {
             if (_orleansCommunicationFactory == null ||
@@ -98,7 +113,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 // Without an announcement the requestor cannot be told apart from a zombie.
                 // Refused; a live requestor re-runs the handshake on its restart, which
                 // reconciles the versions.
-                _logger.LogDebug("Refusing fail and recover to {recoveryPoint} from {requestor}, no fetch epoch has been announced to this activation.", request.RecoveryPoint, request.Requestor);
+                _logger.LogDebug("Refusing fail and recover of wave {wave} from {requestor}, no fetch epoch has been announced to this activation.", request.WaveCounter, request.Requestor);
                 return Task.CompletedTask;
             }
             if (request.FetchEpoch < announcedEpoch)
@@ -107,7 +122,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 // live stream back to the zombie's restore point, discarding committed
                 // progress on both substreams. A live requestor bumps its epoch on failure
                 // before notifying, so a legitimate request is never below the announcement.
-                _logger.LogDebug("Refusing fail and recover to {recoveryPoint} from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.RecoveryPoint, request.Requestor, request.FetchEpoch, announcedEpoch);
+                _logger.LogDebug("Refusing fail and recover of wave {wave} from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.WaveCounter, request.Requestor, request.FetchEpoch, announcedEpoch);
                 return Task.CompletedTask;
             }
             // Acknowledge immediately, awaiting the recovery would time the caller out
@@ -115,7 +130,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             {
                 try
                 {
-                    await handler.FailAndRecover(request.RecoveryPoint);
+                    await handler.FailAndRecover(new RecoveryWave(request.WaveCounter, request.WaveId));
                 }
                 catch (Exception e)
                 {
@@ -316,6 +331,9 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
         // stream that is stuck in the same non running state for a whole reminder period.
         private Base.Engine.StreamStateValue? _reminderObservedState;
 
+        // Consecutive keep alive ticks that saw the current stream in the start agreement wait.
+        private int _agreementWaitTicks;
+
         // Fetch epoch per requestor substream, announced through the initialize handshake.
         // Fetches from any other epoch are refused, see FetchDataRequest.FetchEpoch. Only
         // accessed from grain turns.
@@ -345,6 +363,21 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 return Task.CompletedTask;
             }
             var state = stream.State;
+            if (stream.IsWaitingForConnectedStreams)
+            {
+                // Waiting for another substream is tolerated for a bounded number of ticks, a wait that never ends needs a new activation.
+                _reminderObservedState = null;
+                if (++_agreementWaitTicks > Math.Max(1, _options.AgreementWaitReminderTicks))
+                {
+                    _logger.LogWarning(
+                        "Substream {substream} has been waiting for the start agreement for {ticks} reminder ticks, recreating it.",
+                        this.GetPrimaryKeyString(), _agreementWaitTicks);
+                    _agreementWaitTicks = 0;
+                    DeactivateOnIdle();
+                }
+                return Task.CompletedTask;
+            }
+            _agreementWaitTicks = 0;
             if (state != Base.Engine.StreamStateValue.Running &&
                 _reminderObservedState == state)
             {
@@ -474,23 +507,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
 
         public async Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request)
         {
-            // Fetch epochs come from a monotonically increasing per-process seed, so within one
-            // process a newer stream instance always announces a higher epoch than an abandoned
-            // one. A handshake carrying an older epoch than the one already recorded is treated
-            // as a stale instance, for example one still running on a silo the requestors grain
-            // has moved off of. Installing it would overwrite the live instances announcement
-            // and make every fetch from the live instance mismatch the recorded epoch, fencing
-            // the healthy consumer out of its own data. The announcement is kept and the
-            // stale instance is answered as an already reconciled success: refusing or
-            // reporting a version mismatch would drive the live serving stream into a needless
-            // fail over to the abandoned instances restore point. The seeds are clock-based per
-            // process though, so after a silo failover a LIVE requestor can also land here: its
-            // grain reactivated on a process whose seed started earlier than the dead instances,
-            // and each failure only draws +1 from that seed, which never bridges a clock-scale
-            // gap. The response therefore carries the recorded epoch, so a live requestor can
-            // raise its seed above it and re-run the handshake; a genuinely stale instance dies
-            // with its bounded startup retry loop and cannot keep reclaiming the record, while
-            // the live instance re-announces on every recovery and wins terminally.
+            // Older epoch, stale or clock behind, answer with the record.
             if (_peerFetchEpochs.TryGetValue(request.Requestor, out var recordedEpoch) &&
                 request.FetchEpoch < recordedEpoch)
             {
@@ -508,11 +525,11 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             {
                 return new InitSubstreamResponse(true, false, request.RestorePoint, recordedFetchEpoch: request.FetchEpoch);
             }
-            var response = await handler.TargetInitializeRequest(request.RestorePoint, request.CheckpointEpoch, request.CleanHandoff);
+            var response = await handler.TargetInitializeRequest(request.RestorePoint, request.CheckpointEpoch, request.CleanHandoff, new RecoveryWave(request.WaveCounter, request.WaveId));
             // NotStarted must survive the wire: it signals a transient state where the
             // requestor retries with backoff; a plain failure would make it fail and recover
             // instead, needlessly rolling back both substreams on a clean handoff reconnect.
-            return new InitSubstreamResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, recordedFetchEpoch: request.FetchEpoch, recordedCheckpointEpoch: response.RecordedCheckpointEpoch, cleanReconnect: response.CleanReconnect, peerDraining: response.PeerDraining);
+            return new InitSubstreamResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, recordedFetchEpoch: request.FetchEpoch, recordedCheckpointEpoch: response.RecordedCheckpointEpoch, cleanReconnect: response.CleanReconnect, peerDraining: response.PeerDraining, waveCounter: response.Wave.Counter, waveId: response.Wave.Id, peerInInit: response.PeerInInit);
         }
 
         /// <summary>
@@ -663,6 +680,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             _options.ConfigureBuilder?.Invoke(_state.State.StreamName, _state.State.SubstreamName!, flowtideBuilder);
 
             _stream = flowtideBuilder.Build();
+            _agreementWaitTicks = 0;
             var stream = _stream;
             _tickCancellation = new CancellationTokenSource();
             var tickToken = _tickCancellation.Token;

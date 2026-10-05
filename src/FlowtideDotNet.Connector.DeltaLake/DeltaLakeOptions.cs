@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -22,6 +22,13 @@ namespace FlowtideDotNet.Connector.DeltaLake
         /// Mostly used for testing, allows for full replay of the table
         /// </summary>
         public bool OneVersionPerCheckpoint { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the checkpoint interval in number of commits.
+        /// A checkpoint file (.checkpoint.parquet) is written every time this number of commits is reached.
+        /// Setting this to 0 or a negative value disables checkpoint writing.
+        /// </summary>
+        public int CheckpointInterval { get; set; } = 20;
 
         public TimeSpan DeltaCheckInterval { get; set; } = TimeSpan.FromSeconds(10);
 

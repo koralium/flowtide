@@ -365,6 +365,100 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// A substream stopped and started again alone on the same instance, twice, resumes; a whole-group restart restarts nobody.
+        /// </summary>
+        [Theory]
+        [InlineData(true, "substream_1")]
+        [InlineData(true, "substream_0")]
+        [InlineData(false, "substream_1")]
+        [InlineData(false, "substream_0")]
+        [InlineData(true, "all")]
+        public async Task LoneStopThenStartSameInstanceResumes(bool recoverFirst, string restarted)
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var checkpoints = new ConcurrentDictionary<string, int>();
+            var peer = restarted == "substream_0" ? "substream_1" : "substream_0";
+            string[] restartLines = { "restarts the group in wave", "restarting into it", "this stream restarts into it" };
+            const string StopBarrierLine = "consumed the other substreams stop barrier";
+            var lineCounts = new ConcurrentDictionary<(string Substream, string Text), int>();
+            int Count(string substream, string text) => lineCounts.GetValueOrDefault((substream, text));
+            int GroupRestarts() => lineCounts.Where(x => restartLines.Contains(x.Key.Text)).Sum(x => x.Value);
+
+            Microsoft.Extensions.Logging.ILoggerFactory CountingLoggerFactory(string substreamName) => Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+            {
+                b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                b.AddProvider(new RingBufferLoggerProvider
+                {
+                    OnLine = line =>
+                    {
+                        foreach (var text in restartLines.Append(StopBarrierLine).Where(t => line.Contains(t, StringComparison.Ordinal)))
+                        {
+                            lineCounts.AddOrUpdate((substreamName, text), 1, (_, c) => c + 1);
+                        }
+                    }
+                });
+            });
+
+            _stream = BuildHost($"e2e_lone_inplace_{recoverFirst}_{restarted}", NormalJoinSql, latestData, failures, loggerFactory: CountingLoggerFactory,
+                configureSubstream: (name, builder) => builder.WithCheckpointListener(new CountingCheckpointListener(() => checkpoints.AddOrUpdate(name, 1, (_, c) => c + 1))));
+            await _stream.StartAsync().WaitAsync(TimeSpan.FromSeconds(90));
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            if (recoverFirst)
+            {
+                // A real recovery puts the group into a wave above None.
+                await _stream.Substreams["substream_1"].CallTrigger("crash", null);
+                _generator.Generate(100);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                Assert.NotEmpty(failures);
+            }
+
+            // The second lone restart starts in the wave the first one's handshake minted.
+            for (var round = 1; round <= (restarted == "all" ? 1 : 2); round++)
+            {
+                await CheckpointSettle.WaitForCheckpointsToSettle(_stream.Substreams.Values);
+                var restartsBefore = GroupRestarts();
+                var requesterRestartsBefore = Count(restarted, "restarts the group in wave");
+                if (restarted == "all")
+                {
+                    await _stream.StopAsync().WaitAsync(TimeSpan.FromSeconds(90));
+                    await _stream.StartAsync().WaitAsync(TimeSpan.FromSeconds(90));
+                }
+                else
+                {
+                    var peerStopsConsumed = Count(peer, StopBarrierLine);
+                    await _stream.Substreams[restarted].StopAsync().WaitAsync(TimeSpan.FromSeconds(90));
+                    Assert.True(Count(peer, StopBarrierLine) > peerStopsConsumed, $"The running peer did not consume stop barrier {round}.");
+                    await _stream.Substreams[restarted].StartAsync().WaitAsync(TimeSpan.FromSeconds(90));
+                }
+                var checkpointsAtRestart = checkpoints.ToDictionary(x => x.Key, x => x.Value);
+                _generator.Generate(500);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true, timeout: TimeSpan.FromSeconds(30));
+
+                // Both substreams keep completing checkpoints after the restart.
+                var deadline = Stopwatch.StartNew();
+                while (checkpoints.Any(x => x.Value < checkpointsAtRestart.GetValueOrDefault(x.Key) + 2) && deadline.Elapsed < TimeSpan.FromSeconds(30))
+                {
+                    _generator.Generate(10);
+                    await Task.Delay(200);
+                }
+                Assert.True(checkpointsAtRestart.All(x => checkpoints[x.Key] >= x.Value + 2), $"Checkpoints stalled after restart {round}.");
+                Assert.Equal(FlowtideHealth.Healthy, _stream.Health);
+                if (restarted == "all")
+                {
+                    Assert.Equal(restartsBefore, GroupRestarts());
+                }
+                else
+                {
+                    Assert.True(Count(restarted, "restarts the group in wave") > requesterRestartsBefore, $"Lone restart {round} did not restart the group.");
+                }
+            }
+        }
+
+        /// <summary>
         /// The scheduler tick loop must be torn down when the stream stops and re-armed when
         /// it starts again. A stopped-but-not-disposed stream that keeps its tick loop running
         /// wastes CPU ticking its now idle (NotStarted) substreams and runs a periodic
@@ -647,6 +741,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         /// </summary>
         private sealed class UninitializableStorage : Storage.Persistence.IPersistentStorage
         {
+            // Simulates a validated store becoming unavailable on initialization.
+            public bool SupportsDistributedCheckpoints => true;
             public long CurrentVersion => 0;
             public Task InitializeAsync(Storage.Persistence.StorageInitializationMetadata metadata) => throw new InvalidOperationException("Injected storage initialization failure");
             public Storage.Persistence.IPersistentStorageSession CreateSession() => throw new NotImplementedException();
@@ -3174,7 +3270,18 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
             await _stream.StartAsync();
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+            catch
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_stoprec_restart_initial_{buffer.Key}.log");
+                }
+                throw;
+            }
 
             // Crash the lane substream and stop while the recovery runs
             await _stream.Substreams["substream_1"].CallTrigger("crash", null);

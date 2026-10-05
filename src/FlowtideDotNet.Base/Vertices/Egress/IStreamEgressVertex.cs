@@ -29,6 +29,12 @@ namespace FlowtideDotNet.Base.Vertices
         Task CheckpointDone(long checkpointVersion);
 
         /// <summary>
+        /// Invoked when the stream can no longer roll back below the version, also once at start with the restored version.
+        /// </summary>
+        /// <param name="version">Same domain as <see cref="CheckpointDone(long)"/>.</param>
+        Task CommitVersion(long version) => Task.CompletedTask;
+
+        /// <summary>
         /// True when the vertex has everything it needs for the stream to finish stopping.
         /// Exchanges that send to other substreams return false until the other substream
         /// has fetched the stop barrier, so the stream does not dispose the exchanged events

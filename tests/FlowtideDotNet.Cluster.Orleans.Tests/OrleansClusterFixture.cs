@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
     {
         public TestCluster Cluster { get; }
 
-        protected OrleansClusterFixtureBase(short siloCount, bool durableStreamState = false)
+        protected OrleansClusterFixtureBase(short siloCount, bool durableStreamState = false, bool shortStopDrain = false)
         {
             // Real delays, only shorter: every recovery hop pays the restart settle delay
             // and every stream start pays a handshake retry slice for the substream that
@@ -38,7 +38,11 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             FlowtideDotNet.Core.Operators.Exchange.SubstreamCommunicationPoint.NotStartedRetrySliceMs = 50;
 
             var builder = new TestClusterBuilder(siloCount);
-            if (durableStreamState)
+            if (durableStreamState && shortStopDrain)
+            {
+                builder.AddSiloBuilderConfigurator<DurableStorageShortDrainSiloConfigurator>();
+            }
+            else if (durableStreamState)
             {
                 builder.AddSiloBuilderConfigurator<DurableStorageSiloConfigurator>();
             }
@@ -75,15 +79,13 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             {
                 ConfigureSilo(siloBuilder, (streamName, substreamName, storage) =>
                 {
-                    storage.AddTemporaryDevelopmentStorage(options =>
+                    // A fresh provider per stream instance, state never survives a restart. Distributed
+                    // substreams require checkpoint recovery, which the temporary development storage lacks.
+                    storage.SetPersistentStorage(new ReservoirPersistentStorage(new ReservoirStorageOptions
                     {
-                        // Unique per stream instance: the temporary development storage
-                        // deletes its files on dispose, so state never survives a restart
-                        // anyway, and after a silo failure a new activation can start while
-                        // the old activations files are not released yet, a shared directory
-                        // would collide on the files.
-                        options.DirectoryPath = $"./temp/orleans_tests/{streamName}/{substreamName}/{Guid.NewGuid():N}";
-                    });
+                        FileProvider = new MemoryFileProvider()
+                    }));
+                    storage.ZstdPageCompression();
                     // A substream stopping alone, for example when its silo shuts down, waits
                     // for peer stop barriers that never come since the peers keep running, a
                     // short drain timeout keeps deactivation fast in tests.
@@ -98,23 +100,37 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         /// </summary>
         private sealed class DurableStorageSiloConfigurator : ISiloConfigurator
         {
-            private static readonly ConcurrentDictionary<string, KeepAliveMemoryFileProvider> _providers = new();
-
             public void Configure(ISiloBuilder siloBuilder)
             {
-                ConfigureSilo(siloBuilder, (streamName, substreamName, storage) =>
-                {
-                    var provider = _providers.GetOrAdd($"{streamName}/{substreamName}", _ => new KeepAliveMemoryFileProvider());
-                    storage.SetPersistentStorage(new ReservoirPersistentStorage(new ReservoirStorageOptions
-                    {
-                        FileProvider = provider
-                    }));
-                    storage.ZstdPageCompression();
-                    // The production default: tests here stop coordinated so the drain
-                    // completes on its own. A short timeout would fail a merely-slow stop under
-                    // parallel load and turn a clean handoff into a rollback.
-                }, stopDrainTimeout: TimeSpan.FromSeconds(30));
+                // The production default: tests here stop coordinated so the drain
+                // completes on its own. A short timeout would fail a merely-slow stop under
+                // parallel load and turn a clean handoff into a rollback.
+                ConfigureSilo(siloBuilder, ConfigureDurableStorage, stopDrainTimeout: TimeSpan.FromSeconds(30));
             }
+        }
+
+        /// <summary>
+        /// Durable stream state with the short drain, for tests that shut a silo down.
+        /// </summary>
+        private sealed class DurableStorageShortDrainSiloConfigurator : ISiloConfigurator
+        {
+            public void Configure(ISiloBuilder siloBuilder)
+            {
+                // A shutting down silo stops its substreams alone, the drain waits out peer barriers that never come.
+                ConfigureSilo(siloBuilder, ConfigureDurableStorage, stopDrainTimeout: TimeSpan.FromSeconds(2));
+            }
+        }
+
+        private static readonly ConcurrentDictionary<string, KeepAliveMemoryFileProvider> _durableProviders = new();
+
+        private static void ConfigureDurableStorage(string streamName, string substreamName, IFlowtideStorageBuilder storage)
+        {
+            var provider = _durableProviders.GetOrAdd($"{streamName}/{substreamName}", _ => new KeepAliveMemoryFileProvider());
+            storage.SetPersistentStorage(new ReservoirPersistentStorage(new ReservoirStorageOptions
+            {
+                FileProvider = provider
+            }));
+            storage.ZstdPageCompression();
         }
 
         /// <summary>
@@ -209,6 +225,17 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
     public sealed class OrleansTwoSiloDurableStorageClusterFixture : OrleansClusterFixtureBase
     {
         public OrleansTwoSiloDurableStorageClusterFixture() : base(2, durableStreamState: true)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Two silo cluster with durable stream state and a short stop drain, for tests that shut a silo
+    /// down: its substreams stop alone and the stream grain's stop retries must outlast their drain.
+    /// </summary>
+    public sealed class OrleansTwoSiloFailureClusterFixture : OrleansClusterFixtureBase
+    {
+        public OrleansTwoSiloFailureClusterFixture() : base(2, durableStreamState: true, shortStopDrain: true)
         {
         }
     }
