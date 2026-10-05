@@ -111,11 +111,10 @@
         connectors.AddSink(...);
     }, (streamName, substreamName, storage) =&gt;
     {
-        // Called once per substream, every substream needs its own storage
-        storage.AddTemporaryDevelopmentStorage(o =&gt;
-        {
-            o.DirectoryPath = $&quot;./temp/{streamName}/{substreamName}&quot;;
-        });
+        // Called on every substream start. A stable location per substream lets a restarted
+        // activation restore its checkpoints, in production use storage every silo can reach,
+        // see &quot;State storage must survive&quot;
+        storage.AddFileStorage($&quot;./state/{streamName}/{substreamName}&quot;);
     });
 });
 </code></pre>
@@ -178,7 +177,7 @@ foreach (var substream in status.Substreams)
     SubStreamGrainKey.Create(&quot;my_stream&quot;, &quot;substream_0&quot;));
 await substreamGrain.MigrateAsync();
 </code></pre>
-<p>The grain drains the data exchanged with the other substreams, stops at a final checkpoint and migrates. The new activation restores that checkpoint and reconnects, the other substreams keep running and nothing is replayed. This requires state storage that is reachable from every silo. With silo-local storage the reconnect is refused and the stream falls back to normal recovery instead.</p>
+<p>The grain drains the data exchanged with the other substreams, stops at a final checkpoint and migrates. The new activation restores that checkpoint and reconnects, the other substreams keep running and nothing is replayed. This requires state storage that is reachable from every silo. With silo-local storage the new activation comes back without its state and the whole stream starts over from the beginning, see <a href="index.html#state-storage-must-survive">State storage must survive</a>.</p>
 <p>A migration that can not complete cleanly, for example when a peer is unreachable, falls back to the same recovery as a silo failure. Orleans can also decide to skip a requested migration, the keep alive reminder then restarts the stream in place.</p>
 <h2 id="metrics">Metrics</h2>
 <p><em>app.StartFlowtideMetrics(&quot;/stream&quot;)</em> exposes the Flowtide metrics endpoints without the UI, which fits silo hosts. The monitoring described under <a href="../monitoring/generalmetrics.html">Monitoring</a> applies per substream.</p>

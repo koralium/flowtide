@@ -183,7 +183,7 @@ Interface IStreamEgressVertex  <a class="header-action link-secondary" title="Vi
 
   <h3 id="FlowtideDotNet_Base_Vertices_IStreamEgressVertex_ReadyToStop" data-uid="FlowtideDotNet.Base.Vertices.IStreamEgressVertex.ReadyToStop">
   ReadyToStop
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/IStreamEgressVertex.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/IStreamEgressVertex.cs/#L43"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>True when the vertex has everything it needs for the stream to finish stopping.
@@ -238,6 +238,44 @@ before the other substream has received them.</p>
     <dt><code>checkpointVersion</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
     <dd><p>The state manager version of the completed checkpoint, the same domain as the
 restore version the vertex receives at initialization.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IStreamEgressVertex_CommitVersion_" data-uid="FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CommitVersion*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IStreamEgressVertex_CommitVersion_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CommitVersion(System.Int64)">
+  CommitVersion(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Egress/IStreamEgressVertex.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Invoked when the stream can no longer roll back below the version, also once at start with the restored version.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">Task CommitVersion(long version)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>version</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>Same domain as <a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamEgressVertex.html#FlowtideDotNet_Base_Vertices_IStreamEgressVertex_CheckpointDone_System_Int64_">CheckpointDone(long)</a>.</p>
 </dd>
   </dl>
 

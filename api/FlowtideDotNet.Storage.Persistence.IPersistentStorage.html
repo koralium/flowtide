@@ -131,7 +131,7 @@ Interface IPersistentStorage  <a class="header-action link-secondary" title="Vie
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_CurrentVersion" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.CurrentVersion">
   CurrentVersion
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L22"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L30"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Returns the current version of the persistent storage</p>
@@ -159,6 +159,41 @@ Interface IPersistentStorage  <a class="header-action link-secondary" title="Vie
 
 
 
+  <a id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_SupportsDistributedCheckpoints_" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.SupportsDistributedCheckpoints*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_SupportsDistributedCheckpoints" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.SupportsDistributedCheckpoints">
+  SupportsDistributedCheckpoints
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L25"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Whether this configuration supports distributed checkpoint recovery: the current
+and previous completed cuts survive compaction, and recovery/reset durably retires
+the discarded timeline before returning. Wrappers must preserve these guarantees.
+Reservoir with a listing provider is the supported built-in implementation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool SupportsDistributedCheckpoints { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <h2 class="section" id="methods">Methods
 </h2>
 
@@ -167,7 +202,7 @@ Interface IPersistentStorage  <a class="header-action link-secondary" title="Vie
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_CheckpointAsync_System_Byte___System_Boolean_" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.CheckpointAsync(System.Byte[],System.Boolean)">
   CheckpointAsync(byte[], bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L48"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Checkpoint the storage</p>
@@ -206,7 +241,7 @@ Interface IPersistentStorage  <a class="header-action link-secondary" title="Vie
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_ClearForRestore" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.ClearForRestore">
   ClearForRestore()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L89"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Clears the current state in preparation for a restore operation.</p>
@@ -237,7 +272,7 @@ settings are reset. This helps prevent conflicts or inconsistencies during the r
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_CompactAsync_System_UInt64_System_UInt64_" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.CompactAsync(System.UInt64,System.UInt64)">
   CompactAsync(ulong, ulong)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L54"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Compacts the data, removes old versions of data that are no longer in use</p>
@@ -276,7 +311,7 @@ settings are reset. This helps prevent conflicts or inconsistencies during the r
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_CreateSession" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.CreateSession">
   CreateSession()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L42"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Create a session for the persitent storage</p>
@@ -308,7 +343,7 @@ settings are reset. This helps prevent conflicts or inconsistencies during the r
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_InitializeAsync_FlowtideDotNet_Storage_Persistence_StorageInitializationMetadata_" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.InitializeAsync(FlowtideDotNet.Storage.Persistence.StorageInitializationMetadata)">
   InitializeAsync(StorageInitializationMetadata)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L28"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L36"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Initializes the persistent store</p>
@@ -345,7 +380,7 @@ settings are reset. This helps prevent conflicts or inconsistencies during the r
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_RecoverAsync_System_Int64_" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.RecoverAsync(System.Int64)">
   RecoverAsync(long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L59"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L67"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Recover the store to a specific checkpoint version</p>
@@ -383,7 +418,7 @@ settings are reset. This helps prevent conflicts or inconsistencies during the r
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_ResetAsync" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.ResetAsync">
   ResetAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L60"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Reset the store to an empty state</p>
@@ -415,7 +450,7 @@ settings are reset. This helps prevent conflicts or inconsistencies during the r
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_TryGetValue_System_Int64_System_Nullable_System_ReadOnlyMemory_System_Byte____" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.TryGetValue(System.Int64,System.Nullable{System.ReadOnlyMemory{System.Byte}}@)">
   TryGetValue(long, out ReadOnlyMemory&lt;byte&gt;?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L67"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L75"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Used by administrative operations to look up metadata.</p>
@@ -454,7 +489,7 @@ settings are reset. This helps prevent conflicts or inconsistencies during the r
 
   <h3 id="FlowtideDotNet_Storage_Persistence_IPersistentStorage_Write_System_Int64_System_Byte___" data-uid="FlowtideDotNet.Storage.Persistence.IPersistentStorage.Write(System.Int64,System.Byte[])">
   Write(long, byte[])
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/IPersistentStorage.cs/#L82"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Used by administrative operations to write metadata.</p>

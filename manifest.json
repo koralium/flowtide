@@ -1315,6 +1315,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.yml",
       "output": {
         ".html": {
@@ -5414,6 +5428,20 @@
       "IsMRef": true,
       "Title": "FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandlerFactory",
       "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.Operators.Exchange.RecoveryWave",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.yml\" sourcestartlinenumber=\"1\">One recovery of a group of substreams. Minted above every wave its minter has seen, so a new failure always outranks the wave the group is in.</p>\n"
     },
     {
       "type": "ManagedReference",

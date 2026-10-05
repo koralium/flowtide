@@ -163,7 +163,7 @@ don't call them from application code or manage a single substream directly, use
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Interfaces_ISubStreamGrain_DeleteStreamAsync" data-uid="FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.DeleteStreamAsync">
   DeleteStreamAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Interfaces/ISubStreamGrain.cs/#L59"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Interfaces/ISubStreamGrain.cs/#L61"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Stops the substream and deletes its state. Delete all substreams together through the
@@ -175,6 +175,42 @@ stream grain, or a substream whose peers keep running would be recovered against
     <pre><code class="lang-csharp hljs">Task DeleteStreamAsync()</code></pre>
   </div>
 
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Cluster_Orleans_Interfaces_ISubStreamGrain_DurabilityClaim_" data-uid="FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.DurabilityClaim*"></a>
+
+  <h3 id="FlowtideDotNet_Cluster_Orleans_Interfaces_ISubStreamGrain_DurabilityClaim_FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_" data-uid="FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.DurabilityClaim(FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest)">
+  DurabilityClaim(DurabilityClaimRequest)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Interfaces/ISubStreamGrain.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">Task DurabilityClaim(DurabilityClaimRequest request)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>request</code> <a class="xref" href="FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html">DurabilityClaimRequest</a></dt>
+    <dd></dd>
+  </dl>
 
   <h4 class="section">Returns</h4>
   <dl class="parameters">
@@ -304,7 +340,7 @@ stream grain, or a substream whose peers keep running would be recovered against
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Interfaces_ISubStreamGrain_GetStatusAsync" data-uid="FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.GetStatusAsync">
   GetStatusAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Interfaces/ISubStreamGrain.cs/#L53"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Interfaces/ISubStreamGrain.cs/#L55"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Returns the status of this substream, including the most recent stream failure,
@@ -373,7 +409,7 @@ which is how a stream that cannot start reports why.</p>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Interfaces_ISubStreamGrain_MigrateAsync" data-uid="FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.MigrateAsync">
   MigrateAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Interfaces/ISubStreamGrain.cs/#L66"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Interfaces/ISubStreamGrain.cs/#L68"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Requests the substream grain activation to migrate to another silo, for example to
@@ -443,7 +479,7 @@ placed again by the runtime; the substream resumes on the new activation.</p>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Interfaces_ISubStreamGrain_StopStreamAsync" data-uid="FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.StopStreamAsync">
   StopStreamAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Interfaces/ISubStreamGrain.cs/#L47"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Interfaces/ISubStreamGrain.cs/#L49"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Stops the substream gracefully. All substreams of a stream should be stopped

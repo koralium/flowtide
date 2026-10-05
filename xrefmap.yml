@@ -719,6 +719,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Base.Engine.DataflowStream.Health
   nameWithType: DataflowStream.Health
+- uid: FlowtideDotNet.Base.Engine.DataflowStream.IsWaitingForConnectedStreams
+  name: IsWaitingForConnectedStreams
+  href: api/FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_IsWaitingForConnectedStreams
+  commentId: P:FlowtideDotNet.Base.Engine.DataflowStream.IsWaitingForConnectedStreams
+  fullName: FlowtideDotNet.Base.Engine.DataflowStream.IsWaitingForConnectedStreams
+  nameWithType: DataflowStream.IsWaitingForConnectedStreams
+- uid: FlowtideDotNet.Base.Engine.DataflowStream.IsWaitingForConnectedStreams*
+  name: IsWaitingForConnectedStreams
+  href: api/FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_IsWaitingForConnectedStreams_
+  commentId: Overload:FlowtideDotNet.Base.Engine.DataflowStream.IsWaitingForConnectedStreams
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Engine.DataflowStream.IsWaitingForConnectedStreams
+  nameWithType: DataflowStream.IsWaitingForConnectedStreams
 - uid: FlowtideDotNet.Base.Engine.DataflowStream.Pause
   name: Pause()
   href: api/FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_Pause
@@ -3688,6 +3701,24 @@ references:
   fullName.vb: FlowtideDotNet.Base.Vertices.EgressVertex(Of T).CheckpointDone
   nameWithType: EgressVertex<T>.CheckpointDone
   nameWithType.vb: EgressVertex(Of T).CheckpointDone
+- uid: FlowtideDotNet.Base.Vertices.EgressVertex`1.CommitVersion(System.Int64)
+  name: CommitVersion(long)
+  href: api/FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_CommitVersion_System_Int64_
+  commentId: M:FlowtideDotNet.Base.Vertices.EgressVertex`1.CommitVersion(System.Int64)
+  name.vb: CommitVersion(Long)
+  fullName: FlowtideDotNet.Base.Vertices.EgressVertex<T>.CommitVersion(long)
+  fullName.vb: FlowtideDotNet.Base.Vertices.EgressVertex(Of T).CommitVersion(Long)
+  nameWithType: EgressVertex<T>.CommitVersion(long)
+  nameWithType.vb: EgressVertex(Of T).CommitVersion(Long)
+- uid: FlowtideDotNet.Base.Vertices.EgressVertex`1.CommitVersion*
+  name: CommitVersion
+  href: api/FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_CommitVersion_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.EgressVertex`1.CommitVersion
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.EgressVertex<T>.CommitVersion
+  fullName.vb: FlowtideDotNet.Base.Vertices.EgressVertex(Of T).CommitVersion
+  nameWithType: EgressVertex<T>.CommitVersion
+  nameWithType.vb: EgressVertex(Of T).CommitVersion
 - uid: FlowtideDotNet.Base.Vertices.EgressVertex`1.Compact
   name: Compact()
   href: api/FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Compact
@@ -4791,6 +4822,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CheckpointDone
   nameWithType: IStreamEgressVertex.CheckpointDone
+- uid: FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CommitVersion(System.Int64)
+  name: CommitVersion(long)
+  href: api/FlowtideDotNet.Base.Vertices.IStreamEgressVertex.html#FlowtideDotNet_Base_Vertices_IStreamEgressVertex_CommitVersion_System_Int64_
+  commentId: M:FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CommitVersion(System.Int64)
+  name.vb: CommitVersion(Long)
+  fullName: FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CommitVersion(long)
+  fullName.vb: FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CommitVersion(Long)
+  nameWithType: IStreamEgressVertex.CommitVersion(long)
+  nameWithType.vb: IStreamEgressVertex.CommitVersion(Long)
+- uid: FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CommitVersion*
+  name: CommitVersion
+  href: api/FlowtideDotNet.Base.Vertices.IStreamEgressVertex.html#FlowtideDotNet_Base_Vertices_IStreamEgressVertex_CommitVersion_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CommitVersion
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.IStreamEgressVertex.CommitVersion
+  nameWithType: IStreamEgressVertex.CommitVersion
 - uid: FlowtideDotNet.Base.Vertices.IStreamEgressVertex.ReadyToStop
   name: ReadyToStop
   href: api/FlowtideDotNet.Base.Vertices.IStreamEgressVertex.html#FlowtideDotNet_Base_Vertices_IStreamEgressVertex_ReadyToStop
@@ -8413,6 +8460,19 @@ references:
   commentId: T:FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions
   fullName: FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions
   nameWithType: FlowtideOrleansOptions
+- uid: FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.AgreementWaitReminderTicks
+  name: AgreementWaitReminderTicks
+  href: api/FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.html#FlowtideDotNet_Cluster_Orleans_FlowtideOrleansOptions_AgreementWaitReminderTicks
+  commentId: P:FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.AgreementWaitReminderTicks
+  fullName: FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.AgreementWaitReminderTicks
+  nameWithType: FlowtideOrleansOptions.AgreementWaitReminderTicks
+- uid: FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.AgreementWaitReminderTicks*
+  name: AgreementWaitReminderTicks
+  href: api/FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.html#FlowtideDotNet_Cluster_Orleans_FlowtideOrleansOptions_AgreementWaitReminderTicks_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.AgreementWaitReminderTicks
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.AgreementWaitReminderTicks
+  nameWithType: FlowtideOrleansOptions.AgreementWaitReminderTicks
 - uid: FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.ConfigureBuilder
   name: ConfigureBuilder
   href: api/FlowtideDotNet.Cluster.Orleans.FlowtideOrleansOptions.html#FlowtideDotNet_Cluster_Orleans_FlowtideOrleansOptions_ConfigureBuilder
@@ -8644,6 +8704,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.DeleteStreamAsync
   nameWithType: ISubStreamGrain.DeleteStreamAsync
+- uid: FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.DurabilityClaim(FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest)
+  name: DurabilityClaim(DurabilityClaimRequest)
+  href: api/FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.html#FlowtideDotNet_Cluster_Orleans_Interfaces_ISubStreamGrain_DurabilityClaim_FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_
+  commentId: M:FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.DurabilityClaim(FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest)
+  fullName: FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.DurabilityClaim(FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest)
+  nameWithType: ISubStreamGrain.DurabilityClaim(DurabilityClaimRequest)
+- uid: FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.DurabilityClaim*
+  name: DurabilityClaim
+  href: api/FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.html#FlowtideDotNet_Cluster_Orleans_Interfaces_ISubStreamGrain_DurabilityClaim_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.DurabilityClaim
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.DurabilityClaim
+  nameWithType: ISubStreamGrain.DurabilityClaim
 - uid: FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.FailAndRecoverAsync(FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest)
   name: FailAndRecoverAsync(FailAndRecoverRequest)
   href: api/FlowtideDotNet.Cluster.Orleans.Interfaces.ISubStreamGrain.html#FlowtideDotNet_Cluster_Orleans_Interfaces_ISubStreamGrain_FailAndRecoverAsync_FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_
@@ -8894,21 +8967,163 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Cluster.Orleans.Messages.CheckpointDoneRequest.Requestor
   nameWithType: CheckpointDoneRequest.Requestor
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest
+  name: DurabilityClaimRequest
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html
+  commentId: T:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest
+  nameWithType: DurabilityClaimRequest
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.#ctor(System.String,System.Int64,System.Int32,System.Int64,System.Int64,System.Guid,System.Int64,System.Int64,System.Boolean)
+  name: DurabilityClaimRequest(string, long, int, long, long, Guid, long, long, bool)
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest__ctor_System_String_System_Int64_System_Int32_System_Int64_System_Int64_System_Guid_System_Int64_System_Int64_System_Boolean_
+  commentId: M:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.#ctor(System.String,System.Int64,System.Int32,System.Int64,System.Int64,System.Guid,System.Int64,System.Int64,System.Boolean)
+  name.vb: New(String, Long, Integer, Long, Long, Guid, Long, Long, Boolean)
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.DurabilityClaimRequest(string, long, int, long, long, System.Guid, long, long, bool)
+  fullName.vb: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.New(String, Long, Integer, Long, Long, System.Guid, Long, Long, Boolean)
+  nameWithType: DurabilityClaimRequest.DurabilityClaimRequest(string, long, int, long, long, Guid, long, long, bool)
+  nameWithType.vb: DurabilityClaimRequest.New(String, Long, Integer, Long, Long, Guid, Long, Long, Boolean)
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.#ctor*
+  name: DurabilityClaimRequest
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest__ctor_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.DurabilityClaimRequest
+  fullName.vb: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.New
+  nameWithType: DurabilityClaimRequest.DurabilityClaimRequest
+  nameWithType.vb: DurabilityClaimRequest.New
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.InitVersion
+  name: InitVersion
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_InitVersion
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.InitVersion
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.InitVersion
+  nameWithType: DurabilityClaimRequest.InitVersion
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.InitVersion*
+  name: InitVersion
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_InitVersion_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.InitVersion
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.InitVersion
+  nameWithType: DurabilityClaimRequest.InitVersion
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Radius
+  name: Radius
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_Radius
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Radius
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Radius
+  nameWithType: DurabilityClaimRequest.Radius
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Radius*
+  name: Radius
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_Radius_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Radius
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Radius
+  nameWithType: DurabilityClaimRequest.Radius
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.RequestReply
+  name: RequestReply
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_RequestReply
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.RequestReply
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.RequestReply
+  nameWithType: DurabilityClaimRequest.RequestReply
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.RequestReply*
+  name: RequestReply
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_RequestReply_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.RequestReply
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.RequestReply
+  nameWithType: DurabilityClaimRequest.RequestReply
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Requestor
+  name: Requestor
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_Requestor
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Requestor
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Requestor
+  nameWithType: DurabilityClaimRequest.Requestor
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Requestor*
+  name: Requestor
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_Requestor_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Requestor
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Requestor
+  nameWithType: DurabilityClaimRequest.Requestor
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.SenderCheckpointEpoch
+  name: SenderCheckpointEpoch
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_SenderCheckpointEpoch
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.SenderCheckpointEpoch
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.SenderCheckpointEpoch
+  nameWithType: DurabilityClaimRequest.SenderCheckpointEpoch
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.SenderCheckpointEpoch*
+  name: SenderCheckpointEpoch
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_SenderCheckpointEpoch_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.SenderCheckpointEpoch
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.SenderCheckpointEpoch
+  nameWithType: DurabilityClaimRequest.SenderCheckpointEpoch
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.TargetCheckpointEpoch
+  name: TargetCheckpointEpoch
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_TargetCheckpointEpoch
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.TargetCheckpointEpoch
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.TargetCheckpointEpoch
+  nameWithType: DurabilityClaimRequest.TargetCheckpointEpoch
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.TargetCheckpointEpoch*
+  name: TargetCheckpointEpoch
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_TargetCheckpointEpoch_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.TargetCheckpointEpoch
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.TargetCheckpointEpoch
+  nameWithType: DurabilityClaimRequest.TargetCheckpointEpoch
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Version
+  name: Version
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_Version
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Version
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Version
+  nameWithType: DurabilityClaimRequest.Version
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Version*
+  name: Version
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_Version_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Version
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.Version
+  nameWithType: DurabilityClaimRequest.Version
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveCounter
+  name: WaveCounter
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_WaveCounter
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveCounter
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveCounter
+  nameWithType: DurabilityClaimRequest.WaveCounter
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveCounter*
+  name: WaveCounter
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_WaveCounter_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveCounter
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveCounter
+  nameWithType: DurabilityClaimRequest.WaveCounter
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveId
+  name: WaveId
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_WaveId
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveId
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveId
+  nameWithType: DurabilityClaimRequest.WaveId
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveId*
+  name: WaveId
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_DurabilityClaimRequest_WaveId_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveId
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.DurabilityClaimRequest.WaveId
+  nameWithType: DurabilityClaimRequest.WaveId
 - uid: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest
   name: FailAndRecoverRequest
   href: api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html
   commentId: T:FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest
   fullName: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest
   nameWithType: FailAndRecoverRequest
-- uid: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.#ctor(System.String,System.Int64,System.Int64)
-  name: FailAndRecoverRequest(string, long, long)
-  href: api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest__ctor_System_String_System_Int64_System_Int64_
-  commentId: M:FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.#ctor(System.String,System.Int64,System.Int64)
-  name.vb: New(String, Long, Long)
-  fullName: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.FailAndRecoverRequest(string, long, long)
-  fullName.vb: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.New(String, Long, Long)
-  nameWithType: FailAndRecoverRequest.FailAndRecoverRequest(string, long, long)
-  nameWithType.vb: FailAndRecoverRequest.New(String, Long, Long)
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.#ctor(System.String,System.Int64,System.Guid,System.Int64)
+  name: FailAndRecoverRequest(string, long, Guid, long)
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest__ctor_System_String_System_Int64_System_Guid_System_Int64_
+  commentId: M:FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.#ctor(System.String,System.Int64,System.Guid,System.Int64)
+  name.vb: New(String, Long, Guid, Long)
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.FailAndRecoverRequest(string, long, System.Guid, long)
+  fullName.vb: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.New(String, Long, System.Guid, Long)
+  nameWithType: FailAndRecoverRequest.FailAndRecoverRequest(string, long, Guid, long)
+  nameWithType.vb: FailAndRecoverRequest.New(String, Long, Guid, Long)
 - uid: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.#ctor*
   name: FailAndRecoverRequest
   href: api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest__ctor_
@@ -8932,19 +9147,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.FetchEpoch
   nameWithType: FailAndRecoverRequest.FetchEpoch
-- uid: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.RecoveryPoint
-  name: RecoveryPoint
-  href: api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_RecoveryPoint
-  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.RecoveryPoint
-  fullName: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.RecoveryPoint
-  nameWithType: FailAndRecoverRequest.RecoveryPoint
-- uid: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.RecoveryPoint*
-  name: RecoveryPoint
-  href: api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_RecoveryPoint_
-  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.RecoveryPoint
-  isSpec: "True"
-  fullName: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.RecoveryPoint
-  nameWithType: FailAndRecoverRequest.RecoveryPoint
 - uid: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.Requestor
   name: Requestor
   href: api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_Requestor
@@ -8958,6 +9160,32 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.Requestor
   nameWithType: FailAndRecoverRequest.Requestor
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveCounter
+  name: WaveCounter
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_WaveCounter
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveCounter
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveCounter
+  nameWithType: FailAndRecoverRequest.WaveCounter
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveCounter*
+  name: WaveCounter
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_WaveCounter_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveCounter
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveCounter
+  nameWithType: FailAndRecoverRequest.WaveCounter
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveId
+  name: WaveId
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_WaveId
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveId
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveId
+  nameWithType: FailAndRecoverRequest.WaveId
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveId*
+  name: WaveId
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_WaveId_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveId
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveId
+  nameWithType: FailAndRecoverRequest.WaveId
 - uid: FlowtideDotNet.Cluster.Orleans.Messages.FetchDataRequest
   name: FetchDataRequest
   href: api/FlowtideDotNet.Cluster.Orleans.Messages.FetchDataRequest.html
@@ -9207,15 +9435,15 @@ references:
   commentId: T:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest
   fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest
   nameWithType: InitSubstreamRequest
-- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.#ctor(System.String,System.Int64,System.Int64,System.Int64,System.Boolean)
-  name: InitSubstreamRequest(string, long, long, long, bool)
-  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest__ctor_System_String_System_Int64_System_Int64_System_Int64_System_Boolean_
-  commentId: M:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.#ctor(System.String,System.Int64,System.Int64,System.Int64,System.Boolean)
-  name.vb: New(String, Long, Long, Long, Boolean)
-  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.InitSubstreamRequest(string, long, long, long, bool)
-  fullName.vb: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.New(String, Long, Long, Long, Boolean)
-  nameWithType: InitSubstreamRequest.InitSubstreamRequest(string, long, long, long, bool)
-  nameWithType.vb: InitSubstreamRequest.New(String, Long, Long, Long, Boolean)
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.#ctor(System.String,System.Int64,System.Int64,System.Int64,System.Boolean,System.Int64,System.Guid)
+  name: InitSubstreamRequest(string, long, long, long, bool, long, Guid)
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest__ctor_System_String_System_Int64_System_Int64_System_Int64_System_Boolean_System_Int64_System_Guid_
+  commentId: M:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.#ctor(System.String,System.Int64,System.Int64,System.Int64,System.Boolean,System.Int64,System.Guid)
+  name.vb: New(String, Long, Long, Long, Boolean, Long, Guid)
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.InitSubstreamRequest(string, long, long, long, bool, long, System.Guid)
+  fullName.vb: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.New(String, Long, Long, Long, Boolean, Long, System.Guid)
+  nameWithType: InitSubstreamRequest.InitSubstreamRequest(string, long, long, long, bool, long, Guid)
+  nameWithType.vb: InitSubstreamRequest.New(String, Long, Long, Long, Boolean, Long, Guid)
 - uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.#ctor*
   name: InitSubstreamRequest
   href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest__ctor_
@@ -9291,21 +9519,47 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.RestorePoint
   nameWithType: InitSubstreamRequest.RestorePoint
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveCounter
+  name: WaveCounter
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_WaveCounter
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveCounter
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveCounter
+  nameWithType: InitSubstreamRequest.WaveCounter
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveCounter*
+  name: WaveCounter
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_WaveCounter_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveCounter
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveCounter
+  nameWithType: InitSubstreamRequest.WaveCounter
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveId
+  name: WaveId
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_WaveId
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveId
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveId
+  nameWithType: InitSubstreamRequest.WaveId
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveId*
+  name: WaveId
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_WaveId_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveId
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveId
+  nameWithType: InitSubstreamRequest.WaveId
 - uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse
   name: InitSubstreamResponse
   href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html
   commentId: T:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse
   fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse
   nameWithType: InitSubstreamResponse
-- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean)
-  name: InitSubstreamResponse(bool, bool, long, long, long, long, bool, bool)
-  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Int64_System_Boolean_System_Boolean_
-  commentId: M:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean)
-  name.vb: New(Boolean, Boolean, Long, Long, Long, Long, Boolean, Boolean)
-  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.InitSubstreamResponse(bool, bool, long, long, long, long, bool, bool)
-  fullName.vb: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.New(Boolean, Boolean, Long, Long, Long, Long, Boolean, Boolean)
-  nameWithType: InitSubstreamResponse.InitSubstreamResponse(bool, bool, long, long, long, long, bool, bool)
-  nameWithType.vb: InitSubstreamResponse.New(Boolean, Boolean, Long, Long, Long, Long, Boolean, Boolean)
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean,System.Int64,System.Guid,System.Boolean)
+  name: InitSubstreamResponse(bool, bool, long, long, long, long, bool, bool, long, Guid, bool)
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Int64_System_Boolean_System_Boolean_System_Int64_System_Guid_System_Boolean_
+  commentId: M:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean,System.Int64,System.Guid,System.Boolean)
+  name.vb: New(Boolean, Boolean, Long, Long, Long, Long, Boolean, Boolean, Long, Guid, Boolean)
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.InitSubstreamResponse(bool, bool, long, long, long, long, bool, bool, long, System.Guid, bool)
+  fullName.vb: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.New(Boolean, Boolean, Long, Long, Long, Long, Boolean, Boolean, Long, System.Guid, Boolean)
+  nameWithType: InitSubstreamResponse.InitSubstreamResponse(bool, bool, long, long, long, long, bool, bool, long, Guid, bool)
+  nameWithType.vb: InitSubstreamResponse.New(Boolean, Boolean, Long, Long, Long, Long, Boolean, Boolean, Long, Guid, Boolean)
 - uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.#ctor*
   name: InitSubstreamResponse
   href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse__ctor_
@@ -9368,6 +9622,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerDraining
   nameWithType: InitSubstreamResponse.PeerDraining
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerInInit
+  name: PeerInInit
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_PeerInInit
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerInInit
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerInInit
+  nameWithType: InitSubstreamResponse.PeerInInit
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerInInit*
+  name: PeerInInit
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_PeerInInit_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerInInit
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.PeerInInit
+  nameWithType: InitSubstreamResponse.PeerInInit
 - uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.RecordedCheckpointEpoch
   name: RecordedCheckpointEpoch
   href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_RecordedCheckpointEpoch
@@ -9420,6 +9687,32 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.Success
   nameWithType: InitSubstreamResponse.Success
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveCounter
+  name: WaveCounter
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_WaveCounter
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveCounter
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveCounter
+  nameWithType: InitSubstreamResponse.WaveCounter
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveCounter*
+  name: WaveCounter
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_WaveCounter_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveCounter
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveCounter
+  nameWithType: InitSubstreamResponse.WaveCounter
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveId
+  name: WaveId
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_WaveId
+  commentId: P:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveId
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveId
+  nameWithType: InitSubstreamResponse.WaveId
+- uid: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveId*
+  name: WaveId
+  href: api/FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.html#FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamResponse_WaveId_
+  commentId: Overload:FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveId
+  isSpec: "True"
+  fullName: FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamResponse.WaveId
+  nameWithType: InitSubstreamResponse.WaveId
 - uid: FlowtideDotNet.Cluster.Orleans.Messages.StartStreamMessage
   name: StartStreamMessage
   href: api/FlowtideDotNet.Cluster.Orleans.Messages.StartStreamMessage.html
@@ -32265,15 +32558,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.FetchData
   nameWithType: ISubstreamCommunicationHandler.FetchData
-- uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.Initialize(System.Func{System.Collections.Generic.IReadOnlySet{System.Int32},System.Int32,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IReadOnlyList{FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData}}},System.Func{System.Int64,System.Threading.Tasks.Task},System.Func{System.Int64,System.Int64,System.Boolean,System.Threading.Tasks.Task{FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse}},System.Func{System.Int64,System.Int64,System.Boolean,System.Threading.Tasks.Task})
-  name: Initialize(Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>, Func<long, Task>, Func<long, long, bool, Task<SubstreamInitializeResponse>>, Func<long, long, bool, Task>)
-  href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_Initialize_System_Func_System_Collections_Generic_IReadOnlySet_System_Int32__System_Int32_System_Threading_CancellationToken_System_Threading_Tasks_Task_System_Collections_Generic_IReadOnlyList_FlowtideDotNet_Core_Operators_Exchange_SubstreamEventData____System_Func_System_Int64_System_Threading_Tasks_Task__System_Func_System_Int64_System_Int64_System_Boolean_System_Threading_Tasks_Task_FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse___System_Func_System_Int64_System_Int64_System_Boolean_System_Threading_Tasks_Task__
-  commentId: M:FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.Initialize(System.Func{System.Collections.Generic.IReadOnlySet{System.Int32},System.Int32,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IReadOnlyList{FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData}}},System.Func{System.Int64,System.Threading.Tasks.Task},System.Func{System.Int64,System.Int64,System.Boolean,System.Threading.Tasks.Task{FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse}},System.Func{System.Int64,System.Int64,System.Boolean,System.Threading.Tasks.Task})
-  name.vb: Initialize(Func(Of IReadOnlySet(Of Integer), Integer, CancellationToken, Task(Of IReadOnlyList(Of SubstreamEventData))), Func(Of Long, Task), Func(Of Long, Long, Boolean, Task(Of SubstreamInitializeResponse)), Func(Of Long, Long, Boolean, Task))
-  fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.Initialize(System.Func<System.Collections.Generic.IReadOnlySet<int>, int, System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData>>>, System.Func<long, System.Threading.Tasks.Task>, System.Func<long, long, bool, System.Threading.Tasks.Task<FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse>>, System.Func<long, long, bool, System.Threading.Tasks.Task>)
-  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.Initialize(System.Func(Of System.Collections.Generic.IReadOnlySet(Of Integer), Integer, System.Threading.CancellationToken, System.Threading.Tasks.Task(Of System.Collections.Generic.IReadOnlyList(Of FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData))), System.Func(Of Long, System.Threading.Tasks.Task), System.Func(Of Long, Long, Boolean, System.Threading.Tasks.Task(Of FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse)), System.Func(Of Long, Long, Boolean, System.Threading.Tasks.Task))
-  nameWithType: ISubstreamCommunicationHandler.Initialize(Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>, Func<long, Task>, Func<long, long, bool, Task<SubstreamInitializeResponse>>, Func<long, long, bool, Task>)
-  nameWithType.vb: ISubstreamCommunicationHandler.Initialize(Func(Of IReadOnlySet(Of Integer), Integer, CancellationToken, Task(Of IReadOnlyList(Of SubstreamEventData))), Func(Of Long, Task), Func(Of Long, Long, Boolean, Task(Of SubstreamInitializeResponse)), Func(Of Long, Long, Boolean, Task))
+- uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.Initialize(System.Func{System.Collections.Generic.IReadOnlySet{System.Int32},System.Int32,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IReadOnlyList{FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData}}},System.Func{FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Threading.Tasks.Task},System.Func{System.Int64,System.Int64,System.Boolean,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Threading.Tasks.Task{FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse}},System.Func{System.Int64,System.Int64,System.Boolean,System.Threading.Tasks.Task})
+  name: Initialize(Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>, Func<RecoveryWave, Task>, Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>>, Func<long, long, bool, Task>)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_Initialize_System_Func_System_Collections_Generic_IReadOnlySet_System_Int32__System_Int32_System_Threading_CancellationToken_System_Threading_Tasks_Task_System_Collections_Generic_IReadOnlyList_FlowtideDotNet_Core_Operators_Exchange_SubstreamEventData____System_Func_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_System_Threading_Tasks_Task__System_Func_System_Int64_System_Int64_System_Boolean_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_System_Threading_Tasks_Task_FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse___System_Func_System_Int64_System_Int64_System_Boolean_System_Threading_Tasks_Task__
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.Initialize(System.Func{System.Collections.Generic.IReadOnlySet{System.Int32},System.Int32,System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IReadOnlyList{FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData}}},System.Func{FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Threading.Tasks.Task},System.Func{System.Int64,System.Int64,System.Boolean,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Threading.Tasks.Task{FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse}},System.Func{System.Int64,System.Int64,System.Boolean,System.Threading.Tasks.Task})
+  name.vb: Initialize(Func(Of IReadOnlySet(Of Integer), Integer, CancellationToken, Task(Of IReadOnlyList(Of SubstreamEventData))), Func(Of RecoveryWave, Task), Func(Of Long, Long, Boolean, RecoveryWave, Task(Of SubstreamInitializeResponse)), Func(Of Long, Long, Boolean, Task))
+  fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.Initialize(System.Func<System.Collections.Generic.IReadOnlySet<int>, int, System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData>>>, System.Func<FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, System.Threading.Tasks.Task>, System.Func<long, long, bool, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, System.Threading.Tasks.Task<FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse>>, System.Func<long, long, bool, System.Threading.Tasks.Task>)
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.Initialize(System.Func(Of System.Collections.Generic.IReadOnlySet(Of Integer), Integer, System.Threading.CancellationToken, System.Threading.Tasks.Task(Of System.Collections.Generic.IReadOnlyList(Of FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData))), System.Func(Of FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, System.Threading.Tasks.Task), System.Func(Of Long, Long, Boolean, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, System.Threading.Tasks.Task(Of FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse)), System.Func(Of Long, Long, Boolean, System.Threading.Tasks.Task))
+  nameWithType: ISubstreamCommunicationHandler.Initialize(Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>, Func<RecoveryWave, Task>, Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>>, Func<long, long, bool, Task>)
+  nameWithType.vb: ISubstreamCommunicationHandler.Initialize(Func(Of IReadOnlySet(Of Integer), Integer, CancellationToken, Task(Of IReadOnlyList(Of SubstreamEventData))), Func(Of RecoveryWave, Task), Func(Of Long, Long, Boolean, RecoveryWave, Task(Of SubstreamInitializeResponse)), Func(Of Long, Long, Boolean, Task))
 - uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.Initialize*
   name: Initialize
   href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_Initialize_
@@ -32281,6 +32574,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.Initialize
   nameWithType: ISubstreamCommunicationHandler.Initialize
+- uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.InitializeDurabilityClaims(System.Func{System.Int64,System.Int32,System.Int64,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Int64,System.Int64,System.Boolean,System.Threading.Tasks.Task})
+  name: InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task>)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_InitializeDurabilityClaims_System_Func_System_Int64_System_Int32_System_Int64_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_System_Int64_System_Int64_System_Boolean_System_Threading_Tasks_Task__
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.InitializeDurabilityClaims(System.Func{System.Int64,System.Int32,System.Int64,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Int64,System.Int64,System.Boolean,System.Threading.Tasks.Task})
+  name.vb: InitializeDurabilityClaims(Func(Of Long, Integer, Long, RecoveryWave, Long, Long, Boolean, Task))
+  fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.InitializeDurabilityClaims(System.Func<long, int, long, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, long, long, bool, System.Threading.Tasks.Task>)
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.InitializeDurabilityClaims(System.Func(Of Long, Integer, Long, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, Long, Long, Boolean, System.Threading.Tasks.Task))
+  nameWithType: ISubstreamCommunicationHandler.InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task>)
+  nameWithType.vb: ISubstreamCommunicationHandler.InitializeDurabilityClaims(Func(Of Long, Integer, Long, RecoveryWave, Long, Long, Boolean, Task))
+- uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.InitializeDurabilityClaims*
+  name: InitializeDurabilityClaims
+  href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_InitializeDurabilityClaims_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.InitializeDurabilityClaims
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.InitializeDurabilityClaims
+  nameWithType: ISubstreamCommunicationHandler.InitializeDurabilityClaims
 - uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.OnStreamFailure
   name: OnStreamFailure()
   href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_OnStreamFailure
@@ -32310,15 +32619,28 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendCheckpointDone
   nameWithType: ISubstreamCommunicationHandler.SendCheckpointDone
-- uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendFailAndRecover(System.Int64)
-  name: SendFailAndRecover(long)
-  href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_SendFailAndRecover_System_Int64_
-  commentId: M:FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendFailAndRecover(System.Int64)
-  name.vb: SendFailAndRecover(Long)
-  fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendFailAndRecover(long)
-  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendFailAndRecover(Long)
-  nameWithType: ISubstreamCommunicationHandler.SendFailAndRecover(long)
-  nameWithType.vb: ISubstreamCommunicationHandler.SendFailAndRecover(Long)
+- uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendDurabilityClaim(System.Int64,System.Int32,System.Int64,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Int64,System.Int64,System.Boolean,System.Threading.CancellationToken)
+  name: SendDurabilityClaim(long, int, long, RecoveryWave, long, long, bool, CancellationToken)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_SendDurabilityClaim_System_Int64_System_Int32_System_Int64_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_System_Int64_System_Int64_System_Boolean_System_Threading_CancellationToken_
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendDurabilityClaim(System.Int64,System.Int32,System.Int64,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Int64,System.Int64,System.Boolean,System.Threading.CancellationToken)
+  name.vb: SendDurabilityClaim(Long, Integer, Long, RecoveryWave, Long, Long, Boolean, CancellationToken)
+  fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendDurabilityClaim(long, int, long, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, long, long, bool, System.Threading.CancellationToken)
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendDurabilityClaim(Long, Integer, Long, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, Long, Long, Boolean, System.Threading.CancellationToken)
+  nameWithType: ISubstreamCommunicationHandler.SendDurabilityClaim(long, int, long, RecoveryWave, long, long, bool, CancellationToken)
+  nameWithType.vb: ISubstreamCommunicationHandler.SendDurabilityClaim(Long, Integer, Long, RecoveryWave, Long, Long, Boolean, CancellationToken)
+- uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendDurabilityClaim*
+  name: SendDurabilityClaim
+  href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_SendDurabilityClaim_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendDurabilityClaim
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendDurabilityClaim
+  nameWithType: ISubstreamCommunicationHandler.SendDurabilityClaim
+- uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendFailAndRecover(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  name: SendFailAndRecover(RecoveryWave)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_SendFailAndRecover_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendFailAndRecover(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendFailAndRecover(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  nameWithType: ISubstreamCommunicationHandler.SendFailAndRecover(RecoveryWave)
 - uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendFailAndRecover*
   name: SendFailAndRecover
   href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_SendFailAndRecover_
@@ -32326,15 +32648,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendFailAndRecover
   nameWithType: ISubstreamCommunicationHandler.SendFailAndRecover
-- uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendInitializeRequest(System.Int64,System.Int64,System.Boolean,System.Threading.CancellationToken)
-  name: SendInitializeRequest(long, long, bool, CancellationToken)
-  href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_SendInitializeRequest_System_Int64_System_Int64_System_Boolean_System_Threading_CancellationToken_
-  commentId: M:FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendInitializeRequest(System.Int64,System.Int64,System.Boolean,System.Threading.CancellationToken)
-  name.vb: SendInitializeRequest(Long, Long, Boolean, CancellationToken)
-  fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendInitializeRequest(long, long, bool, System.Threading.CancellationToken)
-  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendInitializeRequest(Long, Long, Boolean, System.Threading.CancellationToken)
-  nameWithType: ISubstreamCommunicationHandler.SendInitializeRequest(long, long, bool, CancellationToken)
-  nameWithType.vb: ISubstreamCommunicationHandler.SendInitializeRequest(Long, Long, Boolean, CancellationToken)
+- uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendInitializeRequest(System.Int64,System.Int64,System.Boolean,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Threading.CancellationToken)
+  name: SendInitializeRequest(long, long, bool, RecoveryWave, CancellationToken)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_SendInitializeRequest_System_Int64_System_Int64_System_Boolean_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_System_Threading_CancellationToken_
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendInitializeRequest(System.Int64,System.Int64,System.Boolean,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Threading.CancellationToken)
+  name.vb: SendInitializeRequest(Long, Long, Boolean, RecoveryWave, CancellationToken)
+  fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendInitializeRequest(long, long, bool, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, System.Threading.CancellationToken)
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendInitializeRequest(Long, Long, Boolean, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, System.Threading.CancellationToken)
+  nameWithType: ISubstreamCommunicationHandler.SendInitializeRequest(long, long, bool, RecoveryWave, CancellationToken)
+  nameWithType.vb: ISubstreamCommunicationHandler.SendInitializeRequest(Long, Long, Boolean, RecoveryWave, CancellationToken)
 - uid: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.SendInitializeRequest*
   name: SendInitializeRequest
   href: api/FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandler.html#FlowtideDotNet_Core_Operators_Exchange_ISubstreamCommunicationHandler_SendInitializeRequest_
@@ -32380,6 +32702,165 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Exchange.ISubstreamCommunicationHandlerFactory.GetCommunicationHandler
   nameWithType: ISubstreamCommunicationHandlerFactory.GetCommunicationHandler
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave
+  name: RecoveryWave
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html
+  commentId: T:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave
+  nameWithType: RecoveryWave
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.#ctor(System.Int64,System.Guid)
+  name: RecoveryWave(long, Guid)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave__ctor_System_Int64_System_Guid_
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.#ctor(System.Int64,System.Guid)
+  name.vb: New(Long, Guid)
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.RecoveryWave(long, System.Guid)
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.New(Long, System.Guid)
+  nameWithType: RecoveryWave.RecoveryWave(long, Guid)
+  nameWithType.vb: RecoveryWave.New(Long, Guid)
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.#ctor*
+  name: RecoveryWave
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave__ctor_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.RecoveryWave
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.New
+  nameWithType: RecoveryWave.RecoveryWave
+  nameWithType.vb: RecoveryWave.New
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.CompareTo(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  name: CompareTo(RecoveryWave)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_CompareTo_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.CompareTo(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.CompareTo(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  nameWithType: RecoveryWave.CompareTo(RecoveryWave)
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.CompareTo*
+  name: CompareTo
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_CompareTo_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.CompareTo
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.CompareTo
+  nameWithType: RecoveryWave.CompareTo
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Counter
+  name: Counter
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_Counter
+  commentId: P:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Counter
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Counter
+  nameWithType: RecoveryWave.Counter
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Counter*
+  name: Counter
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_Counter_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Counter
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Counter
+  nameWithType: RecoveryWave.Counter
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Id
+  name: Id
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_Id
+  commentId: P:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Id
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Id
+  nameWithType: RecoveryWave.Id
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Id*
+  name: Id
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_Id_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Id
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.Id
+  nameWithType: RecoveryWave.Id
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.None
+  name: None
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_None
+  commentId: F:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.None
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.None
+  nameWithType: RecoveryWave.None
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.ToString
+  name: ToString()
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_ToString
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.ToString
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.ToString()
+  nameWithType: RecoveryWave.ToString()
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.ToString*
+  name: ToString
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_ToString_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.ToString
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.ToString
+  nameWithType: RecoveryWave.ToString
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_GreaterThan(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  name: operator >(RecoveryWave, RecoveryWave)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_op_GreaterThan_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_GreaterThan(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  name.vb: '>(RecoveryWave, RecoveryWave)'
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.operator >(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.>(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  nameWithType: RecoveryWave.operator >(RecoveryWave, RecoveryWave)
+  nameWithType.vb: RecoveryWave.>(RecoveryWave, RecoveryWave)
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_GreaterThan*
+  name: operator >
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_op_GreaterThan_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_GreaterThan
+  isSpec: "True"
+  name.vb: '>'
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.operator >
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.>
+  nameWithType: RecoveryWave.operator >
+  nameWithType.vb: RecoveryWave.>
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_GreaterThanOrEqual(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  name: operator >=(RecoveryWave, RecoveryWave)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_op_GreaterThanOrEqual_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_GreaterThanOrEqual(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  name.vb: '>=(RecoveryWave, RecoveryWave)'
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.operator >=(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.>=(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  nameWithType: RecoveryWave.operator >=(RecoveryWave, RecoveryWave)
+  nameWithType.vb: RecoveryWave.>=(RecoveryWave, RecoveryWave)
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_GreaterThanOrEqual*
+  name: operator >=
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_op_GreaterThanOrEqual_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_GreaterThanOrEqual
+  isSpec: "True"
+  name.vb: '>='
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.operator >=
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.>=
+  nameWithType: RecoveryWave.operator >=
+  nameWithType.vb: RecoveryWave.>=
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_LessThan(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  name: operator <(RecoveryWave, RecoveryWave)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_op_LessThan_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_LessThan(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  name.vb: <(RecoveryWave, RecoveryWave)
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.operator <(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.<(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  nameWithType: RecoveryWave.operator <(RecoveryWave, RecoveryWave)
+  nameWithType.vb: RecoveryWave.<(RecoveryWave, RecoveryWave)
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_LessThan*
+  name: operator <
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_op_LessThan_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_LessThan
+  isSpec: "True"
+  name.vb: <
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.operator <
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.<
+  nameWithType: RecoveryWave.operator <
+  nameWithType.vb: RecoveryWave.<
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_LessThanOrEqual(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  name: operator <=(RecoveryWave, RecoveryWave)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_op_LessThanOrEqual_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_LessThanOrEqual(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  name.vb: <=(RecoveryWave, RecoveryWave)
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.operator <=(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.<=(FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave)
+  nameWithType: RecoveryWave.operator <=(RecoveryWave, RecoveryWave)
+  nameWithType.vb: RecoveryWave.<=(RecoveryWave, RecoveryWave)
+- uid: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_LessThanOrEqual*
+  name: operator <=
+  href: api/FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.html#FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_op_LessThanOrEqual_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.op_LessThanOrEqual
+  isSpec: "True"
+  name.vb: <=
+  fullName: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.operator <=
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.RecoveryWave.<=
+  nameWithType: RecoveryWave.operator <=
+  nameWithType.vb: RecoveryWave.<=
 - uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData
   name: SubstreamEventData
   href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamEventData.html
@@ -32458,15 +32939,15 @@ references:
   commentId: T:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse
   fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse
   nameWithType: SubstreamInitializeResponse
-- uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean)
-  name: SubstreamInitializeResponse(bool, bool, long, long, long, bool, bool)
-  href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Boolean_System_Boolean_
-  commentId: M:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean)
-  name.vb: New(Boolean, Boolean, Long, Long, Long, Boolean, Boolean)
-  fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.SubstreamInitializeResponse(bool, bool, long, long, long, bool, bool)
-  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.New(Boolean, Boolean, Long, Long, Long, Boolean, Boolean)
-  nameWithType: SubstreamInitializeResponse.SubstreamInitializeResponse(bool, bool, long, long, long, bool, bool)
-  nameWithType.vb: SubstreamInitializeResponse.New(Boolean, Boolean, Long, Long, Long, Boolean, Boolean)
+- uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Boolean)
+  name: SubstreamInitializeResponse(bool, bool, long, long, long, bool, bool, RecoveryWave, bool)
+  href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse__ctor_System_Boolean_System_Boolean_System_Int64_System_Int64_System_Int64_System_Boolean_System_Boolean_FlowtideDotNet_Core_Operators_Exchange_RecoveryWave_System_Boolean_
+  commentId: M:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor(System.Boolean,System.Boolean,System.Int64,System.Int64,System.Int64,System.Boolean,System.Boolean,FlowtideDotNet.Core.Operators.Exchange.RecoveryWave,System.Boolean)
+  name.vb: New(Boolean, Boolean, Long, Long, Long, Boolean, Boolean, RecoveryWave, Boolean)
+  fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.SubstreamInitializeResponse(bool, bool, long, long, long, bool, bool, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, bool)
+  fullName.vb: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.New(Boolean, Boolean, Long, Long, Long, Boolean, Boolean, FlowtideDotNet.Core.Operators.Exchange.RecoveryWave, Boolean)
+  nameWithType: SubstreamInitializeResponse.SubstreamInitializeResponse(bool, bool, long, long, long, bool, bool, RecoveryWave, bool)
+  nameWithType.vb: SubstreamInitializeResponse.New(Boolean, Boolean, Long, Long, Long, Boolean, Boolean, RecoveryWave, Boolean)
 - uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.#ctor*
   name: SubstreamInitializeResponse
   href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse__ctor_
@@ -32529,6 +33010,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerDraining
   nameWithType: SubstreamInitializeResponse.PeerDraining
+- uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerInInit
+  name: PeerInInit
+  href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_PeerInInit
+  commentId: P:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerInInit
+  fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerInInit
+  nameWithType: SubstreamInitializeResponse.PeerInInit
+- uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerInInit*
+  name: PeerInInit
+  href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_PeerInInit_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerInInit
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.PeerInInit
+  nameWithType: SubstreamInitializeResponse.PeerInInit
 - uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.RecordedCheckpointEpoch
   name: RecordedCheckpointEpoch
   href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_RecordedCheckpointEpoch
@@ -32568,6 +33062,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.Success
   nameWithType: SubstreamInitializeResponse.Success
+- uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.Wave
+  name: Wave
+  href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_Wave
+  commentId: P:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.Wave
+  fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.Wave
+  nameWithType: SubstreamInitializeResponse.Wave
+- uid: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.Wave*
+  name: Wave
+  href: api/FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.html#FlowtideDotNet_Core_Operators_Exchange_SubstreamInitializeResponse_Wave_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.Wave
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Exchange.SubstreamInitializeResponse.Wave
+  nameWithType: SubstreamInitializeResponse.Wave
 - uid: FlowtideDotNet.Core.Operators.Join
   name: FlowtideDotNet.Core.Operators.Join
   href: api/FlowtideDotNet.Core.Operators.Join.html
@@ -42338,6 +42845,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.Persistence.IPersistentStorage.ResetAsync
   nameWithType: IPersistentStorage.ResetAsync
+- uid: FlowtideDotNet.Storage.Persistence.IPersistentStorage.SupportsDistributedCheckpoints
+  name: SupportsDistributedCheckpoints
+  href: api/FlowtideDotNet.Storage.Persistence.IPersistentStorage.html#FlowtideDotNet_Storage_Persistence_IPersistentStorage_SupportsDistributedCheckpoints
+  commentId: P:FlowtideDotNet.Storage.Persistence.IPersistentStorage.SupportsDistributedCheckpoints
+  fullName: FlowtideDotNet.Storage.Persistence.IPersistentStorage.SupportsDistributedCheckpoints
+  nameWithType: IPersistentStorage.SupportsDistributedCheckpoints
+- uid: FlowtideDotNet.Storage.Persistence.IPersistentStorage.SupportsDistributedCheckpoints*
+  name: SupportsDistributedCheckpoints
+  href: api/FlowtideDotNet.Storage.Persistence.IPersistentStorage.html#FlowtideDotNet_Storage_Persistence_IPersistentStorage_SupportsDistributedCheckpoints_
+  commentId: Overload:FlowtideDotNet.Storage.Persistence.IPersistentStorage.SupportsDistributedCheckpoints
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.Persistence.IPersistentStorage.SupportsDistributedCheckpoints
+  nameWithType: IPersistentStorage.SupportsDistributedCheckpoints
 - uid: FlowtideDotNet.Storage.Persistence.IPersistentStorage.TryGetValue(System.Int64,System.Nullable{System.ReadOnlyMemory{System.Byte}}@)
   name: TryGetValue(long, out ReadOnlyMemory<byte>?)
   href: api/FlowtideDotNet.Storage.Persistence.IPersistentStorage.html#FlowtideDotNet_Storage_Persistence_IPersistentStorage_TryGetValue_System_Int64_System_Nullable_System_ReadOnlyMemory_System_Byte____
@@ -43246,6 +43766,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage.ResetAsync
   nameWithType: ReservoirPersistentStorage.ResetAsync
+- uid: FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage.SupportsDistributedCheckpoints
+  name: SupportsDistributedCheckpoints
+  href: api/FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage.html#FlowtideDotNet_Storage_Persistence_Reservoir_Internal_ReservoirPersistentStorage_SupportsDistributedCheckpoints
+  commentId: P:FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage.SupportsDistributedCheckpoints
+  fullName: FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage.SupportsDistributedCheckpoints
+  nameWithType: ReservoirPersistentStorage.SupportsDistributedCheckpoints
+- uid: FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage.SupportsDistributedCheckpoints*
+  name: SupportsDistributedCheckpoints
+  href: api/FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage.html#FlowtideDotNet_Storage_Persistence_Reservoir_Internal_ReservoirPersistentStorage_SupportsDistributedCheckpoints_
+  commentId: Overload:FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage.SupportsDistributedCheckpoints
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage.SupportsDistributedCheckpoints
+  nameWithType: ReservoirPersistentStorage.SupportsDistributedCheckpoints
 - uid: FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage.TryGetValue(System.Int64,System.Nullable{System.ReadOnlyMemory{System.Byte}}@)
   name: TryGetValue(long, out ReadOnlyMemory<byte>?)
   href: api/FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage.html#FlowtideDotNet_Storage_Persistence_Reservoir_Internal_ReservoirPersistentStorage_TryGetValue_System_Int64_System_Nullable_System_ReadOnlyMemory_System_Byte____

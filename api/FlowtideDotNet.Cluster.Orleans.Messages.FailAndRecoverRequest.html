@@ -156,8 +156,8 @@ public class FailAndRecoverRequest</code></pre>
 
   <a id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest__ctor_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest__ctor_System_String_System_Int64_System_Int64_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.#ctor(System.String,System.Int64,System.Int64)">
-  FailAndRecoverRequest(string, long, long)
+  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest__ctor_System_String_System_Int64_System_Guid_System_Int64_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.#ctor(System.String,System.Int64,System.Guid,System.Int64)">
+  FailAndRecoverRequest(string, long, Guid, long)
   <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/FailAndRecoverRequest.cs/#L25"><i class="bi bi-code-slash"></i></a>
   </h3>
 
@@ -165,14 +165,16 @@ public class FailAndRecoverRequest</code></pre>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public FailAndRecoverRequest(string requestor, long recoveryPoint, long fetchEpoch)</code></pre>
+    <pre><code class="lang-csharp hljs">public FailAndRecoverRequest(string requestor, long waveCounter, Guid waveId, long fetchEpoch)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>requestor</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
-    <dt><code>recoveryPoint</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dt><code>waveCounter</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+    <dt><code>waveId</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.guid">Guid</a></dt>
     <dd></dd>
     <dt><code>fetchEpoch</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
     <dd></dd>
@@ -197,7 +199,7 @@ public class FailAndRecoverRequest</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_FetchEpoch" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.FetchEpoch">
   FetchEpoch
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/FailAndRecoverRequest.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/FailAndRecoverRequest.cs/#L50"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The requestor's fetch epoch. A request below the epoch the requestor announced at
@@ -228,19 +230,52 @@ public long FetchEpoch { get; }</code></pre>
 
 
 
-  <a id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_RecoveryPoint_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.RecoveryPoint*"></a>
+  <a id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_Requestor_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.Requestor*"></a>
 
-  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_RecoveryPoint" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.RecoveryPoint">
-  RecoveryPoint
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/FailAndRecoverRequest.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_Requestor" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.Requestor">
+  Requestor
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/FailAndRecoverRequest.cs/#L33"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Id(0)]
+public string Requestor { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_WaveCounter_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveCounter*"></a>
+
+  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_WaveCounter" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveCounter">
+  WaveCounter
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/FailAndRecoverRequest.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The recovery the requestor restarts in, the receiver restarts into it unless it is in it already.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
     <pre><code class="lang-csharp hljs">[Id(1)]
-public long RecoveryPoint { get; }</code></pre>
+public long WaveCounter { get; }</code></pre>
   </div>
 
 
@@ -260,19 +295,19 @@ public long RecoveryPoint { get; }</code></pre>
 
 
 
-  <a id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_Requestor_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.Requestor*"></a>
+  <a id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_WaveId_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveId*"></a>
 
-  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_Requestor" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.Requestor">
-  Requestor
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/FailAndRecoverRequest.cs/#L32"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_FailAndRecoverRequest_WaveId" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.FailAndRecoverRequest.WaveId">
+  WaveId
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/FailAndRecoverRequest.cs/#L42"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">[Id(0)]
-public string Requestor { get; }</code></pre>
+    <pre><code class="lang-csharp hljs">[Id(3)]
+public Guid WaveId { get; }</code></pre>
   </div>
 
 
@@ -281,7 +316,7 @@ public string Requestor { get; }</code></pre>
 
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
-    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.guid">Guid</a></dt>
     <dd></dd>
   </dl>
 

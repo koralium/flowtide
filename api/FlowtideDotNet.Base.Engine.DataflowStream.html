@@ -190,7 +190,7 @@ property derives a <a class="xref" href="FlowtideDotNet.Base.FlowtideHealth.html
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_Health" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Health">
   Health
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L147"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L154"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets the overall health of the stream, derived from the combination of <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_State">State</a>
@@ -225,11 +225,45 @@ Suitable for use with health check integrations.</p>
 
 
 
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_IsWaitingForConnectedStreams_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.IsWaitingForConnectedStreams*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_IsWaitingForConnectedStreams" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.IsWaitingForConnectedStreams">
+  IsWaitingForConnectedStreams
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L117"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>True while the stream has initialized and only waits for the streams it exchanges data
+with to initialize at the same version. It stays in the starting state meanwhile, a
+host must not take that for a start that is stuck.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsWaitingForConnectedStreams { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Base_Engine_DataflowStream_Scheduler_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Scheduler*"></a>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_Scheduler" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Scheduler">
   Scheduler
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L135"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L142"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets the <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamScheduler.html">IStreamScheduler</a> instance responsible for scheduling and firing
@@ -299,7 +333,7 @@ registered trigger events within this stream.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_Status" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Status">
   Status
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L129"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L136"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets the current operational status of the stream.</p>
@@ -336,7 +370,7 @@ values such as <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStatus.htm
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_WantedState" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.WantedState">
   WantedState
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L119"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L126"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets the desired target state that the stream is transitioning towards.</p>
@@ -376,7 +410,7 @@ values such as <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStatus.htm
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_CallTrigger_System_String_System_Object_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.CallTrigger(System.String,System.Object)">
   CallTrigger(string, object?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L254"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L261"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Manually invokes a named trigger on all operators registered to handle it.</p>
@@ -418,7 +452,7 @@ values such as <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStatus.htm
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_DeleteAsync" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.DeleteAsync">
   DeleteAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L264"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L271"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Transitions the stream to the deleting state, permanently removing all persistent state
@@ -452,11 +486,11 @@ associated with every vertex in the stream.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_DisposeAsync" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.DisposeAsync">
   DisposeAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L274"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L281"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Releases all resources held by the stream asynchronously, completing all dataflow blocks
-and disposing each vertex.</p>
+  <div class="markdown level1 summary"><p>Releases all resources held by the stream asynchronously, faulting and awaiting active
+dataflow blocks before disposing each vertex. Use StopAsync for a graceful stop.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
@@ -486,7 +520,7 @@ and disposing each vertex.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_GetDiagnosticsGraph" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.GetDiagnosticsGraph">
   GetDiagnosticsGraph()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L287"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L294"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Returns a <a class="xref" href="FlowtideDotNet.Base.Metrics.StreamGraph.html">StreamGraph</a> describing the current operator topology of the stream,
@@ -521,7 +555,7 @@ and gauges, the edges between them, and the current <a class="xref" href="Flowti
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_GetLatestState" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.GetLatestState">
   GetLatestState()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L243"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L250"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Returns the latest persisted <a class="xref" href="FlowtideDotNet.Base.Engine.StreamState.html">StreamState</a>, or <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> if no
@@ -556,7 +590,7 @@ state has been saved yet.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_Pause" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Pause">
   Pause()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L311"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L318"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Suspends message processing throughout the stream. Data will continue to queue but will
@@ -588,7 +622,7 @@ duration of the pause. Has no effect if the stream is already paused.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_Resume" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Resume">
   Resume()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L320"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L327"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Resumes message processing after a prior call to <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_Pause">Pause()</a>, restoring the
@@ -616,7 +650,7 @@ duration of the pause. Has no effect if the stream is already paused.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_RunAsync" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.RunAsync">
   RunAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L180"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L187"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Starts the stream and drives the scheduler tick loop until the stream transitions to
@@ -666,7 +700,7 @@ directly instead and manage the scheduler externally.
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_StartAsync" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.StartAsync">
   StartAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L154"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L161"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Initiates the stream startup sequence, setting up all blocks, linking them, and restoring
@@ -700,7 +734,7 @@ state from the last checkpoint if available.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_StopAsync" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.StopAsync">
   StopAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L296"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L303"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gracefully stops the stream, waiting for the stop sequence to complete before returning.</p>
@@ -733,7 +767,7 @@ state from the last checkpoint if available.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_TriggerCheckpoint" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.TriggerCheckpoint">
   TriggerCheckpoint()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L220"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L227"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Triggers a manual checkpoint on the stream, requesting all vertices to persist their
@@ -767,7 +801,7 @@ current state.</p>
 
   <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_TryScheduleCheckpoint_System_TimeSpan_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.TryScheduleCheckpoint(System.TimeSpan)">
   TryScheduleCheckpoint(TimeSpan)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L230"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L237"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Schedules a checkpoint to be triggered after the specified delay, respecting any

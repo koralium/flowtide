@@ -156,8 +156,8 @@ public class InitSubstreamRequest</code></pre>
 
   <a id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest__ctor_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest__ctor_System_String_System_Int64_System_Int64_System_Int64_System_Boolean_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.#ctor(System.String,System.Int64,System.Int64,System.Int64,System.Boolean)">
-  InitSubstreamRequest(string, long, long, long, bool)
+  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest__ctor_System_String_System_Int64_System_Int64_System_Int64_System_Boolean_System_Int64_System_Guid_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.#ctor(System.String,System.Int64,System.Int64,System.Int64,System.Boolean,System.Int64,System.Guid)">
+  InitSubstreamRequest(string, long, long, long, bool, long, Guid)
   <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L25"><i class="bi bi-code-slash"></i></a>
   </h3>
 
@@ -165,7 +165,7 @@ public class InitSubstreamRequest</code></pre>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public InitSubstreamRequest(string requestor, long restorePoint, long fetchEpoch, long checkpointEpoch = 0, bool cleanHandoff = false)</code></pre>
+    <pre><code class="lang-csharp hljs">public InitSubstreamRequest(string requestor, long restorePoint, long fetchEpoch, long checkpointEpoch = 0, bool cleanHandoff = false, long waveCounter = 0, Guid waveId = default)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -179,6 +179,10 @@ public class InitSubstreamRequest</code></pre>
     <dt><code>checkpointEpoch</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
     <dd></dd>
     <dt><code>cleanHandoff</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>waveCounter</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+    <dt><code>waveId</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.guid">Guid</a></dt>
     <dd></dd>
   </dl>
 
@@ -201,7 +205,7 @@ public class InitSubstreamRequest</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_CheckpointEpoch" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.CheckpointEpoch">
   CheckpointEpoch
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L54"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The requestors current checkpoint epoch, recorded by the receiver so it can tag its
@@ -235,7 +239,7 @@ public long CheckpointEpoch { get; }</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_CleanHandoff" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.CleanHandoff">
   CleanHandoff
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L59"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L61"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The requestor resumes from a clean handoff stop (e.g. a planned grain migration),
@@ -269,7 +273,7 @@ public bool CleanHandoff { get; }</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_FetchEpoch" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.FetchEpoch">
   FetchEpoch
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L45"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L47"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>The requestors current fetch epoch, the receiving grain only serves fetches that
@@ -304,7 +308,7 @@ public long FetchEpoch { get; }</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_Requestor" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.Requestor">
   Requestor
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L36"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -336,7 +340,7 @@ public string Requestor { get; }</code></pre>
 
   <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_RestorePoint" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.RestorePoint">
   RestorePoint
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L39"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -354,6 +358,71 @@ public long RestorePoint { get; }</code></pre>
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
     <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_WaveCounter_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveCounter*"></a>
+
+  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_WaveCounter" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveCounter">
+  WaveCounter
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L66"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The recovery the requestor is in, a receiver that is not in it yet restarts into it.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Id(5)]
+public long WaveCounter { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_WaveId_" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveId*"></a>
+
+  <h3 id="FlowtideDotNet_Cluster_Orleans_Messages_InitSubstreamRequest_WaveId" data-uid="FlowtideDotNet.Cluster.Orleans.Messages.InitSubstreamRequest.WaveId">
+  WaveId
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Cluster.Orleans/Messages/InitSubstreamRequest.cs/#L68"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Id(6)]
+public Guid WaveId { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.guid">Guid</a></dt>
     <dd></dd>
   </dl>
 
